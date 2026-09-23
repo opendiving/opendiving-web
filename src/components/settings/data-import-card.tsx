@@ -13,6 +13,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  ImportCheckInDetails,
+  useImportCheckIn,
+} from "@/components/settings/import-check-in-details";
+import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
   importSourceLabel,
@@ -20,9 +25,11 @@ import {
   LOGBOOK_IMPORT_ACCEPT,
   MAX_IMPORT_ARCHIVE_SIZE,
   MAX_IMPORT_DOCUMENT_SIZE,
+  type ImportCheckInSubmission,
   type ImportPreview,
   type ImportReport,
 } from "@/lib/api/logbook-import";
+import { checkInWasWritten } from "@/lib/import-check-in";
 import {
   collectionLabel,
   collectionRowIsEmpty,
@@ -271,6 +278,69 @@ function ImportReportView({
   );
 }
 
+// The plan waiting for the diver's word. Mounted per preview, keyed on its token, so
+// the check-in form inside it is seeded from this preview's proposal and no other.
+function PendingImport({
+  file,
+  preview,
+  isApplying,
+  onApply,
+  onCancel,
+}: {
+  file: File;
+  preview: ImportPreview;
+  isApplying: boolean;
+  onApply: (checkIn: ImportCheckInSubmission | undefined) => void;
+  onCancel: () => void;
+}) {
+  const checkIn = useImportCheckIn(preview.check_in_details);
+
+  const handleApply = async () => {
+    const submission = await checkIn.collect();
+    if (submission !== null) onApply(submission);
+  };
+
+  return (
+    <div className="rounded-lg border p-4 space-y-4">
+      <div>
+        <h3 className="font-medium">Ready to import {file.name}</h3>
+        {/* `importSourceSentence` reads `conversion` before `format` and
+            `generator`, which on a converted upload describe the document the API
+            ended up reading rather than the file just named above it -
+            "divejson 1.0, written by divejson convert" about somebody's `.ssrf`. */}
+        <p className="text-sm text-muted-foreground mt-1">
+          {importSourceSentence(preview)} Nothing has been written yet.
+        </p>
+      </div>
+
+      <ImportReportView report={preview} archive={preview.archive} />
+
+      <ImportCheckInDetails checkIn={checkIn} />
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Button type="button" onClick={handleApply} disabled={isApplying}>
+          {isApplying ? (
+            <div className="flex items-center space-x-2">
+              <ButtonSpinner />
+              <span>Importing...</span>
+            </div>
+          ) : (
+            <span>Import this logbook</span>
+          )}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isApplying}
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // "Bring your logbook back" on the settings page, directly under the export card
 // it is the other half of. The product's promise is that nothing in an account is
 // locked to this app; export makes that falsifiable and import is what closes the
@@ -283,6 +353,7 @@ function ImportReportView({
 // discover afterwards.
 export function DataImportCard() {
   const { toast } = useToast();
+  const { refreshUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // The file is held alongside the preview because apply needs *both* it and the
@@ -350,7 +421,7 @@ export function DataImportCard() {
     }
   };
 
-  const handleApply = async () => {
+  const handleApply = async (checkIn: ImportCheckInSubmission | undefined) => {
     if (!pending) return;
 
     try {
@@ -358,7 +429,13 @@ export function DataImportCard() {
       const applied = await logbookImportAPI.apply(
         pending.file,
         pending.preview.token,
+        checkIn,
       );
+      // Only when a fact changed: the check-in card on this page seeds from the
+      // signed-in user, and saving it from a stale copy would send the imported
+      // facts back as nulls. Not otherwise, since a refresh resets every mounted
+      // form seeded from that user.
+      if (checkInWasWritten(applied)) await refreshUser();
       setResult(applied);
       setPending(null);
       toast({
@@ -447,48 +524,14 @@ export function DataImportCard() {
         </div>
 
         {pending && (
-          <div className="rounded-lg border p-4 space-y-4">
-            <div>
-              <h3 className="font-medium">
-                Ready to import {pending.file.name}
-              </h3>
-              {/* `importSourceSentence` reads `conversion` before `format` and
-                  `generator`, which on a converted upload describe the document
-                  the API ended up reading rather than the file just named above
-                  it - "divejson 1.0, written by divejson convert" about
-                  somebody's `.ssrf`. */}
-              <p className="text-sm text-muted-foreground mt-1">
-                {importSourceSentence(pending.preview)} Nothing has been written
-                yet.
-              </p>
-            </div>
-
-            <ImportReportView
-              report={pending.preview}
-              archive={pending.preview.archive}
-            />
-
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button type="button" onClick={handleApply} disabled={isApplying}>
-                {isApplying ? (
-                  <div className="flex items-center space-x-2">
-                    <ButtonSpinner />
-                    <span>Importing...</span>
-                  </div>
-                ) : (
-                  <span>Import this logbook</span>
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setPending(null)}
-                disabled={isApplying}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
+          <PendingImport
+            key={pending.preview.token}
+            file={pending.file}
+            preview={pending.preview}
+            isApplying={isApplying}
+            onApply={handleApply}
+            onCancel={() => setPending(null)}
+          />
         )}
 
         {result && (

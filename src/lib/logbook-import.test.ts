@@ -132,6 +132,7 @@ describe("noteIsWarning", () => {
         "reference_unresolved",
         "species_unresolved",
         "file_skipped",
+        "check_in_detail_dropped",
       ].every(noteIsWarning),
     ).toBe(true);
   });
@@ -156,6 +157,7 @@ describe("noteIsWarning", () => {
         // is reporting the import working, not falling short.
         "recording_attached",
         "recording_filled",
+        "check_in_detail_written",
       ].some(noteIsWarning),
     ).toBe(false);
   });
@@ -333,6 +335,7 @@ describe("importSourceSentence", () => {
       generator: { name: "OpenDiving", version: "0.4.0" },
       archive: false,
       token: "tok-1",
+      check_in_details: [],
       ...overrides,
     };
   }

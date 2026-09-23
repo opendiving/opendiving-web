@@ -66,7 +66,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileCode,
     title: "UDDF",
     description:
-      "Every dive with its sites, trips, gases, cylinders, gear and sample profile, in the open format Subsurface, MacDive and divelogs.de import. A dive recorded by two computers writes one profile here — the recording shown by default — because a UDDF dive carries one set of samples; the DiveJSON and the archive carry them all. This is the file to hand another program, and the import card below reads it back too — gear sets, service history, your courses and your c-cards have no slot in it, and ride in the DiveJSON and the archive instead.",
+      "Every dive with its sites, trips, gases, cylinders, gear and sample profile, plus your date of birth, phone and dive insurance, in the open format Subsurface, MacDive and divelogs.de import. A dive recorded by two computers writes one profile here — the recording shown by default — because a UDDF dive carries one set of samples; the DiveJSON and the archive carry them all. This is the file to hand another program, and the import card below reads it back too — gear sets, service history, your courses, your c-cards, your emergency contact and your insurance policy number have no slot in it, and ride in the DiveJSON and the archive instead.",
   },
   {
     format: "csv",

@@ -84,11 +84,13 @@ export function collectionRowIsEmpty(row: ImportCollectionReport): boolean {
  * How a note should read: as something lost, or as something merely worth saying.
  *
  * The split is "did the diver end up with less than the document described".
- * A skipped record, a dropped value, an unresolved reference or species and a
- * file that could not be stored all lose something, so they are warnings. A
- * linked or restored record, either remap, a `diver` deliberately not applied and
- * a file whose bytes simply are not in a bare document are all the import working
- * as designed - `file_not_contained` especially, which is the *expected* state of
+ * A skipped record, a dropped value, an unresolved reference or species, a
+ * file that could not be stored and a check-in detail the preview does not offer
+ * all lose something, so they are warnings. A linked or restored record, either
+ * remap, a `diver` deliberately not applied, a check-in detail written as
+ * confirmed and a file whose bytes simply are not in a bare document are all the
+ * import working as designed - `file_not_contained` especially, which is the
+ * *expected* state of
  * every referenced file when a document rather than an archive was imported, and
  * colouring it as a failure would make the ordinary case look broken.
  *
@@ -101,7 +103,8 @@ export function noteIsWarning(code: ImportNoteCode | string): boolean {
     code === "value_dropped" ||
     code === "reference_unresolved" ||
     code === "species_unresolved" ||
-    code === "file_skipped"
+    code === "file_skipped" ||
+    code === "check_in_detail_dropped"
   );
 }
 

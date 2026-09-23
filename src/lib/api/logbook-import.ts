@@ -146,7 +146,13 @@ export type ImportNoteCode =
   // would teach a diver to distrust a correct result.
   | "recording_attached"
   | "recording_filled"
-  | "diver_not_applied";
+  | "diver_not_applied"
+  // An emergency contact or insurance the document carries but the preview does not
+  // offer: it names nobody, or it is not the first. A warning.
+  | "check_in_detail_dropped"
+  // Only when a column actually changed, which is what tells the card to re-read
+  // the signed-in user.
+  | "check_in_detail_written";
 
 /** One thing the import decided, addressed to the diver. */
 export interface ImportNote {
@@ -281,6 +287,52 @@ export interface ImportGenerator {
   version: string | null;
 }
 
+/** An emergency contact as the preview shows it and as the apply takes it back. */
+export interface ImportCheckInEmergencyContact {
+  name: string | null;
+  phone: string | null;
+  relationship: string | null;
+}
+
+/** A dive insurance, on the same terms. `expires_on` is a bare `YYYY-MM-DD`. */
+export interface ImportCheckInInsurance {
+  provider: string | null;
+  number: string | null;
+  expires_on: string | null;
+}
+
+/**
+ * One check-in fact the document carries: what the account holds beside what the
+ * API proposes. An object is proposed whole - the account's own when the document's
+ * agrees with it on every member it carries, otherwise the document's alone.
+ */
+export type ImportCheckInDetail =
+  | { detail: "born_on"; account: string | null; proposed: string }
+  | { detail: "phone"; account: string | null; proposed: string }
+  | {
+      detail: "emergency_contact";
+      account: ImportCheckInEmergencyContact | null;
+      proposed: ImportCheckInEmergencyContact;
+    }
+  | {
+      detail: "insurance";
+      account: ImportCheckInInsurance | null;
+      proposed: ImportCheckInInsurance;
+    };
+
+export type ImportCheckInDetailKey = ImportCheckInDetail["detail"];
+
+/**
+ * The facts the diver confirmed, sent beside the token. A key left out is not
+ * written, `null` clears the fact, and an object replaces all of the account's.
+ */
+export interface ImportCheckInSubmission {
+  born_on?: string | null;
+  phone?: string | null;
+  emergency_contact?: ImportCheckInEmergencyContact | null;
+  insurance?: ImportCheckInInsurance | null;
+}
+
 /** What `POST /import/logbook/preview` returns. Nothing has been written. */
 export interface ImportPreview extends ImportReport {
   /**
@@ -305,6 +357,11 @@ export interface ImportPreview extends ImportReport {
    * scratch, so the token is not a stored plan to replay.
    */
   token: string;
+  /**
+   * One entry per check-in fact the document carries, in the order date of birth,
+   * phone, emergency contact, insurance. Empty when it carries none.
+   */
+  check_in_details: ImportCheckInDetail[];
 }
 
 /** What `POST /import/logbook` returns. Everything in it has been committed. */
@@ -363,11 +420,18 @@ export const logbookImportAPI = {
    * `token` must be the one from this same file's `preview` call: the API hashes
    * the body it receives and refuses a token minted for different bytes, which is
    * what stops a diver approving one document and uploading another.
+   *
+   * `checkIn` is the facts to write, as a JSON field; omitted, none is written.
    */
-  async apply(file: File, token: string): Promise<ImportResult> {
+  async apply(
+    file: File,
+    token: string,
+    checkIn?: ImportCheckInSubmission,
+  ): Promise<ImportResult> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("token", token);
+    if (checkIn) formData.append("check_in_details", JSON.stringify(checkIn));
 
     const response = await apiClient.post<ImportResult>(
       "/import/logbook",

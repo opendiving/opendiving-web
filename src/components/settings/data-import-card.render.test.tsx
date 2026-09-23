@@ -4,9 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { DataImportCard } from "./data-import-card";
 import type {
   ConversionReport,
+  ImportCheckInDetail,
   ImportPreview,
   ImportReport,
 } from "@/lib/api/logbook-import";
+import { isoDaysFromNow } from "@/test/local-day";
 
 // What only a render can reach: that a preview is shown and nothing is written
 // until the diver says so, that `restored` survives to the screen as its own
@@ -21,6 +23,11 @@ const mocks = vi.hoisted(() => ({
   preview: vi.fn(),
   apply: vi.fn(),
   toast: vi.fn(),
+  refreshUser: vi.fn(),
+}));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ refreshUser: mocks.refreshUser }),
 }));
 
 vi.mock("@/lib/api/logbook-import", async (importOriginal) => ({
@@ -55,6 +62,7 @@ function preview(overrides: Partial<ImportPreview> = {}): ImportPreview {
     generator: { name: "OpenDiving", version: "0.4.0" },
     archive: false,
     token: "tok-1",
+    check_in_details: [],
     ...overrides,
   };
 }
@@ -384,5 +392,159 @@ describe("the logbook import card", () => {
     expect(mocks.toast).toHaveBeenCalledWith(
       expect.objectContaining({ variant: "destructive" }),
     );
+  });
+});
+
+describe("the check-in details in an import preview", () => {
+  const details: ImportCheckInDetail[] = [
+    { detail: "born_on", account: null, proposed: "1988-04-02" },
+    { detail: "phone", account: "+44 1", proposed: "+44 2" },
+    {
+      detail: "emergency_contact",
+      account: { name: "Sam", phone: "0111", relationship: "Partner" },
+      proposed: { name: "Alex", phone: "0456", relationship: null },
+    },
+    {
+      detail: "insurance",
+      account: null,
+      proposed: { provider: "DAN Europe", number: "P-42", expires_on: null },
+    },
+  ];
+
+  const applyButton = () =>
+    screen.getByRole("button", { name: /import this logbook/i });
+
+  async function previewWith(checkIn: ImportCheckInDetail[]) {
+    mocks.preview.mockResolvedValue(preview({ check_in_details: checkIn }));
+    render(<DataImportCard />);
+    await choose(documentFile());
+    await screen.findByText(/nothing has been written yet/i);
+  }
+
+  it("shows no section, and sends no facts, for a document carrying none", async () => {
+    mocks.apply.mockResolvedValue(report());
+    await previewWith([]);
+
+    expect(screen.queryByText("Check-in details")).not.toBeInTheDocument();
+    await userEvent.click(applyButton());
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
+    expect(mocks.apply.mock.calls[0][2]).toBeUndefined();
+  });
+
+  it("shows each fact's account value beside the proposal, pre-filled", async () => {
+    await previewWith(details);
+
+    const contact = screen.getByRole("group", { name: "Emergency contact" });
+    expect(
+      within(contact).getByText(/yours now: sam · 0111 · partner/i),
+    ).toBeVisible();
+    expect(within(contact).getByLabelText("Name")).toHaveValue("Alex");
+    expect(screen.getByLabelText("Phone number")).toHaveValue("+44 2");
+    const insurance = screen.getByRole("group", { name: "Dive insurance" });
+    expect(within(insurance).getByText(/yours now: not set/i)).toBeVisible();
+    expect(within(insurance).getByLabelText("Policy number")).toHaveValue(
+      "P-42",
+    );
+  });
+
+  it("sends the facts as edited, and leaves a kept one out", async () => {
+    mocks.apply.mockResolvedValue(report());
+    await previewWith(details);
+
+    const contact = screen.getByRole("group", { name: "Emergency contact" });
+    await userEvent.clear(within(contact).getByLabelText("Their phone number"));
+    await userEvent.type(
+      within(contact).getByLabelText("Their phone number"),
+      "0999",
+    );
+    const insurance = screen.getByRole("group", { name: "Dive insurance" });
+    await userEvent.clear(within(insurance).getByLabelText("Provider"));
+    await userEvent.clear(within(insurance).getByLabelText("Policy number"));
+    const phone = screen.getByRole("group", { name: "Phone number" });
+    await userEvent.click(
+      within(phone).getByRole("button", { name: "Keep mine" }),
+    );
+    expect(within(phone).queryByLabelText("Phone number")).toBeNull();
+
+    await userEvent.click(applyButton());
+
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
+    // The phone is absent rather than null: absent is what leaves the account's
+    // alone, and null would clear it.
+    expect(mocks.apply.mock.calls[0][2]).toEqual({
+      born_on: "1988-04-02",
+      emergency_contact: { name: "Alex", phone: "0999", relationship: null },
+      insurance: null,
+    });
+  });
+
+  it("refuses a contact phone without a name before any request", async () => {
+    await previewWith(details);
+
+    const contact = screen.getByRole("group", { name: "Emergency contact" });
+    await userEvent.clear(within(contact).getByLabelText("Name"));
+    await userEvent.click(applyButton());
+
+    expect(
+      await screen.findByText(
+        "Required while the emergency contact has a phone or a relationship",
+      ),
+    ).toBeInTheDocument();
+    expect(mocks.apply).not.toHaveBeenCalled();
+  });
+
+  it("refuses a date of birth in the future, but not once it is kept", async () => {
+    mocks.apply.mockResolvedValue(report());
+    await previewWith([
+      { detail: "born_on", account: null, proposed: isoDaysFromNow(1) },
+    ]);
+
+    await userEvent.click(applyButton());
+    expect(
+      await screen.findByText("Date of birth cannot be in the future"),
+    ).toBeInTheDocument();
+    expect(mocks.apply).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Leave unset" }));
+    expect(
+      screen.queryByText("Date of birth cannot be in the future"),
+    ).not.toBeInTheDocument();
+    await userEvent.click(applyButton());
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
+    expect(mocks.apply.mock.calls[0][2]).toBeUndefined();
+  });
+
+  it("re-reads the signed-in user only when a fact was written", async () => {
+    // A re-read resets every form on the page seeded from the user, so it is
+    // spent only when the check-in card would otherwise be showing stale facts.
+    mocks.apply.mockResolvedValueOnce(
+      report({
+        notes: [
+          {
+            code: "check_in_detail_written",
+            collection: null,
+            uuid: null,
+            message: "The phone number confirmed in the preview was saved.",
+          },
+        ],
+      }),
+    );
+    await previewWith(details);
+    await userEvent.click(applyButton());
+    await screen.findByText("Imported");
+    expect(mocks.refreshUser).toHaveBeenCalledTimes(1);
+
+    mocks.refreshUser.mockClear();
+    mocks.apply.mockResolvedValueOnce(report());
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    await choose(documentFile());
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: /import this logbook/i,
+      }),
+    );
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(2));
+    await screen.findByText("Imported");
+    expect(mocks.refreshUser).not.toHaveBeenCalled();
   });
 });
