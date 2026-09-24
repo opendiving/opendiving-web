@@ -451,7 +451,7 @@ describe("the picture at the top", () => {
 
     const portrait = screen.getByAltText("Portrait of Sam Reef");
     expect(portrait).toHaveAttribute("src", "blob:card");
-    // In the name's own column, 7:9, where the avatar used to sit.
+    // In the name's own column, at 7:9.
     const slot = screen.getByRole("heading", {
       name: "Sam Reef",
     }).previousElementSibling!;

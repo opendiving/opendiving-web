@@ -385,11 +385,12 @@ Figma's fallback `<path>` beside the `<foreignObject>` paints solid black over t
 ## Changing your account email is a request/confirm flow, not a plain field edit
 
 `USER_FIELDS` in `lib/validations/user-fields.ts` has no `email`, matching the API's `UserUpdate`;
-`ProfileCard` touches only name/username. Email lives in `components/settings/EmailChangeCard.tsx`:
-enter a new address, submit via `authAPI.requestEmailChange(newEmail)`, get the same generic "check
-your new email" message even for a taken address, and the change applies only once the emailed link
-is confirmed. `POST /user/email-change/request` always acts on the caller's own account, so there is
-no address to name but the new one.
+`ProfileCard` touches only name, username and the profile picture. Email lives in
+`components/settings/EmailChangeCard.tsx`: enter a new address, submit via
+`authAPI.requestEmailChange(newEmail)`, get the same generic "check your new email" message even for
+a taken address, and the change applies only once the emailed link is confirmed.
+`POST /user/email-change/request` always acts on the caller's own account, so there is no address to
+name but the new one.
 
 The field is always visible with one full-width "Send confirmation link" button — no edit toggle, no
 cancel — matching the Profile Information card beside it. Both cards use `flex flex-col h-full` /
@@ -4037,8 +4038,7 @@ the same paint.
 ## The crop dialog's three traps
 
 Never JPEG: `canvas.toBlob("image/jpeg")` composites transparency onto black. A card exports WebP
-because its endpoint stores what it is given. The two pictures export nothing: the picked file goes
-as it is, with the crop beside it as numbers.
+because its endpoint stores what it is given.
 
 `react-easy-crop` injects its own `<style>` by default, which the nonce-based production CSP drops
 (the dev CSP allows `'unsafe-inline'`). `disableAutomaticStylesInjection` plus
