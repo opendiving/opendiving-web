@@ -4,7 +4,6 @@ import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { AvatarCard } from "@/components/settings/avatar-card";
 import { CheckInDetailsCard } from "@/components/settings/check-in-details-card";
 import { DataExportCard } from "@/components/settings/data-export-card";
 import { DataImportCard } from "@/components/settings/data-import-card";
@@ -48,8 +47,6 @@ export default function SettingsPage() {
 
       <div className="grid lg:grid-cols-2 gap-8">
         <ProfileCard />
-
-        <AvatarCard />
 
         <EmailChangeCard currentEmail={user.email} />
 

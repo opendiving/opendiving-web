@@ -384,12 +384,12 @@ Figma's fallback `<path>` beside the `<foreignObject>` paints solid black over t
 
 ## Changing your account email is a request/confirm flow, not a plain field edit
 
-`USER_FIELDS` in `lib/validations/user-fields.ts` has no `email`, matching the API's `UserUpdate`;
-`ProfileCard` touches only name/username. Email lives in `components/settings/EmailChangeCard.tsx`:
-enter a new address, submit via `authAPI.requestEmailChange(newEmail)`, get the same generic "check
-your new email" message even for a taken address, and the change applies only once the emailed link
-is confirmed. `POST /user/email-change/request` always acts on the caller's own account, so there is
-no address to name but the new one.
+`USER_FIELDS` in `lib/validations/user-fields.ts` has no `email`, matching the API's `UserUpdate`.
+Email lives in `components/settings/EmailChangeCard.tsx`: enter a new address, submit via
+`authAPI.requestEmailChange(newEmail)`, get the same generic "check your new email" message even for
+a taken address, and the change applies only once the emailed link is confirmed.
+`POST /user/email-change/request` always acts on the caller's own account, so there is no address to
+name but the new one.
 
 The field is always visible with one full-width "Send confirmation link" button — no edit toggle, no
 cancel — matching the Profile Information card beside it. Both cards use `flex flex-col h-full` /
@@ -865,20 +865,20 @@ would bury the rows that need attention, the same reasoning as `worstServiceStat
 for untracked gear. The window is 90 days, not gear's 30: renewing a rescue or first-aid card means
 booking a course with an instructor, not dropping a regulator at a shop.
 
-## Card images ride on the certification form's own save
+## Card images and both pictures ride on their form's own save
 
-The API takes card images on `PUT /certification/{uuid}/file/{side}`, not as multipart on create, so
-a card being created has no uuid to upload against until `createCertification` resolves. That is an
-ordering constraint, not a reason for a second dialog: `CertificationCardFiles` collects
-add/replace/delete per side into `CertificationCardEdits`, and `applyCertificationCardEdits` sends
-them after the details save — serially, in `CERTIFICATION_SIDES` order, `PUT` alone for a replace
-since it overwrites. Cancel therefore leaves the stored cards untouched, which the upload-on-pick
-dialog could not.
+Each is held as a pending edit and sent after the form's fields save, so Cancel leaves every stored
+image untouched. For cards the order is forced: `PUT /certification/{uuid}/file/{side}` needs a uuid
+a new card has only once `createCertification` resolves. `CertificationCardFiles` collects
+add/replace/delete per side and `applyCertificationCardEdits` sends them serially, in
+`CERTIFICATION_SIDES` order. The avatar (Profile Information) and the portrait (Check-in details,
+About you) each hold one `PictureEdit` — replace, adjust, remove, or the portrait's copy — which
+`applyPictureEdit` sends after `PATCH /user`. Rejected: a picture card saving on pick beside forms
+that wait for Save.
 
-A failed image does not fail the save: the details are written, and refilling the form to retry one
-picture costs more than the picture. One toast per side, and the certification is re-read whenever
-anything was sent — the embedded `files` the list and the check-in sheet draw from is stale either
-way, and only the API knows which sides landed.
+A failed image does not fail the save: the fields are written, and refilling the form to retry one
+picture costs more than the picture. One toast names the side or the picture. A certification is
+re-read whenever anything was sent, since only the API knows which sides landed.
 
 ## Every c-card is drawn in one shape, and cropped to it on the way in
 
@@ -4021,24 +4021,23 @@ variable a released artifact must document. Initials (`getUserInitials`) are the
 `flag()` stays for `WEB_HSTS` and `WEB_NOINDEX`; its doc comment and `runtime-config.test.ts`
 demonstrate the unrecognized-value warning on `WEB_NOINDEX`.
 
-## Avatars: The digest is the whole client contract
+## Pictures: The digest is the whole client contract
 
-`UserRead` carries `avatar_sha256`, one nullable string answering three questions: whether there is
-a picture, which version, and what to append as `?v=`. There is deliberately no URL. The bytes are
-owner-only behind an `Authorization` header and the access token lives in memory
-(`lib/api/client.ts`), so an `<img src>` at the API could never load them; `UserAvatar` fetches
-through the API client via `hooks/useAuthedBlobUrl.ts` and renders from an object URL. Its props are
-`{ name, avatarSha, size, className }` — no `email`. Radix's `AvatarFallback` renders until
-`AvatarImage` has loaded, so in-flight, failed and no-picture are one state drawn as initials, with
-no probe and no broken-image glyph. Staleness is handled by the URL: `?v={sha}` changes with the
-picture, the old entry ages out of the five-minute `max-age`, and after upload or remove the card
-calls `refreshUser()`, which re-reads `avatar_sha256` for every mounted `UserAvatar` in the same
-paint.
+`UserRead` carries `avatar_sha256` and `portrait_sha256`, each one nullable string answering three
+questions: whether there is a picture, which version, and what to append as `?v=`. Each
+`*_original_sha256` does the same for the original, and is what offers "Adjust". There is
+deliberately no URL: the bytes are owner-only and the access token lives in memory
+(`lib/api/client.ts`), so an `<img src>` could never load them. `UserAvatar` and `PortraitImage`
+fetch through `hooks/useAuthedBlobUrl.ts` and render from an object URL. Radix's `AvatarFallback`
+renders until `AvatarImage` has loaded, so in-flight, failed and no-picture are one state drawn as
+initials, with no broken-image glyph. Staleness is handled by the URL: `?v={sha}` changes with the
+picture, and after a save the form calls `refreshUser()`, which repaints every mounted picture in
+the same paint.
 
 ## The crop dialog's three traps
 
-Never JPEG: `canvas.toBlob("image/jpeg")` composites transparency onto black. The avatar exports PNG
-because `PUT /user/avatar` re-encodes anyway; a card exports WebP because its endpoint does not.
+Never JPEG: `canvas.toBlob("image/jpeg")` composites transparency onto black. A card exports WebP
+because its endpoint stores what it is given.
 
 `react-easy-crop` injects its own `<style>` by default, which the nonce-based production CSP drops
 (the dev CSP allows `'unsafe-inline'`). `disableAutomaticStylesInjection` plus
@@ -4053,25 +4052,25 @@ which reports the box after ancestor transforms, and nothing re-measures once `D
 `data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100` on this one `DialogContent`; an
 explicit `cropSize` still derives media size from the scaled rect.
 
-## Avatars: The `accept` list is load-bearing, not decoration
+## Pictures: The `accept` list is load-bearing, not decoration
 
-`accept="image/jpeg,image/png,image/webp,image/gif"` is what makes iPhone photos work. Since WebKit
-bug 267277, iOS Safari transcodes a HEIC pick to JPEG only when the `accept` list restricts image
-types and excludes HEIC. `accept="image/*"` hands over raw HEIC, which no browser decodes into a
-canvas; adding `image/heic` is worse, since Safari 17+ then delivers the original and has a
-documented bug converting picked PNGs to HEIC. The constant lives in `lib/api/auth.ts` with the
-reasoning attached so nobody simplifies it inline. A Files-app pick bypasses `accept` entirely; the
-API sniffs bytes regardless, so this is not a security surface.
+`accept="image/jpeg,image/png"` is what makes iPhone photos work. Since WebKit bug 267277, iOS
+Safari transcodes a HEIC pick to JPEG only when the `accept` list restricts image types and excludes
+HEIC. `accept="image/*"` hands over raw HEIC, which the API keeps no original of; adding
+`image/heic` is worse, since Safari 17+ then delivers the original and has a documented bug
+converting picked PNGs to HEIC. The constant lives in `lib/picture.ts` with the reasoning attached
+so nobody simplifies it inline. A Files-app pick bypasses `accept` entirely; `readPictureType` and
+the API sniff bytes regardless, so this is not a security surface.
 
 ## The caller decodes the file before the cropper ever sees it
 
 `react-easy-crop` has no failure callback: `CropperProps` carry `onMediaLoaded` and `onCropComplete`
 and nothing for the other outcome, so a source that never decodes — a Files-app HEIC walking past
 `accept` — leaves the dialog with an empty frame, `croppedAreaPixels` never arriving and Save
-disabled forever. `AvatarCard.handlePick` and `CertificationCardFiles.handlePick` therefore decode
-the object URL themselves and mount `ImageCropDialog` only on success, toasting otherwise;
-`mediaProps={{ onError }}` would catch it a frame later with a half-open dialog to unwind. The
-second decode inside `cropToBlob` hits the browser cache.
+disabled forever. `PictureField` and `CertificationCardFiles` therefore decode the object URL
+themselves and mount `ImageCropDialog` only on success, toasting otherwise;
+`mediaProps={{ onError }}` would catch it a frame later with a half-open dialog to unwind. A card's
+second decode, inside `cropToBlob`, hits the browser cache.
 
 Failures raised in the browser are `ImageCropError` (`lib/image-crop.ts`), because
 `getApiErrorMessage` reads an axios response's `detail` and returns its `fallback` for everything
@@ -4904,7 +4903,7 @@ apart.
 The pins `reads the gear list once`, `reads the certification list once` and `reads the stats once`
 must use `mockImplementation`; with `mockResolvedValue` they pass despite the bug. The dashboard's
 waits a beat, since effects run on a task and `findByText` returns before the second pass.
-`avatar-card` and `units-card` do not loop but use identity-stable mocks too, so any copied
+`user-fields-form` and `units-card` do not loop but use identity-stable mocks too, so any copied
 neighbour is right.
 
 A shared `src/test/` helper is rejected: `vi.mock` factories hoist above imports, so it is reachable

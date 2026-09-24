@@ -6,20 +6,31 @@ import {
 } from "./client";
 import type { UnitSystem } from "@/lib/units";
 import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
+import type { PictureCrop, PictureKind } from "@/lib/picture";
 
 export interface User {
   uuid: string;
   name: string;
   username: string;
   email: string;
-  // The stored avatar's digest, or null when this diver has no picture and the app
-  // draws initials. There is no URL here on purpose: the bytes are owner-only and an
-  // `<img src>` cannot carry a bearer token, so they are fetched through the API
-  // client (`getAvatarBlob`). The digest is also the version - it is the `ETag` on
-  // the download and the `?v=` token that gives each replacement its own cache
-  // entry, so a new picture is visible immediately and an unchanged one is never
-  // re-fetched. Optional for the same reason as `gear_service_emails` below.
+  // Each picture's rendition digest, or null when there is none - initials for the
+  // avatar, an empty frame for the portrait. There is no URL here on purpose: the
+  // bytes are owner-only and an `<img src>` cannot carry a bearer token, so they are
+  // fetched through the API client (`getPictureBlob`). The digest is also the version
+  // - it is the `ETag` on the download and the `?v=` token that gives each
+  // replacement its own cache entry, so a new picture is visible immediately and an
+  // unchanged one is never re-fetched. Optional for the same reason as
+  // `gear_service_emails` below.
   avatar_sha256?: string | null;
+  portrait_sha256?: string | null;
+  // The original each picture is rendered from and the crop it is rendered through,
+  // null together when no original is held: an avatar stored before originals were
+  // kept, or seeded from Google. The digest is what offers "Adjust" and the `?v=` of
+  // `getPictureOriginalBlob`; the crop is where the adjustment opens.
+  avatar_original_sha256?: string | null;
+  avatar_crop?: PictureCrop | null;
+  portrait_original_sha256?: string | null;
+  portrait_crop?: PictureCrop | null;
   // Whether to email this user when their gear is due for servicing. Opt-out, so it
   // defaults to true server-side; optional here so a response from an API that predates
   // the field still type-checks.
@@ -143,32 +154,10 @@ export interface UpdateProfileData {
 }
 
 /**
- * What the file picker offers for an avatar, mirroring the four formats the API can
- * decode.
- *
- * **Spelled out rather than `image/*`, and that is load-bearing.** Since WebKit's
- * 2024 change, iOS Safari transcodes a HEIC pick to JPEG only when the `accept` list
- * restricts image types and excludes HEIC; `image/*` hands over raw HEIC, which no
- * browser can decode into a canvas and the API rejects. Never add `image/heic` here
- * either - Safari then delivers the original HEIC and has a documented bug converting
- * picked PNGs *to* HEIC. A pick made through the Files app bypasses `accept`
- * entirely, so this is convenience, not validation: the API decodes the bytes and is
- * the only authority on what they are.
+ * What every write to a picture answers: the new rendition's digest, which is also
+ * its version. The original's digest and the crop come with the next `GET /user`.
  */
-export const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
-
-/** The API's own upload ceiling, mirrored so an oversize file fails before the round trip. */
-export const MAX_AVATAR_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB
-
-/**
- * The largest avatar the app ever sends. The API bounds what it stores to the same
- * 512 px, so anything bigger would be uploaded only to be thrown away; the biggest
- * mount is 80 px, so this is already x2 retina with room over.
- */
-export const AVATAR_EXPORT_SIZE = 512;
-
-/** `PUT /user/avatar`'s body: the stored image's digest, which is also its version. */
-export interface AvatarUploadResult {
+export interface PictureWriteResult {
   sha256: string;
 }
 
@@ -356,52 +345,103 @@ export const authAPI = {
     await apiClient.patch("/user", profileData);
   },
 
-  // Set or replace the caller's avatar. `PUT`, because there is one avatar per
-  // account and uploading again overwrites it.
-  //
-  // What comes back out is not what goes in: the API decodes, orients from EXIF,
-  // crops square, bounds to 512 px and re-encodes as WebP - which is what strips the
-  // metadata a phone photo carries, GPS included. So the digest it returns describes
-  // the *stored* image, and nothing about the upload (size, type, filename) survives
-  // to be echoed back.
-  //
-  // `Content-Type: undefined` lets the browser set the multipart boundary; axios
-  // cannot know it. Same shape as the certification card upload.
-  async uploadAvatar(
+  /**
+   * Set or replace one of the caller's pictures. `PUT`, because there is one of each
+   * per account and uploading again overwrites it.
+   *
+   * The file goes as the diver picked it: the API keeps it as the original, stripped
+   * of its metadata (GPS included) without touching a pixel, and renders what the app
+   * shows from it through `crop` - so a later `adjustPicture` needs no upload. The
+   * crop travels as a JSON string in its own form field, which is how the route reads
+   * it.
+   *
+   * `Content-Type: undefined` lets the browser set the multipart boundary; axios
+   * cannot know it. Same shape as the certification card upload.
+   */
+  async uploadPicture(
+    kind: PictureKind,
     file: Blob,
     filename: string,
-  ): Promise<AvatarUploadResult> {
+    crop: PictureCrop,
+  ): Promise<PictureWriteResult> {
     const formData = new FormData();
     formData.append("file", file, filename);
+    formData.append("crop", JSON.stringify(crop));
 
-    const response = await apiClient.put<AvatarUploadResult>(
-      "/user/avatar",
+    const response = await apiClient.put<PictureWriteResult>(
+      `/user/${kind}`,
       formData,
       { headers: { "Content-Type": undefined } },
     );
     return response.data;
   },
 
-  // Remove the caller's avatar, leaving the account alone. 404 when there was none.
-  async removeAvatar(): Promise<void> {
-    await apiClient.delete("/user/avatar");
+  /**
+   * Re-crop a picture from the original the API holds, leaving the original alone.
+   * 404 when none is held, 409 if the picture changed while this rendered.
+   */
+  async adjustPicture(
+    kind: PictureKind,
+    crop: PictureCrop,
+  ): Promise<PictureWriteResult> {
+    const response = await apiClient.patch<PictureWriteResult>(
+      `/user/${kind}`,
+      { crop },
+    );
+    return response.data;
   },
 
-  // Fetch the caller's own avatar bytes as a Blob.
-  //
-  // Through the API client rather than an `<img src>` for the same reason as card
-  // images: the endpoint is owner-only and needs an `Authorization` header, which an
-  // `<img>` cannot send (the access token lives in memory, not in a cookie). Callers
-  // turn the Blob into an object URL - see `hooks/useAuthedBlobUrl.ts`.
-  //
-  // `version` is `User.avatar_sha256`, sent as a `v` query param the API ignores. Its
-  // job is to give each version of the picture its own URL: the response is cached
-  // with `max-age=300`, so without it the browser would keep serving the old bytes
-  // from its own cache for five minutes after a replace, however correctly the app
-  // refetches. Stable while the avatar is unchanged, so repeat mounts still hit the
-  // cache (and revalidate against the `ETag` after that).
-  async getAvatarBlob(version?: string): Promise<Blob> {
-    const response = await apiClient.get("/user/avatar", {
+  /**
+   * Make the avatar's original the portrait's too, cropped at 7:9. The API copies the
+   * bytes under keys of its own, so removing either picture later leaves the other
+   * whole. 404 while the avatar holds no original.
+   */
+  async copyAvatarToPortrait(crop: PictureCrop): Promise<PictureWriteResult> {
+    const response = await apiClient.post<PictureWriteResult>(
+      "/user/portrait/from-avatar",
+      { crop },
+    );
+    return response.data;
+  },
+
+  /** Remove a picture and its original. 404 when there was none. */
+  async removePicture(kind: PictureKind): Promise<void> {
+    await apiClient.delete(`/user/${kind}`);
+  },
+
+  /**
+   * Fetch one of the caller's own pictures as a Blob - the rendition every screen
+   * shows.
+   *
+   * Through the API client rather than an `<img src>` for the same reason as card
+   * images: the endpoint is owner-only and needs an `Authorization` header, which an
+   * `<img>` cannot send (the access token lives in memory, not in a cookie). Callers
+   * turn the Blob into an object URL - see `hooks/useAuthedBlobUrl.ts`.
+   *
+   * `version` is the picture's `*_sha256`, sent as a `v` query param the API ignores.
+   * Its job is to give each version of the picture its own URL: the response is
+   * cached with `max-age=300`, so without it the browser would keep serving the old
+   * bytes from its own cache for five minutes after a replace, however correctly the
+   * app refetches. Stable while the picture is unchanged, so repeat mounts still hit
+   * the cache (and revalidate against the `ETag` after that).
+   */
+  async getPictureBlob(kind: PictureKind, version?: string): Promise<Blob> {
+    const response = await apiClient.get(`/user/${kind}`, {
+      responseType: "blob",
+      params: version ? { v: version } : undefined,
+    });
+    return response.data;
+  },
+
+  /**
+   * Fetch the original a picture is rendered from, for adjusting its crop.
+   * `version` is its `*_original_sha256`, for the reason `getPictureBlob` gives.
+   */
+  async getPictureOriginalBlob(
+    kind: PictureKind,
+    version?: string,
+  ): Promise<Blob> {
+    const response = await apiClient.get(`/user/${kind}/original`, {
       responseType: "blob",
       params: version ? { v: version } : undefined,
     });

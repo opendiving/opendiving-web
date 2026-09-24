@@ -31,7 +31,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 // `certificationFile` stay real - the summary's own rendering is built on them.
 vi.mock("@/lib/api/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/auth")>()),
-  authAPI: { updateProfile: vi.fn(), getAvatarBlob: vi.fn() },
+  authAPI: { updateProfile: vi.fn(), getPictureBlob: vi.fn() },
 }));
 
 vi.mock("@/lib/api/certifications", async (importOriginal) => ({
@@ -56,7 +56,7 @@ const { authAPI } = await import("@/lib/api/auth");
 const { coursesAPI } = await import("@/lib/api/courses");
 const updateProfile = vi.mocked(authAPI.updateProfile);
 
-// Both the avatar and a card thumbnail fetch their bytes through this, the endpoints
+// Both the portrait and a card thumbnail fetch their bytes through this, the endpoints
 // being owner-only. Answering with a URL is what puts an `<img>` on the page.
 vi.mock("@/hooks/useAuthedBlobUrl", () => ({
   useAuthedBlobUrl: (fetchBlob: unknown) => ({
@@ -104,6 +104,7 @@ beforeEach(() => {
   Object.assign(auth.user, {
     units: "metric",
     avatar_sha256: null,
+    portrait_sha256: null,
     date_of_birth: null,
     phone: null,
     emergency_contact_name: null,
@@ -440,23 +441,53 @@ describe("before the requests land", () => {
 });
 
 describe("the picture at the top", () => {
-  it("draws the one the diver stored", () => {
-    Object.assign(auth.user, { ...COMPLETE, avatar_sha256: "abc123" });
+  it("draws the portrait, and never the avatar", () => {
+    Object.assign(auth.user, {
+      ...COMPLETE,
+      avatar_sha256: "avatar1",
+      portrait_sha256: "portrait1",
+    });
     render(loaded({ certifications: [certification()] }));
 
-    // Radix holds `AvatarImage` back until the bytes have loaded, which jsdom never
-    // reports - so the initials standing in are the tile itself being on the page.
-    expect(screen.getByText("SR")).toBeInTheDocument();
+    const portrait = screen.getByAltText("Portrait of Sam Reef");
+    expect(portrait).toHaveAttribute("src", "blob:card");
+    // In the name's own column, at 7:9.
+    const slot = screen.getByRole("heading", {
+      name: "Sam Reef",
+    }).previousElementSibling!;
+    expect(slot).toContainElement(portrait);
+    expect(portrait.parentElement).toHaveClass("aspect-[7/9]");
+    expect(screen.queryByAltText(/avatar/i)).toBeNull();
+    expect(screen.queryByText("SR")).toBeNull();
   });
 
-  it("leaves a monogram nobody chose off a sheet handed to a stranger", () => {
+  it("puts nothing on the sheet for a diver with no portrait, whatever the avatar", () => {
+    // The avatar does not stand in: a desk is looking for the diver's face, and the
+    // avatar is whatever the diver shows the app. Nor do initials, which identify
+    // nobody.
+    Object.assign(auth.user, { ...COMPLETE, avatar_sha256: "avatar1" });
+    render(loaded({ certifications: [certification()] }));
+
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(screen.queryByText("SR")).toBeNull();
+    // What the screen offers instead never reaches the paper.
+    const add = screen.getByRole("button", { name: "Add a portrait" });
+    expect(add.closest(".aspect-\\[7\\/9\\]")).toHaveClass("print:hidden");
+  });
+
+  it("opens About you, portrait and all, from the empty frame", async () => {
     Object.assign(auth.user, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add a portrait" }),
+    );
+
+    const dialog = await screen.findByRole("dialog", { name: "About you" });
     expect(
-      screen.getByRole("heading", { name: "Sam Reef" }),
+      within(dialog).getByLabelText("Choose a portrait"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("SR")).toBeNull();
+    expect(within(dialog).getByLabelText("Phone number")).toBeInTheDocument();
   });
 });
 
@@ -483,7 +514,7 @@ describe("labels and values line up", () => {
     }
   });
   it("starts a name and the values under it on one edge", () => {
-    Object.assign(auth.user, { ...COMPLETE, avatar_sha256: "abc123" });
+    Object.assign(auth.user, { ...COMPLETE, portrait_sha256: "abc123" });
     const { container } = render(
       loaded({
         certifications: [certification({ certification_number: "1" })],
@@ -522,14 +553,16 @@ describe("labels and values line up", () => {
 
   it("holds the picture's column for a diver who stored none", () => {
     Object.assign(auth.user, COMPLETE);
-    const { container } = render(loaded({ certifications: [certification()] }));
+    render(loaded({ certifications: [certification()] }));
 
-    // No monogram on a sheet handed to a stranger, but the column stays - the name
-    // meets the same edge as its own two values either way.
-    expect(screen.queryByText("SR")).toBeNull();
+    // Nothing in it prints, but the column stays - the name meets the same edge as
+    // its own two values either way.
     const diverName = screen.getByRole("heading", { name: "Sam Reef" });
-    expect(diverName.previousElementSibling).toHaveClass("sm:w-24");
-    expect(diverName.previousElementSibling?.children).toHaveLength(0);
+    const slot = diverName.previousElementSibling!;
+    expect(slot).toHaveClass("sm:w-24");
+    for (const child of slot.children) {
+      expect(child).toHaveClass("print:hidden");
+    }
   });
 });
 
@@ -540,7 +573,7 @@ describe("editing from the sheet", () => {
 
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Edit your name, date of birth and phone number",
+        name: "Edit your name, portrait, date of birth and phone number",
       }),
     );
 

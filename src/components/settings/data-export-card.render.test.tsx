@@ -81,12 +81,17 @@ describe("DataExportCard", () => {
     expect(downloadButton("Full archive")).toBeInTheDocument();
   });
 
-  it("says the archive carries the certification scans", () => {
+  it("says the archive carries the certification scans and the portrait", () => {
     // The one sentence here that is a warning rather than a description. It is on the
     // archive row specifically because that is the only file that contains them.
     render(<DataExportCard username="alex" />);
 
-    expect(screen.getByText(/personal documents/i)).toBeInTheDocument();
+    const warning = screen.getByText(/personal documents/i).textContent!;
+    expect(warning).toMatch(
+      /card scans and the portrait are personal documents/,
+    );
+    // In the archive, and - until an import can restore it - not put back by one.
+    expect(warning).toMatch(/portrait is in it too, though an import does not/);
   });
 
   it.each([

@@ -161,13 +161,13 @@ export function proxy(request: NextRequest) {
       ? "style-src 'self' 'unsafe-inline'"
       : `style-src 'self' 'nonce-${nonce}'`,
     "style-src-attr 'unsafe-inline'",
-    // `blob:` - certification card images and avatars are private, so they're
-    // fetched with an `Authorization` header and rendered from an object URL
-    // rather than pointed at directly (see `hooks/useAuthedBlobUrl.ts`). Blob URLs
-    // are *not* covered by `'self'`, so without this the `<img>` is blocked. It
-    // widens nothing an attacker could reach: a `blob:` URL can only name data
-    // this document already created. Avatars take that same path, which is why
-    // no avatar host is named here: they are served by this app's own API.
+    // `blob:` - certification card images and both of a diver's pictures are
+    // private, so they're fetched with an `Authorization` header and rendered from
+    // an object URL rather than pointed at directly (see `hooks/useAuthedBlobUrl.ts`).
+    // Blob URLs are *not* covered by `'self'`, so without this the `<img>` is
+    // blocked. It widens nothing an attacker could reach: a `blob:` URL can only name
+    // data this document already created. The pictures take that same path, which
+    // is why no avatar host is named here: they are served by this app's own API.
     //
     // Species photos are the one image kind that does *not* take that path - they
     // are public bytes on an unauthenticated route, so they are a plain `<img src>`

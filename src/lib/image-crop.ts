@@ -51,7 +51,7 @@ interface CropToBlobOptions {
    *
    * **Never `image/jpeg`.** `toBlob("image/jpeg")` has no alpha channel to put
    * transparency in and the canvas spec composites it onto **black**, so a card
-   * or an avatar with a transparent corner comes back with a black wedge in it.
+   * with a transparent corner comes back with a black wedge in it.
    *
    * A type the browser cannot encode is not an error: the canvas spec says to
    * fall back to `image/png`. That is why callers name the stored file from

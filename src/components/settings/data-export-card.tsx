@@ -37,8 +37,9 @@ interface ExportRow {
 // it". Two of them can answer "all of it", and the difference between those two is the
 // only thing this copy has to get across: DiveJSON holds everything the account has as
 // data, the archive holds that plus the files that were uploaded into it. Which is also
-// why the archive is the row that mentions the certification scans - the one thing here
-// worth knowing *before* the file lands in a downloads folder, not after.
+// why the archive is the row that mentions the certification scans and the portrait -
+// the one thing here worth knowing *before* the file lands in a downloads folder, not
+// after.
 //
 // DiveJSON leads because it is the complete one and the app's own format; the two lossy
 // rows below it are for handing to something else.
@@ -80,7 +81,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileArchive,
     title: "Full archive",
     description:
-      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you uploaded — each under the recording it belongs to — and every certification card image you uploaded. This is the one to keep as a backup — it is also the only download that can put those files back, since the import card below can restore bytes it actually carries. Those card scans are personal documents, so treat the file as one.",
+      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you uploaded — each under the recording it belongs to — and every certification card image you uploaded. This is the one to keep as a backup — it is also the only download that can put those files back, since the import card below can restore bytes it actually carries. Your portrait is in it too, though an import does not put that back yet. The card scans and the portrait are personal documents, so treat the file as one.",
   },
 ];
 
