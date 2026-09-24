@@ -391,9 +391,10 @@ export default async function PrivacyPage() {
               </li>
               <li>
                 GPS positions inside a photo you pick as your profile picture or
-                portrait, or inside the portrait a full archive carries when you
-                take it on import; they travel with the upload and are removed
-                by this server before the photo is stored
+                portrait, or inside the portrait carried by a full archive you
+                import, which travel with the upload and are removed by this
+                server before the photo is stored &mdash; an archive&rsquo;s
+                only if you take it in the import preview
               </li>
             </ul>
             <p className="text-foreground mb-4">
