@@ -43,7 +43,7 @@ export function UserAvatar({
   // render. Null when there is no picture, which is what keeps an account without one
   // from making a request at all.
   const fetchBlob = React.useCallback(
-    () => authAPI.getAvatarBlob(avatarSha ?? undefined),
+    () => authAPI.getPictureBlob("avatar", avatarSha ?? undefined),
     [avatarSha],
   );
 

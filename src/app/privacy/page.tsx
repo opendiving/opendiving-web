@@ -72,8 +72,8 @@ export default async function PrivacyPage() {
               In Cloudflare R2, created under Cloudflare&rsquo;s EU
               jurisdiction, which is its setting for keeping objects within the
               European Union. That covers the dive-computer files kept with a
-              dive, certification card images, profile pictures, and the species
-              photographs §4.6 says this copy downloads.
+              dive, certification card images, profile pictures and portraits,
+              and the species photographs §4.6 says this copy downloads.
             </OperatorAnswer>
             <OperatorAnswer question="How email is sent — §4.3, §6.3">
               Through Resend, with delivery routed through its EU region.
@@ -210,11 +210,12 @@ export default async function PrivacyPage() {
               </li>
               <li>
                 <strong>Check-in Details:</strong> What a dive shop asks for at
-                the desk, all of it optional: your date of birth and phone
-                number; an emergency contact, meaning somebody else&rsquo;s
-                name, phone number and relationship to you, which you enter; and
-                your dive insurance &mdash; the provider, the policy number and
-                when it expires
+                the desk, all of it optional: a portrait, meaning a photo of
+                your face cropped like a passport photo; your date of birth and
+                phone number; an emergency contact, meaning somebody
+                else&rsquo;s name, phone number and relationship to you, which
+                you enter; and your dive insurance &mdash; the provider, the
+                policy number and when it expires
               </li>
               <li>
                 <strong>Dive Logs:</strong> Dive location, depth, duration,
@@ -239,6 +240,16 @@ export default async function PrivacyPage() {
                 you give to reply to
               </li>
             </ul>
+            <p className="text-foreground mb-4">
+              Both pictures are kept as the file you picked, so that you can
+              change how either is cropped later, with the location and camera
+              details a phone photo carries removed by this server before the
+              file is stored; what the app shows is drawn from that file at the
+              crop you chose. Your portrait is shown to you where you edit it
+              and on your check-in page, and never where your profile picture
+              appears. The full archive export carries both files, and both are
+              deleted with your account.
+            </p>
             <p className="text-foreground mb-4">
               One thing arrives without you typing it. If you create your
               account by signing in with Google, your Google profile picture is
@@ -357,7 +368,7 @@ export default async function PrivacyPage() {
               2.3 Location Information
             </h3>
             <p className="text-foreground mb-4">
-              Location reaches this server three ways, and all three start with
+              Location reaches this server four ways, and all four start with
               you:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
@@ -375,6 +386,11 @@ export default async function PrivacyPage() {
                 file can record where a dive entered and left the water, where a
                 dive site is, and where a trip went, and those are written as
                 the file gives them
+              </li>
+              <li>
+                GPS positions inside a photo you pick as your profile picture or
+                portrait, which travel with the upload and are removed by this
+                server before the photo is stored
               </li>
             </ul>
             <p className="text-foreground mb-4">

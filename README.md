@@ -70,17 +70,18 @@ one.
   snapshot of it**.
 - **Certifications** — keep photos of your c-cards on hand at the dive shop without digging out the
   plastic.
-- **Check-in** — the details a dive shop asks for at the desk, kept once: date of birth, phone, an
-  emergency contact and your dive insurance. One page gathers them with your c-cards, dive count and
-  last dive, and prints — your browser's save-as-PDF is the copy for a desk with no signal.
+- **Check-in** — the details a dive shop asks for at the desk, kept once: a portrait cropped like a
+  passport photo, date of birth, phone, an emergency contact and your dive insurance. One page
+  gathers them with your c-cards, dive count and last dive, and prints — your browser's save-as-PDF
+  is the copy for a desk with no signal.
 - **Courses** — the training itself, with the agency, instructor and shop: link the dives you did on
   it and the cards it issued, so a course is one record instead of a shape you have to remember.
 - **Full export** — one click to take _everything_ out in open formats: a **DiveJSON** document
   holding the whole logbook, a **UDDF** one other programs import, a **CSV** for a spreadsheet, or a
-  complete **archive** carrying all three alongside every dive-computer file you uploaded and every
-  c-card image you stored. [DiveJSON](https://divejson.org) is the open dive-log interchange format
-  this project maintains, and this app is its reference implementation. A data-ownership log without
-  an exit door is a contradiction.
+  complete **archive** carrying all three alongside every dive-computer file you uploaded, every
+  c-card image you stored, and your profile picture and portrait. [DiveJSON](https://divejson.org)
+  is the open dive-log interchange format this project maintains, and this app is its reference
+  implementation. A data-ownership log without an exit door is a contradiction.
 - **Logbook import** — and a door that only opens outwards is half a promise, so a whole logbook
   reads straight back in: the **DiveJSON** document and the **archive**, and — through the
   [DiveJSON converter](https://github.com/divejson/divejson-py) — **UDDF**, a **Subsurface** `.ssrf`

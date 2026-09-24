@@ -170,8 +170,8 @@ describe("DeleteAccountCard", () => {
     );
 
     // The archive specifically: it is the only export carrying the dive-computer
-    // files and the card scans, which is what makes it the one to offer on the way
-    // out.
+    // files, the card scans and the portrait, which is what makes it the one to offer
+    // on the way out.
     await waitFor(() =>
       expect(download).toHaveBeenCalledWith("archive", "alex"),
     );

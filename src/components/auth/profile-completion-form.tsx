@@ -64,9 +64,9 @@ export function ProfileCompletionForm() {
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1 items-center text-center">
         {/* Initials, always: there is no account yet to fetch a picture from, and
-            no upload step here on purpose - see the avatar card in Settings. A
-            Google sign-up arrives at the dashboard with their Google picture
-            already imported by the API. */}
+            no upload step here on purpose - the profile picture is added with the
+            profile in Settings. A Google sign-up arrives at the dashboard with their
+            Google picture already imported by the API. */}
         <UserAvatar
           name={onboarding.name ?? onboarding.email}
           size={64}

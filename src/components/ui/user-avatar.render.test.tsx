@@ -10,18 +10,18 @@ import { UserAvatar } from "./user-avatar";
 // worse than no picture at all.
 
 vi.mock("@/lib/api/auth", () => ({
-  authAPI: { getAvatarBlob: vi.fn() },
+  authAPI: { getPictureBlob: vi.fn() },
 }));
 
 const { authAPI } = await import("@/lib/api/auth");
-const getAvatarBlob = vi.mocked(authAPI.getAvatarBlob);
+const getPictureBlob = vi.mocked(authAPI.getPictureBlob);
 
 const originalImage = globalThis.Image;
 const originalCreate = URL.createObjectURL;
 const originalRevoke = URL.revokeObjectURL;
 
 beforeEach(() => {
-  getAvatarBlob.mockReset().mockResolvedValue(new Blob(["png"]));
+  getPictureBlob.mockReset().mockResolvedValue(new Blob(["png"]));
 
   URL.createObjectURL = vi.fn(() => "blob:avatar");
   URL.revokeObjectURL = vi.fn();
@@ -58,7 +58,7 @@ describe("UserAvatar", () => {
     expect(await screen.findByText("JD")).toBeInTheDocument();
     // The account without a picture must not cost a request per mount - the header
     // mounts this on every page.
-    expect(getAvatarBlob).not.toHaveBeenCalled();
+    expect(getPictureBlob).not.toHaveBeenCalled();
   });
 
   it("fetches the picture with its digest and renders it from an object URL", async () => {
@@ -66,7 +66,9 @@ describe("UserAvatar", () => {
 
     // The digest is the version: it becomes `?v=` on the request, which is what
     // gives each replacement a URL the browser has not cached.
-    await waitFor(() => expect(getAvatarBlob).toHaveBeenCalledWith("abc123"));
+    await waitFor(() =>
+      expect(getPictureBlob).toHaveBeenCalledWith("avatar", "abc123"),
+    );
 
     const image = await screen.findByAltText("Jane Doe's avatar");
     expect(image).toHaveAttribute("src", "blob:avatar");
@@ -76,18 +78,22 @@ describe("UserAvatar", () => {
     const { rerender } = render(
       <UserAvatar name="Jane Doe" avatarSha="abc123" />,
     );
-    await waitFor(() => expect(getAvatarBlob).toHaveBeenCalledWith("abc123"));
+    await waitFor(() =>
+      expect(getPictureBlob).toHaveBeenCalledWith("avatar", "abc123"),
+    );
 
     rerender(<UserAvatar name="Jane Doe" avatarSha="def456" />);
 
-    await waitFor(() => expect(getAvatarBlob).toHaveBeenCalledWith("def456"));
+    await waitFor(() =>
+      expect(getPictureBlob).toHaveBeenCalledWith("avatar", "def456"),
+    );
   });
 
   it("falls back to initials when the fetch fails", async () => {
-    getAvatarBlob.mockRejectedValue(new Error("nope"));
+    getPictureBlob.mockRejectedValue(new Error("nope"));
     render(<UserAvatar name="Jane Doe" avatarSha="abc123" />);
 
-    await waitFor(() => expect(getAvatarBlob).toHaveBeenCalled());
+    await waitFor(() => expect(getPictureBlob).toHaveBeenCalled());
 
     expect(await screen.findByText("JD")).toBeInTheDocument();
     expect(screen.queryByAltText("Jane Doe's avatar")).not.toBeInTheDocument();

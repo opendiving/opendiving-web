@@ -14,9 +14,10 @@ import {
   UserFieldsSubmitButton,
 } from "@/components/user/user-fields-form";
 
-// Name and username, on the same form module as the check-in details beside it and as
-// the dialogs `/checkin` opens - so the bounds, the messages and the "" -> null rule
-// are the ones in `validations/user-fields.ts` and not a second copy of them.
+// Name, username and the profile picture, on the same form module as the check-in
+// details beside it and as the dialogs `/checkin` opens - so the bounds, the messages
+// and the "" -> null rule are the ones in `validations/user-fields.ts` and not a second
+// copy of them, and the picture saves with the fields rather than on a Save of its own.
 //
 // Email is not here: changing it needs ownership of the new address confirmed first,
 // which is `EmailChangeCard`'s own flow.
@@ -35,6 +36,7 @@ export function ProfileCard() {
       <CardContent className="flex flex-col flex-1">
         <UserFieldsForm
           groups={[{ fields: ["name", "username"] }]}
+          picture="avatar"
           savedMessage="Your profile has been updated."
         >
           <UserFieldsSubmitButton className="w-full mt-4" />

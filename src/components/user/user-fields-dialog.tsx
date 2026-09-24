@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 
+import type { PictureKind } from "@/lib/picture";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +25,8 @@ export interface UserFieldsDialogProps {
   description?: string;
   groups: UserFieldGroup[];
   savedMessage?: string;
+  /** A picture edited beside the fields and saved with them - see `UserFieldsForm`. */
+  picture?: PictureKind;
 }
 
 /**
@@ -40,6 +43,7 @@ export function UserFieldsDialog({
   description,
   groups,
   savedMessage,
+  picture,
 }: UserFieldsDialogProps) {
   const panel = useRef<HTMLDivElement>(null);
 
@@ -67,6 +71,7 @@ export function UserFieldsDialog({
         <UserFieldsForm
           groups={groups}
           savedMessage={savedMessage}
+          picture={picture}
           onSaved={() => onOpenChange(false)}
         >
           <DialogFooter className="mt-4">

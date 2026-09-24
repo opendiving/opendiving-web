@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, FileText, Printer, SquarePen } from "lucide-react";
+import {
+  AlertTriangle,
+  FileText,
+  Printer,
+  SquarePen,
+  UserSquare,
+} from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useUnits } from "@/hooks/useUnits";
@@ -33,11 +39,11 @@ import { CertificationDialog } from "@/components/certifications/certification-d
 import { DivingFiguresDialog } from "@/components/checkin/diving-figures-dialog";
 import { Logo } from "@/components/logo";
 import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
+import { PortraitFrame, PortraitImage } from "@/components/user/portrait-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { UserAvatar } from "@/components/ui/user-avatar";
 
 // A printed page comes off a browser with background colours dropped and text
 // colours kept, so a summary printed from the dark theme would be near-white ink on
@@ -288,22 +294,34 @@ export function CheckInPageFrame({
                   NAME_BESIDE_PICTURE,
                 )}
               >
-                {/* Only a picture the diver actually stored. The initials Radix falls
-                    back to are a placeholder for a face on screen; printed at the top
-                    of a sheet handed to a stranger they are a monogram nobody chose,
-                    and a bare name reads better than a circle with "SR" in it.
+                {/* The portrait, never the avatar: a desk is looking at the diver's
+                    face, and the avatar is whatever the diver shows the app. With none
+                    stored, nothing prints - no initials, which identify nobody - and
+                    the screen offers the place to add one.
 
                     The column stays either way, so the name meets the same edge as
                     every certification's - and its own two values, which is what
-                    would give it away. The avatar is centred in it, being round and
-                    narrower than a card. */}
-                <div className={cn(SLOT, "flex justify-center")}>
-                  {user.avatar_sha256 && (
-                    <UserAvatar
+                    would give it away. */}
+                <div className={SLOT}>
+                  {user.portrait_sha256 ? (
+                    <PortraitImage
                       name={user.name}
-                      avatarSha={user.avatar_sha256}
-                      size={64}
+                      portraitSha={user.portrait_sha256}
+                      className="w-full"
                     />
+                  ) : (
+                    <PortraitFrame empty className="w-full print:hidden">
+                      <IconTooltip label="Add a portrait">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-full w-full rounded-none"
+                          onClick={() => setEditing("about")}
+                        >
+                          <UserSquare className="h-6 w-6 text-muted-foreground" />
+                        </Button>
+                      </IconTooltip>
+                    </PortraitFrame>
                   )}
                 </div>
                 <h2 className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}>
@@ -311,7 +329,7 @@ export function CheckInPageFrame({
                 </h2>
                 <EditControl
                   className="-my-1"
-                  label="Edit your name, date of birth and phone number"
+                  label="Edit your name, portrait, date of birth and phone number"
                   onClick={() => setEditing("about")}
                 />
               </div>
@@ -551,6 +569,7 @@ export function CheckInPageFrame({
         title="About you"
         description="Your own details, as a desk asks for them."
         groups={[{ fields: ["name", ...ABOUT_YOU_FIELDS] }]}
+        picture="portrait"
       />
       <UserFieldsDialog
         open={editing === "insurance"}
@@ -614,8 +633,8 @@ function CertificationSummary({
         )}
       >
         {/* The column stands even for a card whose picture the diver never stored,
-            for the same reason it stands over a missing avatar: the name beside it
-            has to meet the same edge as the values underneath it. */}
+            for the same reason it stands beside a diver with no portrait: the name
+            beside it has to meet the same edge as the values underneath it. */}
         <div className={SLOT}>
           {isPdf ? (
             <CertificationCardFrame

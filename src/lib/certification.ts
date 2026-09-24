@@ -40,9 +40,9 @@ export const CERTIFICATION_CARD_ASPECT = 1013 / 638;
 export const CERTIFICATION_CARD_ASPECT_CLASS = "aspect-[1013/638]";
 
 // The widest a cropped card is exported at, which is about what an agency issues
-// and twice the biggest mount in the app. Unlike an avatar, the API stores these
-// bytes as they arrive - it sniffs the type and never re-encodes - so this is the
-// only thing bounding what a diver's card costs.
+// and twice the biggest mount in the app. The API stores these bytes as they arrive
+// - it sniffs the type and never renders anything from them, as it does for the two
+// pictures - so this is the only thing bounding what a diver's card costs.
 export const CERTIFICATION_CARD_EXPORT_WIDTH = 1024;
 
 // How far ahead a certification counts as "expiring soon".

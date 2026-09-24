@@ -19,10 +19,11 @@ import {
   UserFieldsSubmitButton,
 } from "@/components/user/user-fields-form";
 
-// The settings home for the check-in details: three groups under one save, because a
-// diver filling this in is filling in all of it. `/checkin` opens the same groups one
-// at a time beside the sections that print them, which is where a diver already at a
-// desk corrects one of them - `UserFieldsForm` is both.
+// The settings home for the check-in details: the portrait and three groups under one
+// save, because a diver filling this in is filling in all of it. `/checkin` opens the
+// same groups one at a time beside the sections that print them, the portrait with
+// About you, which is where a diver already at a desk corrects one of them -
+// `UserFieldsForm` is both.
 export function CheckInDetailsCard() {
   return (
     <Card className="flex flex-col h-full">
@@ -46,6 +47,7 @@ export function CheckInDetailsCard() {
               fields: [...EMERGENCY_CONTACT_FIELDS],
             },
           ]}
+          picture="portrait"
           savedMessage="Your check-in details are up to date."
         >
           <UserFieldsSubmitButton className="w-full mt-4" />

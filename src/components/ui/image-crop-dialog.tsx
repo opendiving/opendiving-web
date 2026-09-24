@@ -26,11 +26,17 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 
 interface ImageCropDialogProps {
-  // Object URL of the picked file. The dialog is mounted only while there is one,
-  // so it is never null here.
+  // Object URL of the image being cropped. The dialog is mounted only while there is
+  // one, so it is never null here.
   imageSrc: string;
-  /** Width over height of the crop, and so of the exported bytes. */
+  /** Width over height of the crop. */
   aspect: number;
+  /**
+   * Where the crop opens, in natural pixels of the source - a stored picture's own
+   * crop, so adjusting it starts from what the diver chose last time rather than from
+   * the centre. Read once, when the image loads.
+   */
+  initialArea?: Area;
   /** `round` for an avatar, `rect` for anything drawn as itself. */
   cropShape?: "rect" | "round";
   title: string;
@@ -48,10 +54,11 @@ interface ImageCropDialogProps {
 /**
  * Pick the part of a picture that is kept: drag to move, zoom, save.
  *
- * Shared by the avatar and the certification card, which differ only in the shape
- * they crop to and the words around it. A round mask with `aspect={1}` is what an
- * avatar is drawn as everywhere in the app; a card crops to the standard card
- * shape, so what is saved is already the shape every mount draws it in.
+ * Shared by the two pictures and the certification card. Each crops to the shape it
+ * is drawn in - a round mask at `aspect={1}` for the avatar, 7:9 for the portrait,
+ * the standard card shape for a card - and each caller decides what the rectangle
+ * becomes: a card's is drawn onto a canvas and exported, a picture's is sent to the
+ * API as numbers beside the file itself.
  *
  * Zoom is a native `<input type="range">` rather than a Radix slider: it is one
  * value with no empty state, and the native control is keyboard- and
@@ -60,6 +67,7 @@ interface ImageCropDialogProps {
 export function ImageCropDialog({
   imageSrc,
   aspect,
+  initialArea,
   cropShape = "rect",
   title,
   description,
@@ -75,7 +83,8 @@ export function ImageCropDialog({
 
   // Fires on every gesture, so it has to be stable or the cropper re-subscribes
   // continuously. The *pixels* argument is the one worth keeping: it is in natural
-  // source pixels, which is what the canvas export draws from.
+  // source pixels, which is what the canvas export draws from and what the API's
+  // crop is measured in.
   const handleCropComplete = useCallback(
     (_percent: Area, pixels: Area) => setArea(pixels),
     [],
@@ -113,6 +122,7 @@ export function ImageCropDialog({
             crop={crop}
             zoom={zoom}
             aspect={aspect}
+            initialCroppedAreaPixels={initialArea}
             cropShape={cropShape}
             showGrid={false}
             minZoom={MIN_ZOOM}

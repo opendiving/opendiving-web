@@ -12,9 +12,12 @@ import { Save } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
+import { usePictureEdit } from "@/hooks/usePictureEdit";
 import { authAPI } from "@/lib/api/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
+import { PICTURE_LABEL, type PictureKind } from "@/lib/picture";
+import { applyPictureEdit } from "@/lib/picture-edits";
 import {
   EMPTY_USER_FIELDS,
   userFieldsFromUser,
@@ -38,6 +41,7 @@ import {
 import { FormApiError } from "@/components/ui/form-api-error";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { PictureField } from "@/components/user/picture-field";
 
 // How each field is written on screen. A `Record` over the key union, like the
 // schemas it pairs with, so a field added to one and not the other is a type error
@@ -99,6 +103,11 @@ export interface UserFieldsFormProps {
   onSaved?: () => void;
   /** What the toast says on success. */
   savedMessage?: string;
+  /**
+   * One of the diver's pictures, edited above the fields and sent after them - the
+   * avatar with the profile, the portrait with the check-in details.
+   */
+  picture?: PictureKind;
 }
 
 /**
@@ -113,16 +122,23 @@ export interface UserFieldsFormProps {
  *
  * Only the fields in `groups` are sent (`userFieldsUpdate`), and an emptied optional
  * one goes as an explicit `null` so clearing it actually clears it.
+ *
+ * A `picture` rides on the same Save, the way a certification's card images ride on
+ * its form: the fields go first, then the one request the picture's pending edit
+ * needs, and a picture that fails leaves the saved fields saved and says which
+ * picture it was.
  */
 export function UserFieldsForm({
   groups,
   children,
   onSaved,
   savedMessage = "Your details are up to date.",
+  picture,
 }: UserFieldsFormProps) {
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   const [error, setError] = useState<string | null>(null);
+  const [pictureEdit, setPictureEdit] = usePictureEdit();
 
   const fields = groups.flatMap((group) => group.fields);
 
@@ -148,6 +164,22 @@ export function UserFieldsForm({
     if (user) reset(userFieldsFromUser(user));
   }, [user, reset]);
 
+  // The picture, once the fields are stored. Cleared whether it landed or not: the
+  // form repaints from the re-read account, which knows nothing of an edit, and a
+  // picture that failed is picked again rather than retried from state.
+  const savePicture = async (kind: PictureKind) => {
+    if (!pictureEdit) return null;
+    try {
+      await applyPictureEdit(kind, pictureEdit);
+      return null;
+    } catch (error) {
+      console.error(`Failed to save the ${kind}:`, error);
+      return { picture: kind, error };
+    } finally {
+      setPictureEdit(null);
+    }
+  };
+
   const onSubmit = async () => {
     setError(null);
     try {
@@ -156,8 +188,22 @@ export function UserFieldsForm({
       // subset by a longer route, and this way the payload and the rendering are
       // built from one list.
       await authAPI.updateProfile(userFieldsUpdate(fields, form.getValues()));
+      const pictureFailure =
+        picture && pictureEdit ? await savePicture(picture) : null;
+      // Before the toast, so the header's avatar has changed by the time it says so.
       await refreshUser();
-      toast({ title: "Saved", description: savedMessage });
+      if (pictureFailure) {
+        toast({
+          title: `Saved, but your ${PICTURE_LABEL[pictureFailure.picture]} did not`,
+          description: getApiErrorMessage(
+            pictureFailure.error,
+            "Try picking the photo again.",
+          ),
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Saved", description: savedMessage });
+      }
       onSaved?.();
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to save. Please try again."));
@@ -176,6 +222,14 @@ export function UserFieldsForm({
         className="flex flex-col flex-1"
       >
         <div className="space-y-6 flex-1">
+          {picture && (
+            <PictureField
+              picture={picture}
+              edit={pictureEdit}
+              onChange={setPictureEdit}
+              disabled={form.formState.isSubmitting}
+            />
+          )}
           {groups.map((group, at) => (
             <fieldset key={group.legend ?? at} className="space-y-4">
               {group.legend && (
