@@ -86,13 +86,15 @@ export function collectionRowIsEmpty(row: ImportCollectionReport): boolean {
  * The split is "did the diver end up with less than the document described".
  * A skipped record, a dropped value, an unresolved reference or species, a
  * file that could not be stored and a check-in detail the preview does not offer
- * all lose something, so they are warnings. A linked or restored record, either
- * remap, a `diver` deliberately not applied, a check-in detail written as
- * confirmed and a file whose bytes simply are not in a bare document are all the
- * import working as designed - `file_not_contained` especially, which is the
- * *expected* state of
- * every referenced file when a document rather than an archive was imported, and
- * colouring it as a failure would make the ordinary case look broken.
+ * all lose something, so they are warnings - a portrait the API refuses among
+ * them, noted as a skipped file. A linked or restored record, either remap, the
+ * `diver` member's identity and settings deliberately not applied, a check-in
+ * detail or portrait written as confirmed, a portrait kept because the account's
+ * changed after the preview, and a file whose bytes simply are not in a bare
+ * document are all the import working as designed - `file_not_contained`
+ * especially, which is the *expected* state of every referenced file when a
+ * document rather than an archive was imported, and colouring it as a failure
+ * would make the ordinary case look broken.
  *
  * An unknown code from a newer API reads as information rather than as a warning:
  * inventing alarm for a note this build cannot interpret is the worse error.

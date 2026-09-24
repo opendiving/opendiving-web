@@ -2,6 +2,8 @@ import type {
   ImportCheckInDetail,
   ImportCheckInDetailKey,
   ImportCheckInSubmission,
+  ImportPortraitChoice,
+  ImportPortraitOffer,
   ImportReport,
 } from "@/lib/api/logbook-import";
 import { formatDateOnly } from "@/lib/date-time";
@@ -142,7 +144,22 @@ export function checkInSubmission(
   return submission;
 }
 
-/** Whether an apply changed any of the account's check-in facts. */
+/**
+ * The apply's `portrait` field: the choice, with the account digest the preview
+ * showed whichever way it went, or `undefined` when nothing was offered.
+ */
+export function portraitChoice(
+  offer: ImportPortraitOffer | null,
+  kept: boolean,
+): ImportPortraitChoice | undefined {
+  if (!offer) return undefined;
+  return {
+    choice: kept ? "keep" : "take",
+    account_sha256: offer.account_sha256,
+  };
+}
+
+/** Whether an apply changed any of the account's check-in facts or its portrait. */
 export function checkInWasWritten(report: ImportReport): boolean {
   return report.notes.some((note) => note.code === "check_in_detail_written");
 }

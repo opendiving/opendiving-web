@@ -93,7 +93,8 @@ one.
   converted file also gets a report of what the conversion could not carry. Records you already have
   are matched rather than duplicated, and a dive you deleted returns under its own identity. The
   archive additionally restores the dive-computer files and c-card scans, which the bare document
-  names by digest but does not carry.
+  names by digest but does not carry. The check-in details a logbook carries, and an archive's
+  portrait, are shown beside yours in the preview, and only what you choose there is saved.
 - **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 

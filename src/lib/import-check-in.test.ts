@@ -5,6 +5,7 @@ import {
   checkInProposalValues,
   checkInSubmission,
   checkInWasWritten,
+  portraitChoice,
 } from "./import-check-in";
 import type {
   ImportCheckInDetail,
@@ -115,8 +116,36 @@ describe("checkInWasWritten", () => {
     expect(checkInWasWritten(report(["check_in_detail_written"]))).toBe(true);
     expect(
       checkInWasWritten(
-        report(["check_in_detail_dropped", "diver_not_applied"]),
+        report([
+          "check_in_detail_dropped",
+          "diver_not_applied",
+          "portrait_kept",
+        ]),
       ),
     ).toBe(false);
+  });
+});
+
+describe("portraitChoice", () => {
+  const sha = "a".repeat(64);
+
+  it("carries the preview's digest whichever way the diver chose", () => {
+    const offer = { account_sha256: sha, proposed: "data:image/webp;base64," };
+    expect(portraitChoice(offer, false)).toEqual({
+      choice: "take",
+      account_sha256: sha,
+    });
+    expect(portraitChoice(offer, true)).toEqual({
+      choice: "keep",
+      account_sha256: sha,
+    });
+    // No portrait on the account is `null`, sent rather than left out.
+    expect(
+      portraitChoice({ ...offer, account_sha256: null }, true),
+    ).toHaveProperty("account_sha256", null);
+  });
+
+  it("sends nothing when nothing was offered", () => {
+    expect(portraitChoice(null, false)).toBeUndefined();
   });
 });
