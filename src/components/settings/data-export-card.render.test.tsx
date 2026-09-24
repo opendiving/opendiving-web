@@ -90,8 +90,10 @@ describe("DataExportCard", () => {
     expect(warning).toMatch(
       /card scans and the portrait are personal documents/,
     );
-    // In the archive, and - until an import can restore it - not put back by one.
-    expect(warning).toMatch(/portrait is in it too, though an import does not/);
+    // In the archive, and offered back by an import rather than restored silently.
+    expect(warning).toMatch(
+      /portrait is in it too, and importing the archive offers it back/,
+    );
   });
 
   it.each([

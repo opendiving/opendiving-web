@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   ImportCheckInDetails,
   useImportCheckIn,
+  type ImportCheckInChoices,
 } from "@/components/settings/import-check-in-details";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -25,7 +26,6 @@ import {
   LOGBOOK_IMPORT_ACCEPT,
   MAX_IMPORT_ARCHIVE_SIZE,
   MAX_IMPORT_DOCUMENT_SIZE,
-  type ImportCheckInSubmission,
   type ImportPreview,
   type ImportReport,
 } from "@/lib/api/logbook-import";
@@ -290,14 +290,14 @@ function PendingImport({
   file: File;
   preview: ImportPreview;
   isApplying: boolean;
-  onApply: (checkIn: ImportCheckInSubmission | undefined) => void;
+  onApply: (choices: ImportCheckInChoices) => void;
   onCancel: () => void;
 }) {
-  const checkIn = useImportCheckIn(preview.check_in_details);
+  const checkIn = useImportCheckIn(preview.check_in_details, preview.portrait);
 
   const handleApply = async () => {
-    const submission = await checkIn.collect();
-    if (submission !== null) onApply(submission);
+    const choices = await checkIn.collect();
+    if (choices !== null) onApply(choices);
   };
 
   return (
@@ -421,7 +421,7 @@ export function DataImportCard() {
     }
   };
 
-  const handleApply = async (checkIn: ImportCheckInSubmission | undefined) => {
+  const handleApply = async ({ details, portrait }: ImportCheckInChoices) => {
     if (!pending) return;
 
     try {
@@ -429,11 +429,13 @@ export function DataImportCard() {
       const applied = await logbookImportAPI.apply(
         pending.file,
         pending.preview.token,
-        checkIn,
+        details,
+        portrait,
       );
-      // Only when a fact changed: the check-in card on this page seeds from the
-      // signed-in user, and saving it from a stale copy would send the imported
-      // facts back as nulls. Not otherwise, since a refresh resets every mounted
+      // Only when a fact or the portrait changed: the check-in card on this page
+      // seeds from the signed-in user, and saving it from a stale copy would send
+      // the imported facts back as nulls, and the portrait slot and "Adjust" read
+      // their digests from it. Not otherwise, since a refresh resets every mounted
       // form seeded from that user.
       if (checkInWasWritten(applied)) await refreshUser();
       setResult(applied);
@@ -488,9 +490,11 @@ export function DataImportCard() {
               and you are told what the conversion could not carry. A .zip is
               either a full OpenDiving archive — which restores your
               dive-computer files and certification scans as well — or a folder
-              of dive-computer files, read as one logbook. Records already in
-              your logbook are matched rather than duplicated, and a dive you
-              deleted comes back under its own identity.
+              of dive-computer files, read as one logbook. The check-in details
+              a logbook carries, and an archive&rsquo;s portrait, are shown
+              beside yours first, and you choose which are saved. Records
+              already in your logbook are matched rather than duplicated, and a
+              dive you deleted comes back under its own identity.
             </p>
           </div>
           <div>

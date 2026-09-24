@@ -241,14 +241,16 @@ export default async function PrivacyPage() {
               </li>
             </ul>
             <p className="text-foreground mb-4">
-              Both pictures are kept as the file you picked, so that you can
-              change how either is cropped later, with the location and camera
-              details a phone photo carries removed by this server before the
-              file is stored; what the app shows is drawn from that file at the
-              crop you chose. Your portrait is shown to you where you edit it
-              and on your check-in page, and never where your profile picture
-              appears. The full archive export carries both files, and both are
-              deleted with your account.
+              Both pictures are kept as the file you picked &mdash; or, for the
+              portrait, the one a full archive carries, if you take it in the
+              import preview &mdash; so that you can change how either is
+              cropped later, with the location and camera details a phone photo
+              carries removed by this server before the file is stored; what the
+              app shows is drawn from that file at the crop you chose. Your
+              portrait is shown to you where you edit it and on your check-in
+              page, and never where your profile picture appears. The full
+              archive export carries both files, and both are deleted with your
+              account.
             </p>
             <p className="text-foreground mb-4">
               One thing arrives without you typing it. If you create your
@@ -389,8 +391,9 @@ export default async function PrivacyPage() {
               </li>
               <li>
                 GPS positions inside a photo you pick as your profile picture or
-                portrait, which travel with the upload and are removed by this
-                server before the photo is stored
+                portrait, or inside the portrait a full archive carries when you
+                take it on import; they travel with the upload and are removed
+                by this server before the photo is stored
               </li>
             </ul>
             <p className="text-foreground mb-4">

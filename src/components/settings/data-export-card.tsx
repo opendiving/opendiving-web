@@ -81,7 +81,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileArchive,
     title: "Full archive",
     description:
-      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you uploaded — each under the recording it belongs to — and every certification card image you uploaded. This is the one to keep as a backup — it is also the only download that can put those files back, since the import card below can restore bytes it actually carries. Your portrait is in it too, though an import does not put that back yet. The card scans and the portrait are personal documents, so treat the file as one.",
+      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you uploaded — each under the recording it belongs to — and every certification card image you uploaded. This is the one to keep as a backup — it is also the only download that can put those files back, since the import card below can restore bytes it actually carries. Your portrait is in it too, and importing the archive offers it back beside yours. The card scans and the portrait are personal documents, so treat the file as one.",
   },
 ];
 

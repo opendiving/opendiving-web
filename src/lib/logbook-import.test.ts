@@ -158,6 +158,7 @@ describe("noteIsWarning", () => {
         "recording_attached",
         "recording_filled",
         "check_in_detail_written",
+        "portrait_kept",
       ].some(noteIsWarning),
     ).toBe(false);
   });
@@ -336,6 +337,7 @@ describe("importSourceSentence", () => {
       archive: false,
       token: "tok-1",
       check_in_details: [],
+      portrait: null,
       ...overrides,
     };
   }

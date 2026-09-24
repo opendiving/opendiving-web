@@ -1,12 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   importSourceLabel,
+  logbookImportAPI,
   LOGBOOK_IMPORT_ACCEPT,
   LOGBOOK_IMPORT_SOURCE_EXTENSIONS,
   MAX_IMPORT_ARCHIVE_SIZE,
   MAX_IMPORT_DOCUMENT_SIZE,
   type ImportSourceFormat,
 } from "./logbook-import";
+
+vi.mock("./client", () => ({
+  apiClient: { post: vi.fn().mockResolvedValue({ data: {} }) },
+}));
+
+const { apiClient } = await import("./client");
+const post = vi.mocked(apiClient.post);
 
 describe("LOGBOOK_IMPORT_ACCEPT", () => {
   it("offers a file extension for every format the API converts", () => {
@@ -76,5 +84,28 @@ describe("the import size ceilings", () => {
     // larger value here starts an upload the API will refuse with a 413.
     expect(MAX_IMPORT_DOCUMENT_SIZE).toBe(100 * 1024 * 1024);
     expect(MAX_IMPORT_ARCHIVE_SIZE).toBe(500 * 1024 * 1024);
+  });
+});
+
+describe("logbookImportAPI.apply", () => {
+  const file = new File(["{}"], "logbook.zip");
+  const sentForm = () => post.mock.lastCall![1] as FormData;
+
+  it("sends the portrait's choice with the digest the preview showed", async () => {
+    await logbookImportAPI.apply(file, "tok", undefined, {
+      choice: "keep",
+      account_sha256: null,
+    });
+    // `account_sha256` goes even when null: the API requires the key.
+    expect(JSON.parse(sentForm().get("portrait") as string)).toEqual({
+      choice: "keep",
+      account_sha256: null,
+    });
+    expect(sentForm().get("check_in_details")).toBeNull();
+  });
+
+  it("sends no portrait field without a choice, which keeps the account's", async () => {
+    await logbookImportAPI.apply(file, "tok");
+    expect(sentForm().has("portrait")).toBe(false);
   });
 });

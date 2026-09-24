@@ -150,9 +150,12 @@ export type ImportNoteCode =
   // An emergency contact or insurance the document carries but the preview does not
   // offer: it names nobody, or it is not the first. A warning.
   | "check_in_detail_dropped"
-  // Only when a column actually changed, which is what tells the card to re-read
-  // the signed-in user.
-  | "check_in_detail_written";
+  // Only when a fact or the portrait actually changed, which is what tells the card
+  // to re-read the signed-in user.
+  | "check_in_detail_written"
+  // The archive's portrait was taken, and the account's had changed since the
+  // preview, so the account's stayed. Information: nothing was lost.
+  | "portrait_kept";
 
 /** One thing the import decided, addressed to the diver. */
 export interface ImportNote {
@@ -333,6 +336,31 @@ export interface ImportCheckInSubmission {
   insurance?: ImportCheckInInsurance | null;
 }
 
+/**
+ * The archive's portrait beside the account's, for the diver to take or keep.
+ *
+ * A field next to `check_in_details` rather than an entry in it, as the API has it.
+ */
+export interface ImportPortraitOffer {
+  /**
+   * The account's portrait as its digest - the `?v=` of `GET /user/portrait` - or
+   * `null` without one. Sent back as the choice's `account_sha256`.
+   */
+  account_sha256: string | null;
+  /** The archive's portrait as a `data:image/webp` URL, framed as it would be stored. */
+  proposed: string;
+}
+
+/**
+ * What the diver chose for the offered portrait. `account_sha256` is the offer's,
+ * `null` included, on *keep* as on *take*: the API requires the key, and a choice
+ * without it is a 422 that fails the whole import.
+ */
+export interface ImportPortraitChoice {
+  choice: "take" | "keep";
+  account_sha256: string | null;
+}
+
 /** What `POST /import/logbook/preview` returns. Nothing has been written. */
 export interface ImportPreview extends ImportReport {
   /**
@@ -362,6 +390,11 @@ export interface ImportPreview extends ImportReport {
    * phone, emergency contact, insurance. Empty when it carries none.
    */
   check_in_details: ImportCheckInDetail[];
+  /**
+   * The archive's portrait, or `null` when the upload carries none the API can offer
+   * - `notes` say why - or carries the account's own at the same crop.
+   */
+  portrait: ImportPortraitOffer | null;
 }
 
 /** What `POST /import/logbook` returns. Everything in it has been committed. */
@@ -422,16 +455,20 @@ export const logbookImportAPI = {
    * what stops a diver approving one document and uploading another.
    *
    * `checkIn` is the facts to write, as a JSON field; omitted, none is written.
+   * `portrait` is the choice for the preview's `portrait`; omitted, the account
+   * keeps its own.
    */
   async apply(
     file: File,
     token: string,
     checkIn?: ImportCheckInSubmission,
+    portrait?: ImportPortraitChoice,
   ): Promise<ImportResult> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("token", token);
     if (checkIn) formData.append("check_in_details", JSON.stringify(checkIn));
+    if (portrait) formData.append("portrait", JSON.stringify(portrait));
 
     const response = await apiClient.post<ImportResult>(
       "/import/logbook",

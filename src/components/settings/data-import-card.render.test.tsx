@@ -27,7 +27,18 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ refreshUser: mocks.refreshUser }),
+  useAuth: () => ({ user: { name: "Alex" }, refreshUser: mocks.refreshUser }),
+}));
+
+// The account's portrait is fetched through this, the endpoint being owner-only.
+// Answering with a URL is what puts its `<img>` on the page.
+vi.mock("@/hooks/useAuthedBlobUrl", () => ({
+  useAuthedBlobUrl: (fetchBlob: unknown) => ({
+    url: fetchBlob ? "blob:portrait" : null,
+    isLoading: false,
+    hasError: false,
+    error: null,
+  }),
 }));
 
 vi.mock("@/lib/api/logbook-import", async (importOriginal) => ({
@@ -63,6 +74,7 @@ function preview(overrides: Partial<ImportPreview> = {}): ImportPreview {
     archive: false,
     token: "tok-1",
     check_in_details: [],
+    portrait: null,
     ...overrides,
   };
 }
@@ -546,5 +558,111 @@ describe("the check-in details in an import preview", () => {
     await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(2));
     await screen.findByText("Imported");
     expect(mocks.refreshUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("the archive's portrait in an import preview", () => {
+  const sha = "b".repeat(64);
+  const proposed = "data:image/webp;base64,UklGRg==";
+
+  const applyButton = () =>
+    screen.getByRole("button", { name: /import this logbook/i });
+
+  async function previewWith(overrides: Partial<ImportPreview>) {
+    mocks.apply.mockResolvedValue(report());
+    mocks.preview.mockResolvedValue(preview({ archive: true, ...overrides }));
+    render(<DataImportCard />);
+    await choose(new File(["zip"], "backup.zip", { type: "application/zip" }));
+    await screen.findByText(/nothing has been written yet/i);
+  }
+
+  it("shows the account's beside the archive's, the archive's chosen", async () => {
+    await previewWith({ portrait: { account_sha256: sha, proposed } });
+
+    const row = screen.getByRole("group", { name: "Portrait" });
+    expect(within(row).getByAltText("Portrait of Alex")).toHaveAttribute(
+      "src",
+      "blob:portrait",
+    );
+    expect(within(row).getByAltText("Portrait from this file")).toHaveAttribute(
+      "src",
+      proposed,
+    );
+    expect(
+      within(row).getByText("This file's replaces yours when you import."),
+    ).toBeVisible();
+
+    await userEvent.click(applyButton());
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
+    expect(mocks.apply.mock.calls[0][3]).toEqual({
+      choice: "take",
+      account_sha256: sha,
+    });
+  });
+
+  it("sends keep, with the digest the preview showed, after Keep mine", async () => {
+    await previewWith({ portrait: { account_sha256: sha, proposed } });
+
+    const row = screen.getByRole("group", { name: "Portrait" });
+    await userEvent.click(
+      within(row).getByRole("button", { name: "Keep mine" }),
+    );
+    expect(
+      within(row).getByText("Keeping yours; nothing from this file is saved."),
+    ).toBeVisible();
+
+    await userEvent.click(applyButton());
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
+    // The digest goes on keep too: the API requires the key either way.
+    expect(mocks.apply.mock.calls[0][3]).toEqual({
+      choice: "keep",
+      account_sha256: sha,
+    });
+  });
+
+  it("sends a null digest for an account with no portrait", async () => {
+    await previewWith({ portrait: { account_sha256: null, proposed } });
+
+    const row = screen.getByRole("group", { name: "Portrait" });
+    expect(within(row).getByRole("img", { name: "No portrait" })).toBeVisible();
+    await userEvent.click(
+      within(row).getByRole("button", { name: "Leave unset" }),
+    );
+
+    await userEvent.click(applyButton());
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
+    expect(mocks.apply.mock.calls[0][3]).toEqual({
+      choice: "keep",
+      account_sha256: null,
+    });
+  });
+
+  it("shows the section with the portrait alone for an archive carrying no fact", async () => {
+    await previewWith({ portrait: { account_sha256: sha, proposed } });
+
+    expect(screen.getByText("Check-in details")).toBeVisible();
+    expect(screen.getAllByRole("group")).toHaveLength(1);
+    expect(screen.getByRole("group", { name: "Portrait" })).toBeVisible();
+  });
+
+  it("shows no row, and sends no choice, when nothing is offered", async () => {
+    await previewWith({
+      check_in_details: [{ detail: "phone", account: null, proposed: "+44 2" }],
+    });
+
+    expect(screen.getByText("Check-in details")).toBeVisible();
+    expect(screen.queryByRole("group", { name: "Portrait" })).toBeNull();
+    await userEvent.click(applyButton());
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
+    expect(mocks.apply.mock.calls[0][3]).toBeUndefined();
+  });
+
+  it("says in the dropzone that the portrait and the check-in details are offered", () => {
+    render(<DataImportCard />);
+    expect(
+      screen.getByText(
+        /check-in details a logbook carries, and an archive.s portrait, are shown beside yours/,
+      ),
+    ).toBeVisible();
   });
 });
