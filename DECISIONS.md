@@ -384,9 +384,8 @@ Figma's fallback `<path>` beside the `<foreignObject>` paints solid black over t
 
 ## Changing your account email is a request/confirm flow, not a plain field edit
 
-`USER_FIELDS` in `lib/validations/user-fields.ts` has no `email`, matching the API's `UserUpdate`;
-`ProfileCard` touches only name, username and the profile picture. Email lives in
-`components/settings/EmailChangeCard.tsx`: enter a new address, submit via
+`USER_FIELDS` in `lib/validations/user-fields.ts` has no `email`, matching the API's `UserUpdate`.
+Email lives in `components/settings/EmailChangeCard.tsx`: enter a new address, submit via
 `authAPI.requestEmailChange(newEmail)`, get the same generic "check your new email" message even for
 a taken address, and the change applies only once the emailed link is confirmed.
 `POST /user/email-change/request` always acts on the caller's own account, so there is no address to
