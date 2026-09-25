@@ -53,7 +53,7 @@ export interface RuntimeConfig extends PublicConfig {
    */
   siteUrl: string;
   /**
-   * Shown on `/contact` as a fallback when a submission fails. Display only - the API's
+   * Shown on `/support` as a fallback when a submission fails. Display only - the API's
    * `CONTACT_FORM_EMAIL` is what actually routes mail - so it is deliberately unset by
    * default rather than pointing a self-hoster's visitors at this project's inbox.
    */

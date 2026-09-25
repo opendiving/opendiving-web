@@ -10,7 +10,7 @@ owners. Work out which one you have before you send it anywhere.
 its operator can see it, fix it, or tell the people using it; where that operator is not this
 project, its maintainers have no access to the instance and no way to reach its users. A
 misconfigured deployment, an exposed database, a stale image on someone's box: report it to whoever
-runs that server. Its contact form, if it has one, reaches that operator and nobody else.
+runs that server. Its support form, if it has one, reaches that operator and nobody else.
 
 **The code** is a flaw in this repository that would affect anyone running it. That one is ours, and
 the rest of this file is about it.

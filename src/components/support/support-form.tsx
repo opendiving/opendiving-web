@@ -23,18 +23,18 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  CONTACT_CATEGORIES,
-  CONTACT_CATEGORY_LABELS,
-  contactAPI,
-} from "@/lib/api/contact";
-import { FALLBACK_ISSUES_URL } from "@/lib/contact";
-import { contactSchema, ContactInput } from "@/lib/validations/contact";
+  SUPPORT_CATEGORIES,
+  SUPPORT_CATEGORY_LABELS,
+  supportAPI,
+} from "@/lib/api/support";
+import { FALLBACK_ISSUES_URL } from "@/lib/support";
+import { supportSchema, SupportInput } from "@/lib/validations/support";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { MailCheck, Send } from "lucide-react";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
 
-interface ContactFormProps {
+interface SupportFormProps {
   // Address offered when a send fails, so a broken API isn't a dead end. Optional
   // because it's display-only and can't be derived from anything here - the API owns
   // the real recipient (`CONTACT_FORM_EMAIL`). An instance that hasn't set
@@ -43,13 +43,13 @@ interface ContactFormProps {
   fallbackEmail?: string;
 }
 
-export function ContactForm({ fallbackEmail }: ContactFormProps) {
+export function SupportForm({ fallbackEmail }: SupportFormProps) {
   const { user } = useAuth();
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const form = useForm<ContactInput>({
-    resolver: zodResolver(contactSchema),
+  const form = useForm<SupportInput>({
+    resolver: zodResolver(supportSchema),
     defaultValues: {
       name: "",
       email: "",
@@ -69,10 +69,10 @@ export function ContactForm({ fallbackEmail }: ContactFormProps) {
     if (!form.getValues("email")) form.setValue("email", user.email);
   }, [user, form]);
 
-  const onSubmit = async (values: ContactInput) => {
+  const onSubmit = async (values: SupportInput) => {
     try {
       setError(null);
-      await contactAPI.sendMessage(values);
+      await supportAPI.sendRequest(values);
       setSent(true);
     } catch (err) {
       setError(
@@ -189,9 +189,9 @@ export function ContactForm({ fallbackEmail }: ContactFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {CONTACT_CATEGORIES.map((category) => (
+                  {SUPPORT_CATEGORIES.map((category) => (
                     <SelectItem key={category} value={category}>
-                      {CONTACT_CATEGORY_LABELS[category]}
+                      {SUPPORT_CATEGORY_LABELS[category]}
                     </SelectItem>
                   ))}
                 </SelectContent>

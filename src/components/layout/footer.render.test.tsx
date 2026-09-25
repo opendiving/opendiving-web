@@ -20,7 +20,8 @@ describe("Footer", () => {
 
     for (const name of ["Platform", "Resources", "Support"]) {
       const group = screen.getByRole("navigation", { name });
-      expect(group).toContainElement(screen.getByText(name));
+      // The Support column also holds a link reading "Support", so match the label.
+      expect(group).toContainElement(screen.getByText(name, { selector: "p" }));
     }
   });
 

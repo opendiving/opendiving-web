@@ -609,10 +609,10 @@ export default async function TermsPage() {
               what these Terms mean for you, or the Service being down &mdash;
               the person to ask is whoever runs this copy of OpenDiving. The{" "}
               <Link
-                href="/contact"
+                href="/support"
                 className="underline hover:text-muted-foreground"
               >
-                contact page
+                support page
               </Link>{" "}
               is how this copy offers to reach them.
             </p>
@@ -638,7 +638,7 @@ export default async function TermsPage() {
                 </>
               )}
               A question about your own account belongs to whoever runs this
-              copy, and the contact page above is how to reach them &mdash; on a
+              copy, and the support page above is how to reach them &mdash; on a
               copy the project runs itself, that page reaches the project in the
               role that can act. Sent to the author instead, such a question
               reaches people who cannot. How quickly the operator of this copy

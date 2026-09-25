@@ -18,7 +18,7 @@ const inter = Inter({ subsets: ["latin"] });
 // the build fails on it. `false` allows a blocking route, and the root is the only
 // placement that reaches the routes needing it: both non-root layouts and every page
 // behind the auth guard are Client Components, which cannot carry this export, and the
-// handful of Server Component pages that could - `/`, `/contact`, `/privacy`, `/terms`,
+// handful of Server Component pages that could - `/`, `/support`, `/privacy`, `/terms`,
 // `/admin` - are not the ones that need it.
 export const instant = false;
 

@@ -109,8 +109,8 @@ export function Footer() {
             </p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/contact" className="hover:text-foreground">
-                  Contact
+                <Link href="/support" className="hover:text-foreground">
+                  Support
                 </Link>
               </li>
               <li>
