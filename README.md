@@ -35,8 +35,9 @@ one.
 - **Technical diving** — trimix and nitrox mixes get derived gas names and per-mix **MOD** at your
   ppO₂ limit, plus END/EAD; the profile chart shades the **deco ceiling**, plots the computer's own
   **NDL, TTS, ppO₂, CNS and gradient factors** and marks dive events; each recording says the mode
-  it ran in and the **decompression model** behind those numbers; **CNS/OTU** oxygen exposure and
-  surface pressure are kept from imports, per-cylinder ppO₂ limits and gas roles included.
+  it ran in, the salinity it was set to and the **decompression model** behind those numbers, and
+  keeps its own **CNS/OTU** oxygen exposure and surface pressure from the import; per-cylinder ppO₂
+  limits and gas roles are kept too.
 - **Dive-computer import** — upload a FIT file (Garmin Descent, Suunto Ocean/D5) or a Suunto
   XML/JSON export and the form pre-fills itself, keeping the file's own UTC offset where it records
   one (FIT and the JSON exports do; Suunto's XML carries no offset at all, so those fall back to

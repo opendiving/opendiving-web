@@ -18,12 +18,12 @@ import type { PaginatedResponse } from "./client";
  * **Value for value, and in order, the DiveJSON vocabulary** (spec §6.16, shared
  * with §6.17's courses). On a certification `agency` is a REQUIRED member of a
  * closed set; on a course it is OPTIONAL, drawn from this same set when it is
- * there at all. The format freezes a closed set's values at 1.0, so this list
- * cannot grow again without a major version - the five that arrived with the
- * importer (`andi`, `snsi`, `acuc`, `pss`, `ida`) are the last additions there
- * will be. They are here rather than laundered through `other`/`agency_other`
- * on the way in, which would have made a round trip lossy on a member the
- * format guarantees where it appears at all.
+ * there at all. The format freezes a closed set's values at 1.0, so the twenty
+ * that arrived with its last widening before the tag (`ndl` to `diwa`) are the
+ * last additions there will be without a major version. They are here rather
+ * than laundered through `other`/`agency_other` on the way in, which would have
+ * made a round trip lossy on a member the format guarantees where it appears at
+ * all.
  */
 export const CERTIFICATION_AGENCIES = [
   "padi",
@@ -44,6 +44,26 @@ export const CERTIFICATION_AGENCIES = [
   "acuc",
   "pss",
   "ida",
+  "ndl",
+  "utd",
+  "saa",
+  "scotsac",
+  "iac",
+  "protec",
+  "pdic",
+  "nase",
+  "sei",
+  "ymca",
+  "erdi",
+  "aida",
+  "molchanovs",
+  "pfi",
+  "apnea_academy",
+  "fii",
+  "nss_cds",
+  "nacd",
+  "idea",
+  "diwa",
   "other",
 ] as const;
 
@@ -57,8 +77,9 @@ export type CertificationAgency = (typeof CERTIFICATION_AGENCIES)[number];
  */
 export const DEFAULT_CERTIFICATION_AGENCY: CertificationAgency = "padi";
 
-// Display labels. These are acronyms rather than words, so none of them can be
-// derived by capitalizing the value.
+// Display labels, each the agency's own short name: mostly acronyms, and the rest
+// spelled as the agency spells itself (ScotSAC, ProTec, NSS-CDS), so none of them
+// can be derived by capitalizing the value.
 const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
   padi: "PADI",
   ssi: "SSI",
@@ -78,6 +99,26 @@ const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
   acuc: "ACUC",
   pss: "PSS",
   ida: "IDA",
+  ndl: "NDL",
+  utd: "UTD",
+  saa: "SAA",
+  scotsac: "ScotSAC",
+  iac: "IAC",
+  protec: "ProTec",
+  pdic: "PDIC",
+  nase: "NASE",
+  sei: "SEI",
+  ymca: "YMCA",
+  erdi: "ERDI",
+  aida: "AIDA",
+  molchanovs: "Molchanovs",
+  pfi: "PFI",
+  apnea_academy: "Apnea Academy",
+  fii: "FII",
+  nss_cds: "NSS-CDS",
+  nacd: "NACD",
+  idea: "IDEA",
+  diwa: "DIWA",
   other: "Other",
 };
 

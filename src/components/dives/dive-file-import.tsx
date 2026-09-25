@@ -124,8 +124,10 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   replaceMixtures: (mixtures: DiveMixtureInput[]) => void,
   mode: ParsedDiveApplyMode = "prefill",
 ): MixtureImportNotes {
-  // One gate for all seven scalar fields below, so "fill-only" cannot be
-  // honoured by six of them and forgotten by the seventh.
+  // One gate for every scalar field below, so "fill-only" cannot be honoured by
+  // some of them and forgotten by one. The dive's water type is not among them:
+  // a file's salinity is a setting of the device, never a kind of water, and the
+  // recording keeps it on attach.
   const writes = <TName extends keyof DiveFormValues & string>(name: TName) =>
     mode === "prefill" || isDiveFormFieldEmpty(form, name);
 
@@ -149,12 +151,6 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   }
   if (parsed.bottom_temperature != null && writes("bottom_temperature")) {
     setDiveFormValue(form, "bottom_temperature", parsed.bottom_temperature);
-  }
-  // No "guessed field" note for this one, unlike the mixtures below: the
-  // computer's own salinity setting is either in the file or it isn't, and
-  // nothing here invents a plausible value for an absent one.
-  if (parsed.water_type != null && writes("water_type")) {
-    setDiveFormValue(form, "water_type", parsed.water_type);
   }
   if (parsed.mixtures.length === 0) {
     return { guessed: {}, keptPressures: false, discardedPressures: false };

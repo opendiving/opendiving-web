@@ -1044,8 +1044,8 @@ domain, since 21.6–21.9 °C is flat on a depth-wide axis. Pressure shares the 
 labels; every cylinder shares one pressure domain.
 
 One hovered time, not index: channels are sampled independently, so a full-plot transparent `<rect>`
-maps the cursor to seconds once and each channel resolves its own sample with `nearestSampleIndex`.
-Readouts are real readings, never interpolations.
+maps the cursor to an instant on the profile's millisecond axis once and each channel resolves its
+own sample with `nearestSampleIndex`. Readouts are real readings, never interpolations.
 
 `tooltipVerticalAnchor` pins the card to the plot's top or bottom edge, whichever keeps it off the
 readings: card height depends on channel count, so offsetting from a point overflows the clipping
@@ -1056,15 +1056,15 @@ Keyboard scrubbing is out of scope. The `aria-label` uses `formatDurationHoursMi
 
 ## The profile's line breaks are derived from the series' own cadence
 
-`segmentByTimeGap` is `segmentByGap` in seconds: never draw a line across data that is not there, or
-a ten-minute transmitter dropout reads as a smooth pressure fall. `Dive_2025-03-08-1440.xml` has a 1
-341-second hole in its pressure series.
+`segmentByTimeGap` is `segmentByGap` on the profile's millisecond axis: never draw a line across
+data that is not there, or a ten-minute transmitter dropout reads as a smooth pressure fall.
+`Dive_2025-03-08-1440.xml` has a 1 341-second hole in its pressure series.
 
 The threshold is derived (`gapThreshold`), not fixed: cadence ranges from 1 s (Suunto Ocean
 temperature) to 10 s (Suunto depth series), and the API's min/max downsampling stretches it
 unevenly, so a fixed value either breaks every downsampled line into confetti or draws through a
 real dropout. Three times the median delta sits above jitter and below any dropout worth showing;
-`MIN_GAP_SECONDS` keeps a regular 1 Hz series from breaking on a rounding wobble.
+`MIN_GAP_MS` (15 s) keeps a fast, regular series from breaking on the jitter in its own stamps.
 
 ## The profile card fetches on mount and needs no `onChanged`
 
@@ -2025,14 +2025,15 @@ looked at.
 
 ## The Exposure card renders stored numbers and derives nothing
 
-`components/dives/dive-exposure-card.tsx` shows CNS, OTU and surface pressure unchanged. CNS and OTU
-are the output of whichever algorithm the device ran; a "corrected" figure disagreeing with the
+`components/dives/dive-exposure-card.tsx` shows the primary recording's CNS, OTU and surface
+pressure unchanged; each recording carries its own, and the recordings card lists every one. CNS and
+OTU are the output of whichever algorithm the device ran; a "corrected" figure disagreeing with the
 diver's wrist is worse than useless. The fields are read-only; the API keeps them off its
 create/update schemas.
 
-Start → end is shown, a missing half as an em dash. The card renders nothing when a dive has none of
-the three: a diver never had the option to enter them. It is titled "Exposure & Pressure" because a
-lone surface pressure is common and gating on CNS/OTU would drop it.
+Start → end is shown, a missing half as an em dash. The card renders nothing when the primary
+recording has none of the three: a diver never had the option to enter them. It is titled "Exposure
+& Pressure" because a lone surface pressure is common and gating on CNS/OTU would drop it.
 
 Past 100% CNS is `text-warning` emphasis on the number, not a warning sentence. The second channel
 is an `sr-only` span, not an `AlertTriangle`, because a visible icon is visible advice; it is
@@ -2172,38 +2173,37 @@ violet for its `gas_number`. A stop is not the ceiling's red: both types arrive 
 
 Resting opacity is 0.9; 0.55 puts `--ceiling` and `--pressure` under 3:1.
 
-## The crosshair quotes a channel only within its `gapSeconds`, the threshold that breaks its line
+## The crosshair quotes a channel only within its `gapMs`, the threshold that breaks its line
 
 `nearestSampleIndex` clamps at both ends, so a naive readout quotes a channel across stretches it
 has no samples for — on the ceiling that invents a deco obligation.
-`sampleIndexAt(t, seconds, maxDeltaSeconds)` is `nearestSampleIndex` bounded by the channel's
-`gapSeconds`, the same threshold that breaks its line, so plot and readout cut the same stretch;
-beyond it the channel drops out of the card as its line drops out of the plot. `PlottedChannel`
-carries `gapSeconds`, and every call site goes through one local `runs(t)` returning segments and
-threshold together.
+`sampleIndexAt(t, at, maxDeltaMs)` is `nearestSampleIndex` bounded by the channel's `gapMs`, the
+same threshold that breaks its line, so plot and readout cut the same stretch; beyond it the channel
+drops out of the card as its line drops out of the plot. `PlottedChannel` carries `gapMs`, and every
+call site goes through one local `runs(t)` returning segments and threshold together.
 
 `gapThreshold` answers `Infinity` below three samples — right for segmenting ("never break this
 line"), wrong for quoting ("no distance is too far"). `readoutTolerance(t)` replaces that infinity
-with `MIN_GAP_SECONDS`. A sentinel meaning "unbounded" is safe in "should I split here?" and
-dangerous in "is this close enough?". The floor errs toward silence: no number beats an invented one
-on the ceiling.
+with `MIN_GAP_MS`. A sentinel meaning "unbounded" is safe in "should I split here?" and dangerous in
+"is this close enough?". The floor errs toward silence: no number beats an invented one on the
+ceiling.
 
-## Crosshair readout: `runs()` derives segments and `gapSeconds` from one threshold, and drops single-point runs
+## Crosshair readout: `runs()` derives segments and `gapMs` from one threshold, and drops single-point runs
 
 Segmenting the ceiling at an infinite threshold joins two isolated deco samples into one run, and
 `ceilingAreas` shades a forbidden zone across water the diver owed nothing — the readout's lie in
-pixels, which the readout then contradicts. `runs()` derives segments and `gapSeconds` from one
-threshold so the two cannot disagree. Two samples ten seconds apart still join and draw; twenty
-minutes apart they become single-point runs, and single-point runs are dropped rather than emitted:
-a one-sample `<polyline>` draws nothing and `buildAreaPath` turns one point into a zero-width shape,
-so dropping them makes "no ceiling here" true of the DOM, which is what a test can assert.
-`max_ceiling` still puts the obligation in the card's description.
+pixels, which the readout then contradicts. `runs()` derives segments and `gapMs` from one threshold
+so the two cannot disagree. Two samples ten seconds apart still join and draw; twenty minutes apart
+they become single-point runs, and single-point runs are dropped rather than emitted: a one-sample
+`<polyline>` draws nothing and `buildAreaPath` turns one point into a zero-width shape, so dropping
+them makes "no ceiling here" true of the DOM, which is what a test can assert. `max_ceiling` still
+puts the obligation in the card's description.
 
 ## Crosshair readout: a tolerance cannot answer "was this drawn?", so `PlottedChannel.drawn` does
 
-`gapSeconds` answers whether a sample is near enough to quote, and a sample dropped for sitting in
-an undrawable run of one is trivially near itself — so a readout could name a ceiling, plant a dot
-and write "deco ceiling to 3.0 meters" into the `aria-label` over a chart that drew none. Distance
+`gapMs` answers whether a sample is near enough to quote, and a sample dropped for sitting in an
+undrawable run of one is trivially near itself — so a readout could name a ceiling, plant a dot and
+write "deco ceiling to 3.0 meters" into the `aria-label` over a chart that drew none. Distance
 cannot answer a membership question. `PlottedChannel.drawn` is the set of sample indices that
 reached the picture, and a readout needs both `sampleIndexAt` and `drawn.has(index)`.
 
@@ -2247,11 +2247,11 @@ profile's `duration` spans the samples, a device keeps recording after the last 
 `user_marker` can be pressed after surfacing. The API's contract closes with "A chart that draws
 past its x domain is the chart's to clip", and that sentence is the requirement.
 
-Unclipped, `x(6000)` on a 3 000 s dive lands outside the viewBox and `x(3200)` inside it, in the
-axis-label gutter aligned with no time — while `describeProfile` names both. One filtered list feeds
-the glyphs, the crosshair and the summary, so they cannot disagree. Markers past the domain are
-dropped, not clamped to the last second (clamping invents a time), and not left to SVG clipping,
-which hides what leaves the viewBox and draws what merely leaves the plot.
+Unclipped, a marker at 6 000 s on a 3 000 s dive lands outside the viewBox and one at 3 200 s inside
+it, in the axis-label gutter aligned with no time — while `describeProfile` names both. One filtered
+list feeds the glyphs, the crosshair and the summary, so they cannot disagree. Markers past the
+domain are dropped, not clamped to the last second (clamping invents a time), and not left to SVG
+clipping, which hides what leaves the viewBox and draws what merely leaves the plot.
 
 ## A dive-wide bar/min is not a rate, so multi-tank `sac_bar_per_min` is null
 
@@ -5531,10 +5531,11 @@ consistency, both meaning the profile's span. Rejected: export-local schemas on 
 vocabularies forever.
 
 `duration` is overloaded: `Dive.duration` is the logged length, the others the profile's span, which
-runs longer; comments in `lib/api/dives.ts` say which. `gasAttributionNote` reads
-`DiveGasUse.duration` from `schemas/dive.py`, not the profile schemas. Events past `duration` are
-not clamped (spec §6.4); clipping is the chart's job. `ChannelSeries` in `lib/dive-profile.ts` keeps
-`t`, being the chart's shape, not the wire's.
+runs longer, in milliseconds on the profile shapes and in seconds on `DiveGasUse`; comments in
+`lib/api/dives.ts` say which. `gasAttributionNote` reads `DiveGasUse.duration` from
+`schemas/dive.py`, not the profile schemas. Events past `duration` are not clamped (spec §6.4);
+clipping is the chart's job. `ChannelSeries` in `lib/dive-profile.ts` keeps `t`, being the chart's
+shape, not the wire's.
 
 No CI job runs both repos (`CONTRIBUTING.md`, _Changes that span both repos_) and they deploy
 independently, so a cross-repo contract break lands on the hosted instance in halves, minutes apart;
@@ -5881,8 +5882,8 @@ the file, never one per call.
 
 ## A dive has recordings, and the first one is primary, picked only by `primaryRecording()`
 
-A dive has `recordings`, an ordered list in which ordinal 0 is primary: its files write the dive's
-oxygen-exposure readings, its profile opens the chart, and its samples go into the UDDF export.
+A dive has `recordings`, an ordered list in which ordinal 0 is primary: its readouts are the ones
+the exposure card shows, its profile opens the chart, and its samples go into the UDDF export.
 `primaryRecording()` in `lib/dive-recordings.ts` is the one place that picks it, rather than an
 `[0]` per card. `diveRecordings()` normalizes two facts rather than trusting the call site: the list
 is absent, not `[]`, on a list row and on a cached detail payload (the same `?.` discipline as
@@ -5908,7 +5909,7 @@ Re-reading the dive on the edit page goes through `divesAPI.getDive` and `setRes
 never `useResource`'s `refetch`. `refetch` re-runs `onLoaded`, which on that page is `resetFromDive`
 → `form.reset(values)`, so a diver's unsaved edits vanish with no error. Re-reading rather than
 predicting is right wherever the server changes more than one row: a recording's profile is
-re-derived from the remaining files, the recording goes with its last file, and the dive's readings
+re-derived from the remaining files, the recording goes with its last file, and the dive's positions
 follow the primary.
 
 ## A second file of one recording fills the form, and never overwrites it
@@ -5952,7 +5953,8 @@ step away. It renders nothing on a dive with no recording, since the API refuses
 hand-entered dive. The dialog says two things the word "merge" hides. Which dive survives is the
 server's answer — the earlier by the match gates' clock rule — so the action navigates to whatever
 comes back; the losing uuid is soft-deleted and would 404. And the oxygen-exposure readings are not
-combined: CNS and OTU are the device's running accounting, and the API leaves `cns_end` as it is.
+combined: CNS and OTU are each device's running accounting, so every recording keeps its own, and a
+fold of one computer's two records only fills the surviving recording's blanks.
 
 ## The neighbours go stale without the uuid changing, so the page carries a reload token
 
@@ -6012,17 +6014,17 @@ browser.
 ## Deleting a file is three different actions, and the confirmation says which
 
 `DELETE /dive/{uuid}/file/{fid}` (`delete_dive_file`) does one of three things: the recording keeps
-other files and re-derives its profile; the recording goes with its last file, `renumber_ordinals`
-promoting the next to ordinal 0; or a file-less recording survives, its samples a merge's or a
-converted document's. The dive's figures, entry and exit positions included, follow the primary
-recording and move only when the deletion touched ordinal 0 (`refresh_tech_scalars` takes
-`touched_primary`); a file-less primary clears them like none. `deleteFileConfirmation`,
-`deleteRecordingConfirmation` and `figuresSentence` in `lib/dive-recordings.ts` take the whole
-recording list, so the recordings card and both forms agree. The heading becomes "Delete this file
-and its recording?" where the recording goes; every branch mentions the figures; the dialogs mount
-only while a deletion is pending, or the neutral heading would show while closing.
-`DELETE_DIVE_CONFIRMATION` names the recordings and files a dive delete hard-deletes (`erase_dive` →
-`delete_files_for_dive`) without counting, so both pages agree.
+other files and re-derives its profile and readouts; the recording goes with its last file,
+`renumber_ordinals` promoting the next to ordinal 0; or a file-less recording survives, its samples
+and readouts a merge's or a converted document's. The dive's own figures, its entry and exit
+positions, follow the primary recording and move only when the deletion touched ordinal 0
+(`refresh_tech_scalars` takes `touched_primary`); a file-less primary clears them like none.
+`deleteFileConfirmation`, `deleteRecordingConfirmation` and `figuresSentence` in
+`lib/dive-recordings.ts` take the whole recording list, so the recordings card and both forms agree.
+The heading becomes "Delete this file and its recording?" where the recording goes; every branch
+mentions the figures; the dialogs mount only while a deletion is pending, or the neutral heading
+would show while closing. `DELETE_DIVE_CONFIRMATION` names the recordings and files a dive delete
+hard-deletes (`erase_dive` → `delete_files_for_dive`) without counting, so both pages agree.
 
 ## A format list in this file outlives the sweep that catches its siblings
 

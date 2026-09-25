@@ -15,6 +15,7 @@ import {
   primaryRecording,
   recordingDeviceLabel,
   recordingLabel,
+  recordingReadoutsLabel,
   recordingSettingsLabel,
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
@@ -39,7 +40,8 @@ function profileInfo(
 ): DiveProfileInfo {
   return {
     uuid: "p1",
-    duration: 3163,
+    // Milliseconds, the profile's own axis.
+    duration: 3_163_000,
     depth_sample_count: 314,
     provenance: "file",
     channels: ["depth"],
@@ -295,15 +297,16 @@ describe("deleteFileConfirmation", () => {
     const { title, description } = deleteFileConfirmation([suunto], "sf");
 
     expect(title).toBe("Delete this file?");
-    expect(description).toContain("re-read from the files it keeps");
-    // The one recording there is writes the dive's readings, so they move with
+    expect(description).toContain("profile and readouts are re-read");
+    // The one recording there is writes the dive's positions, so they move with
     // it even though the recording itself survives.
     expect(description).toContain("re-read along with it");
   });
 
-  it("says the readings are left alone for a recording that does not write them", () => {
-    // The Perdix's last file, so its recording goes - but it is not the one
-    // shown by default, and the dive's readings are the Suunto's either way.
+  it("says the positions are left alone for a recording that does not write them", () => {
+    // The Perdix's last file, so its recording goes - its own readouts with it -
+    // but it is not the one shown by default, and the dive's positions are the
+    // Suunto's either way.
     const suunto = recording({ files: [suuntoJson, suuntoFit] });
     const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
     const { title, description } = deleteFileConfirmation(
@@ -313,6 +316,7 @@ describe("deleteFileConfirmation", () => {
 
     expect(title).toBe("Delete this file and its recording?");
     expect(description).toContain("the whole recording goes with it");
+    expect(description).toContain("its readouts");
     expect(description).toContain("are left alone");
   });
 
@@ -336,7 +340,7 @@ describe("deleteFileConfirmation", () => {
   it("does not promise a handover to a recording with no file to read", () => {
     // `renumber_ordinals` promotes in ordinal order without skipping a file-less
     // recording, and `refresh_tech_scalars` then finds nothing on it - so the
-    // readings are cleared exactly as if no recording were left, and the
+    // positions are cleared exactly as if no recording were left, and the
     // reassuring sentence would be the one lie this whole change exists to stop.
     const suunto = recording({ files: [suuntoJson] });
     const imported = recording({
@@ -371,7 +375,7 @@ describe("deleteFileConfirmation", () => {
     expect(description).toContain("re-read from that instead");
   });
 
-  it("says the readings are cleared when nothing is left to read them from", () => {
+  it("says the positions are cleared when nothing is left to read them from", () => {
     const suunto = recording({ files: [suuntoJson] });
     const { title, description } = deleteFileConfirmation([suunto], "sj");
 
@@ -394,10 +398,12 @@ describe("deleteFileConfirmation", () => {
       const { title, description } = deleteFileConfirmation([merged], "sj");
 
       // The recording survives file-less, so the title must not promise its
-      // removal - but the dive's readings still go, having come off the file.
+      // removal, and its readouts stay with it - but the dive's positions still
+      // go, having come off the file.
       expect(title).toBe("Delete this file?");
       expect(description).toContain("nothing to download");
       expect(description).toContain(clause);
+      expect(description).toContain("Its samples and readouts stay");
       expect(description).toContain("are cleared with the last of those files");
     },
   );
@@ -414,12 +420,11 @@ describe("deleteFileConfirmation", () => {
   });
 
   it("still calls a secondary deletion a no-op when the primary holds no file", () => {
-    // The one case the API had to be fixed for rather than described: a
-    // converted logbook import writes its document's figures onto the dive
-    // beside a file-less primary, and `refresh_tech_scalars` used to re-read
-    // that primary - finding nothing - on a deletion that never touched it. It
-    // now takes a `touched_primary` and returns without writing, so this is the
-    // no-op it looks like and the copy says so.
+    // A converted logbook import writes its document's positions onto the dive
+    // beside a file-less primary, and `refresh_tech_scalars` re-reading that
+    // primary - finding nothing - would clear them on a deletion that never
+    // touched it. It takes a `touched_primary` and returns without writing, so
+    // this is the no-op it looks like and the copy says so.
     const imported = recording({
       files: [],
       profile: profileInfo({ provenance: "divejson_import" }),
@@ -439,10 +444,10 @@ describe("deleteFileConfirmation", () => {
     ).toContain("are left alone");
   });
 
-  it("leaves the figures alone when a secondary merely loses one of its files", () => {
-    // The same answer by a second route: `_rederive_recording` returns before
-    // the figures for any recording that is not ordinal 0, so this path never
-    // reached the rewrite even before it learnt to refuse one.
+  it("leaves the positions alone when a secondary merely loses one of its files", () => {
+    // The same answer by a second route: `_rederive_recording` re-reads that
+    // recording's own readouts and returns before the dive's positions for any
+    // recording that is not ordinal 0.
     const imported = recording({
       files: [],
       profile: profileInfo({ provenance: "divejson_import" }),
@@ -485,7 +490,7 @@ describe("deleteRecordingConfirmation", () => {
     expect(description).toContain("The dive itself stays");
   });
 
-  it("says the readings are cleared when it was the dive's only recording", () => {
+  it("says the positions are cleared when it was the dive's only recording", () => {
     const imported = recording({
       files: [],
       profile: profileInfo({ provenance: "merge" }),
@@ -498,10 +503,10 @@ describe("deleteRecordingConfirmation", () => {
     );
   });
 
-  it("leaves the figures alone for a recording that is not the one shown by default", () => {
+  it("leaves the positions alone for a recording that is not the one shown by default", () => {
     // The whole-recording route's half of the API's `touched_primary`: removing
-    // a second computer's recording says nothing about figures the primary - or
-    // a document - put on the dive.
+    // a second computer's recording says nothing about positions the primary -
+    // or a document - put on the dive.
     const imported = recording({
       files: [],
       profile: profileInfo({ provenance: "divejson_import" }),
@@ -641,5 +646,83 @@ describe("recordingSettingsLabel", () => {
 
   it("is null for a deco model that recorded nothing worth a word", () => {
     expect(recordingSettingsLabel(recording({ deco_model: {} }))).toBeNull();
+  });
+
+  it("names the salinity the way the computer's own menu does", () => {
+    expect(
+      recordingSettingsLabel(
+        recording({
+          mode: "open_circuit",
+          deco_model: { algorithm: "buhlmann", gf_low: 30, gf_high: 85 },
+          salinity: "en13319",
+        }),
+      ),
+    ).toBe("Open circuit · Bühlmann GF 30/85 · salinity EN13319");
+    expect(recordingSettingsLabel(recording({ salinity: "fresh" }))).toBe(
+      "salinity Fresh",
+    );
+    expect(recordingSettingsLabel(recording({ salinity: "salt" }))).toBe(
+      "salinity Salt",
+    );
+  });
+
+  it("says nothing for a salinity this build has never heard of", () => {
+    // On `mode`'s terms: the vocabulary may grow in the API before this bundle
+    // ships a word for it, and a raw slug is worse than silence.
+    expect(
+      recordingSettingsLabel(recording({ salinity: "custom" })),
+    ).toBeNull();
+    expect(recordingSettingsLabel(recording({ salinity: null }))).toBeNull();
+  });
+});
+
+describe("recordingReadoutsLabel", () => {
+  it("says every readout the recording carries on one line", () => {
+    expect(
+      recordingReadoutsLabel(
+        recording({
+          cns_start: 0,
+          cns_end: 9,
+          otu_start: 0,
+          otu_end: 22,
+          surface_pressure_bar: 1.012,
+        }),
+      ),
+    ).toBe("CNS 0% → 9% · OTU 0 → 22 · Surface pressure 1.012 bar");
+  });
+
+  it("keeps a half-recorded pair a pair", () => {
+    // A FIT file records an end-OTU and no start - the exposure card's em dash,
+    // so the arrow still reads "from, to".
+    expect(recordingReadoutsLabel(recording({ otu_end: 23 }))).toBe(
+      "OTU — → 23",
+    );
+  });
+
+  it("says a surface pressure alone, which a recording may carry by itself", () => {
+    expect(
+      recordingReadoutsLabel(recording({ surface_pressure_bar: 1.009 })),
+    ).toBe("Surface pressure 1.009 bar");
+  });
+
+  it("treats a recorded zero as a reading", () => {
+    expect(recordingReadoutsLabel(recording({ cns_start: 0 }))).toBe(
+      "CNS 0% → —",
+    );
+  });
+
+  it("is null for a recording that reported none, nulls or absent keys", () => {
+    expect(recordingReadoutsLabel(recording())).toBeNull();
+    expect(
+      recordingReadoutsLabel(
+        recording({
+          cns_start: null,
+          cns_end: null,
+          otu_start: null,
+          otu_end: null,
+          surface_pressure_bar: null,
+        }),
+      ),
+    ).toBeNull();
   });
 });

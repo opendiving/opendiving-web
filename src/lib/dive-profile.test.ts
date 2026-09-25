@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiveProfile, DiveProfileEvent } from "@/lib/api/dives";
 import {
-  MIN_GAP_SECONDS,
+  MIN_GAP_MS,
   PROFILE_CHANNEL_KEYS,
   type ProfileChannelKey,
   axisDomain,
@@ -14,6 +14,8 @@ import {
   drawnSampleIndexAt,
   elapsedTicks,
   formatChannelValue,
+  formatElapsed,
+  formatElapsedSpoken,
   gapThreshold,
   nearestEvent,
   nearestSampleIndex,
@@ -28,12 +30,20 @@ import {
 } from "@/lib/dive-profile";
 import { niceDomain } from "@/lib/chart-scale";
 
+// Every time in this file is on the profile's own axis, milliseconds - so a
+// 10-second cadence is `10_000` apart, as the API serves it.
 function profile(overrides: Partial<DiveProfile> = {}): DiveProfile {
   return {
-    duration: 30,
-    depth: { times: [0, 10, 20, 30], values: [139, 372, 632, 88] },
-    temperature: { times: [0, 10, 20, 30], values: [219, 219, 218, 220] },
-    pressures: [{ gas_number: 1, times: [0, 10], values: [2052, 2041] }],
+    duration: 30_000,
+    depth: {
+      times: [0, 10_000, 20_000, 30_000],
+      values: [139, 372, 632, 88],
+    },
+    temperature: {
+      times: [0, 10_000, 20_000, 30_000],
+      values: [219, 219, 218, 220],
+    },
+    pressures: [{ gas_number: 1, times: [0, 10_000], values: [2052, 2041] }],
     events: [],
     ...overrides,
   };
@@ -93,7 +103,7 @@ describe("toPressureSeries", () => {
     const series = toPressureSeries(
       profile({
         pressures: [
-          { gas_number: 0, times: [0, 10], values: [2074, 2051] },
+          { gas_number: 0, times: [0, 10_000], values: [2074, 2051] },
           { gas_number: 3, times: [0], values: [1500] },
         ],
       }),
@@ -114,7 +124,7 @@ describe("toChannelSeries for the ceiling", () => {
     // 300 cm is a 3.0 m ceiling - the commonest stop depth there is, and it has
     // to come out as the same number a 300 cm *depth* would.
     const ceiling = toChannelSeries(
-      profile({ ceiling: { times: [730, 940], values: [300, 323] } }),
+      profile({ ceiling: { times: [730_000, 940_000], values: [300, 323] } }),
       "ceiling",
       "metric",
     );
@@ -240,59 +250,60 @@ describe("axisDomain", () => {
 describe("nearestEvent", () => {
   const events = [
     event({ time: 0, type: "gas_switch", gas_number: 0 }),
-    event({ time: 497, type: null, label: "NoDecoTime" }),
-    event({ time: 2075, type: "gas_switch", gas_number: 1 }),
+    event({ time: 497_000, type: null, label: "NoDecoTime" }),
+    event({ time: 2_075_000, type: "gas_switch", gas_number: 1 }),
   ];
 
   it("finds the closest marker within the tolerance", () => {
-    expect(nearestEvent(events, 480, 40)?.label).toBe("NoDecoTime");
+    expect(nearestEvent(events, 480_000, 40_000)?.label).toBe("NoDecoTime");
   });
 
   it("returns null when the nearest marker is out of reach", () => {
     // 1 200 s from either neighbour: the crosshair is nowhere near a marker, and
     // naming one anyway would caption something that isn't under it.
-    expect(nearestEvent(events, 1280, 40)).toBeNull();
+    expect(nearestEvent(events, 1_280_000, 40_000)).toBeNull();
   });
 
   it("prefers the nearer of two markers on either side", () => {
-    expect(nearestEvent(events, 300, 600)?.time).toBe(497);
-    expect(nearestEvent(events, 200, 600)?.time).toBe(0);
+    expect(nearestEvent(events, 300_000, 600_000)?.time).toBe(497_000);
+    expect(nearestEvent(events, 200_000, 600_000)?.time).toBe(0);
   });
 
   it("gives a tie to the earlier marker, whatever order it arrived in", () => {
-    expect(
-      nearestEvent([event({ time: 100 }), event({ time: 200 })], 150, 60)?.time,
-    ).toBe(100);
+    const early = event({ time: 100_000 });
+    const late = event({ time: 200_000 });
+
+    expect(nearestEvent([early, late], 150_000, 60_000)?.time).toBe(100_000);
     // The half that array order alone would get wrong: the later marker is
     // listed first, and "earlier event" has to mean earlier in time.
-    expect(
-      nearestEvent([event({ time: 200 }), event({ time: 100 })], 150, 60)?.time,
-    ).toBe(100);
+    expect(nearestEvent([late, early], 150_000, 60_000)?.time).toBe(100_000);
   });
 
   it("does not assume the list arrived sorted", () => {
     const unsorted = [
-      event({ time: 900 }),
-      event({ time: 60 }),
-      event({ time: 400 }),
+      event({ time: 900_000 }),
+      event({ time: 60_000 }),
+      event({ time: 400_000 }),
     ];
 
-    expect(nearestEvent(unsorted, 70, 30)?.time).toBe(60);
+    expect(nearestEvent(unsorted, 70_000, 30_000)?.time).toBe(60_000);
   });
 
   it("is null on a dive with no markers", () => {
-    expect(nearestEvent([], 100, 60)).toBeNull();
+    expect(nearestEvent([], 100_000, 60_000)).toBeNull();
   });
 
-  it("includes a marker exactly at the tolerance", () => {
-    expect(nearestEvent([event({ time: 100 })], 160, 60)?.time).toBe(100);
-    expect(nearestEvent([event({ time: 100 })], 161, 60)).toBeNull();
+  it("includes a marker exactly at the tolerance, to the millisecond", () => {
+    const marker = [event({ time: 100_000 })];
+
+    expect(nearestEvent(marker, 160_000, 60_000)?.time).toBe(100_000);
+    expect(nearestEvent(marker, 160_001, 60_000)).toBeNull();
   });
 });
 
 describe("sampleIndexAt", () => {
   it("is the nearest sample when there is one close enough", () => {
-    expect(sampleIndexAt([0, 10, 20, 30], 21, 30)).toBe(2);
+    expect(sampleIndexAt([0, 10_000, 20_000, 30_000], 21_000, 30_000)).toBe(2);
   });
 
   it("refuses to quote a reading from before a channel started", () => {
@@ -300,26 +311,30 @@ describe("sampleIndexAt", () => {
     // begins at 730 s says nothing about the dive at 300 s - the diver owed no
     // decompression then, and clamping to the first sample would report a 3.0 m
     // ceiling they were never held to.
-    const ceilingT = [730, 800, 810, 820];
+    const ceilingT = [730_000, 800_000, 810_000, 820_000];
 
-    expect(sampleIndexAt(ceilingT, 300, gapThreshold(ceilingT))).toBe(-1);
-    expect(sampleIndexAt(ceilingT, 735, gapThreshold(ceilingT))).toBe(0);
+    expect(sampleIndexAt(ceilingT, 300_000, gapThreshold(ceilingT))).toBe(-1);
+    expect(sampleIndexAt(ceilingT, 735_000, gapThreshold(ceilingT))).toBe(0);
   });
 
   it("refuses inside a dropout, where no line is drawn either", () => {
     // A transmitter silent from 20 s to 620 s. Mid-dropout there is nothing
     // honest to report, and the polyline is broken across exactly this stretch.
-    expect(sampleIndexAt([0, 10, 20, 620, 630], 300, 30)).toBe(-1);
+    expect(
+      sampleIndexAt([0, 10_000, 20_000, 620_000, 630_000], 300_000, 30_000),
+    ).toBe(-1);
   });
 
   it("still reports right at the edge of a gap", () => {
     // Within the channel's own cadence tolerance of a real sample, so there *is*
     // a reading worth calling this instant's - the gap starts further along.
-    expect(sampleIndexAt([0, 10, 20, 620, 630], 45, 30)).toBe(2);
+    expect(
+      sampleIndexAt([0, 10_000, 20_000, 620_000, 630_000], 45_000, 30_000),
+    ).toBe(2);
   });
 
   it("is -1 for an empty series", () => {
-    expect(sampleIndexAt([], 10, 30)).toBe(-1);
+    expect(sampleIndexAt([], 10_000, 30_000)).toBe(-1);
   });
 
   it("refuses across a two-sample ceiling, where the threshold is infinite", () => {
@@ -329,33 +344,36 @@ describe("sampleIndexAt", () => {
     // into the clamping `nearestSampleIndex`. A dive that tips into deco for two
     // 10-second samples produces exactly this series, so the crosshair reported
     // that ceiling at every instant of the dive.
-    const ceilingT = [730, 800];
+    const ceilingT = [730_000, 800_000];
+    const tolerance = readoutTolerance(ceilingT);
 
     expect(gapThreshold(ceilingT)).toBe(Number.POSITIVE_INFINITY);
-    expect(readoutTolerance(ceilingT)).toBe(MIN_GAP_SECONDS);
-    expect(sampleIndexAt(ceilingT, 300, readoutTolerance(ceilingT))).toBe(-1);
-    expect(sampleIndexAt(ceilingT, 4000, readoutTolerance(ceilingT))).toBe(-1);
-    expect(sampleIndexAt(ceilingT, 735, readoutTolerance(ceilingT))).toBe(0);
+    expect(tolerance).toBe(MIN_GAP_MS);
+    expect(sampleIndexAt(ceilingT, 300_000, tolerance)).toBe(-1);
+    expect(sampleIndexAt(ceilingT, 4_000_000, tolerance)).toBe(-1);
+    expect(sampleIndexAt(ceilingT, 735_000, tolerance)).toBe(0);
   });
 
   it("refuses across a one-sample ceiling, which draws nothing at all", () => {
     // Worse than the two-sample case: the single-point run draws no line and no
     // area, so the chart showed no ceiling while the tooltip insisted on one.
-    const ceilingT = [730];
+    const ceilingT = [730_000];
 
     expect(segmentByTimeGap(ceilingT, gapThreshold(ceilingT))).toEqual([[0]]);
-    expect(sampleIndexAt(ceilingT, 60, readoutTolerance(ceilingT))).toBe(-1);
+    expect(sampleIndexAt(ceilingT, 60_000, readoutTolerance(ceilingT))).toBe(
+      -1,
+    );
   });
 
   it("leaves an unbroken series alone", () => {
     // The regular case: a 10 s cadence gives a 30 s threshold, so every instant
     // in the dive resolves, and this changes nothing about what was already
     // being reported.
-    const t = [0, 10, 20, 30, 40];
+    const t = [0, 10_000, 20_000, 30_000, 40_000];
     const threshold = gapThreshold(t);
 
     expect(
-      t.map((_, index) => sampleIndexAt(t, index * 10 + 3, threshold)),
+      t.map((_, index) => sampleIndexAt(t, index * 10_000 + 3_000, threshold)),
     ).toEqual([0, 1, 2, 3, 4]);
   });
 });
@@ -364,44 +382,48 @@ describe("drawnSampleIndexAt", () => {
   const all = (t: number[]) => new Set(t.map((_, index) => index));
 
   it("matches sampleIndexAt when every sample was drawn", () => {
-    const t = [0, 10, 20, 30];
+    const t = [0, 10_000, 20_000, 30_000];
 
-    expect(drawnSampleIndexAt(t, 21, 30, all(t))).toBe(2);
-    expect(drawnSampleIndexAt(t, 300, 30, all(t))).toBe(-1);
+    expect(drawnSampleIndexAt(t, 21_000, 30_000, all(t))).toBe(2);
+    expect(drawnSampleIndexAt(t, 300_000, 30_000, all(t))).toBe(-1);
   });
 
   it("skips past a nearer undrawn sample to a drawn one in reach", () => {
-    // The masking case. 1060 is the nearest to 1045 and was dropped as an
-    // isolated run; 1020 is 25 s away, inside the 30 s tolerance, and drawn.
+    // The masking case. 1060 s is the nearest to 1045 s and was dropped as an
+    // isolated run; 1020 s is 25 s away, inside the 30 s tolerance, and drawn.
     // Rejecting the nearest outright reported nothing at all.
-    const t = [1000, 1010, 1020, 1060];
+    const t = [1_000_000, 1_010_000, 1_020_000, 1_060_000];
 
-    expect(drawnSampleIndexAt(t, 1045, 30, new Set([0, 1, 2]))).toBe(2);
+    expect(drawnSampleIndexAt(t, 1_045_000, 30_000, new Set([0, 1, 2]))).toBe(
+      2,
+    );
   });
 
   it("still refuses when the nearest drawn sample is out of reach", () => {
-    const t = [1000, 1010, 1020, 1060];
+    const t = [1_000_000, 1_010_000, 1_020_000, 1_060_000];
 
-    // 1020 is 60 s away now - past the tolerance - and 1060 is undrawn.
-    expect(drawnSampleIndexAt(t, 1080, 30, new Set([0, 1, 2]))).toBe(-1);
+    // 1020 s is 60 s away now - past the tolerance - and 1060 s is undrawn.
+    expect(drawnSampleIndexAt(t, 1_080_000, 30_000, new Set([0, 1, 2]))).toBe(
+      -1,
+    );
   });
 
   it("searches both directions", () => {
-    const t = [0, 100, 200];
+    const t = [0, 100_000, 200_000];
 
     // Only the last sample was drawn; hovering just before the middle one has
     // to reach forward past it.
-    expect(drawnSampleIndexAt(t, 190, 30, new Set([2]))).toBe(2);
+    expect(drawnSampleIndexAt(t, 190_000, 30_000, new Set([2]))).toBe(2);
     // And backward.
-    expect(drawnSampleIndexAt(t, 110, 30, new Set([0]))).toBe(-1);
+    expect(drawnSampleIndexAt(t, 110_000, 30_000, new Set([0]))).toBe(-1);
   });
 
   it("is -1 when nothing was drawn at all", () => {
-    expect(drawnSampleIndexAt([0, 10], 5, 30, new Set())).toBe(-1);
+    expect(drawnSampleIndexAt([0, 10_000], 5_000, 30_000, new Set())).toBe(-1);
   });
 
   it("is -1 for an empty series", () => {
-    expect(drawnSampleIndexAt([], 10, 30, new Set())).toBe(-1);
+    expect(drawnSampleIndexAt([], 10_000, 30_000, new Set())).toBe(-1);
   });
 });
 
@@ -532,130 +554,182 @@ describe("describeEvent", () => {
 
 describe("segmentByTimeGap", () => {
   it("returns one run for an unbroken series", () => {
-    expect(segmentByTimeGap([0, 10, 20, 30], 30)).toEqual([[0, 1, 2, 3]]);
+    expect(segmentByTimeGap([0, 10_000, 20_000, 30_000], 30_000)).toEqual([
+      [0, 1, 2, 3],
+    ]);
   });
 
   it("breaks where the gap exceeds the threshold", () => {
     // A transmitter that stopped reporting between 20 s and 620 s.
-    expect(segmentByTimeGap([0, 10, 20, 620, 630], 30)).toEqual([
+    expect(
+      segmentByTimeGap([0, 10_000, 20_000, 620_000, 630_000], 30_000),
+    ).toEqual([
       [0, 1, 2],
       [3, 4],
     ]);
   });
 
   it("does not break on a gap exactly at the threshold", () => {
-    expect(segmentByTimeGap([0, 30, 60], 30)).toEqual([[0, 1, 2]]);
+    expect(segmentByTimeGap([0, 30_000, 60_000], 30_000)).toEqual([[0, 1, 2]]);
   });
 
   it("handles an empty series", () => {
-    expect(segmentByTimeGap([], 30)).toEqual([]);
+    expect(segmentByTimeGap([], 30_000)).toEqual([]);
   });
 
   it("handles a single sample", () => {
-    expect(segmentByTimeGap([42], 30)).toEqual([[0]]);
+    expect(segmentByTimeGap([42_000], 30_000)).toEqual([[0]]);
   });
 });
 
 describe("gapThreshold", () => {
   it("scales with a series' own cadence", () => {
     // 10 s cadence (every Suunto depth series) -> 30 s.
-    expect(gapThreshold([0, 10, 20, 30, 40])).toBe(30);
+    expect(gapThreshold([0, 10_000, 20_000, 30_000, 40_000])).toBe(30_000);
   });
 
   it("never drops below the floor on a fast series", () => {
-    // 1 Hz temperature would otherwise break on a single rounding wobble.
-    expect(gapThreshold([0, 1, 2, 3, 4])).toBe(MIN_GAP_SECONDS);
+    // 1 Hz temperature would otherwise break on the jitter in its own stamps.
+    expect(gapThreshold([0, 1_000, 2_000, 3_000, 4_000])).toBe(MIN_GAP_MS);
+    expect(MIN_GAP_MS).toBe(15_000);
+  });
+
+  it("keeps a sub-second cadence's line whole", () => {
+    // A freediving computer logging four times a second: its median delta is
+    // 250 ms, so three times it would break the line on any 750 ms hiccup. The
+    // floor keeps it whole.
+    const t = [0, 250, 500, 750, 1_000, 2_000, 2_250];
+
+    expect(gapThreshold(t)).toBe(MIN_GAP_MS);
+    expect(segmentByTimeGap(t, gapThreshold(t))).toHaveLength(1);
   });
 
   it("ignores a lone outlying gap when picking the threshold", () => {
-    // The median delta is 10 despite the 600 s dropout, so the dropout is
+    // The median delta is 10 s despite the 600 s dropout, so the dropout is
     // above the threshold and gets broken - which is the point.
-    const t = [0, 10, 20, 620, 630, 640];
-    expect(gapThreshold(t)).toBe(30);
+    const t = [0, 10_000, 20_000, 620_000, 630_000, 640_000];
+    expect(gapThreshold(t)).toBe(30_000);
     expect(segmentByTimeGap(t, gapThreshold(t))).toHaveLength(2);
   });
 
   it("never breaks a series too short to have a cadence", () => {
-    expect(gapThreshold([0, 10])).toBe(Number.POSITIVE_INFINITY);
-    expect(segmentByTimeGap([0, 10], gapThreshold([0, 10]))).toEqual([[0, 1]]);
+    const t = [0, 10_000];
+
+    expect(gapThreshold(t)).toBe(Number.POSITIVE_INFINITY);
+    expect(segmentByTimeGap(t, gapThreshold(t))).toEqual([[0, 1]]);
   });
 });
 
 describe("nearestSampleIndex", () => {
-  const t = [0, 10, 20, 30, 40];
+  const t = [0, 10_000, 20_000, 30_000, 40_000];
 
   it("finds an exact hit", () => {
-    expect(nearestSampleIndex(t, 20)).toBe(2);
+    expect(nearestSampleIndex(t, 20_000)).toBe(2);
   });
 
   it("rounds a midpoint to the earlier sample", () => {
-    expect(nearestSampleIndex(t, 15)).toBe(1);
+    expect(nearestSampleIndex(t, 15_000)).toBe(1);
   });
 
   it("picks the nearer neighbour", () => {
-    expect(nearestSampleIndex(t, 16)).toBe(2);
-    expect(nearestSampleIndex(t, 14)).toBe(1);
+    expect(nearestSampleIndex(t, 16_000)).toBe(2);
+    expect(nearestSampleIndex(t, 14_000)).toBe(1);
+  });
+
+  it("resolves the millisecond either side of a midpoint", () => {
+    expect(nearestSampleIndex(t, 15_001)).toBe(2);
+    expect(nearestSampleIndex(t, 14_999)).toBe(1);
   });
 
   it("clamps before the first sample", () => {
-    expect(nearestSampleIndex(t, -100)).toBe(0);
+    expect(nearestSampleIndex(t, -100_000)).toBe(0);
   });
 
   it("clamps after the last sample", () => {
-    expect(nearestSampleIndex(t, 10_000)).toBe(4);
+    expect(nearestSampleIndex(t, 10_000_000)).toBe(4);
   });
 
   it("handles a single sample", () => {
-    expect(nearestSampleIndex([7], 0)).toBe(0);
-    expect(nearestSampleIndex([7], 700)).toBe(0);
+    expect(nearestSampleIndex([7_000], 0)).toBe(0);
+    expect(nearestSampleIndex([7_000], 700_000)).toBe(0);
   });
 
   it("handles an empty series", () => {
-    expect(nearestSampleIndex([], 10)).toBe(-1);
+    expect(nearestSampleIndex([], 10_000)).toBe(-1);
   });
 
   it("works on an irregularly spaced series", () => {
     // What a downsampled channel looks like: bucketed, so unevenly spaced.
-    const irregular = [0, 3, 47, 48, 900];
-    expect(nearestSampleIndex(irregular, 46)).toBe(2);
-    expect(nearestSampleIndex(irregular, 400)).toBe(3);
-    expect(nearestSampleIndex(irregular, 500)).toBe(4);
+    const irregular = [0, 3_000, 47_000, 48_000, 900_000];
+    expect(nearestSampleIndex(irregular, 46_000)).toBe(2);
+    expect(nearestSampleIndex(irregular, 400_000)).toBe(3);
+    expect(nearestSampleIndex(irregular, 500_000)).toBe(4);
   });
 });
 
 describe("elapsedTicks", () => {
+  const MINUTE = 60_000;
+
   it("gives round minutes for a short dive", () => {
-    // 12 minutes.
-    expect(elapsedTicks(720)).toEqual([0, 120, 240, 360, 480, 600, 720]);
+    // 12 minutes -> every 2.
+    expect(elapsedTicks(12 * MINUTE)).toEqual(
+      [0, 2, 4, 6, 8, 10, 12].map((minutes) => minutes * MINUTE),
+    );
   });
 
   it("gives round minutes for a typical dive", () => {
     // 50 minutes -> a 10-minute step, not 8m20s.
-    expect(elapsedTicks(3000)).toEqual([0, 600, 1200, 1800, 2400, 3000]);
+    expect(elapsedTicks(50 * MINUTE)).toEqual(
+      [0, 10, 20, 30, 40, 50].map((minutes) => minutes * MINUTE),
+    );
   });
 
   it("gives round minutes for a long dive", () => {
     // 3 hours -> half-hourly.
-    expect(elapsedTicks(10_800)).toEqual([
-      0, 1800, 3600, 5400, 7200, 9000, 10_800,
-    ]);
+    expect(elapsedTicks(180 * MINUTE)).toEqual(
+      [0, 30, 60, 90, 120, 150, 180].map((minutes) => minutes * MINUTE),
+    );
   });
 
   it("never runs past the end of the dive", () => {
-    const ticks = elapsedTicks(2781);
-    expect(Math.max(...ticks)).toBeLessThanOrEqual(2781);
+    const ticks = elapsedTicks(2_781_000);
+    expect(Math.max(...ticks)).toBeLessThanOrEqual(2_781_000);
   });
 
   it("every tick is a whole number of minutes", () => {
-    for (const duration of [720, 2781, 3000, 4401, 10_800]) {
+    for (const duration of [
+      720_000, 2_781_000, 3_000_000, 4_401_160, 10_800_000,
+    ]) {
       for (const tick of elapsedTicks(duration)) {
-        expect(tick % 60).toBe(0);
+        expect(tick % MINUTE).toBe(0);
       }
     }
   });
 
   it("survives a zero-length profile", () => {
     expect(elapsedTicks(0)).toEqual([0]);
+  });
+});
+
+describe("formatElapsed", () => {
+  it("reads an axis instant as minutes and seconds", () => {
+    expect(formatElapsed(0)).toBe("0:00");
+    expect(formatElapsed(600_000)).toBe("10:00");
+    expect(formatElapsed(4_000_020)).toBe("66:40");
+  });
+
+  it("rounds to the nearest second rather than printing milliseconds", () => {
+    // The first depth of `suunto-ocean.json` sits 160 ms after its header, and
+    // an `M:SS` label has no place to put that.
+    expect(formatElapsed(160)).toBe("0:00");
+    expect(formatElapsed(1_600)).toBe("0:02");
+  });
+});
+
+describe("formatElapsedSpoken", () => {
+  it("reads a span aloud in hours and minutes", () => {
+    expect(formatElapsedSpoken(1_500_000)).toBe("25min");
+    expect(formatElapsedSpoken(5_100_000)).toBe("1h 25min");
   });
 });
 
@@ -782,17 +856,18 @@ describe("the deco channels", () => {
   // API serves. The numbers here are the wire's integers, so the assertions are
   // the whole of the contract between `schemas/dive_profile.py` and this chart.
   const deco = profile({
-    ndl: { times: [0, 60], values: [5940, 0] },
-    tts: { times: [0, 60], values: [0, 1080] },
-    ppo2: { times: [0, 60], values: [21, 132] },
-    cns: { times: [0, 60], values: [0, 234] },
-    gradient_factor: { times: [0, 60], values: [0, 12575] },
-    surface_gradient_factor: { times: [0, 60], values: [0, 87] },
+    ndl: { times: [0, 60_000], values: [5940, 0] },
+    tts: { times: [0, 60_000], values: [0, 1080] },
+    ppo2: { times: [0, 60_000], values: [21, 132] },
+    cns: { times: [0, 60_000], values: [0, 234] },
+    gradient_factor: { times: [0, 60_000], values: [0, 12575] },
+    surface_gradient_factor: { times: [0, 60_000], values: [0, 87] },
   });
 
   it("reads a no-deco time in minutes, not in the seconds it arrives as", () => {
     // 5 940 s is 99 minutes - a Shearwater's display maximum, which is a reading
-    // rather than a sentinel and is carried as one.
+    // rather than a sentinel and is carried as one. Seconds still, on an axis
+    // that is milliseconds: a value is a reading, not a position on the axis.
     expect(toChannelSeries(deco, "ndl", "metric")?.values).toEqual([99, 0]);
     expect(toChannelSeries(deco, "tts", "metric")?.values).toEqual([0, 18]);
   });

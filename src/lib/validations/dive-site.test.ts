@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NOTES_MAX_LENGTH } from "./notes";
 import {
   diveSiteFormSchema,
   formatCoordinateForForm,
@@ -40,7 +41,7 @@ describe("diveSiteFormSchema", () => {
   it("rejects notes longer than the max length", () => {
     const result = diveSiteFormSchema.safeParse({
       name: "Blue Hole",
-      notes: "a".repeat(63207),
+      notes: "a".repeat(NOTES_MAX_LENGTH + 1),
     });
     expect(result.success).toBe(false);
   });

@@ -1,9 +1,49 @@
 import { describe, it, expect } from "vitest";
-import { certificationAgencyLabel, certificationLabel } from "./certifications";
+import {
+  CERTIFICATION_AGENCIES,
+  certificationAgencyLabel,
+  certificationLabel,
+} from "./certifications";
 
 describe("certificationAgencyLabel", () => {
   it("spells out the acronym for a known agency", () => {
     expect(certificationAgencyLabel("padi")).toBe("PADI");
+  });
+
+  it("spells an agency the way the agency spells itself", () => {
+    // The last widening before the format freezes: short names that are not a
+    // capitalized slug, so each is written out rather than derived.
+    expect(certificationAgencyLabel("scotsac")).toBe("ScotSAC");
+    expect(certificationAgencyLabel("protec")).toBe("ProTec");
+    expect(certificationAgencyLabel("apnea_academy")).toBe("Apnea Academy");
+    expect(certificationAgencyLabel("nss_cds")).toBe("NSS-CDS");
+    expect(certificationAgencyLabel("aida")).toBe("AIDA");
+  });
+
+  it("offers the format's vocabulary in its order, with `other` last", () => {
+    expect(CERTIFICATION_AGENCIES.slice(-21)).toEqual([
+      "ndl",
+      "utd",
+      "saa",
+      "scotsac",
+      "iac",
+      "protec",
+      "pdic",
+      "nase",
+      "sei",
+      "ymca",
+      "erdi",
+      "aida",
+      "molchanovs",
+      "pfi",
+      "apnea_academy",
+      "fii",
+      "nss_cds",
+      "nacd",
+      "idea",
+      "diwa",
+      "other",
+    ]);
   });
 
   it("uses the diver's own wording for `other`", () => {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { notesField } from "./notes";
 import { locationSchema } from "./location";
 
 // Latitude/longitude are edited as free-typed, regex-validated strings and
@@ -40,10 +41,7 @@ export const diveSiteFormSchema = z
     location: locationSchema.nullish(),
     latitude: coordinateField(90, "Latitude", "27.8506"),
     longitude: coordinateField(180, "Longitude", "34.3136"),
-    notes: z
-      .string()
-      .max(63206, "Notes cannot exceed 63206 characters")
-      .optional(),
+    notes: notesField().optional(),
   })
   // Both-or-neither, mirroring the API's rule: half a position is not a partial
   // fix, it's meaningless. Two refinements rather than one so the message lands

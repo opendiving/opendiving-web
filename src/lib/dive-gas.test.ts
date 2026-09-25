@@ -69,7 +69,7 @@ function recorded(): Recording[] {
       files: [],
       profile: {
         uuid: "p1",
-        duration: 4300,
+        duration: 4_300_000,
         depth_sample_count: 431,
         provenance: "file",
         channels: ["depth"],

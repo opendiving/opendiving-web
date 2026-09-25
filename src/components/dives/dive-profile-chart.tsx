@@ -35,6 +35,8 @@ import {
   describeEvent,
   elapsedTicks,
   formatChannelValue,
+  formatElapsed,
+  formatElapsedSpoken,
   drawnSampleIndexAt,
   gapThreshold,
   nearestEvent,
@@ -53,10 +55,6 @@ import {
   toggleSeries,
   writeSeriesVisibility,
 } from "@/lib/chart-series-view";
-import {
-  formatDurationForForm,
-  formatDurationHoursMinutes,
-} from "@/lib/date-time";
 import { cn } from "@/lib/utils";
 import { useUnits } from "@/hooks/useUnits";
 import type { UnitSystem } from "@/lib/units";
@@ -117,8 +115,9 @@ const scaleY =
   };
 
 // How close the crosshair has to be to an event marker before the readout names
-// it, in viewBox units - converted to seconds per dive, so it stays the same
-// distance on screen whether the dive lasted 20 minutes or three hours.
+// it, in viewBox units - converted to the axis's milliseconds per dive, so it
+// stays the same distance on screen whether the dive lasted 20 minutes or three
+// hours.
 // Comfortably wider than the glyph itself (4 units), because the diver is
 // aiming at a marker with a crosshair that has no snap.
 const EVENT_HOVER_UNITS = 8;
@@ -167,11 +166,11 @@ interface PlottedChannel {
   // The threshold those runs were cut at, kept so the crosshair can refuse to
   // quote a reading from a stretch the line refuses to cross - see
   // `sampleIndexAt`.
-  gapSeconds: number;
+  gapMs: number;
   // Which sample indices actually reached the picture.
   //
   // The tolerance alone is not enough to keep the readout honest, which is the
-  // second time this invariant has had to be tightened. `gapSeconds` says "is
+  // second time this invariant has had to be tightened. `gapMs` says "is
   // there a sample near enough to quote", and a sample dropped for being an
   // undrawable run of one is near enough to itself - so the crosshair went on
   // naming a 3.0 m ceiling, with a red dot on it, over a chart that had drawn no
@@ -237,10 +236,11 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   // whole chart - the same call `GasUseChart` makes, for the same reason. It
   // can't be an index here: the channels are independently sampled and don't
   // share a time axis, so "the sample under the cursor" is a different index per
-  // channel. The cursor's x maps to seconds once, and each channel resolves its
-  // own nearest sample from that (`sampleIndexAt`), or none at all where it
-  // recorded nothing near enough to be quoted.
-  const [hoveredSeconds, setHoveredSeconds] = useState<number | null>(null);
+  // channel. The cursor's x maps to an axis instant once, and each channel
+  // resolves its own nearest sample from that (`sampleIndexAt`), or none at all
+  // where it recorded nothing near enough to be quoted.
+  // Milliseconds on the profile's axis, like every time below.
+  const [hoveredMs, setHoveredMs] = useState<number | null>(null);
 
   // What the diver picked in *this* visit, and null until they pick - which is
   // what leaves room for the remembered selection underneath. Channels and the
@@ -281,8 +281,8 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   const pressure = toPressureSeries(profile, units);
 
   const duration = profile.duration;
-  const x = (seconds: number) =>
-    PADDING.left + (duration > 0 ? seconds / duration : 0) * PLOT_WIDTH;
+  const x = (at: number) =>
+    PADDING.left + (duration > 0 ? at / duration : 0) * PLOT_WIDTH;
 
   // Markers that land inside the plot, which is this chart's job rather than the
   // API's and is stated as such at the other end: `_rebase_events` clamps the low
@@ -294,8 +294,8 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   // arrangement (§6.4), so the rename that brought `duration` here changed the
   // word and nothing about which markers exist.
   //
-  // Dropped rather than clamped to the last second, which would invent a time to
-  // keep a marker on screen, and rather than left to the SVG's own clipping,
+  // Dropped rather than clamped to the plot's last instant, which would invent a
+  // time to keep a marker on screen, and rather than left to the SVG's own clipping,
   // which is not clipping at all: `x(time)` past `duration` lands in the
   // right-hand axis-label gutter first (aligned with no time on the axis) and only
   // leaves the viewBox further out.
@@ -317,7 +317,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
 
     // The two things every channel derives from its own cadence, from *one*
     // threshold - which is the whole point of `PlottedChannel` carrying
-    // `gapSeconds`, and which an earlier version of this quietly gave up by
+    // `gapMs`, and which an earlier version of this quietly gave up by
     // passing `gapThreshold` to the segmenter and `readoutTolerance` to the
     // readout.
     //
@@ -347,7 +347,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
       );
 
       return {
-        gapSeconds: tolerance,
+        gapMs: tolerance,
         segments,
         drawn: new Set(segments.flat()),
       };
@@ -395,7 +395,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
         // meaning of any on the chart: a break in this series is a stretch of
         // the dive with *no* decompression obligation, not a sensor dropping
         // out. Drawing through one - or quoting a ceiling into one, which is
-        // what `gapSeconds` stops the crosshair doing - would claim the diver
+        // what `gapMs` stops the crosshair doing - would claim the diver
         // was held to a ceiling they were free of.
         ...ceilingRuns,
       });
@@ -467,7 +467,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
           // are actually shown.
           domain: null,
           segments: entry.segments,
-          gapSeconds: entry.gapSeconds,
+          gapMs: entry.gapMs,
           drawn: entry.drawn,
         });
       }
@@ -740,14 +740,14 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
       ),
     ) ?? [];
 
-  // The marker the crosshair is close enough to be naming, if any. In seconds,
-  // from a distance in viewBox units - see `EVENT_HOVER_UNITS`.
+  // The marker the crosshair is close enough to be naming, if any. In
+  // milliseconds, from a distance in viewBox units - see `EVENT_HOVER_UNITS`.
   const hoveredEvent =
-    hoveredSeconds === null || !eventsShown
+    hoveredMs === null || !eventsShown
       ? null
       : nearestEvent(
           events,
-          hoveredSeconds,
+          hoveredMs,
           (duration / PLOT_WIDTH) * EVENT_HOVER_UNITS,
         );
 
@@ -759,7 +759,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   // channel simply drops out of the card there, exactly as its line drops out of
   // the plot.
   const readouts: Readout[] =
-    hoveredSeconds === null
+    hoveredMs === null
       ? []
       : shown
           .map((channel): Readout | null => {
@@ -768,8 +768,8 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
             // can't mask a drawn one just behind it. See `drawnSampleIndexAt`.
             const index = drawnSampleIndexAt(
               channel.series.t,
-              hoveredSeconds,
-              channel.gapSeconds,
+              hoveredMs,
+              channel.gapMs,
               channel.drawn,
             );
             if (index < 0) return null;
@@ -777,7 +777,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               key: channel.key,
               label: channel.label,
               channel: channel.series.channel,
-              seconds: channel.series.t[index],
+              at: channel.series.t[index],
               value: channel.series.values[index],
               cy: channel.y(channel.series.values[index]),
               // Whether the reading is one this row's axis can hold - see
@@ -1002,7 +1002,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                   fill="currentColor"
                   className="text-muted-foreground"
                 >
-                  {formatDurationForForm(tick)}
+                  {formatElapsed(tick)}
                 </text>
               ))}
 
@@ -1092,10 +1092,10 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               instant of one dive, and a crosshair that stopped at the depth
               plot's baseline would leave the diver reading a panel dot with no
               line to place it on. */}
-              {hoveredSeconds !== null && (
+              {hoveredMs !== null && (
                 <line
-                  x1={x(hoveredSeconds)}
-                  x2={x(hoveredSeconds)}
+                  x1={x(hoveredMs)}
+                  x2={x(hoveredMs)}
                   y1={PADDING.top}
                   y2={chartFoot}
                   stroke="currentColor"
@@ -1107,7 +1107,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               {dots.map((readout) => (
                 <circle
                   key={readout.key}
-                  cx={x(readout.seconds)}
+                  cx={x(readout.at)}
                   cy={readout.cy}
                   r={3.5}
                   fill="currentColor"
@@ -1135,38 +1135,37 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                 onMouseMove={(event) => {
                   const bounds = event.currentTarget.getBoundingClientRect();
                   const ratio = (event.clientX - bounds.left) / bounds.width;
-                  setHoveredSeconds(
+                  setHoveredMs(
                     Math.min(duration, Math.max(0, ratio * duration)),
                   );
                 }}
-                onMouseLeave={() => setHoveredSeconds(null)}
+                onMouseLeave={() => setHoveredMs(null)}
               />
             </svg>
 
-            {hoveredSeconds !== null &&
-              (readouts.length > 0 || hoveredEvent) && (
-                <ProfileTooltip
-                  seconds={hoveredSeconds}
-                  readouts={readouts}
-                  event={hoveredEvent}
-                  cx={x(hoveredSeconds)}
-                  // The box the card's percentage offsets are resolved against,
-                  // which grows with the panel: a card positioned as a fraction
-                  // of a height it no longer has lands somewhere else entirely.
-                  chartHeight={height}
-                  // The topmost of the dots being described, which is only used to
-                  // decide which end of the plot the card sits at - see
-                  // `tooltipVerticalAnchor`. `PLOT_BOTTOM` is the degenerate
-                  // fallback for a card with no dot to hang off - an event on its
-                  // own, or readings that are all off their rows' axes - which
-                  // puts it at the top, clear of the marker on the baseline.
-                  topmostY={
-                    dots.length > 0
-                      ? Math.min(...dots.map((readout) => readout.cy))
-                      : PLOT_BOTTOM
-                  }
-                />
-              )}
+            {hoveredMs !== null && (readouts.length > 0 || hoveredEvent) && (
+              <ProfileTooltip
+                at={hoveredMs}
+                readouts={readouts}
+                event={hoveredEvent}
+                cx={x(hoveredMs)}
+                // The box the card's percentage offsets are resolved against,
+                // which grows with the panel: a card positioned as a fraction
+                // of a height it no longer has lands somewhere else entirely.
+                chartHeight={height}
+                // The topmost of the dots being described, which is only used to
+                // decide which end of the plot the card sits at - see
+                // `tooltipVerticalAnchor`. `PLOT_BOTTOM` is the degenerate
+                // fallback for a card with no dot to hang off - an event on its
+                // own, or readings that are all off their rows' axes - which
+                // puts it at the top, clear of the marker on the baseline.
+                topmostY={
+                  dots.length > 0
+                    ? Math.min(...dots.map((readout) => readout.cy))
+                    : PLOT_BOTTOM
+                }
+              />
+            )}
           </div>
         </div>
 
@@ -1211,7 +1210,8 @@ interface Readout {
   key: string;
   label: string;
   channel: (typeof PROFILE_CHANNELS)[keyof typeof PROFILE_CHANNELS];
-  seconds: number;
+  // The sample's own instant on the axis, which is where its dot goes.
+  at: number;
   value: number;
   cy: number;
   // The reading is outside its row's axis, so the curve carrying it has left the
@@ -1391,14 +1391,14 @@ function EventMarker({
 // inline style *attribute*, which the CSP allows (`style-src-attr
 // 'unsafe-inline'`); an injected `<style>` element would not be.
 function ProfileTooltip({
-  seconds,
+  at,
   readouts,
   event,
   cx,
   chartHeight,
   topmostY,
 }: {
-  seconds: number;
+  at: number;
   readouts: Readout[];
   event: DiveProfileEvent | null;
   cx: number;
@@ -1441,7 +1441,7 @@ function ProfileTooltip({
       role="presentation"
     >
       <div className="text-xs text-tooltip-foreground/70">
-        {formatDurationForForm(Math.round(seconds))} elapsed
+        {formatElapsed(at)} elapsed
       </div>
       {readouts.map((readout) => (
         <div key={readout.key} className="mt-0.5 text-sm">
@@ -1613,10 +1613,10 @@ function describeProfile({
   // not at all, which is the whole reason `unitWord` exists.
   units: UnitSystem;
 }): string {
-  // `formatDurationHoursMinutes` here rather than the axis's `MM:SS`: read aloud,
+  // `formatElapsedSpoken` here rather than the axis's `MM:SS`: read aloud,
   // "84:36" is not a length of time, whereas "1h 25min" is. The axis keeps
   // `MM:SS`, which is what a dive profile's elapsed scale conventionally shows.
-  const parts = [`Dive profile over ${formatDurationHoursMinutes(duration)}`];
+  const parts = [`Dive profile over ${formatElapsedSpoken(duration)}`];
 
   // At the channel's own resolution, which is the same rule the crosshair follows
   // and the same one the numbers were stored under.
@@ -1693,7 +1693,7 @@ function describeProfile({
       .slice(0, MAX_DESCRIBED_EVENTS)
       .map(
         (event) =>
-          `${describeEvent(event)} at ${formatDurationHoursMinutes(event.time)}`,
+          `${describeEvent(event)} at ${formatElapsedSpoken(event.time)}`,
       );
     if (events.length > named.length) {
       named.push(`and ${events.length - named.length} more`);

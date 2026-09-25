@@ -110,16 +110,15 @@ describe("DiveMergeAction", () => {
 
   it("says plainly that the oxygen-exposure readings are not combined", async () => {
     // The natural reading of a merge is that everything comes along. CNS and OTU
-    // are the device's own running accounting rather than a per-dive quantity
-    // that can be added up, and the API deliberately leaves them alone rather
-    // than rewriting a `cns_end` an import had filled in.
+    // are each device's own running accounting rather than a per-dive quantity
+    // that can be added up, so every recording keeps its own.
     render(<DiveMergeAction dive={dive()} onMerged={vi.fn()} />);
 
     await userEvent.click(
       await screen.findByRole("button", { name: /merge/i }),
     );
     expect(
-      screen.getByText(/oxygen-exposure readings are left as they are/i),
+      screen.getByText(/keeps its own oxygen-exposure readings/i),
     ).toBeVisible();
   });
 

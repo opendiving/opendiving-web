@@ -22,6 +22,7 @@ import {
   noFileKeptSentence,
   recordingDeviceLabel,
   recordingLabel,
+  recordingReadoutsLabel,
   recordingSettingsLabel,
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
@@ -32,8 +33,8 @@ import { formatFileSize } from "@/lib/format";
 interface DiveRecordingsCardProps {
   dive: Dive;
   // Called after anything here changes the dive, so the page can re-read it. A
-  // delete can take a recording with it, promote the next one and re-derive the
-  // dive's oxygen-exposure readings, so nothing here predicts the new state.
+  // delete can take a recording with it, promote the next one and re-derive what
+  // the dive shows by default, so nothing here predicts the new state.
   onChanged: () => void | Promise<void>;
 }
 
@@ -46,8 +47,8 @@ type PendingRemoval =
 
 /**
  * What recorded this dive, on the dive detail page: one block per recording,
- * with its device, its own start where that differs from the dive's, and its
- * files to download or delete.
+ * with its device, what it was set to and what it reported, its own start where
+ * that differs from the dive's, and its files to download or delete.
  *
  * Renders nothing when the dive has no recordings at all - most dives are logged
  * by hand, and there is no empty state worth showing for a thing the diver
@@ -165,7 +166,7 @@ export function DiveRecordingsCard({
       {/* Mounted only while a removal is pending, so the strings are derived
           from it rather than from a nullable one. Both routes say what else
           goes: a file deletion can take the recording, the primary slot and the
-          dive's readings with it, and a recording deletion moves the last two -
+          dive's positions with it, and a recording deletion moves the last two -
           none of which "the dive itself is unaffected" covered. */}
       {removal && (
         <ConfirmDialog
@@ -193,6 +194,10 @@ export function DiveRecordingsCard({
             // dive - and absent entirely rather than guessed, which is why there
             // is no "Open circuit" here on a file that recorded no mode.
             const settings = recordingSettingsLabel(recording);
+            // Its own CNS, OTU and surface pressure. Every recording's, not just
+            // the primary's the exposure card shows: two computers give two
+            // answers, and this is the one place both are on screen.
+            const readouts = recordingReadoutsLabel(recording);
             const noFileKept = noFileKeptSentence(recording);
             // Its own start, but only where it says something the dive's start
             // does not: a second computer that entered the water a minute later
@@ -225,6 +230,14 @@ export function DiveRecordingsCard({
                       className="text-sm text-muted-foreground"
                     >
                       {settings}
+                    </div>
+                  )}
+                  {readouts && (
+                    <div
+                      data-testid="dive-recording-readouts"
+                      className="text-sm text-muted-foreground"
+                    >
+                      {readouts}
                     </div>
                   )}
                   {ownStart && (

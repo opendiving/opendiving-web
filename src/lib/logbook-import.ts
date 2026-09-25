@@ -87,9 +87,10 @@ export function collectionRowIsEmpty(row: ImportCollectionReport): boolean {
  * A skipped record, a dropped value, an unresolved reference or species, a
  * file that could not be stored and a check-in detail the preview does not offer
  * all lose something, so they are warnings - a portrait the API refuses among
- * them, noted as a skipped file. A linked or restored record, either remap, the
- * `diver` member's identity and settings deliberately not applied, a check-in
- * detail or portrait written as confirmed, a portrait kept because the account's
+ * them, noted as a skipped file. A linked or restored record, either remap, a
+ * value read as the older writer of its document meant it, the `diver`
+ * member's identity and settings deliberately not applied, a check-in detail
+ * or portrait written as confirmed, a portrait kept because the account's
  * changed after the preview, and a file whose bytes simply are not in a bare
  * document are all the import working as designed - `file_not_contained`
  * especially, which is the *expected* state of every referenced file when a

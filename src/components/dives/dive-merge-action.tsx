@@ -170,11 +170,11 @@ export function DiveMergeAction({
         }}
         title="Merge with a neighbouring dive"
         // Says plainly what does *not* come along, because the natural reading
-        // is that everything does. The oxygen-exposure readings are the
+        // is that everything does. The oxygen-exposure readings are each
         // device's own running accounting, not a per-dive quantity that can be
-        // added up, and the API deliberately leaves them as they are rather
-        // than rewriting a `cns_end` that an import had filled in.
-        description="Their recordings, cylinders, sites, gear, species and notes all end up on one dive — the earlier of the two — and the other is deleted for good. The oxygen-exposure readings are left as they are rather than combined."
+        // added up: every recording keeps its own, and a fold of one computer's
+        // two records only fills the blanks the surviving one had.
+        description="Their recordings, cylinders, sites, gear, species and notes all end up on one dive — the earlier of the two — and the other is deleted for good. Each recording keeps its own oxygen-exposure readings rather than having them combined."
         confirmText="Merge"
         variant="default"
         isLoading={isMerging}

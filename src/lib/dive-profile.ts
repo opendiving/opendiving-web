@@ -6,6 +6,10 @@ import type {
 } from "@/lib/api/dives";
 import { niceDomain, type Domain } from "@/lib/chart-scale";
 import {
+  formatDurationForForm,
+  formatDurationHoursMinutes,
+} from "@/lib/date-time";
+import {
   toDisplayUnits,
   unitLabel,
   unitSeparator,
@@ -18,6 +22,29 @@ import {
 // repo convention: pure functions in `lib/` get Vitest coverage, components
 // aren't rendered in tests. If a number on that chart could be wrong, its
 // derivation belongs here.
+
+// The profile's axis is milliseconds (DiveJSON §5.1): a series' `times`, a
+// profile's `duration` and an event's `time`, counted from the recording's own
+// start. Every helper here takes and returns that unit, and a second exists only
+// where a person reads one - `formatElapsed` and `formatElapsedSpoken` convert,
+// once. The `ndl` and `tts` *values* are seconds still: readings, not positions
+// on the axis, and `PROFILE_CHANNELS` scales them on their own terms.
+export const MILLISECONDS_PER_SECOND = 1000;
+
+/** An axis instant as the `M:SS` the x-axis labels and the crosshair print. */
+export function formatElapsed(milliseconds: number): string {
+  return formatDurationForForm(
+    Math.round(milliseconds / MILLISECONDS_PER_SECOND),
+  );
+}
+
+/**
+ * An axis span read aloud - "1h 25min" rather than "85:00", which is not a
+ * length of time to a screen reader.
+ */
+export function formatElapsedSpoken(milliseconds: number): string {
+  return formatDurationHoursMinutes(milliseconds / MILLISECONDS_PER_SECOND);
+}
 
 export type ProfileChannelKey =
   | "depth"
@@ -464,9 +491,9 @@ export function profileScalePlacement(
 
 export interface ChannelSeries {
   channel: ProfileChannel;
-  // Elapsed seconds, as served. Kept as `t` rather than following the wire's
-  // `times`: this is the chart's own shape, and every consumer of it below reads
-  // a *converted* series, which is the difference worth keeping visible.
+  // Elapsed milliseconds, as served. Kept as `t` rather than following the
+  // wire's `times`: this is the chart's own shape, and every consumer of it below
+  // reads a *converted* series, which is the difference worth keeping visible.
   t: number[];
   // Display units - the wire's integer `values` divided by the channel's scale.
   values: number[];
@@ -655,16 +682,16 @@ export function depthDomain(
   return niceDomain([0, ...depthValues, ...ceilingValues]);
 }
 
-// The event nearest `seconds`, or null when the closest is further away than
-// `maxDeltaSeconds`.
+// The event nearest the instant `at`, or null when the closest is further away
+// than `maxDeltaMs`.
 //
 // A tolerance rather than a nearest-always, because unlike a channel readout an
 // event marker is a discrete thing at a discrete instant: naming the dive's only
 // gas switch while the cursor sits twenty minutes away from it would be a
 // caption for something that isn't under the crosshair. The caller sets the
 // tolerance from the chart's own geometry, so it stays a fixed distance in
-// pixels rather than a fixed number of seconds - a tolerance that reads well on
-// a 20-minute dive is invisible on a three-hour one.
+// pixels rather than a fixed span of time - a tolerance that reads well on a
+// 20-minute dive is invisible on a three-hour one.
 //
 // A linear scan over a list the API caps at 200, and deliberately not a binary
 // search: the saving is unmeasurable and the scan doesn't care whether the list
@@ -678,15 +705,15 @@ export function depthDomain(
 // another is the part that would eventually cost someone an afternoon.
 export function nearestEvent(
   events: readonly DiveProfileEvent[],
-  seconds: number,
-  maxDeltaSeconds: number,
+  at: number,
+  maxDeltaMs: number,
 ): DiveProfileEvent | null {
   let best: DiveProfileEvent | null = null;
   let bestDelta = Number.POSITIVE_INFINITY;
 
   for (const event of events) {
-    const delta = Math.abs(event.time - seconds);
-    if (delta > maxDeltaSeconds) continue;
+    const delta = Math.abs(event.time - at);
+    if (delta > maxDeltaMs) continue;
 
     if (
       best === null ||
@@ -768,21 +795,19 @@ export function describeEvent(event: DiveProfileEvent): string {
 // Split a series into runs of consecutive samples, as arrays of indices, so a
 // polyline is never drawn across a gap.
 //
-// The same lie `segmentByGap` exists to prevent on the gas chart, expressed in
-// seconds instead of days: a transmitter that drops out for ten minutes
+// The same lie `segmentByGap` exists to prevent on the gas chart, expressed on
+// the profile's millisecond axis instead of in days: a transmitter that drops out
+// for ten minutes
 // mid-dive would otherwise be drawn as a straight line from the last reading to
 // the first one after it - which reads as "the pressure fell smoothly" when the
 // truth is "nothing was recorded here". Real: 224 of 441 samples on
 // `Dive_2025-06-02-1155.xml`.
-export function segmentByTimeGap(
-  t: number[],
-  maxGapSeconds: number,
-): number[][] {
+export function segmentByTimeGap(t: number[], maxGapMs: number): number[][] {
   if (t.length === 0) return [];
 
   const segments: number[][] = [[0]];
   for (let index = 1; index < t.length; index++) {
-    if (t[index] - t[index - 1] > maxGapSeconds) {
+    if (t[index] - t[index - 1] > maxGapMs) {
       segments.push([index]);
     } else {
       segments[segments.length - 1].push(index);
@@ -799,10 +824,10 @@ export function segmentByTimeGap(
 // further and unevenly. A fixed threshold would either break every downsampled
 // line into confetti or draw straight through a real ten-minute dropout. Three
 // times the median delta is comfortably above normal jitter and comfortably
-// below any dropout worth showing; the floor keeps a perfectly regular series
-// from breaking on a one-second rounding wobble.
+// below any dropout worth showing; the floor keeps a fast, regular series from
+// breaking on the jitter in its own stamps.
 export const GAP_FACTOR = 3;
-export const MIN_GAP_SECONDS = 15;
+export const MIN_GAP_MS = 15 * MILLISECONDS_PER_SECOND;
 
 export function gapThreshold(t: number[]): number {
   if (t.length < 3) return Number.POSITIVE_INFINITY;
@@ -811,7 +836,7 @@ export function gapThreshold(t: number[]): number {
   deltas.sort((a, b) => a - b);
   const median = deltas[Math.floor(deltas.length / 2)];
 
-  return Math.max(MIN_GAP_SECONDS, median * GAP_FACTOR);
+  return Math.max(MIN_GAP_MS, median * GAP_FACTOR);
 }
 
 // The same threshold, made safe to compare a *distance* against - which is what
@@ -849,39 +874,39 @@ export function gapThreshold(t: number[]): number {
 export function readoutTolerance(t: number[]): number {
   const threshold = gapThreshold(t);
 
-  return Number.isFinite(threshold) ? threshold : MIN_GAP_SECONDS;
+  return Number.isFinite(threshold) ? threshold : MIN_GAP_MS;
 }
 
-// The index of the sample nearest `seconds`, by binary search, clamped at both
-// ends.
+// The index of the sample nearest the instant `at`, by binary search, clamped at
+// both ends.
 //
 // Always a real sample, never an interpolated one: the crosshair readout says
 // "21.6 °C at 12:30", and a value the sensor never recorded has no business
 // being presented as one. Called once per channel, since the channels don't
 // share a time axis.
-export function nearestSampleIndex(t: number[], seconds: number): number {
+export function nearestSampleIndex(t: number[], at: number): number {
   if (t.length === 0) return -1;
-  if (seconds <= t[0]) return 0;
-  if (seconds >= t[t.length - 1]) return t.length - 1;
+  if (at <= t[0]) return 0;
+  if (at >= t[t.length - 1]) return t.length - 1;
 
   let low = 0;
   let high = t.length - 1;
   while (high - low > 1) {
     const middle = (low + high) >> 1;
-    if (t[middle] <= seconds) {
+    if (t[middle] <= at) {
       low = middle;
     } else {
       high = middle;
     }
   }
 
-  // `low` and `high` now bracket `seconds`; pick whichever is closer, ties going
-  // to the earlier sample.
-  return seconds - t[low] <= t[high] - seconds ? low : high;
+  // `low` and `high` now bracket `at`; pick whichever is closer, ties going to
+  // the earlier sample.
+  return at - t[low] <= t[high] - at ? low : high;
 }
 
-// The sample that can honestly be called this channel's reading at `seconds`,
-// or -1 when there isn't one.
+// The sample that can honestly be called this channel's reading at the instant
+// `at`, or -1 when there isn't one.
 //
 // `nearestSampleIndex` clamps at both ends, which is right for finding a
 // neighbour and wrong for captioning one: it answers "the closest sample" even
@@ -898,7 +923,7 @@ export function nearestSampleIndex(t: number[], seconds: number): number {
 // clamp was already quoting tank pressure through a transmitter dropout; that
 // was a lie too, just a quieter one.
 //
-// `maxDeltaSeconds` is the channel's own `readoutTolerance` - deliberately not
+// `maxDeltaMs` is the channel's own `readoutTolerance` - deliberately not
 // `gapThreshold`, which is the number this looks like it should take and is the
 // wrong one: its `Infinity` below three samples reads here as "no distance is
 // too far to quote". The caller passes the same value it cut the line at, so the
@@ -910,13 +935,13 @@ export function nearestSampleIndex(t: number[], seconds: number): number {
 // every caller in the chart actually wants.
 export function sampleIndexAt(
   t: number[],
-  seconds: number,
-  maxDeltaSeconds: number,
+  at: number,
+  maxDeltaMs: number,
 ): number {
-  const index = nearestSampleIndex(t, seconds);
+  const index = nearestSampleIndex(t, at);
   if (index < 0) return -1;
 
-  return Math.abs(t[index] - seconds) <= maxDeltaSeconds ? index : -1;
+  return Math.abs(t[index] - at) <= maxDeltaMs ? index : -1;
 }
 
 // The nearest sample that is close enough to quote **and** made it onto the
@@ -925,8 +950,8 @@ export function sampleIndexAt(
 // Not `sampleIndexAt` followed by a membership test, which is what this replaced
 // and which fails in one specific way: the nearest sample overall may be one the
 // chart dropped, and rejecting it outright then reports nothing even though a
-// drawn sample sits just behind it, well inside the tolerance. On
-// `t = [1000, 1010, 1020, 1060]` with a 30 s tolerance and 1060 dropped as an
+// drawn sample sits just behind it, well inside the tolerance. On samples at
+// 1000, 1010, 1020 and 1060 s with a 30 s tolerance and the last dropped as an
 // isolated run, hovering at 1045 s resolved to 1060, failed the membership test,
 // and went silent - with 1020 only 25 s away and visibly drawn.
 //
@@ -936,11 +961,11 @@ export function sampleIndexAt(
 // than as two rules whose interaction has to be reasoned about.
 export function drawnSampleIndexAt(
   t: number[],
-  seconds: number,
-  maxDeltaSeconds: number,
+  at: number,
+  maxDeltaMs: number,
   drawn: ReadonlySet<number>,
 ): number {
-  const nearest = nearestSampleIndex(t, seconds);
+  const nearest = nearestSampleIndex(t, at);
   if (nearest < 0) return -1;
 
   let low = nearest;
@@ -948,12 +973,12 @@ export function drawnSampleIndexAt(
 
   while (low >= 0 || high < t.length) {
     const lowDelta =
-      low >= 0 ? Math.abs(t[low] - seconds) : Number.POSITIVE_INFINITY;
+      low >= 0 ? Math.abs(t[low] - at) : Number.POSITIVE_INFINITY;
     const highDelta =
-      high < t.length ? Math.abs(t[high] - seconds) : Number.POSITIVE_INFINITY;
+      high < t.length ? Math.abs(t[high] - at) : Number.POSITIVE_INFINITY;
 
     // Both frontiers are out of reach, and they only get further away.
-    if (Math.min(lowDelta, highDelta) > maxDeltaSeconds) return -1;
+    if (Math.min(lowDelta, highDelta) > maxDeltaMs) return -1;
 
     // Ties to the earlier sample, matching `nearestSampleIndex`.
     if (lowDelta <= highDelta) {
@@ -968,26 +993,25 @@ export function drawnSampleIndexAt(
   return -1;
 }
 
-// Candidate x-axis steps, in seconds. Minute-shaped throughout: `axisTicks`
-// would happily hand back a 250-second step, and nobody reads a dive profile in
-// units of 4 minutes 10 seconds.
-const ELAPSED_STEPS_SECONDS = [60, 120, 300, 600, 900, 1800, 3600, 7200];
+// Candidate x-axis steps, on the millisecond axis. Minute-shaped throughout:
+// `axisTicks` would happily hand back a 250-second step, and nobody reads a dive
+// profile in units of 4 minutes 10 seconds.
+const ELAPSED_STEPS_MS = [1, 2, 5, 10, 15, 30, 60, 120].map(
+  (minutes) => minutes * 60 * MILLISECONDS_PER_SECOND,
+);
 
-// The elapsed-time gridlines for a dive of `durationSeconds`, in seconds,
-// starting at 0 and never running past the end of the dive.
-export function elapsedTicks(
-  durationSeconds: number,
-  targetTicks = 6,
-): number[] {
-  if (durationSeconds <= 0) return [0];
+// The elapsed-time gridlines for a profile spanning `durationMs`, in
+// milliseconds, starting at 0 and never running past the end of the dive.
+export function elapsedTicks(durationMs: number, targetTicks = 6): number[] {
+  if (durationMs <= 0) return [0];
 
   const step =
-    ELAPSED_STEPS_SECONDS.find(
-      (candidate) => durationSeconds / candidate <= targetTicks,
-    ) ?? ELAPSED_STEPS_SECONDS[ELAPSED_STEPS_SECONDS.length - 1];
+    ELAPSED_STEPS_MS.find(
+      (candidate) => durationMs / candidate <= targetTicks,
+    ) ?? ELAPSED_STEPS_MS[ELAPSED_STEPS_MS.length - 1];
 
   const ticks: number[] = [];
-  for (let time = 0; time <= durationSeconds; time += step) {
+  for (let time = 0; time <= durationMs; time += step) {
     ticks.push(time);
   }
   return ticks;

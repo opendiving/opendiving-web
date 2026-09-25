@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NOTES_MAX_LENGTH } from "./notes";
 import { certificationSchema } from "./certification";
 
 const valid = {
@@ -137,7 +138,7 @@ describe("certificationSchema", () => {
       ["instructor_name", 256],
       ["instructor_number", 65],
       ["training_center", 256],
-      ["notes", 10001],
+      ["notes", NOTES_MAX_LENGTH + 1],
     ])("rejects an over-long %s", (field, length) => {
       expect(
         certificationSchema.safeParse({
