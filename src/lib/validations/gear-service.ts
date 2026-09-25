@@ -50,6 +50,8 @@ export const gearServiceRecordSchema = z.object({
     .string()
     .min(1, "A service date is required")
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date"),
+  // A picker, so `null` rather than `""` is "no shop".
+  contact_uuid: z.string().nullable().optional(),
   performed_by: z.string().max(255, "Cannot exceed 255 characters").optional(),
   notes: notesField().optional(),
 });

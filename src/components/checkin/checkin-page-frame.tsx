@@ -68,11 +68,12 @@ const SLOT = "w-16 shrink-0 sm:w-24 print:w-24";
 // What separates a picture from the name beside it, and it is a derived number
 // rather than a chosen one: `SLOT` plus this has to come to `DetailList`'s label
 // track plus that list's own column gap, or a certification's name and the values
-// underneath it start eight pixels apart and the eye catches it. 96 + 24 = 104 + 16.
+// underneath it start a few pixels apart and the eye catches it. 96 + 16 = 96 + 16:
+// the picture's column and the label track are one width, so the gaps are one too.
 //
 // Below `sm` the label track is sized by its content and there is no fixed edge to
-// meet, so the plain gap stands.
-const NAME_BESIDE_PICTURE = "gap-4 sm:gap-6 print:gap-6";
+// meet, so the same gap stands for want of one.
+const NAME_BESIDE_PICTURE = "gap-4";
 
 // Every pairing on this page: the diver beside their diving, the policy beside the
 // person to ring, and the c-cards two to a row. One column on a phone, where two of
@@ -116,13 +117,19 @@ function printedFileName(name: string): string {
 export interface CheckInPageFrameProps {
   /** Every card the diver holds, in the list endpoint's own order. */
   certifications?: Certification[];
+  /**
+   * The name of each card's dive centre, by certification uuid. Handed in rather
+   * than looked up here: the frame makes no request of its own for what it
+   * prints, so whatever renders it decides where the names come from.
+   */
+  contactNames?: Readonly<Record<string, string>>;
   /** Null while the stats request is in flight. */
   stats?: UserDiveStats | null;
   /** The most recent dive's `start_time`, or null when there is no dive. */
   lastDiveAt?: string | null;
-  /** True until the certifications, the stats and the last dive have all landed. */
+  /** True until the certifications, the stats, the last dive and the contacts have all landed. */
   isLoading?: boolean;
-  /** True when at least one of the three requests failed and its part is missing. */
+  /** True when at least one of the page's requests failed and its part is missing. */
   loadFailed?: boolean;
   onRetry?: () => void;
   /**
@@ -134,12 +141,14 @@ export interface CheckInPageFrameProps {
 }
 
 const noop = () => {};
+const NO_NAMES: Readonly<Record<string, string>> = {};
 
-// Everything `/checkin` draws before its three requests answer, kept apart from the data render so
+// Everything `/checkin` draws before its requests answer, kept apart from the data render so
 // the page's first render is this frame. Every data-varying prop is optional,
 // and the defaults are that first render.
 export function CheckInPageFrame({
   certifications = [],
+  contactNames = NO_NAMES,
   stats = null,
   lastDiveAt = null,
   isLoading = true,
@@ -531,6 +540,7 @@ export function CheckInPageFrame({
                   <CertificationSummary
                     key={certification.uuid}
                     certification={certification}
+                    contactName={contactNames[certification.uuid]}
                     onEdit={() => openCertification(certification)}
                   />
                 ))}
@@ -606,9 +616,11 @@ export function CheckInPageFrame({
 // numbers under it, beside the front of the card where the diver stored one.
 function CertificationSummary({
   certification,
+  contactName,
   onEdit,
 }: {
   certification: Certification;
+  contactName?: string;
   onEdit: () => void;
 }) {
   const front = certificationFile(certification, "front");
@@ -686,7 +698,7 @@ function CertificationSummary({
           }
         />
         <Detail label="Instructor" value={certification.instructor_name} />
-        <Detail label="Training centre" value={certification.training_center} />
+        <Detail label="Dive centre" value={contactName} />
       </DetailList>
     </div>
   );
@@ -769,17 +781,17 @@ function Section({
 // The floor on the label track is what lines every list on the page up with every
 // other, each being a list of its own: a track sized purely by content puts
 // "Provider" and "Name" in columns 14px apart, and those two sit a grid row apart.
-// It lifts from `sm` because on a phone a fixed track of that width leaves a training
-// centre wrapping in what is left, and the `print:` twin is the paper's case of the
-// same - `sm:` under print media is a query against the sheet.
+// It lifts from `sm` because on a phone a fixed track of that width leaves a dive
+// centre's name wrapping in what is left, and the `print:` twin is the paper's case
+// of the same - `sm:` under print media is a query against the sheet.
 //
-// 6.5rem is the shortest floor that still does the job, and the width is doing two
-// things at once. It clears "Training centre", the longest label on the page at just
-// under 6.2rem, so no label wraps; and it clears every *other* list's longest label
-// too, which is what holds every list on the sheet to one width rather than each to
-// its own content. Every rem above that is white space between a label and the value
-// it belongs to - a gap to read across even on "Training centre", and a gulf on
-// "Name".
+// 6rem is the shortest floor that still does the job, and the width is doing two
+// things at once. It clears "Policy number", the longest label on the page at just
+// under 5.9rem in Inter, so no label wraps; and it clears every *other* list's
+// longest label too, which is what holds every list on the sheet to one width rather
+// than each to its own content. Every rem above that is white space between a label
+// and the value it belongs to - a gap to read across even on "Policy number", and a
+// gulf on "Name".
 //
 // The floor is also why a certification's details sit under its card rather than
 // beside it: a label track this wide in what is left of half a row leaves a value
@@ -790,7 +802,7 @@ function Section({
 // the alignment back.
 function DetailList({ children }: { children: ReactNode }) {
   return (
-    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 sm:grid-cols-[minmax(6.5rem,auto)_1fr] print:grid-cols-[minmax(6.5rem,auto)_1fr]">
+    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 sm:grid-cols-[minmax(6rem,auto)_1fr] print:grid-cols-[minmax(6rem,auto)_1fr]">
       {children}
     </dl>
   );

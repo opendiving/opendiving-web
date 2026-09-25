@@ -26,6 +26,7 @@
 export const DIVE_FORM_FIELDS = [
   "trip_uuid",
   "course_uuid",
+  "contact_uuid",
   "dive_site_uuids",
   "max_depth",
   "avg_depth",
@@ -117,9 +118,9 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
  * `DECISIONS.md`.
  *
  * Headings are still coarser than the form's rows, deliberately. "Trip, course & site"
- * covers the trip/course pair and the dive site below it; "Dive info" covers start time,
- * the dive number/duration pair and the two depths; "Environment" covers the other four
- * readings. A heading per row would offer more choices than there are decisions to make.
+ * covers the trip/course pair, the dive center under it and the dive site below that;
+ * "Dive info" covers start time, the dive number/duration pair and the two depths;
+ * "Environment" covers the other four readings. A heading per row would offer more choices than there are decisions to make.
  *
  * Groups carried only by always-on rows are listed anyway - a gap where Start time should
  * be reads as a field that went missing.
@@ -155,6 +156,7 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
     group: "Trip, course & site",
   },
   { key: "course_uuid", label: "Course", group: "Trip, course & site" },
+  { key: "contact_uuid", label: "Dive center", group: "Trip, course & site" },
   {
     key: "dive_site_uuids",
     label: "Dive site(s)",
@@ -249,6 +251,7 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
 > = {
   trip_uuid: null,
   course_uuid: null,
+  contact_uuid: null,
   dive_site_uuids: [],
   max_depth: null,
   avg_depth: null,
@@ -331,8 +334,8 @@ function revealsField(key: DiveFormFieldKey, value: unknown): boolean {
 }
 
 /**
- * Every key these values hold something in - what the four "a value arrived from
- * outside the diver's typing" moments reveal.
+ * Every key these values hold something in - what the "a value arrived from outside
+ * the diver's typing" moments reveal.
  *
  * A per-cylinder key counts as non-empty when *any* cylinder holds a value for it, so
  * an edit load or an import that brings the gas section back brings every column some

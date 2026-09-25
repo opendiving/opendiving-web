@@ -39,6 +39,9 @@ export const DIVE_A: Dive = {
   start_time: "2026-04-17T11:49:23+02:00",
   duration: 47,
   max_depth: 28.4,
+  // Named so the dive page makes its contact lookup, which the mock answers 404:
+  // the lookup is non-fatal, and the page has to draw without the card.
+  contact_uuid: "99999999-9999-4999-8999-999999999999",
   dive_sites: [
     { uuid: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", name: "Blue Hole" },
   ],
@@ -134,7 +137,13 @@ const DIVES: Record<string, Dive> = {
   [DIVE_B.uuid]: DIVE_B,
 };
 
-/** What a request to `/api/v1<path>` is answered with, or undefined for a 404. */
+/** An answer of 404 on purpose, which teardown does not count as a missing fixture. */
+const NOT_FOUND = Symbol("not found");
+
+/**
+ * What a request to `/api/v1<path>` is answered with: a body, `NOT_FOUND`, or
+ * undefined where there is no fixture - a 404 too, but one teardown fails on.
+ */
 function respond(method: string, path: string): unknown | undefined {
   if (method === "POST" && path === "/auth/refresh") {
     return { access_token: ACCESS_TOKEN };
@@ -152,6 +161,8 @@ function respond(method: string, path: string): unknown | undefined {
 
   const dive = /^\/dive\/([0-9a-f-]+)$/.exec(path);
   if (dive) return DIVES[dive[1]];
+
+  if (/^\/contact\/[0-9a-f-]+$/.test(path)) return NOT_FOUND;
 
   return undefined;
 }
@@ -207,12 +218,16 @@ export class ApiMock {
     const path = new URL(request.url()).pathname.replace(/^\/api\/v1/, "");
     const body = respond(request.method(), path);
 
-    if (body === undefined) {
-      this.unmatched.push(`${request.method()} ${path}`);
+    if (body === undefined || body === NOT_FOUND) {
+      if (body === undefined) {
+        this.unmatched.push(`${request.method()} ${path}`);
+      }
       await route.fulfill({
         status: 404,
         contentType: "application/json",
-        body: JSON.stringify({ detail: `No fixture for ${path}` }),
+        body: JSON.stringify({
+          detail: body === NOT_FOUND ? "Not found" : `No fixture for ${path}`,
+        }),
       });
       return;
     }

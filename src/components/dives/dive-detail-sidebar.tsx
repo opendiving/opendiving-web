@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Dive, WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { Trip } from "@/lib/api/trips";
 import { Course } from "@/lib/api/courses";
+import { Contact } from "@/lib/api/contacts";
+import { formatWebsite } from "@/lib/contact";
 import { formatDateTime } from "@/lib/date-time";
 import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
@@ -15,11 +17,14 @@ import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import type { MappableLocation } from "@/components/map/locations-map";
 import {
+  Building2,
   Eye,
+  Globe,
   GraduationCap,
   Luggage,
   MapPin,
   Mountain,
+  Phone,
   Thermometer,
   Waves,
 } from "lucide-react";
@@ -39,6 +44,9 @@ interface DiveDetailSidebarProps {
   /** The training course this dive was part of, resolved the same way and with the
    * same three meanings for null. */
   course: Course | null;
+  /** Who the dive was dived with, resolved the same way and with the same three
+   * meanings for null. */
+  contact: Contact | null;
   /** Called after a recording or one of its files changes, so the dive can be re-read. */
   onRecordingsChanged: () => void;
 }
@@ -66,6 +74,7 @@ export function DiveDetailSidebar({
   dive,
   trip,
   course,
+  contact,
   onRecordingsChanged,
 }: DiveDetailSidebarProps) {
   const units = useUnits();
@@ -226,6 +235,47 @@ export function DiveDetailSidebar({
               <GraduationCap className="h-4 w-4 text-muted-foreground" />
               {course.name}
             </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Its own card rather than a row on "Training", which renders only on a
+          course: a fun dive has a dive center and no course, and would show it
+          nowhere. The two ways to reach it sit under the name at a finger's
+          height, since a dive page on a phone is where a diver goes looking for
+          the shop's number. */}
+      {contact && (
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Dive center</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              {contact.name}
+            </div>
+            {contact.phone && (
+              <a
+                href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`}
+                className="flex min-h-11 items-center gap-2 text-sm hover:underline"
+              >
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                {contact.phone}
+              </a>
+            )}
+            {contact.website && (
+              <a
+                href={contact.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-11 items-center gap-2 text-sm hover:underline"
+              >
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <span className="min-w-0 truncate">
+                  {formatWebsite(contact.website)}
+                </span>
+              </a>
+            )}
           </CardContent>
         </Card>
       )}

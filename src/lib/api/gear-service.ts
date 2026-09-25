@@ -115,6 +115,9 @@ export interface GearServiceRecord {
   kind: ServiceKind;
   serviced_on: string;
   label?: string | null;
+  // The shop that did the work, a contact by uuid; `performed_by` beside it names
+  // the person - a technician, or "self".
+  contact_uuid?: string | null;
   performed_by?: string | null;
   notes: string;
   // The item's lifetime dive count when the work was done - the baseline the next
@@ -132,6 +135,7 @@ export interface GearServiceRecordCreate {
   kind: ServiceKind;
   serviced_on: string;
   label?: string | null;
+  contact_uuid?: string | null;
   performed_by?: string | null;
   notes?: string;
   // Optional: when omitted, the API links the one schedule matching (item, kind, label),
@@ -139,10 +143,12 @@ export interface GearServiceRecordCreate {
   gear_service_schedule_uuid?: string | null;
 }
 
+// `null` on `contact_uuid` unlinks the shop; omitting it leaves the link alone.
 export interface GearServiceRecordUpdate {
   kind?: ServiceKind;
   serviced_on?: string;
   label?: string | null;
+  contact_uuid?: string | null;
   performed_by?: string | null;
   notes?: string;
 }

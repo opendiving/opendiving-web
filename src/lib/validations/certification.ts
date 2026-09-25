@@ -38,15 +38,12 @@ export const certificationSchema = z
       .string()
       .max(64, "Instructor number cannot exceed 64 characters")
       .optional(),
-    training_center: z
-      .string()
-      .max(255, "Training center cannot exceed 255 characters")
-      .optional(),
     notes: notesField().optional(),
-    // Nullable rather than `""`-empty, unlike the text fields above: this is a
-    // picker, and `null` is how it says "no course" as against a field nobody
+    // Nullable rather than `""`-empty, unlike the text fields above: these are
+    // pickers, and `null` is how one says "none" as against a field nobody
     // touched. Same shape as the dive form's `trip_uuid`/`course_uuid`.
     course_uuid: z.string().nullable().optional(),
+    contact_uuid: z.string().nullable().optional(),
   })
   // Mirrors the API's `_check_agency_other` model validator. An object-level
   // refine, unlike a field-level transform, leaves `z.input<>` untouched.

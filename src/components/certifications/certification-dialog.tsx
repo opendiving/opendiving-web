@@ -44,6 +44,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { CourseCombobox } from "@/components/courses/course-combobox";
+import { ContactCombobox } from "@/components/contacts/contact-combobox";
+import type { ContactRole } from "@/lib/api/contacts";
 import {
   Select,
   SelectContent,
@@ -61,7 +63,7 @@ import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 // The certification fields a linked course can fill in, in the shape the form
 // holds them: `null` and absent both arrive as `""`, which is this form's "not
-// set" everywhere else.
+// set" everywhere else - except the contact, a picker whose "not set" is `null`.
 //
 // `notes` is deliberately not among them: a course's notes describe the
 // training and a card's describe the card, so it is the one field here whose
@@ -75,7 +77,7 @@ interface CertificationFieldValues {
   name: string;
   agency: CertificationAgency;
   agency_other: string;
-  training_center: string;
+  contact_uuid: string | null;
   instructor_name: string;
   instructor_number: string;
 }
@@ -93,7 +95,7 @@ function courseFieldValues(course: Course): CourseFieldValues {
     name: course.name,
     agency: course.agency ?? null,
     agency_other: course.agency_other ?? "",
-    training_center: course.training_center ?? "",
+    contact_uuid: course.contact_uuid ?? null,
     instructor_name: course.instructor_name ?? "",
     instructor_number: course.instructor_number ?? "",
   };
@@ -103,6 +105,10 @@ function courseFieldValues(course: Course): CourseFieldValues {
 // dirty - nothing here gates on that today, and an unsaved-changes guard added
 // later would otherwise fire on a form nobody typed into.
 const AUTOFILL = { shouldDirty: false } as const;
+
+// What a contact created from a certification starts as: whoever ran the course
+// the card came out of.
+const SCHOOL: readonly ContactRole[] = ["school"];
 
 interface CertificationDialogProps {
   open: boolean;
@@ -152,7 +158,7 @@ export function CertificationDialog({
       expires_on: "",
       instructor_name: "",
       instructor_number: "",
-      training_center: "",
+      contact_uuid: null,
       notes: "",
       course_uuid: null,
     },
@@ -175,7 +181,7 @@ export function CertificationDialog({
     name: "",
     agency: DEFAULT_CERTIFICATION_AGENCY,
     agency_other: "",
-    training_center: "",
+    contact_uuid: null,
     instructor_name: "",
     instructor_number: "",
   });
@@ -195,7 +201,7 @@ export function CertificationDialog({
           name: certification?.name ?? "",
           agency: certification?.agency ?? DEFAULT_CERTIFICATION_AGENCY,
           agency_other: certification?.agency_other ?? "",
-          training_center: certification?.training_center ?? "",
+          contact_uuid: certification?.contact_uuid ?? null,
           instructor_name: certification?.instructor_name ?? "",
           instructor_number: certification?.instructor_number ?? "",
         };
@@ -225,8 +231,8 @@ export function CertificationDialog({
     // case this rule can't distinguish from a cascading render.
   }, [open, certification, initialCourse, reset]);
 
-  // Picking a course copies its name, agency, training center and instructor
-  // across, so the diver types them once. Create only: the edit dialog
+  // Picking a course copies its name, agency, contact and instructor across, so
+  // the diver types them once. Create only: the edit dialog
   // seeds itself from the stored card, which would make every settled field look
   // untouched and hand the whole card over to whichever course was picked.
   // Relinking on edit corrects the link, not the card.
@@ -256,9 +262,12 @@ export function CertificationDialog({
           autofilled.agency_other = next.agency_other;
         }
       }
-      if ((getValues("training_center") ?? "") === autofilled.training_center) {
-        setValue("training_center", next.training_center, AUTOFILL);
-        autofilled.training_center = next.training_center;
+      // The reference, copied like the text beside it: the card names the
+      // course's contact until the diver picks another, and a course that names
+      // none takes back only a contact an earlier course put there.
+      if ((getValues("contact_uuid") ?? null) === autofilled.contact_uuid) {
+        setValue("contact_uuid", next.contact_uuid, AUTOFILL);
+        autofilled.contact_uuid = next.contact_uuid;
       }
       if ((getValues("instructor_name") ?? "") === autofilled.instructor_name) {
         setValue("instructor_name", next.instructor_name, AUTOFILL);
@@ -342,7 +351,6 @@ export function CertificationDialog({
         expires_on: data.expires_on || null,
         instructor_name: data.instructor_name || null,
         instructor_number: data.instructor_number || null,
-        training_center: data.training_center || null,
         notes: data.notes || "",
         // The picker's own empty state is already `null` rather than `""`, so
         // this needs no mapping - but it is sent on every save either way, which
@@ -350,6 +358,8 @@ export function CertificationDialog({
         // `buildCertificationUpdate` helper to hold that rule instead: this
         // dialog shows every field and submits all of them.
         course_uuid: data.course_uuid ?? null,
+        // A picker too, sent on every save for the same reason.
+        contact_uuid: data.contact_uuid ?? null,
       };
 
       let saved: Certification;
@@ -418,7 +428,7 @@ export function CertificationDialog({
                     {/* Only true of a create dialog - relinking an existing
                         card changes the link and nothing else. */}
                     {!isEdit &&
-                      " Picking one fills in the certification, training center and instructor below, and the agency if the course names one."}
+                      " Picking one fills in the certification, dive center and instructor below, and the agency if the course names one."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -557,15 +567,17 @@ export function CertificationDialog({
 
             <FormField
               control={form.control}
-              name="training_center"
+              name="contact_uuid"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Training center</FormLabel>
+                  <FormLabel>Dive center</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="e.g. Blue Ocean, Koh Tao"
-                      {...field}
-                      value={field.value ?? ""}
+                    <ContactCombobox
+                      value={field.value}
+                      onChange={field.onChange}
+                      initialRoles={SCHOOL}
+                      placeholder="Select a dive center..."
+                      addNewLabel="Add dive center..."
                     />
                   </FormControl>
                   <FormMessage />

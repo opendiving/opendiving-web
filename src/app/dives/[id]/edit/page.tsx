@@ -61,6 +61,7 @@ export default function EditDivePage() {
       weight: undefined,
       trip_uuid: undefined,
       course_uuid: undefined,
+      contact_uuid: undefined,
       dive_site_uuids: [],
       gear_item_uuids: [],
       notes: "",
@@ -84,8 +85,8 @@ export default function EditDivePage() {
   });
   const { revealNonEmpty } = visibility;
 
-  // Seeds the form from the loaded dive, and is the first of the four moments a
-  // value arrives from outside the diver's typing: a dive that records notes shows
+  // Seeds the form from the loaded dive, and is one of the moments a value
+  // arrives from outside the diver's typing: a dive that records notes shows
   // its notes even under a preset that hides them, because an edit form quietly
   // holding data the diver cannot see is the one thing this feature must not do.
   const resetFromDive = useCallback(

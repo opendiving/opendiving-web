@@ -207,10 +207,11 @@ export interface Certification {
   expires_on?: string | null;
   instructor_name?: string | null;
   instructor_number?: string | null;
-  training_center?: string | null;
+  // Who ran the course the card came out of - a contact, by uuid.
+  contact_uuid?: string | null;
   notes?: string;
   // The training course this card came out of, if the diver recorded one. The
-  // instructor/training-center fields above are deliberately *not* derived from
+  // instructor fields and the contact above are deliberately *not* derived from
   // it: imported history arrives certification-first, with no course to hang
   // them on, so a certification has to stand alone.
   course_uuid?: string | null;
@@ -231,15 +232,15 @@ export interface CertificationCreate {
   expires_on?: string | null;
   instructor_name?: string | null;
   instructor_number?: string | null;
-  training_center?: string | null;
+  contact_uuid?: string | null;
   notes?: string;
   course_uuid?: string | null;
 }
 
-// `null` on `course_uuid` detaches the certification from its course; omitting
-// the key leaves whatever course it already has alone. The API takes this shape
-// as its own `CertificationUpdateRequest`, kept apart from the schema its admin
-// panel writes through - `course_uuid` is not a column there.
+// `null` on `course_uuid` or `contact_uuid` detaches the certification from its
+// course or its contact; omitting the key leaves the link alone. The API takes
+// this shape as its own `CertificationUpdateRequest`, kept apart from the schema
+// its admin panel writes through - neither uuid is a column there.
 export type CertificationUpdate = Partial<CertificationCreate>;
 
 export type PaginatedCertificationsResponse = PaginatedResponse<Certification>;

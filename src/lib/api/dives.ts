@@ -290,6 +290,9 @@ export interface Dive {
   // separate grouping from the trip: a course is where a dive came from in the
   // logbook's training sense, and a dive can have both.
   course_uuid?: string;
+  // Who the diver dived with - the dive center or club, a contact by uuid. Its
+  // own member rather than the course's: a fun dive has one and no course.
+  contact_uuid?: string | null;
   dive_sites: DiveSiteSummary[];
   // Gear used on the dive. A dive records the items themselves, never the gear
   // set they were loaded from - sets are only a form-filling shortcut.
@@ -758,6 +761,7 @@ export interface DiveCreate {
   weight?: number | null;
   trip_uuid?: string;
   course_uuid?: string;
+  contact_uuid?: string;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   // Catalog uuids, in spotting order. Every uuid must already exist - the
@@ -803,6 +807,8 @@ export interface DiveUpdate {
   // alone. `CourseCombobox` normalizes its cleared value to `null` for exactly
   // this reason.
   course_uuid?: string | null;
+  // And the same for the contact, which `ContactCombobox` clears to `null` too.
+  contact_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   // Same wholesale-replace contract as the two lists above: an omitted key

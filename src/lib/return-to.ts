@@ -28,6 +28,7 @@ const SECTIONS: Record<string, { index: string; item: string }> = {
   gear: { index: "gear", item: "gear" },
   certifications: { index: "certifications", item: "certification" },
   courses: { index: "courses", item: "course" },
+  contacts: { index: "contacts", item: "contact" },
 };
 
 export function labelForPath(path: string): string {

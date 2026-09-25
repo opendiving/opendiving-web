@@ -30,6 +30,8 @@ import {
   type LocationFormValue,
 } from "@/lib/validations/location";
 import { MAX_TRIP_PARTS, type TripPartFormValue } from "@/lib/validations/trip";
+import { ContactCombobox } from "@/components/contacts/contact-combobox";
+import type { ContactRole } from "@/lib/api/contacts";
 import { geocodeResultToLocation } from "@/lib/locations";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Attribution } from "@/components/attribution";
@@ -255,7 +257,15 @@ export function TripPartsField({
     if (isFull) return;
     setNotice(null);
     focusNewRowRef.current = true;
-    onChange([...value, { location: null, start_date: "", end_date: "" }]);
+    onChange([
+      ...value,
+      {
+        location: null,
+        start_date: "",
+        end_date: "",
+        accommodation_uuid: null,
+      },
+    ]);
   };
 
   const updatePart = useCallback(
@@ -407,6 +417,9 @@ export function TripPartsField({
   );
 }
 
+// What a contact created from a part's accommodation picker starts as.
+const ACCOMMODATION: readonly ContactRole[] = ["accommodation"];
+
 interface TripPartRowProps {
   part: TripPartFormValue;
   index: number;
@@ -522,10 +535,11 @@ function TripPartRow({
       className={cn(
         "space-y-2 rounded-md border bg-background p-2",
         // Every control in a row is sized for a finger. The two icon buttons
-        // carry their own box; this is what raises the three text inputs - the
-        // place search and both date fields - off the app-wide 40px, without
-        // threading a size prop through three shared primitives to reach the
-        // one field that wants it. Each of them renders exactly one `<input>`.
+        // carry their own box; this is what raises the text inputs - the place
+        // and accommodation searches and both date fields - off the app-wide
+        // 40px, without threading a size prop through the shared primitives to
+        // reach the one row that wants it. Each of them renders exactly one
+        // `<input>`.
         "[&_input]:h-11",
         isDragging && "relative z-10 shadow-lg ring-2 ring-ring",
       )}
@@ -628,6 +642,22 @@ function TripPartRow({
           </button>
         </IconTooltip>
       </div>
+
+      {/* Beneath the place, being where in it the diver slept. Unlabelled on
+          screen, like the place above it - the placeholder says what it is and
+          the name carries the part - and at the row's 44px like every input
+          here. A contact made from here starts as a place to stay. */}
+      <ContactCombobox
+        aria-label={`Accommodation, ${position}`}
+        value={part.accommodation_uuid ?? null}
+        onChange={(accommodation_uuid) =>
+          onChange(index, { accommodation_uuid })
+        }
+        initialRoles={ACCOMMODATION}
+        placeholder="Where you stayed..."
+        addNewLabel="Add accommodation..."
+        disabled={disabled}
+      />
 
       {/* One column on a phone, two once there is room. Both dates beside each
           other at 375px would be two ~120px boxes plus their labels inside a

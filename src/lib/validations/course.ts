@@ -42,10 +42,9 @@ export const courseSchema = z
       .string()
       .max(64, "Instructor number cannot exceed 64 characters")
       .optional(),
-    training_center: z
-      .string()
-      .max(255, "Training center cannot exceed 255 characters")
-      .optional(),
+    // A picker, so `null` rather than `""` is "no contact" - the shape
+    // `course_uuid` has on a certification.
+    contact_uuid: z.string().nullable().optional(),
     notes: notesField().optional(),
   })
   // Mirrors the API's `validate_agency_pairing`. An object-level refine, unlike a

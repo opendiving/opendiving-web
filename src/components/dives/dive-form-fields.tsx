@@ -30,6 +30,8 @@ import {
 } from "@/components/dives/mixture-fields";
 import { TripCombobox } from "@/components/dives/trip-combobox";
 import { CourseCombobox } from "@/components/courses/course-combobox";
+import { ContactCombobox } from "@/components/contacts/contact-combobox";
+import type { ContactRole } from "@/lib/api/contacts";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
 import { SpeciesMultiSelect } from "@/components/dives/species-multi-select";
@@ -47,6 +49,9 @@ import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
 import { unitLabel } from "@/lib/units";
 import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
+
+// What a contact created from the dive form starts as.
+const DIVE_CENTER: readonly ContactRole[] = ["dive_center"];
 
 // The field shape shared by both `DiveCreateInput` and `DiveUpdateInput`
 // (see `lib/validations/dive.ts`): the create schema's fields, all optional
@@ -81,6 +86,8 @@ export interface DiveFormValues extends FieldValues {
   trip_uuid?: string | null;
   // Same three states, same reason, for the training course this dive was on.
   course_uuid?: string | null;
+  // And for the dive center it was dived with.
+  contact_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   species_uuids?: string[];
@@ -228,6 +235,25 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     <CourseCombobox
                       value={field.value}
                       onChange={field.onChange}
+                      // A dive logged on a course was dived with whoever ran
+                      // it, unless the diver has said otherwise - so the pick
+                      // fills the dive center, through the one write that can
+                      // show a hidden field without handing it to the diver. A
+                      // course naming none leaves the field alone. New dives
+                      // only: relinking a stored dive corrects the link, not
+                      // the dive.
+                      onCourseSelected={
+                        mode === "create"
+                          ? (course) => {
+                              if (course.contact_uuid) {
+                                visibility.autofill(
+                                  "contact_uuid",
+                                  course.contact_uuid,
+                                );
+                              }
+                            }
+                          : undefined
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -236,6 +262,32 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             />
           )}
         </div>
+      )}
+
+      {/* A row of its own, not a third child of the pair above: that grid is two
+          columns and renders only while the trip or the course does, and a dive
+          center belongs on a fun dive with neither. Full width for the reason the
+          lone survivor of the pair spans both columns. */}
+      {isVisible("contact_uuid") && (
+        <FormField
+          control={control}
+          name={"contact_uuid" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Dive center</FormLabel>
+              <FormControl>
+                <ContactCombobox
+                  value={field.value}
+                  onChange={field.onChange}
+                  initialRoles={DIVE_CENTER}
+                  placeholder="Select a dive center..."
+                  addNewLabel="Add dive center..."
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       )}
 
       {/* Dive Site(s) */}
@@ -668,8 +720,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                           onChange={field.onChange}
                           weight={weightField.value ?? null}
                           onWeightChange={weightField.onChange}
-                          // The third of the four moments a value arrives from outside
-                          // the diver's typing: a set that carries a weight fills the
+                          // One of the moments a value arrives from outside the
+                          // diver's typing: a set that carries a weight fills the
                           // box, so the box has to be on screen to be seen and changed.
                           onSetApplied={(set) => {
                             const revealed: DiveFormFieldKey[] = [];

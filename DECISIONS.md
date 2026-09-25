@@ -3311,8 +3311,8 @@ open menu, so `CreatableCombobox` takes `commitOnEnterOnly` — `keepOpenOnSelec
 it, typing "phil" and clicking Save files a place called "phil".
 
 Each row's controls are 44px on the shorter side: the two icon buttons carry their own box, and
-`[&_input]:h-11` on the row raises the three text inputs off the app-wide 40px without a size prop
-threaded through three shared primitives.
+`[&_input]:h-11` on the row raises its text inputs — the place and accommodation searches and both
+dates — off the app-wide 40px without a size prop threaded through the shared primitives.
 
 ## A location's full label is trimmed of the name it sits beside, at render time
 

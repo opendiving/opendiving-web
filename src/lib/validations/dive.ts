@@ -436,6 +436,7 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
     weight: dive.weight,
     trip_uuid: dive.trip_uuid,
     course_uuid: dive.course_uuid,
+    contact_uuid: dive.contact_uuid ?? null,
     dive_site_uuids: dive.dive_sites?.map((site) => site.uuid) ?? [],
     gear_item_uuids: dive.gear_items?.map((item) => item.uuid) ?? [],
     species_uuids: dive.species?.map((s) => s.uuid) ?? [],
@@ -480,6 +481,7 @@ export const diveCreateSchema = z.object({
   weight: weightField(),
   trip_uuid: z.string().nullable().optional(),
   course_uuid: z.string().nullable().optional(),
+  contact_uuid: z.string().nullable().optional(),
   dive_site_uuids: z.array(z.string()).default([]),
   gear_item_uuids: z.array(z.string()).default([]),
   species_uuids: z.array(z.string()).default([]),
@@ -518,8 +520,9 @@ export const diveUpdateSchema = z.object({
   // Nullable, not just optional: `null` is how the edit form says "detach this
   // dive from its trip". See `DiveUpdate.trip_uuid` in `lib/api/dives.ts`.
   trip_uuid: z.string().nullable().optional(),
-  // And the same for the training course, for the same reason.
+  // And the same for the training course and the contact, for the same reason.
   course_uuid: z.string().nullable().optional(),
+  contact_uuid: z.string().nullable().optional(),
   dive_site_uuids: z.array(z.string()).optional(),
   gear_item_uuids: z.array(z.string()).optional(),
   species_uuids: z.array(z.string()).optional(),
@@ -579,6 +582,7 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
   if (data.weight !== undefined) update.weight = data.weight;
   if (data.trip_uuid !== undefined) update.trip_uuid = data.trip_uuid;
   if (data.course_uuid !== undefined) update.course_uuid = data.course_uuid;
+  if (data.contact_uuid !== undefined) update.contact_uuid = data.contact_uuid;
   if (data.dive_site_uuids !== undefined) {
     update.dive_site_uuids = data.dive_site_uuids;
   }

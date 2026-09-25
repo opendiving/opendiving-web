@@ -106,6 +106,9 @@ export function TripDialog({
         location: part.location ?? null,
         start_date: part.start_date ?? "",
         end_date: part.end_date ?? "",
+        // Named, like every member: the save sends each part whole, so one left
+        // out here is an accommodation cleared by an edit that never touched it.
+        accommodation_uuid: part.accommodation_uuid ?? null,
       })),
       notes: trip?.notes ?? "",
     });

@@ -196,7 +196,7 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
               onRestoreStored={onRestoreStoredFile}
               recordings={recordings}
               diveUuid={diveUuid}
-              // One of the four moments a value arrives from outside the diver's
+              // One of the moments a value arrives from outside the diver's
               // typing: whatever the file filled in is on screen, whether or not the
               // stored set hides it, and it counts as the diver's from here on.
               onValuesApplied={() =>

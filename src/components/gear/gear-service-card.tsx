@@ -34,6 +34,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
 import { GearServiceScheduleDialog } from "@/components/gear/gear-service-schedule-dialog";
 import { GearServiceRecordDialog } from "@/components/gear/gear-service-record-dialog";
+import { useContactsByUuid } from "@/hooks/useContactsByUuid";
 
 interface GearServiceCardProps {
   gearItem: GearItem;
@@ -56,6 +57,11 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
 
   const [schedules, setSchedules] = useState<GearServiceSchedule[]>([]);
   const [records, setRecords] = useState<GearServiceRecord[]>([]);
+  const contacts = useContactsByUuid(
+    records.map((record) => record.contact_uuid),
+  );
+  const contactName = (record: GearServiceRecord) =>
+    record.contact_uuid ? contacts[record.contact_uuid]?.name : undefined;
   const [isLoading, setIsLoading] = useState(true);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
 
@@ -342,9 +348,14 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                             {formatDateOnly(record.serviced_on)}
                           </span>
                         </div>
-                        {record.performed_by && (
+                        {/* Where, then who: "Blue Ocean · Ahmed". Either may be
+                            missing - a shop that did not name its technician, a
+                            service done at home. */}
+                        {(contactName(record) || record.performed_by) && (
                           <div className="text-muted-foreground">
-                            {record.performed_by}
+                            {[contactName(record), record.performed_by]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </div>
                         )}
                         {record.notes && (

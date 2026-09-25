@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
  * survives a step of the prev/next pager - see the comment there.
  */
 export default function DiveDetailPage() {
-  const { dive, isLoading, trip, course, refreshDive } = useDiveDetail();
+  const { dive, isLoading, trip, course, contact, refreshDive } =
+    useDiveDetail();
 
   // Dimmed, not replaced, while the next dive loads: these cards still describe
   // the dive being stepped away from, and fading them says "this is on its way
@@ -30,6 +31,7 @@ export default function DiveDetailPage() {
         dive={dive}
         trip={trip}
         course={course}
+        contact={contact}
         onRecordingsChanged={refreshDive}
       />
     </div>

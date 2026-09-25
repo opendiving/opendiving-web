@@ -25,14 +25,15 @@ const COLLECTION_LABELS: Record<string, string> = {
   gear_service_schedules: "Service schedules",
   gear_service_records: "Service records",
   certifications: "Certifications",
+  contacts: "Contacts",
 };
 
 /**
  * A collection's display name, tolerating one this build has never heard of.
  *
- * A newer API that grew an eleventh collection should render as a readable row
- * rather than a blank cell, so an unknown wire name is de-snaked instead of
- * dropped - the same forward-compatibility stance `certificationAgencyLabel`
+ * A newer API that grew a collection this build has no label for should render
+ * as a readable row rather than a blank cell, so an unknown wire name is
+ * de-snaked instead of dropped - the same forward-compatibility stance `certificationAgencyLabel`
  * takes for a new agency. Counts are the point of the row and they are correct
  * whatever the heading says.
  */
@@ -161,7 +162,7 @@ const CONVERSION_KIND_LABELS: Record<string, string> = {
  * field's own description: its converter gained a fourth kind mid-feature, and
  * the pin that decides which set a build sees moves with no change here. So a
  * fifth arrives as itself rather than as a blank badge - `collectionLabel`'s
- * treatment of an eleventh collection, for the same reason.
+ * treatment of an unknown collection, for the same reason.
  */
 export function conversionKindLabel(kind: string): string {
   return (

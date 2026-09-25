@@ -18,6 +18,7 @@ import {
   MIXTURE_FORM_FIELDS,
   canonicalHiddenFields,
   isMixtureField,
+  isNonEmptyFieldValue,
   mixtureFieldName,
   nonEmptyDiveFormFields,
   type DiveFormFieldKey,
@@ -76,8 +77,18 @@ export interface DiveFormVisibility {
    * marks them as the diver's own so a later hide keeps their values.
    */
   reveal: (keys: readonly DiveFormFieldKey[]) => void;
-  /** `reveal` for the keys these values hold something in - the shape all four moments take. */
+  /** `reveal` for the keys these values hold something in - how a load, a file or a URL arrives. */
   revealNonEmpty: (values: DiveFormFieldValues) => void;
+  /**
+   * Writes a value one pick derived for another field - a course's contact - where
+   * the diver has not touched that field, and reports whether it did.
+   *
+   * The write is recorded as this layer's own, so the next derived value may replace
+   * it and a hide may empty it, and the key is put on screen when the value is
+   * non-empty - but **not** marked as the diver's, which is where it parts from
+   * `reveal`. Nothing it writes into a hidden field is submitted unseen.
+   */
+  autofill: (key: DiveFormFieldKey, value: unknown) => boolean;
   /**
    * Applies the new form's prefill through the visibility rules.
    *
@@ -137,7 +148,9 @@ export interface UseDiveFormVisibilityOptions<
  * and not `_defaultValues`, so a show-fill of the gas card reads as dirty though
  * nobody typed. A value that arrived from outside the diver's typing is *not* the
  * layer's write: `reveal` marks those keys as the diver's, so hiding the field keeps
- * what an import, a gear set or a URL parameter put there.
+ * what an import, a gear set or a URL parameter put there. The one exception is a
+ * value derived from another pick - a course's contact - which `autofill` writes and
+ * records as the layer's, so the next course may replace it.
  */
 export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   form,
@@ -457,6 +470,33 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     [reveal],
   );
 
+  const autofill = useCallback(
+    (key: DiveFormFieldKey, value: unknown): boolean => {
+      if (!isUntouched(key)) return false;
+
+      if (!sameValue(readValue(key), value)) {
+        formRef.current.setValue(
+          key as unknown as Path<TFieldValues>,
+          value as PathValue<TFieldValues, Path<TFieldValues>>,
+          { shouldValidate: true, shouldDirty: true },
+        );
+      }
+      writtenRef.current[key] = value;
+      // Also what a later show puts back, so hiding and showing the field again
+      // returns this value rather than an older carried one.
+      carriedRef.current[key] = value;
+
+      if (isNonEmptyFieldValue(value) && !revealedRef.current.has(key)) {
+        const next = new Set(revealedRef.current);
+        next.add(key);
+        revealedRef.current = next;
+        setRevealed(next);
+      }
+      return true;
+    },
+    [isUntouched, readValue],
+  );
+
   const prefill = useCallback(
     <T>(base: T, carried: Partial<Record<DiveFormFieldKey, unknown>>): T => {
       carriedRef.current = { ...carried };
@@ -497,6 +537,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     setHidden,
     reveal,
     revealNonEmpty,
+    autofill,
     prefill,
     isSaving,
     saveError,
