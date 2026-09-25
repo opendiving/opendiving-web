@@ -1922,8 +1922,9 @@ The anchor is the start of a day with diving in it, so `periodRange`, `periodLab
 `availablePeriods`, `stepPeriod` and `resolveAnchor` live in `lib/chart-period.ts`.
 `GET /user/dive-activity` returns one row per day and `activityBars` sums into months and years
 client-side, so scope switches need no request (reasoning under _"Dives-per-day is counted in
-Python"_ in `opendiving-api/DECISIONS.md`). `MAX_X_LABELS` is 20 for years, 12 for months, 31 for
-days.
+Python"_ in `opendiving-api/DECISIONS.md`). `X_LABEL_SPACING` gives a label 33 units for years, 26
+for months and 21 for days: twenty years, all twelve months and every day at the design width, fewer
+on a phone.
 
 ## Every chart control names its own card, because the two cards draw the same row
 

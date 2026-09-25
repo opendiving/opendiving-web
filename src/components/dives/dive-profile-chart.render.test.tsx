@@ -459,8 +459,9 @@ describe("DiveProfileChart crosshair over a short deco obligation", () => {
   it("names a marker the crosshair is on, and none when it is away from one", () => {
     // The other half of the same class of wiring: `nearestEvent` is covered in
     // `lib`, but the tolerance the chart hands it -
-    // `(duration / PLOT_WIDTH) * EVENT_HOVER_UNITS`, about 38 s on this dive - is
-    // a fact about this file and nothing asserted it.
+    // `(duration / plotWidth) * EVENT_HOVER_UNITS`, about 38 s on this dive at the
+    // design width jsdom always draws - is a fact about this file and nothing
+    // asserted it.
     render(
       <DiveProfileChart
         profile={longProfile({ events: [{ time: 900_000, type: "bookmark" }] })}
