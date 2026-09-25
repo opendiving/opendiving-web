@@ -417,8 +417,8 @@ describe("picking a course fills the card's own fields in", () => {
   });
 
   it("sends no training center, only the contact", async () => {
-    // The API still reads a `training_center` string for the build before this
-    // one; this one names the contact by uuid and nothing else.
+    // A name sent as text would be matched to a contact, or make one, on the
+    // API's side; the picker has already said which contact it is.
     open();
 
     await pickCourse(COURSE.name);
