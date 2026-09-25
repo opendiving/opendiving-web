@@ -11,6 +11,8 @@ import userEvent from "@testing-library/user-event";
 import NewDivePage from "./page";
 import { divesAPI, type Dive } from "@/lib/api/dives";
 import type { Species } from "@/lib/api/species";
+import type { Course } from "@/lib/api/courses";
+import type { Contact } from "@/lib/api/contacts";
 import {
   DIVE_FORM_ALWAYS_ON_FIELDS,
   DIVE_FORM_FIELDS,
@@ -160,7 +162,32 @@ vi.mock("@/lib/api/gear", async (importOriginal) => {
   };
 });
 
+// The course picker and the dive center picker look their values up by uuid, and
+// the page reads a URL course's contact itself - all of it stubbed, for the reason
+// the gear mock above records.
+vi.mock("@/lib/api/courses", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/courses")>();
+  return {
+    ...actual,
+    coursesAPI: { ...actual.coursesAPI, getCourses: vi.fn(), getCourse: vi.fn() },
+  };
+});
+
+vi.mock("@/lib/api/contacts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/contacts")>();
+  return {
+    ...actual,
+    contactsAPI: {
+      ...actual.contactsAPI,
+      getContacts: vi.fn(),
+      getContact: vi.fn(),
+    },
+  };
+});
+
 const { authAPI } = await import("@/lib/api/auth");
+const { coursesAPI } = await import("@/lib/api/courses");
+const { contactsAPI } = await import("@/lib/api/contacts");
 const presets = await import("@/lib/api/dive-form-presets");
 const { tripsAPI } = await import("@/lib/api/trips");
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
@@ -193,6 +220,40 @@ const storedDive = (overrides: Partial<Dive> = {}): Dive =>
     ...overrides,
   }) as Dive;
 
+const contactNamed = (uuid: string, name: string): Contact => ({
+  uuid,
+  name,
+  roles: ["dive_center"],
+  notes: "",
+  user_uuid: "user-1",
+  created_at: "2026-01-01T00:00:00Z",
+});
+
+const LAST_SHOP = contactNamed("contact-last", "Poseidon Divers");
+const COURSE_SHOP = contactNamed("contact-course", "Blue Ocean");
+const OTHER_SHOP = contactNamed("contact-other", "Red Sea Divers");
+const MY_SHOP = contactNamed("contact-mine", "Coral Garden Club");
+const CONTACTS = [LAST_SHOP, COURSE_SHOP, OTHER_SHOP, MY_SHOP];
+
+const courseRun = (
+  uuid: string,
+  name: string,
+  contact_uuid: string | null,
+): Course => ({
+  uuid,
+  name,
+  status: "in_progress",
+  contact_uuid,
+  user_uuid: "user-1",
+  created_at: "2026-01-01T00:00:00Z",
+});
+
+const COURSES = [
+  courseRun("course-9", "Advanced Open Water", COURSE_SHOP.uuid),
+  courseRun("course-10", "Rescue Diver", OTHER_SHOP.uuid),
+  courseRun("course-11", "Deep, self-study", null),
+];
+
 beforeEach(() => {
   vi.clearAllMocks();
   stable.auth.user.dive_form_hidden_fields = [];
@@ -220,6 +281,24 @@ beforeEach(() => {
   vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
     results: [],
     has_more: false,
+  });
+  vi.mocked(coursesAPI.getCourses).mockResolvedValue({
+    ...emptyPage<Course>(),
+    data: COURSES,
+    total_count: COURSES.length,
+  });
+  vi.mocked(coursesAPI.getCourse).mockImplementation(
+    async (uuid) => COURSES.find((course) => course.uuid === uuid) ?? COURSES[0],
+  );
+  vi.mocked(contactsAPI.getContacts).mockResolvedValue({
+    ...emptyPage<Contact>(),
+    data: CONTACTS,
+    total_count: CONTACTS.length,
+  });
+  vi.mocked(contactsAPI.getContact).mockImplementation(async (uuid) => {
+    const found = CONTACTS.find((contact) => contact.uuid === uuid);
+    if (!found) throw new Error("not found");
+    return found;
   });
 });
 
@@ -1069,7 +1148,7 @@ describe("persisting a toggle", () => {
 describe("a course handed in the URL", () => {
   it("is on screen and on the wire even under a set that hides it", async () => {
     // "Log a dive for this course" is the click this protects: `course_uuid` is one
-    // of the fourteen Basic hides, so without the reveal the dive would be filed
+    // of the fields Basic hides, so without the reveal the dive would be filed
     // against no course and nothing on the form would say so.
     stable.searchParams = new URLSearchParams("course_uuid=course-9");
     stable.auth.user.dive_form_hidden_fields = ["course_uuid"];
@@ -1118,6 +1197,170 @@ describe("a course handed in the URL", () => {
     expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].course_uuid).toBe(
       "course-9",
     );
+  });
+});
+
+describe("the dive center", () => {
+  const diveCenter = () =>
+    screen.getByRole("combobox", { name: /^dive center$/i });
+  const pickCourse = async (name: string) => {
+    await userEvent.click(screen.getByRole("combobox", { name: /^course$/i }));
+    await userEvent.click(await screen.findByRole("option", { name }));
+  };
+  const sent = () => vi.mocked(divesAPI.createDive).mock.calls[0][0];
+
+  it("carries over from the last dive, as the trip does", async () => {
+    lastDiveWith({ contact_uuid: LAST_SHOP.uuid });
+
+    render(<NewDivePage />);
+
+    await waitFor(() => expect(diveCenter()).toHaveValue(LAST_SHOP.name));
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().contact_uuid).toBe(LAST_SHOP.uuid);
+  });
+
+  it("takes a URL course's contact ahead of the last dive's", async () => {
+    stable.searchParams = new URLSearchParams("course_uuid=course-9");
+    lastDiveWith({ contact_uuid: LAST_SHOP.uuid });
+
+    render(<NewDivePage />);
+
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+  });
+
+  it("takes a URL course's contact on a first dive, where nothing carries over", async () => {
+    // No last dive means the prefill returns before it builds anything, so the
+    // course's contact is a write of its own.
+    stable.searchParams = new URLSearchParams("course_uuid=course-9");
+
+    render(<NewDivePage />);
+
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().contact_uuid).toBe(COURSE_SHOP.uuid);
+  });
+
+  it("shows a URL course's contact under a set that hides the field", async () => {
+    // Basic hides the dive center; a value the course put there is still one
+    // nobody submits unseen.
+    stable.searchParams = new URLSearchParams("course_uuid=course-9");
+    stable.auth.user.dive_form_hidden_fields = ["contact_uuid"];
+    lastDiveWith({ contact_uuid: LAST_SHOP.uuid });
+
+    render(<NewDivePage />);
+
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+  });
+
+  it("carries nothing into a field the set hides", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["contact_uuid"];
+    lastDiveWith({ contact_uuid: LAST_SHOP.uuid });
+
+    render(<NewDivePage />);
+    await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
+
+    expect(
+      screen.queryByRole("combobox", { name: /^dive center$/i }),
+    ).not.toBeInTheDocument();
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().contact_uuid).toBeUndefined();
+  });
+
+  it("follows the course picked, and a later pick replaces what a pick wrote", async () => {
+    lastDiveWith({ contact_uuid: LAST_SHOP.uuid });
+    render(<NewDivePage />);
+    await waitFor(() => expect(diveCenter()).toHaveValue(LAST_SHOP.name));
+
+    await pickCourse("Advanced Open Water");
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+
+    await pickCourse("Rescue Diver");
+    await waitFor(() => expect(diveCenter()).toHaveValue(OTHER_SHOP.name));
+  });
+
+  it("keeps a dive center the diver chose when the course changes", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await pickCourse("Advanced Open Water");
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+    await userEvent.click(diveCenter());
+    await userEvent.click(
+      await screen.findByRole("option", { name: MY_SHOP.name }),
+    );
+
+    await pickCourse("Rescue Diver");
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("combobox", { name: /^course$/i }),
+      ).toHaveValue("Rescue Diver"),
+    );
+    expect(diveCenter()).toHaveValue(MY_SHOP.name);
+  });
+
+  it("leaves the dive center alone for a course that names none", async () => {
+    lastDiveWith({ contact_uuid: LAST_SHOP.uuid });
+    render(<NewDivePage />);
+    await waitFor(() => expect(diveCenter()).toHaveValue(LAST_SHOP.name));
+
+    await pickCourse("Deep, self-study");
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("combobox", { name: /^course$/i }),
+      ).toHaveValue("Deep, self-study"),
+    );
+    expect(diveCenter()).toHaveValue(LAST_SHOP.name);
+  });
+
+  it("puts a hidden dive center on screen when a course fills it", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["contact_uuid"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    expect(
+      screen.queryByRole("combobox", { name: /^dive center$/i }),
+    ).not.toBeInTheDocument();
+
+    await pickCourse("Advanced Open Water");
+
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().contact_uuid).toBe(COURSE_SHOP.uuid);
+  });
+
+  it("takes a course's contact back off the wire when the diver hides the field", async () => {
+    // Shown by a course, the value is still the form's rather than the diver's -
+    // unlike one a URL or a file put there - so hiding the field empties it.
+    stable.auth.user.dive_form_hidden_fields = ["contact_uuid"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await pickCourse("Advanced Open Water");
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+
+    await openFieldsPanel();
+    await userEvent.click(
+      screen.getByRole("switch", { name: /^dive center$/i }),
+    );
+    await closeFieldsPanel();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("combobox", { name: /^dive center$/i }),
+      ).not.toBeInTheDocument(),
+    );
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().contact_uuid).toBeUndefined();
   });
 });
 
