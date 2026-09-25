@@ -242,6 +242,10 @@ export interface Dive {
   // Read it with the `formatDive*` helpers, which render that state as the clock
   // alone; never with `new Date(...)` and local getters, which would silently
   // reinterpret it in the viewer's own timezone.
+  //
+  // **Or it may be a bare date** ("2002-06-18"): an imported dive whose time of
+  // day was never recorded. The shape is the whole signal - no flag comes with
+  // it - and the same helpers render it as the date alone.
   start_time: string;
   duration: number;
   max_depth?: number;
@@ -773,6 +777,9 @@ export interface DiveUpdate {
   // included - it refuses with 422 and a flat `{"detail": "<sentence>"}`, so
   // render the failure through `getApiErrorMessage`. Adopting a real offset is
   // always allowed and is the only way out of the unknown state.
+  //
+  // A bare date is accepted the same way, only on a dive that already has one;
+  // any date-time ends that state.
   start_time?: string;
   duration?: number;
   max_depth?: number | null;

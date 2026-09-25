@@ -17,6 +17,7 @@ import {
 import {
   formatDiveStartTime,
   formatDurationForForm,
+  isDateOnlyStartTime,
   normalizeParsedStartTime,
 } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -134,9 +135,20 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   if (parsed.dive_number != null && writes("dive_number")) {
     setDiveFormValue(form, "dive_number", parsed.dive_number);
   }
-  const normalizedStartTime = parsed.start_time
-    ? normalizeParsedStartTime(parsed.start_time)
-    : undefined;
+  // A file that states only a day, applied to a dive that has only a day, keeps
+  // it a day: the midnight `normalizeParsedStartTime` supplies for a new dive
+  // would end the state with a time neither of them recorded.
+  const keepsDateOnly =
+    isDateOnlyStartTime(parsed.start_time) &&
+    isDateOnlyStartTime(
+      form.getValues("start_time" as unknown as Path<TFieldValues>) as
+        string | undefined,
+    );
+  const normalizedStartTime = keepsDateOnly
+    ? parsed.start_time
+    : parsed.start_time
+      ? normalizeParsedStartTime(parsed.start_time)
+      : undefined;
   if (normalizedStartTime && writes("start_time")) {
     setDiveFormValue(form, "start_time", normalizedStartTime);
   }

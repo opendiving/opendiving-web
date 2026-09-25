@@ -43,6 +43,13 @@ export function parseFormDateTime(value: string): Date {
 // and `formatDiveStartTime()` prints no zone at all. See DECISIONS.md, "An
 // unknown UTC offset is a third state, and `new Date()` never sees an
 // offset-less string".
+//
+// **A fourth state is a bare date** ("2002-06-18"): the day was recorded and the
+// time of day was not, so there is no clock to show and no offset to have.
+// `isDateOnlyStartTime()` names it, `formatDiveDateTime()` and
+// `formatDiveStartTime()` print the date and stop, and `splitStartTime()` hands
+// the date back without a time for `combineStartTime()` to return unchanged.
+// Midnight is never a stand-in for it: that is a time nobody recorded.
 
 // Matches a trailing UTC offset ("Z", "+HH:MM", "+HHMM", or "+HH") on an ISO
 // 8601 datetime string.
@@ -106,9 +113,11 @@ const NAIVE_DATE_TIME_REGEX =
 // browser from the calculation entirely.
 //
 // A bare "YYYY-MM-DD" is left alone: ECMAScript already parses the date-only
-// form as UTC, and "2026-04-17Z" is not a date-time at all. Anything else is
-// handed to `Date` unchanged, so an unparseable value still comes back NaN
-// exactly as it did before.
+// form as UTC, and "2026-04-17Z" is not a date-time at all. The instant that
+// gives is the start of the day, which is where a date-only dive sorts; it
+// places the dive on a timeline and is never read back as a time of day. Anything
+// else is handed to `Date` unchanged, so an unparseable value still comes back
+// NaN exactly as it did before.
 function parseAsWallClockUtc(isoString: string): Date {
   return NAIVE_DATE_TIME_REGEX.test(isoString)
     ? new Date(`${isoString.replace(" ", "T")}Z`)
@@ -151,6 +160,19 @@ export function diveWallClockTime(startTime: string): number {
   return shiftByEmbeddedOffset(startTime).shifted.getTime();
 }
 
+// A `start_time` that carries only a date, with no time at all, e.g.
+// "2021-04-04".
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+// Whether a dive's `start_time` is a bare date - a dive whose time of day was
+// never recorded, which only a logbook import can create. The API marks the
+// state by this shape alone; no read carries a flag beside it.
+export function isDateOnlyStartTime(
+  startTime: string | null | undefined,
+): startTime is string {
+  return startTime != null && DATE_ONLY_REGEX.test(startTime);
+}
+
 // Splits an ISO 8601 datetime string (e.g. the API's dive `start_time`) into its
 // wall-clock component - formatted like `formatDateTimeForForm()` - and its UTC
 // offset in minutes, *without* ever converting through the browser's own
@@ -161,10 +183,17 @@ export function diveWallClockTime(startTime: string): number {
 // recorded" option, and `combineStartTime()` takes it straight back. It used to
 // come back as `0` here, which is how an imported dive's first save wrote both
 // the wrong hour and a "+00:00" nobody chose.
+//
+// A bare date comes back as the date alone, `localDateTime` "YYYY-MM-DD" with no
+// time after it, so the first ten characters are still the day and nothing
+// downstream is handed a midnight to display or save.
 export function splitStartTime(isoString: string): {
   localDateTime: string;
   offsetMinutes: number | null;
 } {
+  if (isDateOnlyStartTime(isoString)) {
+    return { localDateTime: isoString, offsetMinutes: null };
+  }
   const { shifted, offsetMinutes } = shiftByEmbeddedOffset(isoString);
   const localDateTime = `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(
     shifted.getUTCDate(),
@@ -190,18 +219,16 @@ export function combineStartTime(
     : `${wallClock}${formatUtcOffset(offsetMinutes)}`;
 }
 
-// A `start_time` that carries only a date, with no time at all, e.g.
-// "2021-04-04".
-const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-
 // Normalizes a dive-computer file's raw `start_time` into the single
 // offset-aware `start_time` string the form (`DiveStartTimeField`) and the API
 // both expect. Dive computers export it in three shapes:
 //
 // - With an explicit offset, e.g. "2021-04-04T10:04:47.910+02:00" - already the
 //   shape we want, so it's used as-is.
-// - Date-only, e.g. "2021-04-04" - taken as midnight wall-clock. Checked
-//   *before* the naive branch below, because `new Date("2021-04-04")` parses as
+// - Date-only, e.g. "2021-04-04" - taken as midnight wall-clock, because a new
+//   dive needs an instant and a diver can correct the time. It is never applied
+//   to a dive already carrying only its date: `applyParsedDiveToForm` keeps the
+//   bare date there. Checked *before* the naive branch below, because `new Date("2021-04-04")` parses as
 //   UTC midnight and reading it back with local getters shows the previous day
 //   west of Greenwich (see DECISIONS.md, "Bare `YYYY-MM-DD` dates must not go
 //   through `new Date(dateString)`").
@@ -251,22 +278,50 @@ export function nowStartTime(): string {
 // from. Only use this for a dive's `start_time`; other timestamps (e.g.
 // `created_at`) should keep using `formatDateTime()` below, which
 // intentionally shows the viewer's own local time.
+//
+// A bare-date `start_time` prints its date and no clock, whatever `options`
+// asks for: the time-of-day parts are dropped rather than rendered as midnight.
 export function formatDiveDateTime(
   startTime: string,
   options?: Intl.DateTimeFormatOptions,
 ): string {
+  const requested = options ?? {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  };
   return shiftByEmbeddedOffset(startTime).shifted.toLocaleDateString("en-US", {
     hour12: false,
-    ...(options ?? {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
+    ...(isDateOnlyStartTime(startTime) ? withoutClock(requested) : requested),
     timeZone: "UTC",
   });
 }
+
+// `options` with every time-of-day part removed, so that `Intl` prints the date
+// alone - and the date parts put back when that leaves none, since
+// `toLocaleDateString` would otherwise fall back to a numeric date.
+function withoutClock(
+  options: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormatOptions {
+  const date = { ...options };
+  for (const key of CLOCK_OPTIONS) delete date[key];
+  return Object.keys(date).length > 0
+    ? date
+    : { year: "numeric", month: "short", day: "numeric" };
+}
+
+const CLOCK_OPTIONS = [
+  "hour",
+  "minute",
+  "second",
+  "dayPeriod",
+  "hour12",
+  "hourCycle",
+  "timeStyle",
+  "timeZoneName",
+] as const satisfies readonly (keyof Intl.DateTimeFormatOptions)[];
 
 // Time-of-day counterpart to `formatDiveDateTime()` - see its docs above.
 export function formatDiveTimeOnly(
@@ -297,6 +352,9 @@ export function formatDiveTimeOnly(
 // real state, and a wall clock with no zone beside it is exactly what it means.
 // Saying "UTC" would be a claim about where the dive happened, which is the one
 // thing nothing here knows.
+//
+// A bare-date `start_time` stops earlier still, after the date: "Tuesday, June
+// 18, 2002" and no "at" at all.
 export function formatDiveStartTime(startTime: string): string {
   const date = formatDiveDateTime(startTime, {
     weekday: "long",
@@ -304,6 +362,7 @@ export function formatDiveStartTime(startTime: string): string {
     month: "long",
     day: "numeric",
   });
+  if (isDateOnlyStartTime(startTime)) return date;
   const offsetMinutes = parseUtcOffsetMinutes(startTime);
   const zone =
     offsetMinutes === null ? "" : ` (UTC${formatUtcOffset(offsetMinutes)})`;
