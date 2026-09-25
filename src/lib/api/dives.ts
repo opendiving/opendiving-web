@@ -1163,9 +1163,9 @@ export const divesAPI = {
 
   // Remove one stored file.
   //
-  // The recording's profile - and, when it was primary, the dive's oxygen
-  // exposure readings - are re-derived server-side from whatever files are
-  // left, and deleting the last file of a file-backed recording deletes the
+  // The recording's profile and readouts - and, when it was primary, the dive's
+  // entry and exit positions - are re-derived server-side from whatever files
+  // are left, and deleting the last file of a file-backed recording deletes the
   // recording too. A recording whose profile came from logbook import or from a
   // merge survives, because no file can re-yield those samples. Re-read the
   // dive afterwards rather than predicting any of it here.
@@ -1182,8 +1182,8 @@ export const divesAPI = {
     await apiClient.delete(`/dive/${diveUuid}/recording/${recordingUuid}`);
   },
 
-  // Move a recording to the front, which re-derives the dive's oxygen-exposure
-  // readings from it.
+  // Move a recording to the front, which re-derives the dive's entry and exit
+  // positions from it and makes its readouts the ones the exposure card shows.
   //
   // `{ primary: true }` is the only body the API accepts - `false` is a 422,
   // because *something* has to be primary and "make this one not primary" is

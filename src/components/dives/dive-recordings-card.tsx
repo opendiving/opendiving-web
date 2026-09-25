@@ -166,7 +166,7 @@ export function DiveRecordingsCard({
       {/* Mounted only while a removal is pending, so the strings are derived
           from it rather than from a nullable one. Both routes say what else
           goes: a file deletion can take the recording, the primary slot and the
-          dive's readings with it, and a recording deletion moves the last two -
+          dive's positions with it, and a recording deletion moves the last two -
           none of which "the dive itself is unaffected" covered. */}
       {removal && (
         <ConfirmDialog

@@ -5909,7 +5909,7 @@ Re-reading the dive on the edit page goes through `divesAPI.getDive` and `setRes
 never `useResource`'s `refetch`. `refetch` re-runs `onLoaded`, which on that page is `resetFromDive`
 → `form.reset(values)`, so a diver's unsaved edits vanish with no error. Re-reading rather than
 predicting is right wherever the server changes more than one row: a recording's profile is
-re-derived from the remaining files, the recording goes with its last file, and the dive's readings
+re-derived from the remaining files, the recording goes with its last file, and the dive's positions
 follow the primary.
 
 ## A second file of one recording fills the form, and never overwrites it
@@ -6014,17 +6014,17 @@ browser.
 ## Deleting a file is three different actions, and the confirmation says which
 
 `DELETE /dive/{uuid}/file/{fid}` (`delete_dive_file`) does one of three things: the recording keeps
-other files and re-derives its profile; the recording goes with its last file, `renumber_ordinals`
-promoting the next to ordinal 0; or a file-less recording survives, its samples a merge's or a
-converted document's. The dive's figures, entry and exit positions included, follow the primary
-recording and move only when the deletion touched ordinal 0 (`refresh_tech_scalars` takes
-`touched_primary`); a file-less primary clears them like none. `deleteFileConfirmation`,
-`deleteRecordingConfirmation` and `figuresSentence` in `lib/dive-recordings.ts` take the whole
-recording list, so the recordings card and both forms agree. The heading becomes "Delete this file
-and its recording?" where the recording goes; every branch mentions the figures; the dialogs mount
-only while a deletion is pending, or the neutral heading would show while closing.
-`DELETE_DIVE_CONFIRMATION` names the recordings and files a dive delete hard-deletes (`erase_dive` →
-`delete_files_for_dive`) without counting, so both pages agree.
+other files and re-derives its profile and readouts; the recording goes with its last file,
+`renumber_ordinals` promoting the next to ordinal 0; or a file-less recording survives, its samples
+and readouts a merge's or a converted document's. The dive's own figures, its entry and exit
+positions, follow the primary recording and move only when the deletion touched ordinal 0
+(`refresh_tech_scalars` takes `touched_primary`); a file-less primary clears them like none.
+`deleteFileConfirmation`, `deleteRecordingConfirmation` and `figuresSentence` in
+`lib/dive-recordings.ts` take the whole recording list, so the recordings card and both forms agree.
+The heading becomes "Delete this file and its recording?" where the recording goes; every branch
+mentions the figures; the dialogs mount only while a deletion is pending, or the neutral heading
+would show while closing. `DELETE_DIVE_CONFIRMATION` names the recordings and files a dive delete
+hard-deletes (`erase_dive` → `delete_files_for_dive`) without counting, so both pages agree.
 
 ## A format list in this file outlives the sweep that catches its siblings
 
