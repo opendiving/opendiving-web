@@ -574,9 +574,8 @@ either verb reads as "archiving keeps them". A test pins the wording.
 ## Selection is a checkbox, and a setting is a switch
 
 The line is selection against setting: a switch is a state you leave set, while a checkbox picks
-members of a set — invite-queue rows for a batch that means nothing until Send invitations or Remove
-is pressed, or the roles a contact holds, saved with its dialog. Those two are the app's checkboxes.
-Every other boolean (the Fields dialog alone has one per `DIVE_FORM_FIELD_REGISTRY` and
+members of a set — invite-queue rows for a batch, or a contact's roles. Those are the app's
+checkboxes. Every other boolean (the Fields dialog alone has one per `DIVE_FORM_FIELD_REGISTRY` and
 `DIVE_FORM_ALWAYS_ON_FIELDS` entry) is `Switch` (`ui/switch.tsx`), taking
 `checked`/`onCheckedChange`; Radix's `Root` renders `<button type="button">`, which
 `<label htmlFor>` names.
@@ -5766,15 +5765,11 @@ form-level `isDirty`.
 
 ## A value from outside the diver's typing puts a hidden field back on screen; the prefill does not
 
-A value from outside the diver's typing reveals its field for that form only, leaving the stored
-set: the edit form's load (`diveToFormValues` via `onLoaded`), a parsed dive file
-(`DiveFileImport`'s `onValuesApplied`), a gear set with a weight (`DiveGearField`'s `onSetApplied`),
-the new form's mount for a URL trip, site or course (Basic hides `course_uuid`). Each ends in
-`revealNonEmpty` or `reveal`, and a key revealed that way is the diver's, so hiding keeps its value.
-
-A course's contact is the exception: derived from a pick, it goes through `autofill`, which reveals
-the key untouched and records the write as the layer's. The next course replaces it, a hide empties
-it, and nothing submits unseen. The URL course's contact takes the same write.
+A value from outside the diver's typing reveals its field for that form only, never in the stored
+set: the edit form's load, a parsed dive file (`DiveFileImport`'s `onValuesApplied`), a gear set
+with a weight (`DiveGearField`'s `onSetApplied`), the new form's mount for a URL trip, site or
+course. Each ends in `revealNonEmpty` or `reveal`, making the key the diver's, so hiding keeps its
+value — except a course's contact, which `autofill` reveals as the layer's own write.
 
 Non-empty means not `undefined`, `null`, `""` or `[]`; `0` is a value. The last-dive prefill touches
 only visible keys.
