@@ -1000,9 +1000,15 @@ const ELAPSED_STEPS_MS = [1, 2, 5, 10, 15, 30, 60, 120].map(
   (minutes) => minutes * 60 * MILLISECONDS_PER_SECOND,
 );
 
+// How many elapsed-time steps the axis aims for at the chart's design width.
+export const ELAPSED_TICK_TARGET = 6;
+
 // The elapsed-time gridlines for a profile spanning `durationMs`, in
 // milliseconds, starting at 0 and never running past the end of the dive.
-export function elapsedTicks(durationMs: number, targetTicks = 6): number[] {
+export function elapsedTicks(
+  durationMs: number,
+  targetTicks = ELAPSED_TICK_TARGET,
+): number[] {
   if (durationMs <= 0) return [0];
 
   const step =
@@ -1032,9 +1038,9 @@ export function elapsedTicks(durationMs: number, targetTicks = 6): number[] {
 //     card is, and here you don't: its height depends on how many channels the
 //     dive recorded, and the SVG scales to its container while the card's text
 //     does not. A fixed "flip above the point when it's in the top third" rule
-//     put the card 11 px past the top edge of a scroll container that clips
-//     (`overflow-x: auto` computes `overflow-y` to `auto` too), so it was cut
-//     off. Anchoring to an edge is correct for *any* card height and any scale.
+//     put the card 11 px past the top edge of the chart, over whatever sits
+//     above it. Anchoring to an edge is correct for *any* card height and any
+//     scale.
 //
 // The card moves to the bottom when the topmost dot is high in the plot, so it
 // doesn't cover the readings it is describing.

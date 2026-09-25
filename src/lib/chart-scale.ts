@@ -101,6 +101,33 @@ export function countDomain(highest: number, targetTicks = 5): Domain {
   return { min: 0, max: top, step: top };
 }
 
+// The narrowest container, in CSS pixels, a chart is drawn into at its full
+// viewBox width. Its 11-unit axis type renders at 8.6px there, which is as small
+// as any of these charts ever drew it: they used to hold this as a minimum width
+// and scroll sideways below it.
+export const CHART_FULL_WIDTH_PX = 560;
+
+// The viewBox width for a chart designed `width` units wide, in a container
+// `containerPx` wide. From `CHART_FULL_WIDTH_PX` up it is the design width, so a
+// desktop layout draws exactly as designed. Below it the viewBox narrows in step
+// with the container, which keeps the scale - and so the type size - the chart
+// has at that width: a phone gets a narrower plot, not smaller labels and not a
+// scrollbar. Unmeasured (`null` or `0`, which is also what jsdom reports) gets
+// the design width.
+export function fittedChartWidth(
+  width: number,
+  containerPx: number | null,
+): number {
+  if (!containerPx || containerPx >= CHART_FULL_WIDTH_PX) return width;
+  return (width * containerPx) / CHART_FULL_WIDTH_PX;
+}
+
+// How many labels fit along `plotWidth` viewBox units when each needs `spacing`
+// of them, never fewer than one.
+export function labelCapacity(plotWidth: number, spacing: number): number {
+  return Math.max(1, Math.floor(plotWidth / spacing));
+}
+
 // The gridline values for a domain, inclusive of both ends. Built by counting
 // steps rather than by accumulating `+= step`, which drifts on fractional steps
 // (0.1 + 0.2 territory) and produces labels like "12.499999999999998".

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { axisTicks, countDomain, niceDomain } from "@/lib/chart-scale";
+import {
+  CHART_FULL_WIDTH_PX,
+  axisTicks,
+  countDomain,
+  fittedChartWidth,
+  labelCapacity,
+  niceDomain,
+} from "@/lib/chart-scale";
 
 // Moved verbatim from `dive-gas.test.ts` along with the functions themselves;
 // the examples are still phrased in RMV because that is the series they were
@@ -94,5 +101,34 @@ describe("countDomain", () => {
     // Zero-height everywhere, but the gridlines and the baseline still have to
     // land somewhere finite.
     expect(countDomain(0)).toEqual({ min: 0, max: 1, step: 1 });
+  });
+});
+
+describe("fittedChartWidth", () => {
+  it("keeps the design width from the full-width container up", () => {
+    expect(fittedChartWidth(720, CHART_FULL_WIDTH_PX)).toBe(720);
+    expect(fittedChartWidth(720, 1100)).toBe(720);
+  });
+
+  it("narrows in step with a narrower container, so the scale holds", () => {
+    // A 375px phone's card leaves the chart 293px.
+    const width = fittedChartWidth(720, 293);
+
+    expect(293 / width).toBeCloseTo(CHART_FULL_WIDTH_PX / 720);
+  });
+
+  it("uses the design width for a container it has not measured", () => {
+    expect(fittedChartWidth(720, null)).toBe(720);
+    expect(fittedChartWidth(720, 0)).toBe(720);
+  });
+});
+
+describe("labelCapacity", () => {
+  it("counts whole labels only", () => {
+    expect(labelCapacity(664, 33)).toBe(20);
+  });
+
+  it("never offers fewer than one", () => {
+    expect(labelCapacity(10, 33)).toBe(1);
   });
 });
