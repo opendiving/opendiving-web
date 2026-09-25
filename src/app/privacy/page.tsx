@@ -30,7 +30,7 @@ function StorageKey({ name }: { name: string }) {
 // client island. The island renders a stable server-side state and resolves the
 // real one after hydration, which is what every storage consumer here does.
 export default async function PrivacyPage() {
-  // Read here rather than in a client component for the reason `/contact` reads it
+  // Read here rather than in a client component for the reason `/support` reads it
   // here: this is a Server Component, so the instance's configuration is legible
   // without shipping it to the browser. The Google section below exists only where
   // an instance has Google sign-in turned on.
@@ -235,8 +235,8 @@ export default async function PrivacyPage() {
                 service records
               </li>
               <li>
-                <strong>Contact Messages:</strong> Whatever you write on the
-                contact page, if this copy has one configured, and the address
+                <strong>Support Requests:</strong> Whatever you write on the
+                support page, if this copy has one configured, and the address
                 you give to reply to
               </li>
             </ul>
@@ -334,16 +334,16 @@ export default async function PrivacyPage() {
               </li>
               <li>
                 <strong>Rate-limit counters:</strong> To stop sign-in, the
-                contact form and the invite-request form being hammered, this
+                support form and the invite-request form being hammered, this
                 server counts recent requests in a short-lived store. The
                 counters are keyed three ways &mdash; by IP address, by the
-                email address a sign-in link, a contact message or an invitation
+                email address a sign-in link, a support request or an invitation
                 was requested for, and by account id for things you can only do
                 signed in, such as exporting your data, importing a logbook,
                 changing your username or email, registering a passkey, inviting
                 somebody, and looking up place and species names. Each counter
                 is a number and expires by itself: after 15 minutes on the
-                sign-in and account paths, after an hour on the contact form,
+                sign-in and account paths, after an hour on the support form,
                 the invite-request form, exports, logbook imports, and the
                 place- and species-name lookups. Other counters exist that hold
                 no identifier at all &mdash; they cap how often this server as a
@@ -429,7 +429,7 @@ export default async function PrivacyPage() {
                 to or removed from your account, tell your old address when your
                 email address is changed, and &mdash; if you have set a service
                 schedule on a piece of gear &mdash; remind you when it comes
-                due. If you use the contact form, deliver what you wrote to
+                due. If you use the support form, deliver what you wrote to
                 whoever runs this copy. Section 6.3 lists all of these and says
                 which arrive without you asking
               </li>
@@ -929,7 +929,7 @@ export default async function PrivacyPage() {
             </h3>
             <p className="text-foreground mb-4">
               This copy of OpenDiving sends you three kinds of email, and the
-              whole list is here. (It also delivers a contact-form message to
+              whole list is here. (It also delivers a support-form message to
               whoever runs this copy, which is mail about you rather than to
               you.)
             </p>
@@ -1463,10 +1463,10 @@ export default async function PrivacyPage() {
               else entirely; an author who does not run this copy holds none of
               your data and could not answer for whoever does. The{" "}
               <Link
-                href="/contact"
+                href="/support"
                 className="underline hover:text-muted-foreground"
               >
-                contact page
+                support page
               </Link>{" "}
               is how this copy offers to reach them.
             </p>
@@ -1475,7 +1475,7 @@ export default async function PrivacyPage() {
                 On this copy they are named rather than described:{" "}
                 <em>Who runs this copy</em> at the top of this page gives the
                 operator&rsquo;s name and an address that reaches them, so a
-                request need not go through the contact page at all. That
+                request need not go through the support page at all. That
                 address is the operator&rsquo;s, in the role that can act on it
                 &mdash; which leaves the next paragraph exactly as it stands.
               </p>
@@ -1484,7 +1484,7 @@ export default async function PrivacyPage() {
               Two things this page will not do, both deliberately. It will not
               print an address belonging to the OpenDiving project as the
               software&rsquo;s author, because the address that can act on a
-              privacy request is the operator&rsquo;s, and the contact page
+              privacy request is the operator&rsquo;s, and the support page
               above is already it &mdash; on a copy the project runs itself,
               that page reaches the project too, in the role that can answer.
               Sent to the author instead, the request reaches people with no

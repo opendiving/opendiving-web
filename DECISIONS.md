@@ -1093,20 +1093,20 @@ in tenths of a bar) and are divided in `toChannelSeries`. Divided, never multipl
 exactly the noise the integer encoding removes. `PROFILE_CHANNELS` holds the divisors and mirrors
 the API's `DEPTH_SCALE`/`TEMPERATURE_SCALE`/`PRESSURE_SCALE`; the two lists are a pair.
 
-## The contact form posts to the API, and the page it lives on claims only what exists
+## The support form posts to the API, and the page it lives on claims only what exists
 
-`contactAPI.sendMessage` posts to `POST /contact`; the API forwards it to its `CONTACT_FORM_EMAIL`,
+`supportAPI.sendRequest` posts to `POST /support`; the API forwards it to its `CONTACT_FORM_EMAIL`,
 and nothing here decides the recipient.
 
 `NEXT_PUBLIC_CONTACT_EMAIL` is display only — the `mailto:` fallback in the error state — optional,
 with no default: `contact@opendiving.app` would hand a self-hosted instance's visitors an address
-that cannot see their server. Unset, `ContactForm` points at `FALLBACK_ISSUES_URL` in
-`lib/contact.ts`, since a broken form is this repo's bug. Set it only where the operator reads the
+that cannot see their server. Unset, `SupportForm` points at `FALLBACK_ISSUES_URL` in
+`lib/support.ts`, since a broken form is this repo's bug. Set it only where the operator reads the
 mailbox.
 
-`CONTACT_CATEGORIES` in `lib/api/contact.ts` mirrors `ContactCategory` in the API's
-`schemas/contact.py`; the backend 422s anything else, so adding a category changes both sides.
-`contactSchema` duplicates the API's length bounds to fail before a round-trip.
+`SUPPORT_CATEGORIES` in `lib/api/support.ts` mirrors `SupportCategory` in the API's
+`schemas/support.py`; the backend 422s anything else, so adding a category changes both sides.
+`supportSchema` duplicates the API's length bounds to fail before a round-trip.
 
 The form prefills empty fields from `useAuth()`; `defaultValues` cannot, since the user arrives
 after the auth bootstrap resolves. The page is a Server Component for `metadata`; only the form is
@@ -1471,7 +1471,7 @@ Two other contrast rules hold. The landing page's stats strip does not use
 colour (3.67:1 in dark mode, `--primary` being mid-grey there); in-copy links are a plain underline
 inheriting the surrounding colour.
 
-`npx @axe-core/cli --tags="wcag2a,wcag2aa,wcag21aa"` over `/`, `/signin`, `/contact`, `/privacy` and
+`npx @axe-core/cli --tags="wcag2a,wcag2aa,wcag21aa"` over `/`, `/signin`, `/support`, `/privacy` and
 `/terms` is the check that covers contrast; the `code-quality` workflow scans only `/`, so the other
 four are re-checked by hand after any change to `globals.css`.
 
@@ -3553,7 +3553,7 @@ An install is one compose file naming both `web` and `api`, so neither component
 it without the other carrying a copy. It lives in `opendiving/opendiving` with its docs, and this
 README links there rather than paraphrasing: two copies diverge, and the wrong one is the one the
 reader found first. `README.md`'s _Full self-hosting docs_ goes to `.../opendiving/tree/main/docs`;
-`landing-page.tsx`'s `SELF_HOSTING_URL` and the contact page's _Self-hosting quickstart_ land on
+`landing-page.tsx`'s `SELF_HOSTING_URL` and the support page's _Self-hosting quickstart_ land on
 `https://github.com/opendiving/opendiving` itself, which carries pitch and commands. What stays here
 the bundle has no reason to know: building this image yourself, and `NEXT_PUBLIC_API_URL` as a build
 arg for split-origin deployments. The README says where the project's instance is named (the front
@@ -3620,7 +3620,7 @@ by construction, thread and advisory together. A repository setting (Settings �
 a file. `security@opendiving.app` is the second channel and a real inbox. An address must pass "has
 a maintainer created it and agreed to read it", not "does it look plausible" (so
 `lib/runtime-config.ts` leaves `CONTACT_EMAIL` unset, and `conduct@opendiving.app` in
-`CODE_OF_CONDUCT.md` is conduct only). The contact form's `security` category (`CONTACT_CATEGORIES`)
+`CODE_OF_CONDUCT.md` is conduct only). The support form's `security` category (`SUPPORT_CATEGORIES`)
 is no third channel on any instance, even the project's own: an unauthenticated public form posting
 to whatever address the instance configured, without advisory-thread privacy. No supported-versions
 table and no SLA: `publish-image.yml` aliases one tag and nothing is backported, so "the latest
@@ -4315,7 +4315,7 @@ disclosed by hand in §10.1.
 ## Privacy page: §6.3 enumerates every email, and the enumeration is exhaustive on purpose
 
 §6.3 lists everything a diver receives, in three groups — mail following an action on this site,
-security notices, the gear-service digest — with contact-form mail parenthesised as mail about you,
+security notices, the gear-service digest — with support-form mail parenthesised as mail about you,
 sent to `CONTACT_FORM_EMAIL`. Any new `send_*` function in the api owes this section a line;
 `app/privacy/page.test.tsx` pins only the first group's count against its list.
 
@@ -4366,7 +4366,7 @@ Two sentences at the page's edges stay as they are. §7's "Personal information 
 deleted within 30 days" is byte-identical to what ships, because documents in the API repo,
 including a config default, are written against that number. §13 promises nothing about delivery:
 `CONTACT_EMAIL` in this repo is display-only while the API's `CONTACT_FORM_EMAIL` decides where a
-submission goes, and the two can disagree. §13 links the contact page as "how to reach whoever runs
+submission goes, and the two can disagree. §13 links the support page as "how to reach whoever runs
 this copy" without asserting a form works, and renders neither a project-owned address nor the
 public issue tracker — a diver filing an erasure request in public, to people who are not the
 controller, is the outcome it must not inherit.
@@ -4453,7 +4453,7 @@ correct — it depends on the page's tree. The columns are group labels over lin
 `footer.render.test.tsx` pins zero headings from the component.
 
 `CardTitle` (`ui/card.tsx`) takes `as` (`"h2" | "h3" | "h4"`, default `h3`), tag only;
-`contact/page.tsx` passes `as="h2"` because its cards are top-level sections.
+`support/page.tsx` passes `as="h2"` because its cards are top-level sections.
 
 CI misses both: `code-quality.yml` passes `--include="main"`, the footer is `<main>`'s sibling, and
 `heading-order` is `best-practice`, outside `--tags`. `@axe-core/cli` pins a ChromeDriver major;
@@ -5271,7 +5271,7 @@ framing ("this copy", "the operator of this copy") resolves on either kind of in
 The pages announce no project-operated instance and nothing about aggregation or telemetry (new
 collection owing its own disclosure). Terms §9 limits the author's liability and §10 indemnifies the
 writing; neither transfers to the same party as operator, and the AGPL finding stands. No project
-address is printed: the one that can act is the operator's, which the contact page reaches.
+address is printed: the one that can act is the operator's, which the support page reaches.
 
 Claims to hunt are about identity ("a different party", "not parties to these Terms"), not servers;
 read each section whole.

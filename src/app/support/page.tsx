@@ -6,8 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ContactForm } from "@/components/contact/contact-form";
-import { ISSUE_TRACKERS } from "@/lib/contact";
+import { SupportForm } from "@/components/support/support-form";
+import { ISSUE_TRACKERS } from "@/lib/support";
 import { runtimeConfig } from "@/lib/runtime-config";
 import Link from "next/link";
 import { Metadata } from "next";
@@ -15,12 +15,12 @@ import { AlertCircle, Anchor, Bug, Heart, Mail, Shield } from "lucide-react";
 
 export const metadata: Metadata = {
   // The root layout's `title.template` appends " | OpenDiving".
-  title: "Contact",
+  title: "Support",
   description:
-    "Get in touch with the people who build OpenDiving - report a bug, request a feature, or send a message that reaches a real inbox.",
+    "Get support from the people who build OpenDiving - report a bug, request a feature, or send a message that reaches a real inbox.",
 };
 
-export default function ContactPage() {
+export default function SupportPage() {
   // Display-only, and deliberately without a default: this can't route mail on its own -
   // the API's `CONTACT_FORM_EMAIL` decides where a submission actually goes - so
   // defaulting it to the project's own address would hand a self-hosted instance's
@@ -31,13 +31,11 @@ export default function ContactPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12 text-center">
-        <h1 className="text-4xl font-bold text-foreground mb-4">
-          Get in touch
-        </h1>
+        <h1 className="text-4xl font-bold text-foreground mb-4">Support</h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-          OpenDiving is an open-source dive log built by volunteers. There is no
-          support desk - but the form below reaches a real inbox, and most
-          things get fixed faster in the open, on GitHub.
+          OpenDiving is an open-source dive log built by volunteers. The form
+          below reaches a real inbox, and most things get fixed faster in the
+          open, on GitHub.
         </p>
       </div>
 
@@ -162,7 +160,7 @@ export default function ContactPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <ContactForm fallbackEmail={contactEmail} />
+              <SupportForm fallbackEmail={contactEmail} />
 
               <div className="rounded-md border bg-muted p-4">
                 <div className="flex items-start gap-2">

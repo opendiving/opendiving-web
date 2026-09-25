@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LandingPage } from "@/components/layout/landing-page";
 
 // A Server Component purely so it can export `metadata` - the same split
-// `contact/page.tsx` uses, and the reason the page itself lives in
+// `support/page.tsx` uses, and the reason the page itself lives in
 // `components/layout/landing-page.tsx` with the `"use client"` on it. The landing
 // page gates its whole render on `useRedirectIfAuthenticated`, so it cannot be a
 // Server Component itself.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contactSchema } from "./contact";
+import { supportSchema } from "./support";
 
 const valid = {
   name: "Jacques Cousteau",
@@ -14,13 +14,13 @@ const firstIssue = (result: {
   error?: { issues: { path: PropertyKey[]; message: string }[] };
 }) => result.error?.issues[0];
 
-describe("contactSchema", () => {
+describe("supportSchema", () => {
   it("accepts a complete message", () => {
-    expect(contactSchema.safeParse(valid).success).toBe(true);
+    expect(supportSchema.safeParse(valid).success).toBe(true);
   });
 
   it("requires a name", () => {
-    const result = contactSchema.safeParse({ ...valid, name: "" });
+    const result = supportSchema.safeParse({ ...valid, name: "" });
 
     expect(result.success).toBe(false);
     expect(firstIssue(result)?.message).toBe("Please tell us who you are");
@@ -28,7 +28,7 @@ describe("contactSchema", () => {
 
   it("requires a valid email, since it's the only way to reply", () => {
     expect(
-      contactSchema.safeParse({ ...valid, email: "jacques@" }).success,
+      supportSchema.safeParse({ ...valid, email: "jacques@" }).success,
     ).toBe(false);
   });
 
@@ -36,12 +36,12 @@ describe("contactSchema", () => {
     // The vocabulary is closed on both sides - an unknown slug is a 422, and the
     // subject line of the forwarded email is derived from it server-side.
     expect(
-      contactSchema.safeParse({ ...valid, category: "partnership" }).success,
+      supportSchema.safeParse({ ...valid, category: "partnership" }).success,
     ).toBe(false);
   });
 
   it("rejects a one-word message", () => {
-    const result = contactSchema.safeParse({ ...valid, message: "broken" });
+    const result = supportSchema.safeParse({ ...valid, message: "broken" });
 
     expect(result.success).toBe(false);
     expect(firstIssue(result)?.message).toBe("Please add a little more detail");
@@ -49,13 +49,13 @@ describe("contactSchema", () => {
 
   it("mirrors the API's upper bounds rather than discovering them via a 422", () => {
     expect(
-      contactSchema.safeParse({ ...valid, subject: "s".repeat(151) }).success,
+      supportSchema.safeParse({ ...valid, subject: "s".repeat(151) }).success,
     ).toBe(false);
     expect(
-      contactSchema.safeParse({ ...valid, message: "m".repeat(5001) }).success,
+      supportSchema.safeParse({ ...valid, message: "m".repeat(5001) }).success,
     ).toBe(false);
     expect(
-      contactSchema.safeParse({ ...valid, name: "n".repeat(101) }).success,
+      supportSchema.safeParse({ ...valid, name: "n".repeat(101) }).success,
     ).toBe(false);
   });
 });
