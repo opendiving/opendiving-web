@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Dive } from "@/lib/api/dives";
+import { primaryRecording } from "@/lib/dive-recordings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gauge } from "lucide-react";
 
@@ -17,22 +18,20 @@ const CNS_LIMIT_PERCENT = 100;
 /**
  * Oxygen exposure and surface pressure, as the dive computer recorded them.
  *
- * **The primary recording's, and nothing here combines two.** These columns are
- * written from the files of the recording at ordinal 0, and promoting a different
- * recording re-derives them from that one instead - so on a dive with two
- * computers this card reports one machine's accounting, which is the only form
- * it has. A merge is the case that makes this worth stating: folding a dive's two
- * halves together leaves the readings exactly as they were rather than carrying
- * the second half's end values across, because a `cns_end` an import filled in is
- * not a quantity that can be added to another and the API deliberately declines
- * to rewrite it. Nothing on this card may present the result as a total.
+ * **The primary recording's, and nothing here combines two.** Every recording
+ * carries its own readouts, and this card reads the one at ordinal 0 - so on a dive
+ * with two computers it reports one machine's accounting, promoting the other
+ * recording shows that one's instead, and the recordings card lists each. A CNS
+ * clock is the device's running total over an exposure history only it saw, not a
+ * quantity that can be added to another computer's, so nothing on this card may
+ * present one as a total.
  *
- * Renders nothing unless the dive carries at least one of them, which is every dive
- * logged by hand and every dive imported from a format that doesn't record them - a FIT
- * file has no surface pressure at all, and a 2026 Suunto Ocean export has none of the
- * three. Silence is right here, unlike on the gas-consumption card: these are readings
- * the diver never had the option to enter, so an absent card cannot read as something
- * they forgot to fill in.
+ * Renders nothing unless the primary recording carries at least one of them, which is
+ * every dive logged by hand and every dive imported from a format that doesn't record
+ * them - a FIT file has no surface pressure at all, and a 2026 Suunto Ocean export has
+ * none of the three. Silence is right here, unlike on the gas-consumption card: these
+ * are readings the diver never had the option to enter, so an absent card cannot read
+ * as something they forgot to fill in.
  *
  * Sits between the mixtures and the gas consumption on the detail page, following that
  * file's ordering rule - the gas that produced this exposure is directly above it.
@@ -44,9 +43,12 @@ const CNS_LIMIT_PERCENT = 100;
  * them. See the API's DECISIONS.md for why they are import-only columns.
  */
 export function DiveExposureCard({ dive }: DiveExposureCardProps) {
-  const hasCns = dive.cns_start != null || dive.cns_end != null;
-  const hasOtu = dive.otu_start != null || dive.otu_end != null;
-  const hasPressure = dive.surface_pressure_bar != null;
+  const readouts = primaryRecording(dive);
+  if (!readouts) return null;
+
+  const hasCns = readouts.cns_start != null || readouts.cns_end != null;
+  const hasOtu = readouts.otu_start != null || readouts.otu_end != null;
+  const hasPressure = readouts.surface_pressure_bar != null;
   if (!hasCns && !hasOtu && !hasPressure) return null;
 
   return (
@@ -67,27 +69,32 @@ export function DiveExposureCard({ dive }: DiveExposureCardProps) {
           {hasCns && (
             <Reading
               label="CNS"
-              start={dive.cns_start}
-              end={dive.cns_end}
+              start={readouts.cns_start}
+              end={readouts.cns_end}
               unit="%"
               // Emphasis on the end value only. The start is history the diver
               // arrived with and cannot act on; the end is what they are carrying
               // into the next dive.
               alert={
-                dive.cns_end != null && dive.cns_end >= CNS_LIMIT_PERCENT
+                readouts.cns_end != null &&
+                readouts.cns_end >= CNS_LIMIT_PERCENT
                   ? `over the ${CNS_LIMIT_PERCENT}% single-dive limit`
                   : undefined
               }
             />
           )}
           {hasOtu && (
-            <Reading label="OTU" start={dive.otu_start} end={dive.otu_end} />
+            <Reading
+              label="OTU"
+              start={readouts.otu_start}
+              end={readouts.otu_end}
+            />
           )}
           {hasPressure && (
             <div>
               <ReadingLabel>Surface pressure</ReadingLabel>
               <div className="text-2xl font-bold">
-                {dive.surface_pressure_bar} bar
+                {readouts.surface_pressure_bar} bar
               </div>
             </div>
           )}

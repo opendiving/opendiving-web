@@ -555,8 +555,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         // `""` straight through, not `|| undefined`: react-hook-form
                         // re-displays a field's default whenever its value resolves
                         // to `undefined`, so mapping "Not recorded" to it would snap
-                        // an imported water type back the moment it was cleared. The
-                        // submit paths convert the sentinel away.
+                        // the dive's stored water type back the moment it was
+                        // cleared. The submit paths convert the sentinel away.
                         onChange={(e) => field.onChange(e.target.value)}
                       >
                         <option value="">Not recorded</option>

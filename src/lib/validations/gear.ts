@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { notesField } from "./notes";
 import { GEAR_TYPES } from "@/lib/api/gear";
 
 export const gearItemSchema = z.object({
@@ -11,10 +12,7 @@ export const gearItemSchema = z.object({
   // categorize a one-off piece of kit before saving it would be friction for no
   // gain. `""` is what the select holds for "no type" while editing.
   type: z.union([z.literal(""), z.enum(GEAR_TYPES)]).optional(),
-  notes: z
-    .string()
-    .max(63206, "Notes cannot exceed 63206 characters")
-    .optional(),
+  notes: notesField().optional(),
   rented: z.boolean().optional(),
 });
 

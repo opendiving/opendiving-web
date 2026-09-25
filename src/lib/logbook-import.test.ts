@@ -148,6 +148,9 @@ describe("noteIsWarning", () => {
         "record_restored",
         "record_remapped_references_follow",
         "record_remapped_references_stay",
+        // An older writer's axis in seconds or readout on the dive, read as it
+        // meant it: nothing lost.
+        "read_as_written",
         "diver_not_applied",
         "file_not_contained",
         // The two recording outcomes. A file that matched a dive already in the

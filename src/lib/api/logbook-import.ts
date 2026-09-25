@@ -132,6 +132,11 @@ export type ImportNoteCode =
   | "record_remapped_references_follow"
   | "record_remapped_references_stay"
   | "record_restored"
+  // A document an earlier version of this app, or of the reference converter,
+  // wrote before a change to the format - read as its writer meant it: an axis in
+  // seconds, a readout on the dive, `en13319` as a dive's water. Nothing was lost,
+  // so information rather than a warning.
+  | "read_as_written"
   | "value_dropped"
   | "reference_unresolved"
   | "species_unresolved"

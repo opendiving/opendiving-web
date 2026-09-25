@@ -51,7 +51,8 @@ function profileInfo(
 ): DiveProfileInfo {
   return {
     uuid: "p1",
-    duration: 3163,
+    // Milliseconds, the profile's own axis.
+    duration: 3_163_000,
     depth_sample_count: 314,
     provenance: "file",
     channels: ["depth"],
@@ -462,5 +463,73 @@ describe("DiveRecordingsCard settings line", () => {
     );
 
     expect(screen.queryByTestId("dive-recording-settings")).toBeNull();
+  });
+});
+
+describe("DiveRecordingsCard readouts and salinity", () => {
+  // Two computers on one dive, set differently and reporting differently - the
+  // case the readouts moved onto the recording for. The exposure card shows the
+  // primary's alone, so this card is the one place both are on screen.
+  const twoComputers = dive({
+    recordings: [
+      recording({
+        uuid: "perdix",
+        ordinal: 0,
+        files: [file()],
+        device: { brand: "Shearwater", model: "Perdix 3" },
+        salinity: "en13319",
+        cns_start: 0,
+        cns_end: 9,
+        otu_start: 0,
+        otu_end: 22,
+        surface_pressure_bar: 1.012,
+      }),
+      recording({
+        uuid: "ocean",
+        ordinal: 1,
+        files: [file({ uuid: "f2" })],
+        device: { brand: "Suunto", model: "Suunto Ocean" },
+        mode: "gauge",
+        salinity: "salt",
+        surface_pressure_bar: 1.009,
+      }),
+    ],
+  });
+
+  it("says each computer's own readouts", () => {
+    render(<DiveRecordingsCard dive={twoComputers} onChanged={vi.fn()} />);
+
+    const [primary, backup] = screen.getAllByTestId("dive-recording");
+    expect(
+      within(primary).getByTestId("dive-recording-readouts"),
+    ).toHaveTextContent(
+      "CNS 0% → 9% · OTU 0 → 22 · Surface pressure 1.012 bar",
+    );
+    expect(
+      within(backup).getByTestId("dive-recording-readouts"),
+    ).toHaveTextContent("Surface pressure 1.009 bar");
+  });
+
+  it("names the salinity each computer was set to, as the computer names it", () => {
+    render(<DiveRecordingsCard dive={twoComputers} onChanged={vi.fn()} />);
+
+    const [primary, backup] = screen.getAllByTestId("dive-recording");
+    expect(
+      within(primary).getByTestId("dive-recording-settings"),
+    ).toHaveTextContent("salinity EN13319");
+    expect(
+      within(backup).getByTestId("dive-recording-settings"),
+    ).toHaveTextContent("Gauge · salinity Salt");
+  });
+
+  it("leaves the readouts line out where the recording reported none", () => {
+    render(
+      <DiveRecordingsCard
+        dive={dive({ recordings: [recording({ files: [file()] })] })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("dive-recording-readouts")).toBeNull();
   });
 });

@@ -47,10 +47,10 @@ function parsedDive(
     max_depth: null,
     avg_depth: null,
     bottom_temperature: null,
-    // Applied to the form like the scalars above, unlike the import-owned block
-    // below - null is the ordinary case, since only a FIT file records it at all.
-    water_type: null,
     mixtures,
+    // A setting of the device, never applied to the form - null is the ordinary
+    // case, since only a FIT file records it at all.
+    salinity: null,
     // Returned by the parse but never applied to the form - the API writes these
     // itself when the file is attached. Spelled out so this fixture stays a complete
     // `ParsedDive` rather than a partial one the compiler happens to accept.
@@ -230,27 +230,17 @@ describe("applyParsedDiveToForm", () => {
     });
   });
 
-  it("applies the water type a FIT file recorded", () => {
+  it("never takes the dive's water type from a file's salinity", () => {
+    // A FIT file's `dive_settings.water_type` is the density the computer was
+    // set to - `en13319` is a calibration, not a kind of water - so it stays the
+    // recording's setting, and the dive's water type stays the diver's answer.
     const { form, written } = recordingForm();
 
     applyParsedDiveToForm(
       form,
-      parsedDive([], { water_type: "en13319" }),
+      parsedDive([], { salinity: "en13319" }),
       () => {},
     );
-
-    // `en13319` verbatim, not folded into "salt": it is what the computer was
-    // actually set to, and the parser refuses to substitute a plausible value
-    // for a recorded one. The diver corrects it on the form if it is wrong.
-    expect(written.water_type).toBe("en13319");
-  });
-
-  it("leaves the water type alone for a file that records none", () => {
-    // Every Suunto export, and any FIT file set to `custom`. Writing `""` here
-    // would clear a value the edit form was seeded with from the dive itself.
-    const { form, written } = recordingForm();
-
-    applyParsedDiveToForm(form, parsedDive([]), () => {});
 
     expect(written).not.toHaveProperty("water_type");
   });

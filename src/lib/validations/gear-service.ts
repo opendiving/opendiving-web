@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { notesField } from "./notes";
 import { SERVICE_KINDS } from "@/lib/api/gear-service";
 
 // `""` is what a cleared number input holds while editing, so both interval fields
@@ -50,10 +51,7 @@ export const gearServiceRecordSchema = z.object({
     .min(1, "A service date is required")
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date"),
   performed_by: z.string().max(255, "Cannot exceed 255 characters").optional(),
-  notes: z
-    .string()
-    .max(10000, "Notes cannot exceed 10000 characters")
-    .optional(),
+  notes: notesField().optional(),
 });
 
 export type GearServiceScheduleInput = z.input<

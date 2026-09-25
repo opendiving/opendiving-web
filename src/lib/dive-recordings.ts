@@ -89,6 +89,18 @@ const ALGORITHM_LABELS: Record<string, string> = {
 };
 
 /**
+ * The same, for the API's `Salinity`: the density a device was set to, named as
+ * the computer's own menu names it rather than as the dive's water types are.
+ * `EN13319` is the European depth-gauge calibration, not a kind of water, and
+ * keeps the standard's spelling because it has no other name.
+ */
+const SALINITY_LABELS: Record<string, string> = {
+  fresh: "Fresh",
+  en13319: "EN13319",
+  salt: "Salt",
+};
+
+/**
  * The decompression model one device ran, in words, or `null` where nothing
  * worth a line was recorded.
  *
@@ -135,13 +147,15 @@ function decoModelLabel(model: RecordingDecoModel | null | undefined) {
 }
 
 /**
- * What this device was set to when it recorded the dive: the mode it ran in and
- * the decompression model it ran, or `null` where the source recorded neither.
+ * What this device was set to when it recorded the dive: the mode it ran in, the
+ * decompression model it ran and the salinity it divided pressure by, or `null`
+ * where the source recorded none of them.
  *
- * One line rather than two because they are one fact about one machine — `Open
- * circuit · Bühlmann GF 30/85`, or `Freedive` where a freediving computer has no
- * model to name, or a model alone where a file recorded the algorithm and not
- * the mode.
+ * One line rather than three because they are one fact about one machine — `Open
+ * circuit · Bühlmann GF 30/85 · salinity EN13319`, or `Freedive` where a
+ * freediving computer has no model to name, or a model alone where a file
+ * recorded the algorithm and not the mode. The salinity is a clause like the
+ * conservatism, named, because a bare `Salt` beside a mode says nothing.
  *
  * **Per recording, never per dive.** A backup computer run in gauge mode beside
  * a primary on open circuit is ordinary practice and the dive was not a gauge
@@ -150,9 +164,51 @@ function decoModelLabel(model: RecordingDecoModel | null | undefined) {
  */
 export function recordingSettingsLabel(recording: Recording): string | null {
   const mode = recording.mode ? (MODE_LABELS[recording.mode] ?? null) : null;
+  const salinity = recording.salinity
+    ? (SALINITY_LABELS[recording.salinity] ?? null)
+    : null;
 
   return (
-    [mode, decoModelLabel(recording.deco_model)]
+    [
+      mode,
+      decoModelLabel(recording.deco_model),
+      salinity ? `salinity ${salinity}` : null,
+    ]
+      .filter((part): part is string => part != null)
+      .join(" · ") || null
+  );
+}
+
+/**
+ * What this device reported about the dive as a whole, on one line, or `null`
+ * where it reported none of it: `CNS 0% → 9% · OTU 0 → 22 · Surface pressure
+ * 1.012 bar`.
+ *
+ * The recording's own readouts, which is the point of showing them per
+ * recording at all: two computers on one dive give two answers to every one of
+ * these, and the exposure card shows only the primary's. Displayed exactly as
+ * stored and a missing half as an em dash, on `DiveExposureCard`'s terms, so the
+ * two never read the same recording differently.
+ */
+export function recordingReadoutsLabel(recording: Recording): string | null {
+  const pair = (
+    label: string,
+    start: number | null | undefined,
+    end: number | null | undefined,
+    unit = "",
+  ) =>
+    start == null && end == null
+      ? null
+      : `${label} ${start != null ? `${start}${unit}` : "—"} → ${end != null ? `${end}${unit}` : "—"}`;
+
+  return (
+    [
+      pair("CNS", recording.cns_start, recording.cns_end, "%"),
+      pair("OTU", recording.otu_start, recording.otu_end),
+      recording.surface_pressure_bar != null
+        ? `Surface pressure ${recording.surface_pressure_bar} bar`
+        : null,
+    ]
       .filter((part): part is string => part != null)
       .join(" · ") || null
   );
@@ -172,9 +228,9 @@ export function diveRecordings(dive: Dive): Recording[] {
 }
 
 /**
- * The recording whose files wrote the dive's oxygen-exposure readings and whose
- * profile a single-profile consumer takes — ordinal 0 — or `null` for a dive
- * logged by hand.
+ * The recording whose readouts the exposure card shows and whose profile a
+ * single-profile consumer takes — ordinal 0 — or `null` for a dive logged by
+ * hand.
  */
 export function primaryRecording(dive: Dive): Recording | null {
   return diveRecordings(dive)[0] ?? null;
@@ -295,16 +351,15 @@ function unreproducibleSamples(recording: Recording): string | null {
 type RecordingOutcome = "keeps files" | "keeps samples only" | "removed";
 
 // Everything `refresh_tech_scalars` rewrites, as one noun phrase - the API's
-// whole `DiveTechScalars` mixin, which is the CNS and OTU clocks, the surface
-// pressure, and the entry and exit positions the dive page draws on its map.
-// Named as one thing rather than enumerated because they move as one: the write
-// is outright and covers the lot, and a dive that never carried a position
-// would otherwise be told about one it is losing. The sentence about what stays
-// draws the line the diver actually needs - these are the figures nobody typed.
-const COMPUTER_FIGURES = "the figures the dive computer recorded";
+// whole `DiveTechScalars` mixin, the entry and exit positions the dive page
+// draws on its map. Named as one thing rather than enumerated because they move
+// as one: the write is outright and covers the lot. A recording's own readouts
+// are not among them; they go and come with that recording's files, which the
+// file sentences say.
+const COMPUTER_FIGURES = "the positions the dive computer recorded";
 
 /**
- * What the figures the dive computer recorded do, as a sentence.
+ * What the positions the dive computer recorded do, as a sentence.
  *
  * **One rule sits under every branch**: the figures move only where the deletion
  * reached the recording shown by default, and then they become whatever that
@@ -372,7 +427,7 @@ function sentences(...parts: (string | null)[]): string {
  * them; the recording's last file goes and **the recording goes with it**, its
  * profile and samples included; or the recording survives file-less because its
  * samples came from a merge or a converted document and no file could produce
- * them again. Each also moves the dive's own readings differently - see
+ * them again. Each also moves the dive's recorded positions differently - see
  * `figuresSentence`.
  *
  * Takes the dive's whole recording list rather than the one recording, so that
@@ -407,10 +462,10 @@ export function deleteFileConfirmation(
 
   const fileSentence =
     outcome === "keeps files"
-      ? "The file is permanently deleted, and this recording's profile is re-read from the files it keeps."
+      ? "The file is permanently deleted, and this recording's profile and readouts are re-read from the files it keeps."
       : outcome === "keeps samples only"
-        ? `The file is permanently deleted, leaving this recording with nothing to download. Its samples stay — ${kept}, and no file can produce them again.`
-        : "This is the recording's last file, so the whole recording goes with it: the file, its profile and its samples, permanently.";
+        ? `The file is permanently deleted, leaving this recording with nothing to download. Its samples and readouts stay — ${kept}, and no file can produce them again.`
+        : "This is the recording's last file, so the whole recording goes with it: the file, its profile, its readouts and its samples, permanently.";
 
   return {
     title:
@@ -452,8 +507,8 @@ export function deleteRecordingConfirmation(
     title: "Delete this recording?",
     description: sentences(
       recording.files.length > 0
-        ? "The recording, its profile, its samples and every file it holds are permanently deleted."
-        : "The recording, its profile and its samples are permanently deleted.",
+        ? "The recording, its profile, its readouts, its samples and every file it holds are permanently deleted."
+        : "The recording, its profile, its readouts and its samples are permanently deleted.",
       figuresSentence(recording, recordings, "removed"),
       DIVE_IS_UNTOUCHED,
     ),

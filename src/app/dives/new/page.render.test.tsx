@@ -523,14 +523,27 @@ describe("the water type on the way to the API", () => {
 
     await userEvent.selectOptions(
       screen.getByLabelText(/water type/i),
-      "en13319",
+      "fresh",
     );
     await logDive();
 
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
     expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].water_type).toBe(
-      "en13319",
+      "fresh",
     );
+  });
+
+  it("offers the three waters and no device calibration", async () => {
+    // EN13319 is the density a computer divides pressure by, a setting that lives
+    // on its recording - not an answer to "what water was this".
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    const options = [
+      ...screen.getByLabelText(/water type/i).querySelectorAll("option"),
+    ].map((option) => option.value);
+
+    expect(options).toEqual(["", "salt", "fresh", "brackish"]);
   });
 });
 
@@ -1681,7 +1694,7 @@ describe("importing a file onto a form with fields hidden", () => {
       max_depth: 32.1,
       avg_depth: null,
       bottom_temperature: null,
-      water_type: null,
+      salinity: null,
       mixtures: [
         { volume: 11.1, oxygen: 32, helium: 0, start_pressure: 200 },
         { volume: 11.1, oxygen: 50, helium: 0, start_pressure: 180 },

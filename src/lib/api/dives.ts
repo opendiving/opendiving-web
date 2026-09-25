@@ -28,28 +28,23 @@ export type GasRole = (typeof GAS_ROLES)[number];
 export const TANK_USAGE = ["parallel", "staged"] as const;
 export type TankUsage = (typeof TANK_USAGE)[number];
 
-// How the dive computer was calibrated for the water it was in, and what a logbook
-// records as a fact about the dive. Mirrors `WaterType` (`schemas/dive.py`), which is
-// the single source of truth - the same hand-kept mirroring as `GAS_ROLES` above and
-// `GEAR_TYPES` in `lib/api/gear.ts`.
+// What the water was - a fact about the dive, which a diver knows and types. Mirrors
+// `WaterType` (`schemas/dive.py`), which is the single source of truth - the same
+// hand-kept mirroring as `GAS_ROLES` above and `GEAR_TYPES` in `lib/api/gear.ts`.
 //
-// Declaration order is the picker's order, so the two real answers come first.
-// `en13319` is the European CE standard for depth instruments rather than a kind of
-// water, and it is here because it is what real files say: a computer left on the
-// EN13319 factory default exports exactly that, and the parser records what the file
-// recorded instead of folding it into "salt". The diver can correct it on the form.
-export const WATER_TYPES = ["salt", "fresh", "brackish", "en13319"] as const;
+// Declaration order is the picker's order, so the two real answers come first. The
+// density a computer was set to - EN13319 among them - is not a kind of water and is
+// not here: it is `Recording.salinity`, a setting of one device.
+export const WATER_TYPES = ["salt", "fresh", "brackish"] as const;
 export type WaterType = (typeof WATER_TYPES)[number];
 
 // Display labels, kept beside the vocabulary the way `GEAR_TYPE_LABELS` is. "Salt
 // water"/"Fresh water" rather than the bare adjective because the field's own label
-// is "Water type" and the option has to read as an answer to it; EN13319 keeps the
-// standard's own spelling, which is the only name it has.
+// is "Water type" and the option has to read as an answer to it.
 export const WATER_TYPE_LABELS: Record<WaterType, string> = {
   salt: "Salt water",
   fresh: "Fresh water",
   brackish: "Brackish",
-  en13319: "EN13319",
 };
 
 // Every field but `id` is `| null` because that is what comes back on the wire, not
@@ -218,8 +213,7 @@ export interface DiveGasUse {
   //
   // Both null wherever the whole dive is accounted for and there is no fraction to
   // report: a single-cylinder dive, and a flagged parallel set summed over the
-  // dive's own duration. Seconds, matching `Dive.duration` and
-  // `DiveProfileInfo.duration`.
+  // dive's own duration. Seconds, matching `Dive.duration`.
   //
   // **The `duration` below is the profile's span, not `Dive.duration`** - that is
   // what the attribution actually ran over, and a hand-edited dive duration would
@@ -255,47 +249,23 @@ export interface Dive {
   bottom_temperature?: number;
   visibility?: number;
   // What the water was and where it was, both hand-enterable and both settable on the
-  // form - unlike the import-owned readings below. `water_type` is seeded from a FIT
-  // file's own `dive_settings` through the parse prefill, then owned by the diver;
-  // `altitude` is metres above sea level of the water surface, and is the fact a diver
-  // can actually type where `surface_pressure_bar` below is the barometer's reading of
-  // it.
+  // form. `water_type` is the diver's answer and nothing seeds it from a file: the
+  // density a computer was set to is its recording's `salinity`, a setting rather than
+  // a kind of water. `altitude` is metres above sea level of the water surface, the fact
+  // a diver can actually type where a recording's `surface_pressure_bar` is the
+  // barometer's reading of it.
   //
-  // `| null` for the same reason as `cns_start` below: the API declares them
-  // `X | None` on `DiveBase` with no `exclude_none`, so an unrecorded field arrives as
-  // an explicit `null` rather than an absent key.
+  // `| null` because the API declares them `X | None` on `DiveBase` with no
+  // `exclude_none`, so an unrecorded field arrives as an explicit `null` rather than an
+  // absent key.
   water_type?: WaterType | null;
   altitude?: number | null;
-  // Oxygen exposure and surface pressure as the dive computer recorded them, written
-  // by the import and **not settable through the form** - the API keeps these off its
-  // create/update schemas entirely (see its DECISIONS.md), because nothing on a logged
-  // dive reconstructs a CNS clock or an OTU count. Undefined on a hand-logged dive, on
-  // one imported from a format that doesn't record them (every FIT file has no surface
-  // pressure; a 2026 Suunto Ocean export has none of them), and on any dive imported
-  // before the backfill ran.
-  //
-  // Unlike `gas_use`/`recordings` below, these are on the list response too:
-  // those are kept off it because each costs the hottest query an extra lookup, and
-  // these are plain columns on the row being selected anyway.
-  //
-  // `| null` for the same reason as `DiveMixture`'s optional fields, and it is the same
-  // schema decision behind it: `DiveTechScalars` declares all five `float | None` with
-  // no `exclude_none`, so an unrecorded reading arrives as an explicit `null`, not an
-  // absent key. `DiveExposureCard` guards with `!= null` and would survive either way -
-  // but a type that promises `number | undefined` over a response that sends `null` is
-  // exactly what let three mixture fields reach a resolver unconverted.
-  cns_start?: number | null;
-  cns_end?: number | null;
-  otu_start?: number | null;
-  otu_end?: number | null;
-  // Ambient pressure at the surface, in bar. Display only - the API's gas-use maths
-  // deliberately assumes 1 bar.
-  surface_pressure_bar?: number | null;
   // Where the diver actually entered and left the water, as the dive computer's GPS
-  // recorded it. On `DiveTechScalars` alongside the exposure fields above, so they
-  // carry all of that block's properties: written by the import, **not settable
+  // recorded it. The API's `DiveTechScalars`: written by the import, **not settable
   // through the form**, explicit `null` rather than an absent key on a dive that has
-  // none, and absent entirely on a payload cached before the API sent them.
+  // none, and absent entirely on a payload cached before the API sent them. The
+  // readouts a computer reports about a dive are not here but on each `Recording`,
+  // since two computers give two answers.
   //
   // These are also **not the dive site's position** - they are where this dive
   // happened, which is why both can be shown at once and why a wide gap between them
@@ -421,7 +391,29 @@ export interface RecordingDecoModel {
   conservatism?: number | null;
 }
 
-export interface Recording {
+// What one computer reported about the dive as a whole, off its own arithmetic -
+// the API's `RecordingReadouts`. The recording's rather than the dive's because CNS
+// and OTU depend on the algorithm the device ran and on the exposure it carried
+// over, and two computers on one dive give two answers to every one of these.
+// Written by the import and **not settable through the form**; the API keeps them
+// off every write schema (see its DECISIONS.md).
+//
+// `| null` because the API declares all five `float | None` with no
+// `exclude_none`, so an unrecorded reading arrives as an explicit `null`, not an
+// absent key.
+export interface RecordingReadouts {
+  // The CNS oxygen-toxicity clock at the start and the end, in %.
+  cns_start?: number | null;
+  cns_end?: number | null;
+  // Oxygen tolerance units at the start and the end.
+  otu_start?: number | null;
+  otu_end?: number | null;
+  // Ambient pressure at the surface this device measured, in bar. Display only -
+  // the API's gas-use maths deliberately assumes 1 bar.
+  surface_pressure_bar?: number | null;
+}
+
+export interface Recording extends RecordingReadouts {
   uuid: string;
   // Position among this dive's recordings; 0 is primary.
   ordinal: number;
@@ -439,10 +431,18 @@ export interface Recording {
   mode?: string | null;
   // The decompression model this device ran, or null where nothing recorded one.
   deco_model?: RecordingDecoModel | null;
+  // The water density this device divided pressure by to show a depth: one of
+  // `fresh`, `en13319`, `salt`, as the computer offers them. A setting of the
+  // device, like `mode`, and **not a kind of water** - that is the dive's
+  // `water_type`, and neither is derived from the other. Null means the file
+  // recorded none. A `string` for the same reason as `mode`; render it through
+  // `recordingSettingsLabel()`.
+  salinity?: string | null;
   // This device's own start - not the dive's, which a second computer entering
   // the water later legitimately differs from. Offset-less where the source
   // recorded no offset, exactly as `Dive.start_time` is, so read it with the
-  // `formatDive*` helpers and never with `new Date(...)` and local getters.
+  // `formatDive*` helpers and never with `new Date(...)` and local getters. The
+  // profile's axis counts from this instant.
   started_at?: string | null;
   // In attach order.
   files: DiveFileInfo[];
@@ -483,10 +483,10 @@ export type DiveProfileProvenance = "file" | "divejson_import" | "merge";
 // which version of the series to ask for.
 export interface DiveProfileInfo {
   uuid: string;
-  // Span of the recorded samples, which is *not* `dive.duration` despite sharing
-  // the word - a dive computer keeps logging for a few seconds after the dive
-  // ends, and `dive.duration` is the diver's own record and may have been
-  // hand-edited.
+  // Span of the recorded samples in **milliseconds**, the profile's own
+  // `duration` - which is *not* `dive.duration` despite sharing the word: that one
+  // is seconds, the diver's own record, and may have been hand-edited, while a
+  // dive computer keeps logging for a few seconds after the dive ends.
   duration: number;
   depth_sample_count: number;
   // Always sent: every stored profile is one of the three. It is here because a
@@ -521,11 +521,12 @@ export interface DiveProfileInfo {
 }
 
 // One channel of a profile, in the DiveJSON vocabulary the API serves it in:
-// `times` is elapsed seconds from the start of the dive, `values` is
-// integer-scaled (see `PROFILE_CHANNELS` in `lib/dive-profile.ts` for the divisor
-// per channel). The API's *storage* still uses the compact `t`/`v` keys and maps
-// them here on the way out, so a payload dumped from its JSONB column does not
-// look like this.
+// `times` is elapsed **milliseconds** from the recording's `started_at` (DiveJSON
+// §5.1), so a sample a device stamped 160 ms after its header sits at 160 rather
+// than at zero; `values` is integer-scaled (see `PROFILE_CHANNELS` in
+// `lib/dive-profile.ts` for the divisor per channel). The API's *storage* still
+// uses the compact `t`/`v` keys and maps them here on the way out, so a payload
+// dumped from its JSONB column does not look like this.
 //
 // Integers rather than floats deliberately, both on the wire and in the
 // database: a float round-trip reintroduces `20.600000000000023`-class noise
@@ -584,7 +585,7 @@ export type DiveProfileEventType =
 // One thing the dive computer recorded happening, at an instant rather than
 // over a channel.
 export interface DiveProfileEvent {
-  // Elapsed seconds from the start of the dive, on the same axis as every
+  // Elapsed milliseconds from the recording's start, on the same axis as every
   // series' `times`.
   time: number;
   // **Null means unclassified** - the device recorded something here and this
@@ -616,7 +617,7 @@ export interface DiveProfileEvent {
 // where they came from. The app reads the provenance off `DiveProfileInfo`, on
 // the dive detail response, which is the surface that has to say it.
 export interface DiveProfile {
-  // The span of the sample channels, in seconds. An event may sit past it: the
+  // The span of the sample channels, in milliseconds. An event may sit past it: the
   // API leaves a marker pressed after the recorder's last sample where the file
   // put it, and clipping that to the plot is the chart's job (see
   // `dive-profile-chart.tsx`).
@@ -644,11 +645,13 @@ export interface DiveProfile {
   // exposure history, none of which a logged dive carries - so an absent channel
   // is a channel the computer did not record, never one to compute.
   //
-  // Remaining no-decompression time, in seconds. A zero is a reading - the
+  // Remaining no-decompression time: `values` in seconds, a reading rather than a
+  // position on the millisecond axis `times` counts. A zero is a reading - the
   // moment the dive stopped being a no-decompression dive - and so is a value at
   // the device's display maximum.
   ndl?: DiveProfileSeries | null;
-  // Time to surface in seconds, stops included, as the device computed it.
+  // Time to surface, `values` in seconds like `ndl`'s, stops included, as the
+  // device computed it.
   tts?: DiveProfileSeries | null;
   // The partial pressure of oxygen the device computed, in hundredths of a bar:
   // what it calculated from the gas it believed it was breathing, not a cell
@@ -656,7 +659,7 @@ export interface DiveProfile {
   ppo2?: DiveProfileSeries | null;
   // The CNS oxygen clock during the dive, in tenths of a percent. Unbounded
   // above - real computers report past 100 %. Not the same quantity as the
-  // dive's own `cns_start`/`cns_end`, which are whole percent and are neither
+  // recording's own `cns_start`/`cns_end`, which are whole percent and are neither
   // derived from this channel nor a source for it.
   cns?: DiveProfileSeries | null;
   // The leading tissue's gradient factor in whole percent - a device's GF99 -
@@ -934,16 +937,15 @@ export interface ParsedDive {
   max_depth: number | null;
   avg_depth: number | null;
   bottom_temperature: number | null;
-  // Applied to the form like the fields above it, not held back like the block below:
-  // a FIT file records the computer's own salinity setting, and that is the diver's
-  // answer to "what water was this" until they say otherwise. Null for every Suunto
-  // export (neither format carries salinity) and for a FIT file set to `custom`, which
-  // is a density number rather than a type.
-  water_type: WaterType | null;
   mixtures: ParsedDiveMixture[];
+  // The density the computer was set to - a FIT file's `dive_settings.water_type` -
+  // and **never a prefill of the dive's `water_type`**: a calibration is not a kind of
+  // water. A setting of the device, stored on the recording when the file is attached.
+  salinity?: string | null;
   // Returned by the parse so a preview can show them, but deliberately **not** applied
-  // to the form: the API writes these itself when the file is attached, from its own
-  // re-parse of the same bytes. Nothing here should try to send them back.
+  // to the form: the API writes these onto the recording itself when the file is
+  // attached, from its own re-parse of the same bytes. Nothing here should try to send
+  // them back.
   cns_start: number | null;
   cns_end: number | null;
   otu_start: number | null;

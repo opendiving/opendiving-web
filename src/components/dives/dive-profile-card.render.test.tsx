@@ -29,7 +29,7 @@ const { divesAPI } = await import("@/lib/api/dives");
 function profileInfo(uuid: string) {
   return {
     uuid,
-    duration: 2940,
+    duration: 2_940_000,
     depth_sample_count: 314,
     // This card draws samples and never asks where they came from, so every
     // fixture here is the ordinary file-backed case.
@@ -78,7 +78,7 @@ const twoComputers = dive({
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(divesAPI.getRecordingProfile).mockResolvedValue({
-    duration: 2940,
+    duration: 2_940_000,
     pressures: [],
     events: [],
   } as unknown as DiveProfile);

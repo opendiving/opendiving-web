@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { notesField } from "./notes";
 import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
 import { COURSE_STATUSES } from "@/lib/api/courses";
 
@@ -45,10 +46,7 @@ export const courseSchema = z
       .string()
       .max(255, "Training center cannot exceed 255 characters")
       .optional(),
-    notes: z
-      .string()
-      .max(10000, "Notes cannot exceed 10000 characters")
-      .optional(),
+    notes: notesField().optional(),
   })
   // Mirrors the API's `validate_agency_pairing`. An object-level refine, unlike a
   // field-level transform, leaves `z.input<>` untouched.

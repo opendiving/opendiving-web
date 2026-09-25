@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { notesField } from "./notes";
 import {
   formatDurationForForm,
   parseFormDuration,
@@ -481,10 +482,7 @@ export const diveCreateSchema = z.object({
   dive_site_uuids: z.array(z.string()).default([]),
   gear_item_uuids: z.array(z.string()).default([]),
   species_uuids: z.array(z.string()).default([]),
-  notes: z
-    .string()
-    .max(63206, "Notes cannot exceed 63206 characters")
-    .default(""),
+  notes: notesField().default(""),
   mixtures: z.array(diveMixtureSchema).default([]),
 });
 
@@ -524,10 +522,7 @@ export const diveUpdateSchema = z.object({
   dive_site_uuids: z.array(z.string()).optional(),
   gear_item_uuids: z.array(z.string()).optional(),
   species_uuids: z.array(z.string()).optional(),
-  notes: z
-    .string()
-    .max(63206, "Notes cannot exceed 63206 characters")
-    .optional(),
+  notes: notesField().optional(),
   mixtures: z.array(diveMixtureSchema).optional(),
 });
 

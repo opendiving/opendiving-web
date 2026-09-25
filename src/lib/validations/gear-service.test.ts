@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NOTES_MAX_LENGTH } from "./notes";
 import {
   gearServiceRecordSchema,
   gearServiceScheduleSchema,
@@ -144,7 +145,7 @@ describe("gearServiceRecordSchema", () => {
       gearServiceRecordSchema.safeParse({
         kind: "service",
         serviced_on: "2026-03-14",
-        notes: "x".repeat(10001),
+        notes: "x".repeat(NOTES_MAX_LENGTH + 1),
       }).success,
     ).toBe(false);
   });

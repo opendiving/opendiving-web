@@ -1,14 +1,26 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DiveExposureCard } from "./dive-exposure-card";
-import type { Dive } from "@/lib/api/dives";
+import type { Dive, Recording, RecordingReadouts } from "@/lib/api/dives";
 
 // Nothing here is derived - the card renders five stored numbers exactly as the device
-// recorded them - so what a render actually tests is the three decisions layered on top
-// of that: whether the card appears at all, how a half-recorded pair reads, and whether
-// passing the CNS line reaches a diver who cannot see the colour it is drawn in.
+// recorded them - so what a render actually tests is the decisions layered on top of
+// that: which recording it reads, whether the card appears at all, how a half-recorded
+// pair reads, and whether passing the CNS line reaches a diver who cannot see the
+// colour it is drawn in.
 
-function dive(exposure: Partial<Dive>): Dive {
+function recording(
+  readouts: RecordingReadouts,
+  overrides: Partial<Recording> = {},
+): Recording {
+  return { uuid: "r0", ordinal: 0, files: [], ...readouts, ...overrides };
+}
+
+// A dive whose one recording - the primary - carries `readouts`.
+function dive(
+  readouts: RecordingReadouts,
+  recordings: Recording[] = [recording(readouts)],
+): Dive {
   return {
     uuid: "test",
     dive_number: 1,
@@ -16,12 +28,49 @@ function dive(exposure: Partial<Dive>): Dive {
     duration: 3600,
     max_depth: 30,
     mixtures: [],
-    ...exposure,
-  } as Dive;
+    recordings,
+  } as unknown as Dive;
 }
 
+describe("DiveExposureCard's recording", () => {
+  it("reads the primary recording's, not a second computer's", () => {
+    // Listed out of order on purpose: ordinal 0 is primary however the list
+    // arrives, and the backup's own clock is a different machine's accounting.
+    render(
+      <DiveExposureCard
+        dive={dive({}, [
+          recording({ cns_start: 0, cns_end: 50 }, { uuid: "r1", ordinal: 1 }),
+          recording({ cns_start: 0, cns_end: 9 }),
+        ])}
+      />,
+    );
+
+    expect(screen.getByText("9%")).toBeInTheDocument();
+    expect(screen.queryByText("50%")).not.toBeInTheDocument();
+  });
+
+  it("renders nothing when only a second computer reported anything", () => {
+    const { container } = render(
+      <DiveExposureCard
+        dive={dive({}, [
+          recording({}),
+          recording({ otu_end: 23 }, { uuid: "r1", ordinal: 1 }),
+        ])}
+      />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders nothing on a dive logged by hand, which has no recording", () => {
+    const { container } = render(<DiveExposureCard dive={dive({}, [])} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
 describe("DiveExposureCard visibility", () => {
-  it("renders nothing when the dive carries none of the three", () => {
+  it("renders nothing when the recording carries none of the three", () => {
     // Every hand-logged dive, and every FIT or 2026 Suunto Ocean import. An empty card
     // headed "Oxygen Exposure" would read as something the diver forgot to fill in,
     // for fields no form lets them fill in at all.
@@ -31,9 +80,9 @@ describe("DiveExposureCard visibility", () => {
   });
 
   it("renders nothing when the API spells those five out as null", () => {
-    // The shape actually on the wire: `DiveTechScalars` declares all five
-    // `float | None` with no `exclude_none`, so a hand-logged dive sends explicit
-    // nulls rather than omitting the keys. The `!= null` guards cover both, and
+    // The shape actually on the wire: `RecordingReadouts` declares all five
+    // `float | None` with no `exclude_none`, so a recording that reported none
+    // sends explicit nulls rather than omitting the keys. The `!= null` guards cover both, and
     // this is here so they keep having to - a fixture built from absent keys is
     // how three mixture fields shipped a form that could not be saved.
     const { container } = render(
@@ -74,7 +123,7 @@ describe("DiveExposureCard visibility", () => {
     expect(screen.getByText("1.057 bar")).toBeInTheDocument();
   });
 
-  it("shows only the readings the dive actually has", () => {
+  it("shows only the readings the recording actually has", () => {
     render(<DiveExposureCard dive={dive({ surface_pressure_bar: 1.057 })} />);
 
     expect(screen.getByText("1.057 bar")).toBeInTheDocument();

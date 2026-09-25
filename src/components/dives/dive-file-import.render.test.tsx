@@ -47,8 +47,8 @@ function parsedDive(
     max_depth: null,
     avg_depth: null,
     bottom_temperature: null,
-    water_type: null,
     mixtures,
+    salinity: null,
     // Returned by the parse but never applied to the form - the API writes these
     // itself when the file is attached. Spelled out so this fixture stays a complete
     // `ParsedDive` rather than a partial one the compiler happens to accept.

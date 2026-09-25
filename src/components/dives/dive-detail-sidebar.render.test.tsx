@@ -204,11 +204,11 @@ describe("DiveDetailSidebar locations", () => {
 // its own `!= null` guard.
 describe("DiveDetailSidebar environment", () => {
   it("names the water type rather than showing the wire value", () => {
-    renderSidebar(dive({ water_type: "en13319" }));
+    renderSidebar(dive({ water_type: "salt" }));
 
     expect(screen.getByText("Environment")).toBeInTheDocument();
     expect(screen.getByText("Water Type")).toBeInTheDocument();
-    expect(screen.getByText("EN13319")).toBeInTheDocument();
+    expect(screen.getByText("Salt water")).toBeInTheDocument();
   });
 
   it("shows the altitude in meters", () => {

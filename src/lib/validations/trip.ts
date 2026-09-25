@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { notesField } from "./notes";
 import { locationSchema } from "./location";
 
 // Date fields use a plain "YYYY-MM-DD" string (the native value format of
@@ -48,10 +49,7 @@ export const tripFormSchema = z.object({
     .array(tripPartSchema)
     .max(MAX_TRIP_PARTS, `A trip cannot have more than ${MAX_TRIP_PARTS} parts`)
     .optional(),
-  notes: z
-    .string()
-    .max(63206, "Notes cannot exceed 63206 characters")
-    .optional(),
+  notes: notesField().optional(),
 });
 
 /**

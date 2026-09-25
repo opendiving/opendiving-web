@@ -142,7 +142,7 @@ describe("DiveRecordingFiles", () => {
             device: { model: "Perdix 3", serial: "D9772626" },
             profile: {
               uuid: "p1",
-              duration: 3163,
+              duration: 3_163_000,
               depth_sample_count: 314,
               provenance: "divejson_import",
               channels: ["depth"],
@@ -290,7 +290,7 @@ describe("DiveRecordingFiles", () => {
   it("says the recording goes too when this is its last file", async () => {
     // The deletion a diver cannot tell from the one above by looking at the
     // row: the same Trash icon on the last file removes the recording, promotes
-    // whatever is next and rewrites the dive's readings. The title carries it,
+    // whatever is next and rewrites the dive's positions. The title carries it,
     // because that is the line a confirmation is actually read at.
     render(
       <DiveRecordingFiles
@@ -312,7 +312,7 @@ describe("DiveRecordingFiles", () => {
     ).toBeVisible();
     expect(screen.getByText(/the whole recording goes with it/i)).toBeVisible();
     expect(
-      screen.getByText(/the figures the dive computer recorded are cleared/i),
+      screen.getByText(/the positions the dive computer recorded are cleared/i),
     ).toBeVisible();
   });
 
