@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { GearServiceCard } from "./gear-service-card";
+import { fetchAllContacts } from "@/lib/api/contacts";
 import type { GearItem } from "@/lib/api/gear";
 import {
   gearServiceAPI,
@@ -76,8 +77,14 @@ const record = (
   ...overrides,
 });
 
+vi.mock("@/lib/api/contacts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
+  fetchAllContacts: vi.fn(),
+}));
+
 const getSchedules = vi.mocked(gearServiceAPI.getSchedules);
 const getRecords = vi.mocked(fetchAllServiceRecords);
+const getContacts = vi.mocked(fetchAllContacts);
 
 // Renders the card and waits out the mount fetch, which the spinner stands in for until
 // both lists have arrived.
@@ -99,6 +106,41 @@ const renderCard = async (
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getContacts.mockResolvedValue([
+    {
+      uuid: "contact-1",
+      name: "Blue Ocean",
+      roles: ["shop"],
+      notes: "",
+      user_uuid: "user-1",
+      created_at: "2026-01-01T00:00:00+00:00",
+    },
+  ]);
+});
+
+describe("GearServiceCard history", () => {
+  it("names the shop beside the person who did the work", async () => {
+    await renderCard(
+      [],
+      [
+        record({ contact_uuid: "contact-1", performed_by: "Ahmed" }),
+        record({ uuid: "record-2", contact_uuid: "contact-1" }),
+        record({ uuid: "record-3", performed_by: "self" }),
+      ],
+    );
+
+    expect(await screen.findByText("Blue Ocean · Ahmed")).toBeInTheDocument();
+    expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
+    // A record from before the shop was a contact keeps its text alone.
+    expect(screen.getByText("self")).toBeInTheDocument();
+  });
+
+  it("reads no contacts for a history that names none", async () => {
+    await renderCard([], [record({ performed_by: "self" })]);
+
+    expect(screen.getByText("self")).toBeInTheDocument();
+    expect(getContacts).not.toHaveBeenCalled();
+  });
 });
 
 describe("GearServiceCard row controls", () => {
