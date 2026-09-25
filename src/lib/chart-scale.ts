@@ -102,9 +102,8 @@ export function countDomain(highest: number, targetTicks = 5): Domain {
 }
 
 // The narrowest container, in CSS pixels, a chart is drawn into at its full
-// viewBox width. Its 11-unit axis type renders at 8.6px there, which is as small
-// as any of these charts ever drew it: they used to hold this as a minimum width
-// and scroll sideways below it.
+// viewBox width. Its 11-unit axis type renders at 8.6px there, the smallest these
+// charts draw it.
 export const CHART_FULL_WIDTH_PX = 560;
 
 // The viewBox width for a chart designed `width` units wide, in a container

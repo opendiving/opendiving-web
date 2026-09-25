@@ -1011,10 +1011,13 @@ export function elapsedTicks(
 ): number[] {
   if (durationMs <= 0) return [0];
 
-  const step =
+  let step =
     ELAPSED_STEPS_MS.find(
       (candidate) => durationMs / candidate <= targetTicks,
     ) ?? ELAPSED_STEPS_MS[ELAPSED_STEPS_MS.length - 1];
+  // Past the last candidate, a recording long enough to outrun it - or a phone
+  // asking for fewer ticks - keeps doubling it, so the target still holds.
+  while (durationMs / step > targetTicks) step *= 2;
 
   const ticks: number[] = [];
   for (let time = 0; time <= durationMs; time += step) {

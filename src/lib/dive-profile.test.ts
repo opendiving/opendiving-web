@@ -709,6 +709,13 @@ describe("elapsedTicks", () => {
   it("survives a zero-length profile", () => {
     expect(elapsedTicks(0)).toEqual([0]);
   });
+
+  it("holds a short axis's target past the longest candidate step", () => {
+    // Twelve hours on a phone's four: the two-hour step would draw seven.
+    expect(elapsedTicks(720 * MINUTE, 4)).toEqual(
+      [0, 240, 480, 720].map((minutes) => minutes * MINUTE),
+    );
+  });
 });
 
 describe("formatElapsed", () => {

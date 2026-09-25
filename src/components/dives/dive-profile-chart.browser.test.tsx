@@ -11,9 +11,9 @@ import {
 } from "@/test/chart-layout";
 
 // Load-bearing: the browser project loads none of this app's Tailwind, and
-// without it the scroll wrapper this file guards against has no `min-width` to
-// overflow with, so every assertion below would pass against it. The first test
-// fails loudly if this import goes.
+// without it a `min-w-*` class computes to nothing, so a chart wider than its
+// container would pass every assertion below. The first test fails loudly if
+// this import goes.
 import "@/app/globals.css";
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -96,8 +96,7 @@ describe("the dive profile chart's layout", () => {
     // Fitting a phone by shrinking the whole drawing would pass both tests
     // above with labels a third of their size.
     const { svg } = renderAt(WIDTHS.phone);
-    const scale =
-      svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+    const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
 
     expect(scale).toBeCloseTo(CHART_FULL_WIDTH_PX / 720);
   });

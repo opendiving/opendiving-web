@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { DiveGasUsePoint } from "@/lib/api/dive-stats";
 import {
   type GasUseMark,
@@ -14,7 +20,7 @@ import {
   trendWindow,
 } from "@/lib/dive-gas";
 import type { ChartScope } from "@/lib/chart-period";
-import { axisTicks, niceDomain } from "@/lib/chart-scale";
+import { axisTicks, labelCapacity, niceDomain } from "@/lib/chart-scale";
 import { smoothBandPath, smoothPath } from "@/lib/chart-path";
 import {
   GAS_USE_SERIES_KEY,
@@ -26,6 +32,8 @@ import {
 } from "@/lib/chart-series-view";
 import { diveWallClockTime, formatDiveDateTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
+import { useChartWidth } from "@/hooks/useChartWidth";
+import { useKeepInside } from "@/hooks/useKeepInside";
 import { useUnits } from "@/hooks/useUnits";
 import {
   displayNumber,
@@ -56,18 +64,22 @@ import {
 // mid grey in dark - which left the trend line barely visible on a dark card.
 
 // The viewBox coordinate space. Not pixels: the SVG scales to its container, so
-// these are only ever ratios to each other.
+// these are only ever ratios to each other. This is the design width; a phone
+// draws into a narrower one (see `useChartWidth`).
 const WIDTH = 720;
 const HEIGHT = 240;
 const PADDING = { top: 12, right: 14, bottom: 28, left: 42 };
 
-const PLOT_WIDTH = WIDTH - PADDING.left - PADDING.right;
 const PLOT_HEIGHT = HEIGHT - PADDING.top - PADDING.bottom;
 
-// How many year labels the "all" scope's axis will carry before it starts
-// skipping them. Twelve four-digit labels across a 720-unit viewBox leaves room
-// either side of each; twenty-five would collide.
-const MAX_YEAR_LABELS = 12;
+// The room each x label gets before the axis starts skipping them, in viewBox
+// units. A year's label sits at the centre of the part of that year the chart
+// plots, so a career starting in December crowds its first two; they get about
+// twice a 27-unit year's width, which is twelve across the design width. Months
+// are one per evenly spaced slot and need only a 22-unit "May" plus air, which
+// the design width always has.
+const YEAR_LABEL_SPACING = 55;
+const MONTH_LABEL_SPACING = 26;
 
 const MONTH_LABELS = [
   "Jan",
@@ -110,6 +122,8 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // dot and the tooltip can't disagree the way a CSS `:hover` and React state
   // would.
   const [hovered, setHovered] = useState<number | null>(null);
+  const [chartRef, width] = useChartWidth(WIDTH);
+  const plotWidth = width - PADDING.left - PADDING.right;
 
   // Which marks the diver picked in *this* visit, and null until they pick -
   // which is what leaves room for the remembered selection underneath. Exactly
@@ -211,7 +225,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // stretched across the full width as though it were the whole year.
   const x = (time: number) =>
     PADDING.left +
-    ((time - range.start) / (range.end - range.start || 1)) * PLOT_WIDTH;
+    ((time - range.start) / (range.end - range.start || 1)) * plotWidth;
   const y = (rmv: number) =>
     PADDING.top +
     (1 - (rmv - domain.min) / (domain.max - domain.min)) * PLOT_HEIGHT;
@@ -271,7 +285,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
     };
   });
 
-  const xTicks = buildXTicks(scope, range);
+  const xTicks = buildXTicks(scope, range, plotWidth);
   const bands = bandRanges(scope, range);
 
   // Cleared when the window changes out from under a hovered dot - paging from
@@ -302,18 +316,12 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
 
   return (
     <div>
-      {/* Wide content scrolls in its own container rather than shrinking the
-          whole chart to phone width, where the axis labels would become
-          unreadable - same treatment the gas mixtures table gets on the dive
-          detail page. The legend deliberately sits *outside* it: it's text, so
-          it should wrap to the screen rather than scroll sideways with the plot,
-          and on a phone the container's own horizontal scrollbar is drawn across
-          the bottom of whatever it contains - straight through the legend. */}
-      <div className="overflow-x-auto">
-        {/* Sized to exactly the chart, and the positioning context the
-            tooltip's percentage offsets are resolved against. */}
-        <div className="relative min-w-[560px]">
-          {/* `group`, not `img`. Every dot here is a link to its dive, and
+      {/* Sized to exactly the chart, and the positioning context the tooltip's
+          percentage offsets are resolved against. It never scrolls:
+          `useChartWidth` narrows the viewBox to fit a phone instead. The legend
+          sits outside it, as text that wraps to the screen. */}
+      <div ref={chartRef} className="relative">
+        {/* `group`, not `img`. Every dot here is a link to its dive, and
               `img` declares that the whole plot is one picture. The links do
               survive it - WAI-ARIA exempts focusable descendants from
               presentational inheritance, and Chrome's tree shows them - but a
@@ -322,191 +330,191 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
               container's name and leaves the dives reachable both by tabbing
               and by browsing. The dive profile chart keeps `img`, correctly:
               it is a picture, with nothing interactive inside it. */}
-          <svg
-            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-            className="w-full h-auto"
-            role="group"
-            aria-label={describeSeries(visible.length, meanRmv, units)}
-          >
-            {/* Alternating months (or years) behind the plot - the chart's
+        <svg
+          viewBox={`0 0 ${width} ${HEIGHT}`}
+          className="w-full h-auto"
+          role="group"
+          aria-label={describeSeries(visible.length, meanRmv, units)}
+        >
+          {/* Alternating months (or years) behind the plot - the chart's
                 only vertical structure, and what lets a cluster of dots be
                 placed in the year without tracing down to the axis. First, so
                 everything else draws over it. */}
-            {bands.map((band) => (
-              <rect
-                key={band.start}
-                x={x(band.start)}
-                y={PADDING.top}
-                width={x(band.end) - x(band.start)}
-                height={PLOT_HEIGHT}
-                fill="currentColor"
-                className="text-muted"
-              />
-            ))}
+          {bands.map((band) => (
+            <rect
+              key={band.start}
+              x={x(band.start)}
+              y={PADDING.top}
+              width={x(band.end) - x(band.start)}
+              height={PLOT_HEIGHT}
+              fill="currentColor"
+              className="text-muted"
+            />
+          ))}
 
-            {/* Gridlines and the y scale. `currentColor` throughout, so
+          {/* Gridlines and the y scale. `currentColor` throughout, so
                 light/dark mode is inherited from the surrounding text colors
                 rather than hardcoded per theme. Dashed, and only these: with a
                 month band, a spread band, a reference line and a trend all
                 sharing the plot, solid rules across it competed with the data
                 instead of supporting it. */}
-            {axisTicks(domain).map((tick) => (
-              // `aria-hidden`, here and on the x labels below: the axis is a
-              // reading aid for the eye, and a screen reader walking the group
-              // should reach the dives, not twelve unlabelled numbers and the
-              // months they sit under first. The summary on the group and each
-              // dot's own label carry everything these say.
-              <g key={tick} aria-hidden className="text-border">
-                <line
-                  x1={PADDING.left}
-                  x2={WIDTH - PADDING.right}
-                  y1={y(tick)}
-                  y2={y(tick)}
-                  stroke="currentColor"
-                  strokeWidth={1}
-                  strokeDasharray="2 4"
-                />
-                <text
-                  x={PADDING.left - 8}
-                  y={y(tick)}
-                  textAnchor="end"
-                  dominantBaseline="middle"
-                  fontSize={11}
-                  fill="currentColor"
-                  className="text-muted-foreground"
-                >
-                  {tick}
-                </text>
-              </g>
-            ))}
-
-            {/* The one solid rule, closing the plot along the bottom. It sits
-                on the lowest gridline, which is the axis - dashed, it read as
-                another gridline and the plot had no floor. */}
-            <line
-              x1={PADDING.left}
-              x2={WIDTH - PADDING.right}
-              y1={PADDING.top + PLOT_HEIGHT}
-              y2={PADDING.top + PLOT_HEIGHT}
-              stroke="currentColor"
-              strokeWidth={1}
-              className="text-border"
-            />
-
-            {xTicks.map(({ label, time }) => (
+          {axisTicks(domain).map((tick) => (
+            // `aria-hidden`, here and on the x labels below: the axis is a
+            // reading aid for the eye, and a screen reader walking the group
+            // should reach the dives, not twelve unlabelled numbers and the
+            // months they sit under first. The summary on the group and each
+            // dot's own label carry everything these say.
+            <g key={tick} aria-hidden className="text-border">
+              <line
+                x1={PADDING.left}
+                x2={width - PADDING.right}
+                y1={y(tick)}
+                y2={y(tick)}
+                stroke="currentColor"
+                strokeWidth={1}
+                strokeDasharray="2 4"
+              />
               <text
-                key={label}
-                aria-hidden
-                x={x(time)}
-                y={HEIGHT - 8}
-                textAnchor="middle"
+                x={PADDING.left - 8}
+                y={y(tick)}
+                textAnchor="end"
+                dominantBaseline="middle"
                 fontSize={11}
                 fill="currentColor"
                 className="text-muted-foreground"
               >
-                {label}
+                {tick}
               </text>
-            ))}
+            </g>
+          ))}
 
-            {/* The career average. A longer dash than the gridlines and a
+          {/* The one solid rule, closing the plot along the bottom. It sits
+                on the lowest gridline, which is the axis - dashed, it read as
+                another gridline and the plot had no floor. */}
+          <line
+            x1={PADDING.left}
+            x2={width - PADDING.right}
+            y1={PADDING.top + PLOT_HEIGHT}
+            y2={PADDING.top + PLOT_HEIGHT}
+            stroke="currentColor"
+            strokeWidth={1}
+            className="text-border"
+          />
+
+          {xTicks.map(({ label, time }) => (
+            <text
+              key={label}
+              aria-hidden
+              x={x(time)}
+              y={HEIGHT - 8}
+              textAnchor="middle"
+              fontSize={11}
+              fill="currentColor"
+              className="text-muted-foreground"
+            >
+              {label}
+            </text>
+          ))}
+
+          {/* The career average. A longer dash than the gridlines and a
                 darker token, so it reads as a statement about the data rather
                 than as part of the scale. */}
-            {marks.includes("average") && (
-              <line
-                x1={PADDING.left}
-                x2={WIDTH - PADDING.right}
-                y1={y(allTimeMean)}
-                y2={y(allTimeMean)}
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeDasharray="7 5"
-                className="text-muted-foreground opacity-70"
-              />
-            )}
+          {marks.includes("average") && (
+            <line
+              x1={PADDING.left}
+              x2={width - PADDING.right}
+              y1={y(allTimeMean)}
+              y2={y(allTimeMean)}
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeDasharray="7 5"
+              className="text-muted-foreground opacity-70"
+            />
+          )}
 
-            {/* The spread band, then the trend, then the dots on top - back to
+          {/* The spread band, then the trend, then the dots on top - back to
                 front. The band is what a bare line was missing: it gives
                 the trend body, and it says how tightly the dives it averages
                 were clustered, which is most of what improving actually looks
                 like. */}
-            {trendSegments
-              .filter((segment) => segment.band)
-              .map((segment, index) => (
-                <path
-                  key={index}
-                  d={segment.band}
-                  fill="currentColor"
-                  stroke="none"
-                  className="text-coral opacity-15"
-                />
-              ))}
+          {trendSegments
+            .filter((segment) => segment.band)
+            .map((segment, index) => (
+              <path
+                key={index}
+                d={segment.band}
+                fill="currentColor"
+                stroke="none"
+                className="text-coral opacity-15"
+              />
+            ))}
 
-            {showTrend &&
-              trendSegments.map((segment, index) => (
-                <path
-                  key={index}
-                  d={segment.line}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  strokeLinecap="round"
-                  className="text-coral"
-                />
-              ))}
+          {showTrend &&
+            trendSegments.map((segment, index) => (
+              <path
+                key={index}
+                d={segment.line}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                className="text-coral"
+              />
+            ))}
 
-            {marks.includes("dives") &&
-              visible.map(({ point, index }) => (
-                // A plain SVG `<a>`, not `next/link`: this is inside the SVG
-                // namespace, and an anchor here still gets focus, middle-click and
-                // open-in-new-tab for free. `aria-label` carries what the `<title>`
-                // element used to - the tooltip below is a visual affordance and says
-                // nothing to a screen reader.
-                <a
-                  key={point.dive_uuid}
-                  href={`/dives/${point.dive_uuid}`}
-                  aria-label={describePoint(point, units)}
-                  onMouseEnter={() => setHovered(index)}
-                  onMouseLeave={() => setHovered(null)}
-                  // Keyboard focus opens the tooltip too, so tabbing through the
-                  // series reads the same as hovering it.
-                  onFocus={() => setHovered(index)}
-                  onBlur={() => setHovered(null)}
-                >
-                  {/* Faded by default so overlapping dots read as density rather than
+          {marks.includes("dives") &&
+            visible.map(({ point, index }) => (
+              // A plain SVG `<a>`, not `next/link`: this is inside the SVG
+              // namespace, and an anchor here still gets focus, middle-click and
+              // open-in-new-tab for free. `aria-label` carries what the `<title>`
+              // element used to - the tooltip below is a visual affordance and says
+              // nothing to a screen reader.
+              <a
+                key={point.dive_uuid}
+                href={`/dives/${point.dive_uuid}`}
+                aria-label={describePoint(point, units)}
+                onMouseEnter={() => setHovered(index)}
+                onMouseLeave={() => setHovered(null)}
+                // Keyboard focus opens the tooltip too, so tabbing through the
+                // series reads the same as hovering it.
+                onFocus={() => setHovered(index)}
+                onBlur={() => setHovered(null)}
+              >
+                {/* Faded by default so overlapping dots read as density rather than
                 a solid band, and lit up when it's the one being described. */}
-                  <circle
-                    cx={x(times[index])}
-                    cy={y(displayRmv(point.gas_use.rmv))}
-                    r={hovered === index ? 5 : scope === "all" ? 2.5 : 3.5}
-                    fill="currentColor"
-                    className={cn(
-                      "text-teal transition-all",
-                      hovered === index ? "opacity-100" : "opacity-45",
-                    )}
-                  />
-                  {/* An invisible, larger hit target. A 2.5-unit dot is a ~4px target
+                <circle
+                  cx={x(times[index])}
+                  cy={y(displayRmv(point.gas_use.rmv))}
+                  r={hovered === index ? 5 : scope === "all" ? 2.5 : 3.5}
+                  fill="currentColor"
+                  className={cn(
+                    "text-teal transition-all",
+                    hovered === index ? "opacity-100" : "opacity-45",
+                  )}
+                />
+                {/* An invisible, larger hit target. A 2.5-unit dot is a ~4px target
                 on screen, which is a fiddly thing to hover deliberately.
                 `transparent` rather than `none` - `fill="none"` takes no
                 pointer events at all, which is the opposite of the point. */}
-                  <circle
-                    cx={x(times[index])}
-                    cy={y(displayRmv(point.gas_use.rmv))}
-                    r={7}
-                    fill="transparent"
-                  />
-                </a>
-              ))}
-          </svg>
+                <circle
+                  cx={x(times[index])}
+                  cy={y(displayRmv(point.gas_use.rmv))}
+                  r={7}
+                  fill="transparent"
+                />
+              </a>
+            ))}
+        </svg>
 
-          {hoveredPoint && (
-            <GasUseTooltip
-              point={hoveredPoint}
-              cx={x(times[hoveredIndex])}
-              cy={y(displayRmv(hoveredPoint.gas_use.rmv))}
-              units={units}
-            />
-          )}
-        </div>
+        {hoveredPoint && (
+          <GasUseTooltip
+            point={hoveredPoint}
+            cx={x(times[hoveredIndex])}
+            cy={y(displayRmv(hoveredPoint.gas_use.rmv))}
+            chartWidth={width}
+            units={units}
+          />
+        )}
       </div>
 
       <GasUseLegend
@@ -665,28 +673,32 @@ function GasUseTooltip({
   point,
   cx,
   cy,
+  chartWidth,
   units,
 }: {
   point: DiveGasUsePoint;
   cx: number;
   cy: number;
+  chartWidth: number;
   units: UnitSystem;
 }) {
-  // Flipped and nudged so the card always lands inside the chart box. It has to:
-  // the scroll container around it clips (setting `overflow-x` to `auto` makes
-  // `overflow-y` compute to `auto` as well), so anything hanging past the top
-  // edge would be cut off or add a stray scrollbar.
+  // Flipped and nudged so the card lands inside the chart box rather than over
+  // the card's header or, on a phone, past the screen's edge. `useKeepInside`
+  // pulls back in whatever a phone-width chart still leaves hanging over.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useKeepInside(cardRef);
   const below = cy < HEIGHT * 0.35;
   const translateY = below ? "12px" : "calc(-100% - 12px)";
   const translateX =
-    cx < WIDTH * 0.18
+    cx < chartWidth * 0.18
       ? "-12px"
-      : cx > WIDTH * 0.82
+      : cx > chartWidth * 0.82
         ? "calc(-100% + 12px)"
         : "-50%";
 
   return (
     <div
+      ref={cardRef}
       // Never a hover target itself - it sits over the dots, and letting it take
       // the pointer would make it flicker as it steals its own trigger's hover.
       // `bg-tooltip`, not `bg-popover`: popover is the *same* color as the card
@@ -697,7 +709,7 @@ function GasUseTooltip({
       // color disappears in light mode and merges with it in dark.
       className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
       style={{
-        left: `${(cx / WIDTH) * 100}%`,
+        left: `${(cx / chartWidth) * 100}%`,
         top: `${(cy / HEIGHT) * 100}%`,
         transform: `translate(${translateX}, ${translateY})`,
       }}
@@ -801,6 +813,7 @@ function describePoint(point: DiveGasUsePoint, units: UnitSystem): string {
 function buildXTicks(
   scope: ChartScope,
   range: { start: number; end: number },
+  plotWidth: number,
 ): { label: string; time: number }[] {
   if (scope === "month") {
     const year = new Date(range.start).getUTCFullYear();
@@ -814,12 +827,17 @@ function buildXTicks(
 
   if (scope === "year") {
     const year = new Date(range.start).getUTCFullYear();
+    const stride = Math.ceil(
+      MONTH_LABELS.length / labelCapacity(plotWidth, MONTH_LABEL_SPACING),
+    );
     // Centred in the month rather than pinned to its first day, so each label
-    // sits under the band it names instead of on the seam between two.
+    // sits under the band it names instead of on the seam between two. Thinned
+    // from December back, as the activity chart below it thins, so the two
+    // stacked axes label the same months.
     return MONTH_LABELS.map((label, month) => ({
       label,
       time: (Date.UTC(year, month, 1) + Date.UTC(year, month + 1, 1)) / 2,
-    }));
+    })).filter((_, month) => (MONTH_LABELS.length - 1 - month) % stride === 0);
   }
 
   // Whole series: one label per calendar year it spans, centred in the part of
@@ -835,7 +853,9 @@ function buildXTicks(
 
   // A long enough career runs the labels into each other, so thin them evenly
   // rather than letting them overlap.
-  const stride = Math.ceil(years.length / MAX_YEAR_LABELS);
+  const stride = Math.ceil(
+    years.length / labelCapacity(plotWidth, YEAR_LABEL_SPACING),
+  );
 
   return years
     .filter((_, index) => index % stride === 0)

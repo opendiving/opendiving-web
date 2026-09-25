@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
  * summary figures over a `720 x 240` SVG drawn at `w-full h-auto`, so the
  * placeholder reserves the same `3:1` box - a card that collapsed to a spinner
  * and then grew back to chart height was most of what made arriving at the
- * dashboard feel jumpy.
+ * dashboard feel jumpy. Below 560px the charts keep the height they have there
+ * (see `fittedChartWidth`), and so does this.
  *
  * `legend` covers the one difference between them: the gas chart carries a
  * `text-xs` legend under its plot (it doubles as the control for which series
@@ -29,7 +30,7 @@ export function ChartSkeleton({
           </div>
         ))}
       </div>
-      <Skeleton className="aspect-[3/1] w-full" />
+      <Skeleton className="aspect-[3/1] min-h-[calc(560px/3)] w-full" />
       {legend && <Skeleton className="mt-2 h-4 w-64" />}
     </div>
   );
