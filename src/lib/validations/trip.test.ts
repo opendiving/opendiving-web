@@ -173,7 +173,14 @@ describe("normalizeTripParts", () => {
   it("converts '' placeholders to undefined", () => {
     expect(
       normalizeTripParts([{ start_date: "", end_date: "", location: null }]),
-    ).toEqual([{ start_date: undefined, end_date: undefined, location: null }]);
+    ).toEqual([
+      {
+        start_date: undefined,
+        end_date: undefined,
+        location: null,
+        accommodation_uuid: null,
+      },
+    ]);
   });
 
   it("preserves non-empty date strings", () => {
@@ -182,7 +189,12 @@ describe("normalizeTripParts", () => {
         { start_date: "2024-06-01", end_date: "2024-06-08" },
       ]),
     ).toEqual([
-      { start_date: "2024-06-01", end_date: "2024-06-08", location: null },
+      {
+        start_date: "2024-06-01",
+        end_date: "2024-06-08",
+        location: null,
+        accommodation_uuid: null,
+      },
     ]);
   });
 
@@ -190,6 +202,16 @@ describe("normalizeTripParts", () => {
     // `null` is how the API reads "this stretch has no place"; an omitted key
     // would be indistinguishable from a part that was never edited.
     expect(normalizeTripParts([{}])[0].location).toBeNull();
+  });
+
+  it("names the accommodation on every part, null where there is none", () => {
+    // The API replaces the parts wholesale, so a part sent without the member
+    // is a part whose accommodation the save clears.
+    expect(
+      normalizeTripParts([{ accommodation_uuid: "contact-1" }, {}]).map(
+        (part) => part.accommodation_uuid,
+      ),
+    ).toEqual(["contact-1", null]);
   });
 
   it("carries a place through untouched", () => {

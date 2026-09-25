@@ -4,6 +4,7 @@ import { DiveDetailSidebar } from "./dive-detail-sidebar";
 import type { LocationsMapProps } from "@/components/map/locations-map";
 import type { Dive, DiveSiteSummary } from "@/lib/api/dives";
 import type { Course } from "@/lib/api/courses";
+import type { Contact } from "@/lib/api/contacts";
 import type { UnitSystem } from "@/lib/units";
 
 // These renders read the diver's units, so they need an auth context. Held in a
@@ -70,15 +71,32 @@ function site(overrides: Partial<DiveSiteSummary> = {}): DiveSiteSummary {
   };
 }
 
-function renderSidebar(subject: Dive, course: Course | null = null) {
+function renderSidebar(
+  subject: Dive,
+  course: Course | null = null,
+  contact: Contact | null = null,
+) {
   return render(
     <DiveDetailSidebar
       dive={subject}
       trip={null}
       course={course}
+      contact={contact}
       onRecordingsChanged={vi.fn()}
     />,
   );
+}
+
+function contact(overrides: Partial<Contact> = {}): Contact {
+  return {
+    uuid: "contact-uuid",
+    name: "Blue Ocean Dive Center",
+    roles: ["dive_center"],
+    notes: "",
+    user_uuid: "user-uuid",
+    created_at: "2026-03-01T09:00:00Z",
+    ...overrides,
+  };
 }
 
 function course(overrides: Partial<Course> = {}): Course {
@@ -272,5 +290,46 @@ describe("DiveDetailSidebar training", () => {
 
     expect(screen.queryByText("Training")).not.toBeInTheDocument();
     expect(screen.queryByText("Course")).not.toBeInTheDocument();
+  });
+});
+
+describe("DiveDetailSidebar dive center", () => {
+  it("shows a fun dive's dive center, with no Training card", () => {
+    // The card is its own because a dive with no course is exactly the one whose
+    // dive center a Training row would never show.
+    renderSidebar(
+      dive(),
+      null,
+      contact({ phone: "+20 69 364 0000", website: "https://blueocean.example/" }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Dive center" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Blue Ocean Dive Center")).toBeInTheDocument();
+    expect(screen.queryByText("Training")).not.toBeInTheDocument();
+    // Dialled as digits, shown as typed.
+    expect(screen.getByRole("link", { name: "+20 69 364 0000" })).toHaveAttribute(
+      "href",
+      "tel:+20693640000",
+    );
+    expect(
+      screen.getByRole("link", { name: "blueocean.example" }),
+    ).toHaveAttribute("href", "https://blueocean.example/");
+  });
+
+  it("leaves out the ways to reach it that were not recorded", () => {
+    renderSidebar(dive(), null, contact());
+
+    expect(screen.getByText("Blue Ocean Dive Center")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("shows no card for a dive with no contact", () => {
+    renderSidebar(dive(), course());
+
+    expect(
+      screen.queryByRole("heading", { name: "Dive center" }),
+    ).not.toBeInTheDocument();
   });
 });

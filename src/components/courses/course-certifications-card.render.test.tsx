@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { CourseCertificationsCard } from "./course-certifications-card";
 import type { Certification } from "@/lib/api/certifications";
 import type { Course } from "@/lib/api/courses";
+import type { Contact } from "@/lib/api/contacts";
 
 vi.mock("@/lib/api/certifications", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/certifications")>()),
@@ -21,8 +22,24 @@ vi.mock("@/lib/api/courses", async (importOriginal) => ({
   coursesAPI: { getCourses: vi.fn(), getCourse: vi.fn() },
 }));
 
+vi.mock("@/lib/api/contacts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
+  contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
+}));
+
 const { certificationsAPI } = await import("@/lib/api/certifications");
 const { coursesAPI } = await import("@/lib/api/courses");
+const { contactsAPI } = await import("@/lib/api/contacts");
+const getContact = vi.mocked(contactsAPI.getContact);
+
+const BLUE_OCEAN: Contact = {
+  uuid: "contact-blue",
+  name: "Blue Ocean, Koh Tao",
+  roles: ["school"],
+  notes: "",
+  user_uuid: "user-1",
+  created_at: "2026-03-01T09:00:00Z",
+};
 const getCertifications = vi.mocked(certificationsAPI.getCertifications);
 const createCertification = vi.mocked(certificationsAPI.createCertification);
 const getCourse = vi.mocked(coursesAPI.getCourse);
@@ -37,7 +54,7 @@ const COURSE: Course = {
   end_date: "2026-03-06",
   instructor_name: "Alex Diver",
   instructor_number: "123",
-  training_center: "Blue Ocean, Koh Tao",
+  contact_uuid: BLUE_OCEAN.uuid,
   notes: "Ran the 21m and 30m dives on back gas.",
   user_uuid: "user-1",
   created_at: "2026-03-08T09:00:00Z",
@@ -53,7 +70,7 @@ const CREATED: Certification = {
   expires_on: null,
   instructor_name: "Alex Diver",
   instructor_number: "123",
-  training_center: "Blue Ocean, Koh Tao",
+  contact_uuid: BLUE_OCEAN.uuid,
   notes: "",
   course_uuid: COURSE.uuid,
   user_uuid: "user-1",
@@ -77,6 +94,7 @@ beforeEach(() => {
   getCertifications.mockImplementation(async () => page<Certification>([]));
   createCertification.mockImplementation(async () => CREATED);
   getCourse.mockImplementation(async () => COURSE);
+  getContact.mockImplementation(async () => BLUE_OCEAN);
 });
 
 // The page owns "is the create dialog open", because its sidebar opens the same
@@ -128,8 +146,8 @@ describe("the course's certifications card", () => {
     // the whole reason the card holds the course rather than just its uuid.
     expect(await screen.findByLabelText("Course")).toHaveValue(COURSE.name);
     await waitFor(() =>
-      expect(screen.getByLabelText("Training center")).toHaveValue(
-        "Blue Ocean, Koh Tao",
+      expect(screen.getByLabelText("Dive center")).toHaveValue(
+        BLUE_OCEAN.name,
       ),
     );
 
@@ -151,7 +169,7 @@ describe("the course's certifications card", () => {
     expect(createCertification.mock.calls[0][0]).toMatchObject({
       name: "Advanced Nitrox",
       course_uuid: COURSE.uuid,
-      training_center: "Blue Ocean, Koh Tao",
+      contact_uuid: BLUE_OCEAN.uuid,
       instructor_name: "Alex Diver",
       agency: "tdi",
     });

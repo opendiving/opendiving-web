@@ -192,6 +192,23 @@ describe("what the summary prints", () => {
     expect(screen.queryByText("Date of birth")).toBeNull();
   });
 
+  it("prints a card's dive centre from what it is handed, and no row without one", () => {
+    // The frame looks nothing up itself: the name comes in beside the card, by
+    // the card's uuid, and a card with no entry there has no line at all.
+    render(
+      loaded({
+        certifications: [
+          certification({ uuid: "cert-1", name: "Rescue Diver" }),
+          certification({ uuid: "cert-2", name: "Open Water Diver" }),
+        ],
+        contactNames: { "cert-1": "Blue Ocean" },
+      }),
+    );
+
+    expect(screen.getAllByText("Dive centre")).toHaveLength(1);
+    expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
+  });
+
   it("keeps every section on screen, and takes the empty ones off the print", () => {
     Object.assign(auth.user, {
       ...COMPLETE,

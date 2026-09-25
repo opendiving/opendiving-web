@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TripDialog } from "./trip-dialog";
+import type { Trip } from "@/lib/api/trips";
 
 // The parts field and the map are tested next door and in `components/map/`.
 // What only this render reaches is the arrangement of the form itself: the
@@ -11,6 +12,15 @@ import { TripDialog } from "./trip-dialog";
 vi.mock("@/lib/api/trips", () => ({
   tripsAPI: { createTrip: vi.fn(), updateTrip: vi.fn() },
 }));
+
+vi.mock("@/lib/api/contacts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
+  contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
+}));
+
+const { tripsAPI } = await import("@/lib/api/trips");
+const { contactsAPI } = await import("@/lib/api/contacts");
+const updateTrip = vi.mocked(tripsAPI.updateTrip);
 
 vi.mock("@/lib/api/geocoding", () => ({
   geocodingAPI: { searchPlaces: vi.fn().mockResolvedValue([]) },
@@ -107,7 +117,7 @@ describe("TripDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
 
     const map = screen.getByTestId("locations-map");
-    const picker = screen.getByRole("combobox");
+    const picker = screen.getByRole("combobox", { name: /^Place,/ });
     const notes = screen.getByLabelText("Notes");
 
     expect(picker.compareDocumentPosition(map)).toBe(
@@ -116,5 +126,42 @@ describe("TripDialog", () => {
     expect(map.compareDocumentPosition(notes)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it("keeps every part's accommodation through an edit that never touched it", async () => {
+    // The API replaces the parts wholesale, so a member the dialog's open or its
+    // submit left out of a part is a member every save clears.
+    vi.mocked(contactsAPI.getContact).mockImplementation(async (uuid) => ({
+      uuid,
+      name: "Coral Hotel",
+      roles: ["accommodation"],
+      notes: "",
+      user_uuid: "user-1",
+      created_at: "2026-03-01T09:00:00Z",
+    }));
+    updateTrip.mockResolvedValue({ message: "Trip updated" });
+    const trip: Trip = {
+      uuid: "trip-1",
+      name: "Egypt, spring",
+      parts: [
+        { location: { name: "Dahab" }, start_date: "2026-04-18" },
+        { location: { name: "Sharm" }, accommodation_uuid: "contact-coral" },
+      ],
+      notes: "",
+      user_uuid: "user-1",
+      created_at: "2026-04-01T09:00:00Z",
+    };
+    render(
+      <TripDialog open onOpenChange={() => {}} trip={trip} onSaved={() => {}} />,
+    );
+
+    await userEvent.clear(screen.getByLabelText("Name *"));
+    await userEvent.type(screen.getByLabelText("Name *"), "Egypt, April");
+    await userEvent.click(screen.getByRole("button", { name: /Save/ }));
+
+    await waitFor(() => expect(updateTrip).toHaveBeenCalled());
+    expect(
+      updateTrip.mock.calls[0][1].parts?.map((part) => part.accommodation_uuid),
+    ).toEqual([null, "contact-coral"]);
   });
 });

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { CertificationsPageFrame } from "@/components/certifications/certifications-page-frame";
+import { ContactsPageFrame } from "@/components/contacts/contacts-page-frame";
 import { CoursesPageFrame } from "@/components/courses/courses-page-frame";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import { SitesPageFrame } from "@/components/sites/sites-page-frame";
@@ -24,6 +25,7 @@ const FRAMES = {
   "species-page-frame": SpeciesPageFrame,
   "courses-page-frame": CoursesPageFrame,
   "certifications-page-frame": CertificationsPageFrame,
+  "contacts-page-frame": ContactsPageFrame,
 };
 
 // The admin queue's copy is checked in its own directory, since nothing out here may
@@ -35,8 +37,8 @@ const COMPONENTS = path.resolve(
   "../components",
 );
 
-// Derived rather than listed: a one-list frame is one that draws a `CountBadge`, so an
-// eighth fails here rather than going unchecked. The gear cards are not frames and hold
+// Derived rather than listed: a one-list frame is one that draws a `CountBadge`, so a
+// new one fails here rather than going unchecked. The gear cards are not frames and hold
 // two lists between them, which is why their titles stay on screen.
 const countingFrames = () =>
   readdirSync(COMPONENTS, { withFileTypes: true })

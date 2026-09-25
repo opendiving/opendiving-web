@@ -436,7 +436,7 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
     weight: dive.weight,
     trip_uuid: dive.trip_uuid,
     course_uuid: dive.course_uuid,
-    contact_uuid: dive.contact_uuid ?? null,
+    contact_uuid: dive.contact_uuid,
     dive_site_uuids: dive.dive_sites?.map((site) => site.uuid) ?? [],
     gear_item_uuids: dive.gear_items?.map((item) => item.uuid) ?? [],
     species_uuids: dive.species?.map((s) => s.uuid) ?? [],

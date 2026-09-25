@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CertificationDialog } from "./certification-dialog";
 import type { Certification } from "@/lib/api/certifications";
 import type { Course } from "@/lib/api/courses";
+import type { Contact } from "@/lib/api/contacts";
 
 vi.mock("@/lib/api/certifications", async (importOriginal) => ({
   // The agency vocabulary, its labels and the form's default are real: the
@@ -61,11 +62,21 @@ vi.mock("@/components/ui/use-toast", () => ({
 
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/courses")>()),
-  coursesAPI: { getCourses: vi.fn(), getCourse: vi.fn() },
+  coursesAPI: { getCourses: vi.fn(), getCourse: vi.fn(), createCourse: vi.fn() },
+}));
+
+vi.mock("@/lib/api/contacts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
+  contactsAPI: {
+    getContacts: vi.fn(),
+    getContact: vi.fn(),
+    createContact: vi.fn(),
+  },
 }));
 
 const { certificationsAPI } = await import("@/lib/api/certifications");
 const { coursesAPI } = await import("@/lib/api/courses");
+const { contactsAPI } = await import("@/lib/api/contacts");
 const { cropToBlob, decodeImage } = await import("@/lib/image-crop");
 const createCertification = vi.mocked(certificationsAPI.createCertification);
 const updateCertification = vi.mocked(certificationsAPI.updateCertification);
@@ -77,6 +88,26 @@ const decode = vi.mocked(decodeImage);
 const CROPPED = new Blob(["cropped"], { type: "image/webp" });
 const getCourses = vi.mocked(coursesAPI.getCourses);
 const getCourse = vi.mocked(coursesAPI.getCourse);
+const createCourse = vi.mocked(coursesAPI.createCourse);
+const getContacts = vi.mocked(contactsAPI.getContacts);
+const getContact = vi.mocked(contactsAPI.getContact);
+const createContact = vi.mocked(contactsAPI.createContact);
+
+const contact = (uuid: string, name: string): Contact => ({
+  uuid,
+  name,
+  roles: ["school"],
+  notes: "",
+  user_uuid: "user-1",
+  created_at: "2026-03-01T09:00:00Z",
+});
+
+const BLUE_OCEAN = contact("contact-blue", "Blue Ocean, Koh Tao");
+const RED_SEA = contact("contact-red", "Red Sea Divers");
+const MY_SHOP = contact("contact-mine", "My Shop");
+const OLD_SHOP = contact("contact-old", "Old Shop");
+const NO_SHOP = contact("contact-none", "No shop");
+const CONTACTS = [BLUE_OCEAN, RED_SEA, MY_SHOP, OLD_SHOP, NO_SHOP];
 
 const course = (overrides: Partial<Course> = {}): Course => ({
   uuid: "course-1",
@@ -88,7 +119,7 @@ const course = (overrides: Partial<Course> = {}): Course => ({
   end_date: "2026-03-06",
   instructor_name: "Alex Diver",
   instructor_number: "123",
-  training_center: "Blue Ocean, Koh Tao",
+  contact_uuid: BLUE_OCEAN.uuid,
   notes: "Ran the 21m and 30m dives on back gas.",
   user_uuid: "user-1",
   created_at: "2026-03-08T09:00:00Z",
@@ -103,7 +134,7 @@ const OTHER_COURSE = course({
   agency: "ssi",
   instructor_name: "Sam Reef",
   instructor_number: null,
-  training_center: "Red Sea Divers",
+  contact_uuid: RED_SEA.uuid,
   notes: "",
 });
 
@@ -115,7 +146,14 @@ const AGENCYLESS_COURSE = course({
   agency: null,
   instructor_name: "Kim Solo",
   instructor_number: "IND-3",
-  training_center: "No shop",
+  contact_uuid: NO_SHOP.uuid,
+});
+
+// A course that names no contact at all.
+const CONTACTLESS_COURSE = course({
+  uuid: "course-5",
+  name: "Deep Diver, self-study",
+  contact_uuid: null,
 });
 
 const COURSE = course();
@@ -130,7 +168,7 @@ const EXISTING: Certification = {
   expires_on: null,
   instructor_name: "Jo Teacher",
   instructor_number: "OLD-9",
-  training_center: "Old Shop",
+  contact_uuid: OLD_SHOP.uuid,
   notes: "",
   course_uuid: null,
   user_uuid: "user-1",
@@ -166,6 +204,14 @@ beforeEach(() => {
   getCourse.mockImplementation(async (uuid: string) =>
     uuid === OTHER_COURSE.uuid ? OTHER_COURSE : COURSE,
   );
+  // The picker shows a contact's name once it has looked the uuid up, which is
+  // what these tests read the field's value off.
+  getContacts.mockImplementation(async () => page(CONTACTS));
+  getContact.mockImplementation(async (uuid: string) => {
+    const found = CONTACTS.find((one) => one.uuid === uuid);
+    if (!found) throw new Error("not found");
+    return found;
+  });
 });
 
 function open({
@@ -193,7 +239,17 @@ async function pickCourse(name: string) {
   await userEvent.click(await screen.findByRole("option", { name }));
 }
 
-const trainingCenter = () => screen.getByLabelText("Training center");
+// The diver's own choice of dive center, made the same way.
+async function pickDiveCenter(name: string) {
+  await userEvent.click(diveCenter());
+  await userEvent.click(await screen.findByRole("option", { name }));
+}
+
+const diveCenter = () => screen.getByLabelText("Dive center");
+// A picker's own Clear button, which sits beside its input - the date fields
+// carry one each too.
+const clearOf = (input: HTMLElement) =>
+  within(input.parentElement!).getByRole("button", { name: "Clear" });
 const instructor = () => screen.getByLabelText("Instructor");
 const instructorNumber = () => screen.getByLabelText("Instructor number");
 const agency = () => screen.getByLabelText("Agency *");
@@ -205,14 +261,12 @@ const save = () =>
   );
 
 describe("picking a course fills the card's own fields in", () => {
-  it("copies the level, training centre, instructor and agency across", async () => {
+  it("copies the level, dive center, instructor and agency across", async () => {
     open();
 
     await pickCourse(COURSE.name);
 
-    await waitFor(() =>
-      expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
-    );
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
     expect(certificationName()).toHaveValue("Advanced Nitrox + Deco");
     expect(instructor()).toHaveValue("Alex Diver");
     expect(instructorNumber()).toHaveValue("123");
@@ -229,9 +283,7 @@ describe("picking a course fills the card's own fields in", () => {
 
     await pickCourse(COURSE.name);
 
-    await waitFor(() =>
-      expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
-    );
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
     expect(screen.getByLabelText("Notes")).toHaveValue("");
   });
 
@@ -244,28 +296,32 @@ describe("picking a course fills the card's own fields in", () => {
     await userEvent.type(certificationName(), "Advanced Nitrox");
     await pickCourse(COURSE.name);
 
-    await waitFor(() =>
-      expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
-    );
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
     expect(certificationName()).toHaveValue("Advanced Nitrox");
   });
 
-  it("never overwrites a field the diver has typed into", async () => {
+  it("never overwrites a dive center the diver picked", async () => {
     open();
 
-    await userEvent.type(trainingCenter(), "My Shop");
+    await pickDiveCenter(MY_SHOP.name);
     await pickCourse(COURSE.name);
 
     await waitFor(() => expect(instructor()).toHaveValue("Alex Diver"));
-    expect(trainingCenter()).toHaveValue("My Shop");
+    expect(diveCenter()).toHaveValue(MY_SHOP.name);
+
+    await save();
+    await waitFor(() => expect(createCertification).toHaveBeenCalled());
+    expect(createCertification.mock.calls[0][0]).toMatchObject({
+      contact_uuid: MY_SHOP.uuid,
+    });
   });
 
   it("replaces its own earlier prefill when the course changes, and empties what the new one lacks", async () => {
     open();
 
-    await userEvent.type(trainingCenter(), "My Shop");
     await pickCourse(COURSE.name);
     await waitFor(() => expect(instructorNumber()).toHaveValue("123"));
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
 
     await pickCourse(OTHER_COURSE.name);
 
@@ -274,8 +330,42 @@ describe("picking a course fills the card's own fields in", () => {
     // keeping it would attribute course A's instructor number to course B.
     expect(instructorNumber()).toHaveValue("");
     expect(agency()).toHaveTextContent("SSI");
-    // Still the diver's, two courses later.
-    expect(trainingCenter()).toHaveValue("My Shop");
+    await waitFor(() => expect(diveCenter()).toHaveValue(RED_SEA.name));
+  });
+
+  it("keeps the diver's dive center two courses later", async () => {
+    open();
+
+    await pickCourse(COURSE.name);
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
+    await pickDiveCenter(MY_SHOP.name);
+
+    await pickCourse(OTHER_COURSE.name);
+
+    await waitFor(() => expect(instructor()).toHaveValue("Sam Reef"));
+    expect(diveCenter()).toHaveValue(MY_SHOP.name);
+  });
+
+  it("takes back a dive center it copied when the next course names none", async () => {
+    // What the dialog wrote is the course's, and a course naming nobody has no
+    // contact to leave behind - course A's must not be filed under course B.
+    getCourses.mockImplementation(async () =>
+      page([COURSE, CONTACTLESS_COURSE]),
+    );
+    open();
+
+    await pickCourse(COURSE.name);
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
+
+    await pickCourse(CONTACTLESS_COURSE.name);
+
+    await waitFor(() => expect(diveCenter()).toHaveValue(""));
+    await save();
+    await waitFor(() => expect(createCertification).toHaveBeenCalled());
+    expect(createCertification.mock.calls[0][0]).toMatchObject({
+      course_uuid: CONTACTLESS_COURSE.uuid,
+      contact_uuid: null,
+    });
   });
 
   it("still replaces its own prefill after an unrelated field is cleared back to empty", async () => {
@@ -288,16 +378,14 @@ describe("picking a course fills the card's own fields in", () => {
     open();
 
     await pickCourse(COURSE.name);
-    await waitFor(() =>
-      expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
-    );
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
 
     await userEvent.type(certificationName(), "x");
     await userEvent.clear(certificationName());
 
     await pickCourse(OTHER_COURSE.name);
 
-    await waitFor(() => expect(trainingCenter()).toHaveValue("Red Sea Divers"));
+    await waitFor(() => expect(diveCenter()).toHaveValue(RED_SEA.name));
     expect(instructor()).toHaveValue("Sam Reef");
   });
 
@@ -307,12 +395,10 @@ describe("picking a course fills the card's own fields in", () => {
     open();
 
     await pickCourse(COURSE.name);
-    await waitFor(() =>
-      expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
-    );
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
 
-    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
-    expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao");
+    await userEvent.click(clearOf(screen.getByLabelText("Course")));
+    expect(diveCenter()).toHaveValue(BLUE_OCEAN.name);
 
     await userEvent.type(certificationName(), "Advanced Nitrox");
     await save();
@@ -320,10 +406,25 @@ describe("picking a course fills the card's own fields in", () => {
     await waitFor(() => expect(createCertification).toHaveBeenCalled());
     expect(createCertification.mock.calls[0][0]).toMatchObject({
       course_uuid: null,
-      training_center: "Blue Ocean, Koh Tao",
+      contact_uuid: BLUE_OCEAN.uuid,
       instructor_name: "Alex Diver",
       agency: "tdi",
     });
+  });
+
+  it("sends no training center, only the contact", async () => {
+    // The API still reads a `training_center` string for the build before this
+    // one; this one names the contact by uuid and nothing else.
+    open();
+
+    await pickCourse(COURSE.name);
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
+    await save();
+
+    await waitFor(() => expect(createCertification).toHaveBeenCalled());
+    expect(createCertification.mock.calls[0][0]).not.toHaveProperty(
+      "training_center",
+    );
   });
 
   it("leaves the card's own agency alone for a course that names none", async () => {
@@ -334,7 +435,7 @@ describe("picking a course fills the card's own fields in", () => {
     open();
     await pickCourse(AGENCYLESS_COURSE.name);
 
-    await waitFor(() => expect(trainingCenter()).toHaveValue("No shop"));
+    await waitFor(() => expect(diveCenter()).toHaveValue(NO_SHOP.name));
     expect(instructor()).toHaveValue("Kim Solo");
     expect(agency()).toHaveTextContent("PADI");
     expect(screen.queryByLabelText("Agency name *")).not.toBeInTheDocument();
@@ -346,7 +447,7 @@ describe("picking a course fills the card's own fields in", () => {
     expect(createCertification.mock.calls[0][0]).toMatchObject({
       agency: "padi",
       agency_other: null,
-      training_center: "No shop",
+      contact_uuid: NO_SHOP.uuid,
     });
   });
 
@@ -403,7 +504,7 @@ describe("the edit dialog's values are a pure function of the card being edited"
   it("changes nothing but the link when the course is relinked", async () => {
     open({ certification: EXISTING });
 
-    await waitFor(() => expect(trainingCenter()).toHaveValue("Old Shop"));
+    await waitFor(() => expect(diveCenter()).toHaveValue(OLD_SHOP.name));
 
     await pickCourse(COURSE.name);
 
@@ -411,7 +512,7 @@ describe("the edit dialog's values are a pure function of the card being edited"
     await waitFor(() =>
       expect(screen.getByLabelText("Course")).toHaveValue(COURSE.name),
     );
-    expect(trainingCenter()).toHaveValue("Old Shop");
+    expect(diveCenter()).toHaveValue(OLD_SHOP.name);
     expect(instructor()).toHaveValue("Jo Teacher");
     expect(instructorNumber()).toHaveValue("OLD-9");
     expect(agency()).toHaveTextContent("PADI");
@@ -421,9 +522,24 @@ describe("the edit dialog's values are a pure function of the card being edited"
     await waitFor(() => expect(updateCertification).toHaveBeenCalled());
     expect(updateCertification.mock.calls[0][1]).toMatchObject({
       course_uuid: COURSE.uuid,
-      training_center: "Old Shop",
+      contact_uuid: OLD_SHOP.uuid,
       instructor_name: "Jo Teacher",
       agency: "padi",
+    });
+  });
+
+  it("unlinks the contact when the diver clears it", async () => {
+    // `null`, not an omitted key: the update leaves an absent key alone, so a
+    // cleared picker has to say so for the link to go.
+    open({ certification: EXISTING });
+    await waitFor(() => expect(diveCenter()).toHaveValue(OLD_SHOP.name));
+
+    await userEvent.click(clearOf(diveCenter()));
+    await save();
+
+    await waitFor(() => expect(updateCertification).toHaveBeenCalled());
+    expect(updateCertification.mock.calls[0][1]).toMatchObject({
+      contact_uuid: null,
     });
   });
 });
@@ -432,9 +548,7 @@ describe("a dialog opened from a course page starts on that course", () => {
   it("opens pre-linked and prefilled", async () => {
     open({ initialCourse: COURSE });
 
-    await waitFor(() =>
-      expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
-    );
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
     expect(instructor()).toHaveValue("Alex Diver");
     expect(instructorNumber()).toHaveValue("123");
     expect(agency()).toHaveTextContent("TDI");
@@ -450,7 +564,7 @@ describe("a dialog opened from a course page starts on that course", () => {
     expect(createCertification.mock.calls[0][0]).toMatchObject({
       name: "Advanced Nitrox",
       course_uuid: COURSE.uuid,
-      training_center: "Blue Ocean, Koh Tao",
+      contact_uuid: BLUE_OCEAN.uuid,
     });
   });
 
@@ -459,7 +573,7 @@ describe("a dialog opened from a course page starts on that course", () => {
     // required agency unset, so it answers the field from the form's default.
     open({ initialCourse: AGENCYLESS_COURSE });
 
-    await waitFor(() => expect(trainingCenter()).toHaveValue("No shop"));
+    await waitFor(() => expect(diveCenter()).toHaveValue(NO_SHOP.name));
     expect(agency()).toHaveTextContent("PADI");
 
     await userEvent.clear(certificationName());
@@ -474,19 +588,103 @@ describe("a dialog opened from a course page starts on that course", () => {
     });
   });
 
-  it("still protects what the diver types over the seeded values", async () => {
+  it("still protects what the diver picks over the seeded values", async () => {
     open({ initialCourse: COURSE });
 
-    await waitFor(() =>
-      expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
-    );
-    await userEvent.clear(trainingCenter());
-    await userEvent.type(trainingCenter(), "My Shop");
+    await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
+    await pickDiveCenter(MY_SHOP.name);
 
     await pickCourse(OTHER_COURSE.name);
 
     await waitFor(() => expect(instructor()).toHaveValue("Sam Reef"));
-    expect(trainingCenter()).toHaveValue("My Shop");
+    expect(diveCenter()).toHaveValue(MY_SHOP.name);
+  });
+});
+
+describe("a contact made three dialogs deep", () => {
+  it("comes back through the course dialog into the certification", async () => {
+    // Certification -> "Add course..." -> "Add dive center...": three forms, one
+    // above the other, each portalled to the body. Each inner save has to land
+    // in the form that opened it and nowhere else - the course dialog selects
+    // the new contact, the certification selects the new course and copies the
+    // contact across from it, and the certification's own field keeps its text.
+    const created = contact("contact-new", "Sea Dragon Diving");
+    createContact.mockResolvedValue(created);
+    getContact.mockImplementation(async (uuid: string) => {
+      const found = [...CONTACTS, created].find((one) => one.uuid === uuid);
+      if (!found) throw new Error("not found");
+      return found;
+    });
+    createCourse.mockImplementation(async (body) =>
+      course({
+        uuid: "course-new",
+        name: body.name,
+        contact_uuid: body.contact_uuid ?? null,
+        instructor_name: null,
+        instructor_number: null,
+      }),
+    );
+    open();
+    await userEvent.type(certificationName(), "Deep Diver");
+
+    await userEvent.click(screen.getByLabelText("Course"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Add course..." }),
+    );
+    const courseDialog = await screen.findByRole("dialog", {
+      name: "New Course",
+    });
+    await userEvent.type(
+      within(courseDialog).getByLabelText("Course *"),
+      "Deep Specialty",
+    );
+
+    await userEvent.click(within(courseDialog).getByLabelText("Dive center"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Add dive center..." }),
+    );
+    const contactDialog = await screen.findByRole("dialog", {
+      name: "New Contact",
+    });
+    // The role a course's contact starts with, already ticked.
+    expect(within(contactDialog).getByLabelText("School")).toBeChecked();
+    await userEvent.type(
+      within(contactDialog).getByLabelText("Name *"),
+      created.name,
+    );
+    await userEvent.click(
+      within(contactDialog).getByRole("button", { name: "Create contact" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "New Contact" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(createContact).toHaveBeenCalledWith(
+      expect.objectContaining({ name: created.name, roles: ["school"] }),
+    );
+    expect(within(courseDialog).getByLabelText("Dive center")).toHaveValue(
+      created.name,
+    );
+    expect(createCertification).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      within(courseDialog).getByRole("button", { name: "Create course" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "New Course" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(createCourse).toHaveBeenCalledWith(
+      expect.objectContaining({ contact_uuid: created.uuid }),
+    );
+
+    expect(screen.getByLabelText("Course")).toHaveValue("Deep Specialty");
+    await waitFor(() => expect(diveCenter()).toHaveValue(created.name));
+    expect(certificationName()).toHaveValue("Deep Diver");
+    expect(createCertification).not.toHaveBeenCalled();
   });
 });
 
