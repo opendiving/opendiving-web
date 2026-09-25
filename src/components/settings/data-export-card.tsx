@@ -60,21 +60,21 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileJson,
     title: "DiveJSON",
     description:
-      "Your whole logbook in one file: every dive with every recording that made it — each one's device, its files and its full sample profile — plus cylinders, sites, trips, courses, marine life, gear with its service history and your c-card records. Everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is the one that comes back with nothing lost.",
+      "Your whole logbook in one file: every dive with every recording that made it — each one's device, its files and its full sample profile — plus cylinders, sites, trips, courses, marine life, gear with its service history, your c-card records and your contacts. Everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is the one that comes back with nothing lost.",
   },
   {
     format: "uddf",
     icon: FileCode,
     title: "UDDF",
     description:
-      "Every dive with its sites, trips, gases, cylinders, gear and sample profile, plus your date of birth, phone and dive insurance, in the open format Subsurface, MacDive and divelogs.de import. A dive recorded by two computers writes one profile here — the recording shown by default — because a UDDF dive carries one set of samples; the DiveJSON and the archive carry them all. This is the file to hand another program, and the import card below reads it back too — gear sets, service history, your courses, your c-cards, your emergency contact and your insurance policy number have no slot in it, and ride in the DiveJSON and the archive instead.",
+      "Every dive with its sites, trips, gases, cylinders, gear and sample profile, plus your contacts — as dive bases, shops and the places you stayed — and your date of birth, phone and dive insurance, in the open format Subsurface, MacDive and divelogs.de import. A dive recorded by two computers writes one profile here — the recording shown by default — because a UDDF dive carries one set of samples; the DiveJSON and the archive carry them all. This is the file to hand another program, and the import card below reads it back too — gear sets, service history, your courses, your c-cards, your emergency contact and your insurance policy number have no slot in it, and ride in the DiveJSON and the archive instead.",
   },
   {
     format: "csv",
     icon: Sheet,
     title: "Spreadsheet",
     description:
-      "One row per dive, flattened for Excel, Numbers or a notebook. The normalized set — cylinders, trips, sites, gear, service history, courses, certifications — rides in the DiveJSON, and as its own CSVs inside the archive.",
+      "One row per dive, flattened for Excel, Numbers or a notebook. The normalized set — cylinders, trips, sites, gear, service history, courses, certifications, contacts — rides in the DiveJSON, and as its own CSVs inside the archive.",
   },
   {
     format: "archive",

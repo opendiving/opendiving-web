@@ -1,10 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useState } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TripPartsField } from "./trip-parts-field";
 import type { TripPartFormValue } from "@/lib/validations/trip";
 import { MAX_TRIP_PARTS } from "@/lib/validations/trip";
+import type { Contact } from "@/lib/api/contacts";
 
 // The mapping helpers are unit-tested next door. What only a render reaches is
 // the list itself: what a part is identified by, what a row can be edited to
@@ -19,7 +20,15 @@ vi.mock("@/lib/api/geocoding", () => ({
   MAX_PLACE_QUERY_LENGTH: 200,
 }));
 
+vi.mock("@/lib/api/contacts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
+  contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
+}));
+
 const { geocodingAPI } = await import("@/lib/api/geocoding");
+const { contactsAPI } = await import("@/lib/api/contacts");
+const getContacts = vi.mocked(contactsAPI.getContacts);
+const getContact = vi.mocked(contactsAPI.getContact);
 const searchPlaces = vi.mocked(geocodingAPI.searchPlaces);
 
 const DAHAB = {
@@ -31,9 +40,26 @@ const DAHAB = {
   attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
 };
 
+const CORAL_HOTEL: Contact = {
+  uuid: "contact-coral",
+  name: "Coral Hotel",
+  roles: ["accommodation"],
+  notes: "",
+  user_uuid: "user-1",
+  created_at: "2026-03-01T09:00:00Z",
+};
+
 beforeEach(() => {
   searchPlaces.mockClear();
   searchPlaces.mockResolvedValue([]);
+  getContacts.mockImplementation(async () => ({
+    data: [CORAL_HOTEL],
+    total_count: 1,
+    has_more: false,
+    page: 1,
+    items_per_page: 25,
+  }));
+  getContact.mockImplementation(async () => CORAL_HOTEL);
 });
 
 // The field is controlled, and every one of these asserts on what it does to
@@ -43,9 +69,13 @@ function Field({ initial = [] }: { initial?: TripPartFormValue[] }) {
   return <TripPartsField value={value} onChange={setValue} />;
 }
 
+// Each row carries two pickers, the place and the accommodation beneath it; these
+// read the first kind only.
+const PLACE = /^Place,/;
+const placeInput = () => screen.getByRole("combobox", { name: PLACE });
 const places = () =>
   screen
-    .queryAllByRole("combobox")
+    .queryAllByRole("combobox", { name: PLACE })
     .map((input) => (input as HTMLInputElement).value);
 
 const placed = (name: string): TripPartFormValue => ({
@@ -72,9 +102,7 @@ describe("TripPartsField", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
 
     expect(places()).toEqual([""]);
-    await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole("combobox")),
-    );
+    await waitFor(() => expect(document.activeElement).toBe(placeInput()));
   });
 
   it("shows a part's place and both its dates on the row", async () => {
@@ -199,7 +227,7 @@ describe("TripPartsField", () => {
     searchPlaces.mockResolvedValue([DAHAB]);
     render(<Field initial={[placed("Dahab"), placed("Sharm")]} />);
 
-    await userEvent.click(screen.getAllByRole("combobox")[1]);
+    await userEvent.click(screen.getAllByRole("combobox", { name: PLACE })[1]);
     await userEvent.paste("Dahab");
     await waitFor(() => expect(searchPlaces).toHaveBeenCalledWith("Dahab"), {
       timeout: 2000,
@@ -214,7 +242,7 @@ describe("TripPartsField", () => {
     searchPlaces.mockResolvedValue([DAHAB]);
     render(<Field initial={[placed("Sharm"), { location: null }]} />);
 
-    await userEvent.click(screen.getAllByRole("combobox")[1]);
+    await userEvent.click(screen.getAllByRole("combobox", { name: PLACE })[1]);
     await userEvent.paste("Dahab");
     await waitFor(() => expect(searchPlaces).toHaveBeenCalledWith("Dahab"), {
       timeout: 2000,
@@ -247,7 +275,7 @@ describe("TripPartsField", () => {
       </>,
     );
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("phil");
     await waitFor(() => expect(searchPlaces).toHaveBeenCalledWith("phil"), {
       timeout: 2000,
@@ -266,7 +294,7 @@ describe("TripPartsField", () => {
 
     // Reopening the menu searches again for the now-empty input, so this waits
     // for the typed query a second time rather than trusting the first answer.
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("phil");
     await waitFor(() => expect(searchPlaces).toHaveBeenLastCalledWith("phil"), {
       timeout: 2000,
@@ -302,7 +330,7 @@ describe("TripPartsField", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await waitFor(() => expect(searchPlaces).toHaveBeenCalledWith(""));
     await userEvent.keyboard("{Enter}");
 
@@ -316,12 +344,12 @@ describe("TripPartsField", () => {
     // dropdown paints over the row's own date fields.
     render(<Field initial={[{ location: null }]} />);
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("Uncle Bob's House Reef");
     await userEvent.keyboard("{Enter}");
 
     await waitFor(() => expect(places()).toEqual(["Uncle Bob's House Reef"]));
-    expect(document.activeElement).toBe(screen.getByRole("combobox"));
+    expect(document.activeElement).toBe(placeInput());
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
@@ -332,7 +360,7 @@ describe("TripPartsField", () => {
     // dropping the text and clearing the field with nothing said about it.
     render(<Field initial={[{ location: null }]} />);
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("Uncle Bob's House Reef");
     await userEvent.keyboard("{Enter}");
 
@@ -344,7 +372,7 @@ describe("TripPartsField", () => {
     // an error under a field that renders it as the word "undefined".
     render(<Field initial={[{ location: null }]} />);
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("a".repeat(300));
     // Enter only creates once the search behind *this* query has answered, so
     // the wait is the debounce plus the round trip.
@@ -387,7 +415,7 @@ describe("TripPartsField", () => {
     ]);
     render(<Field initial={[{ location: null }]} />);
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("Dahab");
     await waitFor(() => expect(searchPlaces).toHaveBeenCalledWith("Dahab"), {
       timeout: 2000,
@@ -410,7 +438,7 @@ describe("TripPartsField", () => {
     const { container } = render(<Field initial={[{ location: null }]} />);
     const before = container.querySelectorAll("p").length;
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("Dahab");
     await waitFor(
       () =>
@@ -448,13 +476,58 @@ describe("TripPartsField", () => {
     );
   });
 
+  it("moves a part's accommodation with the part", async () => {
+    // The row's picker reads the part it is given, so a reorder that moved the
+    // place and left the accommodation behind would put the diver in the wrong
+    // hotel with nothing on screen to say so.
+    render(
+      <Field
+        initial={[
+          { ...placed("Dahab"), accommodation_uuid: CORAL_HOTEL.uuid },
+          placed("Sharm"),
+        ]}
+      />,
+    );
+    const stays = () =>
+      screen
+        .getAllByRole("combobox", { name: /^Accommodation,/ })
+        .map((input) => (input as HTMLInputElement).value);
+    await waitFor(() => expect(stays()).toEqual([CORAL_HOTEL.name, ""]));
+
+    screen.getByRole("button", { name: /^Reorder Dahab/ }).focus();
+    await userEvent.keyboard("{ArrowDown}");
+
+    await waitFor(() => expect(places()).toEqual(["Sharm", "Dahab"]));
+    expect(stays()).toEqual(["", CORAL_HOTEL.name]);
+  });
+
+  it("makes a new accommodation a place to stay, and nothing else", async () => {
+    // The role a contact starts with comes from where it was made; the diver
+    // can tick more, but a hotel added here is not also a dive center unasked.
+    render(<Field initial={[placed("Dahab")]} />);
+
+    await userEvent.click(
+      screen.getByRole("combobox", { name: "Accommodation, part 1 of 1" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Add accommodation..." }),
+    );
+
+    const dialog = await screen.findByRole("dialog", { name: "New Contact" });
+    const ticked = within(dialog)
+      .getAllByRole("checkbox")
+      .filter((box) => (box as HTMLInputElement).checked)
+      .map((box) => box.closest("label")?.textContent);
+    expect(ticked).toEqual(["Accommodation"]);
+  });
+
   it("does not call one character a search that found nothing", async () => {
     // `searchPlaces` answers a one-character query `[]` locally, because the
     // endpoint's `q` starts at two - so "No places found" would be a report on
     // a search that never ran. The invitation to keep typing stands instead.
     render(<Field initial={[{ location: null }]} />);
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("m");
     await waitFor(() => expect(searchPlaces).toHaveBeenLastCalledWith("m"));
 
@@ -475,7 +548,7 @@ describe("TripPartsField", () => {
     // the geocoder knows - one that never reaches the map.
     render(<Field initial={[{ location: null }]} />);
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("Bohol");
 
     expect(screen.getByText("Searching...")).toBeInTheDocument();
@@ -498,7 +571,7 @@ describe("TripPartsField", () => {
     });
     render(<Field initial={[{ location: null }]} />);
 
-    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(placeInput());
     await userEvent.paste("moalboal");
     expect(
       await screen.findByText(/Couldn't reach the place search/, undefined, {
@@ -506,7 +579,7 @@ describe("TripPartsField", () => {
       }),
     ).toBeInTheDocument();
 
-    await userEvent.clear(screen.getByRole("combobox"));
+    await userEvent.clear(placeInput());
     await userEvent.paste("bohol");
     expect(
       screen.queryByText(/Couldn't reach the place search/),

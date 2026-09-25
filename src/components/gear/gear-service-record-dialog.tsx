@@ -49,6 +49,12 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
+import { ContactCombobox } from "@/components/contacts/contact-combobox";
+import type { ContactRole } from "@/lib/api/contacts";
+
+// What a contact created from a service record starts as: whoever services gear
+// is a shop, whatever else it is.
+const SHOP: readonly ContactRole[] = ["shop"];
 
 interface GearServiceRecordDialogProps {
   // The item the service belongs to. Its uuid is all this dialog needs of it, and taking
@@ -93,6 +99,7 @@ export function GearServiceRecordDialog({
       kind: "service",
       label: "",
       serviced_on: "",
+      contact_uuid: null,
       performed_by: "",
       notes: "",
     },
@@ -106,6 +113,7 @@ export function GearServiceRecordDialog({
       label: record?.label ?? schedule?.label ?? "",
       // Defaults to today: the overwhelmingly common case is logging work just done.
       serviced_on: record?.serviced_on ?? todayIsoDate(),
+      contact_uuid: record?.contact_uuid ?? null,
       performed_by: record?.performed_by ?? "",
       notes: record?.notes ?? "",
     });
@@ -126,6 +134,7 @@ export function GearServiceRecordDialog({
           kind: data.kind,
           label: data.label || null,
           serviced_on: data.serviced_on,
+          contact_uuid: data.contact_uuid ?? null,
           performed_by: data.performed_by || null,
           notes: data.notes || "",
         });
@@ -135,6 +144,7 @@ export function GearServiceRecordDialog({
           kind: data.kind,
           label: data.label || undefined,
           serviced_on: data.serviced_on,
+          contact_uuid: data.contact_uuid ?? undefined,
           performed_by: data.performed_by || undefined,
           notes: data.notes || undefined,
           // Sent when the dialog was opened from a specific rule. When it wasn't, the
@@ -214,6 +224,29 @@ export function GearServiceRecordDialog({
               )}
             />
 
+            {/* The shop and the person are two fields: the shop is a contact
+                the diver picks again next year, the person a name typed once -
+                a technician, or "self" for work done at home. */}
+            <FormField
+              control={form.control}
+              name="contact_uuid"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Serviced at</FormLabel>
+                  <FormControl>
+                    <ContactCombobox
+                      value={field.value}
+                      onChange={field.onChange}
+                      initialRoles={SHOP}
+                      placeholder="Select a shop..."
+                      addNewLabel="Add shop..."
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="performed_by"
@@ -222,7 +255,7 @@ export function GearServiceRecordDialog({
                   <FormLabel>Serviced by</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g. Blue Ocean Dive Resort"
+                      placeholder="A technician's name, or self"
                       {...field}
                       value={field.value ?? ""}
                     />

@@ -8,6 +8,7 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { coursesAPI, Course } from "@/lib/api/courses";
+import { contactsAPI, Contact } from "@/lib/api/contacts";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveNeighborNav } from "@/components/dives/dive-neighbor-nav";
 import { DiveMergeAction } from "@/components/dives/dive-merge-action";
@@ -49,7 +50,7 @@ export default function DiveDetailLayout({
 }) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  // Both stored with the uuid they were looked up for, and read back only while
+  // Each stored with the uuid it was looked up for, and read back only while
   // the dive on screen still names that uuid - the same shape, and for the same
   // reason, as `DiveNeighborNav`'s neighbours. This state now outlives a step, so
   // held plainly it would spend the second round trip after a boundary-crossing
@@ -58,7 +59,7 @@ export default function DiveDetailLayout({
   // dimmed to say so. Keyed on the record rather than on the dive, so stepping
   // *within* a trip - a diver reading one front to back - keeps the row it
   // already has instead of blanking it and drawing it again. What that buys is
-  // the row, not the request: the two lookups share one effect, so a step that
+  // the row, not the request: the lookups share one effect, so a step that
   // changes the course but not the trip re-fetches the trip as well. Harmless,
   // since the key still matches and nothing blanks - but it is the reason not
   // to read this as a cache.
@@ -81,6 +82,8 @@ export default function DiveDetailLayout({
     trip: Trip | null;
     courseUuid?: string;
     course: Course | null;
+    contactUuid?: string | null;
+    contact: Contact | null;
   } | null>(null);
 
   const {
@@ -105,14 +108,14 @@ export default function DiveDetailLayout({
   });
   const isDeleting = del.deletingId !== null;
 
-  // Once the dive has loaded, resolve the names of the two records it stores by
-  // uuid alone - its trip and its training course. (Its dive site(s) come
-  // embedded on the dive already.) Failures here are non-fatal: the dive page
-  // still works, it just won't show that link.
+  // Once the dive has loaded, resolve the records it stores by uuid alone - its
+  // trip, its training course and its contact. (Its dive site(s) come embedded
+  // on the dive already.) Failures here are non-fatal: the dive page still
+  // works, it just won't show that card or link.
   //
-  // One effect running both lookups concurrently rather than two effects or two
-  // awaits: they are independent, and a dive with both would otherwise pay for
-  // them in series.
+  // One effect running the lookups concurrently rather than one effect each or a
+  // chain of awaits: they are independent, and a dive with all three would
+  // otherwise pay for them in series.
   //
   // Up here with the dive rather than in the page, for the same reason the fetch
   // is: held in the page, a step would reset both to null while the outgoing
@@ -120,12 +123,13 @@ export default function DiveDetailLayout({
   // from them under a card grid that is otherwise intact.
   const tripUuid = user ? dive?.trip_uuid : undefined;
   const courseUuid = user ? dive?.course_uuid : undefined;
+  const contactUuid = user ? dive?.contact_uuid : undefined;
 
   useEffect(() => {
     let cancelled = false;
 
     const fetchLinks = async () => {
-      const [tripData, courseData] = await Promise.all([
+      const [tripData, courseData, contactData] = await Promise.all([
         tripUuid
           ? tripsAPI.getTrip(tripUuid).catch((error) => {
               console.error("Failed to fetch trip:", error);
@@ -138,6 +142,12 @@ export default function DiveDetailLayout({
               return null;
             })
           : null,
+        contactUuid
+          ? contactsAPI.getContact(contactUuid).catch((error) => {
+              console.error("Failed to fetch contact:", error);
+              return null;
+            })
+          : null,
       ]);
 
       if (cancelled) return;
@@ -146,6 +156,8 @@ export default function DiveDetailLayout({
         trip: tripData,
         courseUuid,
         course: courseData,
+        contactUuid,
+        contact: contactData,
       });
     };
 
@@ -154,13 +166,15 @@ export default function DiveDetailLayout({
     return () => {
       cancelled = true;
     };
-  }, [tripUuid, courseUuid]);
+  }, [tripUuid, courseUuid, contactUuid]);
 
-  // Null while a lookup for *this* dive's trip or course is still in flight -
-  // the row is missing for a round trip rather than describing the dive before
-  // it, which is the same trade the dead-until-known arrows make.
+  // Null while a lookup for *this* dive's trip, course or contact is still in
+  // flight - the row is missing for a round trip rather than describing the dive
+  // before it, which is the same trade the dead-until-known arrows make.
   const trip = links && links.tripUuid === tripUuid ? links.trip : null;
   const course = links && links.courseUuid === courseUuid ? links.course : null;
+  const contact =
+    links && links.contactUuid === contactUuid ? links.contact : null;
 
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
@@ -260,7 +274,14 @@ export default function DiveDetailLayout({
       />
 
       <DiveDetailProvider
-        value={{ dive, isLoading: isLoadingDive, trip, course, refreshDive }}
+        value={{
+          dive,
+          isLoading: isLoadingDive,
+          trip,
+          course,
+          contact,
+          refreshDive,
+        }}
       >
         {children}
       </DiveDetailProvider>

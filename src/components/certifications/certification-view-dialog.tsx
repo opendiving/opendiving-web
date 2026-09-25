@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Download, Loader2 } from "lucide-react";
 import { coursesAPI, Course } from "@/lib/api/courses";
+import { useContact } from "@/hooks/useContact";
 import {
   certificationsAPI,
   certificationAgencyLabel,
@@ -87,6 +88,21 @@ function CourseRow({ courseUuid }: { courseUuid: string }) {
           {course.name}
         </Link>
       </dd>
+    </div>
+  );
+}
+
+// Who ran the course the card came out of, on `CourseRow`'s terms: the
+// certification carries the contact's uuid and nothing else, so the row appears
+// once the name has arrived, and a failed lookup leaves it out.
+function ContactRow({ contactUuid }: { contactUuid: string }) {
+  const contact = useContact(contactUuid);
+  if (!contact) return null;
+
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">Dive center</dt>
+      <dd className="text-sm">{contact.name}</dd>
     </div>
   );
 }
@@ -219,10 +235,9 @@ export function CertificationViewDialog({
                   : null
               }
             />
-            <DetailRow
-              label="Training center"
-              value={certification.training_center}
-            />
+            {certification.contact_uuid && (
+              <ContactRow contactUuid={certification.contact_uuid} />
+            )}
             <DetailRow
               label="Instructor"
               value={certification.instructor_name}

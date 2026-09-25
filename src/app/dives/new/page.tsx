@@ -8,6 +8,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useReturnTo } from "@/hooks/useReturnTo";
 import { useSuggestedDiveNumber } from "@/hooks/useSuggestedDiveNumber";
 import { divesAPI } from "@/lib/api/dives";
+import { coursesAPI } from "@/lib/api/courses";
 import {
   diveCreateSchema,
   DiveCreateInput,
@@ -65,6 +66,7 @@ export default function NewDivePage() {
       weight: undefined,
       trip_uuid: initialTripId,
       course_uuid: initialCourseId,
+      contact_uuid: null,
       dive_site_uuids:
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       gear_item_uuids: [],
@@ -91,14 +93,14 @@ export default function NewDivePage() {
     replaceMixtures: mixtureFieldArray.replace,
     fillsDefaults: true,
   });
-  const { prefill, revealNonEmpty } = visibility;
+  const { prefill, revealNonEmpty, autofill } = visibility;
 
-  // The fourth moment a value arrives from outside the diver's typing, and the one
-  // that happens at mount: a trip, dive site or course a page passed in the URL. A
-  // diver who clicked "Log a dive for this course" asked for that field, and Basic
-  // hides `course_uuid` - so without this the click would file the dive against no
-  // course. Derived from the values rather than from the three parameters, so the
-  // rule is the same one the other three moments use.
+  // The moment a value arrives from outside the diver's typing at mount: a trip,
+  // dive site or course a page passed in the URL. A diver who clicked "Log a dive
+  // for this course" asked for that field, and Basic hides `course_uuid` - so
+  // without this the click would file the dive against no course. Derived from the
+  // values rather than from the three parameters, so the rule is the same one the
+  // other moments use.
   useEffect(() => {
     revealNonEmpty(form.getValues());
     // Mount only. Its inputs are the `defaultValues` above, which are read once.
@@ -143,13 +145,40 @@ export default function NewDivePage() {
 
     let cancelled = false;
 
+    // The contact of the course a page passed in the URL, which the dive was dived
+    // with unless the diver says otherwise. Looked up beside the last dive rather
+    // than after it, and non-fatal: a failed lookup leaves the field to the last
+    // dive, as though the course named nobody.
+    const urlCourseContact = async (): Promise<string | null> => {
+      if (!initialCourseId) return null;
+      try {
+        const course = await coursesAPI.getCourse(initialCourseId);
+        return course.contact_uuid ?? null;
+      } catch (error) {
+        console.error("Failed to fetch the course's contact:", error);
+        return null;
+      }
+    };
+
     const prefillFromLastDive = async () => {
       try {
-        const response = await divesAPI.getDives(1, 1);
+        const [response, courseContact] = await Promise.all([
+          divesAPI.getDives(1, 1),
+          urlCourseContact(),
+        ]);
         if (cancelled || form.formState.isDirty) return;
 
+        // The course's contact is written through `autofill` in both branches,
+        // rather than only carried: that records it as the layer's write, so a
+        // course picked later can still replace it, and it shows the field -
+        // `prefill` blanks a key the stored set hides, and only the course itself
+        // was revealed at mount. Called only past the last of the dirty checks,
+        // since the write dirties the form they read.
         const lastDiveSummary = response.data[0];
-        if (!lastDiveSummary) return;
+        if (!lastDiveSummary) {
+          if (courseContact) autofill("contact_uuid", courseContact);
+          return;
+        }
 
         // The list endpoint doesn't include gas mixtures (only the single-dive
         // endpoint does), so fetch the full record to prefill them.
@@ -183,6 +212,10 @@ export default function NewDivePage() {
           // course", which arrives here as `initialCourseId` - already revealed at
           // mount, so hiding `course_uuid` never loses it.
           course_uuid: initialCourseId,
+          // Carried like the trip - a week with one shop is logged with it dive
+          // after dive - and, like the trip, behind what the URL asked for: the
+          // course's own contact comes first.
+          contact_uuid: courseContact ?? lastDive.contact_uuid ?? null,
           dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
           // Divers tend to use the same kit dive after dive, so carry it over.
@@ -227,6 +260,7 @@ export default function NewDivePage() {
             })) ?? [],
         };
 
+        if (courseContact) autofill("contact_uuid", courseContact);
         form.reset(
           prefill(
             {
@@ -273,6 +307,7 @@ export default function NewDivePage() {
     userUuid,
     form,
     prefill,
+    autofill,
     initialTripId,
     initialDiveSiteId,
     initialCourseId,
@@ -302,6 +337,7 @@ export default function NewDivePage() {
         trip_uuid: data.trip_uuid ?? undefined,
         // Same collapse, same reason - see `trip_uuid` directly above.
         course_uuid: data.course_uuid ?? undefined,
+        contact_uuid: data.contact_uuid ?? undefined,
         // The select's "Not recorded" option is `""`, which the API's enum would
         // reject. On the edit form it converts to an explicit `null` ("the diver
         // cleared this"); on create there is nothing to clear, so - exactly like

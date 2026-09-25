@@ -30,6 +30,7 @@ import {
   BadgeCheck,
   ClipboardList,
   GraduationCap,
+  BookUser,
   Fish,
   Shield,
 } from "lucide-react";
@@ -81,6 +82,7 @@ const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/certifications", page: "certifications" },
   { prefix: "/checkin", page: "checkin" },
   { prefix: "/courses", page: "courses" },
+  { prefix: "/contacts", page: "contacts" },
   { prefix: "/species", page: "species" },
 ];
 
@@ -344,6 +346,17 @@ export function Header() {
                       <Link href="/courses" className="flex items-center">
                         <GraduationCap className="mr-2 h-4 w-4" />
                         Courses
+                      </Link>
+                    </DropdownMenuItem>
+                    {/* Under the training records, which name contacts most, and
+                        for the same reason they sit here: the dive centers and
+                        places a diver keeps are looked up, not visited every time.
+                        No create action in the "+" menu - a contact is made where
+                        it is needed, from the picker that names it. */}
+                    <DropdownMenuItem asChild>
+                      <Link href="/contacts" className="flex items-center">
+                        <BookUser className="mr-2 h-4 w-4" />
+                        Contacts
                       </Link>
                     </DropdownMenuItem>
                     {/* Here for the same reason, by a different argument: the

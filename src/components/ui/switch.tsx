@@ -10,10 +10,9 @@ import { cn } from "@/lib/utils";
 // the whole of what Radix buys here. `Root` renders `<button type="button">`, which is
 // the guard every control on a card whose content is a `<form>` needs anyway.
 //
-// `ui/checkbox.tsx` is the other half, and only the other half: the invite queue's
-// selection boxes, where rows are picked for a batch rather than left flipped. See
-// "The invite queue selects with checkboxes, and everything else is a switch" in
-// `DECISIONS.md`. The two are not drop-in for one another - this one takes
+// `ui/checkbox.tsx` is the other half, and only the other half: picking members of a
+// set rather than leaving a state flipped - the invite queue's rows, a contact's roles.
+// See "Selection is a checkbox, and a setting is a switch" in `DECISIONS.md`. The two are not drop-in for one another - this one takes
 // `checked`/`onCheckedChange`, that one `checked`/`onChange`.
 //
 // On is `bg-teal` and not shadcn's `bg-primary`, for the reason `map-picker.tsx` and

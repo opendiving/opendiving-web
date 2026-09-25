@@ -47,7 +47,7 @@ function report(overrides: Partial<ImportReport> = {}): ImportReport {
 }
 
 describe("collectionLabel", () => {
-  it("names each of the ten envelope collections", () => {
+  it("names each envelope collection", () => {
     // The envelope's own order, which is the order the API returns them in.
     expect(
       [
@@ -61,6 +61,7 @@ describe("collectionLabel", () => {
         "gear_service_schedules",
         "gear_service_records",
         "certifications",
+        "contacts",
       ].map(collectionLabel),
     ).toEqual([
       "Dives",
@@ -73,12 +74,13 @@ describe("collectionLabel", () => {
       "Service schedules",
       "Service records",
       "Certifications",
+      "Contacts",
     ]);
   });
 
   it("renders a collection this build has never heard of", () => {
-    // A newer API that grew an eleventh collection must produce a readable row,
-    // not a blank heading over correct numbers.
+    // A newer API that grew a collection this build does not know must produce a
+    // readable row, not a blank heading over correct numbers.
     expect(collectionLabel("dive_computers")).toBe("Dive computers");
   });
 });

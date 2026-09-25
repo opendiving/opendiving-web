@@ -111,6 +111,11 @@ const DESTINATIONS = [
     page: () => import("./courses/[id]/page"),
     params: { id: "course-1" },
   },
+  {
+    route: "/contacts",
+    path: "/contacts",
+    page: () => import("./contacts/page"),
+  },
   { route: "/species", path: "/species", page: () => import("./species/page") },
   {
     route: "/species/[id]",

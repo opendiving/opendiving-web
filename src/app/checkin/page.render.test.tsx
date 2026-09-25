@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import CheckInPage from "./page";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 
-// The page reads three unrelated endpoints, and what is worth pinning is that they
+// The page reads several unrelated endpoints, and what is worth pinning is that they
 // stay unrelated: a summary handed across a desk missing its c-cards because the
 // dive-count endpoint was down is the failure this page can least afford.
 
@@ -42,6 +42,11 @@ vi.mock("@/lib/api/dives", () => ({
   divesAPI: { getDives: vi.fn() },
 }));
 
+vi.mock("@/lib/api/contacts", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  fetchAllContacts: vi.fn(),
+}));
+
 vi.mock("@/hooks/useAuthedBlobUrl", () => ({
   useAuthedBlobUrl: () => ({
     url: null,
@@ -54,10 +59,12 @@ vi.mock("@/hooks/useAuthedBlobUrl", () => ({
 const { fetchAllCertifications } = await import("@/lib/api/certifications");
 const { diveStatsAPI } = await import("@/lib/api/dive-stats");
 const { divesAPI } = await import("@/lib/api/dives");
+const { fetchAllContacts } = await import("@/lib/api/contacts");
 
 const getCertifications = vi.mocked(fetchAllCertifications);
 const getDiveStats = vi.mocked(diveStatsAPI.getDiveStats);
 const getDives = vi.mocked(divesAPI.getDives);
+const getContacts = vi.mocked(fetchAllContacts);
 
 const stats: UserDiveStats = {
   user_uuid: "user-1",
@@ -73,6 +80,18 @@ const oneCard = [
     uuid: "cert-1",
     agency: "padi" as const,
     name: "Rescue Diver",
+    contact_uuid: "contact-1",
+    user_uuid: "user-1",
+    created_at: "2026-01-01T00:00:00+00:00",
+  },
+];
+
+const theirShop = [
+  {
+    uuid: "contact-1",
+    name: "Blue Ocean",
+    roles: ["school"],
+    notes: "",
     user_uuid: "user-1",
     created_at: "2026-01-01T00:00:00+00:00",
   },
@@ -91,6 +110,7 @@ beforeEach(() => {
   getCertifications.mockReset().mockResolvedValue(oneCard);
   getDiveStats.mockReset().mockResolvedValue(stats);
   getDives.mockReset().mockResolvedValue(noDives);
+  getContacts.mockReset().mockResolvedValue(theirShop);
 });
 
 // Keyed on the retry control rather than on the banner's prose: the sentence carries
@@ -104,7 +124,18 @@ describe("CheckInPage", () => {
 
     expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
     expect(screen.getByText("142")).toBeInTheDocument();
+    // The card's dive centre, by name: the card holds only its uuid.
+    expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
     expect(retry()).toBeNull();
+  });
+
+  it("keeps the cards when the contacts fail, and leaves their dive centres off", async () => {
+    getContacts.mockRejectedValue(new Error("500"));
+    render(<CheckInPage />);
+
+    expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
+    expect(screen.queryByText("Dive centre")).toBeNull();
+    expect(retry()).not.toBeNull();
   });
 
   it("keeps the c-cards when the dive stats fail, and says the summary is short", async () => {

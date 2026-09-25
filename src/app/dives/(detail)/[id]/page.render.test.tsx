@@ -52,6 +52,7 @@ function renderPage(value: Partial<DiveDetailValue> = {}) {
         isLoading: false,
         trip: null,
         course: null,
+        contact: null,
         refreshDive: vi.fn(),
         ...value,
       }}

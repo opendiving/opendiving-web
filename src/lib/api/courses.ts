@@ -35,10 +35,10 @@ export const DEFAULT_COURSE_STATUS: CourseStatus = "completed";
 /**
  * A training course: a group of dives and the certifications they produced.
  *
- * Works like a trip, but with dates of its own and no place. The
- * instructor/training-center trio duplicates the same fields on `Certification`
- * deliberately - a certification has to stand alone, because imported history
- * arrives certification-first with no course to hang them on.
+ * Works like a trip, but with dates of its own and no place. The instructor pair
+ * and the contact duplicate the same fields on `Certification` deliberately - a
+ * certification has to stand alone, because imported history arrives
+ * certification-first with no course to hang them on.
  */
 export interface Course {
   uuid: string;
@@ -56,7 +56,8 @@ export interface Course {
   end_date?: string | null;
   instructor_name?: string | null;
   instructor_number?: string | null;
-  training_center?: string | null;
+  // The dive center, school or club that ran it - a contact, by uuid.
+  contact_uuid?: string | null;
   notes?: string;
   user_uuid: string;
   created_at: string;
@@ -71,10 +72,12 @@ export interface CourseCreate {
   end_date?: string | null;
   instructor_name?: string | null;
   instructor_number?: string | null;
-  training_center?: string | null;
+  contact_uuid?: string | null;
   notes?: string;
 }
 
+// `null` on `contact_uuid` unlinks the course from its contact; omitting the key
+// leaves the link alone.
 export type CourseUpdate = Partial<CourseCreate>;
 
 export type PaginatedCoursesResponse = PaginatedResponse<Course>;

@@ -15,6 +15,9 @@ export interface TripPart {
   start_date?: string | null;
   end_date?: string | null;
   location?: Location | null;
+  // The contact the diver stayed at during the part, by uuid. One per part: a
+  // change of hotel is a new part, which is what parts are for.
+  accommodation_uuid?: string | null;
 }
 
 // What a write sends. Identical in shape to `TripPart` - parts are replaced

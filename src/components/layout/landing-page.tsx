@@ -264,10 +264,11 @@ export function LandingPage() {
           </div>
 
           <p className="mt-8 max-w-3xl mx-auto text-center text-muted-foreground">
-            Dives group into trips and into the courses they were part of, gear
-            carries its own service schedule with due-soon reminders, and your
-            c-cards sit alongside them &mdash; on one page with the details a
-            dive shop asks for, to print and hand over at the desk.
+            Dives group into trips and into the courses they were part of, the
+            dive centers and places you stayed are kept once and picked from a
+            list, gear carries its own service schedule with due-soon reminders,
+            and your c-cards sit alongside them &mdash; on one page with the
+            details a dive shop asks for, to print and hand over at the desk.
           </p>
         </div>
       </section>

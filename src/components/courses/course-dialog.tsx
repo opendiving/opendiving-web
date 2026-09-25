@@ -18,6 +18,7 @@ import {
   certificationAgencyLabel,
 } from "@/lib/api/certifications";
 import { courseStatusLabel } from "@/lib/course";
+import type { ContactRole } from "@/lib/api/contacts";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -47,12 +48,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
+import { ContactCombobox } from "@/components/contacts/contact-combobox";
 
 // The agency picker's "no agency" option. The form itself holds `null` for that
 // state and the API is sent `null`; this string exists only because a Radix
 // `SelectItem` may not carry `""`, which is how that component spells "nothing
 // selected" - so the option needs a value of its own and it never leaves here.
 const NO_AGENCY = "none";
+
+// What a contact created from a course form starts as.
+const SCHOOL: readonly ContactRole[] = ["school"];
 
 interface CourseDialogProps {
   open: boolean;
@@ -97,7 +102,7 @@ export function CourseDialog({
       end_date: "",
       instructor_name: "",
       instructor_number: "",
-      training_center: "",
+      contact_uuid: null,
       notes: "",
     },
   });
@@ -121,7 +126,7 @@ export function CourseDialog({
       end_date: course?.end_date ?? "",
       instructor_name: course?.instructor_name ?? "",
       instructor_number: course?.instructor_number ?? "",
-      training_center: course?.training_center ?? "",
+      contact_uuid: course?.contact_uuid ?? null,
       notes: course?.notes ?? "",
     });
     // Same deliberate reset-on-open pattern as `certification-dialog.tsx`;
@@ -162,7 +167,8 @@ export function CourseDialog({
         end_date: data.end_date || null,
         instructor_name: data.instructor_name || null,
         instructor_number: data.instructor_number || null,
-        training_center: data.training_center || null,
+        // Sent as `null` when cleared, which is what unlinks it on an update.
+        contact_uuid: data.contact_uuid ?? null,
         notes: data.notes || "",
       };
 
@@ -346,15 +352,21 @@ export function CourseDialog({
 
             <FormField
               control={form.control}
-              name="training_center"
+              name="contact_uuid"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Training center</FormLabel>
+                  <FormLabel>Dive center</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="e.g. Blue Ocean, Koh Tao"
-                      {...field}
-                      value={field.value ?? ""}
+                    {/* A contact made from here starts as a school, which is
+                        what running a course makes it. Its dialog opens over
+                        this one, and over the certification dialog too when
+                        this course is being added from there. */}
+                    <ContactCombobox
+                      value={field.value}
+                      onChange={field.onChange}
+                      initialRoles={SCHOOL}
+                      placeholder="Select a dive center..."
+                      addNewLabel="Add dive center..."
                     />
                   </FormControl>
                   <FormMessage />

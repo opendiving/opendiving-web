@@ -137,7 +137,6 @@ describe("certificationSchema", () => {
       ["certification_number", 65],
       ["instructor_name", 256],
       ["instructor_number", 65],
-      ["training_center", 256],
       ["notes", NOTES_MAX_LENGTH + 1],
     ])("rejects an over-long %s", (field, length) => {
       expect(

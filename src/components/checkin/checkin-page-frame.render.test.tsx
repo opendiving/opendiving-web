@@ -192,6 +192,23 @@ describe("what the summary prints", () => {
     expect(screen.queryByText("Date of birth")).toBeNull();
   });
 
+  it("prints a card's dive centre from what it is handed, and no row without one", () => {
+    // The frame looks nothing up itself: the name comes in beside the card, by
+    // the card's uuid, and a card with no entry there has no line at all.
+    render(
+      loaded({
+        certifications: [
+          certification({ uuid: "cert-1", name: "Rescue Diver" }),
+          certification({ uuid: "cert-2", name: "Open Water Diver" }),
+        ],
+        contactNames: { "cert-1": "Blue Ocean" },
+      }),
+    );
+
+    expect(screen.getAllByText("Dive centre")).toHaveLength(1);
+    expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
+  });
+
   it("keeps every section on screen, and takes the empty ones off the print", () => {
     Object.assign(auth.user, {
       ...COMPLETE,
@@ -416,9 +433,9 @@ describe("before the requests land", () => {
         "h-12",
       );
       // The gap beside the picture as well as the picture's own width: the two
-      // together are what put the name bar where the name lands, and a plain
-      // `gap-4` here leaves the placeholder 8px short of it from `sm` up.
-      expect(row).toHaveClass("sm:gap-6", "print:gap-6");
+      // together are what put the name bar where the name lands.
+      expect(row).toHaveClass("gap-4");
+      expect(row.className).not.toMatch(/(sm|print):gap-/);
     });
   });
 
@@ -525,8 +542,8 @@ describe("labels and values line up", () => {
     // encode, and it is arithmetic rather than taste: the picture's column plus the
     // gap beside it has to come to the label track plus the list's own column gap,
     // or every name on the sheet starts eight pixels off the values under it.
-    // 6rem + 1.5rem = 6.5rem + 1rem. Change one of the three and this is what says
-    // the other two have to move.
+    // 6rem + 1rem = 6rem + 1rem. Change one of the three and this is what says the
+    // other two have to move.
     // The picture's own column is what identifies a name row: a section heading
     // carries `break-after-avoid` too and has nothing beside it.
     const pictures = [...container.querySelectorAll("div")].filter((el) =>
@@ -536,16 +553,14 @@ describe("labels and values line up", () => {
     expect(pictures).toHaveLength(2);
     for (const picture of pictures) {
       expect(picture).toHaveClass("print:w-24");
-      expect(picture.parentElement).toHaveClass("sm:gap-6", "print:gap-6");
+      expect(picture.parentElement).toHaveClass("gap-4");
       expect(picture.parentElement?.firstElementChild).toBe(picture);
     }
 
     for (const list of container.querySelectorAll("dl")) {
+      expect(list.className).toContain("sm:grid-cols-[minmax(6rem,auto)_1fr]");
       expect(list.className).toContain(
-        "sm:grid-cols-[minmax(6.5rem,auto)_1fr]",
-      );
-      expect(list.className).toContain(
-        "print:grid-cols-[minmax(6.5rem,auto)_1fr]",
+        "print:grid-cols-[minmax(6rem,auto)_1fr]",
       );
       expect(list).toHaveClass("gap-x-4");
     }

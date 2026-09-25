@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useContact } from "@/hooks/useContact";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { certificationAgencyLabel } from "@/lib/api/certifications";
 import { courseStatusBadgeVariant, courseStatusLabel } from "@/lib/course";
@@ -77,6 +78,8 @@ export default function CourseDetailPage() {
     onDeleted: () => router.push("/courses"),
   });
   const isDeleting = del.deletingId !== null;
+
+  const contact = useContact(course?.contact_uuid);
 
   const courseDateRange = course
     ? formatTripDateRange(
@@ -207,11 +210,7 @@ export default function CourseDetailPage() {
               {courseDateRange && (
                 <InfoRow label="Course Dates">{courseDateRange}</InfoRow>
               )}
-              {course.training_center && (
-                <InfoRow label="Training center">
-                  {course.training_center}
-                </InfoRow>
-              )}
+              {contact && <InfoRow label="Dive center">{contact.name}</InfoRow>}
               {course.instructor_name && (
                 <InfoRow label="Instructor">{course.instructor_name}</InfoRow>
               )}

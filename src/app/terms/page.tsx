@@ -218,6 +218,10 @@ export default async function TermsPage() {
                 Record your diving certifications and the courses behind them
               </li>
               <li>
+                Keep the dive centers, shops and places you stay at once, and
+                name them from your dives, courses and trips
+              </li>
+              <li>
                 Keep the details a dive shop asks for at the desk, and print a
                 summary of them to hand over
               </li>
@@ -328,9 +332,9 @@ export default async function TermsPage() {
             </h2>
             <p className="text-foreground mb-4">
               What you enter into this copy &mdash; dives, sites, trips, gear,
-              courses, certifications, your check-in details, notes, and the
-              files you import &mdash; is yours, and you are responsible for it.
-              You agree not to use this copy to hold or send:
+              courses, certifications, contacts, your check-in details, notes,
+              and the files you import &mdash; is yours, and you are responsible
+              for it. You agree not to use this copy to hold or send:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
@@ -348,12 +352,16 @@ export default async function TermsPage() {
               </li>
             </ul>
             <p className="text-foreground mb-4">
-              An emergency contact is the one piece of somebody else&rsquo;s
-              data this copy expects you to hold, and holding it is inside the
-              line above rather than an exception to it: a name and a number
-              kept so a dive shop can reach someone if you get into trouble is a
-              basis for keeping them. Telling that person you have written them
-              down here is yours to do, not this copy&rsquo;s.
+              Two things this copy expects you to hold can be somebody
+              else&rsquo;s data, and holding either is inside the line above
+              rather than an exception to it. An emergency contact is a name and
+              a number kept so a dive shop can reach someone if you get into
+              trouble. A contact is usually a business&rsquo;s own listing
+              &mdash; the number and address on its sign &mdash; but it can be a
+              person, the friend whose flat you stayed in, kept as your own
+              record of where you dived and slept. Each is a basis for keeping
+              what you enter. Telling a person you have written them down here
+              is yours to do, not this copy&rsquo;s.
             </p>
             <p className="text-foreground mb-4">
               You keep every right you have in what you enter. Nothing here
@@ -383,10 +391,10 @@ export default async function TermsPage() {
               that: to tell the address you invited that <em>you</em> invited
               them, naming you, and to tell you whether that address went on to
               register here. Nothing you have logged is involved &mdash; no
-              dive, site, trip, gear item, course or certification &mdash; and
-              nobody you have not invited learns anything either way. The
-              privacy policy&rsquo;s section 4.8 sets out the same in its own
-              register.
+              dive, site, trip, gear item, course, certification or contact
+              &mdash; and nobody you have not invited learns anything either
+              way. The privacy policy&rsquo;s section 4.8 sets out the same in
+              its own register.
             </p>
             <p className="text-foreground mb-4">
               That permission is deliberately no wider than what running the

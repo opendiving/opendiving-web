@@ -155,12 +155,15 @@ describe("courseSchema", () => {
           .success,
       ).toBe(false);
     });
+  });
 
-    it("rejects an over-long training center", () => {
-      expect(
-        courseSchema.safeParse({ ...valid, training_center: "c".repeat(256) })
-          .success,
-      ).toBe(false);
-    });
+  it("takes the contact as a uuid, or null for none", () => {
+    // A picker's value, not text: the dive center's name lives on the contact.
+    expect(
+      courseSchema.safeParse({ ...valid, contact_uuid: "contact-1" }).success,
+    ).toBe(true);
+    expect(
+      courseSchema.safeParse({ ...valid, contact_uuid: null }).success,
+    ).toBe(true);
   });
 });

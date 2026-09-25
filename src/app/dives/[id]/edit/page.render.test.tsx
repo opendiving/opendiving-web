@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 import EditDivePage from "./page";
 import { divesAPI, type Dive } from "@/lib/api/dives";
 
-// The seam here is the *first* of the four moments a value arrives from outside the
-// diver's typing: the edit form's own load. A dive that records notes has to show its
+// The seam here is one of the moments a value arrives from outside the diver's
+// typing: the edit form's own load. A dive that records notes has to show its
 // notes even under a preset that hides them, because an edit form quietly holding data
 // the diver cannot see is the one thing this feature must not do. Everything else
 // about the edit page is covered by the unit tests behind `diveToFormValues` and

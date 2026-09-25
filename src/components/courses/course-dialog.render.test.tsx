@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CourseDialog } from "./course-dialog";
 import type { Course } from "@/lib/api/courses";
+import type { Contact } from "@/lib/api/contacts";
 
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
   // The status vocabulary and its default are real - the picker's options and
@@ -12,9 +13,25 @@ vi.mock("@/lib/api/courses", async (importOriginal) => ({
   coursesAPI: { createCourse: vi.fn(), updateCourse: vi.fn() },
 }));
 
+vi.mock("@/lib/api/contacts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
+  contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
+}));
+
 const { coursesAPI } = await import("@/lib/api/courses");
+const { contactsAPI } = await import("@/lib/api/contacts");
 const createCourse = vi.mocked(coursesAPI.createCourse);
 const updateCourse = vi.mocked(coursesAPI.updateCourse);
+const getContact = vi.mocked(contactsAPI.getContact);
+
+const BLUE_OCEAN: Contact = {
+  uuid: "contact-blue",
+  name: "Blue Ocean, Koh Tao",
+  roles: ["dive_center", "school"],
+  notes: "",
+  user_uuid: "user-1",
+  created_at: "2026-03-01T09:00:00Z",
+};
 
 const EXISTING: Course = {
   uuid: "course-1",
@@ -26,7 +43,7 @@ const EXISTING: Course = {
   end_date: "2026-03-06",
   instructor_name: "Ana Ruiz",
   instructor_number: "TDI-99871",
-  training_center: "Blue Ocean, Koh Tao",
+  contact_uuid: BLUE_OCEAN.uuid,
   notes: "Ran the 21m and 30m dives on back gas.",
   user_uuid: "user-1",
   created_at: "2026-03-08T09:00:00Z",
@@ -37,6 +54,7 @@ beforeEach(() => {
   updateCourse.mockReset();
   createCourse.mockResolvedValue(EXISTING);
   updateCourse.mockResolvedValue({ message: "Course updated" });
+  getContact.mockImplementation(async () => BLUE_OCEAN);
 });
 
 function open(course?: Course, onSaved = vi.fn()) {
@@ -61,8 +79,8 @@ describe("CourseDialog", () => {
     await waitFor(() =>
       expect(screen.getByLabelText("Course *")).toHaveValue(EXISTING.name),
     );
-    expect(screen.getByLabelText("Training center")).toHaveValue(
-      "Blue Ocean, Koh Tao",
+    await waitFor(() =>
+      expect(screen.getByLabelText("Dive center")).toHaveValue(BLUE_OCEAN.name),
     );
     expect(screen.getByLabelText("Instructor number")).toHaveValue("TDI-99871");
     expect(screen.getByLabelText("Instructor")).toHaveValue("Ana Ruiz");
@@ -87,8 +105,23 @@ describe("CourseDialog", () => {
     expect(updateCourse.mock.calls[0][1]).toMatchObject({
       instructor_number: null,
       instructor_name: null,
-      training_center: "Blue Ocean, Koh Tao",
+      contact_uuid: BLUE_OCEAN.uuid,
     });
+    expect(updateCourse.mock.calls[0][1]).not.toHaveProperty("training_center");
+  });
+
+  it("unlinks a cleared dive center with an explicit null", async () => {
+    open(EXISTING);
+
+    const diveCenter = screen.getByLabelText("Dive center");
+    await waitFor(() => expect(diveCenter).toHaveValue(BLUE_OCEAN.name));
+    await userEvent.click(
+      within(diveCenter.parentElement!).getByRole("button", { name: "Clear" }),
+    );
+    await save();
+
+    await waitFor(() => expect(updateCourse).toHaveBeenCalled());
+    expect(updateCourse.mock.calls[0][1]).toMatchObject({ contact_uuid: null });
   });
 
   it("creates a course with the API's own default status", async () => {

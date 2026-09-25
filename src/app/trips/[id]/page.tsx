@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
+import { divesAPI } from "@/lib/api/dives";
+import { fetchAllPages, isAbortError } from "@/lib/api/client";
+import { distinctContactUuids } from "@/lib/contact";
+import { useContactsByUuid } from "@/hooks/useContactsByUuid";
 import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
@@ -19,7 +23,15 @@ import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, Trash2, Plus, Calendar, MapPin, Loader2 } from "lucide-react";
+import {
+  BedDouble,
+  Edit,
+  Trash2,
+  Plus,
+  Calendar,
+  MapPin,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -55,6 +67,50 @@ export default function TripDetailPage() {
     onDeleted: () => router.push("/trips"),
   });
   const isDeleting = del.deletingId !== null;
+
+  // Who the diver dived with on this trip: the contacts its dives name, derived
+  // here rather than stored on the trip, so it can never disagree with them - a
+  // week split between two shops lists both. The dives card below loads ten at a
+  // time as the reader scrolls, so the line reads every dive of the trip itself,
+  // once, keyed on the trip it was read for.
+  const tripUuid = trip?.uuid;
+  const [divedWith, setDivedWith] = useState<{
+    tripUuid: string;
+    contactUuids: string[];
+  } | null>(null);
+  useEffect(() => {
+    if (!tripUuid) return;
+    const controller = new AbortController();
+    fetchAllPages(
+      (page, perPage) => divesAPI.getDives(page, perPage, tripUuid),
+      {
+        signal: controller.signal,
+        label: "the trip's dives",
+        keyOf: (dive) => dive.uuid,
+      },
+    )
+      .then((dives) =>
+        setDivedWith({ tripUuid, contactUuids: distinctContactUuids(dives) }),
+      )
+      .catch((error) => {
+        // Non-fatal: the line is left off, as a failed trip lookup leaves the
+        // dive page's trip link off.
+        if (!isAbortError(error)) {
+          console.error("Failed to fetch the trip's dives:", error);
+        }
+      });
+    return () => controller.abort();
+  }, [tripUuid]);
+  const divedWithUuids =
+    divedWith && divedWith.tripUuid === tripUuid ? divedWith.contactUuids : [];
+
+  const contacts = useContactsByUuid([
+    ...(trip?.parts ?? []).map((part) => part.accommodation_uuid),
+    ...divedWithUuids,
+  ]);
+  const divedWithNames = divedWithUuids
+    .map((uuid) => contacts[uuid]?.name)
+    .filter((name): name is string => !!name);
 
   const formatDate = (dateString: string) =>
     formatDateTime(dateString, LONG_DATE);
@@ -199,6 +255,9 @@ export default function TripDetailPage() {
                         part.start_date ?? undefined,
                         part.end_date ?? undefined,
                       );
+                      const accommodation = part.accommodation_uuid
+                        ? contacts[part.accommodation_uuid]
+                        : undefined;
                       return (
                         <li
                           key={index}
@@ -213,6 +272,13 @@ export default function TripDetailPage() {
                                 </span>
                               )}
                             </span>
+                            {accommodation && (
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <BedDouble className="h-3.5 w-3.5 shrink-0" />
+                                <span className="sr-only">Stayed at </span>
+                                {accommodation.name}
+                              </span>
+                            )}
                             {dates && (
                               <span className="block text-xs text-muted-foreground">
                                 {dates}
@@ -223,6 +289,15 @@ export default function TripDetailPage() {
                       );
                     })}
                   </ul>
+                </div>
+              )}
+
+              {divedWithNames.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Dived with
+                  </div>
+                  <div className="text-sm">{divedWithNames.join(", ")}</div>
                 </div>
               )}
 

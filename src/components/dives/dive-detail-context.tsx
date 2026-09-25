@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import type { Dive } from "@/lib/api/dives";
 import type { Trip } from "@/lib/api/trips";
 import type { Course } from "@/lib/api/courses";
+import type { Contact } from "@/lib/api/contacts";
 
 export interface DiveDetailValue {
   /**
@@ -15,9 +16,10 @@ export interface DiveDetailValue {
   dive: Dive;
   /** A neighbouring dive is on its way in; `dive` is the one being stepped away from. */
   isLoading: boolean;
-  /** The dive's trip and training course, or null where it has none or the lookup failed. */
+  /** The dive's trip, training course and contact, or null where it has none or the lookup failed. */
   trip: Trip | null;
   course: Course | null;
+  contact: Contact | null;
   /** Re-reads the dive without touching `isLoading` - see `useResource`. */
   refreshDive: () => void;
 }

@@ -22,6 +22,8 @@ const tripPartSchema = z
     location: locationSchema.nullish(),
     start_date: z.string().optional(),
     end_date: z.string().optional(),
+    // Where the diver slept during the part - a contact, picked like a course.
+    accommodation_uuid: z.string().nullable().optional(),
   })
   .refine(
     (part) =>
@@ -59,14 +61,18 @@ export const tripFormSchema = z.object({
  * The placeholder is what a cleared date field holds while editing - see the
  * note at the top of this file - and the API wants the member absent rather than
  * empty. Per part rather than per trip now that the dates live there; a part
- * whose location is `undefined` sends `null`, which is how the API reads "this
- * stretch has no place" as opposed to "leave it alone".
+ * whose location or accommodation is `undefined` sends `null`, which is how the
+ * API reads "this stretch has none" as opposed to "leave it alone".
+ *
+ * Every member is named: the API replaces the parts wholesale, so one left out
+ * here is cleared on every save.
  */
 export function normalizeTripParts(parts?: TripPartFormValue[] | null) {
   return (parts ?? []).map((part) => ({
     start_date: part.start_date ? part.start_date : undefined,
     end_date: part.end_date ? part.end_date : undefined,
     location: part.location ?? null,
+    accommodation_uuid: part.accommodation_uuid ?? null,
   }));
 }
 

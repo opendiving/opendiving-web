@@ -77,6 +77,10 @@ one.
   is the copy for a desk with no signal.
 - **Courses** — the training itself, with the agency, instructor and shop: link the dives you did on
   it and the cards it issued, so a course is one record instead of a shape you have to remember.
+- **Contacts** — the dive centers, schools, shops, clubs and places you stayed, each kept once with
+  its phone, email, website and address, and picked from a list for a dive, a course, a card, a gear
+  service or a trip part. A dive logged on a course takes its dive center from it, and a trip names
+  who you dived with from its dives.
 - **Full export** — one click to take _everything_ out in open formats: a **DiveJSON** document
   holding the whole logbook, a **UDDF** one other programs import, a **CSV** for a spreadsheet, or a
   complete **archive** carrying all three alongside every dive-computer file you uploaded, every

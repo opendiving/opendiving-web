@@ -235,6 +235,17 @@ export default async function PrivacyPage() {
                 service records
               </li>
               <li>
+                <strong>Contacts:</strong> The dive centers, schools, shops,
+                clubs and places you stayed that you record, to name them from
+                your dives, courses, certifications, service records and trips
+                &mdash; a name, what each one is to you, and, if you add them,
+                its phone number, email address, website, postal address and
+                your notes. A contact can be a person rather than a business
+                &mdash; the friend whose flat you stayed in &mdash; and what you
+                record about them is then somebody else&rsquo;s data, which you
+                enter
+              </li>
+              <li>
                 <strong>Support Requests:</strong> Whatever you write on the
                 support page, if this copy has one configured, and the address
                 you give to reply to
@@ -415,8 +426,8 @@ export default async function PrivacyPage() {
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
                 <strong>Provide the Service:</strong> Store your dives, sites,
-                trips, gear, courses, certifications and check-in details, and
-                show them back to you
+                trips, gear, courses, certifications, contacts and check-in
+                details, and show them back to you
               </li>
               <li>
                 <strong>Account Management:</strong> Sign you in, keep you
@@ -471,10 +482,10 @@ export default async function PrivacyPage() {
             <p className="text-foreground mb-4">
               Nothing you enter is published. There are no public profiles, no
               public dive logs, no feeds, no forums, and no ratings or reviews.
-              Every dive, dive site, trip, gear item, course and certification
-              belongs to one account and is visible to that account alone. There
-              is no setting that makes any of it public, because there is
-              nothing for such a setting to do.
+              Every dive, dive site, trip, gear item, course, certification and
+              contact belongs to one account and is visible to that account
+              alone. There is no setting that makes any of it public, because
+              there is nothing for such a setting to do.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -485,7 +496,7 @@ export default async function PrivacyPage() {
               no way to make it so. There are no dive buddies, no groups, no
               comments, and no shared logs. Another diver with an account on
               this same copy cannot see any dive, dive site, trip, gear item,
-              course or certification of yours.
+              course, certification or contact of yours.
             </p>
             <p className="text-foreground mb-4">
               There is one exception and it is not about anything you entered:
@@ -1059,8 +1070,8 @@ export default async function PrivacyPage() {
               <li>
                 The deletion is not a flag or an archive: the account row and
                 everything hanging off it &mdash; dives, sites, trips, gear,
-                courses, certifications &mdash; are destroyed, and the files you
-                uploaded are unlinked from disk with them
+                courses, certifications, contacts &mdash; are destroyed, and the
+                files you uploaded are unlinked from disk with them
               </li>
               <li>
                 Any invitations you sent go with it, used or not. Somebody you
