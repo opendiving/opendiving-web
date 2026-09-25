@@ -132,6 +132,9 @@ describe("ContactDialog", () => {
       await screen.findByText("An address needs its country"),
     ).toBeVisible();
     expect(addressToggle()).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^Country/)).toHaveFocus(),
+    );
     expect(createContact).not.toHaveBeenCalled();
   });
 
@@ -266,10 +269,7 @@ describe("ContactCombobox", () => {
       await screen.findByRole("option", { name: "Add dive center..." }),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Contact" });
-    await userEvent.type(
-      within(dialog).getByLabelText("Name *"),
-      "Sea Dragon",
-    );
+    await userEvent.type(within(dialog).getByLabelText("Name *"), "Sea Dragon");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Create contact" }),
     );

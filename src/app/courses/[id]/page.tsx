@@ -210,9 +210,7 @@ export default function CourseDetailPage() {
               {courseDateRange && (
                 <InfoRow label="Course Dates">{courseDateRange}</InfoRow>
               )}
-              {contact && (
-                <InfoRow label="Dive center">{contact.name}</InfoRow>
-              )}
+              {contact && <InfoRow label="Dive center">{contact.name}</InfoRow>}
               {course.instructor_name && (
                 <InfoRow label="Instructor">{course.instructor_name}</InfoRow>
               )}

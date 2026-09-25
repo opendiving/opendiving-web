@@ -146,9 +146,7 @@ describe("the course's certifications card", () => {
     // the whole reason the card holds the course rather than just its uuid.
     expect(await screen.findByLabelText("Course")).toHaveValue(COURSE.name);
     await waitFor(() =>
-      expect(screen.getByLabelText("Dive center")).toHaveValue(
-        BLUE_OCEAN.name,
-      ),
+      expect(screen.getByLabelText("Dive center")).toHaveValue(BLUE_OCEAN.name),
     );
 
     // Including the level, which the diver then corrects to what their card

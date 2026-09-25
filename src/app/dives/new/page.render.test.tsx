@@ -169,7 +169,11 @@ vi.mock("@/lib/api/courses", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/courses")>();
   return {
     ...actual,
-    coursesAPI: { ...actual.coursesAPI, getCourses: vi.fn(), getCourse: vi.fn() },
+    coursesAPI: {
+      ...actual.coursesAPI,
+      getCourses: vi.fn(),
+      getCourse: vi.fn(),
+    },
   };
 });
 
@@ -288,7 +292,8 @@ beforeEach(() => {
     total_count: COURSES.length,
   });
   vi.mocked(coursesAPI.getCourse).mockImplementation(
-    async (uuid) => COURSES.find((course) => course.uuid === uuid) ?? COURSES[0],
+    async (uuid) =>
+      COURSES.find((course) => course.uuid === uuid) ?? COURSES[0],
   );
   vi.mocked(contactsAPI.getContacts).mockResolvedValue({
     ...emptyPage<Contact>(),
@@ -1298,9 +1303,9 @@ describe("the dive center", () => {
     await pickCourse("Rescue Diver");
 
     await waitFor(() =>
-      expect(
-        screen.getByRole("combobox", { name: /^course$/i }),
-      ).toHaveValue("Rescue Diver"),
+      expect(screen.getByRole("combobox", { name: /^course$/i })).toHaveValue(
+        "Rescue Diver",
+      ),
     );
     expect(diveCenter()).toHaveValue(MY_SHOP.name);
   });
@@ -1313,9 +1318,9 @@ describe("the dive center", () => {
     await pickCourse("Deep, self-study");
 
     await waitFor(() =>
-      expect(
-        screen.getByRole("combobox", { name: /^course$/i }),
-      ).toHaveValue("Deep, self-study"),
+      expect(screen.getByRole("combobox", { name: /^course$/i })).toHaveValue(
+        "Deep, self-study",
+      ),
     );
     expect(diveCenter()).toHaveValue(LAST_SHOP.name);
   });

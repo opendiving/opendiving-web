@@ -155,7 +155,6 @@ describe("courseSchema", () => {
           .success,
       ).toBe(false);
     });
-
   });
 
   it("takes the contact as a uuid, or null for none", () => {

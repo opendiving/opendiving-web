@@ -141,7 +141,9 @@ function contactNamesByCertification(
   certifications: Certification[],
   contacts: Contact[],
 ): Record<string, string> {
-  const names = new Map(contacts.map((contact) => [contact.uuid, contact.name]));
+  const names = new Map(
+    contacts.map((contact) => [contact.uuid, contact.name]),
+  );
   const byCard: Record<string, string> = {};
   for (const certification of certifications) {
     const name = certification.contact_uuid

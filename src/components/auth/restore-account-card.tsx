@@ -72,15 +72,15 @@ export function RestoreAccountCard() {
           was deleted, and nothing has been erased yet.{" "}
           {purgeOn ? (
             <>
-              Your dives, dive sites, trips, courses, certifications and gear
-              are erased for good on{" "}
+              Your dives, dive sites, trips, courses, certifications, gear and
+              contacts are erased for good on{" "}
               <span className="font-medium text-foreground">
                 {formatPurgeDay(purgeOn)}
               </span>
               .
             </>
           ) : (
-            "Your dives, dive sites, trips, courses, certifications and gear are erased for good once this instance's grace period runs out."
+            "Your dives, dive sites, trips, courses, certifications, gear and contacts are erased for good once this instance's grace period runs out."
           )}
         </p>
         <p className="text-muted-foreground">

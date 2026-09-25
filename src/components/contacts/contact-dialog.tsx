@@ -90,9 +90,10 @@ export function ContactDialog({
   // Collapsed on a new contact, which most often has no address worth typing -
   // a boat, a friend's flat - and open on one that has an address to show.
   const [isAddressOpen, setIsAddressOpen] = useState(false);
-  // Set when a submit fails on a part of the address, so the country box is
-  // focused once the group that holds it has been opened.
-  const [focusCountry, setFocusCountry] = useState(false);
+  // Raised when a submit fails on a part of the address, so the country box is
+  // focused once the group that holds it is open. A fresh object each time, so a
+  // second refusal focuses it again - the shape `DiveFormCard`'s request has.
+  const [focusRequest, setFocusRequest] = useState<object | null>(null);
   const addressId = useId();
   const isEdit = !!contact;
 
@@ -140,10 +141,8 @@ export function ContactDialog({
   }, [open, contact, initialName, initialRolesKey, reset]);
 
   useEffect(() => {
-    if (!focusCountry || !isAddressOpen) return;
-    setFocus("address.country");
-    setFocusCountry(false);
-  }, [focusCountry, isAddressOpen, setFocus]);
+    if (focusRequest) setFocus("address.country");
+  }, [focusRequest, setFocus]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setApiError(null);
@@ -155,7 +154,7 @@ export function ContactDialog({
   const onInvalid = (errors: Record<string, unknown>) => {
     if (!errors.address) return;
     setIsAddressOpen(true);
-    setFocusCountry(true);
+    setFocusRequest({});
   };
 
   const onSubmit = async (data: ContactInput) => {
@@ -372,7 +371,9 @@ export function ContactDialog({
                     name={`address.${part.name}`}
                     render={({ field }) => (
                       <FormItem
-                        className={cn(part.name === "street" && "sm:col-span-2")}
+                        className={cn(
+                          part.name === "street" && "sm:col-span-2",
+                        )}
                       >
                         <FormLabel>
                           {part.label}

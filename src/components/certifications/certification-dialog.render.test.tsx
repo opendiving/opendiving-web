@@ -62,7 +62,11 @@ vi.mock("@/components/ui/use-toast", () => ({
 
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/courses")>()),
-  coursesAPI: { getCourses: vi.fn(), getCourse: vi.fn(), createCourse: vi.fn() },
+  coursesAPI: {
+    getCourses: vi.fn(),
+    getCourse: vi.fn(),
+    createCourse: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/api/contacts", async (importOriginal) => ({

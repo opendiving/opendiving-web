@@ -152,7 +152,12 @@ describe("TripDialog", () => {
       created_at: "2026-04-01T09:00:00Z",
     };
     render(
-      <TripDialog open onOpenChange={() => {}} trip={trip} onSaved={() => {}} />,
+      <TripDialog
+        open
+        onOpenChange={() => {}}
+        trip={trip}
+        onSaved={() => {}}
+      />,
     );
 
     await userEvent.clear(screen.getByLabelText("Name *"));

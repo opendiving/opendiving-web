@@ -7,10 +7,10 @@ export interface CheckboxProps extends Omit<
   "type"
 > {}
 
-// The app's selection control, and its only checkbox: the invite queue's row and
-// select-all boxes. Every boolean that is a *setting* is a `Switch` - see "The
-// invite queue selects with checkboxes, and everything else is a switch" in
-// DECISIONS.md for where the line falls.
+// The app's selection control: the invite queue's row and select-all boxes, and a
+// contact's roles. Every boolean that is a *setting* is a `Switch` - see "Selection
+// is a checkbox, and a setting is a switch" in DECISIONS.md for where the line
+// falls.
 //
 // Deliberately not a Radix primitive like the other `ui/` components. A plain
 // `<input>` keeps native form/keyboard/screen-reader behaviour without adding a

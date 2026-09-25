@@ -61,9 +61,7 @@ describe("contactSchema", () => {
     expect(errorPaths({ ...valid, website: "ftp://blueocean.com" })).toEqual([
       "website",
     ]);
-    expect(errorPaths({ ...valid, website: "not a url" })).toEqual([
-      "website",
-    ]);
+    expect(errorPaths({ ...valid, website: "not a url" })).toEqual(["website"]);
   });
 
   it("refuses a website longer than the API stores, scheme included", () => {

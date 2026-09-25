@@ -571,14 +571,15 @@ skipping the row action's confirmation (`handleArchiveToggle` / `setIsArchiveCon
 (`send_gear_service_digests` filters `GearItem.is_archived.is_(False)`), and hanging the clause off
 either verb reads as "archiving keeps them". A test pins the wording.
 
-## The invite queue selects with checkboxes, and everything else is a switch
+## Selection is a checkbox, and a setting is a switch
 
-The line is selection against setting: a switch is a state you leave set, while an invite-queue row
-is picked for a batch that means nothing until Send invitations or Remove is pressed.
-`/admin/invites` is the app's only checkbox. Every other boolean (the Fields dialog alone has one
-per `DIVE_FORM_FIELD_REGISTRY` and `DIVE_FORM_ALWAYS_ON_FIELDS` entry) is `Switch`
-(`ui/switch.tsx`), taking `checked`/`onCheckedChange`; Radix's `Root` renders
-`<button type="button">`, which `<label htmlFor>` names.
+The line is selection against setting: a switch is a state you leave set, while a checkbox picks
+members of a set — invite-queue rows for a batch that means nothing until Send invitations or Remove
+is pressed, or the roles a contact holds, saved with its dialog. Those two are the app's checkboxes.
+Every other boolean (the Fields dialog alone has one per `DIVE_FORM_FIELD_REGISTRY` and
+`DIVE_FORM_ALWAYS_ON_FIELDS` entry) is `Switch` (`ui/switch.tsx`), taking
+`checked`/`onCheckedChange`; Radix's `Root` renders `<button type="button">`, which
+`<label htmlFor>` names.
 
 The tri-state settles it: select-all is `indeterminate` on a partial selection, and ARIA forbids
 `aria-checked="mixed"` on `role="switch"`, so a switch would read as off with rows selected.
@@ -4806,6 +4807,20 @@ appended last, its parameters being positional `string | undefined`. The resourc
 `git grep -ni c-card -- src/ README.md` too: `git grep -lni certifications -- src/ README.md` misses
 `components/layout/landing-page.tsx`.
 
+## A contact picker speaks its host's word and hands the dialog its host's role
+
+The record is a contact wherever it is named: the nav, `/contacts`, `ContactDialog`, the import
+report. A `ContactCombobox` keeps its host's word instead — _Dive center_ on the dive, course and
+certification forms, _Serviced at_ on a service record, the accommodation on a trip part — and
+passes `initialRoles`: `school` from a course or certification, `dive_center` from a dive, `shop`
+from a service, `accommodation` from a part, none from `/contacts`. The diver can untick it. The
+list is never filtered by role, and there is no create-on-Enter, which would file a roleless
+contact.
+
+From a certification, "Add course..." then "Add dive center..." nests three dialogs;
+`dialogFormSubmit` stops each submit at its own form at any depth, and a render test follows the
+innermost save out.
+
 ## The skills are repo content; what wires up the hook is not
 
 `.claude/skills/` is committed (`!.claude/skills/` is the ignore file's one exception) because both
@@ -5088,9 +5103,10 @@ basemap is a MapLibre style, and raster is the escape hatch".
 
 ## A course fills a certification's fields in once, and never touches what the diver typed
 
-Course and certification each carry their own `name`, `training_center`, `instructor_name`,
+Course and certification each carry their own `name`, `contact_uuid`, `instructor_name`,
 `instructor_number` and `agency`/`agency_other`, because imported history arrives
-certification-first. Picking a course in the create dialog copies those fields once.
+certification-first. Picking a course in the create dialog copies those fields once, the contact as
+the reference it is, under the same guard as the text.
 
 Rejected: split ownership (loses data on a standalone card, cannot express a referral); a read-time
 fallback (ambiguous ownership); fill-only-if-empty (`agency` defaults to `padi`; course A's values
@@ -5131,8 +5147,8 @@ fails a test.
 The card owns the dialog because it fetches its own list in an effect and has no refetch seam; a
 `refreshKey` prop or lifting the fetch to the page would work, but a create flow inside the card
 makes the refresh a function call. That is also why the card takes the whole `Course` rather than a
-`courseUuid`: the dialog wants the course's agency, training centre and instructor, which the page
-has already loaded. Creating from here chains into the same `CertificationCardFiles` upload step and
+`courseUuid`: the dialog wants the course's agency, contact and instructor, which the page has
+already loaded. Creating from here chains into the same `CertificationCardFiles` upload step and
 refresh-and-re-point handoff the certifications page uses, because photographing the card is the
 point. The card does not own the button: `isAdding`/`onAddingChange` come from the page, and where
 those buttons live is "A detail page's sidebar holds its add actions, named short".
@@ -5748,16 +5764,20 @@ The cylinder list is one value: typing into any tank keeps every column; per-cel
 neighbouring columns. `useSuggestedDiveNumber` guards on `getFieldState("dive_number").isDirty`, not
 form-level `isDirty`.
 
-## Four moments put a hidden field back on screen, and the prefill is not one of them
+## A value from outside the diver's typing puts a hidden field back on screen; the prefill does not
 
 A value from outside the diver's typing reveals its field for that form only, leaving the stored
-set. Each ends in `revealNonEmpty` or `reveal`: the edit form's load (`diveToFormValues` via
-`onLoaded`); a parsed dive file (`DiveFileImport`'s `onValuesApplied`); a gear set with a weight
-(`DiveGearField`'s `onSetApplied`); the new form's mount for a URL trip, site or course, since Basic
-hides `course_uuid`.
+set: the edit form's load (`diveToFormValues` via `onLoaded`), a parsed dive file
+(`DiveFileImport`'s `onValuesApplied`), a gear set with a weight (`DiveGearField`'s `onSetApplied`),
+the new form's mount for a URL trip, site or course (Basic hides `course_uuid`). Each ends in
+`revealNonEmpty` or `reveal`, and a key revealed that way is the diver's, so hiding keeps its value.
+
+A course's contact is the exception: derived from a pick, it goes through `autofill`, which reveals
+the key untouched and records the write as the layer's. The next course replaces it, a hide empties
+it, and nothing submits unseen. The URL course's contact takes the same write.
 
 Non-empty means not `undefined`, `null`, `""` or `[]`; `0` is a value. The last-dive prefill touches
-only visible keys. A revealed key is the diver's, so hiding keeps its value.
+only visible keys.
 
 A failed submit reveals too: the resolver validates hidden fields, so `handleSubmit`'s invalid
 branch reveals every erroring key and focuses the first hidden one, else the save blocks with no

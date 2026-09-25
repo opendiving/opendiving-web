@@ -300,7 +300,10 @@ describe("DiveDetailSidebar dive center", () => {
     renderSidebar(
       dive(),
       null,
-      contact({ phone: "+20 69 364 0000", website: "https://blueocean.example/" }),
+      contact({
+        phone: "+20 69 364 0000",
+        website: "https://blueocean.example/",
+      }),
     );
 
     expect(
@@ -309,10 +312,9 @@ describe("DiveDetailSidebar dive center", () => {
     expect(screen.getByText("Blue Ocean Dive Center")).toBeInTheDocument();
     expect(screen.queryByText("Training")).not.toBeInTheDocument();
     // Dialled as digits, shown as typed.
-    expect(screen.getByRole("link", { name: "+20 69 364 0000" })).toHaveAttribute(
-      "href",
-      "tel:+20693640000",
-    );
+    expect(
+      screen.getByRole("link", { name: "+20 69 364 0000" }),
+    ).toHaveAttribute("href", "tel:+20693640000");
     expect(
       screen.getByRole("link", { name: "blueocean.example" }),
     ).toHaveAttribute("href", "https://blueocean.example/");

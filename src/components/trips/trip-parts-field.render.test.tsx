@@ -102,9 +102,7 @@ describe("TripPartsField", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
 
     expect(places()).toEqual([""]);
-    await waitFor(() =>
-      expect(document.activeElement).toBe(placeInput()),
-    );
+    await waitFor(() => expect(document.activeElement).toBe(placeInput()));
   });
 
   it("shows a part's place and both its dates on the row", async () => {

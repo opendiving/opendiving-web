@@ -558,9 +558,7 @@ describe("labels and values line up", () => {
     }
 
     for (const list of container.querySelectorAll("dl")) {
-      expect(list.className).toContain(
-        "sm:grid-cols-[minmax(6rem,auto)_1fr]",
-      );
+      expect(list.className).toContain("sm:grid-cols-[minmax(6rem,auto)_1fr]");
       expect(list.className).toContain(
         "print:grid-cols-[minmax(6rem,auto)_1fr]",
       );

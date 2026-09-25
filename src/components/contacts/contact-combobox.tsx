@@ -6,7 +6,11 @@ import {
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
 import type { FormControlSlotProps } from "@/components/ui/form";
-import { contactsAPI, type Contact, type ContactRole } from "@/lib/api/contacts";
+import {
+  contactsAPI,
+  type Contact,
+  type ContactRole,
+} from "@/lib/api/contacts";
 import { ContactDialog } from "@/components/contacts/contact-dialog";
 
 // How many contacts the dropdown asks for at a time. Enough to scroll through
