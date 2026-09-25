@@ -102,6 +102,27 @@ describe("diveUpdateSchema start_time", () => {
   });
 });
 
+// A dive whose time of day was never recorded: its edit form holds the bare date
+// and sends it back untouched, which is what keeps the state on the server. A new
+// dive still needs an instant.
+describe("a bare-date start_time", () => {
+  it("is accepted by the update schema and refused by the create schema", () => {
+    expect(
+      diveUpdateSchema.safeParse({ start_time: "2002-06-18" }).success,
+    ).toBe(true);
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, start_time: "2002-06-18" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("goes back to the API exactly as it came", () => {
+    expect(buildDiveUpdate({ start_time: "2002-06-18" }).start_time).toBe(
+      "2002-06-18",
+    );
+  });
+});
+
 describe("diveCreateSchema duration", () => {
   it("accepts MM:SS with 1-3 digit minutes", () => {
     expect(

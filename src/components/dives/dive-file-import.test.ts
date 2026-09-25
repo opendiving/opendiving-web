@@ -266,6 +266,35 @@ function formHoldingValues(
   return { form, written };
 }
 
+describe("applyParsedDiveToForm with a file that states only a day", () => {
+  it("keeps a date-only dive a date rather than giving it a midnight", () => {
+    const { form, written } = formHoldingValues({ start_time: "2002-06-18" });
+
+    applyParsedDiveToForm(
+      form,
+      parsedDive([], { start_time: "2002-06-19" }),
+      () => {},
+    );
+
+    expect(written.start_time).toBe("2002-06-19");
+  });
+
+  it("still gives a dive with a clock the file's day at midnight", () => {
+    // The create form needs an instant, and a diver can correct the hour.
+    const { form, written } = formHoldingValues({
+      start_time: "2026-04-17T11:49:23+02:00",
+    });
+
+    applyParsedDiveToForm(
+      form,
+      parsedDive([], { start_time: "2002-06-19" }),
+      () => {},
+    );
+
+    expect(written.start_time).toMatch(/^2002-06-19T00:00:00[+-]\d{2}:\d{2}$/);
+  });
+});
+
 describe("applyParsedDiveToForm in fill-only mode", () => {
   it("leaves a figure the form already carries exactly as it is", () => {
     // The case the rule exists for: the Suunto app's JSON has been imported, and

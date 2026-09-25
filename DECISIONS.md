@@ -59,8 +59,10 @@ the `""` placeholder type leaks into the inferred return type and breaks assigna
 Americas) displays as the previous day. Every date-only field (a trip part's
 `start_date`/`end_date`, a course's) is formatted via `formatDateOnly()`/`formatTripDateRange()` in
 `lib/date-time.ts`, which split the string and construct a local `Date(year, month-1, day)`.
-`Dive.start_time` is a full ISO datetime and has no off-by-one-day problem, but displaying and
-editing it still cannot go through `new Date(dateString)` and local getters — see the next section.
+`Dive.start_time` is usually a full ISO datetime and has no off-by-one-day problem, but displaying
+and editing it still cannot go through `new Date(dateString)` and local getters — see the next
+section. A bare date there is its own state — see "A bare-date `start_time` is a fourth state, and
+never midnight".
 
 ## A dive's `start_time` displays/edits in its own timezone, never the browser's
 
@@ -2393,15 +2395,16 @@ data.
 ## The dive's clock sits in the page header, and one `Duration & Depth` card holds the rest
 
 The start time belongs with the date, already in the page header: `formatDiveStartTime` prints date,
-clock time and, where the dive records one, its offset as one line. The offset stays because a dive
-displays in its own timezone (see "A dive's `start_time` displays/edits in its own timezone, never
-the browser's") and `10:04` alone cannot be checked; a DiveJSON import may carry no offset, and the
-line then stops after the clock rather than inventing `(UTC+00:00)` — see "An unknown UTC offset is
-a third state, and `new Date()` never sees an offset-less string". It is composed from
-`formatDiveDateTime` + `formatDiveTimeOnly` rather than one `Intl` call: the separator a locale
-picks is an ICU detail, and the offset is appended by hand regardless. What remains is one
-`Duration & Depth` card: three stat blocks at one weight, `md:grid-cols-3`, depths individually
-conditional so a hand-logged dive leaves duration alone.
+clock time and, where the dive records one, its offset as one line — or the date alone, where the
+dive records no time of day. The offset stays because a dive displays in its own timezone (see "A
+dive's `start_time` displays/edits in its own timezone, never the browser's") and `10:04` alone
+cannot be checked; a DiveJSON import may carry no offset, and the line then stops after the clock
+rather than inventing `(UTC+00:00)` — see "An unknown UTC offset is a third state, and `new Date()`
+never sees an offset-less string". It is composed from `formatDiveDateTime` + `formatDiveTimeOnly`
+rather than one `Intl` call: the separator a locale picks is an ICU detail, and the offset is
+appended by hand regardless. What remains is one `Duration & Depth` card: three stat blocks at one
+weight, `md:grid-cols-3`, depths individually conditional so a hand-logged dive leaves duration
+alone.
 
 ## The ppO₂ limit is picked from a list, and an unlisted one is added to it
 
@@ -5574,6 +5577,19 @@ with a flat 422 `{"detail": "<sentence>"}` read via `getApiErrorMessage`.
 `/dives/next-number` and `renumber-dives-dialog.tsx`'s `from_start_time` name an instant and keep
 the browser's offset. Mocking `getTimezoneOffset()` cannot catch a parsing defect, so the regression
 tests round-trip a naive string and fail in every zone.
+
+## A bare-date `start_time` is a fourth state, and never midnight
+
+An imported dive may carry only its day: `start_time` is `"2002-06-18"`, with no flag beside it, and
+`isDateOnlyStartTime` names the shape. `formatDiveDateTime` drops every time-of-day option for it,
+`formatDiveStartTime` stops after the date, and `diveWallClockTime` places it at the start of its
+day, where the API sorts it. `splitStartTime` returns the date with no time, so `combineStartTime`
+gives it back unchanged and the edit form echoes it; the API keeps the state only for a bare date
+sent to a dive already in it.
+
+`DiveStartTimeField` shows the date, an empty time and a disabled offset select. A typed time sends
+an offsetless date-time, ending the state; the layout stays for the form's life so the time box is
+not swapped out mid-entry. The create form never takes a bare date.
 
 ## The logbook import card renders a plan, not a result, and the two are one shape
 

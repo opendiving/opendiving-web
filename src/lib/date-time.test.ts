@@ -13,7 +13,9 @@ import {
   formatTripDateRange,
   formatUtcOffset,
   getBrowserUtcOffsetMinutes,
+  diveWallClockTime,
   greetingForHour,
+  isDateOnlyStartTime,
   normalizeParsedStartTime,
   parseFormDateTime,
   parseFormDuration,
@@ -275,6 +277,56 @@ describe("splitStartTime/combineStartTime", () => {
     const original = "2024-01-01T06:00:00-05:00";
     const { localDateTime, offsetMinutes } = splitStartTime(original);
     expect(combineStartTime(localDateTime, offsetMinutes)).toBe(original);
+  });
+
+  // The save path for a dive whose time of day was never recorded, and it fails
+  // in every zone if the date goes through `Date`: UTC gives back
+  // "2002-06-18T00:00:00", a midnight the API would store as the dive's time.
+  it("round-trips a bare date back to itself, with no time and no offset", () => {
+    const { localDateTime, offsetMinutes } = splitStartTime("2002-06-18");
+    expect(localDateTime).toBe("2002-06-18");
+    expect(offsetMinutes).toBeNull();
+    expect(combineStartTime(localDateTime, offsetMinutes)).toBe("2002-06-18");
+  });
+});
+
+describe("isDateOnlyStartTime", () => {
+  it("is true for a bare date and nothing else", () => {
+    expect(isDateOnlyStartTime("2002-06-18")).toBe(true);
+    expect(isDateOnlyStartTime("2002-06-18T00:00:00")).toBe(false);
+    expect(isDateOnlyStartTime("2002-06-18T10:00:00+02:00")).toBe(false);
+    expect(isDateOnlyStartTime("")).toBe(false);
+    expect(isDateOnlyStartTime(undefined)).toBe(false);
+    expect(isDateOnlyStartTime(null)).toBe(false);
+  });
+});
+
+describe("a dive whose time of day was never recorded", () => {
+  it("lists as its date, with no clock", () => {
+    // The default options ask for an hour and a minute; a bare date has neither
+    // and would print "00:00" in every zone.
+    expect(formatDiveDateTime("2002-06-18")).toBe("Jun 18, 2002");
+    expect(
+      formatDiveDateTime("2002-06-18", { hour: "2-digit", minute: "2-digit" }),
+    ).toBe("Jun 18, 2002");
+    expect(
+      formatDiveDateTime("2002-06-18", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
+    ).toBe("Jun 18, 2002");
+  });
+
+  it("heads its page with the date and stops", () => {
+    const line = formatDiveStartTime("2002-06-18");
+    expect(line).toBe("Tuesday, June 18, 2002");
+    expect(line).not.toMatch(/ at |UTC/);
+  });
+
+  it("sits at the start of its own day on a timeline", () => {
+    const at = new Date(diveWallClockTime("2002-06-18"));
+    expect(at.toISOString()).toBe("2002-06-18T00:00:00.000Z");
   });
 });
 

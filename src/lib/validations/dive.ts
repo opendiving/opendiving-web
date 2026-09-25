@@ -45,7 +45,8 @@ const dateTimeField = (
 // An *edit* accepts both shapes, and that is a deliberate relaxation rather than
 // a gap. `PATCH /dive/{uuid}` takes an offsetless `start_time` on a dive whose
 // own offset is already unknown - the state a DiveJSON import creates - and
-// refuses one on a dive that has an offset, `0` included. Only the server can
+// refuses one on a dive that has an offset, `0` included. A bare date follows
+// the same rule on a dive whose time of day is unknown. Only the server can
 // apply that rule: it turns on the *stored* offset, which this schema cannot
 // see, and re-deriving it in the form from a value the form itself is editing is
 // how a client ends up refusing what the API accepts.

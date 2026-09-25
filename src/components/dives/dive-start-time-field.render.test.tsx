@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveStartTimeField } from "./dive-start-time-field";
 
@@ -45,5 +45,74 @@ describe("DiveStartTimeField", () => {
     expect(committed()).toBe("");
     expect(box()).toHaveValue("");
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
+  });
+});
+
+// A dive imported with only its date. Only a logbook import makes one, and the
+// API keeps the state for as long as the form sends the bare date back.
+describe("DiveStartTimeField on a dive whose time of day was never recorded", () => {
+  const time = () => screen.getByLabelText("Time");
+  const offset = () => screen.getByRole("combobox", { name: "UTC offset" });
+
+  it("shows the date, an empty time and no offset to choose", () => {
+    render(<Field initial="2002-06-18" />);
+
+    expect(box()).toHaveValue("2002-06-18");
+    expect(time()).toHaveValue("");
+    expect(offset()).toBeDisabled();
+    expect(offset()).toHaveTextContent("Not recorded");
+    expect(screen.queryByDisplayValue(/00:00/)).not.toBeInTheDocument();
+  });
+
+  it("re-dates the dive and keeps it a date", async () => {
+    render(<Field initial="2002-06-18" />);
+
+    await userEvent.clear(box());
+    await userEvent.type(box(), "2002-06-19");
+    await userEvent.tab();
+
+    expect(committed()).toBe("2002-06-19");
+  });
+
+  it("becomes a date-time with no offset once a time is typed", () => {
+    render(<Field initial="2002-06-18" />);
+
+    fireEvent.change(time(), { target: { value: "10:30" } });
+
+    expect(committed()).toBe("2002-06-18T10:30:00");
+    // The same controls stay on screen, now with a clock to put a zone on.
+    expect(time()).toHaveValue("10:30:00");
+    expect(offset()).toBeEnabled();
+  });
+
+  it("goes back to the bare date when the typed time is emptied", () => {
+    render(<Field initial="2002-06-18" />);
+
+    fireEvent.change(time(), { target: { value: "10:30" } });
+    fireEvent.change(time(), { target: { value: "" } });
+
+    expect(committed()).toBe("2002-06-18");
+    expect(offset()).toBeDisabled();
+  });
+
+  it("takes the date-only shape when the value arrives after mount", () => {
+    // The edit form mounts with `""` and resets to the dive once it loads.
+    function Late() {
+      const [value, setValue] = useState("");
+      return (
+        <>
+          <button type="button" onClick={() => setValue("2002-06-18")}>
+            load
+          </button>
+          <DiveStartTimeField value={value} onChange={setValue} />
+        </>
+      );
+    }
+    render(<Late />);
+
+    fireEvent.click(screen.getByRole("button", { name: "load" }));
+
+    expect(box()).toHaveValue("2002-06-18");
+    expect(time()).toHaveValue("");
   });
 });
