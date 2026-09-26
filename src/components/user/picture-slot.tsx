@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Crop, Trash2, Undo2, Upload, UserSquare } from "lucide-react";
+import { Crop, Replace, Trash2, Undo2, Upload, UserSquare } from "lucide-react";
 
 import { PICTURE_ACCEPT, PICTURE_LABEL, type PictureKind } from "@/lib/picture";
 import type { PictureEdit, PictureEditWithSource } from "@/lib/picture-edits";
@@ -111,7 +111,11 @@ export function PictureSlot({
               disabled={disabled}
               onClick={() => inputRef.current?.click()}
             >
-              <Upload className="h-4 w-4 mr-2" />
+              {showsSomething ? (
+                <Replace className="h-4 w-4 mr-2" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
               {/* What the button does to what the slot is showing: a picked photo is
                   as replaceable as a stored one. */}
               {showsSomething ? "Replace" : "Upload"}

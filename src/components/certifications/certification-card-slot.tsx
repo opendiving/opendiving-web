@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { FileText, Trash2, Undo2, Upload } from "lucide-react";
+import { FileText, Replace, Trash2, Undo2, Upload } from "lucide-react";
 import {
   CertificationSide,
   CertificationFileInfo,
@@ -99,7 +99,11 @@ export function CertificationCardSlot({
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
         >
-          <Upload className="h-4 w-4 mr-2" />
+          {showsSomething ? (
+            <Replace className="h-4 w-4 mr-2" />
+          ) : (
+            <Upload className="h-4 w-4 mr-2" />
+          )}
           {/* What the button does to what the slot is showing, not to what is
               stored: a picked image is as replaceable as a saved one. */}
           {showsSomething ? "Replace" : "Upload"}
