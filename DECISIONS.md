@@ -1488,21 +1488,19 @@ inheriting the surrounding colour.
 `/terms` is the check that covers contrast; the `code-quality` workflow scans only `/`, so the other
 four are re-checked by hand after any change to `globals.css`.
 
-## Metadata, and why the landing page is a Server Component
+## Metadata, and why every page is a Server Component
 
 The root layout sets `metadataBase` (or Next emits relative `og:image` URLs no crawler can fetch), a
-`title.template`, OpenGraph and Twitter cards, and the README's pitch. `NEXT_PUBLIC_SITE_URL` lets a
-self-hosted instance name its own origin; the localhost fallback is harmless, since only public
-pages unfurl. A page exporting `title: "Contact"` renders "Contact | OpenDiving", so pages omit the
-suffix; the landing page opts out with `title: { absolute: ... }`.
+`title.template` of `"%s – OpenDiving"`, OpenGraph and Twitter cards, and the README's pitch.
+`NEXT_PUBLIC_SITE_URL` lets a self-hosted instance name its own origin; the localhost fallback is
+harmless, since only public pages unfurl.
 
-The landing page is a Server Component rendering `components/layout/landing-page.tsx`, which carries
-the `"use client"` — the only way to export metadata from a page gating its render on
-`useRedirectIfAuthenticated`. It is the one page worth indexing; everything else is behind auth and
-renders client-side because the access token lives in memory.
-
-Its hero headline is the page's `<h1>` and the header wordmark is a `<span>`, so no page has two
-`<h1>`s; the dashboard's greeting heading is its `<h1>`.
+Every `page.tsx` is a Server Component exporting its name as `metadata.title` and rendering a client
+body from `components/`, the only way a client page gets a title. A page inside a section names
+both: "#44 El Puertito – Dives – OpenDiving" (`pageTitle`). A name only the browser learns, a dive's
+after sign-in, comes from `useDocumentTitle`. A React `<title>` in each page was rejected: Next
+keeps left routes mounted under `<Activity>`, and their titles stay in the head. The landing page
+leads with the product through `title: { absolute: ... }`, and is the one page worth indexing.
 
 ## Component filenames are kebab-case
 

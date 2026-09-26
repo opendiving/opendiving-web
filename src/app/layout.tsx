@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Toaster } from "@/components/ui/toaster";
 import { NonceProvider } from "@/components/nonce-provider";
 import { DeviceMemoryInstaller } from "@/components/device-memory-installer";
+import { PAGE_TITLE_TEMPLATE } from "@/lib/page-title";
 import { publicConfig, runtimeConfig } from "@/lib/runtime-config";
 import { SITE_DESCRIPTION } from "@/lib/site-description";
 import "./globals.css";
@@ -36,14 +37,11 @@ export function generateMetadata(): Metadata {
 
   return {
     metadataBase: new URL(siteUrl),
-    // The template is what gives every page a distinct tab title without each one
-    // having to repeat the product name. Pages that export their own `title` string
-    // get it wrapped; `default` covers the ones that export none, which is every
-    // signed-in page. It is the bare name because Firefox on iOS names a home-screen
-    // shortcut after `document.title` and never reads the manifest.
+    // Every page names itself through `metadata`, and this wraps the name; `default`
+    // is only for a route that gives none.
     title: {
       default: "OpenDiving",
-      template: "%s | OpenDiving",
+      template: PAGE_TITLE_TEMPLATE,
     },
     description: SITE_DESCRIPTION,
     applicationName: "OpenDiving",

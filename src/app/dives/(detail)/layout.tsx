@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
@@ -12,7 +13,7 @@ import { contactsAPI, Contact } from "@/lib/api/contacts";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveNeighborNav } from "@/components/dives/dive-neighbor-nav";
 import { DiveMergeAction } from "@/components/dives/dive-merge-action";
-import { DiveTitle } from "@/components/dives/dive-title";
+import { DiveTitle, diveTitleText } from "@/components/dives/dive-title";
 import { DiveDetailProvider } from "@/components/dives/dive-detail-context";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -99,6 +100,10 @@ export default function DiveDetailLayout({
     errorMessage: "Failed to load dive details. Please try again.",
     redirectTo: "/dives",
   });
+  useDocumentTitle(
+    dive ? diveTitleText(dive.dive_number, dive.dive_sites) : undefined,
+    "Dives",
+  );
 
   const del = useDeleteResource(divesAPI.deleteDive, {
     confirmMessage: DELETE_DIVE_CONFIRMATION,

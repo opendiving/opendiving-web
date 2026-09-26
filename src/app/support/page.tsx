@@ -14,7 +14,7 @@ import { Metadata } from "next";
 import { AlertCircle, Anchor, Bug, Heart, Mail, Shield } from "lucide-react";
 
 export const metadata: Metadata = {
-  // The root layout's `title.template` appends " | OpenDiving".
+  // The root layout's `title.template` appends " – OpenDiving".
   title: "Support",
   description:
     "Get support from the people who build OpenDiving - report a bug, request a feature, or send a message that reaches a real inbox.",
