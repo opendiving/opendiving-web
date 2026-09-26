@@ -305,13 +305,16 @@ export function CheckInPageFrame({
         </div>
         <div className="flex flex-wrap gap-2 print:hidden">
           {/* Waits for the diving figures: the link keeps the ones it is made with
-              for its whole life, so a click before they land would publish blanks. */}
+              for its whole life, so a click before they land - or after a read
+              that failed, which leaves the same nulls - would publish blanks that
+              Try again cannot reach. A correction the diver typed is theirs to
+              share either way. */}
           {sharing && !link && (
             <Button
               type="button"
               variant="outline"
               onClick={() => void sharing.mint(diving)}
-              disabled={isLoading || sharing.busy}
+              disabled={isLoading || (loadFailed && !corrected) || sharing.busy}
             >
               <Share2 className="h-4 w-4 mr-2" />
               Share

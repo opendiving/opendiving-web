@@ -932,6 +932,31 @@ describe("sharing it as a link", () => {
     });
   });
 
+  it("holds Share after a failed read, until the diver types the figures in", async () => {
+    Object.assign(auth.user, COMPLETE);
+    const sharing = controls();
+    // A rejected `/user/dive-stats` leaves the same nulls as one still in flight,
+    // and a link made then would show no diving for its whole day.
+    render(loaded({ sharing, stats: null, loadFailed: true }));
+    expect(screen.getByRole("button", { name: /share/i })).toBeDisabled();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    );
+    const dives = within(
+      await screen.findByRole("dialog", { name: "Diving" }),
+    ).getByLabelText("Dives logged");
+    await userEvent.type(dives, "310");
+    await userEvent.click(
+      screen.getByRole("button", { name: /use on this summary/i }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
+    );
+
+    expect(screen.getByRole("button", { name: /share/i })).toBeEnabled();
+  });
+
   it("shows a link made now as a QR code and an address, and keeps both off the sheet", () => {
     Object.assign(auth.user, COMPLETE);
     const url = "https://dive.example/checkin/tok";
