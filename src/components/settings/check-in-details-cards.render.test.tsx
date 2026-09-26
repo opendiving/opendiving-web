@@ -15,11 +15,11 @@ import { isoDaysFromNow } from "@/test/local-day";
 // the row as it was, and that a birth date in the future or a policy with no provider
 // never becomes a request at all.
 
-// The whole value is hoisted and returned by identity, `user` included - the real
-// `AuthContext` holds it in state and keeps one identity across renders, and this card
-// resets its form from `user` in an effect, so a mock rebuilding the object per render
-// would reset the form under every keystroke. Varying a field means writing to
-// `auth.user`. See "The new-dive render test was in a loop with itself" in DECISIONS.md.
+// The whole value is hoisted and returned by identity, `user` included, as the real
+// `AuthContext` holds it in state and keeps one identity across renders. Varying a
+// field means writing to `auth.user`; replacing it is what a re-read does, which
+// `reread()` below does on purpose. See "The new-dive render test was in a loop with
+// itself" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
   user: {
     uuid: "user-1",
