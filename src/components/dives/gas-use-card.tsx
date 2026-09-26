@@ -16,6 +16,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
   Card,
   CardContent,
   CardDescription,
@@ -191,42 +193,22 @@ export function GasUseCard() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          {/* `CardHeader`'s own `space-y-1.5` only reaches its direct children,
-              and the controls to the right put a wrapper between it and the
-              title - so the pair has to carry the gap itself. */}
-          <div className="space-y-1.5">
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Gas Consumption
-            </CardTitle>
-            <CardDescription>
-              {/* "Surface-equivalent" is carrying the S of SAC here. The title
-                  deliberately doesn't: "air" is wrong the moment you breathe
-                  nitrox or trimix, and the whole data model already says gas
-                  (`gas_use`, `dive-gas.ts`). The normalisation belongs in the
-                  sentence that has room to state it.
+        <div className={CARD_TITLE_ROW}>
+          <CardTitle as="h2" className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Gas Consumption
+          </CardTitle>
 
-                  The rolling trend used to be named here too, and isn't: the
-                  legend already labels it, with the window length that this
-                  sentence couldn't state (it varies by scope - see
-                  `trendWindow`). Length is load-bearing beyond the redundancy.
-                  The header row wraps on max-content, not on what the text
-                  could shrink to, so every word here is width the period
-                  controls don't get - and past ~515px they drop to a row of
-                  their own at 1024. */}
-              Surface-equivalent gas breathed per minute (RMV). Lower is better.
-            </CardDescription>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
+          <div
+            className={`flex flex-wrap items-center gap-2 ${CARD_TITLE_ACTION}`}
+          >
             {scope !== "all" && (
               <div className="flex items-center gap-1">
                 <IconTooltip label="Gas consumption: previous period with dives">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-9 w-9"
                     disabled={previous === null}
                     onClick={() => setAnchor(previous)}
                   >
@@ -269,7 +251,7 @@ export function GasUseCard() {
                   <SelectTrigger
                     id={periodTriggerId}
                     aria-labelledby={`${periodHintId} ${periodTriggerId}`}
-                    className="h-8 w-40 px-2 text-sm font-medium"
+                    className="h-9 w-40 px-2 text-sm font-medium"
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -288,7 +270,7 @@ export function GasUseCard() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-9 w-9"
                     disabled={next === null}
                     onClick={() => setAnchor(next)}
                   >
@@ -314,7 +296,7 @@ export function GasUseCard() {
                 tabs/toggle-group primitive, and three buttons in a bordered row
                 is the whole of it. */}
             <div
-              className="flex items-center rounded-md border p-0.5"
+              className="flex h-9 items-center rounded-md border p-0.5"
               role="group"
               aria-label="Gas consumption: time range"
             >
@@ -337,6 +319,18 @@ export function GasUseCard() {
             </div>
           </div>
         </div>
+        <CardDescription>
+          {/* "Surface-equivalent" is carrying the S of SAC here. The title
+                  deliberately doesn't: "air" is wrong the moment you breathe
+                  nitrox or trimix, and the whole data model already says gas
+                  (`gas_use`, `dive-gas.ts`). The normalisation belongs in the
+                  sentence that has room to state it.
+
+                  The rolling trend is not named here: the legend already
+                  labels it, with the window length this sentence could not
+                  state (it varies by scope - see `trendWindow`). */}
+          Surface-equivalent gas breathed per minute (RMV). Lower is better.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {points === null ? (

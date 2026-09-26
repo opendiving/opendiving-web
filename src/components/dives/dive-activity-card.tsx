@@ -16,6 +16,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
   Card,
   CardContent,
   CardDescription,
@@ -190,30 +192,15 @@ export function DiveActivityCard() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          {/* `CardHeader`'s own `space-y-1.5` only reaches its direct children,
-              and the controls to the right put a wrapper between it and the
-              title - so the pair has to carry the gap itself. */}
-          <div className="space-y-1.5">
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Dive Activity
-            </CardTitle>
-            <CardDescription>
-              {/* Kept short. The header is a wrapping flex row with the period
-                  controls on the far side of it, and a description any longer
-                  than the gas card's pushes them onto a second line - so the two
-                  cards' controls stop lining up down the page. Naming all three
-                  bar sizes in full ("day by day, month by month or year by
-                  year") is what that budget wouldn't take. What went earlier: a
-                  note that the counting happens in each dive's own local time,
-                  which is a promise the app keeps everywhere and states nowhere
-                  else. */}
-              How many dives you logged, by day, month or year.
-            </CardDescription>
-          </div>
+        <div className={CARD_TITLE_ROW}>
+          <CardTitle as="h2" className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Dive Activity
+          </CardTitle>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div
+            className={`flex flex-wrap items-center gap-2 ${CARD_TITLE_ACTION}`}
+          >
             {/* Only the bounded scopes have a period to navigate. "All" already
                 shows every year there is, so arrows on it would have nowhere to
                 go. */}
@@ -223,7 +210,7 @@ export function DiveActivityCard() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-9 w-9"
                     disabled={previous === null}
                     onClick={() => setAnchor(previous)}
                   >
@@ -258,7 +245,7 @@ export function DiveActivityCard() {
                   <SelectTrigger
                     id={periodTriggerId}
                     aria-labelledby={`${periodHintId} ${periodTriggerId}`}
-                    className="h-8 w-40 px-2 text-sm font-medium"
+                    className="h-9 w-40 px-2 text-sm font-medium"
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -277,7 +264,7 @@ export function DiveActivityCard() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-9 w-9"
                     disabled={next === null}
                     onClick={() => setAnchor(next)}
                   >
@@ -303,7 +290,7 @@ export function DiveActivityCard() {
                 tabs/toggle-group primitive, and the gas card above already draws
                 this exact row. */}
             <div
-              className="flex items-center rounded-md border p-0.5"
+              className="flex h-9 items-center rounded-md border p-0.5"
               role="group"
               aria-label="Dive activity: time range"
             >
@@ -326,6 +313,9 @@ export function DiveActivityCard() {
             </div>
           </div>
         </div>
+        <CardDescription>
+          How many dives you logged, by day, month or year.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {points === null ? (
