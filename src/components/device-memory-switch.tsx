@@ -62,14 +62,14 @@ export function DeviceMemorySwitch() {
             Don&rsquo;t remember display preferences
           </Label>
           <p className="col-start-2 text-sm text-muted-foreground">
-            Turning this on clears the preferences already stored here and stops
-            new ones being written &mdash; the theme, the chart and dashboard
-            views, the entry units and the passkey dismissal. The theme goes
-            back to whatever your system is set to straight away, in this tab
-            and any other you have open, since leaving it looking remembered
-            would be the misleading thing. The rest keep working until you
-            reload, and start fresh after it. Turning this back off restores
-            nothing, it only lets choices be remembered again.
+            Turning this on clears the preferences already stored on this device
+            and stops new ones being written &mdash; the theme, the chart and
+            dashboard views, the entry units and the passkey dismissal. The
+            theme goes back to whatever your system is set to straight away, in
+            this tab and any other you have open, since leaving it looking
+            remembered would be the misleading thing. The rest keep working
+            until you reload, and start fresh after it. Turning this back off
+            restores nothing, it only lets choices be remembered again.
           </p>
           <p className="col-start-2 mt-1 text-sm text-muted-foreground">
             This travels with the browser, not with your account, so it is a
