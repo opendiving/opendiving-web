@@ -149,7 +149,7 @@ describe.each([
 
     expect(
       screen.getByRole("switch", {
-        name: /remember display preferences on this device/i,
+        name: /^don’t remember display preferences$/i,
       }),
     ).toBeInTheDocument();
   });

@@ -20,7 +20,7 @@ import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 const theSwitch = () =>
   screen.getByRole("switch", {
-    name: /remember display preferences on this device/i,
+    name: /^don’t remember display preferences$/i,
   });
 
 beforeEach(() => {

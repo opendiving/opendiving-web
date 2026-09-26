@@ -59,7 +59,7 @@ export function DeviceMemorySwitch() {
         <Switch id={id} checked={optedOut} onCheckedChange={handleChange} />
         <div className="contents">
           <Label htmlFor={id} className="cursor-pointer font-normal leading-5">
-            Don&rsquo;t remember display preferences on this device
+            Don&rsquo;t remember display preferences
           </Label>
           <p className="col-start-2 text-sm text-muted-foreground">
             Turning this on clears the preferences already stored here and stops
