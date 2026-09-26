@@ -1,19 +1,8 @@
-"use client";
+import { AccountSection } from "@/components/settings/account-section";
 
-import { useAuth } from "@/contexts/AuthContext";
-import { DeleteAccountCard } from "@/components/settings/delete-account-card";
-import { EmailChangeCard } from "@/components/settings/email-change-card";
-import { ProfileCard } from "@/components/settings/profile-card";
+// See "A page under an auth-gate layout opts out of instant validation" in DECISIONS.md.
+export const instant = false;
 
 export default function AccountSettingsPage() {
-  const { user } = useAuth();
-  if (!user) return null;
-
-  return (
-    <>
-      <ProfileCard />
-      <EmailChangeCard currentEmail={user.email} />
-      <DeleteAccountCard username={user.username} />
-    </>
-  );
+  return <AccountSection />;
 }

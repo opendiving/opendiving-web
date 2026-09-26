@@ -163,15 +163,23 @@ const routeOf = (file: string) =>
     .filter((segment) => segment && !segment.startsWith("("))
     .join("/");
 
-const isClient = (file: string) =>
-  readFileSync(file, "utf8").startsWith('"use client"');
+// A Client Component, or a Server Component only so it can carry `instant = false` below an
+// auth gate (see "A page under an auth-gate layout opts out of instant validation" in
+// DECISIONS.md).
+const isClientDrawn = (file: string) => {
+  const source = readFileSync(file, "utf8");
+  return (
+    source.startsWith('"use client"') ||
+    /^export const instant = false;$/m.test(source)
+  );
+};
 
-// A destination is a page a signed-in diver navigates to inside the app chrome. The
-// server-rendered pages are the public ones and `/admin`'s redirect; the chrome-free ones
-// are reached from an email link or a redirect and draw their own layout.
+// A destination is a page a signed-in diver navigates to inside the app chrome. The other
+// server-rendered pages are the public ones and the `/admin` and `/settings` redirects; the
+// chrome-free ones are reached from an email link or a redirect and draw their own layout.
 const destinations = files
   .filter((file) => file.endsWith("/page.tsx"))
-  .filter(isClient)
+  .filter(isClientDrawn)
   .map(routeOf)
   .filter(
     (route) =>

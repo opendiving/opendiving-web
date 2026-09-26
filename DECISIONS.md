@@ -341,11 +341,11 @@ _Rejected:_ a hash-based or SRI CSP.
 
 `admin/`, `dives/(detail)/` and `settings/(sections)/` are Client Component layouts that draw a
 spinner or skeleton in place of `children` while auth is loading, which on the server it always is.
-Next's dev-time validation renders a navigation between two pages below one of them there, so the
-page never renders and the overlay reports it dropped. Each such page sits under a Server Component
-`layout.tsx` that only exports `instant = false`: a Client Component cannot carry the export, and
-the validator reads it only below the layout a navigation shares, so one on the gate would not reach
-it. A new page below a gate needs one too.
+Next's dev-time validation renders each page below them there, so the page never renders and the
+overlay reports it dropped. Each such page is a Server Component exporting `instant = false`, its
+client body in `components/` where it has one: a Client Component cannot carry the export, and the
+validator also tries the navigation that changes only the page, which no layout's `false` reaches. A
+new page below a gate needs the same.
 
 _Rejected:_ rendering `children` while auth loads, which mounts cards that fetch before there is a
 token; and `validationLevel: "manual-warning"`, which stops validating every other page too.
@@ -5444,14 +5444,14 @@ pair because that colour carries meaning. `code-quality.yml`'s axe step ends in 
 A dynamic segment is keyed on its param value, so a step under `dives/[id]` unmounts the page,
 losing the dive `useResource` holds and the pager `<a>`'s focus. The fix is a route group above it:
 `dives/(detail)/layout.tsx`, reading `useParams().id`, owns the fetch, header and delete flow;
-`dives/(detail)/[id]/page.tsx` reads `DiveDetailProvider` for the card grid. The group leaves every
-URL, `/dives/[id]/edit` included, unchanged. A step dims the grid (`opacity-50`);
-`dives/(detail)/[id]/page.render.test.tsx` pins the dim, and no test reaches the step itself.
-Rejected as the fix for this: `cacheComponents` (app-wide, and it keeps the route left, not the one
-reached) and refocusing on mount (the skeleton would still flash). The flag as a thing in its own
-right is "Cache Components asks for one opt-out, and leaves the nonce CSP alone", and it is on for
-the reasons given there; this hoist still owns the fetch, because keeping the route left is not
-keeping the one a step reaches.
+`dives/(detail)/[id]/page.tsx` draws `DiveDetailCards`, which reads `DiveDetailProvider` for the
+card grid. The group leaves every URL, `/dives/[id]/edit` included, unchanged. A step dims the grid
+(`opacity-50`); `dives/(detail)/[id]/page.render.test.tsx` pins the dim, and no test reaches the
+step itself. Rejected as the fix for this: `cacheComponents` (app-wide, and it keeps the route left,
+not the one reached) and refocusing on mount (the skeleton would still flash). The flag as a thing
+in its own right is "Cache Components asks for one opt-out, and leaves the nonce CSP alone", and it
+is on for the reasons given there; this hoist still owns the fetch, because keeping the route left
+is not keeping the one a step reaches.
 
 The trip and course lookups outlive the dive, so each is stored with the uuid it resolved and read
 only while the dive names it — keyed on `trip_uuid`, not the dive, so a step within a trip keeps the
