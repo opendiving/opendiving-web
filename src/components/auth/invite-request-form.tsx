@@ -139,7 +139,7 @@ export function InviteRequestForm({
   return (
     <div
       className={cn(
-        "w-full max-w-md rounded-lg border bg-card p-6 shadow-sm",
+        "w-full max-w-md rounded-lg border bg-card p-6 shadow-sm max-sm:px-4",
         className,
       )}
     >

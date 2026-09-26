@@ -185,7 +185,7 @@ export function CheckEmailCard({
   return (
     <div
       className={cn(
-        "w-full max-w-md rounded-lg border bg-card p-6 text-center shadow-sm",
+        "w-full max-w-md rounded-lg border bg-card p-6 text-center shadow-sm max-sm:px-4",
         className,
       )}
     >

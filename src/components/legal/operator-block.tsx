@@ -26,7 +26,7 @@ export function OperatorBlock({
   return (
     <section
       aria-labelledby="who-runs-this-copy"
-      className="mb-8 rounded-md border border-border bg-muted/40 p-6"
+      className="mb-8 rounded-md border border-border bg-muted/40 p-6 max-sm:px-4"
     >
       <h2
         id="who-runs-this-copy"
