@@ -337,6 +337,19 @@ in the container.
 
 _Rejected:_ a hash-based or SRI CSP.
 
+## A page under an auth-gate layout opts out of instant validation
+
+`admin/`, `dives/(detail)/` and `settings/(sections)/` are Client Component layouts that draw a
+spinner or skeleton in place of `children` while auth is loading, which on the server it always is.
+Next's dev-time validation renders a navigation between two pages below one of them there, so the
+page never renders and the overlay reports it dropped. Each such page sits under a Server Component
+`layout.tsx` that only exports `instant = false`: a Client Component cannot carry the export, and
+the validator reads it only below the layout a navigation shares, so one on the gate would not reach
+it. A new page below a gate needs one too.
+
+_Rejected:_ rendering `children` while auth loads, which mounts cards that fetch before there is a
+token; and `validationLevel: "manual-warning"`, which stops validating every other page too.
+
 ## A route stays mounted, so an effect that loads on mount guards on what it loaded for
 
 With Cache Components on, the router keeps the route a diver left mounted under
