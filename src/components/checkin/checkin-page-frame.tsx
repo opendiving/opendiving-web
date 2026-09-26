@@ -782,7 +782,6 @@ function CertificationSummary({
                 <img
                   src={sharedCardFrontUrl(linkToken, certification.uuid)}
                   alt="front of certification card"
-                  className="h-full w-full object-cover"
                 />
               </CertificationCardFrame>
             )

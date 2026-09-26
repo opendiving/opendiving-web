@@ -186,14 +186,7 @@ function PendingCardPreview({
     <CertificationCardFrame>
       {image.previewUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={image.previewUrl}
-          alt={`New ${side} of certification card`}
-          // Already cropped to the frame's own shape, so this crops nothing; it
-          // matches the stored preview beside it rather than inventing a second
-          // fit rule.
-          className="h-full w-full object-cover"
-        />
+        <img src={image.previewUrl} alt={`New ${side} of certification card`} />
       )}
     </CertificationCardFrame>
   );

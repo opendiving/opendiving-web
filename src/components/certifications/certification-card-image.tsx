@@ -54,7 +54,14 @@ export function CertificationCardFrame({
         // `aspect-ratio` applies only to a box whose height is auto, and a flex or
         // grid item stretches to its line by default. Inert where the frame is an
         // ordinary block child, which is every caller today.
-        "flex items-center justify-center self-start overflow-hidden rounded-lg border bg-muted",
+        "relative flex items-center justify-center self-start overflow-hidden rounded-lg border bg-muted",
+        // A picture fills the frame out of flow. As a flex item inside a table
+        // cell - the list's column - Safari draws it far larger than the frame,
+        // which then shows a close-up of its middle. `cover`, not `contain`: a
+        // card cropped on upload fills this exactly, and an uncropped one loses a
+        // few percent of its edge rather than sitting in a letterbox, which makes
+        // the same picture look a different size per page.
+        "[&>img]:absolute [&>img]:inset-0 [&>img]:size-full [&>img]:object-cover",
         CERTIFICATION_CARD_ASPECT_CLASS,
         compact ? "w-20" : "w-full",
         empty && "border-dashed",
@@ -185,14 +192,7 @@ export function CertificationCardImage({
           runtime object URL for private bytes, which the image optimizer can
           neither fetch nor cache. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={url}
-        alt={`${side} of certification card`}
-        // `cover`, not `contain`: a card cropped on upload fills this exactly, and
-        // an uncropped one loses a few percent of its edge rather than sitting in a
-        // letterbox, which makes the same picture look a different size per page.
-        className="h-full w-full object-cover"
-      />
+      <img src={url} alt={`${side} of certification card`} />
     </CertificationCardFrame>
   );
 }
