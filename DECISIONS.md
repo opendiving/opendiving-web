@@ -975,9 +975,9 @@ in both themes.
 The y axis is not zero-based: `niceDomain()` rounds outward from the data, with 2.5 in its
 progression so a 5-to-26 spread does not step by 10.
 
-Each dot is a plain SVG `<a>`, not `next/link`. Below ~560px the chart scrolls inside
-`overflow-x-auto`. The card renders when empty, unlike `ServiceDueCard`: missing pressures or an
-average depth are something the diver can fix.
+Each dot is a plain SVG `<a>`, not `next/link`. Below 560px the chart narrows its viewBox rather
+than scrolling (`fittedChartWidth`). The card renders when empty, unlike `ServiceDueCard`: missing
+pressures or an average depth are something the diver can fix.
 
 ## The chart windows to All/Year/Month, but scales itself from the whole series
 
@@ -1005,8 +1005,8 @@ point: the same state drives the dot's enlarge-and-brighten, so dot and card can
 It is positioned in percentages of the chart box (the SVG scales uniformly in a wrapper of its own
 size) through the `style` prop, an inline attribute the CSP allows
 (`style-src-attr 'unsafe-inline'`). It flips to stay inside the box — below the dot in the top
-third, edge-aligned within 18% of either side — because `overflow-x: auto` on the scroll container
-computes `overflow-y` to `auto` and clips.
+third, edge-aligned within 18% of either side — and `useKeepInside` pulls in whatever a phone-width
+chart still leaves past an edge, where it would scroll the page sideways.
 
 Each dot has an invisible `r=7` hit circle with `fill="transparent"`, not `fill="none"`, which takes
 no pointer events. The card is `pointer-events-none` so it cannot steal the hover, has no accessible
@@ -1051,8 +1051,7 @@ maps the cursor to an instant on the profile's millisecond axis once and each ch
 own sample with `nearestSampleIndex`. Readouts are real readings, never interpolations.
 
 `tooltipVerticalAnchor` pins the card to the plot's top or bottom edge, whichever keeps it off the
-readings: card height depends on channel count, so offsetting from a point overflows the clipping
-scroll container.
+readings: card height depends on channel count, so offsetting from a point overflows the chart.
 
 Keyboard scrubbing is out of scope. The `aria-label` uses `formatDurationHoursMinutes`, not `MM:SS`.
 `--pressure` is a third theme-stable token in `globals.css`, violet.
@@ -1925,8 +1924,9 @@ The anchor is the start of a day with diving in it, so `periodRange`, `periodLab
 `availablePeriods`, `stepPeriod` and `resolveAnchor` live in `lib/chart-period.ts`.
 `GET /user/dive-activity` returns one row per day and `activityBars` sums into months and years
 client-side, so scope switches need no request (reasoning under _"Dives-per-day is counted in
-Python"_ in `opendiving-api/DECISIONS.md`). `MAX_X_LABELS` is 20 for years, 12 for months, 31 for
-days.
+Python"_ in `opendiving-api/DECISIONS.md`). `X_LABEL_SPACING` gives a label 33 units for years, 26
+for months and 21 for days: twenty years, all twelve months and every day at the design width, fewer
+on a phone.
 
 ## Every chart control names its own card, because the two cards draw the same row
 
@@ -1976,11 +1976,10 @@ label size reads as a rendering fault.
 
 ## The two chart cards stack, and gas leads - both measured, not assumed
 
-Each plot carries `min-w-[560px]`, which keeps twelve month labels and a y axis legible.
-`lg:grid-cols-2` on the dashboard's `max-w-6xl` gives 482px (546px at `max-w-7xl`), and three things
-break: both charts clip and grow a horizontal scrollbar, the axis text halves (16.6px to 8.6px,
-since the svg scales uniformly), and the gas header goes from 50px to 114px as its toggle and
-stepper drop below the description. Clearing all three needs about 1220px.
+Below 560px each plot narrows its viewBox instead of shrinking, so its axis text stops at 8.6px
+(`fittedChartWidth`). `lg:grid-cols-2` on the dashboard's `max-w-6xl` gives 482px (546px at
+`max-w-7xl`), and two things break: the axis text halves (16.6px to 8.6px), and the gas header goes
+from 50px to 114px as its toggle and stepper drop below the description.
 `RecentDivesCard`/`RecentTripsCard` pair up fine below: their content reflows instead of scaling.
 
 Gas consumption leads because it can change how you dive tomorrow; activity records what already

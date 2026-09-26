@@ -4,6 +4,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -12,7 +13,12 @@ import type {
   DiveProfileEvent,
   DiveProfileEventType,
 } from "@/lib/api/dives";
-import { axisTicks, niceDomain, type Domain } from "@/lib/chart-scale";
+import {
+  axisTicks,
+  labelCapacity,
+  niceDomain,
+  type Domain,
+} from "@/lib/chart-scale";
 import { buildAreaPath } from "@/lib/chart-path";
 import {
   type ChannelSeries,
@@ -21,6 +27,7 @@ import {
   type ProfileChannelKey,
   type ProfileSeriesKey,
   type ProfileViewKey,
+  ELAPSED_TICK_TARGET,
   EVENTS_LABEL,
   PANEL_AXES,
   PROFILE_CHANNELS,
@@ -56,6 +63,8 @@ import {
   writeSeriesVisibility,
 } from "@/lib/chart-series-view";
 import { cn } from "@/lib/utils";
+import { useChartWidth } from "@/hooks/useChartWidth";
+import { useKeepInside } from "@/hooks/useKeepInside";
 import { useUnits } from "@/hooks/useUnits";
 import type { UnitSystem } from "@/lib/units";
 
@@ -73,15 +82,21 @@ import type { UnitSystem } from "@/lib/units";
 // grey in dark, which left the gas chart's trend line barely visible.
 
 // The viewBox coordinate space. Not pixels: the SVG scales to its container, so
-// these are only ever ratios to each other.
+// these are only ever ratios to each other. This is the design width; a phone
+// draws into a narrower one (see `useChartWidth`), so only the heights below are
+// fixed.
 const WIDTH = 720;
 // Wider on both sides than the gas chart: depth is on the left and temperature
 // and pressure share the right, so both margins carry axis labels.
 const PADDING = { top: 14, right: 46, bottom: 28, left: 44 };
 
-const PLOT_WIDTH = WIDTH - PADDING.left - PADDING.right;
 const PLOT_HEIGHT = 238;
 const PLOT_BOTTOM = PADDING.top + PLOT_HEIGHT;
+
+// The room each elapsed-time label gets on the x axis: "999:00" is 37.5 units
+// wide in 11-unit Inter, plus air. At the design width the axis is never short of
+// it, so this only thins the labels on a phone.
+const ELAPSED_LABEL_SPACING = 44;
 
 // The deco panel: one short plot per unit the depth plot's two edges cannot
 // carry, stacked under it and sharing its elapsed-time axis. See
@@ -91,7 +106,10 @@ const PLOT_BOTTOM = PADDING.top + PLOT_HEIGHT;
 // edges are untouched by anything the diver switches on down here, and every
 // curve on the chart is drawn against numbers that belong to it.
 const PANEL_HEIGHT = 46;
-const PANEL_GAP = 12;
+// The labels either side of a gap each sit centred on their own rule, so the gap
+// has to hold half of each: 11- and 10-unit type is about 1.2 em tall, 12.6 units
+// between them, and 16 leaves a few units of air.
+const PANEL_GAP = 16;
 
 const panelTop = (index: number) =>
   PLOT_BOTTOM + PANEL_GAP + index * (PANEL_HEIGHT + PANEL_GAP);
@@ -232,6 +250,8 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   // fragment that has to resolve it. What survives the strip is still the part
   // that differs between two ids on one page.
   const clipPrefix = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const [chartRef, width] = useChartWidth(WIDTH);
+  const plotWidth = width - PADDING.left - PADDING.right;
   // One hovered *time*, not one hovered sample, and one piece of state for the
   // whole chart - the same call `GasUseChart` makes, for the same reason. It
   // can't be an index here: the channels are independently sampled and don't
@@ -282,7 +302,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
 
   const duration = profile.duration;
   const x = (at: number) =>
-    PADDING.left + (duration > 0 ? at / duration : 0) * PLOT_WIDTH;
+    PADDING.left + (duration > 0 ? at / duration : 0) * plotWidth;
 
   // Markers that land inside the plot, which is this chart's job rather than the
   // API's and is stated as such at the other end: `_rebase_events` clamps the low
@@ -748,7 +768,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
       : nearestEvent(
           events,
           hoveredMs,
-          (duration / PLOT_WIDTH) * EVENT_HOVER_UNITS,
+          (duration / plotWidth) * EVENT_HOVER_UNITS,
         );
 
   // One binary search per channel, not one shared index lookup: the channels are
@@ -800,43 +820,28 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
 
   return (
     <div>
-      {/* Wide content scrolls in its own container rather than shrinking the
-          whole chart to phone width, where three axes' labels would become
-          unreadable - the same treatment the gas chart and the gas mixtures
-          table get. The legend deliberately sits *outside* it: it's text, so it
-          should wrap to the screen rather than scroll sideways with the plot,
-          and on a phone the container's own horizontal scrollbar is drawn
-          across the bottom of whatever it contains - straight through the
-          legend. */}
-      {/* `relative` at the *viewport's* width rather than the plot's, which is
-          what the empty-plot message below is positioned against. Centring it on
-          the 560-unit plot box instead puts it at x≈280 of a box that is wider
-          than a phone, so on a 375 px screen the sentence starts near the right
-          edge and runs off it - and the one thing that has to be readable
-          without scrolling is the sentence explaining why there is nothing to
-          scroll to. */}
-      <div className="relative">
-        <div className="overflow-x-auto">
-          {/* Sized to exactly the chart, and the positioning context the
-              tooltip's percentage offsets are resolved against. */}
-          <div className="relative min-w-[560px]">
-            <svg
-              viewBox={`0 0 ${WIDTH} ${height}`}
-              className="w-full h-auto"
-              role="img"
-              // Only what's on screen. A summary naming a temperature range the
-              // diver has hidden describes a chart nobody is looking at.
-              aria-label={describeProfile({
-                readings: shownValues,
-                // Emptied rather than filtered, since the toggle is
-                // all-or-nothing - and this is the same "only what's on screen"
-                // rule the channels go through `shownValues` for.
-                events: eventsShown ? events : [],
-                duration,
-                units,
-              })}
-            >
-              {/* One clip per panel row, because a panel row's axis can declare a
+      {/* Sized to exactly the chart, and what the tooltip's percentage offsets
+          and the empty-plot message are resolved against. It never scrolls:
+          `useChartWidth` narrows the viewBox to fit a phone instead. The legend
+          sits outside it, as text that wraps to the screen. */}
+      <div ref={chartRef} className="relative">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full h-auto"
+          role="img"
+          // Only what's on screen. A summary naming a temperature range the
+          // diver has hidden describes a chart nobody is looking at.
+          aria-label={describeProfile({
+            readings: shownValues,
+            // Emptied rather than filtered, since the toggle is
+            // all-or-nothing - and this is the same "only what's on screen"
+            // rule the channels go through `shownValues` for.
+            events: eventsShown ? events : [],
+            duration,
+            units,
+          })}
+        >
+          {/* One clip per panel row, because a panel row's axis can declare a
               ceiling its readings overrun - see `axisDomain`, and DECISIONS.md's
               *"The percent axis stops at 200 %"*.
 
@@ -863,20 +868,20 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               hides what leaves the viewBox and happily draws what merely leaves a
               plot. That distinction is already recorded, under *"Markers are
               clipped to the plot"*. */}
-              <defs aria-hidden>
-                {placement.panels.map((axis, index) => (
-                  <clipPath key={axis} id={`${clipPrefix}-panel-${index}`}>
-                    <rect
-                      x={PADDING.left}
-                      y={panelTop(index)}
-                      width={PLOT_WIDTH}
-                      height={PANEL_HEIGHT}
-                    />
-                  </clipPath>
-                ))}
-              </defs>
+          <defs aria-hidden>
+            {placement.panels.map((axis, index) => (
+              <clipPath key={axis} id={`${clipPrefix}-panel-${index}`}>
+                <rect
+                  x={PADDING.left}
+                  y={panelTop(index)}
+                  width={plotWidth}
+                  height={PANEL_HEIGHT}
+                />
+              </clipPath>
+            ))}
+          </defs>
 
-              {/* Horizontal gridlines, from the left-hand axis, so every rule
+          {/* Horizontal gridlines, from the left-hand axis, so every rule
               lines up with a labelled value rather than floating between two.
               `currentColor` throughout, so light/dark is inherited from the
               surrounding text colors rather than hardcoded per theme.
@@ -886,61 +891,61 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               reliably keep bare `<text>` out of the accessibility tree - it
               surfaces as a run of unlabelled numbers ahead of anything useful.
               `describeProfile` on the svg says what they say, in a sentence. */}
-              {leftChannel &&
-                axisTicks(leftChannel.domain).map((tick) => (
-                  <line
-                    key={tick}
-                    aria-hidden
-                    className="text-border"
-                    x1={PADDING.left}
-                    x2={WIDTH - PADDING.right}
-                    y1={leftChannel.y(tick)}
-                    y2={leftChannel.y(tick)}
-                    stroke="currentColor"
-                    strokeWidth={1}
-                  />
-                ))}
+          {leftChannel &&
+            axisTicks(leftChannel.domain).map((tick) => (
+              <line
+                key={tick}
+                aria-hidden
+                className="text-border"
+                x1={PADDING.left}
+                x2={width - PADDING.right}
+                y1={leftChannel.y(tick)}
+                y2={leftChannel.y(tick)}
+                stroke="currentColor"
+                strokeWidth={1}
+              />
+            ))}
 
-              {/* The primary scale, labelled in the colour of whichever channel
+          {/* The primary scale, labelled in the colour of whichever channel
               is holding it - see `leftChannel` for which one that is and why
               it is never nothing while a curve is on the plot. */}
-              {leftChannel &&
-                axisTicks(leftChannel.domain).map((tick) => (
-                  <text
-                    key={tick}
-                    aria-hidden
-                    x={PADDING.left - 6}
-                    y={leftChannel.y(tick)}
-                    textAnchor="end"
-                    dominantBaseline="middle"
-                    fontSize={11}
-                    fill="currentColor"
-                    className={leftChannel.series.channel.colorClass}
-                  >
-                    {tick}
-                  </text>
-                ))}
+          {leftChannel &&
+            axisTicks(leftChannel.domain).map((tick) => (
+              <text
+                key={tick}
+                aria-hidden
+                x={PADDING.left - 6}
+                y={leftChannel.y(tick)}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fontSize={11}
+                fill="currentColor"
+                className={leftChannel.series.channel.colorClass}
+              >
+                {tick}
+              </text>
+            ))}
 
-              {/* The second scale, where the selection holds one - see
+          {/* The second scale, where the selection holds one - see
               `rightChannel`. */}
-              {rightChannel &&
-                axisTicks(rightChannel.domain).map((tick) => (
-                  <text
-                    key={tick}
-                    aria-hidden
-                    x={WIDTH - PADDING.right + 6}
-                    y={rightChannel.y(tick)}
-                    textAnchor="start"
-                    dominantBaseline="middle"
-                    fontSize={11}
-                    fill="currentColor"
-                    className={rightChannel.series.channel.colorClass}
-                  >
-                    {tick}
-                  </text>
-                ))}
+          {rightChannel &&
+            axisTicks(rightChannel.domain).map((tick) => (
+              <text
+                key={tick}
+                aria-hidden
+                x={width - PADDING.right + 6}
+                y={rightChannel.y(tick)}
+                textAnchor="start"
+                dominantBaseline="middle"
+                fontSize={11}
+                fill="currentColor"
+                className={rightChannel.series.channel.colorClass}
+              >
+                {tick}
+              </text>
+            ))}
 
-              {/* The deco panel's rows: two rules and two numbers each, the
+          {/* The deco panel's rows: two rules and two numbers each, the
               upper one carrying the unit. Deliberately thinner than the depth
               plot's axis - `axisTicks` would put four or five labels in 46
               units, where 11-unit type collides with itself - and deliberately
@@ -948,174 +953,180 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               can share one of these rows, so numbers in any one of them would be
               claiming the scale for that curve. The depth plot's coloured-edge
               rule holds where it was written, on an edge one channel owns. */}
-              {placement.panels.map((axis) => {
-                const row = shown.find((channel) => channel.axis === axis);
-                if (!row) return null;
-                const suffix = axisUnitSuffix(axis, units);
-                // The domain's own ends, taken through `axisTicks` rather than
-                // read off `domain` directly: that is where the fractional-step
-                // rounding lives, and without it a ppO₂ row is labelled
-                // `1.4000000000000001`.
-                const ticks = axisTicks(row.domain);
-                const bounds = [ticks[ticks.length - 1], ticks[0]];
+          {placement.panels.map((axis) => {
+            const row = shown.find((channel) => channel.axis === axis);
+            if (!row) return null;
+            const suffix = axisUnitSuffix(axis, units);
+            // The domain's own ends, taken through `axisTicks` rather than
+            // read off `domain` directly: that is where the fractional-step
+            // rounding lives, and without it a ppO₂ row is labelled
+            // `1.4000000000000001`.
+            const ticks = axisTicks(row.domain);
+            const bounds = [ticks[ticks.length - 1], ticks[0]];
 
-                return (
-                  <g key={axis} data-deco-panel={axis} aria-hidden>
-                    {bounds.map((tick) => (
-                      <line
-                        key={tick}
-                        className="text-border"
-                        x1={PADDING.left}
-                        x2={WIDTH - PADDING.right}
-                        y1={row.y(tick)}
-                        y2={row.y(tick)}
-                        stroke="currentColor"
-                        strokeWidth={1}
-                      />
-                    ))}
-                    {bounds.map((tick, position) => (
-                      <text
-                        key={tick}
-                        x={PADDING.left - 6}
-                        y={row.y(tick)}
-                        textAnchor="end"
-                        dominantBaseline="middle"
-                        fontSize={10}
-                        fill="currentColor"
-                        className="text-muted-foreground"
-                      >
-                        {position === 0 ? `${tick}${suffix}` : tick}
-                      </text>
-                    ))}
-                  </g>
-                );
-              })}
+            return (
+              <g key={axis} data-deco-panel={axis} aria-hidden>
+                {bounds.map((tick) => (
+                  <line
+                    key={tick}
+                    className="text-border"
+                    x1={PADDING.left}
+                    x2={width - PADDING.right}
+                    y1={row.y(tick)}
+                    y2={row.y(tick)}
+                    stroke="currentColor"
+                    strokeWidth={1}
+                  />
+                ))}
+                {bounds.map((tick, position) => (
+                  <text
+                    key={tick}
+                    x={PADDING.left - 6}
+                    y={row.y(tick)}
+                    textAnchor="end"
+                    dominantBaseline="middle"
+                    fontSize={10}
+                    fill="currentColor"
+                    className="text-muted-foreground"
+                  >
+                    {position === 0 ? `${tick}${suffix}` : tick}
+                  </text>
+                ))}
+              </g>
+            );
+          })}
 
-              {elapsedTicks(duration).map((tick) => (
-                <text
-                  key={tick}
-                  aria-hidden
-                  x={x(tick)}
-                  y={height - 8}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill="currentColor"
-                  className="text-muted-foreground"
-                >
-                  {formatElapsed(tick)}
-                </text>
-              ))}
+          {elapsedTicks(
+            duration,
+            Math.min(
+              ELAPSED_TICK_TARGET,
+              labelCapacity(plotWidth, ELAPSED_LABEL_SPACING),
+            ),
+          ).map((tick) => (
+            <text
+              key={tick}
+              aria-hidden
+              x={x(tick)}
+              y={height - 8}
+              textAnchor="middle"
+              fontSize={11}
+              fill="currentColor"
+              className="text-muted-foreground"
+            >
+              {formatElapsed(tick)}
+            </text>
+          ))}
 
-              {/* Depth is the chart's subject, so it gets a filled area under the
+          {/* Depth is the chart's subject, so it gets a filled area under the
               curve - which also makes "which side is the water" unambiguous on
               an inverted axis - and everything else is a bare line on top. The
               fill is what marks it out, not a heavier stroke: every channel is
               drawn at the same weight. One per run, so the fill breaks wherever
               the line does. */}
-              {depthAreas.map((area, index) => (
-                <path
-                  key={index}
-                  d={area}
-                  fill="currentColor"
-                  className={`${PROFILE_CHANNELS.depth.colorClass} opacity-15`}
-                />
-              ))}
+          {depthAreas.map((area, index) => (
+            <path
+              key={index}
+              d={area}
+              fill="currentColor"
+              className={`${PROFILE_CHANNELS.depth.colorClass} opacity-15`}
+            />
+          ))}
 
-              {/* Over the depth fill, not under it: the ceiling zone is a subset
+          {/* Over the depth fill, not under it: the ceiling zone is a subset
               of the water column by construction - a ceiling is always
               shallower than the depth it was computed at - so underneath it
               would be invisible. Denser than depth's 15% for the same reason it
               is red: this is the one region on the chart that is a rule rather
               than a reading. */}
-              {ceilingAreas.map((area, index) => (
-                <path
+          {ceilingAreas.map((area, index) => (
+            <path
+              key={index}
+              d={area}
+              fill="currentColor"
+              className={`${PROFILE_CHANNELS.ceiling.colorClass} opacity-25`}
+            />
+          ))}
+
+          {shown.map((channel) => (
+            <g
+              key={channel.key}
+              className={channel.series.channel.colorClass}
+              clipPath={
+                channel.panelIndex >= 0
+                  ? `url(#${clipPrefix}-panel-${channel.panelIndex})`
+                  : undefined
+              }
+            >
+              {channel.segments.map((segment, index) => (
+                <polyline
                   key={index}
-                  d={area}
-                  fill="currentColor"
-                  className={`${PROFILE_CHANNELS.ceiling.colorClass} opacity-25`}
+                  points={segment
+                    .map(
+                      (position) =>
+                        `${x(channel.series.t[position])},${channel.y(channel.series.values[position])}`,
+                    )
+                    .join(" ")}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  // From the channel rather than from this line's key, so the
+                  // legend swatch below can read the same flag - see `dashed`
+                  // on `ProfileChannel` for why the dash is load-bearing.
+                  strokeDasharray={
+                    channel.series.channel.dashed ? "5 3" : undefined
+                  }
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
                 />
               ))}
+            </g>
+          ))}
 
-              {shown.map((channel) => (
-                <g
-                  key={channel.key}
-                  className={channel.series.channel.colorClass}
-                  clipPath={
-                    channel.panelIndex >= 0
-                      ? `url(#${clipPrefix}-panel-${channel.panelIndex})`
-                      : undefined
-                  }
-                >
-                  {channel.segments.map((segment, index) => (
-                    <polyline
-                      key={index}
-                      points={segment
-                        .map(
-                          (position) =>
-                            `${x(channel.series.t[position])},${channel.y(channel.series.values[position])}`,
-                        )
-                        .join(" ")}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                      // From the channel rather than from this line's key, so the
-                      // legend swatch below can read the same flag - see `dashed`
-                      // on `ProfileChannel` for why the dash is load-bearing.
-                      strokeDasharray={
-                        channel.series.channel.dashed ? "5 3" : undefined
-                      }
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                    />
-                  ))}
-                </g>
-              ))}
-
-              {/* Event markers, on the axis rather than on the depth curve, and
+          {/* Event markers, on the axis rather than on the depth curve, and
               behind a switch of their own in the legend. They are still not a
               channel - no axis, no unit, nothing to scale - and the switch does
               not make them one; what it grants is that a dive with a dozen of
               them can be read without them, which "annotations are cheap enough
               to always draw" was the wrong answer to. See `PROFILE_VIEW_KEYS`
               for why they are a separate list rather than one more channel. */}
-              {eventsShown &&
-                events.map((event, index) => (
-                  <EventMarker
-                    key={`${event.time}-${event.type}-${index}`}
-                    event={event}
-                    cx={x(event.time)}
-                    hovered={event === hoveredEvent}
-                  />
-                ))}
+          {eventsShown &&
+            events.map((event, index) => (
+              <EventMarker
+                key={`${event.time}-${event.type}-${index}`}
+                event={event}
+                cx={x(event.time)}
+                hovered={event === hoveredEvent}
+              />
+            ))}
 
-              {/* Through the deco panel as well as the depth plot: it is one
+          {/* Through the deco panel as well as the depth plot: it is one
               instant of one dive, and a crosshair that stopped at the depth
               plot's baseline would leave the diver reading a panel dot with no
               line to place it on. */}
-              {hoveredMs !== null && (
-                <line
-                  x1={x(hoveredMs)}
-                  x2={x(hoveredMs)}
-                  y1={PADDING.top}
-                  y2={chartFoot}
-                  stroke="currentColor"
-                  strokeWidth={1}
-                  className="text-muted-foreground"
-                />
-              )}
+          {hoveredMs !== null && (
+            <line
+              x1={x(hoveredMs)}
+              x2={x(hoveredMs)}
+              y1={PADDING.top}
+              y2={chartFoot}
+              stroke="currentColor"
+              strokeWidth={1}
+              className="text-muted-foreground"
+            />
+          )}
 
-              {dots.map((readout) => (
-                <circle
-                  key={readout.key}
-                  cx={x(readout.at)}
-                  cy={readout.cy}
-                  r={3.5}
-                  fill="currentColor"
-                  className={readout.channel.colorClass}
-                />
-              ))}
+          {dots.map((readout) => (
+            <circle
+              key={readout.key}
+              cx={x(readout.at)}
+              cy={readout.cy}
+              r={3.5}
+              fill="currentColor"
+              className={readout.channel.colorClass}
+            />
+          ))}
 
-              {/* One transparent hit target over the whole plot. The gas chart hangs
+          {/* One transparent hit target over the whole plot. The gas chart hangs
               its hover off per-dot `<a>` elements; a continuous line has no dots
               to hang anything off, so the analogue is a rect that turns the
               cursor's x into a time. `transparent` rather than `none` -
@@ -1126,48 +1137,45 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               focus for free from the links its dots already are, and there is no
               equivalent here without inventing a focus model for a polyline. The
               `aria-label` above carries the summary instead. */}
-              <rect
-                x={PADDING.left}
-                y={PADDING.top}
-                width={PLOT_WIDTH}
-                height={chartFoot - PADDING.top}
-                fill="transparent"
-                onMouseMove={(event) => {
-                  const bounds = event.currentTarget.getBoundingClientRect();
-                  const ratio = (event.clientX - bounds.left) / bounds.width;
-                  setHoveredMs(
-                    Math.min(duration, Math.max(0, ratio * duration)),
-                  );
-                }}
-                onMouseLeave={() => setHoveredMs(null)}
-              />
-            </svg>
+          <rect
+            x={PADDING.left}
+            y={PADDING.top}
+            width={plotWidth}
+            height={chartFoot - PADDING.top}
+            fill="transparent"
+            onMouseMove={(event) => {
+              const bounds = event.currentTarget.getBoundingClientRect();
+              const ratio = (event.clientX - bounds.left) / bounds.width;
+              setHoveredMs(Math.min(duration, Math.max(0, ratio * duration)));
+            }}
+            onMouseLeave={() => setHoveredMs(null)}
+          />
+        </svg>
 
-            {hoveredMs !== null && (readouts.length > 0 || hoveredEvent) && (
-              <ProfileTooltip
-                at={hoveredMs}
-                readouts={readouts}
-                event={hoveredEvent}
-                cx={x(hoveredMs)}
-                // The box the card's percentage offsets are resolved against,
-                // which grows with the panel: a card positioned as a fraction
-                // of a height it no longer has lands somewhere else entirely.
-                chartHeight={height}
-                // The topmost of the dots being described, which is only used to
-                // decide which end of the plot the card sits at - see
-                // `tooltipVerticalAnchor`. `PLOT_BOTTOM` is the degenerate
-                // fallback for a card with no dot to hang off - an event on its
-                // own, or readings that are all off their rows' axes - which
-                // puts it at the top, clear of the marker on the baseline.
-                topmostY={
-                  dots.length > 0
-                    ? Math.min(...dots.map((readout) => readout.cy))
-                    : PLOT_BOTTOM
-                }
-              />
-            )}
-          </div>
-        </div>
+        {hoveredMs !== null && (readouts.length > 0 || hoveredEvent) && (
+          <ProfileTooltip
+            at={hoveredMs}
+            readouts={readouts}
+            event={hoveredEvent}
+            cx={x(hoveredMs)}
+            chartWidth={width}
+            // The box the card's percentage offsets are resolved against,
+            // which grows with the panel: a card positioned as a fraction
+            // of a height it no longer has lands somewhere else entirely.
+            chartHeight={height}
+            // The topmost of the dots being described, which is only used to
+            // decide which end of the plot the card sits at - see
+            // `tooltipVerticalAnchor`. `PLOT_BOTTOM` is the degenerate
+            // fallback for a card with no dot to hang off - an event on its
+            // own, or readings that are all off their rows' axes - which
+            // puts it at the top, clear of the marker on the baseline.
+            topmostY={
+              dots.length > 0
+                ? Math.min(...dots.map((readout) => readout.cy))
+                : PLOT_BOTTOM
+            }
+          />
+        )}
 
         {/* Switching the last channel off used to return a bare sentence in
             place of the whole chart, which collapsed the card to two lines and
@@ -1176,17 +1184,12 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
             the middle of it. Nothing moves, and the toggle that undid this is
             still under the cursor that clicked it.
 
-            A sibling of the scroll container rather than a child of the plot
-            box, so it centres on what the diver can see - see the note on the
-            `relative` wrapper above.
-
             Not shown while the markers are up, even with every curve hidden: the
             plot has content then, and "pick one below to plot it" printed across
             a row of markers describes a chart nobody is looking at.
 
             `pointer-events-none` so the hit target underneath still tracks the
-            crosshair, which markers are still worth hovering for - and so the
-            plot underneath can still be scrolled sideways. */}
+            crosshair, which markers are still worth hovering for. */}
         {shown.length === 0 && !eventsShown && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <p className="text-sm text-muted-foreground">
@@ -1395,6 +1398,7 @@ function ProfileTooltip({
   readouts,
   event,
   cx,
+  chartWidth,
   chartHeight,
   topmostY,
 }: {
@@ -1402,39 +1406,42 @@ function ProfileTooltip({
   readouts: Readout[];
   event: DiveProfileEvent | null;
   cx: number;
+  chartWidth: number;
   chartHeight: number;
   topmostY: number;
 }) {
-  // The card always lands inside the chart box, in both axes. It has to: the
-  // scroll container around it clips (setting `overflow-x` to `auto` makes
-  // `overflow-y` compute to `auto` as well), so anything hanging past an edge is
-  // cut off or adds a stray scrollbar.
+  // The card always lands inside the chart box, in both axes: past an edge it
+  // would cover whatever sits beside the chart, or on a phone scroll the page
+  // sideways.
   //
   // Vertically that is guaranteed by anchoring to the plot's own top or bottom
   // edge rather than offsetting from a data point - see `tooltipVerticalAnchor`
   // for why offsetting from a point cannot be made safe here. Horizontally the
   // card is centred on the crosshair and flips to hug whichever edge it is near,
-  // which is safe because its width is bounded by `whitespace-nowrap` on short
-  // readouts.
+  // and `useKeepInside` pulls back in whatever a phone-width chart still leaves
+  // hanging over.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useKeepInside(cardRef);
   const { y, translateY } = tooltipVerticalAnchor(
     topmostY,
     PADDING.top,
     PLOT_BOTTOM,
   );
   const translateX =
-    cx < WIDTH * 0.2
+    cx < chartWidth * 0.2
       ? "-12px"
-      : cx > WIDTH * 0.8
+      : cx > chartWidth * 0.8
         ? "calc(-100% + 12px)"
         : "-50%";
 
   return (
     <div
+      ref={cardRef}
       // Never a hover target itself - it sits over the plot, and letting it take
       // the pointer would make it flicker as it steals its own trigger's hover.
       className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
       style={{
-        left: `${(cx / WIDTH) * 100}%`,
+        left: `${(cx / chartWidth) * 100}%`,
         top: `${(y / chartHeight) * 100}%`,
         transform: `translate(${translateX}, ${translateY})`,
       }}
@@ -1459,8 +1466,8 @@ function ProfileTooltip({
         // `whitespace-normal` against the card's own `nowrap`, and a width to
         // wrap inside. An `other`'s text comes off the uploaded file - the only
         // free text on this chart - and while the API caps it at 120 characters,
-        // 120 characters on one line is several times the plot's width and would
-        // be clipped by the scroll container the card sits in.
+        // 120 characters on one line is several times the plot's width, far past
+        // anything `useKeepInside` can pull back.
         <div className="mt-1.5 max-w-64 whitespace-normal border-t border-white/10 pt-1.5 text-sm">
           <span className={`${glyphFor(event.type).colorClass} font-semibold`}>
             {describeEvent(event)}

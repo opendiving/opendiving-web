@@ -247,11 +247,10 @@ export function DashboardPageFrame({
           already happened - and it's the harder-won number, since it needs dives that
           recorded pressures and an average depth.
 
-          Stacked, not side by side, and that was measured rather than assumed: each
-          plot needs 560px to keep twelve month labels legible, and a two-column grid
-          gives it 482px even on a widened page. Both charts clip, their axis text
-          halves, and the gas card's header doubles in height when its controls can no
-          longer share a line with its description. See DECISIONS.md. */}
+          Stacked, not side by side, and that was measured rather than assumed: a
+          two-column grid gives each plot 482px even on a widened page, where their
+          axis text halves and the gas card's header doubles in height when its
+          controls can no longer share a line with its description. See DECISIONS.md. */}
       {hasDives && <GasUseCard />}
       {hasDives && <DiveActivityCard />}
 
