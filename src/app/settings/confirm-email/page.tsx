@@ -92,7 +92,7 @@ function ConfirmEmailChangeContent() {
   // anyone who wants to leave sooner).
   useEffect(() => {
     if (state !== "success") return;
-    const timer = setTimeout(() => router.push("/settings"), 3000);
+    const timer = setTimeout(() => router.push("/settings/account"), 3000);
     return () => clearTimeout(timer);
   }, [state, router]);
 
@@ -194,7 +194,10 @@ function ConfirmStatus({
             )}
             .
           </p>
-          <Link href="/settings" className="underline hover:text-foreground">
+          <Link
+            href="/settings/account"
+            className="underline hover:text-foreground"
+          >
             Back to settings
           </Link>
         </>
@@ -207,7 +210,10 @@ function ConfirmStatus({
             We couldn&apos;t confirm your email
           </p>
           <p className="text-muted-foreground mb-6">{message}</p>
-          <Link href="/settings" className="underline hover:text-foreground">
+          <Link
+            href="/settings/account"
+            className="underline hover:text-foreground"
+          >
             Back to settings
           </Link>
         </>

@@ -32,6 +32,7 @@ import {
   GraduationCap,
   BookUser,
   Fish,
+  HardDrive,
   Shield,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -374,7 +375,18 @@ export function Header() {
                         itself. */}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/settings" className="flex items-center">
+                      <Link href="/data" className="flex items-center">
+                        <HardDrive className="mr-2 h-4 w-4" />
+                        Import and export
+                      </Link>
+                    </DropdownMenuItem>
+                    {/* Straight to the first section: `/settings` only redirects
+                        there, and is kept for the links in the API's emails. */}
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/settings/account"
+                        className="flex items-center"
+                      >
                         <Settings className="mr-2 h-4 w-4" />
                         Settings
                       </Link>

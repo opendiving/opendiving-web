@@ -17,7 +17,7 @@ import {
   ImportCheckInDetails,
   useImportCheckIn,
   type ImportCheckInChoices,
-} from "@/components/settings/import-check-in-details";
+} from "@/components/data/import-check-in-details";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
@@ -341,7 +341,7 @@ function PendingImport({
   );
 }
 
-// "Bring your logbook back" on the settings page, directly under the export card
+// "Bring your logbook back" on `/data`, directly under the export card
 // it is the other half of. The product's promise is that nothing in an account is
 // locked to this app; export makes that falsifiable and import is what closes the
 // loop, since a copy you cannot read back is a copy in name only.
@@ -432,11 +432,11 @@ export function DataImportCard() {
         details,
         portrait,
       );
-      // Only when a fact or the portrait changed: the check-in card on this page
-      // seeds from the signed-in user, and saving it from a stale copy would send
+      // Only when a fact or the portrait changed: the check-in cards and `/checkin`
+      // seed from the signed-in user, and a card saved from a stale copy would send
       // the imported facts back as nulls, and the portrait slot and "Adjust" read
-      // their digests from it. Not otherwise, since a refresh resets every mounted
-      // form seeded from that user.
+      // their digests from it. Not otherwise: a re-read is a request, and a new
+      // `user` for every consumer of the context, spent on nothing.
       if (checkInWasWritten(applied)) await refreshUser();
       setResult(applied);
       setPending(null);

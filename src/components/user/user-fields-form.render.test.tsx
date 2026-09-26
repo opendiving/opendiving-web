@@ -11,9 +11,9 @@ import { UserFieldsForm, UserFieldsSubmitButton } from "./user-fields-form";
 // on a cancelled crop. The picker's refusals are here too, because a picture the API
 // refuses after Save is a picture refused after the fields beside it have saved.
 
-// Hoisted and returned by identity, `user` included: the form resets itself from
-// `user` in an effect, and a mock rebuilding it per render resets it under every
-// click. See "The new-dive render test was in a loop with itself" in DECISIONS.md.
+// Hoisted and returned by identity, `user` included, as the real `AuthContext` keeps
+// one identity across renders. See "The new-dive render test was in a loop with
+// itself" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
   user: {
     uuid: "user-1",

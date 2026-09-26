@@ -7,8 +7,8 @@ import { todayIsoDate } from "@/lib/gear-service";
  * Every plain field of the signed-in diver's own record that a form here can edit,
  * in the order they are rendered.
  *
- * One list rather than a schema per surface: `/settings` shows them in three cards
- * and `/checkin` in three dialogs, and both are subsets of this. The bounds and the
+ * One list rather than a schema per surface: `/settings` shows them in cards and
+ * `/checkin` in dialogs, and both are subsets of this. The bounds and the
  * messages therefore exist once - `PATCH /user` is `extra="forbid"` with those
  * lengths declared, so an over-long value is a 422 rather than a truncation, and a
  * second copy of a bound is a second thing to keep in step with the column.

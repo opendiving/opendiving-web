@@ -394,9 +394,7 @@ a taken address, and the change applies only once the emailed link is confirmed.
 name but the new one.
 
 The field is always visible with one full-width "Send confirmation link" button — no edit toggle, no
-cancel — matching the Profile Information card beside it. Both cards use `flex flex-col h-full` /
-`flex flex-col flex-1` / `flex-1` so their action buttons sit at the same height whatever their
-field count.
+cancel — matching the Profile Information card above it.
 
 The link points at `app/settings/confirm-email/page.tsx`, a standalone centered card in
 `NO_CHROME_ROUTES` like `/auth/verify` and `/onboarding`. On success it calls `refreshUser()`,
@@ -415,8 +413,8 @@ and verifying on load while leaning on the backend's idempotent reuse of a used-
 token (`AuthenticationRequest.used_at` vs `invalidated_at`), which still lets automation sign in.
 That leniency remains, as defence in depth for double clicks.
 
-`/settings/confirm-email` auto-redirects to `/settings` 3 s after `"success"` (`setTimeout`, cleaned
-up on unmount) beside a "Back to settings" link; `/auth/verify` needs none, since
+`/settings/confirm-email` auto-redirects to `/settings/account` 3 s after `"success"` (`setTimeout`,
+cleaned up on unmount) beside a "Back to settings" link; `/auth/verify` needs none, since
 `router.replace("/dashboard")`/`"/onboarding"` follows `verifyEmailLink` directly.
 
 ## Magic-link pages: The button itself shouldn't show for a link that's already been used
@@ -1174,8 +1172,8 @@ real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two 
 `CertificationExpiryCard` is the twin of `ServiceDueCard`: headed "Renewals", it renders `null` when
 nothing needs renewing and when its fetch fails. Certification rows link to `/certifications`, where
 certifications are edited in dialogs and have no URL of their own; the dive-insurance row links to
-`/settings`, where the policy is entered, and sorts among them rather than after them, a lapsed
-policy stopping a dive at the desk as a lapsed card does. Filtering and ordering live in
+`/settings/check-in`, where the policy is entered, and sorts among them rather than after them, a
+lapsed policy stopping a dive at the desk as a lapsed card does. Filtering and ordering live in
 `certificationRenewals()` in `lib/certification.ts`, not the component, so "expired sorts above
 expiring soon" is tested without rendering.
 
@@ -4776,7 +4774,7 @@ restored: `app/privacy/page.tsx` (several enumerations), `app/terms/page.tsx`,
 `components/settings/delete-account-card.tsx` (card and `ConfirmDialog` `description`),
 `components/auth/restore-account-card.tsx`, `app/goodbye/page.tsx` (both arms),
 `app/auth/verify/page.tsx` (`purgeOn` and dateless branches),
-`components/settings/data-export-card.tsx`, `README.md`'s feature list, and
+`components/data/data-export-card.tsx`, `README.md`'s feature list, and
 `components/layout/landing-page.tsx`'s closing sentence. Docstrings and comments carry no counts —
 "a detail page", "the list pages", never "all four of which" — because a census goes stale on
 removal as readily as on addition. Regenerate the copy list rather than trusting this one;
@@ -5648,9 +5646,6 @@ a floor:
 git grep -niE "export|portab|species|coordinat|GPS|location reaches" -- src/app/privacy/
 ```
 
-`settings/page.tsx`'s "the four rows each" counts `DataExportCard`'s rows, not the sibling import
-card.
-
 ## The import picker mirrors the converter's formats, and everything else about them is tolerant
 
 `LOGBOOK_IMPORT_ACCEPT` is computed from `LOGBOOK_IMPORT_SOURCE_EXTENSIONS`, a
@@ -5793,9 +5788,10 @@ re-stamping `start_time` with `nowStartTime()` under a diver mid-edit.
 
 Two changes, both needed: the prefill effect is keyed on `user.uuid`, not the `user` object, and
 `AuthContext`'s `mergeUser` folds what a successful `PATCH /user` stored into the cached user with
-no request. `refreshUser` stays right for a settings card, where nothing is mid-edit. The suite pins
-the invariant: persisting a toggle never resets the form, re-runs the prefill or refetches the last
-dive; anything added to that dependency list must be a value, not an object.
+no request. `refreshUser` stays right for a settings card: `UserFieldsForm` repaints on its own
+fields' stored values, not on the `user` object, so a sibling card mid-edit keeps what is typed. The
+suite pins the invariant: persisting a toggle never resets the form, re-runs the prefill or
+refetches the last dive; anything added to that dependency list must be a value, not an object.
 
 The write is debounced and flushed on unmount, so three switches are one request and a
 flip-then-leave still saves. `SAVE_DEBOUNCE_MS` in the hook is the figure's only home.

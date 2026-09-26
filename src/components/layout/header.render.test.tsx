@@ -103,10 +103,21 @@ describe("the account menu's Admin entry", () => {
   });
 });
 
+describe("the account menu's Settings entry", () => {
+  it("links to the first section rather than through the redirect", async () => {
+    await openAccountMenu();
+
+    expect(screen.getByRole("menuitem", { name: /Settings/ })).toHaveAttribute(
+      "href",
+      "/settings/account",
+    );
+  });
+});
+
 describe("the account menu's grouping", () => {
   it("rules off the records from the account itself", async () => {
-    // Species is the last of the records a diver keeps; Settings is the first
-    // row that is about the account. Exactly one rule between them.
+    // Species is the last of the records a diver keeps; Import and export is the
+    // first row that is about the account. Exactly one rule between them.
     const menu = await openAccountMenu();
 
     const rows = Array.from(
@@ -121,6 +132,11 @@ describe("the account menu's grouping", () => {
       rows.indexOf("Species"),
       rows.indexOf("Settings") + 1,
     );
-    expect(speciesToSettings).toEqual(["Species", "---", "Settings"]);
+    expect(speciesToSettings).toEqual([
+      "Species",
+      "---",
+      "Import and export",
+      "Settings",
+    ]);
   });
 });

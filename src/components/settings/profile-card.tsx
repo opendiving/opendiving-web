@@ -15,7 +15,7 @@ import {
 } from "@/components/user/user-fields-form";
 
 // Name, username and the profile picture, on the same form module as the check-in
-// details beside it and as the dialogs `/checkin` opens - so the bounds, the messages
+// details cards and as the dialogs `/checkin` opens - so the bounds, the messages
 // and the "" -> null rule are the ones in `validations/user-fields.ts` and not a second
 // copy of them, and the picture saves with the fields rather than on a Save of its own.
 //
@@ -23,7 +23,7 @@ import {
 // which is `EmailChangeCard`'s own flow.
 export function ProfileCard() {
   return (
-    <Card className="flex flex-col h-full">
+    <Card>
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
           <User className="h-5 w-5" />
@@ -33,7 +33,7 @@ export function ProfileCard() {
           Update your personal information and account details.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col flex-1">
+      <CardContent>
         <UserFieldsForm
           groups={[{ fields: ["name", "username"] }]}
           picture="avatar"

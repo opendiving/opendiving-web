@@ -180,11 +180,11 @@ const destinations = files
       ),
   );
 
-// Two destinations draw no frame, each for a reason of its own rather than by oversight:
-// `/settings` renders a spinner on its auth bootstrap and waits on no data of its own, so
-// a frame there would draw grey where none is drawn, and `/dives/new` renders its real
-// form as soon as that same bootstrap settles.
-const NO_FRAME = ["/settings", "/dives/new"];
+// These destinations draw no frame, each for a reason of its own rather than by oversight:
+// the `/settings` sections and `/data` render a spinner on their auth bootstrap and wait
+// on no data of their own, so a frame there would draw grey where none is drawn, and
+// `/dives/new` renders its real form as soon as that same bootstrap settles.
+const NO_FRAME = ["/settings", "/data", "/dives/new"];
 
 // The admin queue draws one, and it is checked inside `app/admin` because nothing out
 // here may import that section (`lib/admin-isolation.test.ts`).
