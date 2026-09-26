@@ -70,11 +70,20 @@ describe("manifest", () => {
     },
   );
 
-  it("ships an opaque 180px apple-icon", () => {
-    const png = readPng("src/app/apple-icon.png");
+  it.each(["src/app/apple-icon.png", "public/apple-touch-icon.png"])(
+    "ships %s as an opaque 180px PNG",
+    (file) => {
+      const png = readPng(file);
 
-    expect([png.width, png.height]).toEqual([180, 180]);
-    expect(png.colourType).toBe(2);
-    expect(png.chunks).not.toContain("tRNS");
+      expect([png.width, png.height]).toEqual([180, 180]);
+      expect(png.colourType).toBe(2);
+      expect(png.chunks).not.toContain("tRNS");
+    },
+  );
+
+  it("serves the same tile at the root /apple-touch-icon.png", () => {
+    expect(readFileSync("public/apple-touch-icon.png")).toEqual(
+      readFileSync("src/app/apple-icon.png"),
+    );
   });
 });
