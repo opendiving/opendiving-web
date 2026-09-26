@@ -58,7 +58,7 @@ export function EmailChangeCard({ currentEmail }: EmailChangeCardProps) {
   };
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card>
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
           <Mail className="h-5 w-5" />
@@ -68,12 +68,9 @@ export function EmailChangeCard({ currentEmail }: EmailChangeCardProps) {
           Changing your email requires confirming the new address first.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col flex-1">
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col flex-1"
-        >
-          <div className="space-y-4 flex-1">
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="currentEmail">Current email</Label>
               <Input

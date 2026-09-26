@@ -394,9 +394,7 @@ a taken address, and the change applies only once the emailed link is confirmed.
 name but the new one.
 
 The field is always visible with one full-width "Send confirmation link" button — no edit toggle, no
-cancel — matching the Profile Information card beside it. Both cards use `flex flex-col h-full` /
-`flex flex-col flex-1` / `flex-1` so their action buttons sit at the same height whatever their
-field count.
+cancel — matching the Profile Information card above it.
 
 The link points at `app/settings/confirm-email/page.tsx`, a standalone centered card in
 `NO_CHROME_ROUTES` like `/auth/verify` and `/onboarding`. On success it calls `refreshUser()`,

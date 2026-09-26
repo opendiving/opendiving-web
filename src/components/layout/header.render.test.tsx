@@ -64,9 +64,9 @@ describe("the account menu's Admin entry", () => {
     );
   });
 
-  it("puts it beneath the other account destinations", async () => {
+  it("puts it directly beneath Settings", async () => {
     // The entry is the only way into the section, and the account menu is where
-    // an operator goes looking - the last of the rows about the account itself.
+    // an operator goes looking - one row below the other account destination.
     stable.auth.user = diver({ is_superuser: true });
 
     const menu = await openAccountMenu();
@@ -74,9 +74,7 @@ describe("the account menu's Admin entry", () => {
     const labels = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(
       (item) => item.textContent,
     );
-    expect(
-      labels.slice(labels.indexOf("Settings"), labels.indexOf("Admin") + 1),
-    ).toEqual(["Settings", "Import and export", "Admin"]);
+    expect(labels.indexOf("Admin")).toBe(labels.indexOf("Settings") + 1);
   });
 
   it("does not offer it to an ordinary diver", async () => {
@@ -105,10 +103,21 @@ describe("the account menu's Admin entry", () => {
   });
 });
 
+describe("the account menu's Settings entry", () => {
+  it("links to the first section rather than through the redirect", async () => {
+    await openAccountMenu();
+
+    expect(screen.getByRole("menuitem", { name: /Settings/ })).toHaveAttribute(
+      "href",
+      "/settings/account",
+    );
+  });
+});
+
 describe("the account menu's grouping", () => {
   it("rules off the records from the account itself", async () => {
-    // Species is the last of the records a diver keeps; Settings is the first
-    // row that is about the account. Exactly one rule between them.
+    // Species is the last of the records a diver keeps; Import and export is the
+    // first row that is about the account. Exactly one rule between them.
     const menu = await openAccountMenu();
 
     const rows = Array.from(
@@ -123,6 +132,11 @@ describe("the account menu's grouping", () => {
       rows.indexOf("Species"),
       rows.indexOf("Settings") + 1,
     );
-    expect(speciesToSettings).toEqual(["Species", "---", "Settings"]);
+    expect(speciesToSettings).toEqual([
+      "Species",
+      "---",
+      "Import and export",
+      "Settings",
+    ]);
   });
 });

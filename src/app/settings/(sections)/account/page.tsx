@@ -11,10 +11,8 @@ export default function AccountSettingsPage() {
 
   return (
     <>
-      <div className="grid gap-8 xl:grid-cols-2">
-        <ProfileCard />
-        <EmailChangeCard currentEmail={user.email} />
-      </div>
+      <ProfileCard />
+      <EmailChangeCard currentEmail={user.email} />
       <DeleteAccountCard username={user.username} />
     </>
   );
