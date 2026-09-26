@@ -63,10 +63,16 @@ export function SettingsNav() {
   const hasScrolled = useRef(false);
 
   // The entry clicked, shown as selected from the click rather than from whenever the
-  // route arrives, so the pill and the row move together straight away. It lapses by
-  // itself once the pathname moves on, whichever way it goes.
-  const [clicked, setClicked] = useState<{ href: string; from: string }>();
-  const shown = clicked?.from === pathname ? clicked.href : pathname;
+  // route arrives, so the pill and the row move together straight away. Any change of
+  // pathname ends it, a return to the page it was clicked on included - which is what
+  // a swipe back is - so it is cleared during render, on the change itself.
+  const [clicked, setClicked] = useState<string>();
+  const [pathnameSeen, setPathnameSeen] = useState(pathname);
+  if (pathname !== pathnameSeen) {
+    setPathnameSeen(pathname);
+    setClicked(undefined);
+  }
+  const shown = clicked ?? pathname;
 
   // On a phone the row is wider than the screen, and a section further along it would
   // otherwise open with its own entry out of sight. The row is scrolled rather than the
@@ -105,7 +111,7 @@ export function SettingsNav() {
     // A modified click opens a tab and leaves this page where it is.
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
       return;
-    if (href !== pathname) setClicked({ href, from: pathname });
+    if (href !== pathname) setClicked(href);
   };
 
   // An instance anyone may register on has nobody to invite. Hidden only once the
