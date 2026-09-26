@@ -4,11 +4,20 @@ import type { DivingFigures } from "@/lib/checkin";
 import { todayIsoDate } from "@/lib/gear-service";
 
 /**
+ * The count's ceiling on `POST /user/checkin-link`: a check-in link keeps the figures
+ * it is made with, in a Postgres `integer` column.
+ */
+export const SHARED_DIVE_COUNT_MAX = 2 ** 31 - 1;
+
+/**
  * The diving figures as the correction dialog holds them.
  *
- * Nothing here is ever sent anywhere: these three are what gets *printed* on one
- * check-in, not a record. So there are no column bounds to mirror - the numbers are
- * held to what a dive log can mean, and the date to a day that has happened.
+ * These three are what gets *printed* on one check-in, not a record: the profile
+ * stores none of them. The one place they are sent is a check-in link made while the
+ * correction stands, so the count mirrors that request's one column bound, and
+ * otherwise the numbers are held to what a dive log can mean and the date to a day
+ * that has happened - a bound the API does not share, since a logged dive can be
+ * future-dated.
  *
  * Metric depth, `null` for a cleared number and `""` for a cleared date, both of them
  * the sentinels the components on the other side already speak (`UnitNumberInput`'s
@@ -20,6 +29,7 @@ export const divingFiguresSchema = z.object({
     .number()
     .int("Use a whole number of dives")
     .min(0, "Dives logged cannot be negative")
+    .max(SHARED_DIVE_COUNT_MAX, "That is more dives than a link can hold")
     .nullable(),
   // `min(0)` rather than `positive()`, which every depth the dive form takes uses:
   // `/user/dive-stats` answers a diver with nothing logged with zeroes rather than a

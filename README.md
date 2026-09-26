@@ -75,7 +75,8 @@ one.
 - **Check-in** — the details a dive shop asks for at the desk, kept once: a portrait cropped like a
   passport photo, date of birth, phone, an emergency contact and your dive insurance. One page
   gathers them with your c-cards, dive count and last dive, and prints — your browser's save-as-PDF
-  is the copy for a desk with no signal.
+  is the copy for a desk with no signal — or shares as a link and a QR code the desk opens on its
+  own phone, for a day or until you revoke it.
 - **Courses** — the training itself, with the agency, instructor and shop: link the dives you did on
   it and the cards it issued, so a course is one record instead of a shape you have to remember.
 - **Contacts** — the dive centers, schools, shops, clubs and places you stayed, each kept once with

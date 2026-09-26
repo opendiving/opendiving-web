@@ -21,7 +21,8 @@ import { Fish, Anchor, ArrowRight, HardDriveDownload } from "lucide-react";
 // the page is served by whoever is running the instance and they are the ones it
 // makes a liar of. That rules out visitor counts (there is no central service to
 // count), app-store badges (there are no apps), and a community feature set
-// (there is no sharing yet). What is left is what the log actually does, plus
+// (the one thing shared is a check-in page, for a day, through a link its own
+// diver makes). What is left is what the log actually does, plus
 // what it deliberately doesn't - the "no mobile apps" and "still to come" lines
 // below are load-bearing, not modesty.
 const SOURCE_URL = "https://github.com/opendiving/opendiving-web";
@@ -268,7 +269,8 @@ export function LandingPage() {
             dive centers and places you stayed are kept once and picked from a
             list, gear carries its own service schedule with due-soon reminders,
             and your c-cards sit alongside them &mdash; on one page with the
-            details a dive shop asks for, to print and hand over at the desk.
+            details a dive shop asks for, to print and hand over at the desk or
+            share as a link.
           </p>
         </div>
       </section>

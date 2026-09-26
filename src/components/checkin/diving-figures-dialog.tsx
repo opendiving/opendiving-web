@@ -5,9 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Printer, RotateCcw } from "lucide-react";
 
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
-import { useUnits } from "@/hooks/useUnits";
 import { type DivingFigures } from "@/lib/checkin";
-import { unitLabel } from "@/lib/units";
+import { unitLabel, type UnitSystem } from "@/lib/units";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   divingFiguresFromForm,
@@ -39,6 +38,8 @@ import { Input } from "@/components/ui/input";
 export interface DivingFiguresDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The system the depth box shows and takes, the diver's own. */
+  units: UnitSystem;
   /** What the log itself says - where a fresh dialog opens, and what "Use logged figures" returns to. */
   logged: DivingFigures;
   /** The diver's correction, or null while the summary is printing the log's own figures. */
@@ -48,8 +49,9 @@ export interface DivingFiguresDialogProps {
 }
 
 /**
- * Corrects the three diving figures for the summary about to be printed, and for
- * nothing else.
+ * Corrects the three diving figures for the summary about to be printed, and for a
+ * check-in link made from it while the correction stands - which keeps the figures it
+ * was made with for its day - and for nothing else.
  *
  * Deliberately not a save. A diver's logged dives are the ones they entered here, and
  * a career predating the app - or a fortnight logged on paper - makes the honest
@@ -62,12 +64,11 @@ export interface DivingFiguresDialogProps {
 export function DivingFiguresDialog({
   open,
   onOpenChange,
+  units,
   logged,
   corrected,
   onChange,
 }: DivingFiguresDialogProps) {
-  const units = useUnits();
-
   const form = useForm<DivingFiguresInput>({
     resolver: zodResolver(divingFiguresSchema),
     defaultValues: divingFiguresToForm(corrected ?? logged),
@@ -94,8 +95,9 @@ export function DivingFiguresDialog({
           <DialogTitle>Diving</DialogTitle>
           <DialogDescription>
             What your log holds, which may not be everything you have dived.
-            Corrections here print on this summary only &mdash; nothing is saved
-            to your log, and reloading the page brings the logged figures back.
+            Corrections here print on this summary and go with a link you share
+            from it &mdash; nothing is saved to your log, and reloading the page
+            brings the logged figures back.
           </DialogDescription>
         </DialogHeader>
 

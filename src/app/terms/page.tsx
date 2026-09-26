@@ -223,7 +223,8 @@ export default async function TermsPage() {
               </li>
               <li>
                 Keep the details a dive shop asks for at the desk, and print a
-                summary of them to hand over
+                summary of them to hand over, or share it as a link that works
+                for a day
               </li>
               <li>
                 Note the species you saw, from public registers of marine life
@@ -233,11 +234,13 @@ export default async function TermsPage() {
               What it does not do is worth stating, because a page like this one
               usually claims otherwise: there are no public profiles, no feeds,
               no forums, no comments, no ratings, no dive buddies and no photo
-              sharing. Nothing you enter is visible to any other account on this
-              copy. The one thing this copy does show one person to another is
-              an invitation, which is about your name rather than about anything
-              you entered; section 5 says exactly what that is, and what follows
-              from the rest.
+              sharing. An account on this copy gives its holder no view of
+              anything you enter. This copy shows one person to another in two
+              cases only: an invitation, which is about your name rather than
+              about anything you entered, and a check-in link you make, which
+              shows your check-in page to whoever holds it, account or not;
+              section 5 says exactly what each is, and what follows from the
+              rest.
             </p>
             <p className="text-foreground mb-4">
               Whether this copy costs anything, who may register for it, and how
@@ -378,12 +381,13 @@ export default async function TermsPage() {
               technically needed to run the Service for you &mdash; to store
               your entries, show them back to you, and include them in exports
               you ask for. Your entries are not published, shared with other
-              users, or shown to anyone else by this software. Printing your
-              check-in summary and handing it to a dive shop is you showing your
-              own entries to someone, not this copy showing them, and the
-              permission above is unchanged by it. The next paragraph is the one
-              thing this copy does show one person to another, and it is not an
-              entry.
+              users, or shown to anyone else by this software, except through a
+              check-in link you make. Printing your check-in summary and handing
+              it to a dive shop is you showing your own entries to someone, not
+              this copy showing them, and the permission above is unchanged by
+              it. The next two paragraphs are the two things this copy does show
+              one person to another: an invitation, which is not an entry, and a
+              check-in link, which is.
             </p>
             <p className="text-foreground mb-4">
               Where this copy is invite-only and you invite somebody to it, you
@@ -397,13 +401,24 @@ export default async function TermsPage() {
               its own register.
             </p>
             <p className="text-foreground mb-4">
+              Where you make a check-in link, you grant the operator the further
+              permission that act needs, and only that: to show your check-in
+              page &mdash; the details, figures and card fronts it prints
+              &mdash; to whoever holds the link, until it expires a day after
+              you made it or you revoke it or make another. That is this copy
+              showing your entries to someone, at your request, and nothing else
+              you have logged is involved. The privacy policy&rsquo;s section
+              4.9 sets out the same in its own register.
+            </p>
+            <p className="text-foreground mb-4">
               That permission is deliberately no wider than what running the
               Service takes, and the OpenDiving project holds itself to keeping
               it that way: if a version of the software ever adds a way to show
               what you entered to someone else, that feature arrives with a
               permission of its own written here and a section of its own on the
-              privacy page, rather than leaning on this one. The invitation
-              grant above is that rule being kept, not an exception to it.
+              privacy page, rather than leaning on this one. The invitation and
+              check-in link grants above are that rule being kept, not
+              exceptions to it.
             </p>
           </section>
 

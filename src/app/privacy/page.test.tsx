@@ -18,7 +18,7 @@ import { PROJECT_OPERATOR } from "@/lib/operator";
 // The last test in this block is what holds that - a sentence claiming no control
 // exists is the specific thing this section may no longer say.
 //
-// This is also where the section's conditional half is pinned. §4.9 and the Google
+// This is also where the section's conditional half is pinned. §4.10 and the Google
 // storage key exist only where an instance has Google sign-in configured, so every
 // count here has two correct answers rather than one, and an instance that has not
 // turned Google on must not read as though it had.
@@ -198,7 +198,30 @@ describe.each([
     const uses = listAfterHeading(/3\. How We Use Your Information/).join(" ");
     expect(uses).toMatch(/signed-in devices/i);
     expect(uses).toMatch(/account security events/i);
+    // And the one use that shows your entries to somebody else, which the closure
+    // below would otherwise deny.
+    expect(uses).toMatch(/whoever holds a check-in link you made/i);
     expect(screen.getByText(/And nothing else\./)).toBeInTheDocument();
+  });
+
+  // Terms §5 promises any feature that shows entries to someone else a section of
+  // its own here, and the sentences in §4.1, §4.2 and §6.1 that rule sharing out have
+  // to name it rather than stand as they were.
+  it("gives the check-in link a section of its own, and names it where sharing is ruled out", async () => {
+    await renderPage({ google });
+
+    const heading = screen.getByText(/4\.9 Check-in Links/);
+    expect(heading.tagName).toBe("H3");
+    for (const pointer of [
+      /no setting that makes any of it public/,
+      /There are two exceptions\./,
+      /nothing is public or shared, so there is\s+nothing to switch off/,
+    ]) {
+      expect(screen.getByText(pointer)).toHaveTextContent(/section 4\.9/i);
+    }
+    expect(screen.getByText(/nothing to switch off/)).toHaveTextContent(
+      /Revoke/,
+    );
   });
 
   // §6.1 is the list of what Settings can do without asking anyone, and the
@@ -436,6 +459,13 @@ describe.each([
     // And the one that is deliberately never swept, because it belongs to two
     // accounts by then.
     expect(invitations).toHaveTextContent(/was used is not swept/i);
+    // A check-in link, swept hourly once it has stopped working, whichever way it
+    // stopped.
+    expect(
+      screen.getByText(/is deleted by a sweep that runs\s+every hour/i),
+    ).toHaveTextContent(
+      /check-in link.*24 hours after you made it,\s+or sooner if you revoked it or made another/i,
+    );
     // The honest partial claim: an address the account moved off is not reached
     // by the deletion and is bounded by the sweep alone.
     expect(
@@ -459,38 +489,39 @@ describe("the Google half of the page", () => {
   // Google at all - no Google subsection, no numbering gap where it would have
   // been, and no link off to Google's own policy.
   //
-  // These two assertions moved when the invitations disclosure took §4.8 and
-  // Google inherited §4.9, and *rewriting* them was the point rather than
-  // renumbering them: after the shift both of the old ones would have passed
-  // while pinning nothing at all. With Google unconfigured there is still no
-  // "4.9" heading, and "4.8" is no longer Google's, so a `queryByText(/4\.8
-  // Signing In with Google/)` returning null would have said only that a
-  // heading which no longer exists under that number does not exist. What is
-  // pinned now is the pair: §4.8 is the invitations section and is always here,
-  // and Google is §4.9 and is here only when it is configured.
-  it("ends section 4 at 4.8 with no gap when Google is unconfigured", async () => {
+  // These assertions are rewritten, not renumbered, each time an unconditional
+  // section arrives before Google: after a shift the old ones would pass while
+  // pinning nothing, since a query for Google under its old number finds nothing
+  // whether or not the page is right. What is pinned is the set: §4.8 is the
+  // invitations section and §4.9 the check-in links, both always here, and Google
+  // is §4.10 and is here only when it is configured.
+  it("ends section 4 at 4.9 with no gap when Google is unconfigured", async () => {
     await renderPage({ google: false });
 
     expect(screen.getByText(/4\.7 Legal Requirements/)).toBeInTheDocument();
     expect(
       screen.getByText(/4\.8 Inviting Someone to This Copy/),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/4\.9 Signing In with Google/)).toBeNull();
-    expect(screen.queryByText(/^4\.10 /)).toBeNull();
+    expect(screen.getByText(/4\.9 Check-in Links/)).toBeInTheDocument();
+    expect(screen.queryByText(/4\.10 Signing In with Google/)).toBeNull();
+    expect(screen.queryByText(/^4\.1[0-9] /)).toBeNull();
     expect(document.querySelector('a[href*="policies.google.com"]')).toBeNull();
     expect(storageEntries().some((entry) => entry.includes("google"))).toBe(
       false,
     );
   });
 
-  it("numbers Google 4.9, after the invitations section, where it is configured", async () => {
+  it("numbers Google 4.10, after the check-in links section, where it is configured", async () => {
     await renderPage({ google: true });
 
     expect(
       screen.getByText(/4\.8 Inviting Someone to This Copy/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/4\.9 Signing In with Google/)).toBeInTheDocument();
-    expect(screen.queryByText(/4\.8 Signing In with Google/)).toBeNull();
+    expect(screen.getByText(/4\.9 Check-in Links/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/4\.10 Signing In with Google/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/4\.9 Signing In with Google/)).toBeNull();
   });
 
   // §10.4 used to name Google as one of "two outside parties [that] act on their

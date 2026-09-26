@@ -4033,11 +4033,12 @@ questions: whether there is a picture, which version, and what to append as `?v=
 `*_original_sha256` does the same for the original, and is what offers "Adjust". There is
 deliberately no URL: the bytes are owner-only and the access token lives in memory
 (`lib/api/client.ts`), so an `<img src>` could never load them. `UserAvatar` and `PortraitImage`
-fetch through `hooks/useAuthedBlobUrl.ts` and render from an object URL. Radix's `AvatarFallback`
-renders until `AvatarImage` has loaded, so in-flight, failed and no-picture are one state drawn as
-initials, with no broken-image glyph. Staleness is handled by the URL: `?v={sha}` changes with the
-picture, and after a save the form calls `refreshUser()`, which repaints every mounted picture in
-the same paint.
+fetch through `hooks/useAuthedBlobUrl.ts` and render from an object URL. The portrait's one
+`<img src>` is a check-in link's, at `/checkin/{token}/portrait`, where the token in the path is the
+credential. Radix's `AvatarFallback` renders until `AvatarImage` has loaded, so in-flight, failed
+and no-picture are one state drawn as initials, with no broken-image glyph. Staleness is handled by
+the URL: `?v={sha}` changes with the picture, and after a save the form calls `refreshUser()`, which
+repaints every mounted picture in the same paint.
 
 ## The crop dialog's three traps
 
@@ -4289,7 +4290,7 @@ page, where `app/privacy/page.test.tsx` pins it, not here.
 `components/layout/landing-page.tsx` makes the claim and it holds: the software ships no tracking or
 analytics technology — not disabled, absent, with no such dependency in the build. Sign-in and map
 functionality that contacts a third party is function, not tracking, and each is disclosed on
-`/privacy` rather than denied; Google sign-in on a Google-enabled instance is disclosed in §4.9.
+`/privacy` rather than denied; Google sign-in on a Google-enabled instance is disclosed in §4.10.
 
 §10 does not claim "no third-party cookies". The app sets none, but the operator picks the tile
 provider through `MAP_TILE_URL`, and that provider's servers answer the image requests §4.4
@@ -4342,15 +4343,17 @@ passes. A shorter list is not a stronger guarantee.
 ## Privacy page: The numbering in §4 is load-bearing, and conditional sections sit last
 
 This file pins privacy sections by number and by quoted content — §4.4 map tiles, §4.5 geocoder,
-§4.6 species cache, §4.7 Legal Requirements, §4.8 invitations, §4.9 Google sign-in — so a reword at
-the right number falsifies a pin silently. A stale privacy page is worse than a vague one.
+§4.6 species cache, §4.7 Legal Requirements, §4.8 invitations, §4.9 check-in links, §4.10 Google
+sign-in — so a reword at the right number falsifies a pin silently. A stale privacy page is worse
+than a vague one.
 
-Conditional sections sit last. §4.9 exists only when `GOOGLE_CLIENT_ID` is set, so its absence
+Conditional sections sit last. §4.10 exists only when `GOOGLE_CLIENT_ID` is set, so its absence
 leaves no gap. The invitations disclosure is unconditional — `REGISTRATION_MODE` flips with a
 restart, and a section that came and went would change under a reader for no stated reason — so it
-holds a fixed number and hedges in prose ("where this copy is invite-only"). `page.test.tsx` asserts
-§4.8 always present and §4.9 present only when configured. `git grep '4\.8'` misses the page's and
-`lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.[89]'`.
+holds a fixed number and hedges in prose ("where this copy is invite-only"); the check-in links
+section is unconditional because every copy offers them. `page.test.tsx` asserts §4.8 and §4.9
+always present and §4.10 present only when configured. `git grep '4\.10'` misses the page's and
+`lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.(9|10)'`.
 
 ## The ICO's `localStorage` suggestion, read and answered rather than passed over
 
@@ -6756,15 +6759,29 @@ agency-issued. A PDF card prints as a placeholder, never rasterised.
 Printing is the browser's, through Tailwind's `print:` variant on the chrome and the page's own
 controls — no PDF library, no `@media print` block. Handing that print to a shop is the diver
 showing their own entries to someone, not the software doing it, so terms §5's grant ("store your
-entries, show them back to you") is unchanged by it.
+entries, show them back to you") is unchanged by it. A check-in link is the software doing it, which
+is why it has a grant of its own in terms §5 and a section of its own, privacy §4.9.
 
-## The diving figures are corrected for one printout and stored nowhere
+## The diving figures are corrected for one printout, and stored only on a link made from it
 
 `/checkin` lets a diver retype the dive count, the max depth and the last dive before printing, and
 holds the correction in component state for that visit only. The reasoning is in
-`DivingFiguresDialog`'s docstring; what it cannot hold is the consequence for the other repo — there
-is no column for this in `opendiving-api` and no request behind the dialog, deliberately, so a
-schema change is not the way to "finish" the feature.
+`DivingFiguresDialog`'s docstring; what it cannot hold is the consequence for the other repo — the
+profile has no column for this and the dialog makes no request, deliberately, so a schema change is
+not the way to "finish" the feature. The one request that carries the figures is a check-in link's
+mint, which sends what the page shows, corrected or logged, and the link row keeps them for its day.
+
+## A check-in link draws the same frame, read-only, with its pictures at the token routes
+
+`/checkin/[token]` is a Server Component only to carry `robots: { index: false }`, which
+`WEB_NOINDEX` cannot give one route. `SharedCheckInPage` never calls `useAuthGuard` and reads the
+summary with `fetch` and `credentials: "omit"`. It draws `CheckInPageFrame` with `link` set: no edit
+control, dialog or `EmptyNote`, empty sections hidden rather than print-hidden, and the portrait and
+card fronts as plain `<img>`s at `/checkin/{token}/…` — so a printed field added to the frame
+reaches both pages. The QR code is `qrcode` (MIT), drawn from `QRCode.create(url).modules` as React
+`<rect>`s because `react/no-danger` rules out its SVG string; nothing leaves the page to draw it.
+The API keeps only a hash of the token, so a later visit shows the expiry and Revoke, and Share
+makes a new link.
 
 ## One form module for every field of the diver's own record
 

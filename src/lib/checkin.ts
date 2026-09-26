@@ -2,6 +2,24 @@ import type { UserDiveStats } from "@/lib/api/dive-stats";
 import { splitStartTime } from "@/lib/date-time";
 
 /**
+ * What the summary prints about the diver, named as `User` names it. The signed-in
+ * page hands over the session's own record and a shared link's page the summary the
+ * link answers with, so both are this shape and neither is the other.
+ */
+export interface CheckInDiver {
+  name: string;
+  portrait_sha256?: string | null;
+  date_of_birth?: string | null;
+  phone?: string | null;
+  insurance_provider?: string | null;
+  insurance_policy_number?: string | null;
+  insurance_expires_on?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  emergency_contact_relationship?: string | null;
+}
+
+/**
  * The three figures the summary's "Diving" section prints.
  *
  * `maxDepth` is metric, like every depth this app holds outside `UnitNumberInput`.
@@ -28,6 +46,29 @@ export function loggedDivingFigures(
     lastDiveOn: lastDiveAt
       ? splitStartTime(lastDiveAt).localDateTime.slice(0, 10)
       : null,
+  };
+}
+
+/** The three as `POST /user/checkin-link` takes them and `GET /checkin/{token}` answers. */
+export interface DivingFiguresWire {
+  total_dives: number | null;
+  max_depth: number | null;
+  last_dive_on: string | null;
+}
+
+export function divingFiguresToWire(figures: DivingFigures): DivingFiguresWire {
+  return {
+    total_dives: figures.totalDives,
+    max_depth: figures.maxDepth,
+    last_dive_on: figures.lastDiveOn,
+  };
+}
+
+export function divingFiguresFromWire(wire: DivingFiguresWire): DivingFigures {
+  return {
+    totalDives: wire.total_dives,
+    maxDepth: wire.max_depth,
+    lastDiveOn: wire.last_dive_on,
   };
 }
 

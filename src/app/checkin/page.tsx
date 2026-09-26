@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useCheckinLink } from "@/hooks/useCheckinLink";
+import { useUnits } from "@/hooks/useUnits";
 import { CheckInPageFrame } from "@/components/checkin/checkin-page-frame";
 import {
   fetchAllCertifications,
@@ -15,9 +17,11 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The summary a diver hands to a dive shop. `CheckInPageFrame` draws it; this reads
 // what the page does not already hold, the profile itself arriving with the
-// signed-in user.
+// signed-in user, so the name is on screen at the click without waiting on anything
+// fetched here.
 export default function CheckInPage() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
+  const units = useUnits();
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stats, setStats] = useState<UserDiveStats | null>(null);
@@ -36,6 +40,7 @@ export default function CheckInPage() {
   // the data hooks do deliberately - a dive logged elsewhere has already made these
   // three figures stale.
   const userUuid = user?.uuid;
+  const sharing = useCheckinLink(!!userUuid);
   useEffect(() => {
     if (!userUuid) return;
 
@@ -119,6 +124,8 @@ export default function CheckInPage() {
 
   return (
     <CheckInPageFrame
+      diver={user}
+      units={units}
       certifications={certifications}
       contactNames={contactNames}
       stats={stats}
@@ -126,6 +133,7 @@ export default function CheckInPage() {
       isLoading={isSummaryLoading}
       loadFailed={loadFailed}
       onCertificationsChanged={refreshCertifications}
+      sharing={sharing}
       onRetry={() => {
         setIsSummaryLoading(true);
         setLoadFailed(false);

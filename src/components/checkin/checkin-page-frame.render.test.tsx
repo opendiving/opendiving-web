@@ -5,6 +5,9 @@ import { CheckInPageFrame } from "./checkin-page-frame";
 import type { User } from "@/lib/api/auth";
 import type { Certification } from "@/lib/api/certifications";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
+import type { SharedCheckInCertification } from "@/lib/api/checkin-links";
+import { API_BASE_URL } from "@/lib/api-base";
+import type { CheckinLinkControls } from "@/hooks/useCheckinLink";
 
 // The summary is the thing a diver hands across a desk, so what a render can reach is
 // what is printed and in what order - and, as much as it matters here, what is *not*
@@ -58,14 +61,15 @@ const updateProfile = vi.mocked(authAPI.updateProfile);
 
 // Both the portrait and a card thumbnail fetch their bytes through this, the endpoints
 // being owner-only. Answering with a URL is what puts an `<img>` on the page.
-vi.mock("@/hooks/useAuthedBlobUrl", () => ({
-  useAuthedBlobUrl: (fetchBlob: unknown) => ({
+const blobUrl = vi.hoisted(() =>
+  vi.fn((fetchBlob: unknown) => ({
     url: fetchBlob ? "blob:card" : null,
     isLoading: false,
     hasError: false,
     error: null,
-  }),
-}));
+  })),
+);
+vi.mock("@/hooks/useAuthedBlobUrl", () => ({ useAuthedBlobUrl: blobUrl }));
 
 const certification = (over: Partial<Certification> = {}): Certification => ({
   uuid: "cert-1",
@@ -85,8 +89,14 @@ const stats: UserDiveStats = {
   created_at: "2026-01-01T00:00:00+00:00",
 };
 
-const loaded = (over: Parameters<typeof CheckInPageFrame>[0] = {}) => (
-  <CheckInPageFrame isLoading={false} stats={stats} {...over} />
+type FrameProps = Parameters<typeof CheckInPageFrame>[0];
+
+// What the signed-in page hands over from the session, read at render time so a test
+// that changes the diver first draws the change.
+const session = () => ({ diver: auth.user, units: auth.user.units });
+
+const loaded = (over: Partial<FrameProps> = {}) => (
+  <CheckInPageFrame {...session()} isLoading={false} stats={stats} {...over} />
 );
 
 // Everything a desk asks for. Most tests here are about something other than an empty
@@ -417,7 +427,7 @@ describe("what the print leaves behind", () => {
 
 describe("before the requests land", () => {
   it("puts each placeholder card where its row will land", () => {
-    const { container } = render(<CheckInPageFrame />);
+    const { container } = render(<CheckInPageFrame {...session()} />);
 
     // jsdom lays nothing out, so what is checkable is that the placeholder carries
     // the same geometry as `CertificationSummary` - the image slot, on a line of its
@@ -440,7 +450,7 @@ describe("before the requests land", () => {
   });
 
   it("holds the shape with placeholders, and announces the regions as busy", () => {
-    const { container } = render(<CheckInPageFrame />);
+    const { container } = render(<CheckInPageFrame {...session()} />);
 
     expect(container.querySelector("[aria-busy='true']")).not.toBeNull();
     const bars = container.querySelectorAll(".animate-skeleton");
@@ -450,7 +460,7 @@ describe("before the requests land", () => {
 
   it("draws the profile straight away, it having arrived with the session", () => {
     Object.assign(auth.user, { phone: "+44 7700 900000" });
-    render(<CheckInPageFrame />);
+    render(<CheckInPageFrame {...session()} />);
 
     expect(screen.getByText("Sam Reef")).toBeInTheDocument();
     expect(screen.getByText("+44 7700 900000")).toBeInTheDocument();
@@ -868,5 +878,270 @@ describe("correcting the diving figures", () => {
     expect(screen.getByText(/nothing was saved to your log/i)).toHaveClass(
       "print:hidden",
     );
+  });
+});
+
+describe("sharing it as a link", () => {
+  const controls = (
+    over: Partial<CheckinLinkControls> = {},
+  ): CheckinLinkControls => ({
+    live: null,
+    busy: false,
+    mint: vi.fn().mockResolvedValue(undefined),
+    revoke: vi.fn().mockResolvedValue(undefined),
+    ...over,
+  });
+
+  it("waits for the figures, then sends the ones the page shows", async () => {
+    Object.assign(auth.user, COMPLETE);
+    const sharing = controls();
+    const { rerender } = render(
+      <CheckInPageFrame {...session()} sharing={sharing} />,
+    );
+    // The link keeps what it is made with for its whole life, so a click before the
+    // figures land would publish blanks.
+    expect(screen.getByRole("button", { name: /share/i })).toBeDisabled();
+
+    rerender(
+      loaded({
+        sharing,
+        certifications: [certification()],
+        lastDiveAt: "2026-08-14T09:30:00+02:00",
+      }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    );
+    const dives = within(
+      await screen.findByRole("dialog", { name: "Diving" }),
+    ).getByLabelText("Dives logged");
+    await userEvent.clear(dives);
+    await userEvent.type(dives, "310");
+    await userEvent.click(
+      screen.getByRole("button", { name: /use on this summary/i }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /share/i }));
+    expect(sharing.mint).toHaveBeenCalledWith({
+      totalDives: 310,
+      maxDepth: 39.6,
+      lastDiveOn: "2026-08-14",
+    });
+  });
+
+  it("shows a link made now as a QR code and an address, and keeps both off the sheet", () => {
+    Object.assign(auth.user, COMPLETE);
+    const url = "https://dive.example/checkin/tok";
+    render(
+      loaded({
+        sharing: controls({
+          live: { expiresAt: "2026-09-27T10:00:00Z", url },
+        }),
+      }),
+    );
+
+    const panel = screen.getByRole("region", { name: "Check-in link" });
+    expect(panel).toHaveClass("print:hidden");
+    expect(
+      within(panel).getByRole("img", { name: /QR code/ }),
+    ).toBeInTheDocument();
+    expect(within(panel).getByLabelText("Link address")).toHaveValue(url);
+    expect(
+      within(panel).getByRole("button", { name: "Copy" }),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByRole("button", { name: "Revoke" }),
+    ).toBeInTheDocument();
+  });
+
+  it("says in one sentence why a link found on a later visit has no QR code", async () => {
+    Object.assign(auth.user, COMPLETE);
+    const sharing = controls({
+      live: { expiresAt: "2026-09-27T10:00:00Z", url: null },
+    });
+    render(loaded({ sharing }));
+
+    const panel = screen.getByRole("region", { name: "Check-in link" });
+    expect(within(panel).queryByRole("img")).toBeNull();
+    expect(within(panel).queryByLabelText("Link address")).toBeNull();
+    expect(
+      within(panel).getByText(
+        /can.t be shown again, because only a fingerprint/,
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Revoke" }),
+    );
+    expect(sharing.revoke).toHaveBeenCalled();
+  });
+
+  it("copies the address", async () => {
+    Object.assign(auth.user, COMPLETE);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+    const url = "https://dive.example/checkin/tok";
+    render(
+      loaded({
+        sharing: controls({
+          live: { expiresAt: "2026-09-27T10:00:00Z", url },
+        }),
+      }),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
+    expect(writeText).toHaveBeenCalledWith(url);
+  });
+});
+
+describe("on a link's page", () => {
+  const PORTRAIT = "portrait1";
+  const LAST_DIVE_AT = "2026-08-14T09:30:00+02:00";
+  const imageFront = {
+    uuid: "file-1",
+    side: "front" as const,
+    content_type: "image/jpeg",
+    byte_size: 1024,
+    original_filename: "card.jpg",
+  };
+  const pdfFront = {
+    ...imageFront,
+    uuid: "file-2",
+    content_type: "application/pdf",
+    original_filename: "card.pdf",
+  };
+
+  // The same diver and cards twice over: as the signed-in page holds them, and as a
+  // link's summary carries them.
+  const ownCards = () => [
+    certification({
+      uuid: "cert-1",
+      certification_number: "12345",
+      certified_on: "2020-05-01",
+      files: [imageFront],
+    }),
+    certification({ uuid: "cert-2", name: "Nitrox", files: [pdfFront] }),
+  ];
+  const sharedCards = (): SharedCheckInCertification[] => [
+    {
+      uuid: "cert-1",
+      agency: "padi",
+      name: "Rescue Diver",
+      certification_number: "12345",
+      certified_on: "2020-05-01",
+      contact_name: "Blue Ocean",
+      front_content_type: "image/jpeg",
+    },
+    {
+      uuid: "cert-2",
+      agency: "padi",
+      name: "Nitrox",
+      front_content_type: "application/pdf",
+    },
+  ];
+  const linkView = {
+    token: "tok",
+    expiresAt: "2026-09-27T10:00:00Z",
+    diving: { totalDives: 142, maxDepth: 39.6, lastDiveOn: "2026-08-14" },
+  };
+  const shared = (over: Partial<FrameProps> = {}) => (
+    <CheckInPageFrame
+      diver={{ ...auth.user }}
+      units={auth.user.units}
+      certifications={sharedCards()}
+      contactNames={{ "cert-1": "Blue Ocean" }}
+      isLoading={false}
+      link={linkView}
+      {...over}
+    />
+  );
+
+  // What a desk reads off either page: every heading, label and value, in order.
+  const printed = (container: HTMLElement) =>
+    [...container.querySelectorAll("h1, h2, h3, dt, dd")].map(
+      (el) => el.textContent,
+    );
+
+  it("prints the same sheet from a link's summary as from the session", () => {
+    Object.assign(auth.user, COMPLETE, { portrait_sha256: PORTRAIT });
+    const { container, unmount } = render(
+      loaded({
+        certifications: ownCards(),
+        contactNames: { "cert-1": "Blue Ocean" },
+        lastDiveAt: LAST_DIVE_AT,
+      }),
+    );
+    const fromSession = printed(container);
+    const sessionFootnote = screen.getByText(/own dive log/).textContent;
+    unmount();
+
+    const { container: linkContainer } = render(shared());
+    expect(printed(linkContainer)).toEqual(fromSession);
+    expect(screen.getByText(/own dive log/).textContent).toBe(sessionFootnote);
+    expect(fromSession).toContain("Blue Ocean");
+    expect(fromSession).toContain("142");
+  });
+
+  it("offers no control that edits, and no dialog", () => {
+    Object.assign(auth.user, COMPLETE, { portrait_sha256: PORTRAIT });
+    render(shared());
+
+    // Print is the one control a desk gets.
+    expect(
+      screen.getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["Print"]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Check-in link" })).toBeNull();
+  });
+
+  it("points every picture at the link's own routes, and fetches none through the session", () => {
+    Object.assign(auth.user, COMPLETE, { portrait_sha256: PORTRAIT });
+    blobUrl.mockClear();
+    vi.mocked(authAPI.getPictureBlob).mockClear();
+    const { container } = render(shared());
+
+    const images = [...container.querySelectorAll("img")];
+    expect(images.map((img) => img.getAttribute("src"))).toEqual([
+      `${API_BASE_URL}/checkin/tok/portrait`,
+      `${API_BASE_URL}/checkin/tok/certification/cert-1/front`,
+    ]);
+    // The PDF front is named, never fetched.
+    expect(screen.getByText("card on file as PDF")).toBeInTheDocument();
+    expect(blobUrl).not.toHaveBeenCalled();
+    expect(authAPI.getPictureBlob).not.toHaveBeenCalled();
+    expect(updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("shows the sheet as it prints, and when the link stops working", () => {
+    // Nothing but a name: every section is empty, and a desk sees none of them.
+    render(shared({ certifications: [], contactNames: {} }));
+
+    expect(screen.queryByText("Not filled in yet.")).toBeNull();
+    expect(screen.queryByText("No certifications yet.")).toBeNull();
+    for (const title of [
+      "Dive insurance",
+      "Emergency contact",
+      "Certifications",
+    ]) {
+      expect(screen.getByText(title).closest("section")).toHaveClass("hidden");
+    }
+    // The lines written to the diver go; the expiry, written to the desk, comes.
+    expect(screen.queryByText(/on one page you can hand over/)).toBeNull();
+    expect(screen.queryByText(/save this as a PDF/)).toBeNull();
+    expect(screen.getByText(/This link stops working on/)).toHaveClass(
+      "print:hidden",
+    );
+    // The portrait's column stands, empty, with no dashed offer in it.
+    const slot = screen.getByRole("heading", {
+      name: auth.user.name,
+    }).previousElementSibling!;
+    expect(slot).toHaveClass("sm:w-24");
+    expect(slot.children).toHaveLength(0);
   });
 });

@@ -181,6 +181,39 @@ describe("the operator block", () => {
   });
 });
 
+// §5 promises that a feature showing entries to someone else arrives with a grant of
+// its own and a privacy section of its own. The check-in link is the first that shows
+// entries, so its grant, the privacy section it points at, and the sentences that used
+// to call the invitation the one thing shown are pinned together.
+describe("the check-in link", () => {
+  it("has a grant of its own in §5, and the closing rule names both grants", async () => {
+    await renderPage(false);
+
+    expect(
+      screen.getByText(
+        /Where you make a check-in link, you grant the operator/,
+      ),
+    ).toHaveTextContent(/section 4\.9/);
+    expect(
+      screen.getByText(/The invitation and\s+check-in link grants above/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/The next two paragraphs are the two things/),
+    ).toBeInTheDocument();
+  });
+
+  it("is on §2's list, and §2 counts two cases of one person shown another", async () => {
+    await renderPage(false);
+
+    expect(
+      screen.getByText(/share it as a link that works\s+for a day/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/in two cases only/)).toHaveTextContent(
+      /a check-in link you make/,
+    );
+  });
+});
+
 // This page carries the month twice - the header and the closing line - and they are
 // two literals for one fact. The privacy page's own copy of it is pinned in that page's
 // test rather than here: a test file that rendered both pages to compare two strings
