@@ -38,7 +38,10 @@ export function generateMetadata(): Metadata {
   return {
     metadataBase: new URL(siteUrl),
     // Every page names itself through `metadata`, and this wraps the name; `default`
-    // is only for a route that gives none.
+    // is only for a route that gives none. So Firefox on iOS, which names a
+    // home-screen shortcut after `document.title` and never reads the manifest,
+    // offers the page's own title there - "Dives – OpenDiving" - for the diver to
+    // edit; a distinct name per tab is the owner's call over a bare one there.
     title: {
       default: "OpenDiving",
       template: PAGE_TITLE_TEMPLATE,

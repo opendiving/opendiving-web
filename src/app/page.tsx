@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   // product leads here, where it is the page. The words are the `<h1>`'s, deliberately
   // - a title that disagrees with the headline the visitor then lands on is the one
   // mismatch a search result cannot explain away.
-  title: { absolute: "OpenDiving – The ultimate diving app" },
+  title: { absolute: "OpenDiving – The Ultimate Diving App" },
   description:
     "An open-source logbook for scuba divers. Log dives with gas mixtures and multiple sites, import straight from your dive computer with the full depth profile, and keep gear service history and c-cards in one place - in a log built to outlive every vendor.",
 };
