@@ -42,6 +42,14 @@ interface PictureSlotProps {
   onChange: (edit: PictureEdit | null) => void;
 }
 
+// Where the bin sits. On a phone, on the picture's top-right corner: beside an 80px
+// picture, Replace, Adjust and the bin need 40px more than a 375px screen leaves.
+// From `sm`, back in the button row. `left-12` is the picture's 80px less the
+// 28px badge and a 4px inset. One element rather than a copy in each place,
+// because `hidden` is only CSS and a test would find both.
+const BIN_ON_PICTURE =
+  "absolute left-12 top-1 z-10 h-7 w-7 rounded-full border bg-background/80 p-0 shadow-sm sm:static sm:h-9 sm:w-auto sm:rounded-md sm:border-0 sm:bg-transparent sm:px-3 sm:shadow-none";
+
 /**
  * One picture as its form shows it: what it holds, what saving will do to it, and the
  * controls that change either.
@@ -75,128 +83,131 @@ export function PictureSlot({
     <div className="space-y-2">
       <p className="text-sm font-medium">{HEADING[picture]}</p>
 
-      {/* A grid so a phone can move the buttons without reordering the DOM: beside
-          an 80px picture, Replace, Adjust and the bin need 40px more than a 375px
-          screen leaves, so there the caption takes the picture's side and the
-          buttons get the full width below. From `sm` both sit beside it. */}
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 sm:grid-rows-[auto_1fr] sm:gap-y-2">
-        <div className="sm:row-span-2">
-          {pending ? (
-            <PendingPreview picture={picture} edit={pending} />
-          ) : picture === "avatar" ? (
-            <UserAvatar
-              name={name}
-              avatarSha={shown}
-              size={80}
-              className="h-20 w-20"
-            />
-          ) : shown ? (
-            <PortraitImage
-              name={name}
-              portraitSha={shown}
-              className="w-20 shrink-0"
-            />
-          ) : (
-            <PortraitFrame
-              empty
-              className="w-20 shrink-0"
-              role="img"
-              aria-label="No portrait"
-            >
-              <UserSquare
-                className="h-6 w-6 text-muted-foreground"
-                aria-hidden
-              />
-            </PortraitFrame>
-          )}
-        </div>
-
-        <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:col-start-2 sm:row-start-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled}
-            onClick={() => inputRef.current?.click()}
+      {/* `relative` is what the bin is placed against on a phone - see
+          `BIN_ON_PICTURE`. */}
+      <div className="relative flex items-start gap-4">
+        {pending ? (
+          <PendingPreview picture={picture} edit={pending} />
+        ) : picture === "avatar" ? (
+          <UserAvatar
+            name={name}
+            avatarSha={shown}
+            size={80}
+            className="h-20 w-20"
+          />
+        ) : shown ? (
+          <PortraitImage
+            name={name}
+            portraitSha={shown}
+            className="w-20 shrink-0"
+          />
+        ) : (
+          <PortraitFrame
+            empty
+            className="w-20 shrink-0"
+            role="img"
+            aria-label="No portrait"
           >
-            {showsSomething ? (
-              <Replace className="h-4 w-4 mr-2" />
-            ) : (
-              <Upload className="h-4 w-4 mr-2" />
-            )}
-            {/* What the button does to what the slot is showing: a picked photo is
-                  as replaceable as a stored one. */}
-            {showsSomething ? "Replace" : "Upload"}
-          </Button>
+            <UserSquare className="h-6 w-6 text-muted-foreground" aria-hidden />
+          </PortraitFrame>
+        )}
 
-          {canAdjust && (
+        <div className="min-w-0 flex-1 space-y-2">
+          {/* A column of full-width buttons beside the picture on a phone, a
+              row from `sm`. */}
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
               type="button"
               variant="outline"
               size="sm"
               disabled={disabled}
-              onClick={onAdjust}
+              onClick={() => inputRef.current?.click()}
             >
-              {loading === "adjust" ? (
-                <ButtonSpinner className="mr-2" />
+              {showsSomething ? (
+                <Replace className="h-4 w-4 mr-2" />
               ) : (
-                <Crop className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 mr-2" />
               )}
-              Adjust
+              {/* What the button does to what the slot is showing: a picked photo is
+                  as replaceable as a stored one. */}
+              {showsSomething ? "Replace" : "Upload"}
             </Button>
-          )}
 
-          {canCopy && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled}
-              onClick={onCopy}
-            >
-              {loading === "copy" && <ButtonSpinner className="mr-2" />}
-              Use profile picture
-            </Button>
-          )}
-
-          {isRemoved ? (
-            <IconTooltip label={`Keep your ${label}`}>
+            {canAdjust && (
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 disabled={disabled}
-                onClick={() => onChange(null)}
+                onClick={onAdjust}
               >
-                <Undo2 className="h-4 w-4" />
+                {loading === "adjust" ? (
+                  <ButtonSpinner className="mr-2" />
+                ) : (
+                  <Crop className="h-4 w-4 mr-2" />
+                )}
+                Adjust
               </Button>
-            </IconTooltip>
-          ) : (
-            showsSomething && (
-              <IconTooltip
-                label={
-                  pending ? `Discard the new ${label}` : `Remove your ${label}`
-                }
+            )}
+
+            {canCopy && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled}
+                onClick={onCopy}
               >
+                {loading === "copy" && <ButtonSpinner className="mr-2" />}
+                Use profile picture
+              </Button>
+            )}
+
+            {isRemoved ? (
+              <IconTooltip label={`Keep your ${label}`}>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
+                  className={BIN_ON_PICTURE}
                   disabled={disabled}
-                  // A pending edit is dropped rather than marked: the stored
-                  // picture it would have replaced comes back into view.
-                  onClick={() => onChange(pending ? null : { kind: "remove" })}
+                  onClick={() => onChange(null)}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Undo2 className="h-4 w-4" />
                 </Button>
               </IconTooltip>
-            )
-          )}
-        </div>
+            ) : (
+              showsSomething && (
+                <IconTooltip
+                  label={
+                    pending
+                      ? `Discard the new ${label}`
+                      : `Remove your ${label}`
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={BIN_ON_PICTURE}
+                    disabled={disabled}
+                    // A pending edit is dropped rather than marked: the stored
+                    // picture it would have replaced comes back into view.
+                    onClick={() =>
+                      onChange(pending ? null : { kind: "remove" })
+                    }
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
+              )
+            )}
+          </div>
 
-        <p className="col-start-2 row-start-1 text-xs text-muted-foreground sm:row-start-2">
-          {caption(picture, edit, !!storedSha)}
-        </p>
+          <p className="text-xs text-muted-foreground">
+            {caption(picture, edit, !!storedSha)}
+          </p>
+        </div>
       </div>
 
       <input
