@@ -48,6 +48,12 @@ const PILL =
 const PILL_SLIDE =
   "motion-safe:before:transition-[inset] motion-safe:before:duration-300 motion-safe:before:ease-[cubic-bezier(0.33,1,0.68,1)] data-instant:before:transition-none";
 
+// An entry's text colour, on the pill's timing and switched off with it: Safari snapshots
+// the page as its URL changes, just after the pill sets off, and a colour already at the
+// next entry puts the selection in two places in the swipe back.
+const LABEL_FADE =
+  "motion-safe:transition-[color] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.33,1,0.68,1)] group-data-instant/nav:transition-none";
+
 // The row's scroll, timed to the pill: `GLIDE_MS` is its `duration-300` and
 // `easeOutCubic` its `cubic-bezier(0.33,1,0.68,1)`. The pill rides inside the row, so on
 // screen it moves by its own travel less the row's, and only matching timings make that
@@ -132,7 +138,7 @@ export function SettingsNav() {
       <ul
         ref={listRef}
         className={cn(
-          "-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0",
+          "group/nav -mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0",
           PILL,
           PILL_SLIDE,
         )}
@@ -147,7 +153,8 @@ export function SettingsNav() {
                 onClick={() => listRef.current?.removeAttribute("data-instant")}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium",
+                  LABEL_FADE,
                   current
                     ? "text-foreground [anchor-name:--settings-nav-shown] not-supports-[position-anchor:auto]:bg-muted"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
