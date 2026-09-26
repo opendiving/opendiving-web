@@ -799,14 +799,15 @@ during render wipes half-typed notes. It mounts only while a row is being logged
 `.then()` chain in a `useCallback`, not `async`, because `react-hooks/set-state-in-effect` reads an
 awaited call in an effect body as a synchronous `setState`.
 
-## The gear reminder toggle lives in its own settings card, and saves on change
+## The email toggles live in their own settings card, and save on change
 
 `NotificationsCard` is factored out like `EmailChangeCard` rather than bolted onto the profile form:
-a different concern that grows if more email preferences appear. It saves on change rather than
+one card with a switch per scheduled email — `gear_service_emails`, `renewal_reminder_emails`,
+`year_in_review_emails` — rather than a card per kind. Each switch saves on change rather than
 behind "Save changes" — a single boolean, and a toggle that needs confirming reads as broken — and
-sends only `{ gear_service_emails }`, since `PATCH /user` is `extra="forbid"` and anything else
-alongside would 422. `User.gear_service_emails` is optional in the TS type and falls back to `true`
-when absent, matching the server default.
+sends only its own key, since `PATCH /user` is `extra="forbid"` and anything else alongside
+would 422. The three fields are optional in the TS type and fall back to `true` when absent,
+matching the server default.
 
 ## Private card images render from a blob URL, which needs `blob:` in `img-src`
 
@@ -1306,9 +1307,10 @@ says "Overdue (due today)" to match; `formatServiceDue agrees with serviceStatus
 
 `certificationExpiryStatus` uses `daysLeft < 0`, and that is not an inconsistency to harmonise: a
 c-card is valid through its printed expiry date, whereas a service interval that has arrived has
-arrived. The certification side has no API counterpart — no status field, no reminder job, no email
-— so `CERTIFICATION_EXPIRING_SOON_DAYS` is frontend-only, unlike `SERVICE_DUE_SOON_DAYS`, named
-identically on both sides so one grep finds the pair.
+arrived. The API's renewal reminder draws the same line: its `expiry_stage` in
+`services/renewals.py` is the twin of `certificationExpiryStatus`, and
+`CERTIFICATION_EXPIRING_SOON_DAYS` is named identically on both sides, like `SERVICE_DUE_SOON_DAYS`,
+so one grep finds the pair.
 
 ## Service status is derived in the browser, and so is a timezone off the digest
 
@@ -4315,9 +4317,10 @@ disclosed by hand in §10.1.
 ## Privacy page: §6.3 enumerates every email, and the enumeration is exhaustive on purpose
 
 §6.3 lists everything a diver receives, in three groups — mail following an action on this site,
-security notices, the gear-service digest — with support-form mail parenthesised as mail about you,
+security notices, the scheduled emails — with support-form mail parenthesised as mail about you,
 sent to `CONTACT_FORM_EMAIL`. Any new `send_*` function in the api owes this section a line;
-`app/privacy/page.test.tsx` pins only the first group's count against its list.
+`app/privacy/page.test.tsx` pins the first group's count against its list, and the scheduled group's
+paragraphs against the sentences counting them and their switches.
 
 "You" in a claim about who receives mail is an identity assumption: `POST /auth/email/request` is
 unauthenticated, `send_email_change_confirmation_email` goes to the address typed, and

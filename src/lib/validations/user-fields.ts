@@ -14,7 +14,8 @@ import { todayIsoDate } from "@/lib/gear-service";
  * second copy of a bound is a second thing to keep in step with the column.
  *
  * Absent on purpose: `email`, which needs the new address confirmed first
- * (`emailChangeSchema`), and `units`, `gear_service_emails` and
+ * (`emailChangeSchema`), and `units`, the three email switches
+ * (`gear_service_emails`, `renewal_reminder_emails`, `year_in_review_emails`) and
  * `dive_form_hidden_fields`, which are not text boxes.
  */
 export const USER_FIELDS = [

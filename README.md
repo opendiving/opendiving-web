@@ -70,7 +70,8 @@ one.
   for no copy of anything, because **this app queries the register live rather than holding a
   snapshot of it**.
 - **Certifications** — keep photos of your c-cards on hand at the dive shop without digging out the
-  plastic.
+  plastic, and an email when a card or your dive insurance comes within 90 days of expiring, and
+  again when it does.
 - **Check-in** — the details a dive shop asks for at the desk, kept once: a portrait cropped like a
   passport photo, date of birth, phone, an emergency contact and your dive insurance. One page
   gathers them with your c-cards, dive count and last dive, and prints — your browser's save-as-PDF
@@ -100,8 +101,14 @@ one.
   archive additionally restores the dive-computer files and c-card scans, which the bare document
   names by digest but does not carry. The check-in details a logbook carries, and an archive's
   portrait, are shown beside yours in the preview, and only what you choose there is saved.
+- **Year in review** — each January, an email with the year before in figures: dives and time
+  underwater, the deepest and longest, dive sites, and species with the ones you saw for the first
+  time.
 - **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
+- **Installs like an app** — add it to a phone's home screen from the browser's install or share
+  menu (on iOS 16.4 and later, Safari's Share → Add to Home Screen), and it opens in its own window
+  at your dashboard.
 
 |                                                                                                        |                                                                                                                                                                                           |
 | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
