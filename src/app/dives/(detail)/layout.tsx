@@ -195,7 +195,7 @@ export default function DiveDetailLayout({
 
   if (!dive) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Dive not found."
           backHref="/dives"
@@ -207,7 +207,7 @@ export default function DiveDetailLayout({
 
   return (
     <div
-      className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+      className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6"
       aria-busy={isLoadingDive}
     >
       <PageHeader

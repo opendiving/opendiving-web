@@ -144,7 +144,7 @@ export default function TripDetailPage() {
 
   if (!trip) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Trip not found."
           backHref="/trips"
@@ -155,7 +155,7 @@ export default function TripDetailPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
       <PageHeader
         backHref="/trips"
         backLabel="Back to trips"

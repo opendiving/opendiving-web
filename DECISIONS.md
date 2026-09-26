@@ -496,7 +496,8 @@ footer, so their spinners use `min-h-[60vh]` inline. `SectionSpinner`
 (`components/ui/section-spinner.tsx`) is a loading section inside a rendered shell; `NotFoundState`
 (`components/ui/not-found-state.tsx`, `message`/`backHref`/`backLabel`) the not-found state. Both
 omit the outer container `div`, whose class differs between edit pages
-(`container mx-auto px-4 py-8`) and detail pages (`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8`).
+(`container mx-auto px-4 pt-8 pb-6`) and detail pages
+(`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6`).
 
 ## Mixture form/display numbers match the API's 2-decimal precision
 

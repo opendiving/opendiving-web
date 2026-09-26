@@ -81,7 +81,7 @@ export default function SpeciesDetailPage() {
 
   if (!species) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Species not found."
           backHref="/species"
@@ -97,7 +97,7 @@ export default function SpeciesDetailPage() {
   const photoSrc = speciesPhotoUrl(species.uuid, species.photo_sha256);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
       <PageHeader
         backHref="/species"
         backLabel="Back to species"

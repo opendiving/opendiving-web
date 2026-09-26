@@ -106,7 +106,7 @@ export default function GearItemDetailPage() {
 
   if (!gearItem) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Gear not found."
           backHref="/gear"
@@ -117,7 +117,7 @@ export default function GearItemDetailPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
       <PageHeader
         backHref="/gear"
         backLabel="Back to gear"

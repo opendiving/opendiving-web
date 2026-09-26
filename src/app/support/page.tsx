@@ -29,7 +29,7 @@ export default function SupportPage() {
   const { contactEmail } = runtimeConfig();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
       <div className="mb-12 text-center">
         <h1 className="text-4xl font-bold text-foreground mb-4">Support</h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
@@ -39,7 +39,7 @@ export default function SupportPage() {
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>

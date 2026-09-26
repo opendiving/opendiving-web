@@ -408,7 +408,7 @@ export default function NewDivePage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
+    <div className="container mx-auto px-4 pt-8 pb-6 max-w-2xl">
       <PageHeader
         backHref={returnTo.href}
         backLabel={returnTo.label}

@@ -75,7 +75,7 @@ export function DivesPageFrame({
   // numbering card is absent more often than not, and a gap it carried itself
   // would be left behind on the pages where it draws nothing.
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-bold">
