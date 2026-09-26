@@ -6,10 +6,11 @@ import { configAPI, type InstanceConfig } from "@/lib/api/config";
 
 interface InstanceConfigState {
   // `null` means "not known" - either the fetch is still in flight or it failed.
-  // It is deliberately not defaulted to a config here: the one caller has a safe
-  // answer for an unknown one (the sign-in form, in the copy that is true of any
-  // instance) and that decision belongs at the call site rather than hidden
-  // behind a default nobody can see.
+  // It is deliberately not defaulted to a config here: each caller has a safe
+  // answer of its own for an unknown one (the landing page's sign-in form, in the
+  // copy that is true of any instance; the settings menu's Invitations entry, kept)
+  // and that decision belongs at the call site rather than hidden behind a default
+  // nobody can see.
   config: InstanceConfig | null;
   isLoading: boolean;
 }

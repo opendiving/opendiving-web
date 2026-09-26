@@ -155,14 +155,22 @@ export function UserFieldsForm({
   });
 
   // Repaints from what came back, which is what makes `refreshUser()` below the end
-  // of a save: the boxes show the row rather than what was typed into them. Not on
-  // the way back to a kept-mounted route, though, where a plain effect re-runs
-  // against an unchanged `user` and paints over a half-filled card -
+  // of a save: the boxes show the row rather than what was typed into them. Keyed on
+  // this form's own stored values and its own saves rather than on `user`, which every
+  // save replaces: a sibling form on the same page saving its group leaves what is
+  // half-typed here alone. `saves` covers a save the row did not change, a trimmed
+  // value say. Not on the way back to a kept-mounted route either, where a plain
+  // effect re-runs against unchanged inputs and paints over a half-filled card -
   // `useEffectOnChange` says why.
   const { reset } = form;
+  const [saves, setSaves] = useState(0);
+  const stored = user ? userFieldsFromUser(user) : null;
+  const storedHere = stored
+    ? JSON.stringify(fields.map((field) => stored[field]))
+    : null;
   useEffectOnChange(() => {
     if (user) reset(userFieldsFromUser(user));
-  }, [user, reset]);
+  }, [storedHere, saves, reset]);
 
   // The picture, once the fields are stored. Cleared whether it landed or not: the
   // form repaints from the re-read account, which knows nothing of an edit, and a
@@ -192,6 +200,7 @@ export function UserFieldsForm({
         picture && pictureEdit ? await savePicture(picture) : null;
       // Before the toast, so the header's avatar has changed by the time it says so.
       await refreshUser();
+      setSaves((count) => count + 1);
       if (pictureFailure) {
         toast({
           title: `Saved, but your ${PICTURE_LABEL[pictureFailure.picture]} did not`,

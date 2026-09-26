@@ -5788,9 +5788,10 @@ re-stamping `start_time` with `nowStartTime()` under a diver mid-edit.
 
 Two changes, both needed: the prefill effect is keyed on `user.uuid`, not the `user` object, and
 `AuthContext`'s `mergeUser` folds what a successful `PATCH /user` stored into the cached user with
-no request. `refreshUser` stays right for a settings card, where nothing is mid-edit. The suite pins
-the invariant: persisting a toggle never resets the form, re-runs the prefill or refetches the last
-dive; anything added to that dependency list must be a value, not an object.
+no request. `refreshUser` stays right for a settings card: `UserFieldsForm` repaints on its own
+fields' stored values, not on the `user` object, so a sibling card mid-edit keeps what is typed. The
+suite pins the invariant: persisting a toggle never resets the form, re-runs the prefill or
+refetches the last dive; anything added to that dependency list must be a value, not an object.
 
 The write is debounced and flushed on unmount, so three switches are one request and a
 flip-then-leave still saves. `SAVE_DEBOUNCE_MS` in the hook is the figure's only home.

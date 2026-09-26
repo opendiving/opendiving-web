@@ -102,8 +102,9 @@ interface AuthContextType {
   // request of its own.
   //
   // `refreshUser` is the general answer and stays the right one for a settings card,
-  // which changes something the whole app renders from and is a page nobody is
-  // mid-edit on. It is the wrong one for the dive form's Fields dialog: that sits on
+  // which changes something the whole app renders from; a sibling card mid-edit is
+  // safe because `UserFieldsForm` repaints on its own stored values, not on `user`.
+  // It is the wrong one for the dive form's Fields dialog: that sits on
   // `/dives/new` beside a last-dive prefill effect, and a `GET /user` per switch
   // spends a round trip re-reading a value this caller already knows.
   //

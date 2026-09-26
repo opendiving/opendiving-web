@@ -19,7 +19,7 @@ import { UNIT_SYSTEMS, UNIT_SYSTEM_LABELS, type UnitSystem } from "@/lib/units";
 
 // Which system every measurement in the app is shown and typed in.
 //
-// Saves on change, like the gear-reminder toggle beside it: one field, and the
+// Saves on change, like the email switches under Notifications: one field, and the
 // whole app re-renders converted the moment `refreshUser` lands, so a "Save" button
 // would sit between the diver and a change they can already see happening.
 //

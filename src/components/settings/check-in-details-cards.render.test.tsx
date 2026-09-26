@@ -135,6 +135,51 @@ describe("AboutYouCard", () => {
   });
 });
 
+describe("the cards side by side", () => {
+  // What the page's context does on every save: a re-read hands every consumer a new
+  // `user` object, whichever card asked for it.
+  const reread = () =>
+    auth.refreshUser.mockImplementation(async () => {
+      auth.user = { ...auth.user, ...updateProfile.mock.lastCall?.[0] };
+    });
+
+  it("leaves what is typed in one card alone when another saves", async () => {
+    reread();
+    const page = () => (
+      <>
+        <AboutYouCard />
+        <DiveInsuranceCard />
+      </>
+    );
+    const { rerender } = render(page());
+
+    await userEvent.type(screen.getByLabelText("Provider"), "DAN Europe");
+    await userEvent.type(screen.getByLabelText("Phone number"), "0123");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /save changes/i })[0],
+    );
+    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalled());
+    rerender(page());
+
+    expect(screen.getByLabelText("Provider")).toHaveValue("DAN Europe");
+    expect(screen.getByLabelText("Phone number")).toHaveValue("0123");
+  });
+
+  it("repaints the card that saved even when the row did not change", async () => {
+    auth.user.phone = "0123";
+    reread();
+    render(<AboutYouCard />);
+
+    // Sent trimmed, so the stored value is the one already there.
+    await userEvent.type(screen.getByLabelText("Phone number"), " ");
+    await userEvent.click(save());
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Phone number")).toHaveValue("0123"),
+    );
+  });
+});
+
 describe("DiveInsuranceCard", () => {
   it("sends its own fields and no others", async () => {
     auth.user.insurance_provider = "DAN Europe";

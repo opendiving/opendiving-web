@@ -381,7 +381,7 @@ export function Header() {
                       </Link>
                     </DropdownMenuItem>
                     {/* Straight to the first section: `/settings` only redirects
-                        there, and is kept for the links already sent in email. */}
+                        there, and is kept for the links in the API's emails. */}
                     <DropdownMenuItem asChild>
                       <Link
                         href="/settings/account"
