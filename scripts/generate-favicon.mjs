@@ -31,10 +31,10 @@ const tiles = [
 function tileSvg(markSvg, size) {
   const side = 24 + 2 * TILE_MARGIN;
   // The mark is nested as its own 24x24 viewport, so it is drawn exactly as the
-  // favicon draws it; the outer viewBox only adds the white margin around it.
-  const mark = markSvg
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace("<svg ", '<svg x="0" y="0" width="24" height="24" ');
+  // favicon draws it; the outer viewBox only adds the white margin around it. The
+  // file's leading comment comes along, which is legal inside an element and renders
+  // nothing.
+  const mark = markSvg.replace("<svg ", '<svg x="0" y="0" width="24" height="24" ');
   return Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${-TILE_MARGIN} ${-TILE_MARGIN} ${side} ${side}">` +
       `<rect x="${-TILE_MARGIN}" y="${-TILE_MARGIN}" width="${side}" height="${side}" fill="#FFFFFF"/>` +
