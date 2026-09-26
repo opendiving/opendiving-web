@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConfig } from "@/contexts/ConfigContext";
+import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { usePasskeySignIn } from "@/hooks/usePasskeySignIn";
 import { emailAuthSchema, EmailAuthFormData } from "@/lib/validations/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -83,6 +84,7 @@ export function AuthForm({
   const {
     register,
     handleSubmit,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<EmailAuthFormData>({
     resolver: zodResolver(emailAuthSchema),
@@ -120,86 +122,119 @@ export function AuthForm({
       setError(
         getApiErrorMessage(err, "Something went wrong. Please try again."),
       );
+      setFocus("email");
     }
   };
 
+  // iOS raises the keyboard only for a focus made during the tap, and the code
+  // boxes exist only once the request is back. So a tap on Sign in focuses this
+  // stand-in, which opens the number pad there and then, and the card's first box
+  // takes focus from it - iOS keeps a keyboard up while focus moves between inputs.
+  // One node across the swap below, so the focus survives it. A request that fails
+  // hands focus back to the email field, as a field that fails validation does.
+  const coarsePointer = useCoarsePointer();
+  const keyboardRef = useRef<HTMLInputElement>(null);
+  const keyboardStandIn = (
+    <input
+      ref={keyboardRef}
+      aria-hidden
+      tabIndex={-1}
+      inputMode="numeric"
+      autoComplete="off"
+      className="pointer-events-none fixed left-0 top-0 h-px w-px text-base opacity-0"
+    />
+  );
+
   if (sent) {
     return (
-      <CheckEmailCard
-        className={className}
-        titleAs={title ? "h1" : "h3"}
-        email={sent.email}
-        requestId={sent.requestId}
-        redirectTo={redirectTo}
-        onResend={() => sendLink(sent.email)}
-        onUseDifferentEmail={() => setSent(null)}
-      />
+      <>
+        {keyboardStandIn}
+        <CheckEmailCard
+          className={className}
+          titleAs={title ? "h1" : "h3"}
+          email={sent.email}
+          requestId={sent.requestId}
+          redirectTo={redirectTo}
+          onResend={() => sendLink(sent.email)}
+          onUseDifferentEmail={() => setSent(null)}
+        />
+      </>
     );
   }
 
   return (
-    <div
-      className={cn(
-        "w-full max-w-md rounded-lg border bg-card p-6 shadow-sm max-sm:px-4",
-        className,
-      )}
-    >
-      {title && (
-        // The same block `CheckEmailCard` opens with, so the card the diver is
-        // looking at keeps its shape across the swap rather than growing a header
-        // the moment a link goes out.
-        <div className="mb-6 text-center">
-          <LogIn className="mx-auto mb-3 h-10 w-10 text-primary" />
-          {/* `h1`, sized like `CheckEmailCard`'s `h3` - the level is about where
+    <>
+      {keyboardStandIn}
+      <div
+        className={cn(
+          "w-full max-w-md rounded-lg border bg-card p-6 shadow-sm max-sm:px-4",
+          className,
+        )}
+      >
+        {title && (
+          // The same block `CheckEmailCard` opens with, so the card the diver is
+          // looking at keeps its shape across the swap rather than growing a header
+          // the moment a link goes out.
+          <div className="mb-6 text-center">
+            <LogIn className="mx-auto mb-3 h-10 w-10 text-primary" />
+            {/* `h1`, sized like `CheckEmailCard`'s `h3` - the level is about where
               this sits on the page, not how big it looks. See the prop comment. */}
-          <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-          {description && (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          )}
-        </div>
-      )}
+            <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+            {description && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {description}
+              </p>
+            )}
+          </div>
+        )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {error && <StatusMessage variant="error">{error}</StatusMessage>}
-
-        <div className="space-y-2 text-left">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="you@example.com"
-            // `username` is the plain autofill hint this field always wanted;
-            // `webauthn` is what lets the browser offer a passkey in the same
-            // dropdown, and what `startAuthentication({useBrowserAutofill})`
-            // looks for before it will arm a conditional ceremony at all.
-            autoComplete="username webauthn"
-            {...register("email")}
-            className={errors.email ? "border-destructive" : ""}
-          />
-          {errors.email && (
-            <p className="text-sm text-destructive">{errors.email.message}</p>
-          )}
-        </div>
-
-        <Button
-          type="submit"
-          className="w-full bg-coral text-primary-foreground hover:bg-coral/90"
-          disabled={isSubmitting}
+        <form
+          onSubmit={(event) => {
+            if (coarsePointer) keyboardRef.current?.focus();
+            return handleSubmit(onSubmit)(event);
+          }}
+          className="space-y-4"
         >
-          {isSubmitting ? (
-            <div className="flex items-center space-x-2">
-              <ButtonSpinner />
-              <span>Sending...</span>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <span>Sign in</span>
-              <ArrowRight size={16} />
-            </div>
-          )}
-        </Button>
+          {error && <StatusMessage variant="error">{error}</StatusMessage>}
 
-        {/* The rolling-window phrasing is load-bearing, not padding: the refresh
+          <div className="space-y-2 text-left">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              // `username` is the plain autofill hint this field always wanted;
+              // `webauthn` is what lets the browser offer a passkey in the same
+              // dropdown, and what `startAuthentication({useBrowserAutofill})`
+              // looks for before it will arm a conditional ceremony at all.
+              autoComplete="username webauthn"
+              {...register("email")}
+              className={errors.email ? "border-destructive" : ""}
+            />
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email.message}</p>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full bg-coral text-primary-foreground hover:bg-coral/90"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <div className="flex items-center space-x-2">
+                <ButtonSpinner />
+                <span>Sending...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <span>Sign in</span>
+                <ArrowRight size={16} />
+              </div>
+            )}
+          </Button>
+
+          {/* The rolling-window phrasing is load-bearing, not padding: the refresh
             cookie is re-issued on every use, so "for a week" would be false for
             anyone who keeps using the app. This is where a diver is told that
             signing in persists past the tab; `/privacy` §10.1 has the long
@@ -211,55 +246,56 @@ export function AuthForm({
             than guarded - the same trade as the privacy page's "within 30 days"
             against the deletion grace period, which the API docs do warn about.
             Nothing warns about this one yet. */}
-        <p className="text-xs text-muted-foreground">
-          Signing in keeps you signed in on this browser until about a week goes
-          by without you using OpenDiving.
-        </p>
-      </form>
+          <p className="text-xs text-muted-foreground">
+            Signing in keeps you signed in on this browser until about a week
+            goes by without you using OpenDiving.
+          </p>
+        </form>
 
-      {/* The divider lives here rather than inside `GoogleAuthButton`, because
+        {/* The divider lives here rather than inside `GoogleAuthButton`, because
           there is more than one alternative method now and it has to be drawn
           once above whichever of them this instance actually has. Google hides
           itself when unconfigured and the passkey button when the browser has no
           WebAuthn, so with neither present this whole block goes with them. */}
-      {(googleClientId || passkey.supported) && (
-        <div className="mt-6 space-y-4">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+        {(googleClientId || passkey.supported) && (
+          <div className="mt-6 space-y-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or</span>
-            </div>
-          </div>
 
-          <GoogleAuthButton onError={setError} redirectTo={redirectTo} />
+            <GoogleAuthButton onError={setError} redirectTo={redirectTo} />
 
-          {passkey.supported && (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={passkey.signIn}
-              disabled={passkey.isSigningIn}
-            >
-              {passkey.isSigningIn ? (
-                <div className="flex items-center space-x-2">
-                  <ButtonSpinner />
-                  <span>Signing in...</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <KeyRound size={16} />
-                  {/* "Sign in", not "Continue": a passkey can only ever sign in
+            {passkey.supported && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={passkey.signIn}
+                disabled={passkey.isSigningIn}
+              >
+                {passkey.isSigningIn ? (
+                  <div className="flex items-center space-x-2">
+                    <ButtonSpinner />
+                    <span>Signing in...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <KeyRound size={16} />
+                    {/* "Sign in", not "Continue": a passkey can only ever sign in
                       an account that already exists. */}
-                  <span>Sign in with a passkey</span>
-                </div>
-              )}
-            </Button>
-          )}
-        </div>
-      )}
-    </div>
+                    <span>Sign in with a passkey</span>
+                  </div>
+                )}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

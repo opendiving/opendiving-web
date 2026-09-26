@@ -91,9 +91,8 @@ export function CheckEmailCard({
   // It moves focus without a gesture of its own, which is the objection to
   // autofocus in general; what makes it the right call here is that the gesture
   // *was* the submit, and this is where that submit led. iOS will not raise the
-  // keyboard for a programmatic focus outside the gesture, so there the caret
-  // lands and the keyboard waits for a tap - no worse than the `<body>` this
-  // replaces.
+  // keyboard for a focus made outside the gesture, so `AuthForm` raises it on the
+  // tap and this takes it over.
   useEffect(() => {
     focusFirstCodeBox();
   }, [focusFirstCodeBox]);
@@ -119,6 +118,9 @@ export function CheckEmailCard({
 
   const handleResend = async () => {
     if (cooldown > 0 || isResending) return;
+    // Now, inside the tap, rather than only once the request is back: iOS raises
+    // the keyboard only for a focus made during it.
+    focusFirstCodeBox();
 
     try {
       setIsResending(true);

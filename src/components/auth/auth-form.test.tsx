@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthForm } from "./auth-form";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
+import { usePointer } from "@/test/pointer";
 
 // What only a render can reach: which of the two "a link is on its way" paths
 // remember the destination. The storage itself is unit-tested in
@@ -378,5 +379,67 @@ describe("AuthForm and the browser's sign-in history", () => {
 
     await screen.findByLabelText("Email");
     expect(getItem).not.toHaveBeenCalled();
+  });
+});
+
+// iOS raises the keyboard only for a focus made during the tap, and the code boxes do
+// not exist until the request is back - so the tap on Sign in has to open the number
+// pad itself, and the boxes take it over.
+describe("AuthForm on a phone", () => {
+  beforeEach(() => usePointer("coarse"));
+
+  const submitPending = async () => {
+    const user = userEvent.setup();
+    let send!: (sent: { message: string; request_id: string }) => void;
+    requestEmailLink.mockReturnValue(
+      new Promise((resolve) => {
+        send = resolve;
+      }),
+    );
+    render(<AuthForm redirectTo={null} />);
+    await user.type(screen.getByLabelText("Email"), "diver@example.com");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+    return send;
+  };
+
+  it("holds the number pad open from the tap until the code boxes take it", async () => {
+    const send = await submitPending();
+
+    expect(document.activeElement).toHaveAttribute("inputmode", "numeric");
+
+    await act(async () => send({ message: "sent", request_id: "req-1" }));
+    await screen.findByText("Check your email");
+    expect(codeBoxes()[0]).toHaveFocus();
+  });
+
+  it("hands focus back to the email field when the request fails", async () => {
+    const user = userEvent.setup();
+    requestEmailLink.mockRejectedValue(new Error("offline"));
+    render(<AuthForm redirectTo={null} />);
+    await user.type(screen.getByLabelText("Email"), "diver@example.com");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() => expect(screen.getByLabelText("Email")).toHaveFocus());
+  });
+
+  it("leaves focus alone with a mouse", async () => {
+    usePointer("fine");
+    await submitPending();
+
+    expect(document.activeElement).not.toHaveAttribute("inputmode", "numeric");
+  });
+});
+
+describe("AuthForm resend", () => {
+  // Inside the tap, like the Sign in above: once the request is back it is over.
+  it("puts the caret in the first box within the Resend tap", async () => {
+    const user = await requestLink(null);
+    await runOutCooldown();
+    (document.activeElement as HTMLElement).blur();
+    requestEmailLink.mockReturnValue(new Promise(() => {}));
+
+    await user.click(screen.getByRole("button", { name: /^resend link$/i }));
+
+    expect(codeBoxes()[0]).toHaveFocus();
   });
 });
