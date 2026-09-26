@@ -23,10 +23,7 @@ const shown = (name: string) =>
   screen
     .getByRole("link", { name })
     .classList.contains("[anchor-name:--settings-nav-shown]");
-const slides = () =>
-  screen
-    .getByRole("list")
-    .classList.contains("motion-safe:before:transition-[inset]");
+const slides = () => !screen.getByRole("list").hasAttribute("data-instant");
 
 const popState = ({
   hasUAVisualTransition,
@@ -105,6 +102,23 @@ describe("SettingsNav", () => {
       expect(slides()).toBe(true);
     } finally {
       document.removeEventListener("click", stay, true);
+    }
+  });
+
+  // The router's `popstate` listener is registered first and can render the new page
+  // synchronously; the list has to be marked before it runs, not after.
+  it("marks the jump before an older popstate listener runs", () => {
+    let markedWhenRouterRan: boolean | undefined;
+    const router = () => {
+      markedWhenRouterRan = !slides();
+    };
+    window.addEventListener("popstate", router);
+    try {
+      render(<SettingsNav />);
+      popState({ hasUAVisualTransition: true });
+      expect(markedWhenRouterRan).toBe(true);
+    } finally {
+      window.removeEventListener("popstate", router);
     }
   });
 

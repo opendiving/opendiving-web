@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -46,7 +46,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
 const PILL =
   "relative isolate before:pointer-events-none before:absolute before:-z-10 before:rounded-md before:bg-muted before:[position-anchor:--settings-nav-shown] before:[top:anchor(top)] before:[right:anchor(right)] before:[bottom:anchor(bottom)] before:[left:anchor(left)]";
 const PILL_SLIDE =
-  "motion-safe:before:transition-[inset] motion-safe:before:duration-300 motion-safe:before:ease-[cubic-bezier(0.33,1,0.68,1)]";
+  "motion-safe:before:transition-[inset] motion-safe:before:duration-300 motion-safe:before:ease-[cubic-bezier(0.33,1,0.68,1)] data-instant:before:transition-none";
 
 // The row's scroll, timed to the pill: `GLIDE_MS` is its `duration-300` and
 // `easeOutCubic` its `cubic-bezier(0.33,1,0.68,1)`. The pill rides inside the row, so on
@@ -69,12 +69,19 @@ export function SettingsNav() {
   // snapshot, so a pill already on its way would be caught halfway. After a swipe the
   // browser animated itself (`hasUAVisualTransition`) they jump rather than slide - the
   // swipe was the move, and a slide once the live page replaces the snapshot repeats it.
-  const [afterBrowserTransition, setAfterBrowserTransition] = useState(false);
+  //
+  // Marked on the list itself, in the capture phase: the router's own `popstate`
+  // listener is older than this one and can render the new page synchronously, so a
+  // flag set later - or through React state - arrives after the pill has started.
   useEffect(() => {
     const onPopState = (event: PopStateEvent) =>
-      setAfterBrowserTransition(event.hasUAVisualTransition === true);
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+      listRef.current?.toggleAttribute(
+        "data-instant",
+        event.hasUAVisualTransition === true,
+      );
+    window.addEventListener("popstate", onPopState, { capture: true });
+    return () =>
+      window.removeEventListener("popstate", onPopState, { capture: true });
   }, []);
 
   // On a phone the row is wider than the screen, and a section further along it would
@@ -95,7 +102,7 @@ export function SettingsNav() {
     );
     const glide =
       hasScrolled.current &&
-      !afterBrowserTransition &&
+      !list.hasAttribute("data-instant") &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     hasScrolled.current = true;
     if (!glide || to === from) {
@@ -109,7 +116,7 @@ export function SettingsNav() {
       if (progress < 1) frame = requestAnimationFrame(step);
     });
     return () => cancelAnimationFrame(frame);
-  }, [pathname, afterBrowserTransition]);
+  }, [pathname]);
 
   // An instance anyone may register on has nobody to invite. Hidden only once the
   // config says so: while it loads, or if it failed, the entry stays, because the
@@ -127,7 +134,7 @@ export function SettingsNav() {
         className={cn(
           "-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0",
           PILL,
-          !afterBrowserTransition && PILL_SLIDE,
+          PILL_SLIDE,
         )}
       >
         {sections.map(({ href, label, icon: Icon }) => {
@@ -137,7 +144,7 @@ export function SettingsNav() {
               <Link
                 href={href}
                 // A tap slides, whatever the last change was.
-                onClick={() => setAfterBrowserTransition(false)}
+                onClick={() => listRef.current?.removeAttribute("data-instant")}
                 aria-current={current ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
