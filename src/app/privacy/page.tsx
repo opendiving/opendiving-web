@@ -923,7 +923,8 @@ export default async function PrivacyPage() {
               6.1 Account Control
             </h3>
             <p className="text-foreground mb-4">
-              From Settings, without asking anyone, you can:
+              From Settings and the Import and export page, without asking
+              anyone, you can:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>Update your profile and account information</li>
@@ -987,16 +988,16 @@ export default async function PrivacyPage() {
             </ul>
             <p className="text-foreground mb-4">
               The first four need no request: access, correction, deletion and
-              portability are all buttons in Settings, and they act immediately
-              rather than being forwarded to somebody. Two things sit outside
-              those buttons, and naming them is better than letting that
-              sentence read wider than it is. The list of signed-in devices is
-              on the settings page but is not part of the export. And the record
-              of account security events in section 2.2 is in neither: nothing
-              in the app shows it to you and no button copies it, so a copy of
-              that one has to be asked for like the rights below. The last two,
-              that request, and anything else go to whoever runs this copy
-              &mdash; section 13 says how to reach them.
+              portability are all buttons in Settings or on the Import and
+              export page, and they act immediately rather than being forwarded
+              to somebody. Two things sit outside those buttons, and naming them
+              is better than letting that sentence read wider than it is. The
+              list of signed-in devices is in Settings but is not part of the
+              export. And the record of account security events in section 2.2
+              is in neither: nothing in the app shows it to you and no button
+              copies it, so a copy of that one has to be asked for like the
+              rights below. The last two, that request, and anything else go to
+              whoever runs this copy &mdash; section 13 says how to reach them.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1554,19 +1555,20 @@ export default async function PrivacyPage() {
             </h2>
             <p className="text-foreground mb-4">
               Most of what people write to a privacy address to ask for, you can
-              simply do. Exporting everything you have entered, bringing a
-              logbook back in and deleting your account are all buttons in
-              Settings; they work immediately, they need nobody&rsquo;s
-              approval, and no request has to be sent to anyone.
+              simply do. Exporting everything you have entered and bringing a
+              logbook back in are buttons on the Import and export page, and
+              deleting your account is one in Settings; they work immediately,
+              they need nobody&rsquo;s approval, and no request has to be sent
+              to anyone.
             </p>
             <p className="text-foreground mb-4">
               For anything else &mdash; a question about this page, about how
-              this copy is run, or about a right in section 6.2 that Settings
-              does not cover &mdash; the person to ask is whoever runs this copy
-              of OpenDiving. They are the controller of your data, whether that
-              is the OpenDiving project running a copy of its own or somebody
-              else entirely; an author who does not run this copy holds none of
-              your data and could not answer for whoever does. The{" "}
+              this copy is run, or about a right in section 6.2 that those
+              buttons do not cover &mdash; the person to ask is whoever runs
+              this copy of OpenDiving. They are the controller of your data,
+              whether that is the OpenDiving project running a copy of its own
+              or somebody else entirely; an author who does not run this copy
+              holds none of your data and could not answer for whoever does. The{" "}
               <Link
                 href="/support"
                 className="underline hover:text-muted-foreground"

@@ -17,7 +17,7 @@ import {
   ImportCheckInDetails,
   useImportCheckIn,
   type ImportCheckInChoices,
-} from "@/components/settings/import-check-in-details";
+} from "@/components/data/import-check-in-details";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
@@ -341,7 +341,7 @@ function PendingImport({
   );
 }
 
-// "Bring your logbook back" on the settings page, directly under the export card
+// "Bring your logbook back" on `/data`, directly under the export card
 // it is the other half of. The product's promise is that nothing in an account is
 // locked to this app; export makes that falsifiable and import is what closes the
 // loop, since a copy you cannot read back is a copy in name only.
