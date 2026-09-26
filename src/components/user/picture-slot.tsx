@@ -75,125 +75,128 @@ export function PictureSlot({
     <div className="space-y-2">
       <p className="text-sm font-medium">{HEADING[picture]}</p>
 
-      <div className="flex items-start gap-4">
-        {pending ? (
-          <PendingPreview picture={picture} edit={pending} />
-        ) : picture === "avatar" ? (
-          <UserAvatar
-            name={name}
-            avatarSha={shown}
-            size={80}
-            className="h-20 w-20"
-          />
-        ) : shown ? (
-          <PortraitImage
-            name={name}
-            portraitSha={shown}
-            className="w-20 shrink-0"
-          />
-        ) : (
-          <PortraitFrame
-            empty
-            className="w-20 shrink-0"
-            role="img"
-            aria-label="No portrait"
-          >
-            <UserSquare className="h-6 w-6 text-muted-foreground" aria-hidden />
-          </PortraitFrame>
-        )}
+      {/* A grid so a phone can move the buttons without reordering the DOM: beside
+          an 80px picture, Replace, Adjust and the bin need 40px more than a 375px
+          screen leaves, so there the caption takes the picture's side and the
+          buttons get the full width below. From `sm` both sit beside it. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 sm:grid-rows-[auto_1fr] sm:gap-y-2">
+        <div className="sm:row-span-2">
+          {pending ? (
+            <PendingPreview picture={picture} edit={pending} />
+          ) : picture === "avatar" ? (
+            <UserAvatar
+              name={name}
+              avatarSha={shown}
+              size={80}
+              className="h-20 w-20"
+            />
+          ) : shown ? (
+            <PortraitImage
+              name={name}
+              portraitSha={shown}
+              className="w-20 shrink-0"
+            />
+          ) : (
+            <PortraitFrame
+              empty
+              className="w-20 shrink-0"
+              role="img"
+              aria-label="No portrait"
+            >
+              <UserSquare
+                className="h-6 w-6 text-muted-foreground"
+                aria-hidden
+              />
+            </PortraitFrame>
+          )}
+        </div>
 
-        <div className="min-w-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => inputRef.current?.click()}
+          >
+            {showsSomething ? (
+              <Replace className="h-4 w-4 mr-2" />
+            ) : (
+              <Upload className="h-4 w-4 mr-2" />
+            )}
+            {/* What the button does to what the slot is showing: a picked photo is
+                  as replaceable as a stored one. */}
+            {showsSomething ? "Replace" : "Upload"}
+          </Button>
+
+          {canAdjust && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               disabled={disabled}
-              onClick={() => inputRef.current?.click()}
+              onClick={onAdjust}
             >
-              {showsSomething ? (
-                <Replace className="h-4 w-4 mr-2" />
+              {loading === "adjust" ? (
+                <ButtonSpinner className="mr-2" />
               ) : (
-                <Upload className="h-4 w-4 mr-2" />
+                <Crop className="h-4 w-4 mr-2" />
               )}
-              {/* What the button does to what the slot is showing: a picked photo is
-                  as replaceable as a stored one. */}
-              {showsSomething ? "Replace" : "Upload"}
+              Adjust
             </Button>
+          )}
 
-            {canAdjust && (
+          {canCopy && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={onCopy}
+            >
+              {loading === "copy" && <ButtonSpinner className="mr-2" />}
+              Use profile picture
+            </Button>
+          )}
+
+          {isRemoved ? (
+            <IconTooltip label={`Keep your ${label}`}>
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 disabled={disabled}
-                onClick={onAdjust}
+                onClick={() => onChange(null)}
               >
-                {loading === "adjust" ? (
-                  <ButtonSpinner className="mr-2" />
-                ) : (
-                  <Crop className="h-4 w-4 mr-2" />
-                )}
-                Adjust
+                <Undo2 className="h-4 w-4" />
               </Button>
-            )}
-
-            {canCopy && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={disabled}
-                onClick={onCopy}
+            </IconTooltip>
+          ) : (
+            showsSomething && (
+              <IconTooltip
+                label={
+                  pending ? `Discard the new ${label}` : `Remove your ${label}`
+                }
               >
-                {loading === "copy" && <ButtonSpinner className="mr-2" />}
-                Use profile picture
-              </Button>
-            )}
-
-            {isRemoved ? (
-              <IconTooltip label={`Keep your ${label}`}>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   disabled={disabled}
-                  onClick={() => onChange(null)}
+                  // A pending edit is dropped rather than marked: the stored
+                  // picture it would have replaced comes back into view.
+                  onClick={() => onChange(pending ? null : { kind: "remove" })}
                 >
-                  <Undo2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </IconTooltip>
-            ) : (
-              showsSomething && (
-                <IconTooltip
-                  label={
-                    pending
-                      ? `Discard the new ${label}`
-                      : `Remove your ${label}`
-                  }
-                >
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={disabled}
-                    // A pending edit is dropped rather than marked: the stored
-                    // picture it would have replaced comes back into view.
-                    onClick={() =>
-                      onChange(pending ? null : { kind: "remove" })
-                    }
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-              )
-            )}
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            {caption(picture, edit, !!storedSha)}
-          </p>
+            )
+          )}
         </div>
+
+        <p className="col-start-2 row-start-1 text-xs text-muted-foreground sm:row-start-2">
+          {caption(picture, edit, !!storedSha)}
+        </p>
       </div>
 
       <input
