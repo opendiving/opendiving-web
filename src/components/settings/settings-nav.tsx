@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -40,11 +40,13 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
 ];
 
 // The selection is one pill, the list's `::before`, tethered by anchor positioning to
-// whichever entry holds `--settings-nav-shown`, so moving the name slides it there. A
+// whichever entry holds `--settings-nav-shown`, so moving the name moves it there. A
 // browser without anchor positioning drops the `anchor()` insets, leaving a pill with
 // no size, and gives the entry its own background instead.
 const PILL =
-  "relative isolate before:pointer-events-none before:absolute before:-z-10 before:rounded-md before:bg-muted before:[position-anchor:--settings-nav-shown] before:[top:anchor(top)] before:[right:anchor(right)] before:[bottom:anchor(bottom)] before:[left:anchor(left)] motion-safe:before:transition-[inset] motion-safe:before:duration-300 motion-safe:before:ease-[cubic-bezier(0.33,1,0.68,1)]";
+  "relative isolate before:pointer-events-none before:absolute before:-z-10 before:rounded-md before:bg-muted before:[position-anchor:--settings-nav-shown] before:[top:anchor(top)] before:[right:anchor(right)] before:[bottom:anchor(bottom)] before:[left:anchor(left)]";
+const PILL_SLIDE =
+  "motion-safe:before:transition-[inset] motion-safe:before:duration-300 motion-safe:before:ease-[cubic-bezier(0.33,1,0.68,1)]";
 
 // The row's scroll, timed to the pill: `GLIDE_MS` is its `duration-300` and
 // `easeOutCubic` its `cubic-bezier(0.33,1,0.68,1)`. The pill rides inside the row, so on
@@ -62,17 +64,18 @@ export function SettingsNav() {
   const listRef = useRef<HTMLUListElement>(null);
   const hasScrolled = useRef(false);
 
-  // The entry clicked, shown as selected from the click rather than from whenever the
-  // route arrives, so the pill and the row move together straight away. Any change of
-  // pathname ends it, a return to the page it was clicked on included - which is what
-  // a swipe back is - so it is cleared during render, on the change itself.
-  const [clicked, setClicked] = useState<string>();
-  const [pathnameSeen, setPathnameSeen] = useState(pathname);
-  if (pathname !== pathnameSeen) {
-    setPathnameSeen(pathname);
-    setClicked(undefined);
-  }
-  const shown = clicked ?? pathname;
+  // The pill and the row move when the pathname does, never ahead of it on the tap:
+  // Safari snapshots the page being left as the URL changes, and a swipe back shows that
+  // snapshot, so a pill already on its way would be caught halfway. After a swipe the
+  // browser animated itself (`hasUAVisualTransition`) they jump rather than slide - the
+  // swipe was the move, and a slide once the live page replaces the snapshot repeats it.
+  const [afterBrowserTransition, setAfterBrowserTransition] = useState(false);
+  useEffect(() => {
+    const onPopState = (event: PopStateEvent) =>
+      setAfterBrowserTransition(event.hasUAVisualTransition === true);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   // On a phone the row is wider than the screen, and a section further along it would
   // otherwise open with its own entry out of sight. The row is scrolled rather than the
@@ -81,7 +84,7 @@ export function SettingsNav() {
   // instant, since there is nothing yet to move from.
   useEffect(() => {
     const list = listRef.current;
-    const entry = list?.querySelector<HTMLElement>(`a[href="${shown}"]`);
+    const entry = list?.querySelector<HTMLElement>(`a[href="${pathname}"]`);
     if (!list || !entry) return;
     const row = list.getBoundingClientRect();
     const box = entry.getBoundingClientRect();
@@ -92,6 +95,7 @@ export function SettingsNav() {
     );
     const glide =
       hasScrolled.current &&
+      !afterBrowserTransition &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     hasScrolled.current = true;
     if (!glide || to === from) {
@@ -105,14 +109,7 @@ export function SettingsNav() {
       if (progress < 1) frame = requestAnimationFrame(step);
     });
     return () => cancelAnimationFrame(frame);
-  }, [shown]);
-
-  const select = (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
-    // A modified click opens a tab and leaves this page where it is.
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
-      return;
-    if (href !== pathname) setClicked(href);
-  };
+  }, [pathname, afterBrowserTransition]);
 
   // An instance anyone may register on has nobody to invite. Hidden only once the
   // config says so: while it loads, or if it failed, the entry stays, because the
@@ -130,19 +127,21 @@ export function SettingsNav() {
         className={cn(
           "-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0",
           PILL,
+          !afterBrowserTransition && PILL_SLIDE,
         )}
       >
         {sections.map(({ href, label, icon: Icon }) => {
-          const isShown = href === shown;
+          const current = pathname === href;
           return (
             <li key={href} className="shrink-0">
               <Link
                 href={href}
-                onClick={select(href)}
-                aria-current={pathname === href ? "page" : undefined}
+                // A tap slides, whatever the last change was.
+                onClick={() => setAfterBrowserTransition(false)}
+                aria-current={current ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  isShown
+                  current
                     ? "text-foreground [anchor-name:--settings-nav-shown] not-supports-[position-anchor:auto]:bg-muted"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                 )}

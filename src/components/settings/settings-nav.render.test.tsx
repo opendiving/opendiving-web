@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 
 import type { InstanceConfig } from "@/lib/api/config";
 import { SettingsNav } from "./settings-nav";
@@ -17,6 +17,30 @@ vi.mock("@/hooks/useInstanceConfig", () => ({
 
 const labels = () =>
   screen.getAllByRole("link").map((link) => link.textContent);
+
+// Which entry the pill is tethered to, and whether it slides there.
+const shown = (name: string) =>
+  screen
+    .getByRole("link", { name })
+    .classList.contains("[anchor-name:--settings-nav-shown]");
+const slides = () =>
+  screen
+    .getByRole("list")
+    .classList.contains("motion-safe:before:transition-[inset]");
+
+const popState = ({
+  hasUAVisualTransition,
+}: {
+  hasUAVisualTransition: boolean;
+}) => {
+  const event = new PopStateEvent("popstate");
+  Object.defineProperty(event, "hasUAVisualTransition", {
+    value: hasUAVisualTransition,
+  });
+  act(() => {
+    window.dispatchEvent(event);
+  });
+};
 
 beforeEach(() => {
   at.pathname = "/settings/account";
@@ -38,28 +62,47 @@ describe("SettingsNav", () => {
     ).toHaveLength(1);
   });
 
-  // The selection moves on the click, before the route arrives, and gives way to the
-  // pathname on its next change - including a swipe back to the page the click left.
-  it("selects on the click, and follows the history back", () => {
-    const shown = (name: string) =>
-      screen
-        .getByRole("link", { name })
-        .classList.contains("[anchor-name:--settings-nav-shown]");
+  // Not ahead of the route on the tap: Safari snapshots the page being left as the URL
+  // changes, and a swipe back shows that snapshot.
+  it("moves the selection with the pathname, and follows it back", () => {
     // Cancelled before `Link` sees it: the router is not what is under test.
     const stay = (event: Event) => event.preventDefault();
     document.addEventListener("click", stay, true);
     try {
       const { rerender } = render(<SettingsNav />);
       fireEvent.click(screen.getByRole("link", { name: "Preferences" }));
-      expect(shown("Preferences")).toBe(true);
+      expect(shown("Account")).toBe(true);
 
       at.pathname = "/settings/preferences";
       rerender(<SettingsNav />);
+      expect(shown("Preferences")).toBe(true);
+
       at.pathname = "/settings/account";
       rerender(<SettingsNav />);
-
       expect(shown("Account")).toBe(true);
       expect(shown("Preferences")).toBe(false);
+    } finally {
+      document.removeEventListener("click", stay, true);
+    }
+  });
+
+  // A swipe the browser animated was the move, so the pill jumps after it; a tap slides.
+  it("jumps after a browser-animated history step, and slides otherwise", () => {
+    const stay = (event: Event) => event.preventDefault();
+    document.addEventListener("click", stay, true);
+    try {
+      render(<SettingsNav />);
+      expect(slides()).toBe(true);
+
+      popState({ hasUAVisualTransition: true });
+      expect(slides()).toBe(false);
+
+      popState({ hasUAVisualTransition: false });
+      expect(slides()).toBe(true);
+
+      popState({ hasUAVisualTransition: true });
+      fireEvent.click(screen.getByRole("link", { name: "Preferences" }));
+      expect(slides()).toBe(true);
     } finally {
       document.removeEventListener("click", stay, true);
     }
