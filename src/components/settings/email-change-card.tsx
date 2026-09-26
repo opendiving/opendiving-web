@@ -95,7 +95,7 @@ export function EmailChangeCard({ currentEmail }: EmailChangeCardProps) {
             {error && <StatusMessage variant="error">{error}</StatusMessage>}
 
             <div className="space-y-2">
-              <Label htmlFor="newEmail">New email address</Label>
+              <Label htmlFor="newEmail">New email</Label>
               <Input
                 id="newEmail"
                 type="email"
