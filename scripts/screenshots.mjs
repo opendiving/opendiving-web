@@ -820,7 +820,7 @@ if (wanted("dive-detail")) {
 
 if (wanted("gear-item")) {
   await visit(page, "gear-item", `${WEB}/gear/${gearItem}`);
-  await page.getByText("Service history").waitFor();
+  await page.getByText("Service History").waitFor();
   await atTop(page);
   await refuseSlicedRow(page, "gear-item", HEIGHT["gear-item"]);
   await shot(page, "gear-item", HEIGHT["gear-item"]);

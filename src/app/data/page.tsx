@@ -20,7 +20,7 @@ export default function DataPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">
-          Import and export
+          Import and Export
         </h1>
         <p className="text-muted-foreground">
           Take a copy of everything you have entered, or bring a logbook in.

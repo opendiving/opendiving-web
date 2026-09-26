@@ -84,7 +84,7 @@ export function CheckInDetailsCard() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle as="h2" className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Check-in details
+            Check-in Details
           </CardTitle>
           <Button variant="outline" size="sm" asChild>
             <Link href="/checkin">Check-in</Link>

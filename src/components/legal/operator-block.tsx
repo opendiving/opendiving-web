@@ -32,7 +32,7 @@ export function OperatorBlock({
         id="who-runs-this-copy"
         className="text-2xl font-semibold text-foreground mb-4"
       >
-        Who runs this copy
+        Who Runs This Copy
       </h2>
       <p className="text-foreground mb-4">
         This copy of OpenDiving is operated by{" "}

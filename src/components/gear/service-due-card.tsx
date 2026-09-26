@@ -104,7 +104,7 @@ export function ServiceDueCard() {
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2 text-base">
           <Wrench className="h-4 w-4" />
-          Service due
+          Service Due
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">

@@ -137,7 +137,7 @@ export default function DiveSiteDetailPage() {
             complete
             enabled={!!user}
             diveSiteId={diveSite.uuid}
-            title="Dives at this Site"
+            title="Dives at This Site"
             description="All dives logged at this dive site"
             viewAllHref={null}
             emptyTitle="No dives logged at this site yet"

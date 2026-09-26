@@ -101,7 +101,7 @@ const renderCard = async (
   });
   getRecords.mockResolvedValue(records);
   render(<GearServiceCard gearItem={gearItem} onChanged={vi.fn()} />);
-  await screen.findByText("Service history");
+  await screen.findByText("Service History");
 };
 
 beforeEach(() => {

@@ -217,7 +217,7 @@ export default function TripDetailPage() {
             complete
             enabled={!!user}
             tripId={trip.uuid}
-            title="Dives in this Trip"
+            title="Dives in This Trip"
             // Not "logged as part of this trip": a part is a noun here now, and
             // that sentence reads as a claim about which stretch a dive was on.
             description="Every dive logged on this trip"

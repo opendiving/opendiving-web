@@ -307,7 +307,7 @@ describe("DiveDetailSidebar dive center", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Dive center" }),
+      screen.getByRole("heading", { name: "Dive Center" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Blue Ocean Dive Center")).toBeInTheDocument();
     expect(screen.queryByText("Training")).not.toBeInTheDocument();
@@ -331,7 +331,7 @@ describe("DiveDetailSidebar dive center", () => {
     renderSidebar(dive(), course());
 
     expect(
-      screen.queryByRole("heading", { name: "Dive center" }),
+      screen.queryByRole("heading", { name: "Dive Center" }),
     ).not.toBeInTheDocument();
   });
 });

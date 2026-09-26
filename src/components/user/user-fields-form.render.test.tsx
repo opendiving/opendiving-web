@@ -68,7 +68,7 @@ vi.mock("@/components/ui/image-crop-dialog", () => ({
   }) => (
     <div
       role="dialog"
-      aria-label="Adjust your photo"
+      aria-label="Adjust Your Photo"
       data-src={imageSrc}
       data-aspect={aspect}
       data-initial={initialArea ? JSON.stringify(initialArea) : ""}

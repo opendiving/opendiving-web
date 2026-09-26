@@ -547,7 +547,7 @@ create and edit — passing an existing record edits it in place, omitting one c
 is one page listing items and sets together. A gear item is four fields (name, brand, rented,
 notes), and the flow that matters most is adding one from inside a half-filled dive form, where
 navigating away would lose the form or need draft persistence. `/gear/[id]` remains as a detail page
-because it hosts the "Dives with this Gear" list.
+because it hosts the "Dives with This Gear" list.
 
 ## The gear delete dialog offers "Archive instead", and its wording is pinned by a test
 
@@ -769,7 +769,7 @@ stays editable, nothing is filled in silently on save, and the dialog says so. T
 dive-safety-adjacent UI and must not read as advice; keep that framing if the list grows. Gear with
 no meaningful convention (a mask, a knife) or no type gets `[]`, not a made-up default.
 
-## The dashboard's "Service due" card renders nothing when nothing is due
+## The dashboard's "Service Due" card renders nothing when nothing is due
 
 `ServiceDueCard` returns `null` when no schedule needs attention and when its fetch fails (logged,
 not surfaced): a permanent "all your gear is fine" tile trains people to stop reading the dashboard,
@@ -780,7 +780,7 @@ would bake today's date into a cached response and go wrong at midnight — and 
 through the same `serviceStatus()` every other surface uses. The gear list needs no extra request:
 `GET /gear-items` embeds each item's schedules as `item.service`, and the badge derives from those.
 
-## The dashboard's "Service due" card: each row logs its service without leaving the dashboard
+## The dashboard's "Service Due" card: each row logs its service without leaving the dashboard
 
 Each row carries the gear detail card's icon-only `ClipboardCheck` button, opening the same
 `GearServiceRecordDialog`. The row is a flex container with link and button as siblings, not one
@@ -872,8 +872,8 @@ Each is held as a pending edit and sent after the form's fields save, so Cancel 
 image untouched. For cards the order is forced: `PUT /certification/{uuid}/file/{side}` needs a uuid
 a new card has only once `createCertification` resolves. `CertificationCardFiles` collects
 add/replace/delete per side and `applyCertificationCardEdits` sends them serially, in
-`CERTIFICATION_SIDES` order. The avatar (Profile Information) and the portrait (Check-in details,
-About you) each hold one `PictureEdit` — replace, adjust, remove, or the portrait's copy — which
+`CERTIFICATION_SIDES` order. The avatar (Profile Information) and the portrait (Check-in Details,
+About You) each hold one `PictureEdit` — replace, adjust, remove, or the portrait's copy — which
 `applyPictureEdit` sends after `PATCH /user`. Rejected: a picture card saving on pick beside forms
 that wait for Save.
 
@@ -3569,7 +3569,7 @@ export formats) in full `text-primary-foreground`, never `/70`: 4.90:1 against 3
 in dark mode, the `--coral-solid` constraint. No store badges; prose says no mobile apps exist. The
 hero sells the log, not the deployment: most visitors are divers, not self-hosters. `<h1>` "The
 Ultimate Diving App" stays by the owner's call; `app/page.tsx`'s `title` changes with it or not at
-all. Data ownership lives in the `#features` card "Yours To Keep", the band (as the export) and
+all. Data ownership lives in the `#features` card "Yours to Keep", the band (as the export) and
 `#self-hosting`. Nav is Features, Self-hosting and `Source`. The footer's "Open source diving
 platform for the global diving community" states audience, not traction; leave it.
 
@@ -4488,7 +4488,7 @@ settle before trusting `color-contrast`; a worktree production build needs
 `CardTitle` takes `as="h2"` on every card that is a section of its page — settings, dive detail,
 gear, dashboard. The test is "is this card a section", not "is this page failing". The landing
 page's feature cards keep `h3` because they sit under
-`<h2 class="sr-only">What OpenDiving does</h2>`; `/onboarding` and `/restore` keep it because
+`<h2 class="sr-only">What OpenDiving Does</h2>`; `/onboarding` and `/restore` keep it because
 neither has an `<h1>` (`page-has-heading-one` is their real defect). Read a promoted card all the
 way down: `delete-account-card.tsx`'s inner heading is an `<h3>`, since an `<h4>` under `<h2>` is
 the same jump again.
@@ -5617,7 +5617,7 @@ preview's `token`; `DataImportCard` renders both reports through one `ImportRepo
 approved plan and its result are comparable. The file stays in state beside the token because the
 API re-hashes the body and refuses a token minted for other bytes.
 
-"About the original file" renders `ImportReport.conversion`, omitted when `conversion` is `null`.
+"About the Original File" renders `ImportReport.conversion`, omitted when `conversion` is `null`.
 `restored` keeps its own column, never folded into `created`: un-deleting is the number a backup
 restore came for. Notes are a persistent list, never a toast; a non-zero `notes_truncated` marks the
 list a prefix and says the counts are not.
@@ -5669,7 +5669,7 @@ converter's `grouped()`, and this side owns only presentation, including the "an
 A logbook read through the API's DiveJSON converter is discarded after conversion; only the
 full-export archive path writes a dive-file row. Every sentence promising the original file back is
 scoped to a file uploaded **to a dive** — `README.md`, `privacy/page.tsx` §2.1, the root description
-in `lib/site-description.ts`, the landing page's "Built to outlive the vendor" band.
+in `lib/site-description.ts`, the landing page's "Built to Outlive the Vendor" band.
 
 The tagline drops the promise rather than qualifying it, taking the front door's "vendor exports in,
 open formats out, everything in one click"; punctuation is per file, only the claim travels.
@@ -5681,7 +5681,7 @@ git grep -niE "(original|dive-computer|source) files?" -- src README.md
 ```
 
 Hits that stay: the README's _Dive-computer import_ bullet, the landing page's **Computer Import**
-card, the import card's _About the original file_ heading. A cardinality claim beside the promise
+card, the import card's _About the Original File_ heading. A cardinality claim beside the promise
 (§2.1's "one per dive"; a dive holds one recording per export) shares no vocabulary with it; sweep
 for the count separately.
 
@@ -5859,7 +5859,7 @@ key) shares the module, so one test covers completeness.
 
 `GET /config` carries `project_operated`, `true` only where the project operates the instance, and
 `InviteRequestForm` takes a `variant`. `generic`, the default, is true of any household instance;
-`waitlist` ("Get early access", "You're on the list") is the project speaking as operator, which
+`waitlist` ("Get Early Access", "You're on the list") is the project speaking as operator, which
 `/privacy` allows.
 
 `landing-page.tsx` picks `waitlist` only on the literal `true`; `false`, a `/config` lacking the
@@ -6711,13 +6711,15 @@ while an ignored baseline is invisible by construction. No test calls either tod
 ## Controls are sentence case; headings are Title Case
 
 Every button, link-button and menu item capitalizes its first word and its proper nouns, nothing
-else: `New trip`, `Add your first gear`, `Save changes`, `Back to dive sites`,
-`Continue with Google`. A page's own name is not a proper noun here — `View all dives` and
-`Back to dives` point at the page the nav calls `Dives`, and both lowercase it. Headings keep Title
-Case — card titles, page titles, dialog titles — so `New Certification` over `Create certification`
-in one dialog is the rule holding, not breaking. The split is what no single call site can carry:
-over a hundred labels, and a new one is written by copying a neighbour. Title Case for controls was
-rejected because the long CTAs (`Log A Dive For This Course`) read as headings themselves.
+else: `New trip`, `Save changes`, `Back to dive sites`. A page's name is not a proper noun:
+`View all dives` lowercases the page the nav calls `Dives`. A heading that names something — a page,
+card, section or form dialog — is Title Case, with articles, conjunctions and short prepositions
+lowercase: `Dives on This Course`, `Signed-in Devices`. So `New Certification` over
+`Create certification` in one dialog is the rule holding. A heading that says something — a
+confirmation's title, an empty state, a status line — is a sentence: `Delete dive`, `No trips yet`,
+`Message sent`. The split is what no single call site can carry: a new label is written by copying a
+neighbour. Title Case for controls was rejected because long CTAs (`Log A Dive For This Course`)
+read as headings.
 
 ## One `EmptyState`, and the filtered list is not one
 

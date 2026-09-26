@@ -62,7 +62,7 @@ function listAfterHeading(heading: RegExp): string[] {
 }
 
 function storageEntries(): string[] {
-  return listAfterHeading(/10\.2 Preferences remembered on this device/);
+  return listAfterHeading(/10\.2 Preferences Remembered on This Device/);
 }
 
 const NUMBER_WORDS = [
@@ -562,7 +562,7 @@ describe("the Google half of the page", () => {
 // the providers §4.3 leaves unnamed, the basemap and geocoder §4.4 and §4.5 leave
 // unnamed, the operator's own three facts, and the block's heading.
 const OPERATOR_ONLY = [
-  "Who runs this copy",
+  "Who Runs This Copy",
   PROJECT_OPERATOR.name,
   PROJECT_OPERATOR.contactEmail,
   PROJECT_OPERATOR.jurisdiction,
@@ -597,7 +597,7 @@ describe("the operator block", () => {
   it("appears only where the API said the project operates this instance", async () => {
     await renderPage({ google: false, projectOperated: false });
     expect(
-      screen.queryByRole("heading", { name: /Who runs this copy/ }),
+      screen.queryByRole("heading", { name: /Who Runs This Copy/ }),
     ).toBeNull();
 
     // Both renderings in one test on purpose - "iff" is a claim about the pair - which
@@ -606,7 +606,7 @@ describe("the operator block", () => {
     cleanup();
     await renderPage({ google: false, projectOperated: true });
     expect(
-      screen.getByRole("heading", { name: /Who runs this copy/ }),
+      screen.getByRole("heading", { name: /Who Runs This Copy/ }),
     ).toBeInTheDocument();
   });
 
@@ -643,7 +643,7 @@ describe("the operator block", () => {
     await renderPage({ google: false, projectOperated: true });
 
     const block = screen
-      .getByRole("heading", { name: /Who runs this copy/ })
+      .getByRole("heading", { name: /Who Runs This Copy/ })
       .closest("section")!;
     expect(block).toHaveTextContent(question);
   });
@@ -654,7 +654,7 @@ describe("the operator block", () => {
     await renderPage({ google: false, projectOperated: true });
 
     const block = screen
-      .getByRole("heading", { name: /Who runs this copy/ })
+      .getByRole("heading", { name: /Who Runs This Copy/ })
       .closest("section")!;
 
     expect(block).toHaveTextContent(/Render, in its Frankfurt region/);
@@ -677,7 +677,7 @@ describe("the operator block", () => {
     await renderPage({ google: false, projectOperated: true });
 
     const block = screen
-      .getByRole("heading", { name: /Who runs this copy/ })
+      .getByRole("heading", { name: /Who Runs This Copy/ })
       .closest("section")!;
 
     expect(block).toHaveTextContent(/14-day grace period/);
@@ -697,7 +697,7 @@ describe("the operator block", () => {
     await renderPage({ google: false, projectOperated: true });
 
     const block = screen
-      .getByRole("heading", { name: /Who runs this copy/ })
+      .getByRole("heading", { name: /Who Runs This Copy/ })
       .closest("section")!;
 
     expect(block).toHaveTextContent(/§1, §5, §11, §12/);

@@ -181,7 +181,7 @@ export default function GearItemDetailPage() {
             complete
             enabled={!!user}
             gearItemId={gearItem.uuid}
-            title="Dives with this Gear"
+            title="Dives with This Gear"
             description="Every dive this item was used on"
             viewAllHref={null}
             emptyTitle="Not used on any dive yet"

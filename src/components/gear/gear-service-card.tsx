@@ -310,7 +310,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
             <div>
               <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <h3 className="text-sm font-medium text-muted-foreground">
-                  Service history
+                  Service History
                 </h3>
                 <Button
                   variant="outline"

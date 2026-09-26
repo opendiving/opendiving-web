@@ -134,7 +134,7 @@ export function LandingPage() {
               directly under the form sold the hero to the smaller audience.
               The badges still have to be answered for, so the missing apps are
               stated outright; the links now sit inline at the weight they
-              deserve, and the prominent one lives in "Run your own" below. */}
+              deserve, and the prominent one lives in "Run Your Own" below. */}
           <p className="mt-16 mx-auto max-w-xl text-center text-sm text-muted-foreground">
             There are no mobile apps — the iOS companion is parked until the
             server side is finished, and this web app is built to work on a
@@ -180,7 +180,7 @@ export function LandingPage() {
           {/* `sr-only` rather than absent: the cards below are the page's second
               section and need a heading to sit under, but the design has never
               shown one and the cards' own titles carry it visually. */}
-          <h2 className="sr-only">What OpenDiving does</h2>
+          <h2 className="sr-only">What OpenDiving Does</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <Card>
               <CardHeader>
@@ -230,7 +230,7 @@ export function LandingPage() {
             <Card>
               <CardHeader>
                 <Anchor className="h-12 w-12 text-teal mb-4" />
-                <CardTitle>Yours To Keep</CardTitle>
+                <CardTitle>Yours to Keep</CardTitle>
                 {/* "self-hostable", not "self-hosted": this card renders on
                     every instance, and most visitors are signing in to a log
                     somebody else runs. The capability is the promise; the
@@ -282,7 +282,7 @@ export function LandingPage() {
       <section className="py-20 bg-primary text-primary-foreground">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold mb-6">
-            Built to outlive the vendor
+            Built to Outlive the Vendor
           </h2>
           <p className="text-lg">
             Movescount, Deepblu, Diveboard — cloud dive logs come and go, and
@@ -317,7 +317,7 @@ export function LandingPage() {
       <section id="self-hosting" className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-foreground mb-6">
-            Run your own
+            Run Your Own
           </h2>
           <p className="text-lg text-muted-foreground mb-6">
             One compose file brings up the whole stack — this app, the API and

@@ -247,7 +247,7 @@ export function DiveDetailSidebar({
       {contact && (
         <Card>
           <CardHeader>
-            <CardTitle as="h2">Dive center</CardTitle>
+            <CardTitle as="h2">Dive Center</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2 text-sm font-medium">

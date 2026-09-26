@@ -527,7 +527,7 @@ export function CheckInPageFrame({
                 actually dived, and reaches for the policy to quote and the person to
                 call only if something goes wrong. */}
             <Section
-              title="Dive insurance"
+              title="Dive Insurance"
               className={cn(KEEP_TOGETHER, !hasInsurance && offSheet)}
               action={editControl("Edit your dive insurance", () =>
                 setEditing("insurance"),
@@ -554,7 +554,7 @@ export function CheckInPageFrame({
             </Section>
 
             <Section
-              title="Emergency contact"
+              title="Emergency Contact"
               className={cn(KEEP_TOGETHER, !hasEmergencyContact && offSheet)}
               action={editControl("Edit your emergency contact", () =>
                 setEditing("emergency"),

@@ -103,7 +103,7 @@ function ImportReportView({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-medium">What is in this file</h3>
+        <h3 className="text-sm font-medium">What Is in This File</h3>
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground mt-2">
             No records at all — every collection in this document is empty.
@@ -185,7 +185,7 @@ function ImportReportView({
       </div>
 
       <div>
-        <h3 className="text-sm font-medium">Uploaded files</h3>
+        <h3 className="text-sm font-medium">Uploaded Files</h3>
         <p className="text-sm text-muted-foreground mt-1">
           {report.files.referenced === 0
             ? "This document references no dive-computer files or certification scans."
@@ -234,7 +234,7 @@ function ImportReportView({
           would be a claim about a conversion that never happened. */}
       {conversion && (
         <div>
-          <h3 className="text-sm font-medium">About the original file</h3>
+          <h3 className="text-sm font-medium">About the Original File</h3>
           {conversion.groups.length === 0 ? (
             <p className="text-sm text-muted-foreground mt-2">
               Everything in this {importSourceLabel(conversion.format)} file

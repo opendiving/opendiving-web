@@ -56,7 +56,7 @@ function SignInContent() {
           "check your email" card, which opens with the same block. */}
       <AuthForm
         redirectTo={next}
-        title="Sign in"
+        title="Sign In"
         description={
           next
             ? "You need to be signed in to view that page."

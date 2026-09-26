@@ -140,7 +140,7 @@ function RenumberForm({ onDone }: { onDone: (renumbered: boolean) => void }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Renumber dives</DialogTitle>
+        <DialogTitle>Renumber Dives</DialogTitle>
         <DialogDescription>
           Numbers your dives consecutively in date order. Nothing else about
           them changes. Worth doing once your log is complete — if some of your

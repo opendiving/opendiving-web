@@ -49,7 +49,7 @@ export default function SupportPage() {
                   it, and indistinguishable from the title in light mode. */}
               <CardTitle as="h2" className="flex items-center gap-2">
                 <Bug className="h-5 w-5" />
-                Bugs & feature requests
+                Bugs & Feature Requests
               </CardTitle>
               <CardDescription>
                 Public, searchable, and where the work happens
@@ -119,7 +119,7 @@ export default function SupportPage() {
             <CardHeader>
               <CardTitle as="h2" className="flex items-center gap-2">
                 <Anchor className="h-5 w-5" />
-                Self-hosted instances
+                Self-Hosted Instances
               </CardTitle>
               <CardDescription>Your server, your data</CardDescription>
             </CardHeader>
@@ -152,7 +152,7 @@ export default function SupportPage() {
             <CardHeader>
               <CardTitle as="h2" className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />
-                Send us a message
+                Send Us a Message
               </CardTitle>
               <CardDescription>
                 For anything that does not belong in a public issue - or when

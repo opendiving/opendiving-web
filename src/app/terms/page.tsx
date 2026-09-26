@@ -440,7 +440,7 @@ export default async function TermsPage() {
             </p>
             <p className="text-foreground mb-4">
               Two things worth knowing without reading it: exporting everything
-              you have entered is a button on the Import and export page,
+              you have entered is a button on the Import and Export page,
               deleting your account is one in Settings, and neither needs
               anyone&rsquo;s permission.
             </p>
@@ -472,7 +472,7 @@ export default async function TermsPage() {
                 <>
                   {" "}
                   On this copy the offer is made, under{" "}
-                  <em>Who runs this copy</em> at the top of this page, along
+                  <em>Who Runs This Copy</em> at the top of this page, along
                   with what identifies the build running here. The public
                   repositories this section speaks of are named there too. That
                   offer still leads with the request rather than the link,
@@ -521,7 +521,7 @@ export default async function TermsPage() {
                 <>
                   {" "}
                   This copy&rsquo;s operator has not replaced it, and has said
-                  under <em>Who runs this copy</em> what it promises about
+                  under <em>Who Runs This Copy</em> what it promises about
                   availability and what happens to your data if this beta ends.
                 </>
               )}
@@ -617,7 +617,7 @@ export default async function TermsPage() {
                 <>
                   {" "}
                   On this copy that is {PROJECT_OPERATOR.jurisdiction}, named
-                  with the operator under <em>Who runs this copy</em> at the top
+                  with the operator under <em>Who Runs This Copy</em> at the top
                   of this page.
                 </>
               )}
@@ -656,7 +656,7 @@ export default async function TermsPage() {
               {projectOperated && (
                 <>
                   None, that is, for the project as the software&rsquo;s author:
-                  the address under <em>Who runs this copy</em> belongs to this
+                  the address under <em>Who Runs This Copy</em> belongs to this
                   copy&rsquo;s operator, which is the role that can act on what
                   follows.{" "}
                 </>

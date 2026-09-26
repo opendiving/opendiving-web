@@ -112,7 +112,7 @@ export function CourseCertificationsCard({
         <CardHeader>
           <CardTitle as="h2" className="flex items-center gap-2">
             <BadgeCheck className="h-5 w-5" />
-            Certifications from this Course
+            Certifications from This Course
           </CardTitle>
           {/* The sidebar's button is not the only way in: an existing card can
               name this course from its own form, which is how a card logged

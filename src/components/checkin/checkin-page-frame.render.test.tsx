@@ -160,8 +160,8 @@ describe("what the summary prints", () => {
       "Date of birth",
       "Phone",
       "Diving",
-      "Dive insurance",
-      "Emergency contact",
+      "Dive Insurance",
+      "Emergency Contact",
       "Certifications",
     ].map((label) => text.indexOf(label));
 
@@ -229,16 +229,16 @@ describe("what the summary prints", () => {
 
     // Every heading is there with its own control, however little is under it -
     // which is what makes each group reachable without leaving the page.
-    for (const title of ["Certifications", "Diving", "Dive insurance"]) {
+    for (const title of ["Certifications", "Diving", "Dive Insurance"]) {
       expect(screen.getByText(title)).toBeInTheDocument();
     }
     expect(
-      screen.getByText("Dive insurance").closest("section"),
+      screen.getByText("Dive Insurance").closest("section"),
     ).not.toHaveClass("print:hidden");
 
     // A group the diver never filled in says so on screen and is gone from the
     // sheet: a heading with nothing under it is the labelled blank in another form.
-    const emergency = screen.getByText("Emergency contact").closest("section");
+    const emergency = screen.getByText("Emergency Contact").closest("section");
     expect(emergency).toHaveClass("print:hidden");
     expect(
       within(emergency as HTMLElement).getByText("Not filled in yet."),
@@ -405,7 +405,7 @@ describe("what the print leaves behind", () => {
 
     // An emergency contact split over a fold is a name on one sheet and the number
     // to ring on another.
-    for (const title of ["Diving", "Dive insurance", "Emergency contact"]) {
+    for (const title of ["Diving", "Dive Insurance", "Emergency Contact"]) {
       expect(screen.getByText(title).closest("section")).toHaveClass(
         "break-inside-avoid",
       );
@@ -502,7 +502,7 @@ describe("the picture at the top", () => {
     expect(add.closest(".aspect-\\[7\\/9\\]")).toHaveClass("print:hidden");
   });
 
-  it("opens About you, portrait and all, from the empty frame", async () => {
+  it("opens About You, portrait and all, from the empty frame", async () => {
     Object.assign(auth.user, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
@@ -510,7 +510,7 @@ describe("the picture at the top", () => {
       screen.getByRole("button", { name: "Add a portrait" }),
     );
 
-    const dialog = await screen.findByRole("dialog", { name: "About you" });
+    const dialog = await screen.findByRole("dialog", { name: "About You" });
     expect(
       within(dialog).getByLabelText("Choose a portrait"),
     ).toBeInTheDocument();
@@ -602,7 +602,7 @@ describe("editing from the sheet", () => {
       }),
     );
 
-    const dialog = await screen.findByRole("dialog", { name: "About you" });
+    const dialog = await screen.findByRole("dialog", { name: "About You" });
     // The very fields `/settings` shows, because they are the same component.
     expect(within(dialog).getByLabelText("Phone number")).toHaveValue(
       "+44 7700 900000",
@@ -620,7 +620,7 @@ describe("editing from the sheet", () => {
       ),
     );
     await waitFor(() =>
-      expect(screen.queryByRole("dialog", { name: "About you" })).toBeNull(),
+      expect(screen.queryByRole("dialog", { name: "About You" })).toBeNull(),
     );
   });
 
@@ -632,7 +632,7 @@ describe("editing from the sheet", () => {
       screen.getByRole("button", { name: "Edit your dive insurance" }),
     );
     const insurance = await screen.findByRole("dialog", {
-      name: "Dive insurance",
+      name: "Dive Insurance",
     });
     expect(within(insurance).getByLabelText("Provider")).toHaveValue(
       "DAN Europe",
@@ -1161,8 +1161,8 @@ describe("on a link's page", () => {
     expect(screen.queryByText("Not filled in yet.")).toBeNull();
     expect(screen.queryByText("No certifications yet.")).toBeNull();
     for (const title of [
-      "Dive insurance",
-      "Emergency contact",
+      "Dive Insurance",
+      "Emergency Contact",
       "Certifications",
     ]) {
       expect(screen.getByText(title).closest("section")).toHaveClass("hidden");

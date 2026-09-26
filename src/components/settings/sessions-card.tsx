@@ -140,7 +140,7 @@ export function SessionsCard() {
         >
           <span className="flex items-center gap-2">
             <MonitorSmartphone className="h-5 w-5" />
-            Signed-in devices
+            Signed-in Devices
           </span>
           {hasOthers && (
             <Button

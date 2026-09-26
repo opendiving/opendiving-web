@@ -111,7 +111,7 @@ export function SetupChecklistCard({ totalDives }: SetupChecklistCardProps) {
           as="h2"
           className="flex items-center justify-between gap-3 text-base"
         >
-          <span>Getting started</span>
+          <span>Getting Started</span>
           <Badge variant="secondary">
             {doneCount}/{steps.length}
           </Badge>

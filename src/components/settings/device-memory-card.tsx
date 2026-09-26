@@ -31,7 +31,7 @@ export function DeviceMemoryCard() {
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
           <MonitorCog className="h-5 w-5" />
-          This device
+          This Device
         </CardTitle>
         <CardDescription>
           Kept in this browser rather than on your account, so it is a separate

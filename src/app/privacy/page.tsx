@@ -908,7 +908,7 @@ export default async function PrivacyPage() {
                 <>
                   {" "}
                   On this copy all four are answered rather than declined, under{" "}
-                  <em>Who runs this copy</em> at the top of this page.
+                  <em>Who Runs This Copy</em> at the top of this page.
                 </>
               )}
             </p>
@@ -923,7 +923,7 @@ export default async function PrivacyPage() {
               6.1 Account Control
             </h3>
             <p className="text-foreground mb-4">
-              From Settings and the Import and export page, without asking
+              From Settings and the Import and Export page, without asking
               anyone, you can:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
@@ -1216,7 +1216,7 @@ export default async function PrivacyPage() {
                 <>
                   {" "}
                   On this copy you need ask nobody: <em>
-                    Who runs this copy
+                    Who Runs This Copy
                   </em>{" "}
                   at the top of this page names the region the database and the
                   files sit in.
@@ -1244,7 +1244,7 @@ export default async function PrivacyPage() {
                 Those two sentences are the software&rsquo;s floor, and an
                 operator may be held to a higher one. This copy is: its minimum
                 age is 16, for the reason given under{" "}
-                <em>Who runs this copy</em> at the top of this page.
+                <em>Who Runs This Copy</em> at the top of this page.
               </p>
             )}
           </section>
@@ -1262,7 +1262,7 @@ export default async function PrivacyPage() {
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              10.1 The sign-in cookie
+              10.1 The Sign-in Cookie
             </h3>
             <p className="text-foreground mb-4">
               One cookie, named <StorageKey name="refresh_token" />, and in
@@ -1303,7 +1303,7 @@ export default async function PrivacyPage() {
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              10.2 Preferences remembered on this device
+              10.2 Preferences Remembered on This Device
             </h3>
             <p className="text-foreground mb-4">
               {googleClientId ? "Ten" : "Nine"} entries in your browser&rsquo;s
@@ -1388,7 +1388,7 @@ export default async function PrivacyPage() {
             </ul>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              10.3 Telling this browser to stop remembering
+              10.3 Telling This Browser to Stop Remembering
             </h3>
             <p className="text-foreground mb-4">
               Changing a preference is not the same as declining to have one
@@ -1446,7 +1446,7 @@ export default async function PrivacyPage() {
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              10.4 What is never stored
+              10.4 What Is Never Stored
             </h3>
             <p className="text-foreground mb-4">
               There is no session storage, no IndexedDB database and no service
@@ -1556,7 +1556,7 @@ export default async function PrivacyPage() {
             <p className="text-foreground mb-4">
               Most of what people write to a privacy address to ask for, you can
               simply do. Exporting everything you have entered and bringing a
-              logbook back in are buttons on the Import and export page, and
+              logbook back in are buttons on the Import and Export page, and
               deleting your account is one in Settings; they work immediately,
               they need nobody&rsquo;s approval, and no request has to be sent
               to anyone.
@@ -1580,7 +1580,7 @@ export default async function PrivacyPage() {
             {projectOperated && (
               <p className="text-foreground mb-4">
                 On this copy they are named rather than described:{" "}
-                <em>Who runs this copy</em> at the top of this page gives the
+                <em>Who Runs This Copy</em> at the top of this page gives the
                 operator&rsquo;s name and an address that reaches them, so a
                 request need not go through the support page at all. That
                 address is the operator&rsquo;s, in the role that can act on it

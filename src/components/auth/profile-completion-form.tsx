@@ -73,7 +73,7 @@ export function ProfileCompletionForm() {
           className="h-16 w-16 mb-2"
         />
         <CardTitle className="text-2xl font-bold">
-          Complete your profile
+          Complete Your Profile
         </CardTitle>
         <CardDescription>
           Just a couple more details and you&apos;re in.

@@ -176,7 +176,7 @@ export default function CourseDetailPage() {
             complete
             enabled={!!user}
             courseId={course.uuid}
-            title="Dives on this Course"
+            title="Dives on This Course"
             description="All dives logged as part of this course"
             viewAllHref={null}
             emptyTitle="No dives logged for this course yet"
