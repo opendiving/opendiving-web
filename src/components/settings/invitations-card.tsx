@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, MailPlus, Trash2 } from "lucide-react";
+import { Loader2, MailPlus, Send, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { invitationsAPI, type Invitation } from "@/lib/api/invitations";
 import { formatDateTime } from "@/lib/date-time";
-import { cn } from "@/lib/utils";
 import {
   emailAuthSchema,
   type EmailAuthFormData,
@@ -228,40 +227,39 @@ export function InvitationsCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form onSubmit={handleSubmit(onSend)} className="space-y-3">
+        <form onSubmit={handleSubmit(onSend)} className="space-y-4">
           {sendError && (
             <StatusMessage variant="error">{sendError}</StatusMessage>
           )}
 
           <div className="space-y-2">
             <Label htmlFor="invitation-email">Email</Label>
-            <div className="flex flex-wrap items-start gap-3">
-              <Input
-                id="invitation-email"
-                type="email"
-                placeholder="buddy@example.com"
-                autoComplete="off"
-                className={cn(
-                  "min-w-0 flex-1",
-                  errors.email && "border-destructive",
-                )}
-                {...register("email")}
-              />
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <div className="flex items-center space-x-2">
-                    <ButtonSpinner />
-                    <span>Sending...</span>
-                  </div>
-                ) : (
-                  <span>Send invitation</span>
-                )}
-              </Button>
-            </div>
+            <Input
+              id="invitation-email"
+              type="email"
+              placeholder="buddy@example.com"
+              autoComplete="off"
+              className={errors.email ? "border-destructive" : ""}
+              {...register("email")}
+            />
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email.message}</p>
             )}
           </div>
+
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <div className="flex items-center space-x-2">
+                <ButtonSpinner />
+                <span>Sending...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Send className="h-4 w-4" />
+                <span>Send invitation</span>
+              </div>
+            )}
+          </Button>
         </form>
 
         {list.status === "loading" && <SectionSpinner />}
