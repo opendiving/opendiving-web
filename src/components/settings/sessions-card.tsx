@@ -92,7 +92,15 @@ export function SessionsCard() {
       onDeleted: refresh,
     });
 
-  const sessions = list.status === "ready" ? list.sessions : [];
+  // This device leads, and the rest keep the API's most-recently-used order: that
+  // order alone would put any device used since this one above it.
+  const sessions =
+    list.status === "ready"
+      ? [
+          ...list.sessions.filter((one) => one.current),
+          ...list.sessions.filter((one) => !one.current),
+        ]
+      : [];
   const pendingSession = sessions.find((one) => one.uuid === pendingId);
   // The button is offered against what is actually there rather than against a
   // count: this asks the question the button answers - is there another device -

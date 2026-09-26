@@ -133,6 +133,22 @@ describe("SessionsCard", () => {
     ).toBeInTheDocument();
   });
 
+  // The API orders by last use, so a device used since this one comes back above it.
+  it("lists this device first, and the rest in the order the API gave", async () => {
+    mocks.listSessions.mockImplementation(async () => [
+      otherDevice(),
+      unlabelled(),
+      thisDevice(),
+    ]);
+    render(<SessionsCard />);
+    await screen.findByText("This device");
+
+    const ips = screen
+      .getAllByText(/Last used/)
+      .map((line) => line.textContent?.split(" · ")[0]);
+    expect(ips).toEqual(["203.0.113.7", "198.51.100.22", "192.0.2.9"]);
+  });
+
   it("revokes one session only after the confirmation", async () => {
     const user = userEvent.setup();
     render(<SessionsCard />);
