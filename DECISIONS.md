@@ -5295,9 +5295,10 @@ read each section whole.
 
 Copy describes what the software affords — _self-hostable_, _yours to self-host_, _run it yourself_
 — never "a self-hosted dive log", which tells a diver on somebody else's instance they are
-self-hosting. So for `README.md`, `landing-page.tsx`'s `#features` card, `SECURITY.md` and
+self-hosting. So for `README.md`, `landing-page.tsx`'s `#features` card, `SECURITY.md`,
 `generateMetadata()` in `app/layout.tsx` and `app/page.tsx` — every instance's tab title and link
-unfurl, found only by reading metadata exports as prose.
+unfurl, found only by reading metadata exports as prose — and `lib/site-description.ts`, the root
+description the web app manifest also serves.
 
 The guarantee framing stays, re-pointed: anyone can run this and one click hands the log back, not
 that _you_ run it. Spatial claims ("on your own server", "your own Postgres database") are out; the
@@ -5667,8 +5668,8 @@ converter's `grouped()`, and this side owns only presentation, including the "an
 
 A logbook read through the API's DiveJSON converter is discarded after conversion; only the
 full-export archive path writes a dive-file row. Every sentence promising the original file back is
-scoped to a file uploaded **to a dive** — `README.md`, `privacy/page.tsx` §2.1, `layout.tsx`'s
-metadata, the landing page's "Built to outlive the vendor" band.
+scoped to a file uploaded **to a dive** — `README.md`, `privacy/page.tsx` §2.1, the root description
+in `lib/site-description.ts`, the landing page's "Built to outlive the vendor" band.
 
 The tagline drops the promise rather than qualifying it, taking the front door's "vendor exports in,
 open formats out, everything in one click"; punctuation is per file, only the claim travels.

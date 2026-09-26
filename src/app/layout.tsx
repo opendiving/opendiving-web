@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { NonceProvider } from "@/components/nonce-provider";
 import { DeviceMemoryInstaller } from "@/components/device-memory-installer";
 import { publicConfig, runtimeConfig } from "@/lib/runtime-config";
+import { SITE_DESCRIPTION } from "@/lib/site-description";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -45,21 +46,7 @@ export function generateMetadata(): Metadata {
       default: "OpenDiving - a dive log built to outlive every vendor",
       template: "%s | OpenDiving",
     },
-    // The README's pitch rather than the previous "Open source diving platform", which
-    // said nothing a diver deciding whether to click would care about. It leads with what
-    // the log is rather than with how it is deployed: this metadata is served by every
-    // instance, and "a self-hosted dive log" is a claim about the reader's server that the
-    // reader may well not be the one running. See "Self-hosting is a capability, not the
-    // product's identity" in DECISIONS.md.
-    //
-    // It also no longer promises the imported file back. A logbook the API
-    // converts is read once and discarded, so the promise is true only of a file
-    // uploaded to a dive - a qualifier the README's body has room for and a
-    // one-line pitch does not. See "'The original file is kept' is a claim about
-    // an upload to a dive" in DECISIONS.md; the front door's README carries the
-    // replacement clause verbatim.
-    description:
-      "A dive log built to outlive every vendor. Your dives, your data - vendor exports in, open formats out, everything in one click. Yours to self-host.",
+    description: SITE_DESCRIPTION,
     applicationName: "OpenDiving",
     openGraph: {
       type: "website",
@@ -77,6 +64,17 @@ export function generateMetadata(): Metadata {
     },
   };
 }
+
+// The browser chrome of the installed app. The app's theme follows the system by
+// default, so the bar follows it too: white in light, the dark theme's `--background`
+// (`240 4% 9%`) in dark. A diver who pins the app light under a dark OS gets a dark
+// bar, which the media query cannot know about.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#161618" },
+  ],
+};
 
 export default async function RootLayout({
   children,
