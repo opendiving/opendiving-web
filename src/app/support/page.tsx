@@ -29,10 +29,10 @@ export default function SupportPage() {
   const { contactEmail } = runtimeConfig();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
-      <div className="mb-12 text-center">
-        <h1 className="text-4xl font-bold text-foreground mb-4">Support</h1>
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Support</h1>
+        <p className="text-muted-foreground">
           OpenDiving is an open-source dive log built by volunteers. The form
           below reaches a real inbox, and most things get fixed faster in the
           open, on GitHub.

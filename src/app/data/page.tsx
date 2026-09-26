@@ -17,8 +17,8 @@ export default function DataPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
-      <div className="mb-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Import and Export
         </h1>
