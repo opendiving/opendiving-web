@@ -41,9 +41,11 @@ export function generateMetadata(): Metadata {
     metadataBase: new URL(siteUrl),
     // The template is what gives every page a distinct tab title without each one
     // having to repeat the product name. Pages that export their own `title` string
-    // get it wrapped; `default` covers the ones that export none.
+    // get it wrapped; `default` covers the ones that export none, which is every
+    // signed-in page. It is the bare name because Firefox on iOS names a home-screen
+    // shortcut after `document.title` and never reads the manifest.
     title: {
-      default: "OpenDiving - a dive log built to outlive every vendor",
+      default: "OpenDiving",
       template: "%s | OpenDiving",
     },
     description: SITE_DESCRIPTION,
