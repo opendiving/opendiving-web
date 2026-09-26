@@ -46,6 +46,7 @@ import { CheckInLinkPanel } from "@/components/checkin/checkin-share";
 import { DivingFiguresDialog } from "@/components/checkin/diving-figures-dialog";
 import { Logo } from "@/components/logo";
 import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
+import { CHECK_IN_GROUP_HEADINGS } from "@/components/user/user-fields-form";
 import { PortraitFrame, PortraitImage } from "@/components/user/portrait-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -671,23 +672,20 @@ export function CheckInPageFrame({
           <UserFieldsDialog
             open={editing === "about"}
             onOpenChange={(open) => setEditing(open ? "about" : null)}
-            title="About you"
-            description="Your own details, as a desk asks for them."
+            {...CHECK_IN_GROUP_HEADINGS.about}
             groups={[{ fields: ["name", ...ABOUT_YOU_FIELDS] }]}
             picture="portrait"
           />
           <UserFieldsDialog
             open={editing === "insurance"}
             onOpenChange={(open) => setEditing(open ? "insurance" : null)}
-            title="Dive insurance"
-            description="The provider and policy number a shop takes down, and when the cover runs out."
+            {...CHECK_IN_GROUP_HEADINGS.insurance}
             groups={[{ fields: [...INSURANCE_FIELDS] }]}
           />
           <UserFieldsDialog
             open={editing === "emergency"}
             onOpenChange={(open) => setEditing(open ? "emergency" : null)}
-            title="Emergency contact"
-            description="Who a shop calls if something goes wrong, and how they know you."
+            {...CHECK_IN_GROUP_HEADINGS.emergency}
             groups={[{ fields: [...EMERGENCY_CONTACT_FIELDS] }]}
           />
           <DivingFiguresDialog

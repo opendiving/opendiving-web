@@ -84,6 +84,27 @@ const FIELD_SPECS: Record<
   },
 };
 
+/**
+ * What each check-in group is called, and the line under it, on every surface that
+ * gives a group a heading of its own: a `/checkin` dialog, a `/settings` card.
+ */
+export const CHECK_IN_GROUP_HEADINGS = {
+  about: {
+    title: "About you",
+    description: "Your own details, as a desk asks for them.",
+  },
+  insurance: {
+    title: "Dive insurance",
+    description:
+      "The provider and policy number a shop takes down, and when the cover runs out.",
+  },
+  emergency: {
+    title: "Emergency contact",
+    description:
+      "Who a shop calls if something goes wrong, and how they know you.",
+  },
+} as const;
+
 /** A run of fields under one optional legend. */
 export interface UserFieldGroup {
   /** Omitted by a form whose whole subject is already its heading - every dialog. */

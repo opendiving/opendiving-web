@@ -24,6 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  CHECK_IN_GROUP_HEADINGS,
   UserFieldsForm,
   UserFieldsSubmitButton,
 } from "@/components/user/user-fields-form";
@@ -40,7 +41,7 @@ interface CheckInFieldsCardProps {
 
 // The settings home for the check-in details: one card and one save per group, the
 // groups `/checkin` opens one at a time in dialogs beside the sections that print
-// them - `UserFieldsForm` is both, and the titles and descriptions match its dialogs.
+// them - `UserFieldsForm` is both, and `CHECK_IN_GROUP_HEADINGS` heads both.
 // Each group's cross-field rules stay inside the group, so saving one never trips
 // over another left half-filled.
 function CheckInFieldsCard({
@@ -102,8 +103,7 @@ export function AboutYouCard() {
   return (
     <CheckInFieldsCard
       icon={IdCard}
-      title="About you"
-      description="Your own details, as a desk asks for them."
+      {...CHECK_IN_GROUP_HEADINGS.about}
       fields={ABOUT_YOU_FIELDS}
       picture="portrait"
       savedMessage="Your details are up to date."
@@ -115,8 +115,7 @@ export function DiveInsuranceCard() {
   return (
     <CheckInFieldsCard
       icon={ShieldCheck}
-      title="Dive insurance"
-      description="The provider and policy number a shop takes down, and when the cover runs out."
+      {...CHECK_IN_GROUP_HEADINGS.insurance}
       fields={INSURANCE_FIELDS}
       savedMessage="Your dive insurance is up to date."
     />
@@ -127,8 +126,7 @@ export function EmergencyContactCard() {
   return (
     <CheckInFieldsCard
       icon={PhoneCall}
-      title="Emergency contact"
-      description="Who a shop calls if something goes wrong, and how they know you."
+      {...CHECK_IN_GROUP_HEADINGS.emergency}
       fields={EMERGENCY_CONTACT_FIELDS}
       savedMessage="Your emergency contact is up to date."
     />
