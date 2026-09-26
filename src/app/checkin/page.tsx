@@ -28,6 +28,7 @@ export default function CheckInPage() {
   const [lastDiveAt, setLastDiveAt] = useState<string | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [figuresFailed, setFiguresFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   // Keyed on the uuid rather than on `user`: the auth context replaces that object
@@ -84,6 +85,9 @@ export default function CheckInPage() {
         console.error("Failed to load part of the check-in summary:", result);
       }
       setLoadFailed(failed.length > 0);
+      setFiguresFailed(
+        diveStats.status === "rejected" || recent.status === "rejected",
+      );
       setIsSummaryLoading(false);
     };
 
@@ -132,11 +136,13 @@ export default function CheckInPage() {
       lastDiveAt={lastDiveAt}
       isLoading={isSummaryLoading}
       loadFailed={loadFailed}
+      figuresFailed={figuresFailed}
       onCertificationsChanged={refreshCertifications}
       sharing={sharing}
       onRetry={() => {
         setIsSummaryLoading(true);
         setLoadFailed(false);
+        setFiguresFailed(false);
         setAttempt((n) => n + 1);
       }}
     />

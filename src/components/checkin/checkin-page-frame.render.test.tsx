@@ -937,7 +937,9 @@ describe("sharing it as a link", () => {
     const sharing = controls();
     // A rejected `/user/dive-stats` leaves the same nulls as one still in flight,
     // and a link made then would show no diving for its whole day.
-    render(loaded({ sharing, stats: null, loadFailed: true }));
+    render(
+      loaded({ sharing, stats: null, loadFailed: true, figuresFailed: true }),
+    );
     expect(screen.getByRole("button", { name: /share/i })).toBeDisabled();
 
     await userEvent.click(
@@ -953,6 +955,15 @@ describe("sharing it as a link", () => {
     await waitFor(() =>
       expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
     );
+
+    expect(screen.getByRole("button", { name: /share/i })).toBeEnabled();
+  });
+
+  // The cards and their dive centres are read by the server whenever the link is
+  // opened, so a failure there costs the link nothing it keeps.
+  it("shares when only the cards failed to load", () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded({ sharing: controls(), loadFailed: true }));
 
     expect(screen.getByRole("button", { name: /share/i })).toBeEnabled();
   });

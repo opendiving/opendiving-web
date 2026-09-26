@@ -162,6 +162,11 @@ export interface CheckInPageFrameProps {
   isLoading?: boolean;
   /** True when at least one of the page's requests failed and its part is missing. */
   loadFailed?: boolean;
+  /**
+   * True when the stats or the last-dive read failed, so the diving figures on screen
+   * are blanks rather than the log's.
+   */
+  figuresFailed?: boolean;
   onRetry?: () => void;
   /**
    * Re-reads the card list after one was edited here, so the summary keeps
@@ -197,6 +202,7 @@ export function CheckInPageFrame({
   lastDiveAt = null,
   isLoading = true,
   loadFailed = false,
+  figuresFailed = false,
   onRetry = noop,
   onCertificationsChanged = noop,
   sharing,
@@ -314,7 +320,9 @@ export function CheckInPageFrame({
               type="button"
               variant="outline"
               onClick={() => void sharing.mint(diving)}
-              disabled={isLoading || (loadFailed && !corrected) || sharing.busy}
+              disabled={
+                isLoading || (figuresFailed && !corrected) || sharing.busy
+              }
             >
               <Share2 className="h-4 w-4 mr-2" />
               Share

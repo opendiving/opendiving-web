@@ -221,6 +221,19 @@ describe("sharing the page", () => {
     expect(revokeLink).toHaveBeenCalled();
   });
 
+  it("holds Share when the figures failed to load, and not when only the contacts did", async () => {
+    getDiveStats.mockRejectedValueOnce(new Error("500"));
+    render(<CheckInPage />);
+    await screen.findByText("PADI Rescue Diver");
+    expect(share()).toBeDisabled();
+
+    getContacts.mockRejectedValueOnce(new Error("500"));
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await screen.findByText("142");
+    expect(retry()).not.toBeNull();
+    expect(share()).toBeEnabled();
+  });
+
   it("finds a live link on a later visit, and says why it has no QR code", async () => {
     liveLink.mockResolvedValue({ expires_at: "2026-09-27T10:00:00Z" });
     render(<CheckInPage />);
