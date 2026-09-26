@@ -1172,7 +1172,7 @@ real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two 
 `CertificationExpiryCard` is the twin of `ServiceDueCard`: headed "Renewals", it renders `null` when
 nothing needs renewing and when its fetch fails. Certification rows link to `/certifications`, where
 certifications are edited in dialogs and have no URL of their own; the dive-insurance row links to
-`/settings/check-in`, where the policy is entered, and sorts among them rather than after them, a
+`/settings/checkin`, where the policy is entered, and sorts among them rather than after them, a
 lapsed policy stopping a dive at the desk as a lapsed card does. Filtering and ordering live in
 `certificationRenewals()` in `lib/certification.ts`, not the component, so "expired sorts above
 expiring soon" is tested without rendering.
