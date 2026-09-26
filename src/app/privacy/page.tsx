@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { CERTIFICATION_EXPIRING_SOON_DAYS } from "@/lib/certification";
 import { projectOperatesThisInstance } from "@/lib/api/config.server";
 import { DeviceMemorySwitch } from "@/components/device-memory-switch";
 import {
@@ -438,11 +439,13 @@ export default async function PrivacyPage() {
                 confirm an address change, confirm a deletion, tell an address
                 that it has been invited here, tell you when a passkey is added
                 to or removed from your account, tell your old address when your
-                email address is changed, and &mdash; if you have set a service
-                schedule on a piece of gear &mdash; remind you when it comes
-                due. If you use the support form, deliver what you wrote to
-                whoever runs this copy. Section 6.3 lists all of these and says
-                which arrive without you asking
+                email address is changed, remind you when gear you have set a
+                service schedule on comes due and when a certification or your
+                dive insurance nears or passes its expiry date, and send you
+                your year of diving in figures each January. If you use the
+                support form, deliver what you wrote to whoever runs this copy.
+                Section 6.3 lists all of these and says which arrive without you
+                asking
               </li>
               <li>
                 <strong>Decide who may create an account:</strong> Where this
@@ -1001,21 +1004,46 @@ export default async function PrivacyPage() {
               switched off: an alert you can silence is not an alert.
             </p>
             <p className="text-foreground mb-4">
-              <strong>One scheduled email</strong>, under one condition. If you
-              set a service schedule on a piece of gear you have not archived,
-              this copy will email you when that service comes due. It is not a
-              drumbeat: one email when something enters &ldquo;due soon&rdquo;,
-              one when it goes overdue, and then &mdash; because a schedule left
-              overdue would otherwise go quiet forever &mdash; a reminder every
-              three months for as long as it stays overdue. Logging the service,
-              or changing the interval, starts the cycle over. Gear with no
-              schedule on it, or gear you have archived, is never mentioned.
+              <strong>Three scheduled emails</strong>, each under its own
+              condition.
             </p>
             <p className="text-foreground mb-4">
-              Those reminders are on by default, on the reasoning that a
-              reminder nobody switched on is a reminder that never arrives. The
-              switch is in Settings, under Notifications, and turning it off
-              stops all of them.
+              <em>Gear service.</em> If you set a service schedule on a piece of
+              gear you have not archived, this copy will email you when that
+              service comes due. It is not a drumbeat: one email when something
+              enters &ldquo;due soon&rdquo;, one when it goes overdue, and then
+              &mdash; because a schedule left overdue would otherwise go quiet
+              forever &mdash; a reminder every three months for as long as it
+              stays overdue. Logging the service, or changing the interval,
+              starts the cycle over. Gear with no schedule on it, or gear you
+              have archived, is never mentioned.
+            </p>
+            <p className="text-foreground mb-4">
+              <em>Renewals.</em> If a certification you have entered, or the
+              dive insurance in your check-in details, has an expiry date, this
+              copy will email you once when that date is{" "}
+              {CERTIFICATION_EXPIRING_SOON_DAYS} days away or closer, and once
+              more when it has passed. Everything that reaches either point at
+              the same time goes in one email. There is no reminder after that:
+              a card or policy left expired stays on your dashboard, but is not
+              emailed about again. Entering a new expiry date starts the cycle
+              over. A card or policy with no expiry date is never mentioned.
+            </p>
+            <p className="text-foreground mb-4">
+              <em>Your year in review.</em> During January, this copy will email
+              you the year before in figures, taken from your own log: how many
+              dives and how long underwater, your deepest and longest dives with
+              the date of each and its dive site where it has one, how many dive
+              sites, and how many species you logged and how many of those were
+              new to you. It is sent once for each year, and not at all for a
+              year in which you logged no dives.
+            </p>
+            <p className="text-foreground mb-4">
+              All three are on by default: a reminder nobody switched on never
+              arrives, and the point of each is reaching you when you are not in
+              the app. Each has its own switch in Settings, under Notifications,
+              and turning one off stops that kind and leaves the other two as
+              they are.
             </p>
           </section>
 

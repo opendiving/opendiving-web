@@ -31,10 +31,13 @@ export interface User {
   avatar_crop?: PictureCrop | null;
   portrait_original_sha256?: string | null;
   portrait_crop?: PictureCrop | null;
-  // Whether to email this user when their gear is due for servicing. Opt-out, so it
-  // defaults to true server-side; optional here so a response from an API that predates
-  // the field still type-checks.
+  // Whether to send this user each scheduled email: gear coming due for service, a
+  // certification or the dive insurance nearing or passing its expiry, and the year in
+  // review each January. Opt-out, so each defaults to true server-side; optional here
+  // so a response from an API that predates the field still type-checks.
   gear_service_emails?: boolean;
+  renewal_reminder_emails?: boolean;
+  year_in_review_emails?: boolean;
   // Which system every measurement in the app is rendered and entered in. Not
   // optional, unlike `gear_service_emails` above: the column is `NOT NULL` with a
   // server default, so a response either carries it or comes from an API this build
@@ -130,6 +133,8 @@ export interface UpdateProfileData {
   name?: string;
   username?: string;
   gear_service_emails?: boolean;
+  renewal_reminder_emails?: boolean;
+  year_in_review_emails?: boolean;
   units?: UnitSystem;
   // Replaced wholesale - there is no "hide one more" verb, because the Fields dialog
   // holds the whole set and sends it. Any order is accepted and stored canonically;

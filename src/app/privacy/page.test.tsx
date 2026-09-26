@@ -363,11 +363,43 @@ describe.each([
     ).toBeInTheDocument();
 
     // And the section's opening counts *groups* - action-driven, security
-    // notices, one scheduled - not the messages in the first of them. It must not
+    // notices, scheduled - not the messages in the first of them. It must not
     // follow the number above, which is the mistake that reading the two
     // sentences as one count would produce.
     expect(
       screen.getByText(/sends you three kinds of email/i),
+    ).toBeInTheDocument();
+  });
+
+  // The scheduled group's twin: a paragraph per kind, each led by its name in
+  // italics, between the sentence counting them and the one counting their
+  // switches. A fourth reminder added to the API owes this group a paragraph, and
+  // the moment it gets one both counts have to follow.
+  it("§6.3's scheduled group, its paragraphs and its switches agree", async () => {
+    await renderPage({ google });
+
+    const opening = screen.getByText(/scheduled emails/i).closest("p")!;
+    let listed = 0;
+    for (
+      let next = opening.nextElementSibling;
+      next?.firstElementChild?.tagName === "EM";
+      next = next.nextElementSibling
+    ) {
+      listed += 1;
+    }
+    expect(listed).toBeGreaterThan(1);
+    expect(opening.textContent).toMatch(
+      new RegExp(`^${NUMBER_WORDS[listed]} scheduled emails`, "i"),
+    );
+    expect(
+      screen.getByText(
+        new RegExp(`All ${NUMBER_WORDS[listed]} are on by default`, "i"),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        new RegExp(`leaves the other ${NUMBER_WORDS[listed - 1]}`, "i"),
+      ),
     ).toBeInTheDocument();
   });
 
