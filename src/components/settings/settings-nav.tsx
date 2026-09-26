@@ -24,7 +24,7 @@ interface SettingsSection {
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { href: "/settings/account", label: "Account", icon: User },
-  { href: "/settings/check-in", label: "Check-in", icon: ClipboardList },
+  { href: "/settings/checkin", label: "Check-in", icon: ClipboardList },
   {
     href: "/settings/authentication",
     label: "Authentication",

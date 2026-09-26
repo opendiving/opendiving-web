@@ -65,11 +65,11 @@ describe("CertificationExpiryCard", () => {
 
     expect(await screen.findByText("DAN Europe")).toBeInTheDocument();
     expect(screen.getByText("Dive insurance")).toBeInTheDocument();
-    // `/settings/check-in` is where the policy is entered; certifications go to their
+    // `/settings/checkin` is where the policy is entered; certifications go to their
     // own page.
     expect(screen.getByRole("link", { name: /DAN Europe/ })).toHaveAttribute(
       "href",
-      "/settings/check-in",
+      "/settings/checkin",
     );
     expect(
       screen.getByRole("heading", { name: "Renewals" }),

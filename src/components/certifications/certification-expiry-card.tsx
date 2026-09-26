@@ -40,7 +40,7 @@ interface Renewable {
 //
 // Certification rows link to `/certifications` rather than to a card of their own -
 // certifications are edited in dialogs on that one page, so there is no
-// per-certification URL to send anyone to. The insurance row links to `/settings/check-in`,
+// per-certification URL to send anyone to. The insurance row links to `/settings/checkin`,
 // where the policy is entered.
 //
 // The API returns every dated certification with no horizon - a server-side "expiring
@@ -92,7 +92,7 @@ export function CertificationExpiryCard() {
       key: "dive-insurance",
       title: provider || "Dive insurance",
       detail: provider ? "Dive insurance" : null,
-      href: "/settings/check-in",
+      href: "/settings/checkin",
       expires_on: user.insurance_expires_on,
     });
   }
