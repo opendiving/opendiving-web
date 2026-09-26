@@ -68,32 +68,38 @@ export function SettingsNav() {
   const pathname = usePathname();
   const { config } = useInstanceConfig();
   const listRef = useRef<HTMLUListElement>(null);
-  // The page the row was last placed for, and where the row stood as each page was
-  // left. Safari snapshots a page as it is left, so after a swipe back the row starts
-  // from there - where the snapshot showed it - and glides on to centre the entry,
-  // rather than snapping from wherever the live row happened to be.
-  const placedFor = useRef<string | null>(null);
-  const leftAt = useRef(new Map<string, number>());
+  const hasScrolled = useRef(false);
 
   // The pill and the row move when the pathname does, never ahead of it on the tap:
   // Safari snapshots the page being left as the URL changes, and a swipe back shows that
   // snapshot, so a pill already on its way would be caught halfway. After a swipe the
-  // browser animated itself (`hasUAVisualTransition`) the pill and its label jump rather
-  // than slide - the swipe was the move, and a slide once the live page replaces the
-  // snapshot repeats it.
+  // browser animated itself (`hasUAVisualTransition`) they jump rather than slide - the
+  // swipe was the move, and a slide once the live page replaces the snapshot repeats it.
   //
-  // Marked on the list itself, in the capture phase: the router's own `popstate`
-  // listener is older than this one and can render the new page synchronously, so a
-  // flag set later - or through React state - arrives after the pill has started.
+  // Marked on the list itself, in the capture phase: the router's listeners are older
+  // than these and can render the new page synchronously, so a flag set later - or
+  // through React state - arrives after the pill has started. Where the Navigation API
+  // exists the router renders a step back on its `navigate` event, before `popstate`
+  // fires at all; only a traverse counts, since the router's own `replace` follows it.
   useEffect(() => {
+    const mark = (browserAnimated: boolean) =>
+      listRef.current?.toggleAttribute("data-instant", browserAnimated);
+    const onNavigate = (event: NavigateEvent) => {
+      if (event.navigationType === "traverse") {
+        mark(event.hasUAVisualTransition);
+      }
+    };
     const onPopState = (event: PopStateEvent) =>
-      listRef.current?.toggleAttribute(
-        "data-instant",
-        event.hasUAVisualTransition === true,
-      );
+      mark(event.hasUAVisualTransition === true);
+    const navigation = "navigation" in window ? window.navigation : undefined;
+    navigation?.addEventListener("navigate", onNavigate, { capture: true });
     window.addEventListener("popstate", onPopState, { capture: true });
-    return () =>
+    return () => {
+      navigation?.removeEventListener("navigate", onNavigate, {
+        capture: true,
+      });
       window.removeEventListener("popstate", onPopState, { capture: true });
+    };
   }, []);
 
   // On a phone the row is wider than the screen, and a section further along it would
@@ -106,15 +112,6 @@ export function SettingsNav() {
     const list = listRef.current;
     const entry = list?.querySelector<HTMLElement>(`a[href="${pathname}"]`);
     if (!list || !entry) return;
-    const previous = placedFor.current;
-    placedFor.current = pathname;
-    if (previous !== null && previous !== pathname) {
-      leftAt.current.set(previous, list.scrollLeft);
-    }
-    const snapshot = leftAt.current.get(pathname);
-    if (list.hasAttribute("data-instant") && snapshot !== undefined) {
-      list.scrollLeft = snapshot;
-    }
     const row = list.getBoundingClientRect();
     const box = entry.getBoundingClientRect();
     const from = list.scrollLeft;
@@ -123,14 +120,21 @@ export function SettingsNav() {
       list.scrollWidth - list.clientWidth,
     );
     const glide =
-      previous !== null &&
+      hasScrolled.current &&
+      !list.hasAttribute("data-instant") &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    hasScrolled.current = true;
     if (!glide || to === from) {
       list.scrollLeft = to;
       return;
     }
     const start = performance.now();
     let frame = requestAnimationFrame(function step(now) {
+      // A mark that lands after the glide set off still wins.
+      if (list.hasAttribute("data-instant")) {
+        list.scrollLeft = to;
+        return;
+      }
       const progress = Math.min(1, (now - start) / GLIDE_MS);
       list.scrollLeft = from + (to - from) * easeOutCubic(progress);
       if (progress < 1) frame = requestAnimationFrame(step);

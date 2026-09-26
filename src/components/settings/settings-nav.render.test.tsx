@@ -122,6 +122,40 @@ describe("SettingsNav", () => {
     }
   });
 
+  // Where the Navigation API exists the router renders a step back on `navigate`, before
+  // `popstate`; the router's own `replace` after it must not clear the mark.
+  it("marks the jump on a traverse navigate event, and keeps it through a replace", () => {
+    const navigation = new EventTarget();
+    Object.defineProperty(window, "navigation", {
+      value: navigation,
+      configurable: true,
+    });
+    const navigate = (
+      navigationType: string,
+      hasUAVisualTransition: boolean,
+    ) => {
+      const event = new Event("navigate");
+      Object.defineProperties(event, {
+        navigationType: { value: navigationType },
+        hasUAVisualTransition: { value: hasUAVisualTransition },
+      });
+      act(() => {
+        navigation.dispatchEvent(event);
+      });
+    };
+    try {
+      render(<SettingsNav />);
+      navigate("traverse", true);
+      expect(slides()).toBe(false);
+      navigate("replace", false);
+      expect(slides()).toBe(false);
+      navigate("traverse", false);
+      expect(slides()).toBe(true);
+    } finally {
+      Reflect.deleteProperty(window, "navigation");
+    }
+  });
+
   it("offers Invitations on an invite-only instance", () => {
     instance.config = { registration_mode: "invite", project_operated: true };
     render(<SettingsNav />);
