@@ -46,7 +46,7 @@ describe("the authorization URL", () => {
   });
 
   // Invariant, not a detail: `access_type=offline` is what asks Google for a
-  // refresh token, and `/privacy` §4.9 tells the reader this app is never handed
+  // refresh token, and `/privacy` §4.10 tells the reader this app is never handed
   // a Google credential it could store. That has to be true by construction.
   it("never asks for offline access, so Google issues no refresh token", async () => {
     const url = new URL(await beginGoogleSignIn({ clientId: CLIENT_ID }));

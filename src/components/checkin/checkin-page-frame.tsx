@@ -5,26 +5,32 @@ import {
   AlertTriangle,
   FileText,
   Printer,
+  Share2,
   SquarePen,
   UserSquare,
 } from "lucide-react";
 
-import { useAuth } from "@/contexts/AuthContext";
-import { useUnits } from "@/hooks/useUnits";
+import type { CheckinLinkControls } from "@/hooks/useCheckinLink";
 import {
   certificationAgencyLabel,
   certificationFile,
   type Certification,
 } from "@/lib/api/certifications";
+import {
+  sharedCardFrontUrl,
+  sharedPortraitUrl,
+  type SharedCheckInCertification,
+} from "@/lib/api/checkin-links";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 import {
   hasDivingFigures,
   loggedDivingFigures,
+  type CheckInDiver,
   type DivingFigures,
 } from "@/lib/checkin";
-import { formatDateOnly } from "@/lib/date-time";
+import { formatDateOnly, formatDateTime } from "@/lib/date-time";
 import { todayIsoDate } from "@/lib/gear-service";
-import { formatDepth } from "@/lib/units";
+import { formatDepth, type UnitSystem } from "@/lib/units";
 import {
   ABOUT_YOU_FIELDS,
   EMERGENCY_CONTACT_FIELDS,
@@ -36,6 +42,7 @@ import {
   CertificationCardImage,
 } from "@/components/certifications/certification-card-image";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
+import { CheckInLinkPanel } from "@/components/checkin/checkin-share";
 import { DivingFiguresDialog } from "@/components/checkin/diving-figures-dialog";
 import { Logo } from "@/components/logo";
 import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
@@ -114,9 +121,33 @@ function printedFileName(name: string): string {
   );
 }
 
+/**
+ * A card as the sheet prints it: the signed-in list's own record, or what a link
+ * answers with, which names the front's type instead of carrying its file record.
+ */
+export type CheckInCard = Certification | SharedCheckInCertification;
+
+const isOwnCard = (card: CheckInCard): card is Certification =>
+  !("front_content_type" in card);
+
+/** The sheet as a check-in link shows it to whoever holds the link. */
+export interface CheckInLinkView {
+  token: string;
+  expiresAt: string;
+  /** The figures the link was made with, which it shows for its whole life. */
+  diving: DivingFigures;
+}
+
 export interface CheckInPageFrameProps {
+  /**
+   * Whose sheet this is: the session's own record on the diver's page, the summary's
+   * on a link's. Handed in, so the frame reads no session of its own.
+   */
+  diver: CheckInDiver;
+  /** The system the depth prints in - the diver's own, whoever is reading. */
+  units: UnitSystem;
   /** Every card the diver holds, in the list endpoint's own order. */
-  certifications?: Certification[];
+  certifications?: CheckInCard[];
   /**
    * The name of each card's dive centre, by certification uuid. Handed in rather
    * than looked up here: the frame makes no request of its own for what it
@@ -131,6 +162,11 @@ export interface CheckInPageFrameProps {
   isLoading?: boolean;
   /** True when at least one of the page's requests failed and its part is missing. */
   loadFailed?: boolean;
+  /**
+   * True when the stats or the last-dive read failed, so the diving figures on screen
+   * are blanks rather than the log's.
+   */
+  figuresFailed?: boolean;
   onRetry?: () => void;
   /**
    * Re-reads the card list after one was edited here, so the summary keeps
@@ -138,29 +174,43 @@ export interface CheckInPageFrameProps {
    * Editing is all this page offers - a card is added where cards are kept.
    */
   onCertificationsChanged?: () => void;
+  /** The diver's own check-in link, which the Share control beside Print makes. */
+  sharing?: CheckinLinkControls;
+  /**
+   * Set when the sheet is drawn for whoever holds a check-in link, and then it is
+   * read-only: no control that edits, no dialog, and every picture from the link's
+   * own routes rather than through the signed-in API client.
+   */
+  link?: CheckInLinkView;
 }
 
 const noop = () => {};
 const NO_NAMES: Readonly<Record<string, string>> = {};
 
 // Everything `/checkin` draws before its requests answer, kept apart from the data render so
-// the page's first render is this frame. Every data-varying prop is optional,
-// and the defaults are that first render.
+// the page's first render is this frame. Every prop the page's requests fill is
+// optional, and the defaults are that first render.
+//
+// A link's page draws the same frame once its summary has landed, so a field printed
+// here prints on both or on neither.
 export function CheckInPageFrame({
+  diver,
+  units,
   certifications = [],
   contactNames = NO_NAMES,
   stats = null,
   lastDiveAt = null,
   isLoading = true,
   loadFailed = false,
+  figuresFailed = false,
   onRetry = noop,
   onCertificationsChanged = noop,
+  sharing,
+  link,
 }: CheckInPageFrameProps) {
-  const { user } = useAuth();
-  const units = useUnits();
-
-  // The diver's own correction to the three diving figures, held for this visit and
-  // nowhere else - see `DivingFiguresDialog` for why it is not saved.
+  // The diver's own correction to the three diving figures, held for this visit - and
+  // sent with a check-in link made while it stands, which keeps it for its day. See
+  // `DivingFiguresDialog` for why it is not saved.
   const [corrected, setCorrected] = useState<DivingFigures | null>(null);
   // One at a time, and named for the section it sits in: each control opens exactly
   // the group it is beside.
@@ -174,10 +224,8 @@ export function CheckInPageFrame({
   // registers listeners, and its cleanup removes them. `useEffectOnChange` would drop
   // them when the route is hidden and skip re-adding them when it comes back, so the
   // filename would quietly stop working after a diver navigated away and returned.
-  const printedTitle = user ? printedFileName(user.name) : null;
+  const printedTitle = printedFileName(diver.name);
   useEffect(() => {
-    if (!printedTitle) return;
-
     let previous: string | null = null;
     const before = () => {
       previous = document.title;
@@ -204,25 +252,36 @@ export function CheckInPageFrame({
     [stats, lastDiveAt],
   );
 
-  // Read from the auth context rather than a prop, so the name is on screen at the
-  // click without waiting on anything the page fetches. It is also what keeps the
-  // print date below off the server: `user` is null until the auth check settles in
-  // an effect, so this component never renders server-side and there is nothing for
-  // hydration to disagree about.
-  if (!user) return null;
-
+  // Neither page draws this before a client-side effect has settled - the diver's
+  // waits on the auth check, a link's on its summary - so it never renders
+  // server-side, and the print date below has no hydration to disagree with.
   const hasEmergencyContact =
-    !!user.emergency_contact_name ||
-    !!user.emergency_contact_phone ||
-    !!user.emergency_contact_relationship;
+    !!diver.emergency_contact_name ||
+    !!diver.emergency_contact_phone ||
+    !!diver.emergency_contact_relationship;
   const hasInsurance =
-    !!user.insurance_provider ||
-    !!user.insurance_policy_number ||
-    !!user.insurance_expires_on;
+    !!diver.insurance_provider ||
+    !!diver.insurance_policy_number ||
+    !!diver.insurance_expires_on;
 
-  const hasAboutYou = !!user.date_of_birth || !!user.phone;
-  const diving = corrected ?? logged;
+  const hasAboutYou = !!diver.date_of_birth || !!diver.phone;
+  const diving = link ? link.diving : (corrected ?? logged);
   const hasFigures = isLoading || hasDivingFigures(diving);
+
+  // What a section with nothing to print does on screen. On the diver's own page it
+  // stays, beside the control that fills it; a link's has no such control, so the desk
+  // sees the sheet as it prints.
+  const offSheet = link ? "hidden" : "print:hidden";
+  const emptyNote = (text: string) =>
+    link ? null : <EmptyNote>{text}</EmptyNote>;
+  const editControl = (
+    label: string,
+    onClick: () => void,
+    className?: string,
+  ) =>
+    link ? null : (
+      <EditControl label={label} onClick={onClick} className={className} />
+    );
 
   const openCertification = (certification: Certification) => {
     setEditingCertification(certification);
@@ -245,25 +304,51 @@ export function CheckInPageFrame({
               "Diver" would be telling them whose page it is. */}
           <h1 className={`text-3xl font-bold ${INK}`}>Diver Check-in</h1>
           <p className="text-muted-foreground mt-2 print:hidden">
-            What a dive shop asks for at the desk, on one page you can hand over
+            {link
+              ? `This link stops working on ${formatDateTime(link.expiresAt)}.`
+              : "What a dive shop asks for at the desk, on one page you can hand over"}
           </p>
         </div>
-        {/* The browser's own print, which is also its save-as-PDF: no generator in
-            either repo, and nothing is uploaded to produce it. */}
-        <Button
-          type="button"
-          onClick={() => window.print()}
-          className="print:hidden"
-        >
-          <Printer className="h-4 w-4 mr-2" />
-          Print
-        </Button>
+        <div className="flex flex-wrap gap-2 print:hidden">
+          {/* Waits for the diving figures: the link keeps the ones it is made with
+              for its whole life, so a click before they land - or after a read
+              that failed, which leaves the same nulls - would publish blanks that
+              Try again cannot reach. A correction the diver typed is theirs to
+              share either way. */}
+          {sharing && !link && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void sharing.mint(diving)}
+              disabled={
+                isLoading || (figuresFailed && !corrected) || sharing.busy
+              }
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Share
+            </Button>
+          )}
+          {/* The browser's own print, which is also its save-as-PDF: no generator in
+              either repo, and nothing is uploaded to produce it. */}
+          <Button
+            type="button"
+            onClick={() => window.print()}
+            className="print:hidden"
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
+        </div>
       </div>
 
-      <p className="text-sm text-muted-foreground print:hidden">
-        Your browser&rsquo;s print dialog can save this as a PDF too &mdash;
-        worth keeping on your phone for a desk with no signal.
-      </p>
+      {!link && (
+        <p className="text-sm text-muted-foreground print:hidden">
+          Your browser&rsquo;s print dialog can save this as a PDF too &mdash;
+          worth keeping on your phone for a desk with no signal.
+        </p>
+      )}
+
+      {sharing && !link && <CheckInLinkPanel sharing={sharing} />}
 
       {/* On screen only: a sheet handed across a desk should not carry this app's
           troubles, but the diver about to print one has to know it is short. */}
@@ -310,12 +395,24 @@ export function CheckInPageFrame({
 
                     The column stays either way, so the name meets the same edge as
                     every certification's - and its own two values, which is what
-                    would give it away. */}
+                    would give it away. A link's page has the column and no offer,
+                    the offer being the diver's own control. */}
                 <div className={SLOT}>
-                  {user.portrait_sha256 ? (
+                  {link ? (
+                    diver.portrait_sha256 && (
+                      <PortraitFrame className="w-full">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={sharedPortraitUrl(link.token)}
+                          alt={`Portrait of ${diver.name}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </PortraitFrame>
+                    )
+                  ) : diver.portrait_sha256 ? (
                     <PortraitImage
-                      name={user.name}
-                      portraitSha={user.portrait_sha256}
+                      name={diver.name}
+                      portraitSha={diver.portrait_sha256}
                       className="w-full"
                     />
                   ) : (
@@ -334,31 +431,32 @@ export function CheckInPageFrame({
                   )}
                 </div>
                 <h2 className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}>
-                  {user.name}
+                  {diver.name}
                 </h2>
-                <EditControl
-                  className="-my-1"
-                  label="Edit your name, portrait, date of birth and phone number"
-                  onClick={() => setEditing("about")}
-                />
+                {editControl(
+                  "Edit your name, portrait, date of birth and phone number",
+                  () => setEditing("about"),
+                  "-my-1",
+                )}
               </div>
 
               {/* Always on screen, so the control beside the name is always there,
                   and dropped from the print when it holds nothing: a `<dl>` with
                   every row absent is blank page on a sheet handed to somebody. */}
-              <div className={cn(!hasAboutYou && "print:hidden")}>
+              <div className={cn(!hasAboutYou && offSheet)}>
                 {hasAboutYou ? (
                   <DetailList>
                     <Detail
                       label="Date of birth"
                       value={
-                        user.date_of_birth && formatDateOnly(user.date_of_birth)
+                        diver.date_of_birth &&
+                        formatDateOnly(diver.date_of_birth)
                       }
                     />
-                    <Detail label="Phone" value={user.phone} />
+                    <Detail label="Phone" value={diver.phone} />
                   </DetailList>
                 ) : (
-                  <EmptyNote>Not filled in yet.</EmptyNote>
+                  emptyNote("Not filled in yet.")
                 )}
               </div>
             </section>
@@ -371,13 +469,10 @@ export function CheckInPageFrame({
               // screen regardless, because the control that emptied it is the only
               // way back to "Use logged figures", and a section that removed itself
               // would leave a correction in force with nothing on screen saying so.
-              className={cn(KEEP_TOGETHER, !hasFigures && "print:hidden")}
-              action={
-                <EditControl
-                  label="Correct these figures"
-                  onClick={() => setEditing("diving")}
-                />
-              }
+              className={cn(KEEP_TOGETHER, !hasFigures && offSheet)}
+              action={editControl("Correct these figures", () =>
+                setEditing("diving"),
+              )}
             >
               {hasFigures && (
                 <DetailList>
@@ -415,9 +510,10 @@ export function CheckInPageFrame({
                   read "Not filled in yet." directly above "Corrected for this
                   summary", which is the page contradicting itself to the one diver who
                   knows better. */}
-              {!hasFigures && !loadFailed && !corrected && (
-                <EmptyNote>Not filled in yet.</EmptyNote>
-              )}
+              {!hasFigures &&
+                !loadFailed &&
+                !corrected &&
+                emptyNote("Not filled in yet.")}
               {corrected && (
                 <p className="text-xs text-muted-foreground print:hidden">
                   Corrected for this summary. Nothing was saved to your log.
@@ -431,58 +527,49 @@ export function CheckInPageFrame({
                 call only if something goes wrong. */}
             <Section
               title="Dive insurance"
-              className={cn(KEEP_TOGETHER, !hasInsurance && "print:hidden")}
-              action={
-                <EditControl
-                  label="Edit your dive insurance"
-                  onClick={() => setEditing("insurance")}
-                />
-              }
+              className={cn(KEEP_TOGETHER, !hasInsurance && offSheet)}
+              action={editControl("Edit your dive insurance", () =>
+                setEditing("insurance"),
+              )}
             >
               {hasInsurance ? (
                 <DetailList>
-                  <Detail label="Provider" value={user.insurance_provider} />
+                  <Detail label="Provider" value={diver.insurance_provider} />
                   <Detail
                     label="Policy number"
-                    value={user.insurance_policy_number}
+                    value={diver.insurance_policy_number}
                   />
                   <Detail
                     label="Expires"
                     value={
-                      user.insurance_expires_on &&
-                      formatDateOnly(user.insurance_expires_on)
+                      diver.insurance_expires_on &&
+                      formatDateOnly(diver.insurance_expires_on)
                     }
                   />
                 </DetailList>
               ) : (
-                <EmptyNote>Not filled in yet.</EmptyNote>
+                emptyNote("Not filled in yet.")
               )}
             </Section>
 
             <Section
               title="Emergency contact"
-              className={cn(
-                KEEP_TOGETHER,
-                !hasEmergencyContact && "print:hidden",
+              className={cn(KEEP_TOGETHER, !hasEmergencyContact && offSheet)}
+              action={editControl("Edit your emergency contact", () =>
+                setEditing("emergency"),
               )}
-              action={
-                <EditControl
-                  label="Edit your emergency contact"
-                  onClick={() => setEditing("emergency")}
-                />
-              }
             >
               {hasEmergencyContact ? (
                 <DetailList>
-                  <Detail label="Name" value={user.emergency_contact_name} />
-                  <Detail label="Phone" value={user.emergency_contact_phone} />
+                  <Detail label="Name" value={diver.emergency_contact_name} />
+                  <Detail label="Phone" value={diver.emergency_contact_phone} />
                   <Detail
                     label="Relationship"
-                    value={user.emergency_contact_relationship}
+                    value={diver.emergency_contact_relationship}
                   />
                 </DetailList>
               ) : (
-                <EmptyNote>Not filled in yet.</EmptyNote>
+                emptyNote("Not filled in yet.")
               )}
             </Section>
           </div>
@@ -495,7 +582,7 @@ export function CheckInPageFrame({
             title="Certifications"
             busy={isLoading}
             className={cn(
-              !isLoading && certifications.length === 0 && "print:hidden",
+              !isLoading && certifications.length === 0 && offSheet,
             )}
           >
             {isLoading ? (
@@ -527,7 +614,7 @@ export function CheckInPageFrame({
               // and telling a diver who holds six cards that they hold none is the
               // page inventing a fact about the account out of a network failure.
               // The banner above already says what happened and offers the retry.
-              !loadFailed && <EmptyNote>No certifications yet.</EmptyNote>
+              !loadFailed && emptyNote("No certifications yet.")
             ) : (
               <div className={cn(TWO_COLUMNS, "gap-y-4")}>
                 {/* The list endpoint's own order, taken as it arrives rather
@@ -541,7 +628,12 @@ export function CheckInPageFrame({
                     key={certification.uuid}
                     certification={certification}
                     contactName={contactNames[certification.uuid]}
-                    onEdit={() => openCertification(certification)}
+                    linkToken={link?.token}
+                    onEdit={
+                      !link && isOwnCard(certification)
+                        ? () => openCertification(certification)
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -561,7 +653,7 @@ export function CheckInPageFrame({
           >
             <Logo className="mr-1 inline h-3.5 w-3.5 align-[-0.2em]" />
             <span className="font-medium">OpenDiving</span> &middot; Printed{" "}
-            {formatDateOnly(todayIsoDate())} from {user.name}&rsquo;s own dive
+            {formatDateOnly(todayIsoDate())} from {diver.name}&rsquo;s own dive
             log. These are entries this diver made; a certification is verified
             with the agency that issued it, not here.
           </p>
@@ -572,42 +664,48 @@ export function CheckInPageFrame({
           `useQuickCreate`: that provider's certification dialog navigates to
           `/certifications` on save, and a diver correcting a card at a desk wants
           the summary they were about to print, not another page. Correcting is all
-          this page offers - a card is added where cards are kept. */}
-      <UserFieldsDialog
-        open={editing === "about"}
-        onOpenChange={(open) => setEditing(open ? "about" : null)}
-        title="About you"
-        description="Your own details, as a desk asks for them."
-        groups={[{ fields: ["name", ...ABOUT_YOU_FIELDS] }]}
-        picture="portrait"
-      />
-      <UserFieldsDialog
-        open={editing === "insurance"}
-        onOpenChange={(open) => setEditing(open ? "insurance" : null)}
-        title="Dive insurance"
-        description="The provider and policy number a shop takes down, and when the cover runs out."
-        groups={[{ fields: [...INSURANCE_FIELDS] }]}
-      />
-      <UserFieldsDialog
-        open={editing === "emergency"}
-        onOpenChange={(open) => setEditing(open ? "emergency" : null)}
-        title="Emergency contact"
-        description="Who a shop calls if something goes wrong, and how they know you."
-        groups={[{ fields: [...EMERGENCY_CONTACT_FIELDS] }]}
-      />
-      <DivingFiguresDialog
-        open={editing === "diving"}
-        onOpenChange={(open) => setEditing(open ? "diving" : null)}
-        logged={logged}
-        corrected={corrected}
-        onChange={setCorrected}
-      />
-      <CertificationDialog
-        open={editing === "certification"}
-        onOpenChange={(open) => setEditing(open ? "certification" : null)}
-        certification={editingCertification}
-        onSaved={onCertificationsChanged}
-      />
+          this page offers - a card is added where cards are kept. None of them on
+          a link's page, which only shows. */}
+      {!link && (
+        <>
+          <UserFieldsDialog
+            open={editing === "about"}
+            onOpenChange={(open) => setEditing(open ? "about" : null)}
+            title="About you"
+            description="Your own details, as a desk asks for them."
+            groups={[{ fields: ["name", ...ABOUT_YOU_FIELDS] }]}
+            picture="portrait"
+          />
+          <UserFieldsDialog
+            open={editing === "insurance"}
+            onOpenChange={(open) => setEditing(open ? "insurance" : null)}
+            title="Dive insurance"
+            description="The provider and policy number a shop takes down, and when the cover runs out."
+            groups={[{ fields: [...INSURANCE_FIELDS] }]}
+          />
+          <UserFieldsDialog
+            open={editing === "emergency"}
+            onOpenChange={(open) => setEditing(open ? "emergency" : null)}
+            title="Emergency contact"
+            description="Who a shop calls if something goes wrong, and how they know you."
+            groups={[{ fields: [...EMERGENCY_CONTACT_FIELDS] }]}
+          />
+          <DivingFiguresDialog
+            open={editing === "diving"}
+            onOpenChange={(open) => setEditing(open ? "diving" : null)}
+            units={units}
+            logged={logged}
+            corrected={corrected}
+            onChange={setCorrected}
+          />
+          <CertificationDialog
+            open={editing === "certification"}
+            onOpenChange={(open) => setEditing(open ? "certification" : null)}
+            certification={editingCertification}
+            onSaved={onCertificationsChanged}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -617,14 +715,23 @@ export function CheckInPageFrame({
 function CertificationSummary({
   certification,
   contactName,
+  linkToken,
   onEdit,
 }: {
-  certification: Certification;
+  certification: CheckInCard;
   contactName?: string;
-  onEdit: () => void;
+  /** Set on a link's page, whose card fronts come from the link's own route. */
+  linkToken?: string;
+  /** Absent on a link's page, which offers no control. */
+  onEdit?: () => void;
 }) {
-  const front = certificationFile(certification, "front");
-  const isPdf = front?.content_type === "application/pdf";
+  const ownFront = isOwnCard(certification)
+    ? certificationFile(certification, "front")
+    : undefined;
+  const frontType = isOwnCard(certification)
+    ? ownFront?.content_type
+    : certification.front_content_type;
+  const isPdf = frontType === "application/pdf";
   const agency = certificationAgencyLabel(
     certification.agency,
     certification.agency_other,
@@ -661,26 +768,38 @@ function CertificationSummary({
                 card on file as PDF
               </span>
             </CertificationCardFrame>
+          ) : ownFront ? (
+            <CertificationCardImage
+              certificationUuid={certification.uuid}
+              side="front"
+              file={ownFront}
+              compact
+              className="w-full"
+            />
           ) : (
-            front && (
-              <CertificationCardImage
-                certificationUuid={certification.uuid}
-                side="front"
-                file={front}
-                compact
-                className="w-full"
-              />
+            frontType &&
+            linkToken && (
+              <CertificationCardFrame className="w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={sharedCardFrontUrl(linkToken, certification.uuid)}
+                  alt="front of certification card"
+                  className="h-full w-full object-cover"
+                />
+              </CertificationCardFrame>
             )
           )}
         </div>
         <div className={`min-w-0 flex-1 font-medium ${INK}`}>
           {agency ? `${agency} ${certification.name}` : certification.name}
         </div>
-        <EditControl
-          label={`Edit ${certification.name}`}
-          className="-my-1"
-          onClick={onEdit}
-        />
+        {onEdit && (
+          <EditControl
+            label={`Edit ${certification.name}`}
+            className="-my-1"
+            onClick={onEdit}
+          />
+        )}
       </div>
       <DetailList>
         <Detail label="Number" value={certification.certification_number} />

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useCheckinLink } from "@/hooks/useCheckinLink";
+import { useUnits } from "@/hooks/useUnits";
 import { CheckInPageFrame } from "@/components/checkin/checkin-page-frame";
 import {
   fetchAllCertifications,
@@ -15,15 +17,18 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The summary a diver hands to a dive shop. `CheckInPageFrame` draws it; this reads
 // what the page does not already hold, the profile itself arriving with the
-// signed-in user.
+// signed-in user, so the name is on screen at the click without waiting on anything
+// fetched here.
 export default function CheckInPage() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
+  const units = useUnits();
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stats, setStats] = useState<UserDiveStats | null>(null);
   const [lastDiveAt, setLastDiveAt] = useState<string | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [figuresFailed, setFiguresFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   // Keyed on the uuid rather than on `user`: the auth context replaces that object
@@ -36,6 +41,7 @@ export default function CheckInPage() {
   // the data hooks do deliberately - a dive logged elsewhere has already made these
   // three figures stale.
   const userUuid = user?.uuid;
+  const sharing = useCheckinLink(!!userUuid);
   useEffect(() => {
     if (!userUuid) return;
 
@@ -79,6 +85,9 @@ export default function CheckInPage() {
         console.error("Failed to load part of the check-in summary:", result);
       }
       setLoadFailed(failed.length > 0);
+      setFiguresFailed(
+        diveStats.status === "rejected" || recent.status === "rejected",
+      );
       setIsSummaryLoading(false);
     };
 
@@ -119,16 +128,21 @@ export default function CheckInPage() {
 
   return (
     <CheckInPageFrame
+      diver={user}
+      units={units}
       certifications={certifications}
       contactNames={contactNames}
       stats={stats}
       lastDiveAt={lastDiveAt}
       isLoading={isSummaryLoading}
       loadFailed={loadFailed}
+      figuresFailed={figuresFailed}
       onCertificationsChanged={refreshCertifications}
+      sharing={sharing}
       onRetry={() => {
         setIsSummaryLoading(true);
         setLoadFailed(false);
+        setFiguresFailed(false);
         setAttempt((n) => n + 1);
       }}
     />

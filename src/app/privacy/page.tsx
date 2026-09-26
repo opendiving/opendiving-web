@@ -216,7 +216,8 @@ export default async function PrivacyPage() {
                 phone number; an emergency contact, meaning somebody
                 else&rsquo;s name, phone number and relationship to you, which
                 you enter; and your dive insurance &mdash; the provider, the
-                policy number and when it expires
+                policy number and when it expires. A check-in link you make
+                shows them to whoever holds it, as section 4.9 describes
               </li>
               <li>
                 <strong>Dive Logs:</strong> Dive location, depth, duration,
@@ -260,9 +261,9 @@ export default async function PrivacyPage() {
               carries removed by this server before the file is stored; what the
               app shows is drawn from that file at the crop you chose. Your
               portrait is shown to you where you edit it and on your check-in
-              page, and never where your profile picture appears. The full
-              archive export carries both files, and both are deleted with your
-              account.
+              page, and to whoever holds a check-in link you made (section 4.9),
+              and never where your profile picture appears. The full archive
+              export carries both files, and both are deleted with your account.
             </p>
             <p className="text-foreground mb-4">
               One thing arrives without you typing it. If you create your
@@ -270,7 +271,7 @@ export default async function PrivacyPage() {
               fetched by this server and stored here as your avatar &mdash;
               once, when the account is made, and never again afterwards. That
               only happens on instances with Google sign-in turned on; section
-              4.9 describes it if this one does.
+              4.10 describes it if this one does.
             </p>
             <p className="text-foreground mb-4">
               Two more addresses can reach this copy before any account exists,
@@ -428,7 +429,8 @@ export default async function PrivacyPage() {
               <li>
                 <strong>Provide the Service:</strong> Store your dives, sites,
                 trips, gear, courses, certifications, contacts and check-in
-                details, and show them back to you
+                details, show them back to you, and show your check-in page to
+                whoever holds a check-in link you made
               </li>
               <li>
                 <strong>Account Management:</strong> Sign you in, keep you
@@ -488,7 +490,10 @@ export default async function PrivacyPage() {
               Every dive, dive site, trip, gear item, course, certification and
               contact belongs to one account and is visible to that account
               alone. There is no setting that makes any of it public, because
-              there is nothing for such a setting to do.
+              there is nothing for such a setting to do. The one exception is
+              one you make yourself, a page at a time: a check-in link shows
+              your check-in page to whoever holds it, for a day, and section 4.9
+              says exactly what that shows.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -502,10 +507,14 @@ export default async function PrivacyPage() {
               course, certification or contact of yours.
             </p>
             <p className="text-foreground mb-4">
-              There is one exception and it is not about anything you entered:
-              inviting somebody shows them your name, and shows you whether they
-              went on to register. Section 4.8 sets out exactly what that
-              discloses, in both directions.
+              There are two exceptions. The first is not about anything you
+              entered: inviting somebody shows them your name, and shows you
+              whether they went on to register. Section 4.8 sets out exactly
+              what that discloses, in both directions. The second is exactly
+              about what you entered: a check-in link you make shows your
+              check-in page to whoever holds the link, another diver included,
+              until it expires or you revoke it. Section 4.9 sets out what that
+              shows.
             </p>
             <p className="text-foreground mb-4">
               The one thing every account on this copy does draw on is the
@@ -680,7 +689,7 @@ export default async function PrivacyPage() {
             </p>
 
             {/* Unconditional, unlike the Google subsection below it, and that is
-                why it takes the fixed number and Google moves after it. An
+                why it takes a fixed number and Google moves after it. An
                 instance can be flipped between open and invite-only with a
                 restart, so a section that appeared and disappeared with the mode
                 would be a page that changes under a reader for a reason nothing
@@ -693,8 +702,9 @@ export default async function PrivacyPage() {
             <p className="text-foreground mb-4">
               Whoever runs this copy decides whether anyone may create an
               account on it or only people who have been invited. Where it is
-              invitations, this is the one place in the software where something
-              about one person is shown to another, and this section is the
+              invitations, this is one of the two places in the software where
+              something about one person is shown to another &mdash; the other
+              is a check-in link, in section 4.9 &mdash; and this section is the
               whole of it.
             </p>
             <p className="text-foreground mb-4">
@@ -738,10 +748,59 @@ export default async function PrivacyPage() {
               pending request and an unused invitation are kept.
             </p>
 
+            {/* Unconditional for the reason §4.8 is: every diver on every copy can
+                make one, so Google stays last and takes the number after it. */}
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              4.9 Check-in Links
+            </h3>
+            <p className="text-foreground mb-4">
+              Your check-in page can make a link to itself, for a dive shop to
+              open on its own phone or computer &mdash; from a QR code on your
+              screen, or an address you send. This is the other place in the
+              software where something about one person is shown to another, the
+              only one that shows what you entered, and this section is the
+              whole of it.
+            </p>
+            <p className="text-foreground mb-4">
+              <strong>What a link shows:</strong> your check-in page as it
+              prints &mdash; your name and your portrait if you have one, your
+              date of birth and phone number, your dive insurance, your
+              emergency contact, your dive count, deepest dive and last dive,
+              and each certification with its number, dates, instructor and dive
+              centre, beside the front of the card where you stored a picture of
+              it. Never the back of a card; a card kept as a PDF is named as one
+              rather than shown; and neither your profile picture nor anything
+              else this copy holds about you is shown at all.
+            </p>
+            <p className="text-foreground mb-4">
+              <strong>Who can open it:</strong> anyone who has the link, with no
+              account and no signing in &mdash; which is what lets a desk open
+              it. Treat it like the printout it stands in for: whoever you give
+              it to can pass it on. The page asks search engines not to list it.
+            </p>
+            <p className="text-foreground mb-4">
+              <strong>For how long:</strong> 24 hours from when you made it.
+              Revoking it from your check-in page stops it at once, and so does
+              making another, since only one of your links works at a time.
+              Asking to delete your account stops it too.
+            </p>
+            <p className="text-foreground mb-4">
+              <strong>What this copy keeps:</strong> a fingerprint of the link
+              rather than the link itself, which is why your check-in page
+              cannot show you its QR code or address again once you leave it;
+              when it was made, when it expires, and whether you revoked it; and
+              your dive count, deepest dive and last dive as the page showed
+              them when you made it, so a correction you made for that day is
+              what the link shows and a dive logged afterwards does not change
+              it. Everything else is read from your account each time the link
+              is opened, so a change you make shows at once. Section 7 says when
+              a link is deleted.
+            </p>
+
             {googleClientId && (
               <>
                 <h3 className="text-xl font-semibold text-foreground mb-3">
-                  4.9 Signing In with Google
+                  4.10 Signing In with Google
                 </h3>
                 <p className="text-foreground mb-4">
                   This copy of OpenDiving offers &ldquo;Continue with
@@ -889,7 +948,9 @@ export default async function PrivacyPage() {
             <p className="text-foreground mb-4">
               There are no privacy settings for your dive logs, and their
               absence is the point: nothing is public or shared, so there is
-              nothing to switch off.
+              nothing to switch off. The one exception is a check-in link you
+              made, and Revoke on your check-in page switches that off at once
+              &mdash; section 4.9.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1082,6 +1143,11 @@ export default async function PrivacyPage() {
               somebody invites it afresh. An invitation that <em>was</em> used
               is not swept, because by then it belongs to two accounts and goes
               when either of them does.
+            </p>
+            <p className="text-foreground mb-4">
+              A <strong>check-in link</strong> is deleted by a sweep that runs
+              every hour once it has stopped working: 24 hours after you made
+              it, or sooner if you revoked it or made another.
             </p>
             <p className="text-foreground mb-4">
               When you delete your account:
@@ -1405,7 +1471,7 @@ export default async function PrivacyPage() {
                 Nothing of Google&rsquo;s runs in your browser on this site, and
                 Google sets nothing in your browser under this address. Signing
                 in with Google takes you to Google, where whatever it stores is
-                its own on its own address &mdash; section 4.9 has the detail.
+                its own on its own address &mdash; section 4.10 has the detail.
               </p>
             )}
             <p className="text-foreground mb-4">

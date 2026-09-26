@@ -40,8 +40,10 @@ export function PortraitFrame({
 
 /**
  * The diver's stored portrait, fetched through the API client as `UserAvatar` fetches
- * the avatar - the bytes are owner-only. No fallback inside the frame: initials
- * identify nobody, and this picture exists to identify somebody.
+ * the avatar - the bytes are owner-only on this route. The one `<img src>` a portrait
+ * has is a check-in link's, where the token in the path is the credential and the
+ * check-in frame draws it itself. No fallback inside the frame: initials identify
+ * nobody, and this picture exists to identify somebody.
  */
 export function PortraitImage({
   name,

@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-import { hasDivingFigures, loggedDivingFigures } from "./checkin";
+import {
+  divingFiguresFromWire,
+  divingFiguresToWire,
+  hasDivingFigures,
+  loggedDivingFigures,
+} from "./checkin";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 
 const stats: UserDiveStats = {
@@ -50,5 +55,21 @@ describe("hasDivingFigures", () => {
         lastDiveOn: "2026-08-14",
       }),
     ).toBe(true);
+  });
+});
+
+describe("the figures on the wire", () => {
+  // A cleared figure is null on both sides, and the link prints nothing for it, so a
+  // round trip has to keep every null a null rather than a zero or an empty string.
+  it("round-trips, cleared figures included", () => {
+    const figures = { totalDives: 310, maxDepth: null, lastDiveOn: null };
+    expect(divingFiguresToWire(figures)).toEqual({
+      total_dives: 310,
+      max_depth: null,
+      last_dive_on: null,
+    });
+    expect(divingFiguresFromWire(divingFiguresToWire(figures))).toEqual(
+      figures,
+    );
   });
 });
