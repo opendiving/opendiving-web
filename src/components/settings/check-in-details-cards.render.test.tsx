@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   AboutYouCard,
+  CheckInDetailsCard,
   DiveInsuranceCard,
   EmergencyContactCard,
 } from "./check-in-details-cards";
@@ -63,6 +64,21 @@ beforeEach(() => {
 });
 
 const save = () => screen.getByRole("button", { name: /save changes/i });
+
+describe("CheckInDetailsCard", () => {
+  it("leads to the check-in page, from beside its heading", () => {
+    render(<CheckInDetailsCard />);
+
+    expect(screen.getByRole("link", { name: "Check-in" })).toHaveAttribute(
+      "href",
+      "/checkin",
+    );
+    // Beside rather than inside, so the heading is named by its title alone.
+    expect(
+      screen.getByRole("heading", { name: "Check-in details" }),
+    ).toBeInTheDocument();
+  });
+});
 
 describe("AboutYouCard", () => {
   it("shows what the account already holds", () => {

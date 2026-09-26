@@ -1,6 +1,13 @@
 "use client";
 
-import { IdCard, PhoneCall, ShieldCheck, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import {
+  ClipboardList,
+  IdCard,
+  PhoneCall,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   ABOUT_YOU_FIELDS,
@@ -8,6 +15,7 @@ import {
   INSURANCE_FIELDS,
   type UserFieldKey,
 } from "@/lib/validations/user-fields";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -61,6 +69,31 @@ function CheckInFieldsCard({
           <UserFieldsSubmitButton className="w-full mt-4" />
         </UserFieldsForm>
       </CardContent>
+    </Card>
+  );
+}
+
+// Heads the section: what the three cards below are for, and the way to the page that
+// shows them to a dive shop. The button sits beside the heading rather than inside it,
+// so the heading's name stays the title alone.
+export function CheckInDetailsCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle as="h2" className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5" />
+            Check-in details
+          </CardTitle>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/checkin">Check-in</Link>
+          </Button>
+        </div>
+        <CardDescription>
+          What a dive shop asks for at the desk. Fill in what you want to hand
+          over; anything you leave empty is left off your check-in summary.
+        </CardDescription>
+      </CardHeader>
     </Card>
   );
 }
