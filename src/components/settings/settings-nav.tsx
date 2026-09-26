@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -68,13 +68,19 @@ export function SettingsNav() {
   const pathname = usePathname();
   const { config } = useInstanceConfig();
   const listRef = useRef<HTMLUListElement>(null);
-  const hasScrolled = useRef(false);
+  // The page the row was last placed for, and where the row stood as each page was
+  // left. Safari snapshots a page as it is left, so after a swipe back the row starts
+  // from there - where the snapshot showed it - and glides on to centre the entry,
+  // rather than snapping from wherever the live row happened to be.
+  const placedFor = useRef<string | null>(null);
+  const leftAt = useRef(new Map<string, number>());
 
   // The pill and the row move when the pathname does, never ahead of it on the tap:
   // Safari snapshots the page being left as the URL changes, and a swipe back shows that
   // snapshot, so a pill already on its way would be caught halfway. After a swipe the
-  // browser animated itself (`hasUAVisualTransition`) they jump rather than slide - the
-  // swipe was the move, and a slide once the live page replaces the snapshot repeats it.
+  // browser animated itself (`hasUAVisualTransition`) the pill and its label jump rather
+  // than slide - the swipe was the move, and a slide once the live page replaces the
+  // snapshot repeats it.
   //
   // Marked on the list itself, in the capture phase: the router's own `popstate`
   // listener is older than this one and can render the new page synchronously, so a
@@ -94,11 +100,21 @@ export function SettingsNav() {
   // otherwise open with its own entry out of sight. The row is scrolled rather than the
   // entry scrolled into view, which would move the page as well; where the list is a
   // column it has nothing to scroll and this does nothing. The first placement is
-  // instant, since there is nothing yet to move from.
-  useEffect(() => {
+  // instant, since there is nothing yet to move from. Before paint, so no frame shows
+  // the row where it was.
+  useLayoutEffect(() => {
     const list = listRef.current;
     const entry = list?.querySelector<HTMLElement>(`a[href="${pathname}"]`);
     if (!list || !entry) return;
+    const previous = placedFor.current;
+    placedFor.current = pathname;
+    if (previous !== null && previous !== pathname) {
+      leftAt.current.set(previous, list.scrollLeft);
+    }
+    const snapshot = leftAt.current.get(pathname);
+    if (list.hasAttribute("data-instant") && snapshot !== undefined) {
+      list.scrollLeft = snapshot;
+    }
     const row = list.getBoundingClientRect();
     const box = entry.getBoundingClientRect();
     const from = list.scrollLeft;
@@ -107,10 +123,8 @@ export function SettingsNav() {
       list.scrollWidth - list.clientWidth,
     );
     const glide =
-      hasScrolled.current &&
-      !list.hasAttribute("data-instant") &&
+      previous !== null &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    hasScrolled.current = true;
     if (!glide || to === from) {
       list.scrollLeft = to;
       return;
