@@ -6771,17 +6771,11 @@ profile has no column for this and the dialog makes no request, deliberately, so
 not the way to "finish" the feature. The one request that carries the figures is a check-in link's
 mint, which sends what the page shows, corrected or logged, and the link row keeps them for its day.
 
-## A check-in link draws the same frame, read-only, with its pictures at the token routes
+## A check-in link's QR code is encoded in the browser by `qrcode`
 
-`/checkin/[token]` is a Server Component only to carry `robots: { index: false }`, which
-`WEB_NOINDEX` cannot give one route. `SharedCheckInPage` never calls `useAuthGuard` and reads the
-summary with `fetch` and `credentials: "omit"`. It draws `CheckInPageFrame` with `link` set: no edit
-control, dialog or `EmptyNote`, empty sections hidden rather than print-hidden, and the portrait and
-card fronts as plain `<img>`s at `/checkin/{token}/…` — so a printed field added to the frame
-reaches both pages. The QR code is `qrcode` (MIT), drawn from `QRCode.create(url).modules` as React
-`<rect>`s because `react/no-danger` rules out its SVG string; nothing leaves the page to draw it.
-The API keeps only a hash of the token, so a later visit shows the expiry and Revoke, and Share
-makes a new link.
+`qrcode` (MIT, a licence already in the tree) turns the link into modules on the page, so the token
+never travels to an image service or a third party to become a picture. The rejected alternative,
+hand-writing the encoder, is Reed-Solomon and masking code kept for one control.
 
 ## One form module for every field of the diver's own record
 
