@@ -23,6 +23,7 @@ import type { UserDiveStats } from "@/lib/api/dive-stats";
 import { formatDurationHoursMinutes, greetingForHour } from "@/lib/date-time";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { IndexPageHeader } from "@/components/ui/page-header";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
 
@@ -135,22 +136,18 @@ export function DashboardPageFrame({
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            {greeting}, {user.name}!
-          </h1>
-          <p className="text-muted-foreground">
-            Your logbook, your trips and your stats, at a glance
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/dives/new?from=/dashboard">
-            <Plus className="h-4 w-4 mr-2" />
-            Log a dive
-          </Link>
-        </Button>
-      </div>
+      <IndexPageHeader
+        title={`${greeting}, ${user.name}!`}
+        description="Your logbook, your trips and your stats, at a glance"
+        action={
+          <Button asChild>
+            <Link href="/dives/new?from=/dashboard">
+              <Plus className="h-4 w-4 mr-2" />
+              Log a dive
+            </Link>
+          </Button>
+        }
+      />
 
       {/* Anything needing action comes first - a regulator that is out of service or a
           rescue card that has lapsed matters more than how many dives are in the log.

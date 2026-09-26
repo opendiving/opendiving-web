@@ -5,6 +5,7 @@ import { BadgeCheck, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
+import { IndexPageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import {
@@ -60,19 +61,16 @@ export function CertificationsPageFrame({
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Certifications</h1>
-          <p className="text-muted-foreground mt-2">
-            Keep photos of your c-cards here, so they&apos;re on hand at the
-            dive shop without digging out the plastic
-          </p>
-        </div>
-        <Button onClick={onNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          New certification
-        </Button>
-      </div>
+      <IndexPageHeader
+        title="Certifications"
+        description="Keep photos of your c-cards here, so they're on hand at the dive shop without digging out the plastic"
+        action={
+          <Button onClick={onNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            New certification
+          </Button>
+        }
+      />
 
       <Card>
         <ListCardHeader title="Your Certifications" isEmpty={isEmptyList}>

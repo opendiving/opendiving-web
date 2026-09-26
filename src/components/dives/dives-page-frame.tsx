@@ -7,6 +7,7 @@ import { DiveIcon } from "@/components/logo";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
+import { IndexPageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import {
@@ -76,22 +77,19 @@ export function DivesPageFrame({
   // would be left behind on the pages where it draws nothing.
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-bold">
-            Dives
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Manage and track your diving activities
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/dives/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Log new dive
-          </Link>
-        </Button>
-      </div>
+      <IndexPageHeader
+        title="Dives"
+        description="Manage and track your diving activities"
+        headingRef={headingRef}
+        action={
+          <Button asChild>
+            <Link href="/dives/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Log new dive
+            </Link>
+          </Button>
+        }
+      />
 
       {numbering}
 

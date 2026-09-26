@@ -4,6 +4,7 @@ import { type Ref } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { IndexPageHeader } from "@/components/ui/page-header";
 import {
   GearItemsCard,
   type GearItemsCardProps,
@@ -72,19 +73,16 @@ export function GearPageFrame({
 }: GearPageFrameProps) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Gear</h1>
-          <p className="text-muted-foreground mt-2">
-            Track the equipment you dive with, and group it into sets you can
-            load into a dive in one click
-          </p>
-        </div>
-        <Button onClick={onNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          New gear
-        </Button>
-      </div>
+      <IndexPageHeader
+        title="Gear"
+        description="Track the equipment you dive with, and group it into sets you can load into a dive in one click"
+        action={
+          <Button onClick={onNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            New gear
+          </Button>
+        }
+      />
 
       <GearItemsCard {...items} />
 

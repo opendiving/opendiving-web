@@ -5,6 +5,7 @@ import { ChevronDown, GraduationCap, Plus, Search, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
+import { IndexPageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import {
@@ -112,18 +113,17 @@ export function CoursesPageFrame({
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Courses</h1>
-          <p className="text-muted-foreground mt-2">
-            The training you did, with the dives and cards it produced
-          </p>
-        </div>
-        <Button onClick={onNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          New course
-        </Button>
-      </div>
+      <IndexPageHeader
+        className="mb-6"
+        title="Courses"
+        description="The training you did, with the dives and cards it produced"
+        action={
+          <Button onClick={onNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            New course
+          </Button>
+        }
+      />
 
       <Card>
         <ListCardHeader title="Course List" isEmpty={isEmptyList}>
