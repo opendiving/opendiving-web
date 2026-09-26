@@ -528,8 +528,8 @@ describe("the check-in details in an import preview", () => {
   });
 
   it("re-reads the signed-in user only when a fact was written", async () => {
-    // A re-read resets every form on the page seeded from the user, so it is
-    // spent only when the check-in card would otherwise be showing stale facts.
+    // A re-read is a request and a new `user` for every consumer of the context,
+    // so it is spent only when the check-in cards would otherwise hold stale facts.
     mocks.apply.mockResolvedValueOnce(
       report({
         notes: [

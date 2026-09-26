@@ -432,11 +432,11 @@ export function DataImportCard() {
         details,
         portrait,
       );
-      // Only when a fact or the portrait changed: the check-in card on this page
-      // seeds from the signed-in user, and saving it from a stale copy would send
+      // Only when a fact or the portrait changed: the check-in cards and `/checkin`
+      // seed from the signed-in user, and a card saved from a stale copy would send
       // the imported facts back as nulls, and the portrait slot and "Adjust" read
-      // their digests from it. Not otherwise, since a refresh resets every mounted
-      // form seeded from that user.
+      // their digests from it. Not otherwise: a re-read is a request, and a new
+      // `user` for every consumer of the context, spent on nothing.
       if (checkInWasWritten(applied)) await refreshUser();
       setResult(applied);
       setPending(null);
