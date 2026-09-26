@@ -4,5 +4,9 @@
 // browser learns.
 export const PAGE_TITLE_TEMPLATE = "%s – OpenDiving";
 
+// A replacer function, since a replacement string expands `$&`, `$'` and `$$` - and
+// the name is whatever the diver called their trip.
 export const pageTitle = (name: string, section?: string) =>
-  PAGE_TITLE_TEMPLATE.replace("%s", section ? `${name} – ${section}` : name);
+  PAGE_TITLE_TEMPLATE.replace("%s", () =>
+    section ? `${name} – ${section}` : name,
+  );

@@ -13,6 +13,16 @@ describe("pageTitle", () => {
     );
   });
 
+  it("takes a name as it was typed, dollar signs included", () => {
+    expect(pageTitle("Cheap $$ trip", "Trips")).toBe(
+      "Cheap $$ trip – Trips – OpenDiving",
+    );
+    expect(pageTitle("Reef $'", "Dive Sites")).toBe(
+      "Reef $' – Dive Sites – OpenDiving",
+    );
+    expect(pageTitle("A $& B")).toBe("A $& B – OpenDiving");
+  });
+
   // The root layout hands the same template to Next, which fills a page's
   // `metadata.title` into it - so a tab named in `metadata` and one named by
   // `useDocumentTitle` read alike.
