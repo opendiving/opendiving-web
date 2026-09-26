@@ -54,6 +54,15 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
 );
 CardTitle.displayName = "CardTitle";
 
+// A title line that also holds a control. A `size="sm"` button is 36px against the
+// title's 24px line, so centring the two let the button set the line's height and
+// dropped the title 6px below where a card without one has it. Top-aligned, with the
+// control lifted by that 6px, the title stays put and the control stays centred on
+// it; `gap-y-4.5` keeps a control that wraps onto its own line 12px clear of the title.
+const CARD_TITLE_ROW =
+  "flex flex-wrap items-start justify-between gap-x-3 gap-y-4.5";
+const CARD_TITLE_ACTION = "-mt-1.5";
+
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
@@ -87,6 +96,8 @@ const CardFooter = React.forwardRef<
 CardFooter.displayName = "CardFooter";
 
 export {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
   Card,
   CardHeader,
   CardFooter,

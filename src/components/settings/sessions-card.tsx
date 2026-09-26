@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
   Card,
   CardContent,
   CardDescription,
@@ -142,10 +144,7 @@ export function SessionsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle
-          as="h2"
-          className="flex flex-wrap items-center justify-between gap-3"
-        >
+        <CardTitle as="h2" className={CARD_TITLE_ROW}>
           <span className="flex items-center gap-2">
             <MonitorSmartphone className="h-5 w-5" />
             Signed-in Devices
@@ -154,6 +153,7 @@ export function SessionsCard() {
             <Button
               variant="outline"
               size="sm"
+              className={CARD_TITLE_ACTION}
               disabled={isRevokingOthers}
               onClick={() => setConfirmingOthers(true)}
             >

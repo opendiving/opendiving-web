@@ -27,7 +27,14 @@ import { formatDateOnly } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { useToast } from "@/components/ui/use-toast";
@@ -167,10 +174,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle
-          as="h2"
-          className="flex flex-wrap items-center justify-between gap-3"
-        >
+        <CardTitle as="h2" className={CARD_TITLE_ROW}>
           <span className="flex items-center gap-2">
             <Wrench className="h-5 w-5" />
             Service
@@ -178,6 +182,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
           <Button
             variant="outline"
             size="sm"
+            className={CARD_TITLE_ACTION}
             onClick={() => setEditingSchedule(undefined)}
           >
             <Plus className="h-4 w-4 mr-2" />
