@@ -451,7 +451,8 @@ describe("the check-in details in an import preview", () => {
       within(contact).getByText(/yours now: sam · 0111 · partner/i),
     ).toBeVisible();
     expect(within(contact).getByLabelText("Name")).toHaveValue("Alex");
-    expect(screen.getByLabelText("Phone number")).toHaveValue("+44 2");
+    const phone = screen.getByRole("group", { name: "Phone number" });
+    expect(within(phone).getByLabelText("Phone number")).toHaveValue("+44 2");
     const insurance = screen.getByRole("group", { name: "Dive insurance" });
     expect(within(insurance).getByText(/yours now: not set/i)).toBeVisible();
     expect(within(insurance).getByLabelText("Policy number")).toHaveValue(
@@ -464,9 +465,9 @@ describe("the check-in details in an import preview", () => {
     await previewWith(details);
 
     const contact = screen.getByRole("group", { name: "Emergency contact" });
-    await userEvent.clear(within(contact).getByLabelText("Their phone number"));
+    await userEvent.clear(within(contact).getByLabelText("Phone number"));
     await userEvent.type(
-      within(contact).getByLabelText("Their phone number"),
+      within(contact).getByLabelText("Phone number"),
       "0999",
     );
     const insurance = screen.getByRole("group", { name: "Dive insurance" });

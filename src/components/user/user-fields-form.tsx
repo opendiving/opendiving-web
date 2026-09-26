@@ -76,7 +76,7 @@ const FIELD_SPECS: Record<
   insurance_policy_number: { label: "Policy number", kind: "text" },
   insurance_expires_on: { label: "Expires on", kind: "date" },
   emergency_contact_name: { label: "Name", kind: "text" },
-  emergency_contact_phone: { label: "Their phone number", kind: "tel" },
+  emergency_contact_phone: { label: "Phone number", kind: "tel" },
   emergency_contact_relationship: {
     label: "Relationship to you",
     kind: "text",

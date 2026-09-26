@@ -173,7 +173,7 @@ describe("EmergencyContactCard", () => {
     render(<EmergencyContactCard />);
 
     await userEvent.type(screen.getByLabelText("Name"), "Alex");
-    await userEvent.type(screen.getByLabelText("Their phone number"), "0456");
+    await userEvent.type(screen.getByLabelText("Phone number"), "0456");
     await userEvent.type(
       screen.getByLabelText("Relationship to you"),
       "Partner",
@@ -198,7 +198,7 @@ describe("EmergencyContactCard", () => {
     render(<EmergencyContactCard />);
 
     await userEvent.clear(screen.getByLabelText("Name"));
-    await userEvent.clear(screen.getByLabelText("Their phone number"));
+    await userEvent.clear(screen.getByLabelText("Phone number"));
     await userEvent.clear(screen.getByLabelText("Relationship to you"));
     await userEvent.click(save());
 
