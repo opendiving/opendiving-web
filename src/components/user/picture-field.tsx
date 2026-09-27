@@ -68,7 +68,15 @@ interface PictureFieldProps {
   edit: PictureEdit | null;
   onChange: (edit: PictureEdit | null) => void;
   disabled?: boolean;
+  /**
+   * Whose initials the empty slot shows, for a form with no account behind it yet -
+   * onboarding's. Without it the field is the signed-in account's, and draws nothing
+   * until there is one.
+   */
+  name?: string;
 }
+
+const NO_STORED_PICTURE = { sha: null, originalSha: null, crop: null };
 
 /**
  * One of the diver's two pictures, as a field of the form it is saved with: the
@@ -89,6 +97,7 @@ export function PictureField({
   edit,
   onChange,
   disabled = false,
+  name,
 }: PictureFieldProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -101,9 +110,9 @@ export function PictureField({
     return () => URL.revokeObjectURL(cropping.url);
   }, [cropping]);
 
-  if (!user) return null;
+  if (!user && name === undefined) return null;
 
-  const stored = storedPicture(user, picture);
+  const stored = user ? storedPicture(user, picture) : NO_STORED_PICTURE;
   const pending = edit && edit.kind !== "remove" ? edit : null;
   const isRemoved = edit?.kind === "remove";
 
@@ -175,6 +184,7 @@ export function PictureField({
   // The dialog on an original the API holds: this picture's own, at its stored crop,
   // or - for "Use profile picture" - the avatar's, at the portrait's default.
   const openOriginal = async (purpose: "adjust" | "copy") => {
+    if (!user) return;
     const from: PictureKind = purpose === "copy" ? "avatar" : picture;
     const { originalSha, crop } = storedPicture(user, from);
     setLoading(purpose);
@@ -287,10 +297,10 @@ export function PictureField({
     <>
       <PictureSlot
         picture={picture}
-        name={user.name}
+        name={user?.name ?? name ?? ""}
         storedSha={stored.sha}
         canAdjust={!!pending || (!isRemoved && !!stored.sha)}
-        canCopy={picture === "portrait" && !!user.avatar_original_sha256}
+        canCopy={picture === "portrait" && !!user?.avatar_original_sha256}
         edit={edit}
         loading={loading}
         disabled={disabled || loading !== null}

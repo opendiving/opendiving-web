@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,10 @@ import { getApiErrorMessage } from "@/lib/api/error";
 import { UserPlus } from "lucide-react";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
+import { useToast } from "@/components/ui/use-toast";
+import { PictureField } from "@/components/user/picture-field";
+import { usePictureEdit } from "@/hooks/usePictureEdit";
+import { applyPictureEdit } from "@/lib/picture-edits";
 import {
   StandaloneCard,
   StandaloneCardHeader,
@@ -25,14 +29,20 @@ import {
 // or Google) with no existing account. Email is read-only (it's already been
 // verified - that's *why* this form exists), name is prefilled when Google supplied
 // one but always editable, and there's no password field.
+//
+// The profile picture is optional and held until the account exists: there is none
+// to upload it to before, so it goes in `completeProfile`'s `onCreated`.
 export function ProfileCompletionForm() {
   const [error, setError] = useState<string | null>(null);
   const { onboarding, completeProfile } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
+  const [pictureEdit, setPictureEdit] = usePictureEdit();
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ProfileCompletionFormData>({
     resolver: zodResolver(profileCompletionSchema),
@@ -42,14 +52,40 @@ export function ProfileCompletionForm() {
     },
   });
 
+  // Whose initials the empty picture shows, following the name as it is typed.
+  const name = useWatch({ control, name: "name" });
+
   if (!onboarding) {
     return null;
   }
 
   const onSubmit = async (data: ProfileCompletionFormData) => {
+    // A picture that fails leaves the account made and signed in, so it is said
+    // after the move on rather than in place of it.
+    const pictureFailure: { error?: unknown } = {};
+    const savePicture = async () => {
+      if (!pictureEdit) return;
+      try {
+        await applyPictureEdit("avatar", pictureEdit);
+      } catch (error) {
+        console.error("Failed to save the profile picture:", error);
+        pictureFailure.error = error;
+      }
+    };
+
     try {
       setError(null);
-      await completeProfile(data.name, data.username);
+      await completeProfile(data.name, data.username, savePicture);
+      if ("error" in pictureFailure) {
+        toast({
+          title: "Your account is ready, but your profile picture did not save",
+          description: getApiErrorMessage(
+            pictureFailure.error,
+            "Add it again in Settings.",
+          ),
+          variant: "destructive",
+        });
+      }
       router.push("/dashboard");
     } catch (err) {
       setError(getApiErrorMessage(err, "Could not complete your profile."));
@@ -65,6 +101,14 @@ export function ProfileCompletionForm() {
       />
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && <StatusMessage variant="error">{error}</StatusMessage>}
+
+        <PictureField
+          picture="avatar"
+          name={name || onboarding.email}
+          edit={pictureEdit}
+          onChange={setPictureEdit}
+          disabled={isSubmitting}
+        />
 
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>

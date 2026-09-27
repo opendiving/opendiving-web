@@ -4093,11 +4093,15 @@ Failures raised in the browser are `ImageCropError` (`lib/image-crop.ts`), becau
 else — never a plain `Error`'s `message` — so the caller shows `message` for those and
 `getApiErrorMessage` for the rest.
 
-## Avatars: Onboarding has no avatar step
+## Avatars: Onboarding offers the picture, and uploads it once the account exists
 
-The profile-completion form stays two fields. A Google sign-up arrives with its Google picture
-already imported by the API, an email sign-up arrives with initials and finds the editor in
-Settings, and an upload-and-crop step at the door is friction where the funnel is most fragile.
+The profile-completion form carries an optional profile picture beside its two fields. There is no
+account to upload it to until `POST /auth/complete` answers, so the form holds the crop and
+`completeProfile` sends it in `onCreated`: after the session is captured, before the account is
+read. The first read then already carries the picture, and `/onboarding`, which moves on the moment
+`user` is set, does not move on without it. A failed upload leaves the account made — the diver is
+told and lands on the dashboard anyway. A pick replaces the Google picture the API imports; without
+one, a Google sign-up keeps it.
 
 ## Signing is a maintainer's setting, and the hook checks before it blocks
 
