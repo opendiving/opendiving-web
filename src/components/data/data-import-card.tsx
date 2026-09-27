@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { HardDriveUpload, Upload } from "lucide-react";
+import { CloudUpload, Notebook, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
@@ -464,7 +464,7 @@ export function DataImportCard() {
     <Card>
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
-          <HardDriveUpload className="h-5 w-5" />
+          <CloudUpload className="h-5 w-5" />
           Bring a Logbook In
         </CardTitle>
         <CardDescription>
@@ -475,56 +475,65 @@ export function DataImportCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg border border-dashed p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-muted/40">
-          <div className="min-w-0">
-            {/* The formats this sentence names are the ones
-                `LOGBOOK_IMPORT_ACCEPT` offers, and the pairing is the point: a
-                file the picker greys out has no business being listed here, and
-                a format offered without being named reads as unsupported. */}
-            <p className="font-medium text-sm">
-              Choose a .divejson, .uddf, .ssrf, .fit, .json or .xml file, or a
-              .zip
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Anything that is not DiveJSON already is converted on the way in,
-              and you are told what the conversion could not carry. A .zip is
-              either a full OpenDiving archive — which restores your
-              dive-computer files and certification scans as well — or a folder
-              of dive-computer files, read as one logbook. The check-in details
-              a logbook carries, and an archive&rsquo;s portrait, are shown
-              beside yours first, and you choose which are saved. Records
-              already in your logbook are matched rather than duplicated, and a
-              dive you deleted comes back under its own identity.
-            </p>
-          </div>
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={LOGBOOK_IMPORT_ACCEPT}
-              className="hidden"
-              onChange={handleFileSelected}
+        {/* Laid out as one of the export card's rows, so the two halves of the
+            round trip read as the same kind of thing. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="flex items-start gap-3 min-w-0">
+            <Notebook
+              className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0"
+              aria-hidden="true"
             />
-            <Button
-              type="button"
-              variant="outline"
-              className="shrink-0"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={busy}
-            >
-              {isPreviewing ? (
-                <div className="flex items-center space-x-2">
-                  <ButtonSpinner />
-                  <span>Reading...</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <Upload className="h-4 w-4" />
-                  <span>Choose file</span>
-                </div>
-              )}
-            </Button>
+            <div className="min-w-0">
+              {/* The formats this sentence names are the ones
+                  `LOGBOOK_IMPORT_ACCEPT` offers, and the pairing is the point: a
+                  file the picker greys out has no business being listed here, and
+                  a format offered without being named reads as unsupported. */}
+              <p className="text-sm font-medium">
+                Choose a .divejson, .uddf, .ssrf, .fit, .json or .xml file, or a
+                .zip
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Anything that is not DiveJSON already is converted on the way
+                in, and you are told what the conversion could not carry. A .zip
+                is either a full OpenDiving archive — which restores your
+                dive-computer files and certification scans as well — or a
+                folder of dive-computer files, read as one logbook. The check-in
+                details a logbook carries, and an archive&rsquo;s portrait, are
+                shown beside yours first, and you choose which are saved.
+                Records already in your logbook are matched rather than
+                duplicated, and a dive you deleted comes back under its own
+                identity.
+              </p>
+            </div>
           </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={LOGBOOK_IMPORT_ACCEPT}
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 self-start"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy}
+          >
+            {isPreviewing ? (
+              <div className="flex items-center space-x-2">
+                <ButtonSpinner />
+                <span>Reading...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Upload className="h-4 w-4" />
+                <span>Choose file</span>
+              </div>
+            )}
+          </Button>
         </div>
 
         {pending && (

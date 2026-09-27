@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import {
+  CloudDownload,
   Download,
   FileArchive,
   FileCode,
   FileJson,
-  HardDriveDownload,
   Sheet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -153,7 +153,7 @@ export function DataExportCard({ username }: DataExportCardProps) {
     <Card>
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
-          <HardDriveDownload className="h-5 w-5" />
+          <CloudDownload className="h-5 w-5" />
           Your Data
         </CardTitle>
         <CardDescription>
