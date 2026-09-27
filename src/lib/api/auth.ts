@@ -25,8 +25,9 @@ export interface User {
   portrait_sha256?: string | null;
   // The original each picture is rendered from and the crop it is rendered through,
   // null together when no original is held: an avatar stored before originals were
-  // kept, or seeded from Google. The digest is what offers "Adjust" and the `?v=` of
-  // `getPictureOriginalBlob`; the crop is where the adjustment opens.
+  // kept, or seeded from Google. The digest is the `?v=` of `getPictureOriginalBlob`
+  // and decides what "Adjust" opens - the original at its crop, or, without one, the
+  // rendition redrawn; the crop is where the adjustment opens.
   avatar_original_sha256?: string | null;
   avatar_crop?: PictureCrop | null;
   portrait_original_sha256?: string | null;

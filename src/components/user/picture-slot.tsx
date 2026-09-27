@@ -44,7 +44,7 @@ interface PictureSlotProps {
 }
 
 // How wide each picture is drawn. The portrait is twice the avatar: it is the one a
-// desk compares with a face, and at 80px it was too small to judge a crop by.
+// desk compares with a face, and 80px is too small to judge a crop by.
 const PICTURE_WIDTH: Record<PictureKind, string> = {
   avatar: "w-20",
   portrait: "w-40",

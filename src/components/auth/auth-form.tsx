@@ -35,8 +35,7 @@ interface AuthFormProps {
   //
   // Passing one also makes the heading an `h1`, here and on the "check your
   // email" card this swaps to: on `/signin` these are the page's only heading,
-  // and that page is one of the few chrome-free routes that does not already
-  // fail axe's `page-has-heading-one`. Keeping it that way is the whole reason
+  // and axe's `page-has-heading-one` wants one there. That is the whole reason
   // the level is not just hardcoded.
   title?: string;
   description?: string;
