@@ -5,9 +5,9 @@ import { fetchAllPeople, type Person } from "@/lib/api/people";
 
 /**
  * The people behind a set of uuids, for a surface that prints several names - a
- * dive's People card, a trip's or a course's people, the check-in sheet's
- * instructors. The records store the uuid and the role and nothing else, so the
- * names are read here.
+ * dive's People card, a trip's or a course's people, the rows of a people
+ * picker. The records store the uuid and the role and nothing else, so the names
+ * are read here.
  *
  * One read of the whole list rather than one request per uuid, the shape
  * `useContactsByUuid` has and for its reason. It is read again only when a uuid
