@@ -23,7 +23,9 @@ export function Footer() {
           <div className="sm:col-span-3 md:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
               <Logo className="h-6 w-6 text-coral" />
-              <span className="text-lg font-semibold">OpenDiving</span>
+              <span className="font-wordmark text-lg font-bold tracking-wordmark">
+                OpenDiving
+              </span>
             </div>
             <p className="text-muted-foreground text-sm">
               Open source diving platform for the global diving community.
