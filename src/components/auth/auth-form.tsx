@@ -13,12 +13,15 @@ import { usePasskeySignIn } from "@/hooks/usePasskeySignIn";
 import { emailAuthSchema, EmailAuthFormData } from "@/lib/validations/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
-import { cn } from "@/lib/utils";
 import { CheckEmailCard } from "./check-email-card";
 import { GoogleAuthButton } from "./google-auth-button";
 import { ArrowRight, KeyRound, LogIn } from "lucide-react";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
+import {
+  StandaloneCard,
+  StandaloneCardHeader,
+} from "@/components/layout/standalone-card";
 
 interface AuthFormProps {
   className?: string;
@@ -165,27 +168,16 @@ export function AuthForm({
   return (
     <>
       {keyboardStandIn}
-      <div
-        className={cn(
-          "w-full max-w-md rounded-lg border bg-card p-6 shadow-sm max-sm:px-4",
-          className,
-        )}
-      >
+      <StandaloneCard className={className}>
         {title && (
           // The same block `CheckEmailCard` opens with, so the card the diver is
           // looking at keeps its shape across the swap rather than growing a header
-          // the moment a link goes out.
-          <div className="mb-6 text-center">
-            <LogIn className="mx-auto mb-3 h-10 w-10 text-primary" />
-            {/* `h1`, sized like `CheckEmailCard`'s `h3` - the level is about where
-              this sits on the page, not how big it looks. See the prop comment. */}
-            <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-            {description && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {description}
-              </p>
-            )}
-          </div>
+          // the moment a link goes out. `h1`: see the prop comment.
+          <StandaloneCardHeader
+            icon={LogIn}
+            title={title}
+            description={description}
+          />
         )}
 
         <form
@@ -295,7 +287,7 @@ export function AuthForm({
             )}
           </div>
         )}
-      </div>
+      </StandaloneCard>
     </>
   );
 }

@@ -6,7 +6,12 @@ import type { Area } from "react-easy-crop";
 import { useAuth } from "@/contexts/AuthContext";
 import { authAPI, type User } from "@/lib/api/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { decodeImage, ImageCropError } from "@/lib/image-crop";
+import {
+  cropToBlob,
+  croppedFilename,
+  decodeImage,
+  ImageCropError,
+} from "@/lib/image-crop";
 import {
   MAX_PICTURE_UPLOAD_SIZE,
   PICTURE_LABEL,
@@ -199,10 +204,55 @@ export function PictureField({
     }
   };
 
+  // An avatar that keeps no original - seeded from Google, or stored before originals
+  // were - is adjusted from the picture it shows instead. That is WebP, and the API
+  // keeps an original only as a JPEG or a PNG, so it is redrawn as a PNG and saved as
+  // a replacement, which leaves the avatar with an original like any other.
+  const openStored = async () => {
+    setLoading("adjust");
+    let url: string | null = null;
+    try {
+      const rendition = await authAPI.getPictureBlob(
+        picture,
+        stored.sha ?? undefined,
+      );
+      const renditionUrl = URL.createObjectURL(rendition);
+      let image: HTMLImageElement;
+      let blob: Blob;
+      try {
+        image = await decodeImage(renditionUrl);
+        const { naturalWidth: width, naturalHeight: height } = image;
+        blob = await cropToBlob(
+          renditionUrl,
+          { x: 0, y: 0, width, height },
+          { maxWidth: width, type: "image/png" },
+        );
+      } finally {
+        URL.revokeObjectURL(renditionUrl);
+      }
+      url = URL.createObjectURL(blob);
+      setCropping({
+        purpose: "replace",
+        source: {
+          blob,
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+        },
+        url,
+        filename: croppedFilename(picture, blob),
+      });
+    } catch (error) {
+      if (url) URL.revokeObjectURL(url);
+      showError(error, `Your ${PICTURE_LABEL[picture]} could not be loaded.`);
+    } finally {
+      setLoading(null);
+    }
+  };
+
   // A pending edit already has its image, so adjusting it again fetches nothing.
   const handleAdjust = () => {
     if (!pending) {
-      void openOriginal("adjust");
+      void (stored.originalSha ? openOriginal("adjust") : openStored());
       return;
     }
     setCropping({
@@ -239,7 +289,7 @@ export function PictureField({
         picture={picture}
         name={user.name}
         storedSha={stored.sha}
-        canAdjust={!!pending || (!isRemoved && !!stored.originalSha)}
+        canAdjust={!!pending || (!isRemoved && !!stored.sha)}
         canCopy={picture === "portrait" && !!user.avatar_original_sha256}
         edit={edit}
         loading={loading}

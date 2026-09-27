@@ -12,6 +12,10 @@ import { destinationForOutcome } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
 import { Loader2, MailCheck } from "lucide-react";
 import { StatusMessage } from "@/components/ui/status-message";
+import {
+  StandaloneCard,
+  StandaloneCardHeader,
+} from "@/components/layout/standalone-card";
 
 interface CheckEmailCardProps {
   className?: string;
@@ -56,7 +60,7 @@ const CODE_LENGTH = 6;
 // whichever is used first consumes it and the other stops working.
 export function CheckEmailCard({
   className,
-  titleAs: Title = "h3",
+  titleAs = "h3",
   email,
   requestId,
   redirectTo,
@@ -185,23 +189,22 @@ export function CheckEmailCard({
   };
 
   return (
-    <div
-      className={cn(
-        "w-full max-w-md rounded-lg border bg-card p-6 text-center shadow-sm max-sm:px-4",
-        className,
-      )}
-    >
-      <MailCheck className="mx-auto mb-3 h-10 w-10 text-primary" />
-      <Title className="text-lg font-semibold text-foreground">
-        Check your email
-      </Title>
-      <p className="mt-1 text-sm text-muted-foreground">
-        We sent a sign-in link and a six-digit code to{" "}
-        <span className="font-medium text-foreground">{email}</span>. Either one
-        signs you in - they expire in 30 minutes and can only be used once.
-      </p>
+    <StandaloneCard className={cn("text-center", className)}>
+      <StandaloneCardHeader
+        icon={MailCheck}
+        title="Check your email"
+        titleAs={titleAs}
+        description={
+          <>
+            We sent a sign-in link and a six-digit code to{" "}
+            <span className="font-medium text-foreground">{email}</span>. Either
+            one signs you in - they expire in 30 minutes and can only be used
+            once.
+          </>
+        }
+      />
 
-      <form onSubmit={handleVerify} className="mt-6 space-y-3 text-left">
+      <form onSubmit={handleVerify} className="space-y-3 text-left">
         {/* A `<span>` rather than the `Label` component: the field below is a
             `role="group"` of six inputs, not one control, so there is nothing for
             `htmlFor` to point at. `aria-labelledby` names the group instead, and
@@ -288,6 +291,6 @@ export function CheckEmailCard({
           Use a different email
         </button>
       </div>
-    </div>
+    </StandaloneCard>
   );
 }

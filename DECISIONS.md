@@ -4097,8 +4097,7 @@ else — never a plain `Error`'s `message` — so the caller shows `message` for
 
 The profile-completion form stays two fields. A Google sign-up arrives with its Google picture
 already imported by the API, an email sign-up arrives with initials and finds the editor in
-Settings, and an upload-and-crop step at the door is friction where the funnel is most fragile. The
-form's `UserAvatar` passes no digest: there is no account yet to fetch one from.
+Settings, and an upload-and-crop step at the door is friction where the funnel is most fragile.
 
 ## Signing is a maintainer's setting, and the hook checks before it blocks
 

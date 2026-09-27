@@ -6,6 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { CalendarClock, Trash2 } from "lucide-react";
 
 import { StandaloneShell } from "@/components/layout/standalone-shell";
+import {
+  StandaloneCard,
+  StandaloneCardHeader,
+} from "@/components/layout/standalone-card";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { formatPurgeDay, parsePurgeDate } from "@/lib/purge-date";
 
@@ -62,57 +66,48 @@ function GoodbyeContent({ purgeAfter }: { purgeAfter: string | null }) {
 
   return (
     <StandaloneShell className="text-center">
-      {deadlinePassed ? (
-        <>
-          <Trash2
-            className="mx-auto mb-4 h-10 w-10 text-muted-foreground"
-            aria-hidden="true"
+      <StandaloneCard>
+        {deadlinePassed ? (
+          <StandaloneCardHeader
+            icon={Trash2}
+            iconClassName="text-muted-foreground"
+            title="Your account has been deleted"
+            description="The date it was due to be erased on has passed, so your dives, dive sites, trips, courses, certifications, gear and contacts are no longer recoverable."
           />
-          <h1 className="text-2xl font-bold text-foreground mb-2">
-            Your account has been deleted
-          </h1>
-          <p className="text-muted-foreground">
-            The date it was due to be erased on has passed, so your dives, dive
-            sites, trips, courses, certifications, gear and contacts are no
-            longer recoverable.
-          </p>
-        </>
-      ) : (
-        <>
-          <CalendarClock
-            className="mx-auto mb-4 h-10 w-10 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <h1 className="text-2xl font-bold text-foreground mb-2">
-            Your account has been deleted
-          </h1>
-          {purgeOn ? (
-            <p className="text-muted-foreground">
-              You&apos;re signed out everywhere, and nothing has been erased
-              yet. Your dives, dive sites, trips, courses, certifications, gear
-              and contacts will be permanently erased on{" "}
-              <span className="font-medium text-foreground">
-                {formatPurgeDay(purgeOn)}
-              </span>
-              .
-            </p>
-          ) : (
-            <p className="text-muted-foreground">
-              You&apos;re signed out everywhere, and nothing has been erased
-              yet. The confirmation email we&apos;ve just sent you names the
-              date everything is permanently erased on.
-            </p>
-          )}
-          {/* The way back, in the same words as the confirmation email and the
+        ) : (
+          <>
+            <StandaloneCardHeader
+              icon={CalendarClock}
+              iconClassName="text-muted-foreground"
+              title="Your account has been deleted"
+              description={
+                purgeOn ? (
+                  <>
+                    You&apos;re signed out everywhere, and nothing has been
+                    erased yet. Your dives, dive sites, trips, courses,
+                    certifications, gear and contacts will be permanently erased
+                    on{" "}
+                    <span className="font-medium text-foreground">
+                      {formatPurgeDay(purgeOn)}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  "You're signed out everywhere, and nothing has been erased yet. The confirmation email we've just sent you names the date everything is permanently erased on."
+                )
+              }
+            />
+            {/* The way back, in the same words as the confirmation email and the
                 Danger Zone card - all three describe one behaviour, so reword them
                 together. Signing in reaches an offer to restore, not a session. */}
-          <p className="text-muted-foreground mt-4">
-            Deleted by mistake? Sign in again before{" "}
-            {purgeOn ? "that date" : "the date in that email"} and you&apos;ll
-            be offered your account back. Afterwards, nothing can be restored.
-          </p>
-        </>
-      )}
+            <p className="text-sm text-muted-foreground">
+              Deleted by mistake? Sign in again before{" "}
+              {purgeOn ? "that date" : "the date in that email"} and you&apos;ll
+              be offered your account back. Afterwards, nothing can be restored.
+            </p>
+          </>
+        )}
+      </StandaloneCard>
 
       <p className="text-sm text-muted-foreground mt-8">
         Thanks for diving with us.{" "}

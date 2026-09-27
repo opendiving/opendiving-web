@@ -7,6 +7,10 @@ import { authAPI } from "@/lib/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { StandaloneShell } from "@/components/layout/standalone-shell";
+import {
+  StandaloneCard,
+  StandaloneCardHeader,
+} from "@/components/layout/standalone-card";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
   AlertCircle,
@@ -141,83 +145,99 @@ function ConfirmStatus({
 }) {
   return (
     <StandaloneShell className="text-center">
-      {state === "checking" && (
-        <>
-          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">
-            Checking your confirmation link...
-          </p>
-        </>
-      )}
+      <StandaloneCard>
+        {state === "checking" && (
+          <StandaloneCardHeader
+            icon={Loader2}
+            iconClassName="animate-spin"
+            description="Checking your confirmation link..."
+          />
+        )}
 
-      {state === "ready" && (
-        <>
-          <MailCheck className="mx-auto mb-4 h-10 w-10 text-primary" />
-          <p className="text-foreground font-medium mb-1">
-            Confirm your new email address
-          </p>
-          <p className="text-muted-foreground mb-6">
-            {email ? (
-              <>
-                Click below to change your account&apos;s email to{" "}
-                <span className="font-medium text-foreground">{email}</span>.
-              </>
-            ) : (
-              "Click below to finish changing your account's email."
-            )}
-          </p>
-          <Button onClick={onConfirm}>
-            <Check className="h-4 w-4 mr-2" />
-            Confirm email change
-          </Button>
-        </>
-      )}
+        {state === "ready" && (
+          <>
+            <StandaloneCardHeader
+              icon={MailCheck}
+              title="Confirm your new email address"
+              description={
+                email ? (
+                  <>
+                    Click below to change your account&apos;s email to{" "}
+                    <span className="font-medium text-foreground">{email}</span>
+                    .
+                  </>
+                ) : (
+                  "Click below to finish changing your account's email."
+                )
+              }
+            />
+            <Button onClick={onConfirm}>
+              <Check className="h-4 w-4 mr-2" />
+              Confirm email change
+            </Button>
+          </>
+        )}
 
-      {state === "verifying" && (
-        <>
-          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Confirming your new email...</p>
-        </>
-      )}
+        {state === "verifying" && (
+          <StandaloneCardHeader
+            icon={Loader2}
+            iconClassName="animate-spin"
+            description="Confirming your new email..."
+          />
+        )}
 
-      {state === "success" && (
-        <>
-          <CheckCircle2 className="mx-auto mb-4 h-10 w-10 text-success" />
-          <p className="text-foreground font-medium mb-1">All set!</p>
-          <p className="text-muted-foreground mb-6">
-            Your email address has been updated
-            {email && (
-              <>
-                {" "}
-                to <span className="font-medium text-foreground">{email}</span>
-              </>
-            )}
-            .
-          </p>
-          <Link
-            href="/settings/account"
-            className="underline hover:text-foreground"
-          >
-            Back to settings
-          </Link>
-        </>
-      )}
+        {state === "success" && (
+          <>
+            <StandaloneCardHeader
+              icon={CheckCircle2}
+              iconClassName="text-success"
+              title="All set!"
+              description={
+                <>
+                  Your email address has been updated
+                  {email && (
+                    <>
+                      {" "}
+                      to{" "}
+                      <span className="font-medium text-foreground">
+                        {email}
+                      </span>
+                    </>
+                  )}
+                  .
+                </>
+              }
+            />
+            <p className="text-sm text-muted-foreground">
+              <Link
+                href="/settings/account"
+                className="underline hover:text-foreground"
+              >
+                Back to settings
+              </Link>
+            </p>
+          </>
+        )}
 
-      {state === "error" && (
-        <>
-          <AlertCircle className="mx-auto mb-4 h-10 w-10 text-destructive" />
-          <p className="text-foreground font-medium mb-1">
-            We couldn&apos;t confirm your email
-          </p>
-          <p className="text-muted-foreground mb-6">{message}</p>
-          <Link
-            href="/settings/account"
-            className="underline hover:text-foreground"
-          >
-            Back to settings
-          </Link>
-        </>
-      )}
+        {state === "error" && (
+          <>
+            <StandaloneCardHeader
+              icon={AlertCircle}
+              iconClassName="text-destructive"
+              title="We couldn't confirm your email"
+              description={message}
+            />
+            <p className="text-sm text-muted-foreground">
+              <Link
+                href="/settings/account"
+                className="underline hover:text-foreground"
+              >
+                Back to settings
+              </Link>
+            </p>
+          </>
+        )}
+      </StandaloneCard>
     </StandaloneShell>
   );
 }

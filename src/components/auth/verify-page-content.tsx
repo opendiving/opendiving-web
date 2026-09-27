@@ -7,6 +7,10 @@ import { authAPI } from "@/lib/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { StandaloneShell } from "@/components/layout/standalone-shell";
+import {
+  StandaloneCard,
+  StandaloneCardHeader,
+} from "@/components/layout/standalone-card";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
   consumePostAuthRedirect,
@@ -171,102 +175,116 @@ function VerifyStatus({
 
   return (
     <StandaloneShell className="text-center">
-      {state === "checking" && (
-        <>
-          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Checking your sign-in link...</p>
-        </>
-      )}
-
-      {state === "ready" && (
-        <>
-          <MailCheck className="mx-auto mb-4 h-10 w-10 text-primary" />
-          <p className="text-foreground font-medium mb-1">
-            Ready to sign you in
-          </p>
-          <p className="text-muted-foreground mb-6">
-            {email ? (
-              <>
-                Click below to sign in as{" "}
-                <span className="font-medium text-foreground">{email}</span>.
-              </>
-            ) : (
-              "Click below to finish signing in to OpenDiving."
-            )}
-          </p>
-          <Button onClick={onConfirm}>
-            <LogIn className="h-4 w-4 mr-2" />
-            Sign in
-          </Button>
-        </>
-      )}
-
-      {state === "restore" && (
-        <>
-          <CalendarClock
-            className="mx-auto mb-4 h-10 w-10 text-muted-foreground"
-            aria-hidden="true"
+      <StandaloneCard>
+        {state === "checking" && (
+          <StandaloneCardHeader
+            icon={Loader2}
+            iconClassName="animate-spin"
+            description="Checking your sign-in link..."
           />
-          <p className="text-foreground font-medium mb-1">
-            This account is scheduled for deletion
-          </p>
-          <p className="text-muted-foreground mb-6">
-            {email ? (
-              <>
-                <span className="font-medium text-foreground">{email}</span> was
-                deleted, and nothing has been erased yet.
-              </>
-            ) : (
-              "This account was deleted, and nothing has been erased yet."
-            )}{" "}
-            {purgeOn ? (
-              <>
-                Restoring signs you in and brings back your dives, dive sites,
-                trips, courses, certifications, gear and contacts. After{" "}
-                <span className="font-medium text-foreground">
-                  {formatPurgeDay(purgeOn)}
-                </span>{" "}
-                nothing can be restored.
-              </>
-            ) : (
-              "Restoring signs you in and brings back your dives, dive sites, trips, courses, certifications, gear and contacts. Once the erasure date passes, nothing can be restored."
-            )}
-          </p>
-          <Button onClick={onConfirm}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Restore my account
-          </Button>
-        </>
-      )}
+        )}
 
-      {state === "verifying" && (
-        <>
-          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Signing you in...</p>
-        </>
-      )}
+        {state === "ready" && (
+          <>
+            <StandaloneCardHeader
+              icon={MailCheck}
+              title="Ready to sign you in"
+              description={
+                email ? (
+                  <>
+                    Click below to sign in as{" "}
+                    <span className="font-medium text-foreground">{email}</span>
+                    .
+                  </>
+                ) : (
+                  "Click below to finish signing in to OpenDiving."
+                )
+              }
+            />
+            <Button onClick={onConfirm}>
+              <LogIn className="h-4 w-4 mr-2" />
+              Sign in
+            </Button>
+          </>
+        )}
 
-      {state === "restoring" && (
-        <>
-          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Restoring your account...</p>
-        </>
-      )}
+        {state === "restore" && (
+          <>
+            <StandaloneCardHeader
+              icon={CalendarClock}
+              iconClassName="text-muted-foreground"
+              title="This account is scheduled for deletion"
+              description={
+                <>
+                  {email ? (
+                    <>
+                      <span className="font-medium text-foreground">
+                        {email}
+                      </span>{" "}
+                      was deleted, and nothing has been erased yet.
+                    </>
+                  ) : (
+                    "This account was deleted, and nothing has been erased yet."
+                  )}{" "}
+                  {purgeOn ? (
+                    <>
+                      Restoring signs you in and brings back your dives, dive
+                      sites, trips, courses, certifications, gear and contacts.
+                      After{" "}
+                      <span className="font-medium text-foreground">
+                        {formatPurgeDay(purgeOn)}
+                      </span>{" "}
+                      nothing can be restored.
+                    </>
+                  ) : (
+                    "Restoring signs you in and brings back your dives, dive sites, trips, courses, certifications, gear and contacts. Once the erasure date passes, nothing can be restored."
+                  )}
+                </>
+              }
+            />
+            <Button onClick={onConfirm}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Restore my account
+            </Button>
+          </>
+        )}
 
-      {state === "error" && (
-        <>
-          <AlertCircle className="mx-auto mb-4 h-10 w-10 text-destructive" />
-          <p className="text-foreground font-medium mb-1">
-            {pendingDeletion
-              ? "We couldn't restore your account"
-              : "We couldn't sign you in"}
-          </p>
-          <p className="text-muted-foreground mb-6">{error}</p>
-          <Link href="/signin" className="underline hover:text-foreground">
-            Request a new sign-in link
-          </Link>
-        </>
-      )}
+        {state === "verifying" && (
+          <StandaloneCardHeader
+            icon={Loader2}
+            iconClassName="animate-spin"
+            description="Signing you in..."
+          />
+        )}
+
+        {state === "restoring" && (
+          <StandaloneCardHeader
+            icon={Loader2}
+            iconClassName="animate-spin"
+            description="Restoring your account..."
+          />
+        )}
+
+        {state === "error" && (
+          <>
+            <StandaloneCardHeader
+              icon={AlertCircle}
+              iconClassName="text-destructive"
+              title={
+                pendingDeletion
+                  ? "We couldn't restore your account"
+                  : "We couldn't sign you in"
+              }
+              description={error}
+            />
+            <p className="text-sm text-muted-foreground">
+              <Link href="/signin" className="underline hover:text-foreground">
+                Request a new sign-in link
+              </Link>
+            </p>
+          </>
+        )}
+      </StandaloneCard>
     </StandaloneShell>
   );
 }

@@ -50,6 +50,7 @@ import { CHECK_IN_GROUP_HEADINGS } from "@/components/user/user-fields-form";
 import { PortraitFrame, PortraitImage } from "@/components/user/portrait-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { IndexPageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IconTooltip } from "@/components/ui/tooltip";
 
@@ -295,52 +296,54 @@ export function CheckInPageFrame({
   // and what comes off the sides is width the two columns get back.
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6 print:px-0 print:pb-0">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          {/* "Diver" earns its place on the printed sheet rather than on screen:
-              the line under this one is `print:hidden`, so the heading is the only
-              thing naming the document a shop is handed, and "Check-in" alone above
-              a stranger's name and card numbers leaves them to infer what it is. The
-              account menu stays "Check-in" - there the reader is the diver, and
-              "Diver" would be telling them whose page it is. */}
-          <h1 className={`text-3xl font-bold ${INK}`}>Diver Check-in</h1>
-          <p className="text-muted-foreground mt-2 print:hidden">
-            {link
-              ? `This link stops working on ${formatDateTime(link.expiresAt)}.`
-              : "What a dive shop asks for at the desk, on one page you can hand over"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 print:hidden">
-          {/* Waits for the diving figures: the link keeps the ones it is made with
+      {/* "Diver" earns its place on the printed sheet rather than on screen: the
+          line under the heading is `print:hidden`, so the heading is the only thing
+          naming the document a shop is handed, and "Check-in" alone above a
+          stranger's name and card numbers leaves them to infer what it is. The
+          account menu stays "Check-in" - there the reader is the diver, and "Diver"
+          would be telling them whose page it is. */}
+      <IndexPageHeader
+        title="Diver Check-in"
+        className={INK}
+        descriptionClassName="print:hidden"
+        description={
+          link
+            ? `This link stops working on ${formatDateTime(link.expiresAt)}.`
+            : "What a dive shop asks for at the desk, on one page you can hand over"
+        }
+        action={
+          <div className="flex flex-wrap gap-2 print:hidden">
+            {/* Waits for the diving figures: the link keeps the ones it is made with
               for its whole life, so a click before they land - or after a read
               that failed, which leaves the same nulls - would publish blanks that
               Try again cannot reach. A correction the diver typed is theirs to
               share either way. */}
-          {sharing && !link && (
+            {sharing && !link && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void sharing.mint(diving)}
+                disabled={
+                  isLoading || (figuresFailed && !corrected) || sharing.busy
+                }
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+            )}
+            {/* The browser's own print, which is also its save-as-PDF: no generator in
+              either repo, and nothing is uploaded to produce it. */}
             <Button
               type="button"
-              variant="outline"
-              onClick={() => void sharing.mint(diving)}
-              disabled={
-                isLoading || (figuresFailed && !corrected) || sharing.busy
-              }
+              onClick={() => window.print()}
+              className="print:hidden"
             >
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
+              <Printer className="h-4 w-4 mr-2" />
+              Print
             </Button>
-          )}
-          {/* The browser's own print, which is also its save-as-PDF: no generator in
-              either repo, and nothing is uploaded to produce it. */}
-          <Button
-            type="button"
-            onClick={() => window.print()}
-            className="print:hidden"
-          >
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {!link && (
         <p className="text-sm text-muted-foreground print:hidden">
