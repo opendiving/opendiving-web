@@ -94,6 +94,13 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      fontFamily: {
+        wordmark: ["var(--font-outfit)", "sans-serif"],
+      },
+      // Not `tracking-tight` (-0.025em), which crowds a geometric face.
+      letterSpacing: {
+        wordmark: "-0.01em",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

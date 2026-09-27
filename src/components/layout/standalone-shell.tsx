@@ -28,7 +28,7 @@ export function StandaloneShell({ children, className }: StandaloneShellProps) {
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center space-x-2">
             <Logo className="h-8 w-8 text-coral" />
-            <span className="text-2xl font-bold text-foreground">
+            <span className="font-wordmark text-2xl font-bold tracking-wordmark text-foreground">
               OpenDiving
             </span>
           </Link>

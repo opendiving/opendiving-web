@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import { headers } from "next/headers";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ConfigProvider } from "@/contexts/ConfigContext";
@@ -14,6 +14,14 @@ import { SITE_DESCRIPTION } from "@/lib/site-description";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
+// The wordmark's face, and nothing else's. Outfit's O, i-dots and single-storey g are
+// drawn from one circle, so the name reads as part of the three-bubble mark; Inter's O
+// is a squarer superellipse. SIL Open Font Licence.
+const outfit = Outfit({
+  weight: "700",
+  subsets: ["latin"],
+  variable: "--font-outfit",
+});
 
 // This layout reads `headers()` for the CSP nonce, which under `cacheComponents` is
 // runtime data outside any Suspense boundary: every route's static shell is empty and
@@ -88,7 +96,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.className} ${outfit.variable}`}>
         <NonceProvider nonce={nonce}>
           {/* Rendered rather than imported, and rendered here rather than
               anywhere narrower: evaluating that module is what arms the
