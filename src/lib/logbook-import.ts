@@ -26,6 +26,7 @@ const COLLECTION_LABELS: Record<string, string> = {
   gear_service_records: "Service records",
   certifications: "Certifications",
   contacts: "Contacts",
+  people: "People",
 };
 
 /**
@@ -92,7 +93,8 @@ export function collectionRowIsEmpty(row: ImportCollectionReport): boolean {
  * value read as the older writer of its document meant it, the `diver`
  * member's identity and settings deliberately not applied, a check-in detail
  * or portrait written as confirmed, a portrait kept because the account's
- * changed after the preview, and a file whose bytes simply are not in a bare
+ * changed after the preview, a person linked to the account on this instance
+ * its entry names, and a file whose bytes simply are not in a bare
  * document are all the import working as designed - `file_not_contained`
  * especially, which is the *expected* state of every referenced file when a
  * document rather than an archive was imported, and colouring it as a failure

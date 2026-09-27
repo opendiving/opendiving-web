@@ -5,6 +5,7 @@ import type { Dive } from "@/lib/api/dives";
 import type { Trip } from "@/lib/api/trips";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
+import type { Person } from "@/lib/api/people";
 
 export interface DiveDetailValue {
   /**
@@ -20,6 +21,11 @@ export interface DiveDetailValue {
   trip: Trip | null;
   course: Course | null;
   contact: Contact | null;
+  /**
+   * The diver's people by uuid, for the names behind `dive.people`. Empty until
+   * the read lands, and a person it does not hold simply has no row.
+   */
+  people: Readonly<Record<string, Person>>;
   /** Re-reads the dive without touching `isLoading` - see `useResource`. */
   refreshDive: () => void;
 }

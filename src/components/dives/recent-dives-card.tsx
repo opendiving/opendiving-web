@@ -53,6 +53,9 @@ export interface RecentDivesCardProps {
   // Only show dives that recorded this species. When omitted, shows dives
   // regardless of what was spotted.
   speciesId?: string;
+  // Only show dives that name this person. When omitted, shows dives regardless
+  // of who was on them.
+  personId?: string;
   // Show every dive in scope, a page at a time as the reader scrolls, rather
   // than the dashboard's fixed preview of the latest few.
   //
@@ -76,7 +79,7 @@ export interface RecentDivesCardProps {
 // Shows a list of dives for a user (dive number, date, duration, max depth).
 // Used on the dashboard (the most recent few) and on the detail pages that
 // scope dives to one record - a trip, a dive site, a gear item, a course, a
-// species - so they all stay in sync.
+// species, a person - so they all stay in sync.
 export function RecentDivesCard({
   enabled,
   tripId,
@@ -84,6 +87,7 @@ export function RecentDivesCard({
   gearItemId,
   courseId,
   speciesId,
+  personId,
   complete = false,
   title = "Recent Dives",
   description = "Your latest underwater adventures",
@@ -106,8 +110,9 @@ export function RecentDivesCard({
         gearItemId,
         courseId,
         speciesId,
+        personId,
       ),
-    [tripId, diveSiteId, gearItemId, courseId, speciesId],
+    [tripId, diveSiteId, gearItemId, courseId, speciesId, personId],
   );
 
   // The preview asks for its few rows once and stops; a complete list pages

@@ -46,6 +46,7 @@ const SUMMARY: SharedCheckIn = {
       uuid: "cert-1",
       agency: "padi",
       name: "Rescue Diver",
+      instructor_name: "Alex Diver",
       contact_name: "Blue Ocean",
       front_content_type: "image/png",
     },
@@ -77,7 +78,9 @@ describe("SharedCheckInPage", () => {
     // The figures the link was made with, in the diver's own units.
     expect(screen.getByText("310")).toBeInTheDocument();
     expect(screen.getByText("130 ft")).toBeInTheDocument();
+    // The names the link prints where the diver's own page holds uuids.
     expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
+    expect(screen.getByText("Alex Diver")).toBeInTheDocument();
     expect(screen.getByText(/This link stops working on/)).toBeInTheDocument();
 
     expect(

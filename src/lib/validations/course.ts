@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { notesField } from "./notes";
+import { personReferenceSchema } from "./person";
 import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
 import { COURSE_STATUSES } from "@/lib/api/courses";
 
@@ -34,10 +35,10 @@ export const courseSchema = z
     status: z.enum(COURSE_STATUSES),
     start_date: optionalDate("Use a valid date").optional(),
     end_date: optionalDate("Use a valid date").optional(),
-    instructor_name: z
-      .string()
-      .max(255, "Instructor name cannot exceed 255 characters")
-      .optional(),
+    // A picker, so `null` is "no instructor". Held apart from `people` while the
+    // form is open and written back onto it, as the first reference, on save -
+    // see `joinCourseInstructor`.
+    instructor_uuid: z.string().nullable().optional(),
     instructor_number: z
       .string()
       .max(64, "Instructor number cannot exceed 64 characters")
@@ -45,6 +46,8 @@ export const courseSchema = z
     // A picker, so `null` rather than `""` is "no contact" - the shape
     // `course_uuid` has on a certification.
     contact_uuid: z.string().nullable().optional(),
+    // Everyone on the course but the instructor above.
+    people: z.array(personReferenceSchema).optional(),
     notes: notesField().optional(),
   })
   // Mirrors the API's `validate_agency_pairing`. An object-level refine, unlike a

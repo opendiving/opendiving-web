@@ -8,7 +8,8 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useReturnTo } from "@/hooks/useReturnTo";
 import { useSuggestedDiveNumber } from "@/hooks/useSuggestedDiveNumber";
 import { divesAPI } from "@/lib/api/dives";
-import { coursesAPI } from "@/lib/api/courses";
+import { coursesAPI, type Course } from "@/lib/api/courses";
+import { carriedPeople } from "@/lib/people";
 import {
   diveCreateSchema,
   DiveCreateInput,
@@ -67,6 +68,7 @@ export function NewDivePageContent() {
       trip_uuid: initialTripId,
       course_uuid: initialCourseId,
       contact_uuid: null,
+      people: [],
       dive_site_uuids:
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       gear_item_uuids: [],
@@ -145,43 +147,47 @@ export function NewDivePageContent() {
 
     let cancelled = false;
 
-    // The contact of the course a page passed in the URL, which the dive was dived
-    // with unless the diver says otherwise. Looked up beside the last dive rather
-    // than after it, and non-fatal: a failed lookup leaves the field to the last
-    // dive, as though the course named nobody.
-    const urlCourseContact = async (): Promise<string | null> => {
+    // The course a page passed in the URL, whose contact ran the dive and whose
+    // people were on it unless the diver says otherwise. Looked up beside the
+    // last dive rather than after it, and non-fatal: a failed lookup leaves both
+    // fields to the last dive, as though the course named nobody.
+    const urlCourse = async (): Promise<Course | null> => {
       if (!initialCourseId) return null;
       try {
-        const course = await coursesAPI.getCourse(initialCourseId);
-        return course.contact_uuid ?? null;
+        return await coursesAPI.getCourse(initialCourseId);
       } catch (error) {
-        console.error("Failed to fetch the course's contact:", error);
+        console.error("Failed to fetch the course:", error);
         return null;
       }
     };
 
     const prefillFromLastDive = async () => {
       try {
-        const [response, courseContact] = await Promise.all([
+        const [response, course] = await Promise.all([
           divesAPI.getDives(1, 1),
-          urlCourseContact(),
+          urlCourse(),
         ]);
         if (cancelled || form.formState.isDirty) return;
+        const courseContact = course?.contact_uuid ?? null;
+        const coursePeople = course?.people ?? [];
 
-        // The course's contact is written through `autofill` in both branches,
-        // rather than only carried: that records it as the layer's write, so a
-        // course picked later can still replace it, and it shows the field -
-        // `prefill` blanks a key the stored set hides, and only the course itself
-        // was revealed at mount. Called only past the last of the dirty checks,
-        // since the write dirties the form they read.
+        // The course's contact and people are written through `autofill` in both
+        // branches, rather than only carried. That records each as the layer's
+        // write - so a course picked later can still replace the contact - and it
+        // shows the field: `prefill` blanks a key the stored set hides, and only
+        // the course itself was revealed at mount, while the diver who asked to
+        // log a dive for this course asked for its people too. Called only past
+        // the last of the dirty checks, since the write dirties the form they
+        // read.
         const lastDiveSummary = response.data[0];
         if (!lastDiveSummary) {
           if (courseContact) autofill("contact_uuid", courseContact);
+          if (coursePeople.length > 0) autofill("people", coursePeople);
           return;
         }
 
-        // The list endpoint doesn't include gas mixtures (only the single-dive
-        // endpoint does), so fetch the full record to prefill them.
+        // The list endpoint doesn't include gas mixtures or people (only the
+        // single-dive endpoint does), so fetch the full record to prefill them.
         const lastDive = await divesAPI.getDive(lastDiveSummary.uuid);
         if (cancelled || form.formState.isDirty) return;
 
@@ -192,6 +198,11 @@ export function NewDivePageContent() {
         // one the moment the diver shows it. That is owner decision 1 read forwards
         // and backwards at once, and the layer's record of what it wrote - not
         // react-hook-form's dirty state - is what "untouched" means afterwards.
+        const people = carriedPeople({
+          lastDive,
+          courseUuid: initialCourseId,
+          coursePeople,
+        });
         const carried: Partial<DiveCreateInput> = {
           // Carried over, unlike the temperature and visibility below: those are
           // readings taken on the day, while the water and its elevation are
@@ -216,6 +227,10 @@ export function NewDivePageContent() {
           // after dive - and, like the trip, behind what the URL asked for: the
           // course's own contact comes first.
           contact_uuid: courseContact ?? lastDive.contact_uuid ?? null,
+          // Carried like the dive center, except a course's instructor and
+          // students, who stay on their course - see `carriedPeople`. The
+          // course's own people lead.
+          people,
           dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
           // Divers tend to use the same kit dive after dive, so carry it over.
@@ -261,6 +276,7 @@ export function NewDivePageContent() {
         };
 
         if (courseContact) autofill("contact_uuid", courseContact);
+        if (coursePeople.length > 0) autofill("people", people);
         form.reset(
           prefill(
             {

@@ -27,10 +27,26 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
 }));
 
+vi.mock("@/lib/api/people", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/people")>()),
+  peopleAPI: { getPeople: vi.fn(), getPerson: vi.fn() },
+}));
+
 const { certificationsAPI } = await import("@/lib/api/certifications");
 const { coursesAPI } = await import("@/lib/api/courses");
 const { contactsAPI } = await import("@/lib/api/contacts");
 const getContact = vi.mocked(contactsAPI.getContact);
+const { peopleAPI } = await import("@/lib/api/people");
+const getPerson = vi.mocked(peopleAPI.getPerson);
+
+const ALEX = {
+  uuid: "person-alex",
+  name: "Alex Diver",
+  notes: "",
+  username: null,
+  dive_count: 0,
+  created_at: "2026-03-01T09:00:00Z",
+};
 
 const BLUE_OCEAN: Contact = {
   uuid: "contact-blue",
@@ -52,9 +68,9 @@ const COURSE: Course = {
   status: "completed",
   start_date: "2026-03-02",
   end_date: "2026-03-06",
-  instructor_name: "Alex Diver",
   instructor_number: "123",
   contact_uuid: BLUE_OCEAN.uuid,
+  people: [{ person_uuid: ALEX.uuid, role: "instructor" }],
   notes: "Ran the 21m and 30m dives on back gas.",
   user_uuid: "user-1",
   created_at: "2026-03-08T09:00:00Z",
@@ -68,7 +84,7 @@ const CREATED: Certification = {
   certification_number: null,
   certified_on: null,
   expires_on: null,
-  instructor_name: "Alex Diver",
+  instructor_uuid: ALEX.uuid,
   instructor_number: "123",
   contact_uuid: BLUE_OCEAN.uuid,
   notes: "",
@@ -95,6 +111,7 @@ beforeEach(() => {
   createCertification.mockImplementation(async () => CREATED);
   getCourse.mockImplementation(async () => COURSE);
   getContact.mockImplementation(async () => BLUE_OCEAN);
+  getPerson.mockImplementation(async () => ALEX);
 });
 
 // The page owns "is the create dialog open", because its sidebar opens the same
@@ -168,7 +185,7 @@ describe("the course's certifications card", () => {
       name: "Advanced Nitrox",
       course_uuid: COURSE.uuid,
       contact_uuid: BLUE_OCEAN.uuid,
-      instructor_name: "Alex Diver",
+      instructor_uuid: ALEX.uuid,
       agency: "tdi",
     });
 

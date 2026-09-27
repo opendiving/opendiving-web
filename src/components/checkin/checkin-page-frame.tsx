@@ -156,11 +156,17 @@ export interface CheckInPageFrameProps {
    * prints, so whatever renders it decides where the names come from.
    */
   contactNames?: Readonly<Record<string, string>>;
+  /**
+   * The name of each card's instructor, by certification uuid, on the same terms:
+   * the diver's own page resolves the instructor it holds by uuid, and a link's
+   * page hands over the name the link prints.
+   */
+  instructorNames?: Readonly<Record<string, string>>;
   /** Null while the stats request is in flight. */
   stats?: UserDiveStats | null;
   /** The most recent dive's `start_time`, or null when there is no dive. */
   lastDiveAt?: string | null;
-  /** True until the certifications, the stats, the last dive and the contacts have all landed. */
+  /** True until the certifications, the stats, the last dive, the contacts and the people have all landed. */
   isLoading?: boolean;
   /** True when at least one of the page's requests failed and its part is missing. */
   loadFailed?: boolean;
@@ -200,6 +206,7 @@ export function CheckInPageFrame({
   units,
   certifications = [],
   contactNames = NO_NAMES,
+  instructorNames = NO_NAMES,
   stats = null,
   lastDiveAt = null,
   isLoading = true,
@@ -632,6 +639,7 @@ export function CheckInPageFrame({
                     key={certification.uuid}
                     certification={certification}
                     contactName={contactNames[certification.uuid]}
+                    instructorName={instructorNames[certification.uuid]}
                     linkToken={link?.token}
                     onEdit={
                       !link && isOwnCard(certification)
@@ -718,11 +726,13 @@ export function CheckInPageFrame({
 function CertificationSummary({
   certification,
   contactName,
+  instructorName,
   linkToken,
   onEdit,
 }: {
   certification: CheckInCard;
   contactName?: string;
+  instructorName?: string;
   /** Set on a link's page, whose card fronts come from the link's own route. */
   linkToken?: string;
   /** Absent on a link's page, which offers no control. */
@@ -818,7 +828,7 @@ function CertificationSummary({
             certification.expires_on && formatDateOnly(certification.expires_on)
           }
         />
-        <Detail label="Instructor" value={certification.instructor_name} />
+        <Detail label="Instructor" value={instructorName} />
         <Detail label="Dive centre" value={contactName} />
       </DetailList>
     </div>

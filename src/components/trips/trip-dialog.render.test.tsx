@@ -18,9 +18,26 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
 }));
 
+vi.mock("@/lib/api/people", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/people")>()),
+  peopleAPI: { getPeople: vi.fn(), getPerson: vi.fn(), createPerson: vi.fn() },
+  fetchAllPeople: vi.fn(),
+}));
+
 const { tripsAPI } = await import("@/lib/api/trips");
 const { contactsAPI } = await import("@/lib/api/contacts");
+const { peopleAPI, fetchAllPeople } = await import("@/lib/api/people");
 const updateTrip = vi.mocked(tripsAPI.updateTrip);
+const createTrip = vi.mocked(tripsAPI.createTrip);
+
+const SAM = {
+  uuid: "person-sam",
+  name: "Sam",
+  notes: "",
+  username: null,
+  dive_count: 0,
+  created_at: "2026-03-01T09:00:00Z",
+};
 
 vi.mock("@/lib/api/geocoding", () => ({
   geocodingAPI: { searchPlaces: vi.fn().mockResolvedValue([]) },
@@ -46,14 +63,14 @@ describe("TripDialog", () => {
   // The trip's own date row is gone: a part carries its own dates, so the only
   // dates in this dialog are inside the rows the Parts field holds. The map
   // under that field answers the search in it, so the two belong together.
-  it("asks for the name, then the parts, then the notes", () => {
+  it("asks for the name, then the parts, then the people and the notes", () => {
     renderDialog();
 
     const labels = Array.from(document.querySelectorAll("label")).map((label) =>
       label.textContent?.trim(),
     );
 
-    expect(labels).toEqual(["Name *", "Parts", "Notes"]);
+    expect(labels).toEqual(["Name *", "Parts", "People", "Notes"]);
   });
 
   it("asks for a part's dates on the part, not on the trip", async () => {
@@ -71,6 +88,7 @@ describe("TripDialog", () => {
       "Parts",
       "From part 1 of 1",
       "To part 1 of 1",
+      "People",
       "Notes",
     ]);
   });
@@ -126,6 +144,69 @@ describe("TripDialog", () => {
     expect(map.compareDocumentPosition(notes)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it("adds a person with no role, since a trip has no word for who came", async () => {
+    vi.mocked(peopleAPI.getPeople).mockResolvedValue({
+      data: [SAM],
+      total_count: 1,
+      has_more: false,
+      page: 1,
+      items_per_page: 25,
+    });
+    createTrip.mockImplementation(async (body) => ({
+      uuid: "trip-new",
+      name: body.name,
+      parts: [],
+      people: body.people,
+      notes: "",
+      user_uuid: "user-1",
+      created_at: "2026-04-01T09:00:00Z",
+    }));
+    renderDialog();
+
+    await userEvent.type(screen.getByLabelText("Name *"), "Egypt, spring");
+    await userEvent.click(screen.getByLabelText("People"));
+    await userEvent.click(await screen.findByRole("option", { name: "Sam" }));
+    expect(
+      await screen.findByRole("combobox", { name: "Role of Sam" }),
+    ).toHaveValue("");
+    await userEvent.click(screen.getByRole("button", { name: /Create trip/ }));
+
+    await waitFor(() => expect(createTrip).toHaveBeenCalled());
+    expect(createTrip.mock.calls[0][0].people).toEqual([
+      { person_uuid: SAM.uuid, role: null },
+    ]);
+  });
+
+  it("keeps the trip's people, roles and all, through an edit that never touched them", async () => {
+    vi.mocked(fetchAllPeople).mockResolvedValue([SAM]);
+    updateTrip.mockResolvedValue({ message: "Trip updated" });
+    const people = [{ person_uuid: SAM.uuid, role: "companion" }];
+    render(
+      <TripDialog
+        open
+        onOpenChange={() => {}}
+        trip={{
+          uuid: "trip-1",
+          name: "Egypt, spring",
+          parts: [],
+          people,
+          notes: "",
+          user_uuid: "user-1",
+          created_at: "2026-04-01T09:00:00Z",
+        }}
+        onSaved={() => {}}
+      />,
+    );
+    expect(
+      await screen.findByRole("combobox", { name: "Role of Sam" }),
+    ).toHaveValue("companion");
+
+    await userEvent.click(screen.getByRole("button", { name: /Save/ }));
+
+    await waitFor(() => expect(updateTrip).toHaveBeenCalled());
+    expect(updateTrip.mock.calls[0][1].people).toEqual(people);
   });
 
   it("keeps every part's accommodation through an edit that never touched it", async () => {

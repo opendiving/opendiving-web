@@ -7,6 +7,8 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useContact } from "@/hooks/useContact";
+import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
+import { splitCourseInstructor } from "@/lib/people";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { certificationAgencyLabel } from "@/lib/api/certifications";
 import { courseStatusBadgeVariant, courseStatusLabel } from "@/lib/course";
@@ -14,6 +16,7 @@ import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { CourseCertificationsCard } from "@/components/courses/course-certifications-card";
 import { CourseDialog } from "@/components/courses/course-dialog";
+import { PeopleList } from "@/components/people/people-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,6 +85,13 @@ export function CourseDetailPageContent() {
   const isDeleting = del.deletingId !== null;
 
   const contact = useContact(course?.contact_uuid);
+  // The instructor on a row of their own, as the dialog holds them, and everyone
+  // else on the course under it.
+  const { instructorUuid, others } = splitCourseInstructor(course?.people);
+  const people = usePeopleByUuid(
+    (course?.people ?? []).map((reference) => reference.person_uuid),
+  );
+  const instructor = instructorUuid ? people[instructorUuid] : undefined;
 
   const courseDateRange = course
     ? formatTripDateRange(
@@ -213,13 +223,28 @@ export function CourseDetailPageContent() {
                 <InfoRow label="Course Dates">{courseDateRange}</InfoRow>
               )}
               {contact && <InfoRow label="Dive center">{contact.name}</InfoRow>}
-              {course.instructor_name && (
-                <InfoRow label="Instructor">{course.instructor_name}</InfoRow>
+              {instructor && (
+                <InfoRow label="Instructor">
+                  <Link
+                    href={`/people/${instructor.uuid}`}
+                    className="hover:underline"
+                  >
+                    {instructor.name}
+                  </Link>
+                </InfoRow>
               )}
               {course.instructor_number && (
                 <InfoRow label="Instructor number">
                   {course.instructor_number}
                 </InfoRow>
+              )}
+              {others.some((reference) => people[reference.person_uuid]) && (
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    People
+                  </div>
+                  <PeopleList people={others} resolved={people} />
+                </div>
               )}
               {course.notes && (
                 <InfoRow label="Notes">

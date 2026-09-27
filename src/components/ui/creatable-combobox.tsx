@@ -285,12 +285,14 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   // because typing clears the selection (see `handleInputChange`), so a diver
   // mid-word and a diver who chose nothing look identical from outside.
   onTextChange?: (text: string) => void;
-  // When provided, shows an "Add…" footer item in the dropdown that calls this
-  // instead of the inline create-on-enter flow.
+  // When provided, shows an "Add…" footer item in the dropdown that calls this -
+  // for a record the typed text alone cannot make, which a dialog can.
   onAddNew?: () => void;
   addNewLabel?: string;
-  // Legacy inline create: called when committed text doesn't match any item.
-  // Omit when using onAddNew instead.
+  // Inline create: called when committed text doesn't match any item. Beside
+  // `onAddNew` where a name alone is a whole record (the people pickers); left
+  // off where it would file a half-made one (`ContactCombobox`'s roleless
+  // contact).
   onCreate?: (name: string) => Promise<ComboboxItem>;
   placeholder?: string;
   disabled?: boolean;
@@ -736,9 +738,8 @@ export function CreatableCombobox({
     } catch (error) {
       console.error("Failed to create item:", error);
       onChange(undefined);
-      // The field is still where the diver is working, failure or not - and a
-      // creator that can actually fail is only a matter of time: today's one is
-      // async purely to satisfy the signature.
+      // The field is still where the diver is working, failure or not - and the
+      // people pickers' creator is a request the API can refuse.
       readyForNext();
     } finally {
       setIsSaving(false);

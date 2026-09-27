@@ -30,10 +30,6 @@ export const certificationSchema = z
       .optional(),
     certified_on: optionalDate("Use a valid date").optional(),
     expires_on: optionalDate("Use a valid date").optional(),
-    instructor_name: z
-      .string()
-      .max(255, "Instructor name cannot exceed 255 characters")
-      .optional(),
     instructor_number: z
       .string()
       .max(64, "Instructor number cannot exceed 64 characters")
@@ -44,6 +40,8 @@ export const certificationSchema = z
     // touched. Same shape as the dive form's `trip_uuid`/`course_uuid`.
     course_uuid: z.string().nullable().optional(),
     contact_uuid: z.string().nullable().optional(),
+    // The person who signed the card, picked like the contact.
+    instructor_uuid: z.string().nullable().optional(),
   })
   // Mirrors the API's `_check_agency_other` model validator. An object-level
   // refine, unlike a field-level transform, leaves `z.input<>` untouched.

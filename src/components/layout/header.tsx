@@ -31,6 +31,7 @@ import {
   ClipboardList,
   GraduationCap,
   BookUser,
+  Users,
   Fish,
   HardDrive,
   Shield,
@@ -84,6 +85,7 @@ const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/checkin", page: "checkin" },
   { prefix: "/courses", page: "courses" },
   { prefix: "/contacts", page: "contacts" },
+  { prefix: "/people", page: "people" },
   { prefix: "/species", page: "species" },
 ];
 
@@ -357,6 +359,15 @@ export function Header() {
                       <Link href="/contacts" className="flex items-center">
                         <BookUser className="mr-2 h-4 w-4" />
                         Contacts
+                      </Link>
+                    </DropdownMenuItem>
+                    {/* Beside Contacts, being its other half: the parties a
+                        diver dealt with there, the individuals they were with
+                        here - and made the same way, from the picker. */}
+                    <DropdownMenuItem asChild>
+                      <Link href="/people" className="flex items-center">
+                        <Users className="mr-2 h-4 w-4" />
+                        People
                       </Link>
                     </DropdownMenuItem>
                     {/* Here for the same reason, by a different argument: the

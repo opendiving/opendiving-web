@@ -11,6 +11,7 @@ import { divesAPI } from "@/lib/api/dives";
 import { fetchAllPages, isAbortError } from "@/lib/api/client";
 import { distinctContactUuids } from "@/lib/contact";
 import { useContactsByUuid } from "@/hooks/useContactsByUuid";
+import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
+import { PeopleList } from "@/components/people/people-list";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
@@ -70,13 +72,13 @@ export function TripDetailPageContent() {
   });
   const isDeleting = del.deletingId !== null;
 
-  // Who the diver dived with on this trip: the contacts its dives name, derived
-  // here rather than stored on the trip, so it can never disagree with them - a
-  // week split between two shops lists both. The dives card below loads ten at a
-  // time as the reader scrolls, so the line reads every dive of the trip itself,
-  // once, keyed on the trip it was read for.
+  // The dive centers that ran this trip's dives: the contacts its dives name,
+  // derived here rather than stored on the trip, so it can never disagree with
+  // them - a week split between two shops lists both. The dives card below loads
+  // ten at a time as the reader scrolls, so the line reads every dive of the trip
+  // itself, once, keyed on the trip it was read for.
   const tripUuid = trip?.uuid;
-  const [divedWith, setDivedWith] = useState<{
+  const [diveCenters, setDiveCenters] = useState<{
     tripUuid: string;
     contactUuids: string[];
   } | null>(null);
@@ -92,7 +94,7 @@ export function TripDetailPageContent() {
       },
     )
       .then((dives) =>
-        setDivedWith({ tripUuid, contactUuids: distinctContactUuids(dives) }),
+        setDiveCenters({ tripUuid, contactUuids: distinctContactUuids(dives) }),
       )
       .catch((error) => {
         // Non-fatal: the line is left off, as a failed trip lookup leaves the
@@ -103,16 +105,25 @@ export function TripDetailPageContent() {
       });
     return () => controller.abort();
   }, [tripUuid]);
-  const divedWithUuids =
-    divedWith && divedWith.tripUuid === tripUuid ? divedWith.contactUuids : [];
+  const diveCenterUuids =
+    diveCenters && diveCenters.tripUuid === tripUuid
+      ? diveCenters.contactUuids
+      : [];
 
   const contacts = useContactsByUuid([
     ...(trip?.parts ?? []).map((part) => part.accommodation_uuid),
-    ...divedWithUuids,
+    ...diveCenterUuids,
   ]);
-  const divedWithNames = divedWithUuids
+  const diveCenterNames = diveCenterUuids
     .map((uuid) => contacts[uuid]?.name)
     .filter((name): name is string => !!name);
+
+  // Who came on the trip, which the trip itself records - unlike the dive
+  // centers, which are read off its dives.
+  const tripPeople = trip?.people ?? [];
+  const people = usePeopleByUuid(
+    tripPeople.map((reference) => reference.person_uuid),
+  );
 
   const formatDate = (dateString: string) =>
     formatDateTime(dateString, LONG_DATE);
@@ -294,12 +305,25 @@ export function TripDetailPageContent() {
                 </div>
               )}
 
-              {divedWithNames.length > 0 && (
+              {tripPeople.some(
+                (reference) => people[reference.person_uuid],
+              ) && (
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Dived with
+                    People
                   </div>
-                  <div className="text-sm">{divedWithNames.join(", ")}</div>
+                  <PeopleList people={tripPeople} resolved={people} />
+                </div>
+              )}
+
+              {/* What the contacts here are, and not who the diver was with:
+                  that is the People list above. */}
+              {diveCenterNames.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Dive centers
+                  </div>
+                  <div className="text-sm">{diveCenterNames.join(", ")}</div>
                 </div>
               )}
 

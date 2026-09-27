@@ -37,6 +37,7 @@ import {
   tripPartErrors,
 } from "@/components/trips/trip-parts-field";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
+import { PeopleMultiSelect } from "@/components/people/people-multi-select";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 interface TripDialogProps {
@@ -69,6 +70,7 @@ export function TripDialog({
     defaultValues: {
       name: "",
       parts: [],
+      people: [],
       notes: "",
     },
   });
@@ -110,6 +112,7 @@ export function TripDialog({
         // out here is an accommodation cleared by an edit that never touched it.
         accommodation_uuid: part.accommodation_uuid ?? null,
       })),
+      people: trip?.people ?? [],
       notes: trip?.notes ?? "",
     });
   }, [open, trip, reset]);
@@ -128,6 +131,8 @@ export function TripDialog({
       // the API replaces it wholesale, so an unchanged list costs a re-insert
       // while a missing key would make "remove them all" impossible to express.
       const parts = normalizeTripParts(data.parts);
+      // Sent on every save for the same reason: the API replaces the list.
+      const people = data.people ?? [];
 
       if (trip) {
         // The API answers a PATCH with just a status message, so the updated
@@ -135,13 +140,15 @@ export function TripDialog({
         await tripsAPI.updateTrip(trip.uuid, {
           name: data.name,
           parts,
+          people,
           notes: data.notes,
         });
-        onSaved({ ...trip, name: data.name, parts, notes: data.notes });
+        onSaved({ ...trip, name: data.name, parts, people, notes: data.notes });
       } else {
         const created = await tripsAPI.createTrip({
           name: data.name,
           parts,
+          people,
           notes: data.notes || undefined,
         });
         onSaved(created);
@@ -239,6 +246,27 @@ export function TripDialog({
               locations={mappedLocations}
               subject="the trip's locations"
               showWhenEmpty
+            />
+
+            <FormField
+              control={form.control}
+              name="people"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>People</FormLabel>
+                  <FormControl>
+                    {/* No role to start from: who comes on a trip is a buddy, a
+                        partner who stays on the boat, a friend who never gets
+                        wet - the diver says which, if anything. */}
+                    <PeopleMultiSelect
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      defaultRole={null}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
 
             <FormField
