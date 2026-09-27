@@ -27,6 +27,7 @@ export const DIVE_FORM_FIELDS = [
   "trip_uuid",
   "course_uuid",
   "contact_uuid",
+  "people",
   "dive_site_uuids",
   "max_depth",
   "avg_depth",
@@ -118,7 +119,8 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
  * `DECISIONS.md`.
  *
  * Headings are still coarser than the form's rows, deliberately. "Trip, course & site"
- * covers the trip/course pair, the dive center under it and the dive site below that;
+ * covers the trip/course pair, the dive center under it, the people under that and the
+ * dive site below them;
  * "Dive info" covers start time, the dive number/duration pair and the two depths;
  * "Environment" covers the other four readings. A heading per row would offer more choices than there are decisions to make.
  *
@@ -157,6 +159,7 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
   },
   { key: "course_uuid", label: "Course", group: "Trip, course & site" },
   { key: "contact_uuid", label: "Dive center", group: "Trip, course & site" },
+  { key: "people", label: "People", group: "Trip, course & site" },
   {
     key: "dive_site_uuids",
     label: "Dive site(s)",
@@ -252,6 +255,7 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
   trip_uuid: null,
   course_uuid: null,
   contact_uuid: null,
+  people: [],
   dive_site_uuids: [],
   max_depth: null,
   avg_depth: null,

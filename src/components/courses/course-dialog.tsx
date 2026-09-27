@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/api/certifications";
 import { courseStatusLabel } from "@/lib/course";
 import type { ContactRole } from "@/lib/api/contacts";
+import { joinCourseInstructor, splitCourseInstructor } from "@/lib/people";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -49,6 +50,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
+import { PersonCombobox } from "@/components/people/person-combobox";
+import { PeopleMultiSelect } from "@/components/people/people-multi-select";
 
 // The agency picker's "no agency" option. The form itself holds `null` for that
 // state and the API is sent `null`; this string exists only because a Radix
@@ -100,9 +103,10 @@ export function CourseDialog({
       status: DEFAULT_COURSE_STATUS,
       start_date: "",
       end_date: "",
-      instructor_name: "",
+      instructor_uuid: null,
       instructor_number: "",
       contact_uuid: null,
+      people: [],
       notes: "",
     },
   });
@@ -111,12 +115,17 @@ export function CourseDialog({
   // `useWatch` rather than `form.watch()`, which returns a fresh function every
   // render that can't be memoized (see DECISIONS.md).
   const agency = useWatch({ control: form.control, name: "agency" });
+  const instructorUuid = useWatch({
+    control: form.control,
+    name: "instructor_uuid",
+  });
 
   // Reload the form whenever the dialog opens, so it shows the course being
   // edited rather than whatever the previous invocation left behind.
-  const { reset } = form;
+  const { reset, getValues, setValue } = form;
   useEffectOnChange(() => {
     if (!open) return;
+    const { instructorUuid, others } = splitCourseInstructor(course?.people);
     reset({
       name: course?.name ?? "",
       agency: course?.agency ?? null,
@@ -124,9 +133,10 @@ export function CourseDialog({
       status: course?.status ?? DEFAULT_COURSE_STATUS,
       start_date: course?.start_date ?? "",
       end_date: course?.end_date ?? "",
-      instructor_name: course?.instructor_name ?? "",
+      instructor_uuid: instructorUuid,
       instructor_number: course?.instructor_number ?? "",
       contact_uuid: course?.contact_uuid ?? null,
+      people: others,
       notes: course?.notes ?? "",
     });
     // Same deliberate reset-on-open pattern as `certification-dialog.tsx`;
@@ -138,6 +148,24 @@ export function CourseDialog({
     if (!next) setApiError(null);
     onOpenChange(next);
   };
+
+  // A person made the instructor leaves the list below, where they would
+  // otherwise be named twice - once as the instructor and once as a student.
+  const pickInstructor = useCallback(
+    (uuid: string | null) => {
+      setValue("instructor_uuid", uuid, { shouldDirty: true });
+      if (!uuid) return;
+      const people = getValues("people") ?? [];
+      if (people.some((reference) => reference.person_uuid === uuid)) {
+        setValue(
+          "people",
+          people.filter((reference) => reference.person_uuid !== uuid),
+          { shouldDirty: true },
+        );
+      }
+    },
+    [getValues, setValue],
+  );
 
   const onSubmit = async (data: CourseInput) => {
     setApiError(null);
@@ -165,10 +193,12 @@ export function CourseDialog({
         status: data.status,
         start_date: data.start_date || null,
         end_date: data.end_date || null,
-        instructor_name: data.instructor_name || null,
         instructor_number: data.instructor_number || null,
         // Sent as `null` when cleared, which is what unlinks it on an update.
         contact_uuid: data.contact_uuid ?? null,
+        // The whole list on every save, the instructor first - the API replaces
+        // it, so a cleared instructor is simply one no longer on it.
+        people: joinCourseInstructor(data.instructor_uuid, data.people ?? []),
         notes: data.notes || "",
       };
 
@@ -377,12 +407,20 @@ export function CourseDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="instructor_name"
+                name="instructor_uuid"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Instructor</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value ?? ""} />
+                      {/* A person, picked or typed: a name nobody has yet
+                          becomes one on Enter, so naming a new instructor is
+                          still one step. */}
+                      <PersonCombobox
+                        value={field.value}
+                        onChange={pickInstructor}
+                        placeholder="Select an instructor..."
+                        addNewLabel="Add instructor..."
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -403,6 +441,28 @@ export function CourseDialog({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="people"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>People</FormLabel>
+                  <FormControl>
+                    {/* A student until the diver says otherwise: on a course,
+                        the people beside the diver are mostly the rest of the
+                        class. The instructor has the field above. */}
+                    <PeopleMultiSelect
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      defaultRole="student"
+                      excludeIds={instructorUuid ? [instructorUuid] : undefined}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

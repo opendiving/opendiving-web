@@ -48,7 +48,7 @@ export function formatWebsite(website: string): string {
 
 /**
  * The contacts a list of records names, each once, in the order the records first
- * name them - what a trip's "Dived with" line is made of, read off its dives in
+ * name them - what a trip's "Dive centers" line is made of, read off its dives in
  * the order the trip lists them. A record naming none contributes nothing.
  */
 export function distinctContactUuids(

@@ -46,6 +46,8 @@ import {
 import { CourseCombobox } from "@/components/courses/course-combobox";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
+import { PersonCombobox } from "@/components/people/person-combobox";
+import { splitCourseInstructor } from "@/lib/people";
 import {
   Select,
   SelectContent,
@@ -63,7 +65,8 @@ import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 // The certification fields a linked course can fill in, in the shape the form
 // holds them: `null` and absent both arrive as `""`, which is this form's "not
-// set" everywhere else - except the contact, a picker whose "not set" is `null`.
+// set" everywhere else - except the contact and the instructor, pickers whose
+// "not set" is `null`.
 //
 // `notes` is deliberately not among them: a course's notes describe the
 // training and a card's describe the card, so it is the one field here whose
@@ -78,7 +81,7 @@ interface CertificationFieldValues {
   agency: CertificationAgency;
   agency_other: string;
   contact_uuid: string | null;
-  instructor_name: string;
+  instructor_uuid: string | null;
   instructor_number: string;
 }
 
@@ -96,7 +99,8 @@ function courseFieldValues(course: Course): CourseFieldValues {
     agency: course.agency ?? null,
     agency_other: course.agency_other ?? "",
     contact_uuid: course.contact_uuid ?? null,
-    instructor_name: course.instructor_name ?? "",
+    // The course's first instructor: a card is signed by one person.
+    instructor_uuid: splitCourseInstructor(course.people).instructorUuid,
     instructor_number: course.instructor_number ?? "",
   };
 }
@@ -156,7 +160,7 @@ export function CertificationDialog({
       certification_number: "",
       certified_on: "",
       expires_on: "",
-      instructor_name: "",
+      instructor_uuid: null,
       instructor_number: "",
       contact_uuid: null,
       notes: "",
@@ -182,7 +186,7 @@ export function CertificationDialog({
     agency: DEFAULT_CERTIFICATION_AGENCY,
     agency_other: "",
     contact_uuid: null,
-    instructor_name: "",
+    instructor_uuid: null,
     instructor_number: "",
   });
 
@@ -202,7 +206,7 @@ export function CertificationDialog({
           agency: certification?.agency ?? DEFAULT_CERTIFICATION_AGENCY,
           agency_other: certification?.agency_other ?? "",
           contact_uuid: certification?.contact_uuid ?? null,
-          instructor_name: certification?.instructor_name ?? "",
+          instructor_uuid: certification?.instructor_uuid ?? null,
           instructor_number: certification?.instructor_number ?? "",
         };
     // A certification's agency is required, so a seed course that names none
@@ -262,16 +266,19 @@ export function CertificationDialog({
           autofilled.agency_other = next.agency_other;
         }
       }
-      // The reference, copied like the text beside it: the card names the
-      // course's contact until the diver picks another, and a course that names
-      // none takes back only a contact an earlier course put there.
+      // The references, copied like the text beside them: the card names the
+      // course's contact and its first instructor until the diver picks another,
+      // and a course that names none takes back only one an earlier course put
+      // there.
       if ((getValues("contact_uuid") ?? null) === autofilled.contact_uuid) {
         setValue("contact_uuid", next.contact_uuid, AUTOFILL);
         autofilled.contact_uuid = next.contact_uuid;
       }
-      if ((getValues("instructor_name") ?? "") === autofilled.instructor_name) {
-        setValue("instructor_name", next.instructor_name, AUTOFILL);
-        autofilled.instructor_name = next.instructor_name;
+      if (
+        (getValues("instructor_uuid") ?? null) === autofilled.instructor_uuid
+      ) {
+        setValue("instructor_uuid", next.instructor_uuid, AUTOFILL);
+        autofilled.instructor_uuid = next.instructor_uuid;
       }
       if (
         (getValues("instructor_number") ?? "") === autofilled.instructor_number
@@ -349,7 +356,6 @@ export function CertificationDialog({
         certification_number: data.certification_number || null,
         certified_on: data.certified_on || null,
         expires_on: data.expires_on || null,
-        instructor_name: data.instructor_name || null,
         instructor_number: data.instructor_number || null,
         notes: data.notes || "",
         // The picker's own empty state is already `null` rather than `""`, so
@@ -358,8 +364,9 @@ export function CertificationDialog({
         // `buildCertificationUpdate` helper to hold that rule instead: this
         // dialog shows every field and submits all of them.
         course_uuid: data.course_uuid ?? null,
-        // A picker too, sent on every save for the same reason.
+        // Pickers too, sent on every save for the same reason.
         contact_uuid: data.contact_uuid ?? null,
+        instructor_uuid: data.instructor_uuid ?? null,
       };
 
       let saved: Certification;
@@ -588,12 +595,19 @@ export function CertificationDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="instructor_name"
+                name="instructor_uuid"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Instructor</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value ?? ""} />
+                      {/* A person, as on the course: picked, or typed and
+                          Enter for a name nobody has yet. */}
+                      <PersonCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select an instructor..."
+                        addNewLabel="Add instructor..."
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

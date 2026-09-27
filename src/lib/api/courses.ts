@@ -1,6 +1,7 @@
 import { apiClient, fetchAllPages } from "./client";
 import type { PaginatedResponse } from "./client";
 import type { CertificationAgency } from "./certifications";
+import type { PersonReference } from "./people";
 
 /**
  * How far a course got. Mirrors the API's `CourseStatus` enum - a closed
@@ -35,8 +36,8 @@ export const DEFAULT_COURSE_STATUS: CourseStatus = "completed";
 /**
  * A training course: a group of dives and the certifications they produced.
  *
- * Works like a trip, but with dates of its own and no place. The instructor pair
- * and the contact duplicate the same fields on `Certification` deliberately - a
+ * Works like a trip, but with dates of its own and no place. The instructor and
+ * the contact duplicate the same fields on `Certification` deliberately - a
  * certification has to stand alone, because imported history arrives
  * certification-first with no course to hang them on.
  */
@@ -54,10 +55,15 @@ export interface Course {
   // months with fuzzy edges. Bare "YYYY-MM-DD".
   start_date?: string | null;
   end_date?: string | null;
-  instructor_name?: string | null;
+  // The instructor's number as printed on the card. The instructor themselves is
+  // a person on `people`, with the role `instructor`.
   instructor_number?: string | null;
   // The dive center, school or club that ran it - a contact, by uuid.
   contact_uuid?: string | null;
+  // Who was on it, in the diver's order - its instructor, the other students -
+  // each with their role. Optional because a response cached before people
+  // existed carries none.
+  people?: PersonReference[];
   notes?: string;
   user_uuid: string;
   created_at: string;
@@ -70,9 +76,10 @@ export interface CourseCreate {
   status?: CourseStatus;
   start_date?: string | null;
   end_date?: string | null;
-  instructor_name?: string | null;
   instructor_number?: string | null;
   contact_uuid?: string | null;
+  // Replaces the course's people wholesale; omitting it leaves them alone.
+  people?: PersonReference[];
   notes?: string;
 }
 

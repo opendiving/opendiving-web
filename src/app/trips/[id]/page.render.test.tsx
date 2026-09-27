@@ -4,11 +4,13 @@ import TripDetailPage from "./page";
 import type { Trip } from "@/lib/api/trips";
 import type { Dive } from "@/lib/api/dives";
 import type { Contact } from "@/lib/api/contacts";
+import type { Person } from "@/lib/api/people";
 
-// What only a render reaches on this page is where the contacts land: each part's
-// accommodation under its place, and the "Dived with" line the page derives from
-// the trip's dives rather than reading off the trip. The derivation's order is
-// `distinctContactUuids`', tested beside it.
+// What only a render reaches on this page is where the contacts and the people
+// land: each part's accommodation under its place, the "Dive centers" line the page
+// derives from the trip's dives rather than reading off the trip, and the people
+// the trip itself records. The derivation's order is `distinctContactUuids`',
+// tested beside it.
 
 // Returned by identity, for the reason the other page tests give: the effects here
 // are keyed on values read off these objects.
@@ -57,10 +59,15 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
   fetchAllContacts: vi.fn(),
 }));
+vi.mock("@/lib/api/people", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/people")>()),
+  fetchAllPeople: vi.fn(),
+}));
 
 const { tripsAPI } = await import("@/lib/api/trips");
 const { divesAPI } = await import("@/lib/api/dives");
 const { fetchAllContacts } = await import("@/lib/api/contacts");
+const { fetchAllPeople } = await import("@/lib/api/people");
 
 const contact = (uuid: string, name: string): Contact => ({
   uuid,
@@ -71,12 +78,29 @@ const contact = (uuid: string, name: string): Contact => ({
   created_at: "2026-01-01T00:00:00Z",
 });
 
+const person = (
+  uuid: string,
+  name: string,
+  username: string | null = null,
+): Person => ({
+  uuid,
+  name,
+  username,
+  notes: "",
+  dive_count: 0,
+  created_at: "2026-01-01T00:00:00Z",
+});
+
 const TRIP: Trip = {
   uuid: "trip-1",
   name: "Egypt, spring",
   parts: [
     { location: { name: "Dahab" }, accommodation_uuid: "coral" },
     { location: { name: "Sharm" } },
+  ],
+  people: [
+    { person_uuid: "sam", role: "companion" },
+    { person_uuid: "alex", role: null },
   ],
   notes: "",
   user_uuid: "user-1",
@@ -107,6 +131,10 @@ beforeEach(() => {
     contact("red", "Red Sea Divers"),
     contact("blue", "Blue Ocean"),
   ]);
+  vi.mocked(fetchAllPeople).mockResolvedValue([
+    person("alex", "Alex M.", "alexm"),
+    person("sam", "Sam"),
+  ]);
 });
 
 describe("TripDetailPage", () => {
@@ -119,10 +147,10 @@ describe("TripDetailPage", () => {
     expect(within(sharm).queryByText("Coral Hotel")).toBeNull();
   });
 
-  it("names who the trip's dives were dived with, each once, in the dives' order", async () => {
+  it("names the dive centers the trip's dives name, each once, in the dives' order", async () => {
     render(<TripDetailPage />);
 
-    const label = await screen.findByText("Dived with");
+    const label = await screen.findByText("Dive centers");
     expect(label.nextElementSibling).toHaveTextContent(
       "Red Sea Divers, Blue Ocean",
     );
@@ -141,6 +169,19 @@ describe("TripDetailPage", () => {
     render(<TripDetailPage />);
 
     await screen.findByText("Coral Hotel");
-    expect(screen.queryByText("Dived with")).toBeNull();
+    expect(screen.queryByText("Dive centers")).toBeNull();
+  });
+
+  it("lists the trip's people in its order, each with their role and username", async () => {
+    render(<TripDetailPage />);
+
+    const rows = (await screen.findAllByRole("link", { name: /Sam|Alex/ })).map(
+      (link) => link.closest("li")!.textContent,
+    );
+    expect(rows).toEqual(["SamCompanion", "Alex M. @alexm"]);
+    expect(screen.getByRole("link", { name: "Sam" })).toHaveAttribute(
+      "href",
+      "/people/sam",
+    );
   });
 });

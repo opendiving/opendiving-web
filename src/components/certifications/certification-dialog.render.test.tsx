@@ -5,6 +5,7 @@ import { CertificationDialog } from "./certification-dialog";
 import type { Certification } from "@/lib/api/certifications";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
+import type { Person } from "@/lib/api/people";
 
 vi.mock("@/lib/api/certifications", async (importOriginal) => ({
   // The agency vocabulary, its labels and the form's default are real: the
@@ -78,9 +79,19 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   },
 }));
 
+vi.mock("@/lib/api/people", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/people")>()),
+  peopleAPI: {
+    getPeople: vi.fn(),
+    getPerson: vi.fn(),
+    createPerson: vi.fn(),
+  },
+}));
+
 const { certificationsAPI } = await import("@/lib/api/certifications");
 const { coursesAPI } = await import("@/lib/api/courses");
 const { contactsAPI } = await import("@/lib/api/contacts");
+const { peopleAPI } = await import("@/lib/api/people");
 const { cropToBlob, decodeImage } = await import("@/lib/image-crop");
 const createCertification = vi.mocked(certificationsAPI.createCertification);
 const updateCertification = vi.mocked(certificationsAPI.updateCertification);
@@ -96,6 +107,9 @@ const createCourse = vi.mocked(coursesAPI.createCourse);
 const getContacts = vi.mocked(contactsAPI.getContacts);
 const getContact = vi.mocked(contactsAPI.getContact);
 const createContact = vi.mocked(contactsAPI.createContact);
+const getPeople = vi.mocked(peopleAPI.getPeople);
+const getPerson = vi.mocked(peopleAPI.getPerson);
+const createPerson = vi.mocked(peopleAPI.createPerson);
 
 const contact = (uuid: string, name: string): Contact => ({
   uuid,
@@ -113,6 +127,30 @@ const OLD_SHOP = contact("contact-old", "Old Shop");
 const NO_SHOP = contact("contact-none", "No shop");
 const CONTACTS = [BLUE_OCEAN, RED_SEA, MY_SHOP, OLD_SHOP, NO_SHOP];
 
+const person = (uuid: string, name: string): Person => ({
+  uuid,
+  name,
+  notes: "",
+  username: null,
+  dive_count: 0,
+  created_at: "2026-03-01T09:00:00Z",
+});
+
+const ALEX = person("person-alex", "Alex Diver");
+const SAM = person("person-sam", "Sam Reef");
+const KIM = person("person-kim", "Kim Solo");
+const JO = person("person-jo", "Jo Teacher");
+const PEOPLE = [ALEX, SAM, KIM, JO];
+
+const STUDENT = person("person-student", "Pat Student");
+
+// A course's instructor is a reference on its people, and not necessarily the
+// first one - the card takes the first *instructor*.
+const instructedBy = (who: Person) => [
+  { person_uuid: STUDENT.uuid, role: "student" },
+  { person_uuid: who.uuid, role: "instructor" },
+];
+
 const course = (overrides: Partial<Course> = {}): Course => ({
   uuid: "course-1",
   name: "Advanced Nitrox + Deco",
@@ -121,9 +159,9 @@ const course = (overrides: Partial<Course> = {}): Course => ({
   status: "completed",
   start_date: "2026-03-02",
   end_date: "2026-03-06",
-  instructor_name: "Alex Diver",
   instructor_number: "123",
   contact_uuid: BLUE_OCEAN.uuid,
+  people: instructedBy(ALEX),
   notes: "Ran the 21m and 30m dives on back gas.",
   user_uuid: "user-1",
   created_at: "2026-03-08T09:00:00Z",
@@ -136,7 +174,7 @@ const OTHER_COURSE = course({
   uuid: "course-2",
   name: "Rescue Diver, Dahab",
   agency: "ssi",
-  instructor_name: "Sam Reef",
+  people: instructedBy(SAM),
   instructor_number: null,
   contact_uuid: RED_SEA.uuid,
   notes: "",
@@ -148,7 +186,7 @@ const AGENCYLESS_COURSE = course({
   uuid: "course-4",
   name: "Sidemount, with Kim",
   agency: null,
-  instructor_name: "Kim Solo",
+  people: instructedBy(KIM),
   instructor_number: "IND-3",
   contact_uuid: NO_SHOP.uuid,
 });
@@ -170,7 +208,7 @@ const EXISTING: Certification = {
   certification_number: "OW-1",
   certified_on: "2020-05-01",
   expires_on: null,
-  instructor_name: "Jo Teacher",
+  instructor_uuid: JO.uuid,
   instructor_number: "OLD-9",
   contact_uuid: OLD_SHOP.uuid,
   notes: "",
@@ -213,6 +251,13 @@ beforeEach(() => {
   getContacts.mockImplementation(async () => page(CONTACTS));
   getContact.mockImplementation(async (uuid: string) => {
     const found = CONTACTS.find((one) => one.uuid === uuid);
+    if (!found) throw new Error("not found");
+    return found;
+  });
+  // And the instructor's, the same way.
+  getPeople.mockImplementation(async () => page(PEOPLE));
+  getPerson.mockImplementation(async (uuid: string) => {
+    const found = PEOPLE.find((one) => one.uuid === uuid);
     if (!found) throw new Error("not found");
     return found;
   });
@@ -272,7 +317,8 @@ describe("picking a course fills the card's own fields in", () => {
 
     await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
     expect(certificationName()).toHaveValue("Advanced Nitrox + Deco");
-    expect(instructor()).toHaveValue("Alex Diver");
+    // The course's instructor, not the first person on it.
+    await waitFor(() => expect(instructor()).toHaveValue("Alex Diver"));
     expect(instructorNumber()).toHaveValue("123");
     // Despite `padi` being the create form's default rather than an empty box,
     // which is what rules a fill-only-if-empty prefill out.
@@ -390,7 +436,7 @@ describe("picking a course fills the card's own fields in", () => {
     await pickCourse(OTHER_COURSE.name);
 
     await waitFor(() => expect(diveCenter()).toHaveValue(RED_SEA.name));
-    expect(instructor()).toHaveValue("Sam Reef");
+    await waitFor(() => expect(instructor()).toHaveValue("Sam Reef"));
   });
 
   it("keeps every field when the course is cleared, and unlinks only", async () => {
@@ -411,9 +457,45 @@ describe("picking a course fills the card's own fields in", () => {
     expect(createCertification.mock.calls[0][0]).toMatchObject({
       course_uuid: null,
       contact_uuid: BLUE_OCEAN.uuid,
-      instructor_name: "Alex Diver",
+      instructor_uuid: ALEX.uuid,
       agency: "tdi",
     });
+  });
+
+  it("takes back an instructor it copied when the next course names none", async () => {
+    getCourses.mockImplementation(async () =>
+      page([
+        COURSE,
+        course({ uuid: "course-6", name: "Self-study", people: [] }),
+      ]),
+    );
+    open();
+
+    await pickCourse(COURSE.name);
+    await waitFor(() => expect(instructor()).toHaveValue("Alex Diver"));
+
+    await pickCourse("Self-study");
+
+    await waitFor(() => expect(instructor()).toHaveValue(""));
+    await save();
+    await waitFor(() => expect(createCertification).toHaveBeenCalled());
+    expect(createCertification.mock.calls[0][0]).toMatchObject({
+      instructor_uuid: null,
+    });
+  });
+
+  it("sends no instructor's name, only the person", async () => {
+    // The name went with the text field; the pick has said who it is.
+    open();
+
+    await pickCourse(COURSE.name);
+    await waitFor(() => expect(instructor()).toHaveValue("Alex Diver"));
+    await save();
+
+    await waitFor(() => expect(createCertification).toHaveBeenCalled());
+    expect(createCertification.mock.calls[0][0]).not.toHaveProperty(
+      "instructor_name",
+    );
   });
 
   it("sends no training center, only the contact", async () => {
@@ -440,7 +522,7 @@ describe("picking a course fills the card's own fields in", () => {
     await pickCourse(AGENCYLESS_COURSE.name);
 
     await waitFor(() => expect(diveCenter()).toHaveValue(NO_SHOP.name));
-    expect(instructor()).toHaveValue("Kim Solo");
+    await waitFor(() => expect(instructor()).toHaveValue("Kim Solo"));
     expect(agency()).toHaveTextContent("PADI");
     expect(screen.queryByLabelText("Agency name *")).not.toBeInTheDocument();
 
@@ -517,7 +599,7 @@ describe("the edit dialog's values are a pure function of the card being edited"
       expect(screen.getByLabelText("Course")).toHaveValue(COURSE.name),
     );
     expect(diveCenter()).toHaveValue(OLD_SHOP.name);
-    expect(instructor()).toHaveValue("Jo Teacher");
+    await waitFor(() => expect(instructor()).toHaveValue("Jo Teacher"));
     expect(instructorNumber()).toHaveValue("OLD-9");
     expect(agency()).toHaveTextContent("PADI");
 
@@ -527,8 +609,21 @@ describe("the edit dialog's values are a pure function of the card being edited"
     expect(updateCertification.mock.calls[0][1]).toMatchObject({
       course_uuid: COURSE.uuid,
       contact_uuid: OLD_SHOP.uuid,
-      instructor_name: "Jo Teacher",
+      instructor_uuid: JO.uuid,
       agency: "padi",
+    });
+  });
+
+  it("unlinks the instructor when the diver clears it", async () => {
+    open({ certification: EXISTING });
+    await waitFor(() => expect(instructor()).toHaveValue("Jo Teacher"));
+
+    await userEvent.click(clearOf(instructor()));
+    await save();
+
+    await waitFor(() => expect(updateCertification).toHaveBeenCalled());
+    expect(updateCertification.mock.calls[0][1]).toMatchObject({
+      instructor_uuid: null,
     });
   });
 
@@ -553,7 +648,7 @@ describe("a dialog opened from a course page starts on that course", () => {
     open({ initialCourse: COURSE });
 
     await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
-    expect(instructor()).toHaveValue("Alex Diver");
+    await waitFor(() => expect(instructor()).toHaveValue("Alex Diver"));
     expect(instructorNumber()).toHaveValue("123");
     expect(agency()).toHaveTextContent("TDI");
     expect(certificationName()).toHaveValue("Advanced Nitrox + Deco");
@@ -605,6 +700,42 @@ describe("a dialog opened from a course page starts on that course", () => {
   });
 });
 
+describe("the instructor is a person", () => {
+  it("makes a typed name a person on Enter, and names them by uuid", async () => {
+    // Naming a new instructor takes the steps typing one did: the name, then
+    // Enter - no dialog.
+    const created = person("person-new", "Robin Reef");
+    getPeople.mockImplementation(async () => page([]));
+    createPerson.mockResolvedValue(created);
+    open();
+
+    await userEvent.type(certificationName(), "Rescue Diver");
+    await userEvent.click(instructor());
+    await screen.findByText(/No people yet/);
+    await userEvent.type(instructor(), "Robin Reef{Enter}");
+
+    await waitFor(() => expect(instructor()).toHaveValue("Robin Reef"));
+    expect(createPerson).toHaveBeenCalledWith({ name: "Robin Reef" });
+
+    await save();
+    await waitFor(() => expect(createCertification).toHaveBeenCalled());
+    expect(createCertification.mock.calls[0][0]).toMatchObject({
+      instructor_uuid: created.uuid,
+    });
+  });
+
+  it("files no half-typed name on the way out of the field", async () => {
+    getPeople.mockImplementation(async () => page([]));
+    open();
+
+    await userEvent.click(instructor());
+    await userEvent.type(instructor(), "Rob");
+    await userEvent.click(certificationName());
+
+    expect(createPerson).not.toHaveBeenCalled();
+  });
+});
+
 describe("a contact made three dialogs deep", () => {
   it("comes back through the course dialog into the certification", async () => {
     // Certification -> "Add course..." -> "Add dive center...": three forms, one
@@ -624,7 +755,7 @@ describe("a contact made three dialogs deep", () => {
         uuid: "course-new",
         name: body.name,
         contact_uuid: body.contact_uuid ?? null,
-        instructor_name: null,
+        people: [],
         instructor_number: null,
       }),
     );

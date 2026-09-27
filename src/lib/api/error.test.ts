@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getApiErrorMessage } from "./error";
+import { getApiErrorMessage, getApiFieldError } from "./error";
 
 function axiosErrorWithDetail(detail: unknown) {
   return { response: { data: { detail } } };
@@ -68,5 +68,43 @@ describe("getApiErrorMessage", () => {
   it("returns the fallback for null/undefined errors", () => {
     expect(getApiErrorMessage(null, "fallback")).toBe("fallback");
     expect(getApiErrorMessage(undefined, "fallback")).toBe("fallback");
+  });
+});
+
+describe("getApiFieldError", () => {
+  it("reads the message the API put on that body field", () => {
+    const error = axiosErrorWithDetail([
+      {
+        type: "value_error",
+        loc: ["body", "username"],
+        msg: "No account has that username.",
+        input: "nobody",
+      },
+    ]);
+    expect(getApiFieldError(error, "username")).toBe(
+      "No account has that username.",
+    );
+  });
+
+  it("says nothing about a field the error does not name", () => {
+    const error = axiosErrorWithDetail([
+      { loc: ["body", "name"], msg: "Field required" },
+    ]);
+    expect(getApiFieldError(error, "username")).toBeNull();
+  });
+
+  it("says nothing about a flat string detail", () => {
+    // A duplicate name is a flat 422, which belongs to the dialog's own line.
+    const error = axiosErrorWithDetail(
+      "A person with this name already exists",
+    );
+    expect(getApiFieldError(error, "username")).toBeNull();
+  });
+
+  it("does not read a nested field as the top-level one", () => {
+    const error = axiosErrorWithDetail([
+      { loc: ["body", "people", 0, "username"], msg: "Nope" },
+    ]);
+    expect(getApiFieldError(error, "username")).toBeNull();
   });
 });

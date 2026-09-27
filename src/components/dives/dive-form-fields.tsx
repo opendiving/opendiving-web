@@ -32,6 +32,8 @@ import { TripCombobox } from "@/components/dives/trip-combobox";
 import { CourseCombobox } from "@/components/courses/course-combobox";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
+import { PeopleMultiSelect } from "@/components/people/people-multi-select";
+import type { PersonReference } from "@/lib/api/people";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
 import { SpeciesMultiSelect } from "@/components/dives/species-multi-select";
@@ -86,8 +88,10 @@ export interface DiveFormValues extends FieldValues {
   trip_uuid?: string | null;
   // Same three states, same reason, for the training course this dive was on.
   course_uuid?: string | null;
-  // And for the dive center it was dived with.
+  // And for the dive center that ran it.
   contact_uuid?: string | null;
+  // Who the diver was with, each with their role on this dive.
+  people?: PersonReference[];
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   species_uuids?: string[];
@@ -235,8 +239,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     <CourseCombobox
                       value={field.value}
                       onChange={field.onChange}
-                      // A dive logged on a course was dived with whoever ran
-                      // it, unless the diver has said otherwise - so the pick
+                      // A dive logged on a course was run by whoever ran the
+                      // course, unless the diver has said otherwise - so the pick
                       // fills the dive center, through the one write that can
                       // show a hidden field without handing it to the diver. A
                       // course naming none leaves the field alone. New dives
@@ -282,6 +286,28 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   initialRoles={DIVE_CENTER}
                   placeholder="Select a dive center..."
                   addNewLabel="Add dive center..."
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {/* Under the dive center: the shop that ran the dive, then who was on it.
+          A person picked here is a buddy until the diver says otherwise. */}
+      {isVisible("people") && (
+        <FormField
+          control={control}
+          name={"people" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>People</FormLabel>
+              <FormControl>
+                <PeopleMultiSelect
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                  defaultRole="buddy"
                 />
               </FormControl>
               <FormMessage />
