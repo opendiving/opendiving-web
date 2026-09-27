@@ -11,6 +11,7 @@ import {
   type Contact,
   type ContactRole,
 } from "@/lib/api/contacts";
+import { formatContactPlace } from "@/lib/contact";
 import { ContactDialog } from "@/components/contacts/contact-dialog";
 
 // How many contacts the dropdown asks for at a time. Enough to scroll through
@@ -96,12 +97,12 @@ export function ContactCombobox({
       );
       response.data.forEach(remember);
       return {
-        // The city as the hint, since it is the other half of what the search
-        // matches and what tells two branches of one shop apart.
+        // Where the contact is as the hint, as a dive site's location is in
+        // its picker: what tells two branches of one shop apart.
         items: response.data.map((contact) => ({
           id: contact.uuid,
           name: contact.name,
-          hint: contact.address?.city ?? undefined,
+          hint: formatContactPlace(contact.address),
         })),
         hasMore: response.has_more,
       };

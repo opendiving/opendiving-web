@@ -32,6 +32,19 @@ export function formatContactAddress(
 }
 
 /**
+ * Where a contact is, as a picker names it beside the contact: the city and the
+ * country, either alone when only one is set. `undefined` when neither is.
+ */
+export function formatContactPlace(
+  address: AddressParts | null | undefined,
+): string | undefined {
+  const parts = [address?.city, address?.country]
+    .map((part) => part?.trim())
+    .filter((part): part is string => !!part);
+  return parts.length > 0 ? parts.join(", ") : undefined;
+}
+
+/**
  * A website as a link reads it: the host and path without the scheme or a
  * trailing slash, which is how a sign or a card prints one. The stored value is
  * always absolute (the API refuses anything else), so a failed parse only means
