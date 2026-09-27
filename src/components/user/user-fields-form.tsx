@@ -90,16 +90,16 @@ const FIELD_SPECS: Record<
  */
 export const CHECK_IN_GROUP_HEADINGS = {
   about: {
-    title: "About you",
+    title: "About You",
     description: "Your own details, as a desk asks for them.",
   },
   insurance: {
-    title: "Dive insurance",
+    title: "Dive Insurance",
     description:
       "The provider and policy number a shop takes down, and when the cover runs out.",
   },
   emergency: {
-    title: "Emergency contact",
+    title: "Emergency Contact",
     description:
       "Who a shop calls if something goes wrong, and how they know you.",
   },

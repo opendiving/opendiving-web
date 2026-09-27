@@ -89,7 +89,10 @@ export function NotificationsCard() {
       <CardContent>
         <div className="space-y-4">
           {ROWS.map(({ key, id, label, description }) => (
-            <div key={key} className="flex items-start gap-3">
+            <div
+              key={key}
+              className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1"
+            >
               <Switch
                 id={id}
                 // On when the API predates the field, matching the server default.
@@ -97,11 +100,17 @@ export function NotificationsCard() {
                 disabled={isSaving}
                 onCheckedChange={(next) => handleChange(key, next)}
               />
-              <div>
-                <Label htmlFor={id} className="cursor-pointer font-normal">
+              {/* `contents`, so the label is centred on the switch without becoming
+                  its sibling: `Label` dims as the switch's `peer`, and every switch
+                  here is disabled while a change saves. */}
+              <div className="contents">
+                <Label
+                  htmlFor={id}
+                  className="cursor-pointer font-normal leading-5"
+                >
                   {label}
                 </Label>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="col-start-2 text-sm text-muted-foreground">
                   {description}
                 </p>
               </div>

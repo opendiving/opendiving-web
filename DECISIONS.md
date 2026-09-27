@@ -226,9 +226,9 @@ chrome-free routes had no `<main>`" at the end of this file.
 
 ## Shared list-page pattern: `useAuthGuard` + `useInfiniteResource` + `useDeleteResource`
 
-The dives/trips/dive-sites list pages (`app/dives/page.tsx`, `app/trips/page.tsx`,
-`app/sites/page.tsx`) share three hooks and two components; any new deletable-resource list reuses
-them:
+The dives/trips/dive-sites list pages (`components/dives/dives-page-content.tsx`,
+`components/trips/trips-page-content.tsx`, `components/sites/sites-page-content.tsx`) share three
+hooks and two components; any new deletable-resource list reuses them:
 
 - `hooks/useAuthGuard.ts` redirects to `/signin` once the auth check settles signed-out
   (`useRedirectIfAuthenticated` mirrors it for public-only pages).
@@ -372,13 +372,14 @@ for the passwordless flow; Settings has no "Change Password" card. Its host page
 `REGISTRATION_MODE`; see "The landing hero holds one of two forms, and the API is what says which"
 and "`/signin` is a dedicated sign-in page, and carries where the visitor was headed".
 
-- `app/auth/verify/page.tsx` is the magic-link target (`{FRONTEND_URL}/auth/verify?token=...`): a
-  page rather than the `POST /auth/email/verify` call, so a scanner's GET never burns the single-use
-  token; it fires only on a click (see "Both magic-link pages require an explicit click before the
-  verifying `POST` fires").
-- `app/onboarding/page.tsx` completes the profile (name, username) from `AuthContext`'s `onboarding`
-  state, set in memory by `verifyEmailLink`/`signInWithGoogle` on `status: "onboarding_required"`,
-  never persisted, so a direct load bounces to `/`.
+- `/auth/verify` (`components/auth/verify-page-content.tsx`) is the magic-link target
+  (`{FRONTEND_URL}/auth/verify?token=...`): a page rather than the `POST /auth/email/verify` call,
+  so a scanner's GET never burns the single-use token; it fires only on a click (see "Both
+  magic-link pages require an explicit click before the verifying `POST` fires").
+- `/onboarding` (`components/auth/onboarding-page-content.tsx`) completes the profile (name,
+  username) from `AuthContext`'s `onboarding` state, set in memory by
+  `verifyEmailLink`/`signInWithGoogle` on `status: "onboarding_required"`, never persisted, so a
+  direct load bounces to `/`.
 - `AuthContext` exposes `onboarding`/`completeProfile`/`clearOnboarding` and
   `requestEmailLink`/`verifyEmailLink`/`signInWithGoogle`; the last two return `boolean` (`true`
   signed in, `false` onboarding) so callers pick `/dashboard` or `/onboarding`.
@@ -409,9 +410,9 @@ name but the new one.
 The field is always visible with one full-width "Send confirmation link" button — no edit toggle, no
 cancel — matching the Profile Information card above it.
 
-The link points at `app/settings/confirm-email/page.tsx`, a standalone centered card in
-`NO_CHROME_ROUTES` like `/auth/verify` and `/onboarding`. On success it calls `refreshUser()`,
-harmless when the visitor is not signed in there.
+The link points at `/settings/confirm-email` (`components/settings/confirm-email-page-content.tsx`),
+a standalone centered card in `NO_CHROME_ROUTES` like `/auth/verify` and `/onboarding`. On success
+it calls `refreshUser()`, harmless when the visitor is not signed in there.
 
 ## Both magic-link pages require an explicit click before the verifying `POST` fires
 
@@ -455,8 +456,9 @@ The API serves current-user-only routes on a bare `/user` (no `/me`, no `{uuid}`
 public-profile endpoint for other users (limited fields, no `email`, not built). `lib/api/auth.ts`
 matches: `authAPI.getCurrentUser()` calls `GET /user`, and `authAPI.updateProfile(profileData)`
 calls `PATCH /user`. `lib/api/dive-stats.ts`'s `diveStatsAPI.getDiveStats()` calls
-`GET /user/dive-stats`; its callers are `dashboard/page.tsx` and `profile/page.tsx`. There is no way
-to fetch or manage another user's data through this API until the public-profile endpoint exists.
+`GET /user/dive-stats`; its callers are `dashboard-page-content.tsx` and `checkin-page-content.tsx`.
+There is no way to fetch or manage another user's data through this API until the public-profile
+endpoint exists.
 
 ## FIT imports: one vendor-neutral label, and gas gaps filled here but declared
 
@@ -488,10 +490,10 @@ There must be exactly one `useFieldArray({ name: "mixtures" })` per form. Two in
 unchanged when the new array is shorter, so an import with fewer mixtures than the form holds leaves
 trailing rows behind. `mixture-fields.tsx` exports the `MixtureFieldArray` type
 (`UseFieldArrayReturn<MixtureFieldsValues, "mixtures">`) and `useMixtureFieldArray(control)`;
-`dives/new/page.tsx` and `dives/[id]/edit/page.tsx` call it once beside `useForm()` and pass the
-result through `DiveFormCard` to `DiveFormFields`/`MixtureFields` and `DiveFileImport`, which never
-create their own. `ParsedDive` (`lib/api/dives.ts`) declares `mixtures: ParsedDiveMixture[]`
-explicitly.
+`new-dive-page-content.tsx` and `edit-dive-page-content.tsx` call it once beside `useForm()` and
+pass the result through `DiveFormCard` to `DiveFormFields`/`MixtureFields` and `DiveFileImport`,
+which never create their own. `ParsedDive` (`lib/api/dives.ts`) declares
+`mixtures: ParsedDiveMixture[]` explicitly.
 
 ## `dives/new`/`dives/[id]/edit` pages share `DiveFormCard`/`PageHeader`/`PageSpinner`
 
@@ -509,7 +511,8 @@ footer, so their spinners use `min-h-[60vh]` inline. `SectionSpinner`
 (`components/ui/section-spinner.tsx`) is a loading section inside a rendered shell; `NotFoundState`
 (`components/ui/not-found-state.tsx`, `message`/`backHref`/`backLabel`) the not-found state. Both
 omit the outer container `div`, whose class differs between edit pages
-(`container mx-auto px-4 py-8`) and detail pages (`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8`).
+(`container mx-auto px-4 pt-8 pb-6`) and detail pages
+(`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6`).
 
 ## Mixture form/display numbers match the API's 2-decimal precision
 
@@ -549,8 +552,8 @@ alongside "Create a new set".
 — with an "Archived" badge, removable but never offered for a new selection. The dropdown searches
 server-side with `include_archived=false`, so retired kit does not eat into the page of matches; an
 archived selection reaches the list through the same per-uuid lookup as any other unknown uuid.
-New-dive prefill (`dives/new/page.tsx`) carries the previous dive's gear over but skips archived
-items, since the picker would not offer them either.
+New-dive prefill (`new-dive-page-content.tsx`) carries the previous dive's gear over but skips
+archived items, since the picker would not offer them either.
 
 ## Gear is created and edited in dialogs, not on `new`/`edit` pages
 
@@ -560,7 +563,7 @@ create and edit — passing an existing record edits it in place, omitting one c
 is one page listing items and sets together. A gear item is four fields (name, brand, rented,
 notes), and the flow that matters most is adding one from inside a half-filled dive form, where
 navigating away would lose the form or need draft persistence. `/gear/[id]` remains as a detail page
-because it hosts the "Dives with this Gear" list.
+because it hosts the "Dives with This Gear" list.
 
 ## The gear delete dialog offers "Archive instead", and its wording is pinned by a test
 
@@ -782,7 +785,7 @@ stays editable, nothing is filled in silently on save, and the dialog says so. T
 dive-safety-adjacent UI and must not read as advice; keep that framing if the list grows. Gear with
 no meaningful convention (a mask, a knife) or no type gets `[]`, not a made-up default.
 
-## The dashboard's "Service due" card renders nothing when nothing is due
+## The dashboard's "Service Due" card renders nothing when nothing is due
 
 `ServiceDueCard` returns `null` when no schedule needs attention and when its fetch fails (logged,
 not surfaced): a permanent "all your gear is fine" tile trains people to stop reading the dashboard,
@@ -793,7 +796,7 @@ would bake today's date into a cached response and go wrong at midnight — and 
 through the same `serviceStatus()` every other surface uses. The gear list needs no extra request:
 `GET /gear-items` embeds each item's schedules as `item.service`, and the badge derives from those.
 
-## The dashboard's "Service due" card: each row logs its service without leaving the dashboard
+## The dashboard's "Service Due" card: each row logs its service without leaving the dashboard
 
 Each row carries the gear detail card's icon-only `ClipboardCheck` button, opening the same
 `GearServiceRecordDialog`. The row is a flex container with link and button as siblings, not one
@@ -885,8 +888,8 @@ Each is held as a pending edit and sent after the form's fields save, so Cancel 
 image untouched. For cards the order is forced: `PUT /certification/{uuid}/file/{side}` needs a uuid
 a new card has only once `createCertification` resolves. `CertificationCardFiles` collects
 add/replace/delete per side and `applyCertificationCardEdits` sends them serially, in
-`CERTIFICATION_SIDES` order. The avatar (Profile Information) and the portrait (Check-in details,
-About you) each hold one `PictureEdit` — replace, adjust, remove, or the portrait's copy — which
+`CERTIFICATION_SIDES` order. The avatar (Profile Information) and the portrait (Check-in Details,
+About You) each hold one `PictureEdit` — replace, adjust, remove, or the portrait's copy — which
 `applyPictureEdit` sends after `PATCH /user`. Rejected: a picture card saving on pick beside forms
 that wait for Save.
 
@@ -1125,14 +1128,14 @@ after the auth bootstrap resolves. The page is a Server Component for `metadata`
 
 ## `/signin` is a dedicated sign-in page, and carries where the visitor was headed
 
-`app/signin/page.tsx` is a dedicated sign-in page: the shared `AuthForm`, a "Sign in" heading, and
-no chrome (`NO_CHROME_ROUTES` in `app-shell.tsx`, like `/auth/verify` and `/onboarding`). Sending
-signed-out visitors to `/` dumps a shared dive link or an expired session onto the marketing page,
-where the form is one section among many and nothing records the destination. There is still exactly
-one form and one entry point, not a password-based `/signin`/`/signup` pair. On an `open`-mode
-instance the landing hero hosts its own `AuthForm`; on `invite`-mode, the default, the hero holds
-the invite-request form and `/signin` is `AuthForm`'s only mount, which makes this page
-load-bearing.
+`/signin` (`components/auth/signin-page-content.tsx`) is a dedicated sign-in page: the shared
+`AuthForm`, a "Sign In" heading, and no chrome (`NO_CHROME_ROUTES` in `app-shell.tsx`, like
+`/auth/verify` and `/onboarding`). Sending signed-out visitors to `/` dumps a shared dive link or an
+expired session onto the marketing page, where the form is one section among many and nothing
+records the destination. There is still exactly one form and one entry point, not a password-based
+`/signin`/`/signup` pair. On an `open`-mode instance the landing hero hosts its own `AuthForm`; on
+`invite`-mode, the default, the hero holds the invite-request form and `/signin` is `AuthForm`'s
+only mount, which makes this page load-bearing.
 
 `Header`'s signed-out state shows a coral "Sign in" button linking here, kept in the actions row at
 every breakpoint rather than folded into the mobile menu: on a phone it is the most important thing
@@ -1175,12 +1178,13 @@ so `AuthContext.test.tsx` can mock it.
 
 ## The dashboard shows only what the app actually tracks
 
-Nothing on `app/dashboard/page.tsx` claims what the app cannot back. `user_dive_stats.species_seen`
-is never derived (`services/dive_stats.py`), so it stays in `UserDiveStats` — the field is on the
-wire — but no tile renders it. There is no quick-actions card; the one action worth promoting,
-logging a dive, is a single primary button in the page header. `SetupChecklistCard` is driven by
-real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched with
-`items_per_page: 1` for `total_count` alone) and removes itself once all three are done.
+Nothing on the dashboard (`components/dashboard/dashboard-page-frame.tsx`) claims what the app
+cannot back. `user_dive_stats.species_seen` is never derived (`services/dive_stats.py`), so it stays
+in `UserDiveStats` — the field is on the wire — but no tile renders it. There is no quick-actions
+card; the one action worth promoting, logging a dive, is a single primary button in the page header.
+`SetupChecklistCard` is driven by real counts (`/user/dive-stats`, `/gear-items`, `/certifications`,
+the last two fetched with `items_per_page: 1` for `total_count` alone) and removes itself once all
+three are done.
 
 `CertificationExpiryCard` is the twin of `ServiceDueCard`: headed "Renewals", it renders `null` when
 nothing needs renewing and when its fetch fails. Certification rows link to `/certifications`, where
@@ -1487,21 +1491,19 @@ inheriting the surrounding colour.
 `/terms` is the check that covers contrast; the `code-quality` workflow scans only `/`, so the other
 four are re-checked by hand after any change to `globals.css`.
 
-## Metadata, and why the landing page is a Server Component
+## Metadata, and why every page is a Server Component
 
 The root layout sets `metadataBase` (or Next emits relative `og:image` URLs no crawler can fetch), a
-`title.template`, OpenGraph and Twitter cards, and the README's pitch. `NEXT_PUBLIC_SITE_URL` lets a
-self-hosted instance name its own origin; the localhost fallback is harmless, since only public
-pages unfurl. A page exporting `title: "Contact"` renders "Contact | OpenDiving", so pages omit the
-suffix; the landing page opts out with `title: { absolute: ... }`.
+`title.template` of `"%s – OpenDiving"`, OpenGraph and Twitter cards, and the README's pitch.
+`NEXT_PUBLIC_SITE_URL` lets a self-hosted instance name its own origin; the localhost fallback is
+harmless, since only public pages unfurl.
 
-The landing page is a Server Component rendering `components/layout/landing-page.tsx`, which carries
-the `"use client"` — the only way to export metadata from a page gating its render on
-`useRedirectIfAuthenticated`. It is the one page worth indexing; everything else is behind auth and
-renders client-side because the access token lives in memory.
-
-Its hero headline is the page's `<h1>` and the header wordmark is a `<span>`, so no page has two
-`<h1>`s; the dashboard's greeting heading is its `<h1>`.
+Every `page.tsx` is a Server Component exporting its name as `metadata.title` and rendering a client
+body from `components/`, the only way a client page gets a title. A page inside a section names
+both: "#44 El Puertito – Dives – OpenDiving" (`pageTitle`). A name only the browser learns, a dive's
+after sign-in, comes from `useDocumentTitle`. A React `<title>` in each page was rejected: Next
+keeps left routes mounted under `<Activity>`, and their titles stay in the head. The landing page
+leads with the product through `title: { absolute: ... }`, and is the one page worth indexing.
 
 ## Component filenames are kebab-case
 
@@ -1879,25 +1881,23 @@ visibly rather than growing a second line.
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
 `CardHeader` is `flex flex-col space-y-1.5 p-6`, and `space-y-*` is a `> * + *` selector, so the 6px
-title/description gap exists only while both are direct children. Wrapping both in a `<div>` eats it
-(0px); wrapping only the title with a `size="sm"` button doubles it (12px), since a 36px button
-centred against a 24px `leading-none` title adds slack inside the row. A card whose header carries a
-control uses one shape:
+gap above the description exists only while the description is a direct child. A card whose header
+carries a control puts the title and the control in one row and the description under it:
 
 ```tsx
 <CardHeader>
-  <div className="flex flex-wrap items-start justify-between gap-3">
-    <div className="space-y-1.5">
-      <CardTitle …>…</CardTitle>
-      <CardDescription>…</CardDescription>
-    </div>
-    {control}
+  <div className={CARD_TITLE_ROW}>
+    <CardTitle …>…</CardTitle>
+    <Button size="sm" className={CARD_TITLE_ACTION}>…</Button>
   </div>
+  <CardDescription>…</CardDescription>
 </CardHeader>
 ```
 
-`items-start` aligns the control with the top of the title block. Verify by diffing
-`description.top - title.bottom` on rendered cards; every pair measures 6px at 1100px and 375px.
+The control sits on the title's line and wraps under the title, never beside the description; why it
+is lifted rather than centred is at `CARD_TITLE_ROW` in `card.tsx`. The title and description
+wrapped together in a `<div>` beside the control eat that gap and centre the control on the block
+rather than on the title.
 
 Card-title icons are `gap-2` on the title, never `mr-2` on the icon, and inherit the title's colour:
 `text-primary` is a mid-grey in dark mode, dimmer than the description beneath. `contact`'s
@@ -2821,7 +2821,7 @@ heavier weight, and a `Timer` icon named a dive property rather than a page sect
 three stat blocks, first after the header, legible unlabelled.
 
 `CardContent` takes an explicit `pt-6`: its default `p-6 pt-0` assumes a `CardHeader` supplied the
-top padding. The dashboard's stats-error card (`app/dashboard/page.tsx`) restores it the same way;
+top padding. The dashboard's stats-error card (`dashboard-page-frame.tsx`) restores it the same way;
 two headerless call sites do not earn a `headerless` variant in `ui/card.tsx`, which would have to
 guess whether the next one wants the same padding.
 
@@ -3068,8 +3068,8 @@ through `setValue(..., { shouldDirty: true })` are marked either way, which hide
 subscription is `useFormState({ control })` plus the destructuring, in the render body; calling the
 hook alone is not it.
 
-`useSuggestedDiveNumber`, `dives/new/page.tsx` and `dive-form-fields.tsx` read react-hook-form's own
-`isDirty` for unrelated UX and are unaffected.
+`useSuggestedDiveNumber`, `new-dive-page-content.tsx` and `dive-form-fields.tsx` read
+react-hook-form's own `isDirty` for unrelated UX and are unaffected.
 
 ## A deleted trip or dive site can hand its dives to another one on the way out
 
@@ -3222,8 +3222,8 @@ become renames. The absent-key path `get_gear_items_for_set` documents is exerci
 
 ## The create form proposes no cylinder, and the last one is removable
 
-`dives/new/page.tsx` seeds no mixture in `defaultValues` or in `prefillFromLastDive`'s fallback, the
-remove button in `mixture-fields.tsx` has no `index > 0` gate, and `onSubmit` sends
+`new-dive-page-content.tsx` seeds no mixture in `defaultValues` or in `prefillFromLastDive`'s
+fallback, the remove button in `mixture-fields.tsx` has no `index > 0` gate, and `onSubmit` sends
 `normalizeMixtures(data.mixtures ?? [])`, so an untouched gas card reaches `POST /dive` as
 `mixtures: []` — which `DiveCreate.mixtures` (`default_factory=list`) and `dive-mixtures-card.tsx`
 expect.
@@ -3447,7 +3447,7 @@ on submit puts a non-uuid in `species_uuids` and ties saves to upstream. Pending
 rows (`aphia:` id in `excludeIds`); via `onPendingChange`, `DiveFormActions` disables submit as
 "Adding species...", not `isSubmitting`. `appendUuid` reads an eagerly claimed ref, not `value`:
 `keepOpenOnSelect` allows concurrent resolves. No free-text hatch: a global row has no owner.
-Prefill (`app/dives/new/page.tsx`) skips species but lists them in `form.reset` as `[]`.
+Prefill (`new-dive-page-content.tsx`) skips species but lists them in `form.reset` as `[]`.
 `speciesDisplayName` falls back from `common_name` to the binomial; `hintFor` shows `matched_name`
 verbatim, any language. `"unknown"` is the API's rank sentinel from both `_wikidata_result` and
 `_worms_taxon`; `speciesRankLabel` drops it and `speciesNameWithRank` (appending any rank but
@@ -3582,7 +3582,7 @@ export formats) in full `text-primary-foreground`, never `/70`: 4.90:1 against 3
 in dark mode, the `--coral-solid` constraint. No store badges; prose says no mobile apps exist. The
 hero sells the log, not the deployment: most visitors are divers, not self-hosters. `<h1>` "The
 Ultimate Diving App" stays by the owner's call; `app/page.tsx`'s `title` changes with it or not at
-all. Data ownership lives in the `#features` card "Yours To Keep", the band (as the export) and
+all. Data ownership lives in the `#features` card "Yours to Keep", the band (as the export) and
 `#self-hosting`. Nav is Features, Self-hosting and `Source`. The footer's "Open source diving
 platform for the global diving community" states audience, not traction; leave it.
 
@@ -4501,7 +4501,7 @@ settle before trusting `color-contrast`; a worktree production build needs
 `CardTitle` takes `as="h2"` on every card that is a section of its page — settings, dive detail,
 gear, dashboard. The test is "is this card a section", not "is this page failing". The landing
 page's feature cards keep `h3` because they sit under
-`<h2 class="sr-only">What OpenDiving does</h2>`; `/onboarding` and `/restore` keep it because
+`<h2 class="sr-only">What OpenDiving Does</h2>`; `/onboarding` and `/restore` keep it because
 neither has an `<h1>` (`page-has-heading-one` is their real defect). Read a promoted card all the
 way down: `delete-account-card.tsx`'s inner heading is an `<h3>`, since an `<h4>` under `<h2>` is
 the same jump again.
@@ -4785,8 +4785,8 @@ Nothing type-checks a sentence enumerating the resource kinds. User-facing copy 
 kind, because a missing kind is a false statement about which records get exported, erased or
 restored: `app/privacy/page.tsx` (several enumerations), `app/terms/page.tsx`,
 `components/settings/delete-account-card.tsx` (card and `ConfirmDialog` `description`),
-`components/auth/restore-account-card.tsx`, `app/goodbye/page.tsx` (both arms),
-`app/auth/verify/page.tsx` (`purgeOn` and dateless branches),
+`components/auth/restore-account-card.tsx`, `components/auth/goodbye-page-content.tsx` (both arms),
+`components/auth/verify-page-content.tsx` (`purgeOn` and dateless branches),
 `components/data/data-export-card.tsx`, `README.md`'s feature list, and
 `components/layout/landing-page.tsx`'s closing sentence. Docstrings and comments carry no counts —
 "a detail page", "the list pages", never "all four of which" — because a census goes stale on
@@ -5584,7 +5584,7 @@ nothing forces (a mis-wired row type-checks), so `export.test.ts` asserts every 
 and the render test pairs each row with its segment. DiveJSON sits first, being the project's own
 format. Each row's copy states its difference from the others, a sentence about what one format
 lacks being a claim about every other row. Prose drops counts that are not load-bearing —
-`dives/page.tsx`, `sites/page.tsx` and `trips/page.tsx` say "the export card's Downloads" — and
+`sites-page-content.tsx` and `trips-page-content.tsx` say "the export card's Downloads" — and
 load-bearing ones (`export.ts`'s "the four shapes `/export/*` serves") sit beside their list.
 Probes: `git grep -w three` in `src/`,
 `grep -nE "three (Download|button|export|row|format)|all three" DECISIONS.md`, and
@@ -5630,7 +5630,7 @@ preview's `token`; `DataImportCard` renders both reports through one `ImportRepo
 approved plan and its result are comparable. The file stays in state beside the token because the
 API re-hashes the body and refuses a token minted for other bytes.
 
-"About the original file" renders `ImportReport.conversion`, omitted when `conversion` is `null`.
+"About the Original File" renders `ImportReport.conversion`, omitted when `conversion` is `null`.
 `restored` keeps its own column, never folded into `created`: un-deleting is the number a backup
 restore came for. Notes are a persistent list, never a toast; a non-zero `notes_truncated` marks the
 list a prefix and says the counts are not.
@@ -5682,7 +5682,7 @@ converter's `grouped()`, and this side owns only presentation, including the "an
 A logbook read through the API's DiveJSON converter is discarded after conversion; only the
 full-export archive path writes a dive-file row. Every sentence promising the original file back is
 scoped to a file uploaded **to a dive** — `README.md`, `privacy/page.tsx` §2.1, the root description
-in `lib/site-description.ts`, the landing page's "Built to outlive the vendor" band.
+in `lib/site-description.ts`, the landing page's "Built to Outlive the Vendor" band.
 
 The tagline drops the promise rather than qualifying it, taking the front door's "vendor exports in,
 open formats out, everything in one click"; punctuation is per file, only the claim travels.
@@ -5694,7 +5694,7 @@ git grep -niE "(original|dive-computer|source) files?" -- src README.md
 ```
 
 Hits that stay: the README's _Dive-computer import_ bullet, the landing page's **Computer Import**
-card, the import card's _About the original file_ heading. A cardinality claim beside the promise
+card, the import card's _About the Original File_ heading. A cardinality claim beside the promise
 (§2.1's "one per dive"; a dive holds one recording per export) shares no vocabulary with it; sweep
 for the count separately.
 
@@ -5872,7 +5872,7 @@ key) shares the module, so one test covers completeness.
 
 `GET /config` carries `project_operated`, `true` only where the project operates the instance, and
 `InviteRequestForm` takes a `variant`. `generic`, the default, is true of any household instance;
-`waitlist` ("Get early access", "You're on the list") is the project speaking as operator, which
+`waitlist` ("Get Early Access", "You're on the list") is the project speaking as operator, which
 `/privacy` allows.
 
 `landing-page.tsx` picks `waitlist` only on the literal `true`; `false`, a `/config` lacking the
@@ -6217,8 +6217,8 @@ running instance shows the credit only once that API build lands.
 
 ## The species page credits the taxonomy, and composes that credit by hand
 
-The classification card's foot on `src/app/species/[id]/page.tsx` reads "Taxonomy: World Register of
-Marine Species, CC BY", composed from anchors rather than handed to `Attribution`, for the reason
+The classification card's foot in `species-detail-page-content.tsx` reads "Taxonomy: World Register
+of Marine Species, CC BY", composed from anchors rather than handed to `Attribution`, for the reason
 `SpeciesPhotoCredit` is: a credit with two hyperlinks cannot come from one string, and `Species`
 carries no `attribution` field — only `SpeciesSearchResult` does. Source then licence; the photo
 credit leads with its author instead.
@@ -6724,13 +6724,15 @@ while an ignored baseline is invisible by construction. No test calls either tod
 ## Controls are sentence case; headings are Title Case
 
 Every button, link-button and menu item capitalizes its first word and its proper nouns, nothing
-else: `New trip`, `Add your first gear`, `Save changes`, `Back to dive sites`,
-`Continue with Google`. A page's own name is not a proper noun here — `View all dives` and
-`Back to dives` point at the page the nav calls `Dives`, and both lowercase it. Headings keep Title
-Case — card titles, page titles, dialog titles — so `New Certification` over `Create certification`
-in one dialog is the rule holding, not breaking. The split is what no single call site can carry:
-over a hundred labels, and a new one is written by copying a neighbour. Title Case for controls was
-rejected because the long CTAs (`Log A Dive For This Course`) read as headings themselves.
+else: `New trip`, `Save changes`, `Back to dive sites`. A page's name is not a proper noun:
+`View all dives` lowercases the page the nav calls `Dives`. A heading that names something — a page,
+card, section or form dialog — is Title Case, with articles, conjunctions and short prepositions
+lowercase: `Dives on This Course`, `Signed-in Devices`. So `New Certification` over
+`Create certification` in one dialog is the rule holding. A heading that says something — a
+confirmation's title, an empty state, a status line — is a sentence: `Delete dive`, `No trips yet`,
+`Message sent`. The split is what no single call site can carry: a new label is written by copying a
+neighbour. Title Case for controls was rejected because long CTAs (`Log A Dive For This Course`)
+read as headings.
 
 ## One `EmptyState`, and the filtered list is not one
 

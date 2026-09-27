@@ -199,7 +199,7 @@ export function ImportCheckInDetails({ checkIn }: { checkIn: ImportCheckIn }) {
   return (
     <Form {...form}>
       <div>
-        <h3 className="text-sm font-medium">Check-in details</h3>
+        <h3 className="text-sm font-medium">Check-in Details</h3>
         <p className="text-sm text-muted-foreground mt-1">
           This file carries what a dive shop asks for at check-in. What is
           chosen below is saved to your account when you import

@@ -437,7 +437,7 @@ describe("the check-in details in an import preview", () => {
     mocks.apply.mockResolvedValue(report());
     await previewWith([]);
 
-    expect(screen.queryByText("Check-in details")).not.toBeInTheDocument();
+    expect(screen.queryByText("Check-in Details")).not.toBeInTheDocument();
     await userEvent.click(applyButton());
     await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
     expect(mocks.apply.mock.calls[0][2]).toBeUndefined();
@@ -641,7 +641,7 @@ describe("the archive's portrait in an import preview", () => {
   it("shows the section with the portrait alone for an archive carrying no fact", async () => {
     await previewWith({ portrait: { account_sha256: sha, proposed } });
 
-    expect(screen.getByText("Check-in details")).toBeVisible();
+    expect(screen.getByText("Check-in Details")).toBeVisible();
     expect(screen.getAllByRole("group")).toHaveLength(1);
     expect(screen.getByRole("group", { name: "Portrait" })).toBeVisible();
   });
@@ -651,7 +651,7 @@ describe("the archive's portrait in an import preview", () => {
       check_in_details: [{ detail: "phone", account: null, proposed: "+44 2" }],
     });
 
-    expect(screen.getByText("Check-in details")).toBeVisible();
+    expect(screen.getByText("Check-in Details")).toBeVisible();
     expect(screen.queryByRole("group", { name: "Portrait" })).toBeNull();
     await userEvent.click(applyButton());
     await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));

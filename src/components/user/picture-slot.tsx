@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Crop, Trash2, Undo2, Upload, UserSquare } from "lucide-react";
+import { Crop, Replace, Trash2, Undo2, Upload, UserSquare } from "lucide-react";
 
 import { PICTURE_ACCEPT, PICTURE_LABEL, type PictureKind } from "@/lib/picture";
 import type { PictureEdit, PictureEditWithSource } from "@/lib/picture-edits";
@@ -42,6 +42,14 @@ interface PictureSlotProps {
   onChange: (edit: PictureEdit | null) => void;
 }
 
+// Where the bin sits. On a phone, on the picture's top-right corner: beside an 80px
+// picture, Replace, Adjust and the bin need 40px more than a 375px screen leaves.
+// From `sm`, back in the button row. `left-12` is the picture's 80px less the
+// 28px badge and a 4px inset. One element rather than a copy in each place,
+// because `hidden` is only CSS and a test would find both.
+const BIN_ON_PICTURE =
+  "absolute left-12 top-1 z-10 h-7 w-7 rounded-full border bg-background/80 p-0 shadow-sm sm:static sm:h-9 sm:w-auto sm:rounded-md sm:border-0 sm:bg-transparent sm:px-3 sm:shadow-none";
+
 /**
  * One picture as its form shows it: what it holds, what saving will do to it, and the
  * controls that change either.
@@ -75,7 +83,9 @@ export function PictureSlot({
     <div className="space-y-2">
       <p className="text-sm font-medium">{HEADING[picture]}</p>
 
-      <div className="flex items-start gap-4">
+      {/* `relative` is what the bin is placed against on a phone - see
+          `BIN_ON_PICTURE`. */}
+      <div className="relative flex items-start gap-4">
         {pending ? (
           <PendingPreview picture={picture} edit={pending} />
         ) : picture === "avatar" ? (
@@ -102,8 +112,10 @@ export function PictureSlot({
           </PortraitFrame>
         )}
 
-        <div className="min-w-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1 space-y-2">
+          {/* A column of full-width buttons beside the picture on a phone, a
+              row from `sm`. */}
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
               type="button"
               variant="outline"
@@ -111,7 +123,11 @@ export function PictureSlot({
               disabled={disabled}
               onClick={() => inputRef.current?.click()}
             >
-              <Upload className="h-4 w-4 mr-2" />
+              {showsSomething ? (
+                <Replace className="h-4 w-4 mr-2" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
               {/* What the button does to what the slot is showing: a picked photo is
                   as replaceable as a stored one. */}
               {showsSomething ? "Replace" : "Upload"}
@@ -153,6 +169,7 @@ export function PictureSlot({
                   type="button"
                   variant="ghost"
                   size="sm"
+                  className={BIN_ON_PICTURE}
                   disabled={disabled}
                   onClick={() => onChange(null)}
                 >
@@ -172,6 +189,7 @@ export function PictureSlot({
                     type="button"
                     variant="ghost"
                     size="sm"
+                    className={BIN_ON_PICTURE}
                     disabled={disabled}
                     // A pending edit is dropped rather than marked: the stored
                     // picture it would have replaced comes back into view.

@@ -17,6 +17,8 @@ import {
 } from "@/lib/validations/user-fields";
 import { Button } from "@/components/ui/button";
 import {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
   Card,
   CardContent,
   CardDescription,
@@ -81,12 +83,17 @@ export function CheckInDetailsCard() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className={CARD_TITLE_ROW}>
           <CardTitle as="h2" className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Check-in details
+            Check-in Details
           </CardTitle>
-          <Button variant="outline" size="sm" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={CARD_TITLE_ACTION}
+            asChild
+          >
             <Link href="/checkin">Check-in</Link>
           </Button>
         </div>

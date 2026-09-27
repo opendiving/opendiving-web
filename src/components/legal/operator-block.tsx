@@ -26,13 +26,13 @@ export function OperatorBlock({
   return (
     <section
       aria-labelledby="who-runs-this-copy"
-      className="mb-8 rounded-md border border-border bg-muted/40 p-6"
+      className="mb-8 rounded-md border border-border bg-muted/40 p-6 max-sm:px-4"
     >
       <h2
         id="who-runs-this-copy"
         className="text-2xl font-semibold text-foreground mb-4"
       >
-        Who runs this copy
+        Who Runs This Copy
       </h2>
       <p className="text-foreground mb-4">
         This copy of OpenDiving is operated by{" "}

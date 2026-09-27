@@ -110,7 +110,7 @@ interface AuthContextType {
   //
   // It still replaces the `user` object, and that is unavoidable - a new list is a
   // new object either way. What makes it safe is that the prefill effect keys on
-  // `user.uuid` rather than on the object (see `dives/new/page.tsx`), so the identity
+  // `user.uuid` rather than on the object (see `new-dive-page-content.tsx`), so the identity
   // change re-renders consumers without re-running it. Anything else that lists
   // `user` in a dependency array has to hold to the same rule.
   mergeUser: (fields: Partial<User>) => void;

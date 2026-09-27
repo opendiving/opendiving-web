@@ -53,23 +53,25 @@ export function DeviceMemorySwitch() {
 
   return (
     <div className="rounded-lg border border-border bg-muted/40 p-4 not-prose">
-      <div className="flex items-start gap-3">
+      {/* The label centred on the switch, and the notes under the label - the
+          same row `NotificationsCard` draws. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
         <Switch id={id} checked={optedOut} onCheckedChange={handleChange} />
-        <div>
-          <Label htmlFor={id} className="cursor-pointer font-normal">
-            Don&rsquo;t remember display preferences on this device
+        <div className="contents">
+          <Label htmlFor={id} className="cursor-pointer font-normal leading-5">
+            Don&rsquo;t remember display preferences
           </Label>
-          <p className="text-sm text-muted-foreground mt-1">
-            Turning this on clears the preferences already stored here and stops
-            new ones being written &mdash; the theme, the chart and dashboard
-            views, the entry units and the passkey dismissal. The theme goes
-            back to whatever your system is set to straight away, in this tab
-            and any other you have open, since leaving it looking remembered
-            would be the misleading thing. The rest keep working until you
-            reload, and start fresh after it. Turning this back off restores
-            nothing, it only lets choices be remembered again.
+          <p className="col-start-2 text-sm text-muted-foreground">
+            Turning this on clears the preferences already stored on this device
+            and stops new ones being written &mdash; the theme, the chart and
+            dashboard views, the entry units and the passkey dismissal. The
+            theme goes back to whatever your system is set to straight away, in
+            this tab and any other you have open, since leaving it looking
+            remembered would be the misleading thing. The rest keep working
+            until you reload, and start fresh after it. Turning this back off
+            restores nothing, it only lets choices be remembered again.
           </p>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="col-start-2 mt-1 text-sm text-muted-foreground">
             This travels with the browser, not with your account, so it is a
             separate answer on every device you use.
           </p>

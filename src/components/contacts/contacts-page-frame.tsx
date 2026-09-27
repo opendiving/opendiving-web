@@ -5,6 +5,7 @@ import { BookUser, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
+import { IndexPageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import {
@@ -69,19 +70,18 @@ export function ContactsPageFrame({
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Contacts</h1>
-          <p className="text-muted-foreground mt-2">
-            The dive centers, schools, shops and places you stayed, kept once
-          </p>
-        </div>
-        <Button onClick={onNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          New contact
-        </Button>
-      </div>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+      <IndexPageHeader
+        className="mb-6"
+        title="Contacts"
+        description="The dive centers, schools, shops and places you stayed, kept once"
+        action={
+          <Button onClick={onNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            New contact
+          </Button>
+        }
+      />
 
       <Card>
         <ListCardHeader title="Contact List" isEmpty={isEmptyList}>

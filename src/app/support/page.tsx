@@ -14,7 +14,7 @@ import { Metadata } from "next";
 import { AlertCircle, Anchor, Bug, Heart, Mail, Shield } from "lucide-react";
 
 export const metadata: Metadata = {
-  // The root layout's `title.template` appends " | OpenDiving".
+  // The root layout's `title.template` appends " – OpenDiving".
   title: "Support",
   description:
     "Get support from the people who build OpenDiving - report a bug, request a feature, or send a message that reaches a real inbox.",
@@ -29,17 +29,17 @@ export default function SupportPage() {
   const { contactEmail } = runtimeConfig();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-12 text-center">
-        <h1 className="text-4xl font-bold text-foreground mb-4">Support</h1>
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Support</h1>
+        <p className="text-muted-foreground">
           OpenDiving is an open-source dive log built by volunteers. The form
           below reaches a real inbox, and most things get fixed faster in the
           open, on GitHub.
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>
@@ -49,7 +49,7 @@ export default function SupportPage() {
                   it, and indistinguishable from the title in light mode. */}
               <CardTitle as="h2" className="flex items-center gap-2">
                 <Bug className="h-5 w-5" />
-                Bugs & feature requests
+                Bugs & Feature Requests
               </CardTitle>
               <CardDescription>
                 Public, searchable, and where the work happens
@@ -119,7 +119,7 @@ export default function SupportPage() {
             <CardHeader>
               <CardTitle as="h2" className="flex items-center gap-2">
                 <Anchor className="h-5 w-5" />
-                Self-hosted instances
+                Self-Hosted Instances
               </CardTitle>
               <CardDescription>Your server, your data</CardDescription>
             </CardHeader>
@@ -152,7 +152,7 @@ export default function SupportPage() {
             <CardHeader>
               <CardTitle as="h2" className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />
-                Send us a message
+                Send Us a Message
               </CardTitle>
               <CardDescription>
                 For anything that does not belong in a public issue - or when

@@ -153,7 +153,10 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h2" className="text-destructive">
+        {/* The button's fill colour, so the heading matches the action it
+            introduces. On the dark card that is 2.77:1, under AA's 3:1 for large
+            text, and taken knowingly over a title that reads as a second coral. */}
+        <CardTitle as="h2" className="text-destructive-solid">
           Danger Zone
         </CardTitle>
         <CardDescription>

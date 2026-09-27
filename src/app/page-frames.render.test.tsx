@@ -163,14 +163,16 @@ const routeOf = (file: string) =>
     .filter((segment) => segment && !segment.startsWith("("))
     .join("/");
 
-// A Client Component, or a Server Component only so it can carry `instant = false` below an
-// auth gate (see "A page under an auth-gate layout opts out of instant validation" in
-// DECISIONS.md).
+// A Client Component, or a Server Component only so it can carry `metadata` and render its
+// client body from `components/` (see "Metadata, and why every page is a Server Component"
+// in DECISIONS.md), or `instant = false` below an auth gate (see "A page under an auth-gate
+// layout opts out of instant validation").
 const isClientDrawn = (file: string) => {
   const source = readFileSync(file, "utf8");
   return (
     source.startsWith('"use client"') ||
-    /^export const instant = false;$/m.test(source)
+    /^export const instant = false;$/m.test(source) ||
+    /from "@\/components\/[\w/-]+-page-content";$/m.test(source)
   );
 };
 

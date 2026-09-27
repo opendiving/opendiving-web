@@ -23,7 +23,7 @@ beforeEach(() => {
 // project's as the waitlist column, with nothing of one in the other.
 const VOICES = {
   generic: {
-    heading: "Request an invite",
+    heading: "Request an Invite",
     blurb:
       "This instance is not taking new accounts on its own. Leave your address and whoever runs it can invite you.",
     button: /request an invite/i,
@@ -32,7 +32,7 @@ const VOICES = {
       `If an invitation comes your way it will arrive at ${address}. Whoever runs this instance decides who is invited, and when.`,
   },
   waitlist: {
-    heading: "Get early access",
+    heading: "Get Early Access",
     blurb:
       "Join the waitlist for a chance to be among the first to try OpenDiving. We'll notify you when your spot is ready. Just that, no spam.",
     button: /join the waitlist/i,
@@ -74,7 +74,7 @@ describe("InviteRequestForm", () => {
     expect(screen.getByText(VOICES.waitlist.blurb)).toBeInTheDocument();
     expect(submitButton("waitlist")).toBeInTheDocument();
     expect(document.body.textContent).not.toContain("whoever runs it");
-    expect(document.body.textContent).not.toContain("Request an invite");
+    expect(document.body.textContent).not.toMatch(/request an invite/i);
   });
 
   it.each(BOTH)(

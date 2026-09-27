@@ -10,6 +10,8 @@ import {
   formatDurationHoursMinutes,
 } from "@/lib/date-time";
 import {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
   Card,
   CardContent,
   CardDescription,
@@ -131,24 +133,23 @@ export function RecentDivesCard({
   return (
     <Card>
       <CardHeader>
-        {/* Title and description in one column with the action beside them,
-            rather than the description under the whole row: a `size="sm"`
-            button is taller than the title, so centring it there pushed the
-            description to twice every other card's 6px. */}
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1.5">
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveIcon className="h-5 w-5" />
-              {title}
-            </CardTitle>
-            <CardDescription>{description}</CardDescription>
-          </div>
+        <div className={CARD_TITLE_ROW}>
+          <CardTitle as="h2" className="flex items-center gap-2">
+            <DiveIcon className="h-5 w-5" />
+            {title}
+          </CardTitle>
           {viewAllHref && (
-            <Button variant="outline" size="sm" asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={CARD_TITLE_ACTION}
+              asChild
+            >
               <Link href={viewAllHref}>{viewAllLabel}</Link>
             </Button>
           )}
         </div>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoadingDives ? (

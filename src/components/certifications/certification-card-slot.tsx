@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { FileText, Trash2, Undo2, Upload } from "lucide-react";
+import { FileText, Replace, Trash2, Undo2, Upload } from "lucide-react";
 import {
   CertificationSide,
   CertificationFileInfo,
@@ -99,7 +99,11 @@ export function CertificationCardSlot({
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
         >
-          <Upload className="h-4 w-4 mr-2" />
+          {showsSomething ? (
+            <Replace className="h-4 w-4 mr-2" />
+          ) : (
+            <Upload className="h-4 w-4 mr-2" />
+          )}
           {/* What the button does to what the slot is showing, not to what is
               stored: a picked image is as replaceable as a saved one. */}
           {showsSomething ? "Replace" : "Upload"}
@@ -182,14 +186,7 @@ function PendingCardPreview({
     <CertificationCardFrame>
       {image.previewUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={image.previewUrl}
-          alt={`New ${side} of certification card`}
-          // Already cropped to the frame's own shape, so this crops nothing; it
-          // matches the stored preview beside it rather than inventing a second
-          // fit rule.
-          className="h-full w-full object-cover"
-        />
+        <img src={image.previewUrl} alt={`New ${side} of certification card`} />
       )}
     </CertificationCardFrame>
   );

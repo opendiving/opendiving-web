@@ -40,13 +40,13 @@ interface InviteRequestCopy {
 }
 
 // The four strings and the success state move together: a heading that says
-// "Get early access" over a body that says "whoever runs this instance decides"
+// "Get Early Access" over a body that says "whoever runs this instance decides"
 // is two operators speaking at once. That is why this is a table of whole
 // variants and not four independently configurable strings - see "The request
 // form speaks in two voices" in DECISIONS.md.
 const COPY: Record<InviteRequestVariant, InviteRequestCopy> = {
   generic: {
-    heading: "Request an invite",
+    heading: "Request an Invite",
     blurb:
       "This instance is not taking new accounts on its own. Leave your address and whoever runs it can invite you.",
     button: "Request an invite",
@@ -59,7 +59,7 @@ const COPY: Record<InviteRequestVariant, InviteRequestCopy> = {
     ),
   },
   waitlist: {
-    heading: "Get early access",
+    heading: "Get Early Access",
     blurb:
       "Join the waitlist for a chance to be among the first to try OpenDiving. We'll notify you when your spot is ready. Just that, no spam.",
     button: "Join the waitlist",
@@ -139,7 +139,7 @@ export function InviteRequestForm({
   return (
     <div
       className={cn(
-        "w-full max-w-md rounded-lg border bg-card p-6 shadow-sm",
+        "w-full max-w-md rounded-lg border bg-card p-6 shadow-sm max-sm:px-4",
         className,
       )}
     >

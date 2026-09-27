@@ -116,7 +116,7 @@ describe("the landing hero", () => {
 
     expect(waitlistButton()).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Get early access" }),
+      screen.getByRole("heading", { name: "Get Early Access" }),
     ).toBeInTheDocument();
     expect(requestButton()).toBeNull();
     expect(signInButton()).toBeNull();
@@ -136,7 +136,7 @@ describe("the landing hero", () => {
 
     expect(requestButton()).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Request an invite" }),
+      screen.getByRole("heading", { name: "Request an Invite" }),
     ).toBeInTheDocument();
     expect(waitlistButton()).toBeNull();
     expect(document.body.textContent).not.toContain("waitlist");

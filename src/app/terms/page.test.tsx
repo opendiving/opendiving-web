@@ -27,7 +27,7 @@ async function renderPage(projectOperated: boolean) {
 // copy of this list: a snapshot of a page this size is churn nobody reads, and a failure
 // here names the string that leaked.
 const OPERATOR_ONLY = [
-  "Who runs this copy",
+  "Who Runs This Copy",
   PROJECT_OPERATOR.name,
   PROJECT_OPERATOR.contactEmail,
   PROJECT_OPERATOR.jurisdiction,
@@ -49,13 +49,13 @@ describe("the operator block", () => {
   it("appears only where the API said the project operates this instance", async () => {
     await renderPage(false);
     expect(
-      screen.queryByRole("heading", { name: /Who runs this copy/ }),
+      screen.queryByRole("heading", { name: /Who Runs This Copy/ }),
     ).toBeNull();
 
     cleanup();
     await renderPage(true);
     expect(
-      screen.getByRole("heading", { name: /Who runs this copy/ }),
+      screen.getByRole("heading", { name: /Who Runs This Copy/ }),
     ).toBeInTheDocument();
   });
 
@@ -77,7 +77,7 @@ describe("the operator block", () => {
     await renderPage(true);
 
     const block = screen
-      .getByRole("heading", { name: /Who runs this copy/ })
+      .getByRole("heading", { name: /Who Runs This Copy/ })
       .closest("section")!;
     expect(block).toHaveTextContent(
       new RegExp(
@@ -98,7 +98,7 @@ describe("the operator block", () => {
     await renderPage(true);
 
     const block = screen
-      .getByRole("heading", { name: /Who runs this copy/ })
+      .getByRole("heading", { name: /Who Runs This Copy/ })
       .closest("section")!;
 
     expect(block).toHaveTextContent(/free of charge/);
@@ -115,7 +115,7 @@ describe("the operator block", () => {
     await renderPage(true);
 
     const block = screen
-      .getByRole("heading", { name: /Who runs this copy/ })
+      .getByRole("heading", { name: /Who Runs This Copy/ })
       .closest("section")!;
 
     expect(block).toHaveTextContent(

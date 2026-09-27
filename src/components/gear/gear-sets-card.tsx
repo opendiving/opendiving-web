@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
   Table,
@@ -62,15 +69,12 @@ export function GearSetsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle
-          as="h2"
-          className="flex flex-wrap items-center justify-between gap-3"
-        >
+        <CardTitle as="h2" className={CARD_TITLE_ROW}>
           <span className="flex items-center gap-2">
             <Layers className="h-5 w-5" />
             Gear Sets
           </span>
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-3 ${CARD_TITLE_ACTION}`}>
             <CountBadge count={totalCount} isLoading={isLoading} label="set" />
             <Button variant="outline" size="sm" onClick={onCreate}>
               <Plus className="h-4 w-4 mr-2" />

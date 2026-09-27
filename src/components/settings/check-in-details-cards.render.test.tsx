@@ -75,7 +75,7 @@ describe("CheckInDetailsCard", () => {
     );
     // Beside rather than inside, so the heading is named by its title alone.
     expect(
-      screen.getByRole("heading", { name: "Check-in details" }),
+      screen.getByRole("heading", { name: "Check-in Details" }),
     ).toBeInTheDocument();
   });
 });

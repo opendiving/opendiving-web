@@ -89,7 +89,7 @@ export function DiveFormFieldsDialog({
         ref={contentRef}
       >
         <DialogHeader>
-          <DialogTitle>Configure fields</DialogTitle>
+          <DialogTitle>Configure Fields</DialogTitle>
           <DialogDescription>
             Choose what the dive form asks for. This is saved to your account
             and applies to every dive you log.

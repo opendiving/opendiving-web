@@ -1,4 +1,4 @@
-// "Don't remember display preferences on this device" - one switch, and the
+// "Don't remember display preferences" - one switch, and the
 // whole of its logic.
 //
 // UK PECR Sch. A1 ¶6(1)(d) conditions the appearance/functionality exception on

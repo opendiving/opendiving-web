@@ -80,7 +80,7 @@ function recordingForm(mixtures: DiveMixtureInput[] = []) {
 describe("applyParsedDiveToForm", () => {
   // What an import actually meets, rather than the hand-picked `existing` the unit
   // tests above pass in. Two real starting states now, and the difference is the
-  // whole point: the create form starts empty (see `dives/new/page.tsx` - a form must
+  // whole point: the create form starts empty (see `new-dive-page-content.tsx` - a form must
   // not write gas the diver never entered), while a form the diver has added a
   // cylinder to, or that the last-dive prefill filled in, holds one.
   const seededForm = () => formHolding([{ ...DEFAULT_MIXTURE }]);

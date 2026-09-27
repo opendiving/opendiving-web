@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
   Card,
   CardContent,
   CardDescription,
@@ -55,20 +57,21 @@ export function RecentTripsCard() {
   return (
     <Card>
       <CardHeader>
-        {/* Same column-plus-action shape as `RecentDivesCard`, and for the same
-            reason - see the comment there. */}
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1.5">
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <Luggage className="h-5 w-5" />
-              Recent Trips
-            </CardTitle>
-            <CardDescription>Your latest diving trips</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" asChild>
+        <div className={CARD_TITLE_ROW}>
+          <CardTitle as="h2" className="flex items-center gap-2">
+            <Luggage className="h-5 w-5" />
+            Recent Trips
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            className={CARD_TITLE_ACTION}
+            asChild
+          >
             <Link href="/trips">View all trips</Link>
           </Button>
         </div>
+        <CardDescription>Your latest diving trips</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoadingTrips ? (

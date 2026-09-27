@@ -237,7 +237,7 @@ export function CertificationCardFiles({
         <ImageCropDialog
           imageSrc={cropping.url}
           aspect={CERTIFICATION_CARD_ASPECT}
-          title="Frame your card"
+          title="Frame Your Card"
           description="Drag to move, pinch or use the slider to zoom. Everything inside the frame is saved, and that is the shape cards are shown in."
           saveLabel="Use this crop"
           savingLabel="Preparing..."

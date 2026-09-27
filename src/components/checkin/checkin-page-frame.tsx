@@ -294,7 +294,7 @@ export function CheckInPageFrame({
   // free: 32px at the foot is enough to push a sheet that fits onto a second page,
   // and what comes off the sides is width the two columns get back.
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 print:px-0 print:pb-0">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6 print:px-0 print:pb-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           {/* "Diver" earns its place on the printed sheet rather than on screen:
@@ -527,7 +527,7 @@ export function CheckInPageFrame({
                 actually dived, and reaches for the policy to quote and the person to
                 call only if something goes wrong. */}
             <Section
-              title="Dive insurance"
+              title="Dive Insurance"
               className={cn(KEEP_TOGETHER, !hasInsurance && offSheet)}
               action={editControl("Edit your dive insurance", () =>
                 setEditing("insurance"),
@@ -554,7 +554,7 @@ export function CheckInPageFrame({
             </Section>
 
             <Section
-              title="Emergency contact"
+              title="Emergency Contact"
               className={cn(KEEP_TOGETHER, !hasEmergencyContact && offSheet)}
               action={editControl("Edit your emergency contact", () =>
                 setEditing("emergency"),
@@ -782,7 +782,6 @@ function CertificationSummary({
                 <img
                   src={sharedCardFrontUrl(linkToken, certification.uuid)}
                   alt="front of certification card"
-                  className="h-full w-full object-cover"
                 />
               </CertificationCardFrame>
             )

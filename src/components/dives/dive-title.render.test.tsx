@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { DiveTitle } from "./dive-title";
+import { DiveTitle, diveTitleText } from "./dive-title";
 
 // One name for a dive, written the same way in the log, on the cards and in the
 // page header - so what these pin down is the two dives that name is built from
@@ -35,5 +35,21 @@ describe("DiveTitle", () => {
     const { container } = render(<DiveTitle diveNumber={212} sites={[]} />);
 
     expect(container).toHaveTextContent("Dive #212");
+  });
+});
+
+// The same name for the tab, where it can only be text.
+describe("diveTitleText", () => {
+  it("names a dive as DiveTitle does", () => {
+    expect(diveTitleText(212, [{ uuid: "a", name: "Blue Hole" }])).toBe(
+      "#212 Blue Hole",
+    );
+    expect(
+      diveTitleText(212, [
+        { uuid: "a", name: "Pescador Island" },
+        { uuid: "b", name: "Panagsama Wall" },
+      ]),
+    ).toBe("#212 Pescador Island +1");
+    expect(diveTitleText(212, [])).toBe("Dive #212");
   });
 });

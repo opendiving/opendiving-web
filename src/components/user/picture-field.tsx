@@ -260,7 +260,7 @@ export function PictureField({
           aspect={pictureAspect(picture)}
           initialArea={cropping.initial}
           cropShape={picture === "avatar" ? "round" : "rect"}
-          title="Adjust your photo"
+          title="Adjust Your Photo"
           description={CROP_DESCRIPTION[picture]}
           saveLabel="Use this crop"
           savingLabel="Saving..."

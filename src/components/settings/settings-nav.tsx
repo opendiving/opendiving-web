@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -39,25 +39,107 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { href: "/settings/invitations", label: "Invitations", icon: MailPlus },
 ];
 
+// The selection is one pill, the list's `::before`, tethered by anchor positioning to
+// whichever entry holds `--settings-nav-shown`, so moving the name moves it there. A
+// browser without anchor positioning drops the `anchor()` insets, leaving a pill with
+// no size, and gives the entry its own background instead.
+const PILL =
+  "relative isolate before:pointer-events-none before:absolute before:-z-10 before:rounded-md before:bg-muted before:[position-anchor:--settings-nav-shown] before:[top:anchor(top)] before:[right:anchor(right)] before:[bottom:anchor(bottom)] before:[left:anchor(left)]";
+const PILL_SLIDE =
+  "motion-safe:before:transition-[inset] motion-safe:before:duration-300 motion-safe:before:ease-[cubic-bezier(0.33,1,0.68,1)] data-instant:before:transition-none";
+
+// An entry's text colour, on the pill's timing and switched off with it: Safari snapshots
+// the page as its URL changes, just after the pill sets off, and a colour already at the
+// next entry puts the selection in two places in the swipe back.
+const LABEL_FADE =
+  "motion-safe:transition-[color] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.33,1,0.68,1)] group-data-instant/nav:transition-none";
+
+// The row's scroll, timed to the pill: `GLIDE_MS` is its `duration-300` and
+// `easeOutCubic` its `cubic-bezier(0.33,1,0.68,1)`. The pill rides inside the row, so on
+// screen it moves by its own travel less the row's, and only matching timings make that
+// one smooth line. The browser's smooth scroll takes a length of its own choosing, and
+// the pill overshoots the edge while the row catches up.
+const GLIDE_MS = 300;
+const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
+
 // A column beside the section from `lg` up, and a row that scrolls sideways above it
 // below that, so a phone keeps the section itself on the first screen.
 export function SettingsNav() {
   const pathname = usePathname();
   const { config } = useInstanceConfig();
   const listRef = useRef<HTMLUListElement>(null);
+  const hasScrolled = useRef(false);
+
+  // The pill and the row move when the pathname does, never ahead of it on the tap:
+  // Safari snapshots the page being left as the URL changes, and a swipe back shows that
+  // snapshot, so a pill already on its way would be caught halfway. After a swipe the
+  // browser animated itself (`hasUAVisualTransition`) they jump rather than slide - the
+  // swipe was the move, and a slide once the live page replaces the snapshot repeats it.
+  //
+  // Marked on the list itself, in the capture phase: the router's listeners are older
+  // than these and can render the new page synchronously, so a flag set later - or
+  // through React state - arrives after the pill has started. Where the Navigation API
+  // exists the router renders a step back on its `navigate` event, before `popstate`
+  // fires at all; only a traverse counts, since the router's own `replace` follows it.
+  useEffect(() => {
+    const mark = (browserAnimated: boolean) =>
+      listRef.current?.toggleAttribute("data-instant", browserAnimated);
+    const onNavigate = (event: NavigateEvent) => {
+      if (event.navigationType === "traverse") {
+        mark(event.hasUAVisualTransition);
+      }
+    };
+    const onPopState = (event: PopStateEvent) =>
+      mark(event.hasUAVisualTransition === true);
+    const navigation = "navigation" in window ? window.navigation : undefined;
+    navigation?.addEventListener("navigate", onNavigate, { capture: true });
+    window.addEventListener("popstate", onPopState, { capture: true });
+    return () => {
+      navigation?.removeEventListener("navigate", onNavigate, {
+        capture: true,
+      });
+      window.removeEventListener("popstate", onPopState, { capture: true });
+    };
+  }, []);
 
   // On a phone the row is wider than the screen, and a section further along it would
   // otherwise open with its own entry out of sight. The row is scrolled rather than the
   // entry scrolled into view, which would move the page as well; where the list is a
-  // column it has nothing to scroll and this does nothing.
-  useEffect(() => {
+  // column it has nothing to scroll and this does nothing. The first placement is
+  // instant, since there is nothing yet to move from. Before paint, so no frame shows
+  // the row where it was.
+  useLayoutEffect(() => {
     const list = listRef.current;
-    const current = list?.querySelector('[aria-current="page"]');
-    if (!list || !current) return;
+    const entry = list?.querySelector<HTMLElement>(`a[href="${pathname}"]`);
+    if (!list || !entry) return;
     const row = list.getBoundingClientRect();
-    const entry = current.getBoundingClientRect();
-    list.scrollLeft +=
-      entry.left + entry.width / 2 - (row.left + row.width / 2);
+    const box = entry.getBoundingClientRect();
+    const from = list.scrollLeft;
+    const to = Math.min(
+      Math.max(0, from + box.left + box.width / 2 - (row.left + row.width / 2)),
+      list.scrollWidth - list.clientWidth,
+    );
+    const glide =
+      hasScrolled.current &&
+      !list.hasAttribute("data-instant") &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    hasScrolled.current = true;
+    if (!glide || to === from) {
+      list.scrollLeft = to;
+      return;
+    }
+    const start = performance.now();
+    let frame = requestAnimationFrame(function step(now) {
+      // A mark that lands after the glide set off still wins.
+      if (list.hasAttribute("data-instant")) {
+        list.scrollLeft = to;
+        return;
+      }
+      const progress = Math.min(1, (now - start) / GLIDE_MS);
+      list.scrollLeft = from + (to - from) * easeOutCubic(progress);
+      if (progress < 1) frame = requestAnimationFrame(step);
+    });
+    return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
   // An instance anyone may register on has nobody to invite. Hidden only once the
@@ -73,7 +155,15 @@ export function SettingsNav() {
     <nav aria-label="Settings" className="lg:sticky lg:top-24 lg:self-start">
       <ul
         ref={listRef}
-        className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0"
+        className={cn(
+          "group/nav -mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0",
+          // Scrolls without a bar: the row centres the section it opens on, and a bar
+          // under a row of tabs reads as a rule. The `::-webkit-scrollbar` rule is for a
+          // Safari older than 18.2, which has no `scrollbar-width`.
+          "[scrollbar-width:none] not-supports-[scrollbar-width:none]:[&::-webkit-scrollbar]:hidden",
+          PILL,
+          PILL_SLIDE,
+        )}
       >
         {sections.map(({ href, label, icon: Icon }) => {
           const current = pathname === href;
@@ -81,11 +171,14 @@ export function SettingsNav() {
             <li key={href} className="shrink-0">
               <Link
                 href={href}
+                // A tap slides, whatever the last change was.
+                onClick={() => listRef.current?.removeAttribute("data-instant")}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium",
+                  LABEL_FADE,
                   current
-                    ? "bg-muted text-foreground"
+                    ? "text-foreground [anchor-name:--settings-nav-shown] not-supports-[position-anchor:auto]:bg-muted"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                 )}
               >

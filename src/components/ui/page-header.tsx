@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, Ref } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,46 @@ export function PageHeader({
         </div>
         {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
       </div>
+    </div>
+  );
+}
+
+interface IndexPageHeaderProps {
+  title: ReactNode;
+  /** What the page is for, muted, under the title and the action both. */
+  description: ReactNode;
+  /** The page's one primary action - "New trip", "Log a dive". */
+  action: ReactNode;
+  /** Makes the heading a focus target, for a page that moves focus to it. */
+  headingRef?: Ref<HTMLHeadingElement>;
+  className?: string;
+}
+
+// The heading of a page reached from the navigation rather than from another page,
+// so with no way back: the title with the page's action on its line, laid out as a
+// card title with a control is. The 40px button is lifted by half its 4px over the
+// `text-3xl` line box, so it centres on the title; `gap-y-3.5` keeps a button that
+// wraps onto its own line 12px clear of it.
+export function IndexPageHeader({
+  title,
+  description,
+  action,
+  headingRef,
+  className,
+}: IndexPageHeaderProps) {
+  return (
+    <div className={className}>
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3.5">
+        <h1
+          ref={headingRef}
+          tabIndex={headingRef ? -1 : undefined}
+          className="text-3xl font-bold"
+        >
+          {title}
+        </h1>
+        <div className="-mt-0.5 flex shrink-0">{action}</div>
+      </div>
+      <p className="mt-2 text-muted-foreground">{description}</p>
     </div>
   );
 }
