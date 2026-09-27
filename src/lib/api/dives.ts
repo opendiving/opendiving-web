@@ -3,6 +3,7 @@ import type { PaginatedResponse } from "./client";
 import { GearItemSummary } from "./gear";
 import type { Location } from "./location";
 import { SpeciesSummary } from "./species";
+import type { PersonReference } from "./people";
 
 // A single gas mixture / scuba tank used during a dive.
 // The ppO₂ vocabulary and the cylinder-role vocabulary the API accepts. Mirrors
@@ -290,8 +291,8 @@ export interface Dive {
   // separate grouping from the trip: a course is where a dive came from in the
   // logbook's training sense, and a dive can have both.
   course_uuid?: string;
-  // Who the diver dived with - the dive center or club, a contact by uuid. Its
-  // own member rather than the course's: a fun dive has one and no course.
+  // The dive center or club that ran the dive, a contact by uuid. Its own member
+  // rather than the course's: a fun dive has one and no course.
   contact_uuid?: string | null;
   dive_sites: DiveSiteSummary[];
   // Gear used on the dive. A dive records the items themselves, never the gear
@@ -339,6 +340,11 @@ export interface Dive {
   // it. It is also absent - rather than `[]` - on any detail payload the API
   // cached before species existed, so read it through `?.` and default it.
   species?: SpeciesSummary[];
+  // Who the diver was with, in the diver's order, each with what they were on
+  // this dive. References only - the names are read through `usePeopleByUuid`.
+  // A detail-response field like `species`, and absent on a list row, so read it
+  // through `?.` and default it.
+  people?: PersonReference[];
 }
 
 // What recorded a dive, as that device's own export named it.
@@ -768,6 +774,9 @@ export interface DiveCreate {
   // picker resolves an upstream pick into a catalog row before it reaches form
   // state, so saving a dive never waits on WoRMS.
   species_uuids?: string[];
+  // Each person the diver owns, at most once; a person named twice keeps the
+  // first reference's role.
+  people?: PersonReference[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -816,6 +825,8 @@ export interface DiveUpdate {
   // replaces them. See "Locations are always sent on edit" in DECISIONS.md for
   // why the form always sends it.
   species_uuids?: string[];
+  // The same wholesale-replace contract, roles and order included.
+  people?: PersonReference[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -1011,7 +1022,7 @@ export interface ParsedDiveMatch {
  * merging and numbering.
  *
  * Two things differ from the other resources here. Updates replace the list-valued fields
- * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`, `species_uuids`) wholesale rather than
+ * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`, `species_uuids`, `people`) wholesale rather than
  * merging, so a caller must send the full intended list. And importing a file is two steps - parse to
  * pre-fill the form, then attach against the created dive - because the diver gets to
  * correct the parsed values before anything is stored.
@@ -1024,13 +1035,14 @@ export const divesAPI = {
   },
 
   // Get all dives for a user (paginated). Pass `tripUuid`/`diveSiteUuid`/
-  // `gearItemUuid`/`courseUuid`/`speciesUuid` to only return dives that belong to
-  // a given trip / were made at a given site / used a given piece of gear / were
-  // part of a given training course / recorded a given species. The filters are
-  // combinable, and one naming something that doesn't exist or isn't the
-  // caller's returns an empty page rather than an error.
+  // `gearItemUuid`/`courseUuid`/`speciesUuid`/`personUuid` to only return dives
+  // that belong to a given trip / were made at a given site / used a given piece
+  // of gear / were part of a given training course / recorded a given species /
+  // name a given person. The filters are combinable, and one naming something
+  // that doesn't exist or isn't the caller's returns an empty page rather than
+  // an error.
   //
-  // `courseUuid` and `speciesUuid` come last rather than beside `tripUuid`, where
+  // `courseUuid`, `speciesUuid` and `personUuid` come last rather than beside `tripUuid`, where
   // they belong by meaning: these are positional, and inserting a parameter would
   // silently re-point every existing call's site and gear filters. Appending is
   // the only safe direction, which is why each new filter joins the end.
@@ -1042,6 +1054,7 @@ export const divesAPI = {
     gearItemUuid?: string,
     courseUuid?: string,
     speciesUuid?: string,
+    personUuid?: string,
   ): Promise<PaginatedDivesResponse> {
     const response = await apiClient.get(`/dives`, {
       params: {
@@ -1052,6 +1065,7 @@ export const divesAPI = {
         ...(gearItemUuid !== undefined ? { gear_item_uuid: gearItemUuid } : {}),
         ...(courseUuid !== undefined ? { course_uuid: courseUuid } : {}),
         ...(speciesUuid !== undefined ? { species_uuid: speciesUuid } : {}),
+        ...(personUuid !== undefined ? { person_uuid: personUuid } : {}),
       },
     });
     return response.data;

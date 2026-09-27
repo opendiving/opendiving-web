@@ -47,6 +47,11 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   fetchAllContacts: vi.fn(),
 }));
 
+vi.mock("@/lib/api/people", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  fetchAllPeople: vi.fn(),
+}));
+
 vi.mock("@/lib/api/checkin-links", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   checkinLinkAPI: { mint: vi.fn(), live: vi.fn(), revoke: vi.fn() },
@@ -65,12 +70,14 @@ const { fetchAllCertifications } = await import("@/lib/api/certifications");
 const { diveStatsAPI } = await import("@/lib/api/dive-stats");
 const { divesAPI } = await import("@/lib/api/dives");
 const { fetchAllContacts } = await import("@/lib/api/contacts");
+const { fetchAllPeople } = await import("@/lib/api/people");
 const { checkinLinkAPI } = await import("@/lib/api/checkin-links");
 
 const getCertifications = vi.mocked(fetchAllCertifications);
 const getDiveStats = vi.mocked(diveStatsAPI.getDiveStats);
 const getDives = vi.mocked(divesAPI.getDives);
 const getContacts = vi.mocked(fetchAllContacts);
+const getPeople = vi.mocked(fetchAllPeople);
 const mintLink = vi.mocked(checkinLinkAPI.mint);
 const liveLink = vi.mocked(checkinLinkAPI.live);
 const revokeLink = vi.mocked(checkinLinkAPI.revoke);
@@ -90,6 +97,7 @@ const oneCard = [
     agency: "padi" as const,
     name: "Rescue Diver",
     contact_uuid: "contact-1",
+    instructor_uuid: "person-1",
     user_uuid: "user-1",
     created_at: "2026-01-01T00:00:00+00:00",
   },
@@ -102,6 +110,17 @@ const theirShop = [
     roles: ["school"],
     notes: "",
     user_uuid: "user-1",
+    created_at: "2026-01-01T00:00:00+00:00",
+  },
+];
+
+const theirInstructor = [
+  {
+    uuid: "person-1",
+    name: "Alex Diver",
+    notes: "",
+    username: null,
+    dive_count: 0,
     created_at: "2026-01-01T00:00:00+00:00",
   },
 ];
@@ -120,6 +139,7 @@ beforeEach(() => {
   getDiveStats.mockReset().mockResolvedValue(stats);
   getDives.mockReset().mockResolvedValue(noDives);
   getContacts.mockReset().mockResolvedValue(theirShop);
+  getPeople.mockReset().mockResolvedValue(theirInstructor);
   mintLink.mockReset().mockResolvedValue({
     token: "tok-1",
     expires_at: "2026-09-27T10:00:00Z",
@@ -139,9 +159,21 @@ describe("CheckInPage", () => {
 
     expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
     expect(screen.getByText("142")).toBeInTheDocument();
-    // The card's dive centre, by name: the card holds only its uuid.
+    // The card's dive centre and instructor, by name: the card holds only
+    // their uuids.
     expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
+    expect(screen.getByText("Alex Diver")).toBeInTheDocument();
     expect(retry()).toBeNull();
+  });
+
+  it("keeps the cards when the people fail, and leaves their instructors off", async () => {
+    getPeople.mockRejectedValue(new Error("500"));
+    render(<CheckInPage />);
+
+    expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
+    expect(screen.queryByText("Instructor")).toBeNull();
+    expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
+    expect(retry()).not.toBeNull();
   });
 
   it("keeps the cards when the contacts fail, and leaves their dive centres off", async () => {

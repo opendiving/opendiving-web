@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  * comment there.
  */
 export function DiveDetailCards() {
-  const { dive, isLoading, trip, course, contact, refreshDive } =
+  const { dive, isLoading, trip, course, contact, people, refreshDive } =
     useDiveDetail();
 
   // Dimmed, not replaced, while the next dive loads: these cards still describe
@@ -33,6 +33,7 @@ export function DiveDetailCards() {
         trip={trip}
         course={course}
         contact={contact}
+        people={people}
         onRecordingsChanged={refreshDive}
       />
     </div>

@@ -10,6 +10,7 @@ import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { contactsAPI, Contact } from "@/lib/api/contacts";
+import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveNeighborNav } from "@/components/dives/dive-neighbor-nav";
 import { DiveMergeAction } from "@/components/dives/dive-merge-action";
@@ -173,6 +174,14 @@ export default function DiveDetailLayout({
     };
   }, [tripUuid, courseUuid, contactUuid]);
 
+  // The names behind the dive's people, read as a whole list rather than one
+  // request per person. Keyed on uuids rather than on the dive, so a step to a
+  // dive with the same buddy asks for nothing, and one with a new person reads
+  // the list again.
+  const people = usePeopleByUuid(
+    user ? (dive?.people ?? []).map((reference) => reference.person_uuid) : [],
+  );
+
   // Null while a lookup for *this* dive's trip, course or contact is still in
   // flight - the row is missing for a round trip rather than describing the dive
   // before it, which is the same trade the dead-until-known arrows make.
@@ -285,6 +294,7 @@ export default function DiveDetailLayout({
           trip,
           course,
           contact,
+          people,
           refreshDive,
         }}
       >

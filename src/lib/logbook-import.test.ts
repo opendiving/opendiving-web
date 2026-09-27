@@ -62,6 +62,7 @@ describe("collectionLabel", () => {
         "gear_service_records",
         "certifications",
         "contacts",
+        "people",
       ].map(collectionLabel),
     ).toEqual([
       "Dives",
@@ -75,6 +76,7 @@ describe("collectionLabel", () => {
       "Service records",
       "Certifications",
       "Contacts",
+      "People",
     ]);
   });
 
@@ -164,6 +166,9 @@ describe("noteIsWarning", () => {
         "recording_filled",
         "check_in_detail_written",
         "portrait_kept",
+        // A person linked to the account its entry names: what the file asked
+        // for, under the limit a typed username counts against.
+        "account_linked",
       ].some(noteIsWarning),
     ).toBe(false);
   });

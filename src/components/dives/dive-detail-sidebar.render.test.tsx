@@ -5,6 +5,7 @@ import type { LocationsMapProps } from "@/components/map/locations-map";
 import type { Dive, DiveSiteSummary } from "@/lib/api/dives";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
+import type { Person } from "@/lib/api/people";
 import type { UnitSystem } from "@/lib/units";
 
 // These renders read the diver's units, so they need an auth context. Held in a
@@ -75,6 +76,7 @@ function renderSidebar(
   subject: Dive,
   course: Course | null = null,
   contact: Contact | null = null,
+  people: Record<string, Person> = {},
 ) {
   return render(
     <DiveDetailSidebar
@@ -82,6 +84,7 @@ function renderSidebar(
       trip={null}
       course={course}
       contact={contact}
+      people={people}
       onRecordingsChanged={vi.fn()}
     />,
   );
@@ -332,6 +335,54 @@ describe("DiveDetailSidebar dive center", () => {
 
     expect(
       screen.queryByRole("heading", { name: "Dive Center" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("DiveDetailSidebar people", () => {
+  const person = (
+    uuid: string,
+    name: string,
+    username: string | null = null,
+  ): Person => ({
+    uuid,
+    name,
+    username,
+    notes: "",
+    dive_count: 1,
+    created_at: "2026-03-01T09:00:00Z",
+  });
+  const ALEX = person("person-alex", "Alex M.", "alexm");
+  const SAM = person("person-sam", "Sam");
+  const PEOPLE = { [ALEX.uuid]: ALEX, [SAM.uuid]: SAM };
+
+  it("names each person with their role and linked username, in the dive's order", () => {
+    renderSidebar(
+      dive({
+        people: [
+          { person_uuid: SAM.uuid, role: "guide" },
+          { person_uuid: ALEX.uuid, role: null },
+        ],
+      }),
+      null,
+      null,
+      PEOPLE,
+    );
+
+    expect(screen.getByRole("heading", { name: "People" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("listitem").map((item) => item.textContent),
+    ).toEqual(["SamGuide", "Alex M. @alexm"]);
+    expect(screen.getByRole("link", { name: "Alex M." })).toHaveAttribute(
+      "href",
+      "/people/person-alex",
+    );
+  });
+
+  it("shows no card until a name is known, nor for a dive with nobody on it", () => {
+    renderSidebar(dive({ people: [{ person_uuid: SAM.uuid, role: "buddy" }] }));
+    expect(
+      screen.queryByRole("heading", { name: "People" }),
     ).not.toBeInTheDocument();
   });
 });

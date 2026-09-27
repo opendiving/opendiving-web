@@ -32,6 +32,8 @@ export interface SharedCheckInCertification {
   certification_number?: string | null;
   certified_on?: string | null;
   expires_on?: string | null;
+  // Names where `Certification` carries `instructor_uuid` and `contact_uuid`:
+  // whoever opens a link can resolve no uuid.
   instructor_name?: string | null;
   contact_name?: string | null;
   front_content_type: string | null;

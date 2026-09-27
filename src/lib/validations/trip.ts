@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { notesField } from "./notes";
 import { locationSchema } from "./location";
+import { personReferenceSchema } from "./person";
 
 // Date fields use a plain "YYYY-MM-DD" string (the native value format of
 // `<input type="date">`) rather than the "" placeholder trick used for
@@ -51,6 +52,8 @@ export const tripFormSchema = z.object({
     .array(tripPartSchema)
     .max(MAX_TRIP_PARTS, `A trip cannot have more than ${MAX_TRIP_PARTS} parts`)
     .optional(),
+  // Who came along, in the diver's order.
+  people: z.array(personReferenceSchema).optional(),
   notes: notesField().optional(),
 });
 

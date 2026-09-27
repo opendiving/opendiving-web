@@ -195,22 +195,63 @@ describe("the check-in link", () => {
       ),
     ).toHaveTextContent(/section 4\.9/);
     expect(
-      screen.getByText(/The invitation and\s+check-in link grants above/),
+      screen.getByText(
+        /The invitation, check-in link and linking\s+grants above/,
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/The next two paragraphs are the two things/),
+      screen.getByText(/The next three paragraphs are the three things/),
     ).toBeInTheDocument();
   });
 
-  it("is on §2's list, and §2 counts two cases of one person shown another", async () => {
+  it("is on §2's list, and §2 counts three cases of one person shown another", async () => {
     await renderPage(false);
 
     expect(
       screen.getByText(/share it as a link that works\s+for a day/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/in two cases only/)).toHaveTextContent(
+    expect(screen.getByText(/in three cases only/)).toHaveTextContent(
       /a check-in link you make/,
     );
+  });
+});
+
+// Linking a person to an account is the third thing shown across accounts, and the
+// first that shows the diver something of another account's rather than the other
+// way round. It gets the same pair the check-in link did: a grant of its own here,
+// pointing at a privacy section of its own, and a place in the count §2 keeps.
+describe("linking a person to an account", () => {
+  it("has a grant of its own in §5, naming what it shows and what the export carries", async () => {
+    await renderPage(false);
+
+    const grant = screen.getByText(
+      /Where you link a person you recorded to an account/,
+    );
+    expect(grant).toHaveTextContent(/section 4\.10/);
+    expect(grant).toHaveTextContent(/current username/);
+    expect(grant).toHaveTextContent(/identifier, which also encodes when the/);
+    expect(grant).toHaveTextContent(/it is told nothing/);
+  });
+
+  it("is counted in §2, which no longer says there are no dive buddies", async () => {
+    await renderPage(false);
+
+    expect(screen.getByText(/in three cases only/)).toHaveTextContent(
+      /a person you link to an account here/,
+    );
+    expect(screen.queryByText(/no dive buddies/)).toBeNull();
+    // What §2 keeps saying, which is still true.
+    expect(screen.getByText(/in three cases only/)).toHaveTextContent(
+      /no public profiles/,
+    );
+  });
+
+  it("counts a person among what can be somebody else's data", async () => {
+    await renderPage(false);
+
+    expect(
+      screen.getByText(/Three things this copy expects you to hold/),
+    ).toHaveTextContent(/A person is the plainest\s+case/);
   });
 });
 

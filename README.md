@@ -82,7 +82,13 @@ one.
 - **Contacts** — the dive centers, schools, shops, clubs and places you stayed, each kept once with
   its phone, email, website and address, and picked from a list for a dive, a course, a card, a gear
   service or a trip part. A dive logged on a course takes its dive center from it, and a trip names
-  who you dived with from its dives.
+  its dive centers from its dives.
+- **People** — your buddies, guides, instructors, fellow students and whoever came along, each kept
+  once and picked for a dive, a trip or a course with the role they had that time; a course's and a
+  card's instructor is one of them. Type a name that is new and it becomes a person. Link one to
+  their account on the same instance by its username and you see that account's current `@username`
+  beside the name, nothing else of theirs, and they are not told. UDDF and Subsurface buddies arrive
+  as people when you import.
 - **Full export** — one click to take _everything_ out in open formats: a **DiveJSON** document
   holding the whole logbook, a **UDDF** one other programs import, a **CSV** for a spreadsheet, or a
   complete **archive** carrying all three alongside every dive-computer file you uploaded, every

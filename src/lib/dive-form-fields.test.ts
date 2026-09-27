@@ -87,6 +87,21 @@ describe("the vocabulary is the form's own optional fields", () => {
   });
 });
 
+describe("the vocabulary's order", () => {
+  it("puts the people straight after the dive center, the slot the API gives them", () => {
+    // Declaration order is the order the API stores a hidden set in and the order
+    // the Fields dialog lists its rows, and the form renders the field right under
+    // the dive center - so all three agree on this one slot.
+    expect(
+      DIVE_FORM_FIELDS.slice(
+        DIVE_FORM_FIELDS.indexOf("contact_uuid"),
+        DIVE_FORM_FIELDS.indexOf("contact_uuid") + 2,
+      ),
+    ).toEqual(["contact_uuid", "people"]);
+    expect(EMPTY_DIVE_FORM_VALUES.people).toEqual([]);
+  });
+});
+
 describe("the panel's registry", () => {
   it("carries one entry per key, in the vocabulary's own order", () => {
     expect(DIVE_FORM_FIELD_REGISTRY.map((entry) => entry.key)).toEqual([

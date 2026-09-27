@@ -18,7 +18,7 @@ import { PROJECT_OPERATOR } from "@/lib/operator";
 // The last test in this block is what holds that - a sentence claiming no control
 // exists is the specific thing this section may no longer say.
 //
-// This is also where the section's conditional half is pinned. §4.10 and the Google
+// This is also where the section's conditional half is pinned. §4.11 and the Google
 // storage key exist only where an instance has Google sign-in configured, so every
 // count here has two correct answers rather than one, and an instance that has not
 // turned Google on must not read as though it had.
@@ -214,7 +214,7 @@ describe.each([
     expect(heading.tagName).toBe("H3");
     for (const pointer of [
       /no setting that makes any of it public/,
-      /There are two exceptions\./,
+      /There are three exceptions\./,
       /nothing is public or shared, so there is\s+nothing to switch off/,
     ]) {
       expect(screen.getByText(pointer)).toHaveTextContent(/section 4\.9/i);
@@ -222,6 +222,42 @@ describe.each([
     expect(screen.getByText(/nothing to switch off/)).toHaveTextContent(
       /Revoke/,
     );
+  });
+
+  // Linking a person to an account is the third thing shown across accounts, and
+  // the first that runs towards the diver doing it. It owes a section of its own,
+  // a line in the exceptions count, and the four facts the section exists to state:
+  // what the linker sees, that the account is told nothing, the identifier the
+  // export carries and what it encodes, and what an import can link.
+  it("gives linking a person a section of its own, and counts it among the exceptions", async () => {
+    await renderPage({ google });
+
+    const heading = screen.getByText(/4\.10 Linking a Person to an Account/);
+    expect(heading.tagName).toBe("H3");
+    expect(screen.getByText(/There are three exceptions\./)).toHaveTextContent(
+      /section 4\.10/i,
+    );
+    expect(
+      screen.getByText(/one of the three places in the software/),
+    ).toHaveTextContent(/section 4\.10/);
+
+    const section: string[] = [];
+    for (
+      let node = heading.nextElementSibling;
+      node && node.tagName === "P";
+      node = node.nextElementSibling
+    ) {
+      section.push(node.textContent ?? "");
+    }
+    const text = section.join(" ");
+    expect(text).toMatch(/current username/);
+    expect(text).toMatch(/What the account is told:\s*nothing/);
+    expect(text).toMatch(/identifier/);
+    expect(text).toMatch(/when that account was\s+created/);
+    expect(text).toMatch(/a file you import can\s+link a person/);
+    expect(text).toMatch(/every\s+person linked to it is simply unlinked/);
+    // And the dive-buddy denial is gone from the paragraph that used to make it.
+    expect(screen.queryByText(/There are no dive buddies/)).toBeNull();
   });
 
   // §6.1 is the list of what Settings can do without asking anyone, and the
@@ -493,9 +529,9 @@ describe("the Google half of the page", () => {
   // section arrives before Google: after a shift the old ones would pass while
   // pinning nothing, since a query for Google under its old number finds nothing
   // whether or not the page is right. What is pinned is the set: §4.8 is the
-  // invitations section and §4.9 the check-in links, both always here, and Google
-  // is §4.10 and is here only when it is configured.
-  it("ends section 4 at 4.9 with no gap when Google is unconfigured", async () => {
+  // invitations section, §4.9 the check-in links and §4.10 linking a person, all
+  // always here, and Google is §4.11 and is here only when it is configured.
+  it("ends section 4 at 4.10 with no gap when Google is unconfigured", async () => {
     await renderPage({ google: false });
 
     expect(screen.getByText(/4\.7 Legal Requirements/)).toBeInTheDocument();
@@ -503,15 +539,18 @@ describe("the Google half of the page", () => {
       screen.getByText(/4\.8 Inviting Someone to This Copy/),
     ).toBeInTheDocument();
     expect(screen.getByText(/4\.9 Check-in Links/)).toBeInTheDocument();
-    expect(screen.queryByText(/4\.10 Signing In with Google/)).toBeNull();
-    expect(screen.queryByText(/^4\.1[0-9] /)).toBeNull();
+    expect(
+      screen.getByText(/4\.10 Linking a Person to an Account/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/4\.11 Signing In with Google/)).toBeNull();
+    expect(screen.queryByText(/^4\.1[1-9] /)).toBeNull();
     expect(document.querySelector('a[href*="policies.google.com"]')).toBeNull();
     expect(storageEntries().some((entry) => entry.includes("google"))).toBe(
       false,
     );
   });
 
-  it("numbers Google 4.10, after the check-in links section, where it is configured", async () => {
+  it("numbers Google 4.11, after the linking section, where it is configured", async () => {
     await renderPage({ google: true });
 
     expect(
@@ -519,9 +558,12 @@ describe("the Google half of the page", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/4\.9 Check-in Links/)).toBeInTheDocument();
     expect(
-      screen.getByText(/4\.10 Signing In with Google/),
+      screen.getByText(/4\.10 Linking a Person to an Account/),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/4\.9 Signing In with Google/)).toBeNull();
+    expect(
+      screen.getByText(/4\.11 Signing In with Google/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/4\.10 Signing In with Google/)).toBeNull();
   });
 
   // §10.4 used to name Google as one of "two outside parties [that] act on their

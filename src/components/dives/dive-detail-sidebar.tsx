@@ -5,6 +5,7 @@ import { Dive, WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { Trip } from "@/lib/api/trips";
 import { Course } from "@/lib/api/courses";
 import { Contact } from "@/lib/api/contacts";
+import type { Person } from "@/lib/api/people";
 import { formatWebsite } from "@/lib/contact";
 import { formatDateTime } from "@/lib/date-time";
 import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
@@ -15,6 +16,7 @@ import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
+import { PeopleList } from "@/components/people/people-list";
 import type { MappableLocation } from "@/components/map/locations-map";
 import {
   Building2,
@@ -44,12 +46,17 @@ interface DiveDetailSidebarProps {
   /** The training course this dive was part of, resolved the same way and with the
    * same three meanings for null. */
   course: Course | null;
-  /** Who the dive was dived with, resolved the same way and with the same three
-   * meanings for null. */
+  /** The dive center that ran the dive, resolved the same way and with the same
+   * three meanings for null. */
   contact: Contact | null;
+  /** The diver's people by uuid, for the names behind `dive.people`. A person it
+   * does not hold - still loading, or the read failed - has no row. */
+  people?: Readonly<Record<string, Person>>;
   /** Called after a recording or one of its files changes, so the dive can be re-read. */
   onRecordingsChanged: () => void;
 }
+
+const NO_PEOPLE: Readonly<Record<string, Person>> = {};
 
 // A recorded pair as a point, or null when the dive has no fix on that side.
 //
@@ -75,9 +82,14 @@ export function DiveDetailSidebar({
   trip,
   course,
   contact,
+  people = NO_PEOPLE,
   onRecordingsChanged,
 }: DiveDetailSidebarProps) {
   const units = useUnits();
+  const divePeople = dive.people ?? [];
+  const hasPeople = divePeople.some(
+    (reference) => people[reference.person_uuid],
+  );
   const hasEnvironmentInfo =
     dive.bottom_temperature != null ||
     dive.visibility != null ||
@@ -276,6 +288,20 @@ export function DiveDetailSidebar({
                 </span>
               </a>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Beside the dive center, and its own card for the reason that one is:
+          who the diver was with is a fact about the dive whether or not a shop
+          ran it. */}
+      {hasPeople && (
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">People</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PeopleList people={divePeople} resolved={people} />
           </CardContent>
         </Card>
       )}

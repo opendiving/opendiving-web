@@ -135,7 +135,6 @@ describe("certificationSchema", () => {
     it.each([
       ["name", 256],
       ["certification_number", 65],
-      ["instructor_name", 256],
       ["instructor_number", 65],
       ["notes", NOTES_MAX_LENGTH + 1],
     ])("rejects an over-long %s", (field, length) => {

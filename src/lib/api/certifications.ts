@@ -205,15 +205,16 @@ export interface Certification {
   // Most recreational certifications never expire; rescue, first-aid and most
   // technical ones do.
   expires_on?: string | null;
-  instructor_name?: string | null;
+  // Who signed the card - a person, by uuid - and the number printed beside them.
+  instructor_uuid?: string | null;
   instructor_number?: string | null;
   // Who ran the course the card came out of - a contact, by uuid.
   contact_uuid?: string | null;
   notes?: string;
   // The training course this card came out of, if the diver recorded one. The
-  // instructor fields and the contact above are deliberately *not* derived from
-  // it: imported history arrives certification-first, with no course to hang
-  // them on, so a certification has to stand alone.
+  // instructor and the contact above are deliberately *not* derived from it:
+  // imported history arrives certification-first, with no course to hang them
+  // on, so a certification has to stand alone.
   course_uuid?: string | null;
   // Stored card images, embedded by the API so the list can show which cards have
   // photos without a request per row. Optional so a client built against an older
@@ -230,17 +231,18 @@ export interface CertificationCreate {
   certification_number?: string | null;
   certified_on?: string | null;
   expires_on?: string | null;
-  instructor_name?: string | null;
+  instructor_uuid?: string | null;
   instructor_number?: string | null;
   contact_uuid?: string | null;
   notes?: string;
   course_uuid?: string | null;
 }
 
-// `null` on `course_uuid` or `contact_uuid` detaches the certification from its
-// course or its contact; omitting the key leaves the link alone. The API takes
-// this shape as its own `CertificationUpdateRequest`, kept apart from the schema
-// its admin panel writes through - neither uuid is a column there.
+// `null` on `course_uuid`, `contact_uuid` or `instructor_uuid` detaches the
+// certification from its course, its contact or its instructor; omitting the key
+// leaves the link alone. The API takes this shape as its own
+// `CertificationUpdateRequest`, kept apart from the schema its admin panel writes
+// through - none of the three uuids is a column there.
 export type CertificationUpdate = Partial<CertificationCreate>;
 
 export type PaginatedCertificationsResponse = PaginatedResponse<Certification>;

@@ -858,6 +858,19 @@ describe("buildDiveUpdate", () => {
     );
   });
 
+  // The API replaces a dive's people wholesale, so the list goes out whole -
+  // roles, order and all - and an emptied one as `[]`, which is how "nobody"
+  // is said. Omitted, it leaves them alone.
+  it("sends the people whole, an emptied list included", () => {
+    const people = [
+      { person_uuid: "person-2", role: "guide" },
+      { person_uuid: "person-1", role: null },
+    ];
+    expect(buildDiveUpdate({ people }).people).toEqual(people);
+    expect(buildDiveUpdate({ people: [] }).people).toEqual([]);
+    expect(buildDiveUpdate({})).not.toHaveProperty("people");
+  });
+
   // Same distinction, for the nullable measurements.
   it("distinguishes a cleared measurement from an untouched one", () => {
     const cleared = buildDiveUpdate({ max_depth: null, weight: null });
@@ -997,6 +1010,12 @@ describe("diveToFormValues", () => {
     created_at: "2026-04-04T12:00:00+00:00",
     mixtures: [],
   };
+
+  it("carries the dive's people, and none for a dive read without them", () => {
+    const people = [{ person_uuid: "person-1", role: "buddy" }];
+    expect(diveToFormValues({ ...DIVE, people }).people).toEqual(people);
+    expect(diveToFormValues(DIVE).people).toEqual([]);
+  });
 
   it("seeds no cylinders for a dive that has none", () => {
     // The regression this guards: seeding a `DEFAULT_MIXTURE` here used to be

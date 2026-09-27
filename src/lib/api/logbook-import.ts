@@ -160,7 +160,12 @@ export type ImportNoteCode =
   | "check_in_detail_written"
   // The archive's portrait was taken, and the account's had changed since the
   // preview, so the account's stayed. Information: nothing was lost.
-  | "portrait_kept";
+  | "portrait_kept"
+  // A person was linked (apply), or would be (preview), to the account on this
+  // instance its entry names; the sentence names that account's current
+  // username. Information: the link is what the file asked for, under the same
+  // per-user limit a typed username counts against.
+  | "account_linked";
 
 /** One thing the import decided, addressed to the diver. */
 export interface ImportNote {

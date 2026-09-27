@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Download, Loader2 } from "lucide-react";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { useContact } from "@/hooks/useContact";
+import { usePerson } from "@/hooks/usePerson";
 import {
   certificationsAPI,
   certificationAgencyLabel,
@@ -103,6 +104,24 @@ function ContactRow({ contactUuid }: { contactUuid: string }) {
     <div>
       <dt className="text-xs text-muted-foreground">Dive center</dt>
       <dd className="text-sm">{contact.name}</dd>
+    </div>
+  );
+}
+
+// Who signed the card, on the same terms: a person, by uuid, named once the
+// record has arrived and linked to their page.
+function InstructorRow({ personUuid }: { personUuid: string }) {
+  const person = usePerson(personUuid);
+  if (!person) return null;
+
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">Instructor</dt>
+      <dd className="text-sm">
+        <Link href={`/people/${person.uuid}`} className="hover:underline">
+          {person.name}
+        </Link>
+      </dd>
     </div>
   );
 }
@@ -238,10 +257,9 @@ export function CertificationViewDialog({
             {certification.contact_uuid && (
               <ContactRow contactUuid={certification.contact_uuid} />
             )}
-            <DetailRow
-              label="Instructor"
-              value={certification.instructor_name}
-            />
+            {certification.instructor_uuid && (
+              <InstructorRow personUuid={certification.instructor_uuid} />
+            )}
             <DetailRow
               label="Instructor number"
               value={certification.instructor_number}

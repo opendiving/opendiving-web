@@ -642,7 +642,9 @@ like `GearSetDialog`'s "Create a new set".
 `CreatableCombobox` items carry an optional `hint`: a purely cosmetic second line after the name.
 Dive sites put a location there; the gear picker puts the item's type ("Apeks XTX50, Regulator"),
 since kit often has cryptic model names and the category is what makes the dropdown scannable. The
-name is `hint` rather than `location` because the slot is not about places.
+name is `hint` rather than `location` because the slot is not about places. A person's is the linked
+account's `@username`, the second field the people search matches, so a row found by its username
+shows why it is there.
 
 ## Drag-to-reorder uses Pointer Events and no library
 
@@ -4300,7 +4302,7 @@ page, where `app/privacy/page.test.tsx` pins it, not here.
 `components/layout/landing-page.tsx` makes the claim and it holds: the software ships no tracking or
 analytics technology — not disabled, absent, with no such dependency in the build. Sign-in and map
 functionality that contacts a third party is function, not tracking, and each is disclosed on
-`/privacy` rather than denied; Google sign-in on a Google-enabled instance is disclosed in §4.10.
+`/privacy` rather than denied; Google sign-in on a Google-enabled instance is disclosed in §4.11.
 
 §10 does not claim "no third-party cookies". The app sets none, but the operator picks the tile
 provider through `MAP_TILE_URL`, and that provider's servers answer the image requests §4.4
@@ -4353,17 +4355,17 @@ passes. A shorter list is not a stronger guarantee.
 ## Privacy page: The numbering in §4 is load-bearing, and conditional sections sit last
 
 This file pins privacy sections by number and by quoted content — §4.4 map tiles, §4.5 geocoder,
-§4.6 species cache, §4.7 Legal Requirements, §4.8 invitations, §4.9 check-in links, §4.10 Google
-sign-in — so a reword at the right number falsifies a pin silently. A stale privacy page is worse
-than a vague one.
+§4.6 species cache, §4.7 Legal Requirements, §4.8 invitations, §4.9 check-in links, §4.10 linking a
+person, §4.11 Google sign-in — so a reword at the right number falsifies a pin silently. A stale
+privacy page is worse than a vague one.
 
-Conditional sections sit last. §4.10 exists only when `GOOGLE_CLIENT_ID` is set, so its absence
+Conditional sections sit last. §4.11 exists only when `GOOGLE_CLIENT_ID` is set, so its absence
 leaves no gap. The invitations disclosure is unconditional — `REGISTRATION_MODE` flips with a
 restart, and a section that came and went would change under a reader for no stated reason — so it
-holds a fixed number and hedges in prose ("where this copy is invite-only"); the check-in links
-section is unconditional because every copy offers them. `page.test.tsx` asserts §4.8 and §4.9
-always present and §4.10 present only when configured. `git grep '4\.10'` misses the page's and
-`lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.(9|10)'`.
+holds a fixed number and hedges in prose ("where this copy is invite-only"); the check-in links and
+linking sections are unconditional because every copy offers them. `page.test.tsx` asserts §4.8 to
+§4.10 always present and §4.11 present only when configured. `git grep '4\.11'` misses the page's
+and `lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.(9|1[01])'`.
 
 ## The ICO's `localStorage` suggestion, read and answered rather than passed over
 
@@ -4836,6 +4838,17 @@ From a certification, "Add course..." then "Add dive center..." nests three dial
 `dialogFormSubmit` stops each submit at its own form at any depth, and a render test follows the
 innermost save out.
 
+## People take their host's role, and a course's instructor has a field of its own
+
+A person added from `PeopleMultiSelect` starts with the role its host implies: `buddy` on a dive,
+`student` on a course, none on a trip, where who came along has no common word. The diver changes it
+on the row. The course dialog holds the first `instructor` in a `PersonCombobox` of its own and
+writes it back first, so naming an instructor stays one pick with the role set. A new dive carries
+the last dive's people as it carries the dive center, except an instructor or a student, who stay on
+their course unless the new dive is on the same one (`carriedPeople`). An unmatched name on Enter
+makes a person: a name is a whole person, where a contact would lack its role. Rejected: no default,
+and carrying everyone, which puts last week's instructor on this week's fun dive.
+
 ## The skills are repo content; what wires up the hook is not
 
 `.claude/skills/` is committed (`!.claude/skills/` is the ignore file's one exception) because both
@@ -5118,10 +5131,11 @@ basemap is a MapLibre style, and raster is the escape hatch".
 
 ## A course fills a certification's fields in once, and never touches what the diver typed
 
-Course and certification each carry their own `name`, `contact_uuid`, `instructor_name`,
-`instructor_number` and `agency`/`agency_other`, because imported history arrives
-certification-first. Picking a course in the create dialog copies those fields once, the contact as
-the reference it is, under the same guard as the text.
+Course and certification each carry their own `name`, `contact_uuid`, instructor (the course's first
+`instructor` on `people`, the card's `instructor_uuid`), `instructor_number` and
+`agency`/`agency_other`, because imported history arrives certification-first. Picking a course in
+the create dialog copies those fields once, the contact and the instructor as the references they
+are, under the same guard as the text.
 
 Rejected: split ownership (loses data on a standalone card, cannot express a referral); a read-time
 fallback (ambiguous ownership); fill-only-if-empty (`agency` defaults to `padi`; course A's values

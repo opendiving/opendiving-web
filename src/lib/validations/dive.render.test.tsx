@@ -202,6 +202,9 @@ describe("the edit form's round trip", () => {
         // omitted key means "leave them alone", so a form that showed the whole
         // set and omitted it could never express "remove them all".
         species_uuids: [],
+        // And the same for the people, which a dive read without any seeds as
+        // nobody.
+        people: [],
         notes: "Thermocline at 18m",
         mixtures: [],
         // An unrecorded water type goes out as the null it arrived as: the seed

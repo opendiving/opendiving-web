@@ -253,6 +253,17 @@ export default async function PrivacyPage() {
                   which you enter
                 </li>
                 <li>
+                  <strong>People:</strong> The buddies, guides, instructors,
+                  fellow students and companions you record, to name them from
+                  your dives, trips, courses and certifications &mdash; a name,
+                  the role each had on a dive, a trip or a course, and, if you
+                  add them, an email address, a phone number and your notes.
+                  What you record about a person is somebody else&rsquo;s data,
+                  which you enter. You can link a person to their account on
+                  this copy by typing its username, and section 4.10 says what
+                  that shows, and to whom
+                </li>
+                <li>
                   <strong>Support Requests:</strong> Whatever you write on the
                   support page, if this copy has one configured, and the address
                   you give to reply to
@@ -277,7 +288,7 @@ export default async function PrivacyPage() {
                 is fetched by this server and stored here as your avatar &mdash;
                 once, when the account is made, and never again afterwards. That
                 only happens on instances with Google sign-in turned on; section
-                4.10 describes it if this one does.
+                4.11 describes it if this one does.
               </p>
               <p className="text-foreground mb-4">
                 Two more addresses can reach this copy before any account
@@ -361,15 +372,16 @@ export default async function PrivacyPage() {
                   email address a sign-in link, a support request or an
                   invitation was requested for, and by account id for things you
                   can only do signed in, such as exporting your data, importing
-                  a logbook, changing your username or email, registering a
-                  passkey, inviting somebody, and looking up place and species
-                  names. Each counter is a number and expires by itself: after
-                  15 minutes on the sign-in and account paths, after an hour on
-                  the support form, the invite-request form, exports, logbook
-                  imports, and the place- and species-name lookups. Other
-                  counters exist that hold no identifier at all &mdash; they cap
-                  how often this server as a whole may call an outside provider,
-                  and are keyed on the provider, not on anyone
+                  a logbook, changing your username or email, linking a person
+                  to an account, registering a passkey, inviting somebody, and
+                  looking up place and species names. Each counter is a number
+                  and expires by itself: after 15 minutes on the sign-in and
+                  account paths, after an hour on the support form, the
+                  invite-request form, exports, logbook imports, and the place-
+                  and species-name lookups. Other counters exist that hold no
+                  identifier at all &mdash; they cap how often this server as a
+                  whole may call an outside provider, and are keyed on the
+                  provider, not on anyone
                 </li>
                 <li>
                   <strong>Passkey labels:</strong> If you register a passkey, a
@@ -438,9 +450,10 @@ export default async function PrivacyPage() {
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
                   <strong>Provide the Service:</strong> Store your dives, sites,
-                  trips, gear, courses, certifications, contacts and check-in
-                  details, show them back to you, and show your check-in page to
-                  whoever holds a check-in link you made
+                  trips, gear, courses, certifications, contacts, people and
+                  check-in details, show them back to you, show you the current
+                  username of an account you linked a person to, and show your
+                  check-in page to whoever holds a check-in link you made
                 </li>
                 <li>
                   <strong>Account Management:</strong> Sign you in, keep you
@@ -500,12 +513,12 @@ export default async function PrivacyPage() {
                 Nothing you enter is published. There are no public profiles, no
                 public dive logs, no feeds, no forums, and no ratings or
                 reviews. Every dive, dive site, trip, gear item, course,
-                certification and contact belongs to one account and is visible
-                to that account alone. There is no setting that makes any of it
-                public, because there is nothing for such a setting to do. The
-                one exception is one you make yourself, a page at a time: a
-                check-in link shows your check-in page to whoever holds it, for
-                a day, and section 4.9 says exactly what that shows.
+                certification, contact and person belongs to one account and is
+                visible to that account alone. There is no setting that makes
+                any of it public, because there is nothing for such a setting to
+                do. The one exception is one you make yourself, a page at a
+                time: a check-in link shows your check-in page to whoever holds
+                it, for a day, and section 4.9 says exactly what that shows.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -513,20 +526,30 @@ export default async function PrivacyPage() {
               </h3>
               <p className="text-foreground mb-4">
                 Nothing you have entered is shared between accounts, and there
-                is no way to make it so. There are no dive buddies, no groups,
-                no comments, and no shared logs. Another diver with an account
-                on this same copy cannot see any dive, dive site, trip, gear
-                item, course, certification or contact of yours.
+                is no way to make it so. There are no groups, no comments and no
+                shared logs, and the people you record are your own notes about
+                them rather than a connection between two accounts. Another
+                diver with an account on this same copy cannot see any dive,
+                dive site, trip, gear item, course, certification, contact or
+                person of yours. What does cross between accounts, when you link
+                a person to one, runs towards you and is small: that an account
+                with the username you typed, or with the identifier a file you
+                imported carried, exists here; what its username is now; and, in
+                your own export, its identifier.
               </p>
               <p className="text-foreground mb-4">
-                There are two exceptions. The first is not about anything you
+                There are three exceptions. The first is not about anything you
                 entered: inviting somebody shows them your name, and shows you
                 whether they went on to register. Section 4.8 sets out exactly
                 what that discloses, in both directions. The second is exactly
                 about what you entered: a check-in link you make shows your
                 check-in page to whoever holds the link, another diver included,
                 until it expires or you revoke it. Section 4.9 sets out what
-                that shows.
+                that shows. The third runs the other way and is about another
+                account rather than yours: linking a person you recorded to an
+                account here shows you that account&rsquo;s current username,
+                and tells the account nothing. Section 4.10 sets out what that
+                discloses.
               </p>
               <p className="text-foreground mb-4">
                 The one thing every account on this copy does draw on is the
@@ -716,10 +739,11 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 Whoever runs this copy decides whether anyone may create an
                 account on it or only people who have been invited. Where it is
-                invitations, this is one of the two places in the software where
-                something about one person is shown to another &mdash; the other
-                is a check-in link, in section 4.9 &mdash; and this section is
-                the whole of it.
+                invitations, this is one of the three places in the software
+                where something about one person is shown to another &mdash; the
+                others are a check-in link, in section 4.9, and linking a person
+                to an account, in section 4.10 &mdash; and this section is the
+                whole of it.
               </p>
               <p className="text-foreground mb-4">
                 An invitation carries no code, no link and no token &mdash; it
@@ -765,17 +789,17 @@ export default async function PrivacyPage() {
               </p>
 
               {/* Unconditional for the reason §4.8 is: every diver on every copy can
-                make one, so Google stays last and takes the number after it. */}
+                make one, so Google stays last and takes the number after §4.10. */}
               <h3 className="text-xl font-semibold text-foreground mb-3">
                 4.9 Check-in Links
               </h3>
               <p className="text-foreground mb-4">
                 Your check-in page can make a link to itself, for a dive shop to
                 open on its own phone or computer &mdash; from a QR code on your
-                screen, or an address you send. This is the other place in the
-                software where something about one person is shown to another,
-                the only one that shows what you entered, and this section is
-                the whole of it.
+                screen, or an address you send. This is another of the places in
+                the software where something about one person is shown to
+                another, the only one that shows what you entered, and this
+                section is the whole of it.
               </p>
               <p className="text-foreground mb-4">
                 <strong>What a link shows:</strong> your check-in page as it
@@ -814,10 +838,73 @@ export default async function PrivacyPage() {
                 7 says when a link is deleted.
               </p>
 
+              {/* Unconditional too: every diver on every copy can link a person,
+                so Google stays last and takes the number after this one. */}
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                4.10 Linking a Person to an Account
+              </h3>
+              <p className="text-foreground mb-4">
+                A person you record &mdash; a buddy, an instructor &mdash; may
+                have an account on this same copy. Type that account&rsquo;s
+                username into the person and this copy links the two, so that
+                the username the account has now shows beside the name you gave
+                them. This is the third place in the software where something
+                about one person is shown to another, and this section is the
+                whole of it.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What you are shown:</strong> whether an account with
+                exactly that username exists here &mdash; which choosing a
+                username of your own already tells anyone, since a username that
+                exists is one you cannot take &mdash; and, once the person is
+                linked, that account&rsquo;s current username, kept current if
+                it changes. Nothing else of theirs: not their name, not their
+                picture, and nothing they have logged. Typing your own username
+                is refused, and so is typing one another of your people is
+                already linked to &mdash; the refusal names that person.{" "}
+                <strong>What the account is told:</strong> nothing. No message
+                is sent, and nothing in that account shows that anyone linked
+                it. Linking changes what you see, not what they see or hold.
+                Whoever runs this copy can see the link, because they can read
+                the database on their own machine, which is true of everything
+                on this page.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What your export carries:</strong> for each person you
+                linked, the linked account&rsquo;s identifier on this copy
+                &mdash; the same identifier that account&rsquo;s own export
+                carries for itself. It also encodes when that account was
+                created, to the millisecond, so a file you hand to somebody else
+                tells them that too.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What an import can do:</strong> a file you import can
+                link a person to the account on this copy its entry names by
+                that identifier &mdash; not your own, and not one another of
+                your people is already linked to &mdash; and the import&rsquo;s
+                report names each account it links by its current username,
+                which the file itself did not carry. So a logbook somebody else
+                exported tells whoever imports it here the current usernames of
+                the accounts its author linked. An identifier naming no account
+                here is dropped, and that person arrives unlinked.
+              </p>
+              <p className="text-foreground mb-4">
+                Since whether a username exists is something linking reveals,
+                what bounds it is a limit on how many links one account may{" "}
+                <em>attempt</em> in a quarter of an hour, typed or imported,
+                counted with the other rate limits in section 2.2. Typing the
+                username a person is already linked to again counts for nothing.
+                Clearing the username, or deleting the person, removes the link
+                at once. If the linked account is deleted, the link stays
+                through its grace period, and once the account is erased every
+                person linked to it is simply unlinked &mdash; the record you
+                kept of them stays yours.
+              </p>
+
               {googleClientId && (
                 <>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
-                    4.10 Signing In with Google
+                    4.11 Signing In with Google
                   </h3>
                   <p className="text-foreground mb-4">
                     This copy of OpenDiving offers &ldquo;Continue with
@@ -1189,8 +1276,9 @@ export default async function PrivacyPage() {
                 <li>
                   The deletion is not a flag or an archive: the account row and
                   everything hanging off it &mdash; dives, sites, trips, gear,
-                  courses, certifications, contacts &mdash; are destroyed, and
-                  the files you uploaded are unlinked from disk with them
+                  courses, certifications, contacts, people &mdash; are
+                  destroyed, and the files you uploaded are unlinked from disk
+                  with them
                 </li>
                 <li>
                   Any invitations you sent go with it, used or not. Somebody you
@@ -1198,6 +1286,11 @@ export default async function PrivacyPage() {
                   invitation and would have to be invited again by someone else.
                   Any invitation or pending request naming <em>your</em> address
                   is found by that address and removed as well
+                </li>
+                <li>
+                  Every person another diver linked to your account is unlinked.
+                  Their record of that person stays theirs, and from then on
+                  shows no username
                 </li>
                 <li>
                   Your sessions and your account security events go with it. The
@@ -1503,7 +1596,7 @@ export default async function PrivacyPage() {
                   site, and Google sets nothing in your browser under this
                   address. Signing in with Google takes you to Google, where
                   whatever it stores is its own on its own address &mdash;
-                  section 4.10 has the detail.
+                  section 4.11 has the detail.
                 </p>
               )}
               <p className="text-foreground mb-4">

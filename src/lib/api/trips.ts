@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
 import type { Location } from "./location";
+import type { PersonReference } from "./people";
 
 /**
  * One stretch of a trip: an optional date range and an optional place.
@@ -31,6 +32,10 @@ export interface Trip {
   // Ordered as the diver arranged them, not by date: a part with no dates has no
   // place in a date ordering, and the drag handle is what sets this.
   parts: TripPart[];
+  // Who came along, in the diver's order - a trip's role is often none, or
+  // `companion` for someone who stayed on the boat. Optional because a response
+  // cached before people existed carries none.
+  people?: PersonReference[];
   notes?: string;
   user_uuid: string;
   created_at: string;
@@ -41,6 +46,7 @@ export interface Trip {
 export interface TripCreate {
   name: string;
   parts?: TripPartInput[];
+  people?: PersonReference[];
   notes?: string;
 }
 
@@ -49,6 +55,8 @@ export interface TripUpdate {
   // Omitted leaves the trip's parts untouched; any array - `[]` included -
   // replaces them wholesale.
   parts?: TripPartInput[];
+  // The same wholesale-replace contract as the parts.
+  people?: PersonReference[];
   notes?: string;
 }
 

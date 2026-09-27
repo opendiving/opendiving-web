@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { CourseDialog } from "./course-dialog";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
+import type { Person } from "@/lib/api/people";
 
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
   // The status vocabulary and its default are real - the picker's options and
@@ -18,11 +19,46 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
 }));
 
+vi.mock("@/lib/api/people", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/people")>()),
+  peopleAPI: {
+    getPeople: vi.fn(),
+    getPerson: vi.fn(),
+    createPerson: vi.fn(),
+  },
+  fetchAllPeople: vi.fn(),
+}));
+
 const { coursesAPI } = await import("@/lib/api/courses");
 const { contactsAPI } = await import("@/lib/api/contacts");
+const { peopleAPI, fetchAllPeople } = await import("@/lib/api/people");
 const createCourse = vi.mocked(coursesAPI.createCourse);
 const updateCourse = vi.mocked(coursesAPI.updateCourse);
 const getContact = vi.mocked(contactsAPI.getContact);
+const getPeople = vi.mocked(peopleAPI.getPeople);
+const getPerson = vi.mocked(peopleAPI.getPerson);
+const createPerson = vi.mocked(peopleAPI.createPerson);
+
+const person = (uuid: string, name: string): Person => ({
+  uuid,
+  name,
+  notes: "",
+  username: null,
+  dive_count: 0,
+  created_at: "2026-03-01T09:00:00Z",
+});
+
+const ANA = person("person-ana", "Ana Ruiz");
+const BEN = person("person-ben", "Ben Student");
+const PEOPLE = [ANA, BEN];
+
+const page = <T,>(items: T[]) => ({
+  data: items,
+  total_count: items.length,
+  has_more: false,
+  page: 1,
+  items_per_page: 25,
+});
 
 const BLUE_OCEAN: Contact = {
   uuid: "contact-blue",
@@ -41,9 +77,14 @@ const EXISTING: Course = {
   status: "completed",
   start_date: "2026-03-02",
   end_date: "2026-03-06",
-  instructor_name: "Ana Ruiz",
   instructor_number: "TDI-99871",
   contact_uuid: BLUE_OCEAN.uuid,
+  // The instructor second, as an import may have them: the dialog finds them
+  // by role, not by place.
+  people: [
+    { person_uuid: BEN.uuid, role: "student" },
+    { person_uuid: ANA.uuid, role: "instructor" },
+  ],
   notes: "Ran the 21m and 30m dives on back gas.",
   user_uuid: "user-1",
   created_at: "2026-03-08T09:00:00Z",
@@ -55,7 +96,18 @@ beforeEach(() => {
   createCourse.mockResolvedValue(EXISTING);
   updateCourse.mockResolvedValue({ message: "Course updated" });
   getContact.mockImplementation(async () => BLUE_OCEAN);
+  getPeople.mockReset().mockImplementation(async () => page(PEOPLE));
+  getPerson.mockReset().mockImplementation(async (uuid: string) => {
+    const found = PEOPLE.find((one) => one.uuid === uuid);
+    if (!found) throw new Error("not found");
+    return found;
+  });
+  createPerson.mockReset();
+  vi.mocked(fetchAllPeople).mockReset().mockResolvedValue(PEOPLE);
 });
+
+const instructor = () => screen.getByLabelText("Instructor");
+const peopleField = () => screen.getByLabelText("People");
 
 function open(course?: Course, onSaved = vi.fn()) {
   render(
@@ -83,13 +135,97 @@ describe("CourseDialog", () => {
       expect(screen.getByLabelText("Dive center")).toHaveValue(BLUE_OCEAN.name),
     );
     expect(screen.getByLabelText("Instructor number")).toHaveValue("TDI-99871");
-    expect(screen.getByLabelText("Instructor")).toHaveValue("Ana Ruiz");
+    await waitFor(() => expect(instructor()).toHaveValue("Ana Ruiz"));
+    // Everyone else on the list below, the instructor not twice.
+    expect(
+      await screen.findByRole("combobox", { name: "Role of Ben Student" }),
+    ).toHaveValue("student");
+    expect(
+      screen.queryByRole("combobox", { name: "Role of Ana Ruiz" }),
+    ).toBeNull();
+  });
+
+  it("writes the instructor back first, as the instructor, with the rest behind", async () => {
+    open(EXISTING);
+    await waitFor(() => expect(instructor()).toHaveValue("Ana Ruiz"));
+
+    await save();
+
+    await waitFor(() => expect(updateCourse).toHaveBeenCalled());
+    expect(updateCourse.mock.calls[0][1].people).toEqual([
+      { person_uuid: ANA.uuid, role: "instructor" },
+      { person_uuid: BEN.uuid, role: "student" },
+    ]);
+    expect(updateCourse.mock.calls[0][1]).not.toHaveProperty("instructor_name");
+  });
+
+  it("names a new instructor in one step: the name, then Enter", async () => {
+    // What typing a name did while the field was text, and no more.
+    const created = person("person-new", "Robin Reef");
+    getPeople.mockImplementation(async () => page([]));
+    createPerson.mockResolvedValue(created);
+    open();
+
+    await userEvent.type(screen.getByLabelText("Course *"), "Deep Specialty");
+    await userEvent.click(instructor());
+    await screen.findByText(/No people yet/);
+    await userEvent.type(instructor(), "Robin Reef{Enter}");
+    await waitFor(() => expect(instructor()).toHaveValue("Robin Reef"));
+
+    await save();
+
+    await waitFor(() => expect(createCourse).toHaveBeenCalled());
+    expect(createCourse.mock.calls[0][0].people).toEqual([
+      { person_uuid: created.uuid, role: "instructor" },
+    ]);
+  });
+
+  it("adds the rest of the class as students", async () => {
+    open();
+
+    await userEvent.type(screen.getByLabelText("Course *"), "Open Water");
+    await userEvent.click(peopleField());
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Ben Student" }),
+    );
+    expect(
+      await screen.findByRole("combobox", { name: "Role of Ben Student" }),
+    ).toHaveValue("student");
+
+    await save();
+
+    await waitFor(() => expect(createCourse).toHaveBeenCalled());
+    expect(createCourse.mock.calls[0][0].people).toEqual([
+      { person_uuid: BEN.uuid, role: "student" },
+    ]);
+  });
+
+  it("moves a person made the instructor off the list below", async () => {
+    open(EXISTING);
+    await screen.findByRole("combobox", { name: "Role of Ben Student" });
+
+    await userEvent.click(instructor());
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Ben Student" }),
+    );
+
+    await waitFor(() => expect(instructor()).toHaveValue("Ben Student"));
+    expect(
+      screen.queryByRole("combobox", { name: "Role of Ben Student" }),
+    ).toBeNull();
+
+    await save();
+    await waitFor(() => expect(updateCourse).toHaveBeenCalled());
+    expect(updateCourse.mock.calls[0][1].people).toEqual([
+      { person_uuid: BEN.uuid, role: "instructor" },
+    ]);
   });
 
   it("sends an explicit null for every field the diver cleared", async () => {
     // The whole reason the submit maps `""` back to `null`: an omitted key
-    // leaves the stored value alone, so clearing the instructor of a course
-    // would report success and change nothing.
+    // leaves the stored value alone, so clearing the instructor number of a
+    // course would report success and change nothing. A cleared instructor is
+    // simply one no longer on the people it sends.
     open(EXISTING);
 
     await waitFor(() =>
@@ -97,15 +233,20 @@ describe("CourseDialog", () => {
         "TDI-99871",
       ),
     );
+    await waitFor(() => expect(instructor()).toHaveValue("Ana Ruiz"));
     await userEvent.clear(screen.getByLabelText("Instructor number"));
-    await userEvent.clear(screen.getByLabelText("Instructor"));
+    await userEvent.click(
+      within(instructor().parentElement!).getByRole("button", {
+        name: "Clear",
+      }),
+    );
     await save();
 
     await waitFor(() => expect(updateCourse).toHaveBeenCalled());
     expect(updateCourse.mock.calls[0][1]).toMatchObject({
       instructor_number: null,
-      instructor_name: null,
       contact_uuid: BLUE_OCEAN.uuid,
+      people: [{ person_uuid: BEN.uuid, role: "student" }],
     });
     expect(updateCourse.mock.calls[0][1]).not.toHaveProperty("training_center");
   });

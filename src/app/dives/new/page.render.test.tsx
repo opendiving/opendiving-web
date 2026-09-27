@@ -13,6 +13,7 @@ import { divesAPI, type Dive } from "@/lib/api/dives";
 import type { Species } from "@/lib/api/species";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
+import type { Person } from "@/lib/api/people";
 import {
   DIVE_FORM_ALWAYS_ON_FIELDS,
   DIVE_FORM_FIELDS,
@@ -189,9 +190,21 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => {
   };
 });
 
+// The people picker names what it holds from one read of the whole list, and
+// searches as its menu opens.
+vi.mock("@/lib/api/people", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/people")>();
+  return {
+    ...actual,
+    fetchAllPeople: vi.fn(),
+    peopleAPI: { ...actual.peopleAPI, getPeople: vi.fn(), getPerson: vi.fn() },
+  };
+});
+
 const { authAPI } = await import("@/lib/api/auth");
 const { coursesAPI } = await import("@/lib/api/courses");
 const { contactsAPI } = await import("@/lib/api/contacts");
+const people = await import("@/lib/api/people");
 const presets = await import("@/lib/api/dive-form-presets");
 const { tripsAPI } = await import("@/lib/api/trips");
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
@@ -252,6 +265,20 @@ const courseRun = (
   created_at: "2026-01-01T00:00:00Z",
 });
 
+const personNamed = (uuid: string, name: string): Person => ({
+  uuid,
+  name,
+  notes: "",
+  username: null,
+  dive_count: 0,
+  created_at: "2026-01-01T00:00:00Z",
+});
+
+const BUDDY = personNamed("person-buddy", "Alex Buddy");
+const INSTRUCTOR = personNamed("person-instructor", "Ana Instructor");
+const CLASSMATE = personNamed("person-classmate", "Ben Classmate");
+const PEOPLE = [BUDDY, INSTRUCTOR, CLASSMATE];
+
 const COURSES = [
   courseRun("course-9", "Advanced Open Water", COURSE_SHOP.uuid),
   courseRun("course-10", "Rescue Diver", OTHER_SHOP.uuid),
@@ -304,6 +331,12 @@ beforeEach(() => {
     const found = CONTACTS.find((contact) => contact.uuid === uuid);
     if (!found) throw new Error("not found");
     return found;
+  });
+  vi.mocked(people.fetchAllPeople).mockResolvedValue(PEOPLE);
+  vi.mocked(people.peopleAPI.getPeople).mockResolvedValue({
+    ...emptyPage<Person>(),
+    data: PEOPLE,
+    total_count: PEOPLE.length,
   });
 });
 
@@ -1366,6 +1399,95 @@ describe("the dive center", () => {
     await logDive();
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
     expect(sent().contact_uuid).toBeUndefined();
+  });
+});
+
+describe("the people", () => {
+  const roleOf = (name: string) =>
+    screen.findByRole("combobox", { name: `Role of ${name}` });
+  const sent = () => vi.mocked(divesAPI.createDive).mock.calls[0][0];
+  // A dive on a course, with its instructor and a classmate, and a buddy.
+  const onCourse = {
+    course_uuid: "course-9",
+    people: [
+      { person_uuid: INSTRUCTOR.uuid, role: "instructor" },
+      { person_uuid: CLASSMATE.uuid, role: "student" },
+      { person_uuid: BUDDY.uuid, role: "buddy" },
+    ],
+  };
+
+  it("carries the last dive's buddy over, and leaves its course's people on the course", async () => {
+    lastDiveWith(onCourse);
+
+    render(<NewDivePage />);
+
+    expect(await roleOf(BUDDY.name)).toHaveValue("buddy");
+    expect(
+      screen.queryByRole("combobox", { name: `Role of ${INSTRUCTOR.name}` }),
+    ).toBeNull();
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().people).toEqual([{ person_uuid: BUDDY.uuid, role: "buddy" }]);
+  });
+
+  it("arrives with the course's people and their roles from Log a dive for this course", async () => {
+    stable.searchParams = new URLSearchParams("course_uuid=course-9");
+    vi.mocked(coursesAPI.getCourse).mockResolvedValue({
+      ...COURSES[0],
+      people: [
+        { person_uuid: INSTRUCTOR.uuid, role: "instructor" },
+        { person_uuid: CLASSMATE.uuid, role: "student" },
+      ],
+    });
+    lastDiveWith({ people: [{ person_uuid: BUDDY.uuid, role: "buddy" }] });
+
+    render(<NewDivePage />);
+
+    expect(await roleOf(INSTRUCTOR.name)).toHaveValue("instructor");
+    expect(await roleOf(CLASSMATE.name)).toHaveValue("student");
+    expect(await roleOf(BUDDY.name)).toHaveValue("buddy");
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().people).toEqual([
+      { person_uuid: INSTRUCTOR.uuid, role: "instructor" },
+      { person_uuid: CLASSMATE.uuid, role: "student" },
+      { person_uuid: BUDDY.uuid, role: "buddy" },
+    ]);
+  });
+
+  it("shows a URL course's people under a set that hides the field", async () => {
+    // Basic hides the people; the diver who asked to log a dive for the course
+    // asked for its people too, and a value nobody can see is not sent unseen.
+    stable.searchParams = new URLSearchParams("course_uuid=course-9");
+    stable.auth.user.dive_form_hidden_fields = ["people"];
+    vi.mocked(coursesAPI.getCourse).mockResolvedValue({
+      ...COURSES[0],
+      people: [{ person_uuid: INSTRUCTOR.uuid, role: "instructor" }],
+    });
+
+    render(<NewDivePage />);
+
+    expect(await roleOf(INSTRUCTOR.name)).toHaveValue("instructor");
+  });
+
+  it("adds a picked person as a buddy, and lets the role change on the row", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await userEvent.click(screen.getByRole("combobox", { name: /^people$/i }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: BUDDY.name }),
+    );
+    const role = await roleOf(BUDDY.name);
+    expect(role).toHaveValue("buddy");
+    await userEvent.selectOptions(role, "guide");
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().people).toEqual([{ person_uuid: BUDDY.uuid, role: "guide" }]);
   });
 });
 

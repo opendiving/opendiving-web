@@ -81,9 +81,13 @@ export function SharedCheckInPage({ token }: { token: string }) {
   }
 
   const { summary } = loaded;
+  // The link prints names where the diver's own page holds uuids: an
+  // anonymous page can resolve nothing.
   const contactNames: Record<string, string> = {};
+  const instructorNames: Record<string, string> = {};
   for (const card of summary.certifications) {
     if (card.contact_name) contactNames[card.uuid] = card.contact_name;
+    if (card.instructor_name) instructorNames[card.uuid] = card.instructor_name;
   }
 
   return (
@@ -92,6 +96,7 @@ export function SharedCheckInPage({ token }: { token: string }) {
       units={summary.diver.units}
       certifications={summary.certifications}
       contactNames={contactNames}
+      instructorNames={instructorNames}
       isLoading={false}
       link={{
         token,

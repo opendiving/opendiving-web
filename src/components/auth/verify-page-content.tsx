@@ -222,14 +222,14 @@ function VerifyStatus({
             {purgeOn ? (
               <>
                 Restoring signs you in and brings back your dives, dive sites,
-                trips, courses, certifications, gear and contacts. After{" "}
+                trips, courses, certifications, gear, contacts and people. After{" "}
                 <span className="font-medium text-foreground">
                   {formatPurgeDay(purgeOn)}
                 </span>{" "}
                 nothing can be restored.
               </>
             ) : (
-              "Restoring signs you in and brings back your dives, dive sites, trips, courses, certifications, gear and contacts. Once the erasure date passes, nothing can be restored."
+              "Restoring signs you in and brings back your dives, dive sites, trips, courses, certifications, gear, contacts and people. Once the erasure date passes, nothing can be restored."
             )}
           </p>
           <Button onClick={onConfirm}>
