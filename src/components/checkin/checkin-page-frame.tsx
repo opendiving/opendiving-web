@@ -648,7 +648,9 @@ export function CheckInPageFrame({
               provenance: this is the one page of the app that leaves it on paper,
               and a desk handed it twice should recognise the format. No address
               beside it, deliberately - a self-hosted instance would have to print
-              its own, and `siteUrl` is server-side. */}
+              its own, and `siteUrl` is server-side. The name stays in the
+              sentence's own type rather than `font-wordmark`: here it is running
+              text, and a display face mid-line would head the sheet after all. */}
           <p
             className={cn("text-xs text-muted-foreground", INK, KEEP_TOGETHER)}
           >
