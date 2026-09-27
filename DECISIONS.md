@@ -3762,9 +3762,11 @@ both reach `handleVerify`, whose `isCodeComplete` check alone guards against a s
 Every failure, 429 included, empties the boxes and refocuses the first via `restartCodeEntry`:
 auto-submit fires on every change to a full field, so correcting in place burns attempts. A mount
 effect shares `focusFirstCodeBox`, because `CheckEmailCard` replaces `AuthForm`, dropping focus to
-`<body>`. The hint renders unconditionally; the group's `aria-describedby` names it. In flight the
-field is `readOnly`, since `disabled` drops focus out of the group. Boxes are `flex-1 min-w-0`,
-since six 40px boxes overflow a 320px viewport.
+`<body>`. The hint renders unconditionally; the group's `aria-describedby` names it. In flight,
+keystrokes are dropped in `onValueChange` rather than the boxes made `readOnly` or `disabled`: the
+second drops focus out of the group, and on iOS either closes the keyboard, which the rejection's
+refocus, outside a tap, cannot raise again. Boxes are `flex-1 min-w-0`, since six 40px boxes
+overflow a 320px viewport.
 
 ## `/signin`'s heading sits inside the card, and `titleAs` carries the level with it
 
@@ -4042,7 +4044,8 @@ demonstrate the unrecognized-value warning on `WEB_NOINDEX`.
 
 `UserRead` carries `avatar_sha256` and `portrait_sha256`, each one nullable string answering three
 questions: whether there is a picture, which version, and what to append as `?v=`. Each
-`*_original_sha256` does the same for the original, and is what offers "Adjust". There is
+`*_original_sha256` does the same for the original, and decides what "Adjust" opens: the original at
+its crop, or without one the rendition, redrawn as a PNG and saved as a replacement. There is
 deliberately no URL: the bytes are owner-only and the access token lives in memory
 (`lib/api/client.ts`), so an `<img src>` could never load them. `UserAvatar` and `PortraitImage`
 fetch through `hooks/useAuthedBlobUrl.ts` and render from an object URL. The portrait's one
@@ -4095,12 +4098,15 @@ Failures raised in the browser are `ImageCropError` (`lib/image-crop.ts`), becau
 else — never a plain `Error`'s `message` — so the caller shows `message` for those and
 `getApiErrorMessage` for the rest.
 
-## Avatars: Onboarding has no avatar step
+## Avatars: Onboarding offers the picture, and uploads it once the account exists
 
-The profile-completion form stays two fields. A Google sign-up arrives with its Google picture
-already imported by the API, an email sign-up arrives with initials and finds the editor in
-Settings, and an upload-and-crop step at the door is friction where the funnel is most fragile. The
-form's `UserAvatar` passes no digest: there is no account yet to fetch one from.
+The profile-completion form carries an optional profile picture beside its two fields. There is no
+account to upload it to until `POST /auth/complete` answers, so the form holds the crop and
+`completeProfile` sends it in `onCreated`: after the session is captured, before the account is
+read. The first read then already carries the picture, and `/onboarding`, which moves on the moment
+`user` is set, does not move on without it. A failed upload leaves the account made — the diver is
+told and lands on the dashboard anyway. A pick replaces the Google picture the API imports; without
+one, a Google sign-up keeps it.
 
 ## Signing is a maintainer's setting, and the hook checks before it blocks
 
@@ -4493,20 +4499,19 @@ Loading frames (`PageSpinner`, or `null` until the in-memory session resolves) c
 deliberately: `PageSpinner` also renders inside `AppShell` as `variant="inset"`, where its own
 `<main>` would be a second one.
 
-Left open: `page-has-heading-one` on `/auth/verify`, `/settings/confirm-email` and `/onboarding`,
-and `/goodbye`'s home link (`link-in-text-block`, dark `color-contrast`). Let a `router.replace`
-settle before trusting `color-contrast`; a worktree production build needs
-`API_INTERNAL_URL=http://localhost:8000`.
+Left open: `page-has-heading-one` while `/auth/verify`, `/settings/confirm-email` and
+`/auth/google/callback` show only a spinner line, and `/goodbye`'s home link (`link-in-text-block`,
+dark `color-contrast`). Let a `router.replace` settle before trusting `color-contrast`; a worktree
+production build needs `API_INTERNAL_URL=http://localhost:8000`.
 
 ## `CardTitle` takes `as="h2"` on every card that is a section of its page
 
 `CardTitle` takes `as="h2"` on every card that is a section of its page — settings, dive detail,
 gear, dashboard. The test is "is this card a section", not "is this page failing". The landing
 page's feature cards keep `h3` because they sit under
-`<h2 class="sr-only">What OpenDiving Does</h2>`; `/onboarding` and `/restore` keep it because
-neither has an `<h1>` (`page-has-heading-one` is their real defect). Read a promoted card all the
-way down: `delete-account-card.tsx`'s inner heading is an `<h3>`, since an `<h4>` under `<h2>` is
-the same jump again.
+`<h2 class="sr-only">What OpenDiving Does</h2>`. Read a promoted card all the way down:
+`delete-account-card.tsx`'s inner heading is an `<h3>`, since an `<h4>` under `<h2>` is the same
+jump again.
 
 Reading the axe report: it names only the first offending heading per page, so one violation is the
 top of a stack — dump `document.querySelectorAll("h1,h2,h3,h4,h5,h6")` beside it. Scan public pages

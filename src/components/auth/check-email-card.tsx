@@ -12,6 +12,10 @@ import { destinationForOutcome } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
 import { Loader2, MailCheck } from "lucide-react";
 import { StatusMessage } from "@/components/ui/status-message";
+import {
+  StandaloneCard,
+  StandaloneCardHeader,
+} from "@/components/layout/standalone-card";
 
 interface CheckEmailCardProps {
   className?: string;
@@ -56,7 +60,7 @@ const CODE_LENGTH = 6;
 // whichever is used first consumes it and the other stops working.
 export function CheckEmailCard({
   className,
-  titleAs: Title = "h3",
+  titleAs = "h3",
   email,
   requestId,
   redirectTo,
@@ -185,23 +189,22 @@ export function CheckEmailCard({
   };
 
   return (
-    <div
-      className={cn(
-        "w-full max-w-md rounded-lg border bg-card p-6 text-center shadow-sm max-sm:px-4",
-        className,
-      )}
-    >
-      <MailCheck className="mx-auto mb-3 h-10 w-10 text-primary" />
-      <Title className="text-lg font-semibold text-foreground">
-        Check your email
-      </Title>
-      <p className="mt-1 text-sm text-muted-foreground">
-        We sent a sign-in link and a six-digit code to{" "}
-        <span className="font-medium text-foreground">{email}</span>. Either one
-        signs you in - they expire in 30 minutes and can only be used once.
-      </p>
+    <StandaloneCard className={cn("text-center", className)}>
+      <StandaloneCardHeader
+        icon={MailCheck}
+        title="Check your email"
+        titleAs={titleAs}
+        description={
+          <>
+            We sent a sign-in link and a six-digit code to{" "}
+            <span className="font-medium text-foreground">{email}</span>. Either
+            one signs you in - they expire in 30 minutes and can only be used
+            once.
+          </>
+        }
+      />
 
-      <form onSubmit={handleVerify} className="mt-6 space-y-3 text-left">
+      <form onSubmit={handleVerify} className="space-y-3 text-left">
         {/* A `<span>` rather than the `Label` component: the field below is a
             `role="group"` of six inputs, not one control, so there is nothing for
             `htmlFor` to point at. `aria-labelledby` names the group instead, and
@@ -217,15 +220,17 @@ export function CheckEmailCard({
           aria-labelledby="signin-code-label"
           aria-describedby="signin-code-hint"
           value={code}
-          onValueChange={setCode}
+          // Keystrokes are dropped while a code is out, which freezes the digits
+          // without touching the inputs. Neither `disabled` nor `readOnly`: the
+          // first drops focus out of the group, and on iOS either one closes the
+          // keyboard - which a rejection's refocus, coming after the request
+          // rather than in a tap, cannot raise again.
+          onValueChange={(next) => {
+            if (!isVerifying) setCode(next);
+          }}
           // Submits itself once the sixth digit lands, so there is no Verify
           // button to press. `handleVerify` is what holds a short code back.
           autoSubmit
-          // Not `disabled`: that drops focus out of the group, and getting it
-          // back after a rejection is the diver's problem to solve with a mouse.
-          // `readOnly` freezes the digits in place and leaves the caret where
-          // they left it.
-          readOnly={isVerifying}
         >
           {Array.from({ length: CODE_LENGTH }, (_, index) => (
             // `index` is passed rather than left to the collection to work out, so
@@ -288,6 +293,6 @@ export function CheckEmailCard({
           Use a different email
         </button>
       </div>
-    </div>
+    </StandaloneCard>
   );
 }

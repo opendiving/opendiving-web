@@ -5,6 +5,7 @@ import { Crop, Replace, Trash2, Undo2, Upload, UserSquare } from "lucide-react";
 
 import { PICTURE_ACCEPT, PICTURE_LABEL, type PictureKind } from "@/lib/picture";
 import type { PictureEdit, PictureEditWithSource } from "@/lib/picture-edits";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -28,7 +29,7 @@ interface PictureSlotProps {
   name: string;
   /** The stored rendition's digest, or null when there is none. */
   storedSha: string | null;
-  /** Whether "Adjust" has something to open: a pending edit, or a stored original. */
+  /** Whether "Adjust" has something to open: a pending edit, or a stored picture. */
   canAdjust: boolean;
   /** Whether "Use profile picture" has an original to copy. */
   canCopy: boolean;
@@ -42,13 +43,25 @@ interface PictureSlotProps {
   onChange: (edit: PictureEdit | null) => void;
 }
 
-// Where the bin sits. On a phone, on the picture's top-right corner: beside an 80px
-// picture, Replace, Adjust and the bin need 40px more than a 375px screen leaves.
-// From `sm`, back in the button row. `left-12` is the picture's 80px less the
-// 28px badge and a 4px inset. One element rather than a copy in each place,
-// because `hidden` is only CSS and a test would find both.
-const BIN_ON_PICTURE =
-  "absolute left-12 top-1 z-10 h-7 w-7 rounded-full border bg-background/80 p-0 shadow-sm sm:static sm:h-9 sm:w-auto sm:rounded-md sm:border-0 sm:bg-transparent sm:px-3 sm:shadow-none";
+// How wide each picture is drawn. The portrait is twice the avatar: it is the one a
+// desk compares with a face, and 80px is too small to judge a crop by.
+const PICTURE_WIDTH: Record<PictureKind, string> = {
+  avatar: "w-20",
+  portrait: "w-40",
+};
+
+// Where the bin sits. On a phone, on the picture's top-right corner: beside the
+// picture, Replace, Adjust and the bin need more than a 375px screen leaves. From
+// `sm`, back in the button row. The `left-*` is the picture's width less the 28px
+// badge and a 4px inset - 80px for the avatar, 160px for the portrait. One element
+// rather than a copy in each place, because `hidden` is only CSS and a test would
+// find both.
+const BIN_ON_PICTURE: Record<PictureKind, string> = {
+  avatar: "left-12",
+  portrait: "left-32",
+};
+const BIN =
+  "absolute top-1 z-10 h-7 w-7 rounded-full border bg-background/80 p-0 shadow-sm sm:static sm:h-9 sm:w-auto sm:rounded-md sm:border-0 sm:bg-transparent sm:px-3 sm:shadow-none";
 
 /**
  * One picture as its form shows it: what it holds, what saving will do to it, and the
@@ -99,16 +112,19 @@ export function PictureSlot({
           <PortraitImage
             name={name}
             portraitSha={shown}
-            className="w-20 shrink-0"
+            className={cn(PICTURE_WIDTH.portrait, "shrink-0")}
           />
         ) : (
           <PortraitFrame
             empty
-            className="w-20 shrink-0"
+            className={cn(PICTURE_WIDTH.portrait, "shrink-0")}
             role="img"
             aria-label="No portrait"
           >
-            <UserSquare className="h-6 w-6 text-muted-foreground" aria-hidden />
+            <UserSquare
+              className="h-10 w-10 text-muted-foreground"
+              aria-hidden
+            />
           </PortraitFrame>
         )}
 
@@ -155,6 +171,9 @@ export function PictureSlot({
                 type="button"
                 variant="outline"
                 size="sm"
+                // Beside a 160px portrait a phone leaves the column ~130px, and this
+                // label is wider than that on one line.
+                className="max-sm:h-auto max-sm:min-h-9 max-sm:whitespace-normal max-sm:py-1.5"
                 disabled={disabled}
                 onClick={onCopy}
               >
@@ -169,7 +188,7 @@ export function PictureSlot({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className={BIN_ON_PICTURE}
+                  className={cn(BIN, BIN_ON_PICTURE[picture])}
                   disabled={disabled}
                   onClick={() => onChange(null)}
                 >
@@ -189,7 +208,7 @@ export function PictureSlot({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className={BIN_ON_PICTURE}
+                    className={cn(BIN, BIN_ON_PICTURE[picture])}
                     disabled={disabled}
                     // A pending edit is dropped rather than marked: the stored
                     // picture it would have replaced comes back into view.
@@ -284,6 +303,8 @@ function PendingPreview({
       {image}
     </div>
   ) : (
-    <PortraitFrame className="w-20 shrink-0">{image}</PortraitFrame>
+    <PortraitFrame className={cn(PICTURE_WIDTH.portrait, "shrink-0")}>
+      {image}
+    </PortraitFrame>
   );
 }

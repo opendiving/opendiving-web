@@ -1,6 +1,7 @@
 import { ReactNode, Ref } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 export interface PageHeaderProps {
@@ -76,11 +77,12 @@ interface IndexPageHeaderProps {
   title: ReactNode;
   /** What the page is for, muted, under the title and the action both. */
   description: ReactNode;
-  /** The page's one primary action - "New trip", "Log a dive". */
+  /** The page's primary action - "New trip", "Log a dive" - or a row of them. */
   action: ReactNode;
   /** Makes the heading a focus target, for a page that moves focus to it. */
   headingRef?: Ref<HTMLHeadingElement>;
   className?: string;
+  descriptionClassName?: string;
 }
 
 // The heading of a page reached from the navigation rather than from another page,
@@ -94,6 +96,7 @@ export function IndexPageHeader({
   action,
   headingRef,
   className,
+  descriptionClassName,
 }: IndexPageHeaderProps) {
   return (
     <div className={className}>
@@ -107,7 +110,9 @@ export function IndexPageHeader({
         </h1>
         <div className="-mt-0.5 flex shrink-0">{action}</div>
       </div>
-      <p className="mt-2 text-muted-foreground">{description}</p>
+      <p className={cn("mt-2 text-muted-foreground", descriptionClassName)}>
+        {description}
+      </p>
     </div>
   );
 }

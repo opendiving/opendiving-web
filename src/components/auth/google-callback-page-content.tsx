@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { StandaloneShell } from "@/components/layout/standalone-shell";
+import {
+  StandaloneCard,
+  StandaloneCardHeader,
+} from "@/components/layout/standalone-card";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { destinationForOutcome, signInHref } from "@/lib/auth-redirect";
 import { consumeGoogleAttempt, googleRedirectUri } from "@/lib/google-oauth";
@@ -125,27 +129,33 @@ function GoogleCallbackContent() {
 function CallbackStatus({ error }: { error?: string | null }) {
   return (
     <StandaloneShell className="text-center">
-      {error ? (
-        <>
-          <AlertCircle className="mx-auto mb-4 h-10 w-10 text-destructive" />
-          <p className="text-foreground font-medium mb-1">
-            We couldn&rsquo;t sign you in
-          </p>
-          <p className="text-muted-foreground mb-6">{error}</p>
-          <Link
-            replace
-            href="/signin"
-            className="underline hover:text-foreground"
-          >
-            Back to sign in
-          </Link>
-        </>
-      ) : (
-        <>
-          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Signing you in...</p>
-        </>
-      )}
+      <StandaloneCard>
+        {error ? (
+          <>
+            <StandaloneCardHeader
+              icon={AlertCircle}
+              iconClassName="text-destructive"
+              title="We couldn't sign you in"
+              description={error}
+            />
+            <p className="text-sm text-muted-foreground">
+              <Link
+                replace
+                href="/signin"
+                className="underline hover:text-foreground"
+              >
+                Back to sign in
+              </Link>
+            </p>
+          </>
+        ) : (
+          <StandaloneCardHeader
+            icon={Loader2}
+            iconClassName="animate-spin"
+            description="Signing you in..."
+          />
+        )}
+      </StandaloneCard>
     </StandaloneShell>
   );
 }

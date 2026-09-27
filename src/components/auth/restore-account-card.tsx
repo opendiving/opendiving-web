@@ -8,8 +8,11 @@ import { CalendarClock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusMessage } from "@/components/ui/status-message";
+import {
+  StandaloneCard,
+  StandaloneCardHeader,
+} from "@/components/layout/standalone-card";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { DEFAULT_POST_AUTH_REDIRECT } from "@/lib/auth-redirect";
 import { formatPurgeDay, parsePurgeDate } from "@/lib/purge-date";
@@ -56,18 +59,14 @@ export function RestoreAccountCard() {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1 items-center text-center">
-        <CalendarClock
-          className="h-10 w-10 mb-2 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <CardTitle className="text-2xl font-bold">
-          Your account is scheduled for deletion
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 text-center">
-        <p className="text-muted-foreground">
+    <StandaloneCard className="text-center">
+      <StandaloneCardHeader
+        icon={CalendarClock}
+        iconClassName="text-muted-foreground"
+        title="Your account is scheduled for deletion"
+      />
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{restore.email}</span>{" "}
           was deleted, and nothing has been erased yet.{" "}
           {purgeOn ? (
@@ -83,7 +82,7 @@ export function RestoreAccountCard() {
             "Your dives, dive sites, trips, courses, certifications, gear, contacts and people are erased for good once this instance's grace period runs out."
           )}
         </p>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Restoring brings all of it back and signs you in. Leave it, and the
           date above decides.
         </p>
@@ -119,7 +118,7 @@ export function RestoreAccountCard() {
             No thanks, leave my account deleted
           </Link>
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </StandaloneCard>
   );
 }

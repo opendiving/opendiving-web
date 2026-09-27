@@ -85,7 +85,15 @@ interface AuthContextType {
     flowId: string,
     credential: AuthenticationResponseJSON,
   ) => Promise<AuthOutcome>;
-  completeProfile: (name: string, username: string) => Promise<void>;
+  // `onCreated` runs once the account exists and is signed in, before it is read and
+  // `user` set - so the first read already carries what it stored, and the pages that
+  // move on the moment `user` is set do not move on without it. It must not throw:
+  // the account is made either way.
+  completeProfile: (
+    name: string,
+    username: string,
+    onCreated?: () => Promise<void>,
+  ) => Promise<void>;
   // Undoes a deletion and signs the restored account back in. Takes the token
   // rather than reading `restore` above, because the magic-link path never sees that
   // state: its precheck already labelled the button *Restore my account*, so it
@@ -260,7 +268,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   const completeProfile = useCallback(
-    async (name: string, username: string) => {
+    async (name: string, username: string, onCreated?: () => Promise<void>) => {
       if (!onboarding) {
         throw new Error("No onboarding session in progress.");
       }
@@ -269,6 +277,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         name,
         username,
       );
+      if (outcome.status === "authenticated") await onCreated?.();
       await applyOutcome(outcome);
     },
     [onboarding, applyOutcome],

@@ -203,7 +203,6 @@ describe("CheckEmailCard", () => {
     expect(router.push).not.toHaveBeenCalled();
     // And the field is live again rather than stuck mid-verify - whatever the
     // diver does next, retype or resend, they can do it from here.
-    codeBoxes().forEach((box) => expect(box).not.toHaveAttribute("readonly"));
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     // Cleared like any other failure. A 429 spent no attempt, so these digits
     // were arguably still good - but the field empties on every rejection
@@ -237,7 +236,9 @@ describe("CheckEmailCard", () => {
 
   // With no button there is no spinner slot, and a diver who typed six digits and
   // saw nothing change would type them again. The status line is the whole
-  // affordance, and `readOnly` is what stops a seventh keystroke landing mid-flight.
+  // affordance, and a keystroke meanwhile changes nothing. The boxes are never made
+  // read-only for it: on iOS that closes the keyboard, and the refocus after a
+  // rejection, outside any tap, cannot bring it back.
   it("says it is checking while the request is out", async () => {
     let settle: (outcome: { status: string }) => void = () => {};
     verifyEmailCode.mockReturnValue(
@@ -252,7 +253,11 @@ describe("CheckEmailCard", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       /checking your code/i,
     );
-    codeBoxes().forEach((box) => expect(box).toHaveAttribute("readonly"));
+    await user.keyboard("{Backspace}9");
+    expect(typedCode()).toBe("481052");
+    codeBoxes().forEach((box) => expect(box).not.toHaveAttribute("readonly"));
+    expect(document.activeElement).toBe(codeBoxes()[5]);
+    expect(verifyEmailCode).toHaveBeenCalledTimes(1);
 
     await act(async () => settle({ status: "authenticated" }));
     expect(router.push).toHaveBeenCalledWith("/dashboard");

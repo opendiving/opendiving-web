@@ -42,11 +42,12 @@ vi.mock("@/lib/api/auth", () => ({
   },
 }));
 
-// jsdom has no image decoder. `ImageCropError` stays the real class: the slot
-// branches on `instanceof` to decide whose message to show.
+// jsdom has no image decoder and no canvas. `ImageCropError` stays the real class:
+// the slot branches on `instanceof` to decide whose message to show.
 vi.mock("@/lib/image-crop", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/image-crop")>()),
   decodeImage: vi.fn(),
+  cropToBlob: vi.fn(),
 }));
 
 // The cropper measures itself with a ResizeObserver that reports zeroes here, so it
@@ -94,7 +95,8 @@ vi.mock("@/components/ui/use-toast", () => ({
 }));
 
 const { authAPI } = await import("@/lib/api/auth");
-const { decodeImage, ImageCropError } = await import("@/lib/image-crop");
+const { cropToBlob, decodeImage, ImageCropError } =
+  await import("@/lib/image-crop");
 const decode = vi.mocked(decodeImage);
 
 // Every request in the order it was made, so "the fields first" is an assertion
@@ -326,12 +328,35 @@ describe("a picture rides on its form's Save", () => {
 });
 
 describe("Adjust", () => {
-  it("is absent while no original is held", () => {
+  it("re-crops the stored picture as a PNG replacement while no original is held", async () => {
     // An avatar seeded from Google, or stored before originals were kept.
     auth.user.avatar_sha256 = "a1";
+    const png = new Blob(["png"], { type: "image/png" });
+    vi.mocked(cropToBlob).mockReset().mockResolvedValue(png);
     renderForm("avatar");
 
-    expect(screen.queryByRole("button", { name: /adjust/i })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /adjust/i }));
+
+    expect(authAPI.getPictureBlob).toHaveBeenCalledWith("avatar", "a1");
+    expect(authAPI.getPictureOriginalBlob).not.toHaveBeenCalled();
+    expect(await screen.findByRole("dialog")).toHaveAttribute(
+      "data-initial",
+      "",
+    );
+
+    await useCrop();
+    expect(
+      screen.getByText("Replaces your profile picture when you save."),
+    ).toBeInTheDocument();
+
+    await save();
+    await waitFor(() => expect(sent).toEqual(["patch /user", "put"]));
+    expect(authAPI.uploadPicture).toHaveBeenCalledWith(
+      "avatar",
+      png,
+      "avatar.png",
+      AVATAR_CROP,
+    );
   });
 
   it("opens the stored original at its stored crop, and sends only the crop", async () => {

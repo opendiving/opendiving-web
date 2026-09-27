@@ -345,6 +345,43 @@ describe("AuthProvider outcomes", () => {
     expect(result.current.user).toEqual(USER);
   });
 
+  // Onboarding's picture is uploaded in `onCreated`, and the account is read after
+  // it: a read before would come back without the picture, and `user` being set is
+  // what moves `/onboarding` on to the dashboard.
+  it("runs a completed profile's onCreated before it reads the new account", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const order: string[] = [];
+    authAPI.verifyEmailLink.mockResolvedValue({
+      status: "onboarding",
+      onboarding_token: "onb",
+      email: "new@example.com",
+    });
+    authAPI.completeProfile.mockResolvedValue({ status: "authenticated" });
+    authAPI.getCurrentUser.mockImplementation(async () => {
+      order.push("read");
+      return USER;
+    });
+
+    await act(async () => {
+      await result.current.verifyEmailLink("tok");
+    });
+    await act(async () => {
+      await result.current.completeProfile(
+        "New Diver",
+        "newdiver",
+        async () => {
+          order.push("created");
+        },
+      );
+    });
+
+    expect(order).toEqual(["created", "read"]);
+    expect(result.current.user).toEqual(USER);
+  });
+
   it("refuses to complete a profile with no onboarding session in progress", async () => {
     refreshAccessToken.mockRejectedValue(new Error("401"));
     const { result } = renderHook(() => useAuth(), { wrapper });
