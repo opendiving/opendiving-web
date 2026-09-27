@@ -220,15 +220,17 @@ export function CheckEmailCard({
           aria-labelledby="signin-code-label"
           aria-describedby="signin-code-hint"
           value={code}
-          onValueChange={setCode}
+          // Keystrokes are dropped while a code is out, which freezes the digits
+          // without touching the inputs. Neither `disabled` nor `readOnly`: the
+          // first drops focus out of the group, and on iOS either one closes the
+          // keyboard - which a rejection's refocus, coming after the request
+          // rather than in a tap, cannot raise again.
+          onValueChange={(next) => {
+            if (!isVerifying) setCode(next);
+          }}
           // Submits itself once the sixth digit lands, so there is no Verify
           // button to press. `handleVerify` is what holds a short code back.
           autoSubmit
-          // Not `disabled`: that drops focus out of the group, and getting it
-          // back after a rejection is the diver's problem to solve with a mouse.
-          // `readOnly` freezes the digits in place and leaves the caret where
-          // they left it.
-          readOnly={isVerifying}
         >
           {Array.from({ length: CODE_LENGTH }, (_, index) => (
             // `index` is passed rather than left to the collection to work out, so
