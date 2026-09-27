@@ -225,6 +225,11 @@ export default async function TermsPage() {
                   name them from your dives, courses and trips
                 </li>
                 <li>
+                  Keep the people you dive with once &mdash; buddies, guides,
+                  instructors &mdash; and name them from your dives, trips and
+                  courses
+                </li>
+                <li>
                   Keep the details a dive shop asks for at the desk, and print a
                   summary of them to hand over, or share it as a link that works
                   for a day
@@ -236,14 +241,17 @@ export default async function TermsPage() {
               <p className="text-foreground mb-4">
                 What it does not do is worth stating, because a page like this
                 one usually claims otherwise: there are no public profiles, no
-                feeds, no forums, no comments, no ratings, no dive buddies and
-                no photo sharing. An account on this copy gives its holder no
-                view of anything you enter. This copy shows one person to
-                another in two cases only: an invitation, which is about your
-                name rather than about anything you entered, and a check-in link
-                you make, which shows your check-in page to whoever holds it,
-                account or not; section 5 says exactly what each is, and what
-                follows from the rest.
+                feeds, no forums, no comments, no ratings and no photo sharing.
+                The people you record are private records of yours, not
+                connections between accounts. An account on this copy gives its
+                holder no view of anything you enter. This copy shows one person
+                to another in three cases only: an invitation, which is about
+                your name rather than about anything you entered; a check-in
+                link you make, which shows your check-in page to whoever holds
+                it, account or not; and a person you link to an account here,
+                which shows you that account&rsquo;s current username and puts
+                its identifier in your own export. Section 5 says exactly what
+                each is, and what follows from the rest.
               </p>
               <p className="text-foreground mb-4">
                 Whether this copy costs anything, who may register for it, and
@@ -344,10 +352,10 @@ export default async function TermsPage() {
               </h2>
               <p className="text-foreground mb-4">
                 What you enter into this copy &mdash; dives, sites, trips, gear,
-                courses, certifications, contacts, your check-in details, notes,
-                and the files you import &mdash; is yours, and you are
-                responsible for it. You agree not to use this copy to hold or
-                send:
+                courses, certifications, contacts, people, your check-in
+                details, notes, and the files you import &mdash; is yours, and
+                you are responsible for it. You agree not to use this copy to
+                hold or send:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
@@ -365,16 +373,19 @@ export default async function TermsPage() {
                 </li>
               </ul>
               <p className="text-foreground mb-4">
-                Two things this copy expects you to hold can be somebody
-                else&rsquo;s data, and holding either is inside the line above
-                rather than an exception to it. An emergency contact is a name
-                and a number kept so a dive shop can reach someone if you get
-                into trouble. A contact is usually a business&rsquo;s own
-                listing &mdash; the number and address on its sign &mdash; but
-                it can be a person, the friend whose flat you stayed in, kept as
-                your own record of where you dived and slept. Each is a basis
-                for keeping what you enter. Telling a person you have written
-                them down here is yours to do, not this copy&rsquo;s.
+                Three things this copy expects you to hold can be somebody
+                else&rsquo;s data, and holding any of them is inside the line
+                above rather than an exception to it. A person is the plainest
+                case: a buddy&rsquo;s or an instructor&rsquo;s name, and
+                whatever else you choose to note, kept as your own record of who
+                you dived with. An emergency contact is a name and a number kept
+                so a dive shop can reach someone if you get into trouble. A
+                contact is usually a business&rsquo;s own listing &mdash; the
+                number and address on its sign &mdash; but it can be a person,
+                the friend whose flat you stayed in, kept as your own record of
+                where you dived and slept. Each is a basis for keeping what you
+                enter. Telling a person you have written them down here is yours
+                to do, not this copy&rsquo;s.
               </p>
               <p className="text-foreground mb-4">
                 You keep every right you have in what you enter. Nothing here
@@ -395,9 +406,11 @@ export default async function TermsPage() {
                 a check-in link you make. Printing your check-in summary and
                 handing it to a dive shop is you showing your own entries to
                 someone, not this copy showing them, and the permission above is
-                unchanged by it. The next two paragraphs are the two things this
-                copy does show one person to another: an invitation, which is
-                not an entry, and a check-in link, which is.
+                unchanged by it. The next three paragraphs are the three things
+                this copy does show one person to another: an invitation, which
+                is not an entry; a check-in link, which is; and a person linked
+                to an account, which shows you something of theirs rather than
+                anything of yours.
               </p>
               <p className="text-foreground mb-4">
                 Where this copy is invite-only and you invite somebody to it,
@@ -405,10 +418,10 @@ export default async function TermsPage() {
                 and only that: to tell the address you invited that <em>you</em>{" "}
                 invited them, naming you, and to tell you whether that address
                 went on to register here. Nothing you have logged is involved
-                &mdash; no dive, site, trip, gear item, course, certification or
-                contact &mdash; and nobody you have not invited learns anything
-                either way. The privacy policy&rsquo;s section 4.8 sets out the
-                same in its own register.
+                &mdash; no dive, site, trip, gear item, course, certification,
+                contact or person &mdash; and nobody you have not invited learns
+                anything either way. The privacy policy&rsquo;s section 4.8 sets
+                out the same in its own register.
               </p>
               <p className="text-foreground mb-4">
                 Where you make a check-in link, you grant the operator the
@@ -422,14 +435,30 @@ export default async function TermsPage() {
                 register.
               </p>
               <p className="text-foreground mb-4">
+                Where you link a person you recorded to an account on this copy
+                &mdash; by typing its username, or by importing a file that
+                names it &mdash; you grant the operator the further permission
+                that act needs, and only that: to tell you whether an account
+                with that username exists here, to show you its current username
+                beside your person for as long as the link stands, and to write
+                that account&rsquo;s identifier, which also encodes when the
+                account was created, into the exports you ask for. Nothing you
+                have logged is shown to that account, and it is told nothing
+                either way. The same holds the other way round: anyone here who
+                types your username can link a person to your account, and
+                learns that it exists, its current username and its identifier,
+                and nothing else. The privacy policy&rsquo;s section 4.10 sets
+                out the same in its own register.
+              </p>
+              <p className="text-foreground mb-4">
                 That permission is deliberately no wider than what running the
                 Service takes, and the OpenDiving project holds itself to
                 keeping it that way: if a version of the software ever adds a
                 way to show what you entered to someone else, that feature
                 arrives with a permission of its own written here and a section
                 of its own on the privacy page, rather than leaning on this one.
-                The invitation and check-in link grants above are that rule
-                being kept, not exceptions to it.
+                The invitation, check-in link and linking grants above are that
+                rule being kept, not exceptions to it.
               </p>
             </section>
 
