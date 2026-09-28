@@ -430,9 +430,11 @@ export type ImportResult = ImportReport;
  * Neither endpoint takes a user parameter. The bearer token names the only account
  * there is to import into.
  *
- * **Every record-level problem is a note, never a status code.** A 4xx here means
- * the upload was not a document this app can read at all; anything about an
- * individual dive, site or file comes back inside a 200 as an `ImportNote`.
+ * **Every record-level problem is a note, never a status code.** A 4xx here is
+ * about the upload as a whole: it was not a document this app can read at all,
+ * or its files would take the account past its storage limit, a 413 that
+ * refuses the import whole. Anything about an individual dive, site or file
+ * comes back inside a 200 as an `ImportNote`.
  */
 export const logbookImportAPI = {
   /**
