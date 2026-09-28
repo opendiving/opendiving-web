@@ -76,10 +76,11 @@ export function LandingPage() {
               </h1>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                 An open-source logbook for scuba divers, recreational and
-                technical. Nitrox and trimix mixes, dives imported straight from
-                your computer with the full profile, gear and c-cards alongside
-                them — and an export button that hands the lot back in open
-                formats, which this app will read straight back in.
+                technical. Air, nitrox and trimix, dives imported straight from
+                your computer with the full profile, gear and certification
+                cards alongside them — and an export button that hands
+                everything back in open formats, which this app can read
+                straight back in.
               </p>
             </div>
 
