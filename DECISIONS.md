@@ -1181,12 +1181,11 @@ so `AuthContext.test.tsx` can mock it.
 ## The dashboard shows only what the app actually tracks
 
 Nothing on the dashboard (`components/dashboard/dashboard-page-frame.tsx`) claims what the app
-cannot back. `user_dive_stats.species_seen` is never derived (`services/dive_stats.py`), so it stays
-in `UserDiveStats` — the field is on the wire — but no tile renders it. There is no quick-actions
-card; the one action worth promoting, logging a dive, is a single primary button in the page header.
-`SetupChecklistCard` is driven by real counts (`/user/dive-stats`, `/gear-items`, `/certifications`,
-the last two fetched with `items_per_page: 1` for `total_count` alone) and removes itself once all
-three are done.
+cannot back. Each stat tile renders a figure the API derives from the diver's dives
+(`services/dive_stats.py`), Species Seen included. There is no quick-actions card; the one action
+worth promoting, logging a dive, is a single primary button in the page header. `SetupChecklistCard`
+is driven by real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched
+with `items_per_page: 1` for `total_count` alone) and removes itself once all three are done.
 
 `CertificationExpiryCard` is the twin of `ServiceDueCard`: headed "Renewals", it renders `null` when
 nothing needs renewing and when its fetch fails. Certification rows link to `/certifications`, where
