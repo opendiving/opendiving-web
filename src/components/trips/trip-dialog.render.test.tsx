@@ -60,37 +60,65 @@ function renderDialog() {
 }
 
 describe("TripDialog", () => {
-  // The trip's own date row is gone: a part carries its own dates, so the only
-  // dates in this dialog are inside the rows the Parts field holds. The map
-  // under that field answers the search in it, so the two belong together.
-  it("asks for the name, then the parts, then the people and the notes", () => {
+  // A part carries its own dates, so the only dates in this dialog are inside
+  // the rows the Parts field holds - and a new trip opens with one of them.
+  it("asks for the name, then a part, then the people and the notes", () => {
     renderDialog();
 
     const labels = Array.from(document.querySelectorAll("label")).map((label) =>
       label.textContent?.trim(),
     );
 
-    expect(labels).toEqual(["Name *", "Parts", "People", "Notes"]);
-  });
-
-  it("asks for a part's dates on the part, not on the trip", async () => {
-    // The assertion above passes for a dialog with no way to date anything at
-    // all, which is the shape this change could most easily have shipped.
-    renderDialog();
-
-    await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
-
-    const labels = Array.from(document.querySelectorAll("label")).map((label) =>
-      label.textContent?.trim(),
-    );
     expect(labels).toEqual([
       "Name *",
       "Parts",
-      "From part 1 of 1",
-      "To part 1 of 1",
+      "Location, part 1 of 1",
+      "Accommodation, part 1 of 1",
+      "Start date, part 1 of 1",
+      "End date, part 1 of 1",
       "People",
       "Notes",
     ]);
+  });
+
+  it("saves a trip given only a name with no parts at all", async () => {
+    // The part a new trip opens with, left untouched, records nothing.
+    createTrip.mockImplementation(async (body) => ({
+      uuid: "trip-new",
+      name: body.name,
+      parts: body.parts ?? [],
+      people: [],
+      notes: "",
+      user_uuid: "user-1",
+      created_at: "2026-04-01T09:00:00Z",
+    }));
+    renderDialog();
+
+    await userEvent.type(screen.getByLabelText("Name *"), "Egypt, spring");
+    await userEvent.click(screen.getByRole("button", { name: /Create trip/ }));
+
+    await waitFor(() => expect(createTrip).toHaveBeenCalled());
+    expect(createTrip.mock.calls.at(-1)?.[0].parts).toEqual([]);
+  });
+
+  it("opens an existing trip with its own parts and no extra one", () => {
+    render(
+      <TripDialog
+        open
+        onOpenChange={() => {}}
+        trip={{
+          uuid: "trip-1",
+          name: "Egypt, spring",
+          parts: [],
+          notes: "",
+          user_uuid: "user-1",
+          created_at: "2026-04-01T09:00:00Z",
+        }}
+        onSaved={() => {}}
+      />,
+    );
+
+    expect(screen.getByText(/No parts yet/)).toBeInTheDocument();
   });
 
   // The whole of the error path, through the resolver rather than around it:
@@ -103,11 +131,10 @@ describe("TripDialog", () => {
 
     await userEvent.type(screen.getByLabelText("Name *"), "Egypt, spring");
     await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
-    await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
 
-    await userEvent.click(screen.getByLabelText("From part 2 of 2"));
+    await userEvent.click(screen.getByLabelText("Start date, part 2 of 2"));
     await userEvent.paste("2026-04-22");
-    await userEvent.click(screen.getByLabelText("To part 2 of 2"));
+    await userEvent.click(screen.getByLabelText("End date, part 2 of 2"));
     await userEvent.paste("2026-04-18");
     await userEvent.click(screen.getByRole("button", { name: /Create trip/ }));
 
@@ -130,12 +157,11 @@ describe("TripDialog", () => {
 
   // The map sits under the parts, not over them: the diver searched for a name,
   // and the map answers "yes, that is the place you meant".
-  it("puts the map below the parts and above the notes", async () => {
+  it("puts the map below the parts and above the notes", () => {
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
 
     const map = screen.getByTestId("locations-map");
-    const picker = screen.getByRole("combobox", { name: /^Place,/ });
+    const picker = screen.getByRole("combobox", { name: /^Location,/ });
     const notes = screen.getByLabelText("Notes");
 
     expect(picker.compareDocumentPosition(map)).toBe(

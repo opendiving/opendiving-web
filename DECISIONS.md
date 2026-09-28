@@ -3324,10 +3324,6 @@ A per-row single-select wants the append-only field's Enter-only rule without it
 open menu, so `CreatableCombobox` takes `commitOnEnterOnly` — `keepOpenOnSelect` implies it. Without
 it, typing "phil" and clicking Save files a place called "phil".
 
-Each row's controls are 44px on the shorter side: the two icon buttons carry their own box, and
-`[&_input]:h-11` on the row raises its text inputs — the place and accommodation searches and both
-dates — off the app-wide 40px without a size prop threaded through the shared primitives.
-
 ## A location's full label is trimmed of the name it sits beside, at render time
 
 Nominatim's label opens with the name it matched, and the surface shows the name first.

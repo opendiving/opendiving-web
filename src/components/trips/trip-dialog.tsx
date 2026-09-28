@@ -9,6 +9,7 @@ import { Loader2, Plus, Save } from "lucide-react";
 import {
   tripFormSchema,
   TripFormInput,
+  emptyTripPart,
   normalizeTripParts,
 } from "@/lib/validations/trip";
 import { tripsAPI, Trip } from "@/lib/api/trips";
@@ -104,14 +105,19 @@ export function TripDialog({
       // "" rather than `undefined` for a date a part does not carry: that is the
       // live "cleared" sentinel react-hook-form needs, and `normalizeTripParts`
       // is what turns it back into an absent member (DECISIONS.md).
-      parts: (trip?.parts ?? []).map((part) => ({
-        location: part.location ?? null,
-        start_date: part.start_date ?? "",
-        end_date: part.end_date ?? "",
-        // Named, like every member: the save sends each part whole, so one left
-        // out here is an accommodation cleared by an edit that never touched it.
-        accommodation_uuid: part.accommodation_uuid ?? null,
-      })),
+      //
+      // A new trip opens with one empty part to fill in rather than a button.
+      parts: trip
+        ? trip.parts.map((part) => ({
+            location: part.location ?? null,
+            start_date: part.start_date ?? "",
+            end_date: part.end_date ?? "",
+            // Named, like every member: the save sends each part whole, so one
+            // left out here is an accommodation cleared by an edit that never
+            // touched it.
+            accommodation_uuid: part.accommodation_uuid ?? null,
+          }))
+        : [emptyTripPart()],
       people: trip?.people ?? [],
       notes: trip?.notes ?? "",
     });

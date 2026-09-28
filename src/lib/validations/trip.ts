@@ -38,6 +38,16 @@ const tripPartSchema = z
 // One part as the form holds it.
 export type TripPartFormValue = z.input<typeof tripPartSchema>;
 
+// What "Add a part" appends, and what a new trip opens with.
+export function emptyTripPart(): TripPartFormValue {
+  return {
+    location: null,
+    start_date: "",
+    end_date: "",
+    accommodation_uuid: null,
+  };
+}
+
 // One schema for both creating and editing a trip: `TripDialog` is the only
 // form for either, and it always shows every field, so an update never sends a
 // partial object.
@@ -68,15 +78,25 @@ export const tripFormSchema = z.object({
  * API reads "this stretch has none" as opposed to "leave it alone".
  *
  * Every member is named: the API replaces the parts wholesale, so one left out
- * here is cleared on every save.
+ * here is cleared on every save. A part holding nothing at all is dropped - the
+ * one a new trip opens with, left untouched, records nothing.
  */
 export function normalizeTripParts(parts?: TripPartFormValue[] | null) {
-  return (parts ?? []).map((part) => ({
+  return (parts ?? []).filter(hasContent).map((part) => ({
     start_date: part.start_date ? part.start_date : undefined,
     end_date: part.end_date ? part.end_date : undefined,
     location: part.location ?? null,
     accommodation_uuid: part.accommodation_uuid ?? null,
   }));
+}
+
+function hasContent(part: TripPartFormValue): boolean {
+  return Boolean(
+    part.location ||
+    part.start_date ||
+    part.end_date ||
+    part.accommodation_uuid,
+  );
 }
 
 export type TripFormInput = z.input<typeof tripFormSchema>;

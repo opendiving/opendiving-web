@@ -9,8 +9,7 @@ import {
   useFieldArray,
   useWatch,
 } from "react-hook-form";
-import { Button } from "@/components/ui/button";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { AddRowButton, RepeatableRow } from "@/components/ui/repeatable-row";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
@@ -20,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { AlertTriangle, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { DiveMixtureInput } from "@/lib/validations/dive";
 import {
   DEFAULT_MIXTURE,
@@ -318,34 +317,16 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
       </div>
 
       {fields.map((field, index) => (
-        <div key={field.id} className="rounded-lg border p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">
-              Tank {index + 1}
-            </span>
-            {/* On every row, tank 1 included. The gate here was `index > 0`, which
-                made "this dive records no gas" unreachable from either dive form -
-                a state the API supports outright (`DiveCreate.mixtures` is
-                `default_factory=list`) and that `dive-mixtures-card.tsx` already
-                describes as "the common case for a dive logged by hand". A
-                cylinder the diver cannot take off is one they may never have
-                entered. */}
-            {/* Named per row, because the icon is the whole button and a form
-                can hold several: an unlabelled one reads as "button" to a screen
-                reader, and a constant "Remove tank" would name every row the
-                same. The label is also the hover hint - see `IconTooltip`. */}
-            <IconTooltip label={`Remove tank ${index + 1}`}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => remove(index)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </IconTooltip>
-          </div>
-
+        // Removable on every row, tank 1 included: "this dive records no gas" is
+        // a state the API supports outright (`DiveCreate.mixtures` is
+        // `default_factory=list`) and `dive-mixtures-card.tsx` describes as "the
+        // common case for a dive logged by hand".
+        <RepeatableRow
+          key={field.id}
+          title={`Tank ${index + 1}`}
+          removeLabel={`Remove tank ${index + 1}`}
+          onRemove={() => remove(index)}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={control}
@@ -660,7 +641,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             index={index}
             isOnlyMixture={fields.length === 1}
           />
-        </div>
+        </RepeatableRow>
       ))}
 
       {/* Not an error, and worded so it doesn't read as one: a dive with no
@@ -677,10 +658,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           the next tank will appear: the button and the card it adds are then in
           reading order, and on a multi-cylinder dive the diver is already
           scrolled to it after filling in the last one. */}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
+      <AddRowButton
         // `shouldFocus: false`, which is not react-hook-form's default. Its
         // default focuses the first field of the new row that registered a
         // focusable ref - and `VolumeCombobox` registers none, so the focus
@@ -691,9 +669,8 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
         // as the tap having gone through to the field underneath.
         onClick={() => append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })}
       >
-        <Plus className="h-4 w-4 mr-2" />
         Add mixture
-      </Button>
+      </AddRowButton>
 
       <MixtureSetWarning
         control={control as unknown as Control<MixtureFieldsValues>}
