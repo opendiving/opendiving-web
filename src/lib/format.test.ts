@@ -23,6 +23,21 @@ describe("formatFileSize", () => {
     expect(formatFileSize(5 * 1024 * 1024)).toBe("5.0 MB");
   });
 
+  it("switches to GB at 1024 MB", () => {
+    expect(formatFileSize(1024 ** 3)).toBe("1.0 GB");
+    expect(formatFileSize(1024 ** 3 - 1)).toMatch(/MB$/);
+    expect(formatFileSize(2.5 * 1024 ** 3)).toBe("2.5 GB");
+  });
+
+  // The API's storage-limit refusal names its figures by this rule and rounds a
+  // tie upward, as these do; Python's own `round` would go to even there, so a
+  // change to the rounding here is a change the API has to match.
+  it("rounds a tie upward in every unit", () => {
+    expect(formatFileSize(2.5 * 1024)).toBe("3 KB");
+    expect(formatFileSize(1.25 * 1024 ** 2)).toBe("1.3 MB");
+    expect(formatFileSize(1.25 * 1024 ** 3)).toBe("1.3 GB");
+  });
+
   it("handles zero and nonsense without throwing", () => {
     expect(formatFileSize(0)).toBe("0 KB");
     expect(formatFileSize(-1)).toBe("0 KB");

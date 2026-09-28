@@ -382,9 +382,10 @@ export function NewDivePageContent() {
           // to save it would be a far worse outcome than losing it, and it can
           // still be attached later from the edit page.
           //
-          // Both real failures surface here with the API's own wording: a 409
+          // The real failures surface here with the API's own wording: a 409
           // ("already attached to another dive", i.e. the same export logged
-          // twice) and a 422 (the import expired). Both are worth reading.
+          // twice), a 422 (the import expired) and a 413 naming the storage
+          // limit this file would cross. All are worth reading.
           console.error("Failed to attach the dive file:", error);
           toast({
             title: `Dive logged, but ${item.file.name} wasn't attached`,
