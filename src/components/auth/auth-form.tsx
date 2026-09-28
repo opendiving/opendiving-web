@@ -33,12 +33,19 @@ interface AuthFormProps {
   // `/signin`. Omitted on the landing page, where the hero already introduces it
   // and a second heading inside the card would only repeat the section above.
   //
-  // Passing one also makes the heading an `h1`, here and on the "check your
-  // email" card this swaps to: on `/signin` these are the page's only heading,
-  // and axe's `page-has-heading-one` wants one there. That is the whole reason
-  // the level is not just hardcoded.
+  // Passing one also makes the heading an `h1` by default, here and on the "check
+  // your email" card this swaps to: on `/signin` these are the page's only
+  // heading, and axe's `page-has-heading-one` wants one there. That is the whole
+  // reason the level is not just hardcoded.
   title?: string;
   description?: string;
+  // The level a `title` renders at. `h2` for `/join`'s hero, which names the join
+  // link in the card under a page that already has its `h1`.
+  titleAs?: "h1" | "h2";
+  // The slug of the join link this form is on, sent with both doors that can
+  // create an account - the email request and the Google attempt. Only `/join`
+  // passes it, and only for a slug the API has just resolved.
+  via?: string;
 }
 
 // What the "check your email" card needs, and the reason it is one value rather
@@ -63,12 +70,16 @@ interface SentLink {
 // the sign-in surface for a returning visitor, and one tap from there beats a
 // round trip through an inbox. On an `invite`-mode instance the hero holds the
 // request form instead and this one is not mounted there, so `/signin` is where
-// the ceremony arms - see `components/layout/landing-page.tsx`.
+// the ceremony arms - unless the visitor came by a join link, where `/join`'s hero
+// is this form in either mode, and it arms there too. See
+// `components/layout/landing-page.tsx`.
 export function AuthForm({
   className,
   redirectTo,
   title,
   description,
+  titleAs = "h1",
+  via,
 }: AuthFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<SentLink | null>(null);
@@ -110,10 +121,12 @@ export function AuthForm({
       // is the only thing keeping the destination alive for exactly as long as
       // the link the diver is holding.
       rememberPostAuthRedirect(redirectTo);
-      const { request_id } = await requestEmailLink(email);
+      // A resend passes `via` too: each request is a row of its own, and the one
+      // the diver finally redeems is the one the gate reads it from.
+      const { request_id } = await requestEmailLink(email, via);
       setSent({ email, requestId: request_id });
     },
-    [redirectTo, requestEmailLink],
+    [redirectTo, requestEmailLink, via],
   );
 
   const onSubmit = async (data: EmailAuthFormData) => {
@@ -153,7 +166,7 @@ export function AuthForm({
         {keyboardStandIn}
         <CheckEmailCard
           className={className}
-          titleAs={title ? "h1" : "h3"}
+          titleAs={title ? titleAs : "h3"}
           email={sent.email}
           requestId={sent.requestId}
           redirectTo={redirectTo}
@@ -175,6 +188,7 @@ export function AuthForm({
           <StandaloneCardHeader
             icon={LogIn}
             title={title}
+            titleAs={titleAs}
             description={description}
           />
         )}
@@ -259,7 +273,11 @@ export function AuthForm({
               </div>
             </div>
 
-            <GoogleAuthButton onError={setError} redirectTo={redirectTo} />
+            <GoogleAuthButton
+              onError={setError}
+              redirectTo={redirectTo}
+              via={via}
+            />
 
             {passkey.supported && (
               <Button

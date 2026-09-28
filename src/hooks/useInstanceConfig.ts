@@ -17,8 +17,8 @@ interface InstanceConfigState {
 
 /**
  * What `GET /config` says about this instance: whether it lets anyone register
- * or hands out invitations, and whether the OpenDiving project is the one
- * running it. Handed back whole rather than field by field, so a caller that
+ * or hands out invitations, whether the OpenDiving project is the one running
+ * it, and whether it has join links. Handed back whole rather than field by field, so a caller that
  * needs two of its facts makes one request and decides from one answer.
  *
  * Read from the API rather than from this container's environment - see

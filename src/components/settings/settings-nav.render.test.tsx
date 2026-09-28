@@ -157,7 +157,11 @@ describe("SettingsNav", () => {
   });
 
   it("offers Invitations on an invite-only instance", () => {
-    instance.config = { registration_mode: "invite", project_operated: true };
+    instance.config = {
+      registration_mode: "invite",
+      project_operated: true,
+      join_links: false,
+    };
     render(<SettingsNav />);
 
     expect(labels()).toEqual([
@@ -172,7 +176,11 @@ describe("SettingsNav", () => {
   });
 
   it("leaves Invitations out where anyone may register", () => {
-    instance.config = { registration_mode: "open", project_operated: false };
+    instance.config = {
+      registration_mode: "open",
+      project_operated: false,
+      join_links: false,
+    };
     render(<SettingsNav />);
 
     expect(labels()).not.toContain("Invitations");

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { projectOperatesThisInstance } from "./config.server";
+import { readLegalPageConfig } from "./config.server";
 
 // `connection()` is how these modules tell `cacheComponents` to stop prerendering, and
 // it throws outside a request scope - which a unit test calling the function directly
@@ -9,7 +9,7 @@ vi.mock("next/server", () => ({ connection: async () => {} }));
 
 // Every one of these cases resolves rather than throws, and that is the thing under
 // test: the legal pages call this while rendering, and an instance whose API is down
-// must still serve them. What varies is only whether the answer is `true`.
+// must still serve them. What varies is only which answers are `true`.
 const fetchMock = vi.fn();
 
 beforeEach(() => {
@@ -31,38 +31,55 @@ function answers(body: unknown, { ok = true, status = 200 } = {}) {
   });
 }
 
-describe("projectOperatesThisInstance", () => {
-  it("is true only when the API said so", async () => {
-    answers({ registration_mode: "invite", project_operated: true });
+const NEITHER = { projectOperated: false, joinLinks: false };
 
-    await expect(projectOperatesThisInstance()).resolves.toBe(true);
+describe("readLegalPageConfig", () => {
+  it("is true for each field only where the API said so", async () => {
+    answers({
+      registration_mode: "invite",
+      project_operated: true,
+      join_links: true,
+    });
+    await expect(readLegalPageConfig()).resolves.toEqual({
+      projectOperated: true,
+      joinLinks: true,
+    });
+
+    answers({ project_operated: false, join_links: true });
+    await expect(readLegalPageConfig()).resolves.toEqual({
+      projectOperated: false,
+      joinLinks: true,
+    });
   });
 
-  // The literal comparison, not truthiness. An API that predates the field sends no key
+  // The literal comparison, not truthiness. An API that predates a field sends no key
   // at all, and a self-hoster's page must not turn on `undefined` being falsy by luck.
   it.each([
     [
-      "the field is false",
-      { registration_mode: "open", project_operated: false },
+      "the fields are false",
+      { registration_mode: "open", project_operated: false, join_links: false },
     ],
-    ["the field is absent", { registration_mode: "open" }],
-    ["the field is a string", { project_operated: "true" }],
-  ])("is false when %s", async (_label, body) => {
+    ["the fields are absent", { registration_mode: "open" }],
+    [
+      "the fields are strings",
+      { project_operated: "true", join_links: "true" },
+    ],
+  ])("is false for both when %s", async (_label, body) => {
     answers(body);
 
-    await expect(projectOperatesThisInstance()).resolves.toBe(false);
+    await expect(readLegalPageConfig()).resolves.toEqual(NEITHER);
   });
 
   it("is false, not an error, when the API refuses", async () => {
     answers({}, { ok: false, status: 503 });
 
-    await expect(projectOperatesThisInstance()).resolves.toBe(false);
+    await expect(readLegalPageConfig()).resolves.toEqual(NEITHER);
   });
 
   it("is false, not an error, when the API cannot be reached", async () => {
     fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
 
-    await expect(projectOperatesThisInstance()).resolves.toBe(false);
+    await expect(readLegalPageConfig()).resolves.toEqual(NEITHER);
   });
 
   it("is false, not an error, when the answer is not JSON", async () => {
@@ -72,7 +89,7 @@ describe("projectOperatesThisInstance", () => {
       json: () => Promise.reject(new SyntaxError("Unexpected token <")),
     });
 
-    await expect(projectOperatesThisInstance()).resolves.toBe(false);
+    await expect(readLegalPageConfig()).resolves.toEqual(NEITHER);
   });
 
   // The request itself: the internal address rather than a relative path a server has no
@@ -81,8 +98,9 @@ describe("projectOperatesThisInstance", () => {
   it("asks the API container directly, uncached, with a deadline", async () => {
     answers({ project_operated: true });
 
-    await projectOperatesThisInstance();
+    await readLegalPageConfig();
 
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toMatch(/^https?:\/\/[^/]+\/api\/v1\/config$/);
     expect(init.cache).toBe("no-store");

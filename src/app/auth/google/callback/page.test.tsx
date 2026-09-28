@@ -31,10 +31,14 @@ beforeEach(() => {
 // Mints a real attempt through the module the button uses, so what these tests
 // exercise is the pair rather than a hand-written storage entry that could drift
 // from what is actually written.
-async function startAttempt(redirectTo?: string): Promise<string> {
+async function startAttempt(
+  redirectTo?: string,
+  via?: string,
+): Promise<string> {
   const url = await beginGoogleSignIn({
     clientId: "test-client.apps.googleusercontent.com",
     redirectTo,
+    via,
   });
   return new URL(url).searchParams.get("state")!;
 }
@@ -62,8 +66,23 @@ describe("a callback that matches an attempt this browser started", () => {
       code: "real-code",
       codeVerifier: expect.stringMatching(/^[A-Za-z0-9\-._~]{43,128}$/),
       redirectUri: `${window.location.origin}/auth/google/callback`,
+      via: null,
     });
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/dives"));
+  });
+
+  // An attempt started on a join link sends the link back with the code, which
+  // is what lets the API admit an address nobody invited.
+  it("sends the join link the attempt was started on", async () => {
+    signInWithGoogle.mockResolvedValue({ status: "onboarding_required" });
+    const state = await startAttempt(undefined, "reddit");
+
+    renderCallback(`code=real-code&state=${state}`);
+
+    await waitFor(() => expect(signInWithGoogle).toHaveBeenCalledTimes(1));
+    expect(signInWithGoogle).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "real-code", via: "reddit" }),
+    );
   });
 
   // `replace`, not `push`: the authorization code is in this page's own URL, and
@@ -126,6 +145,42 @@ describe("a callback that matches an attempt this browser started", () => {
       await screen.findByText(/hasn't been invited to this instance yet/i),
     ).toBeInTheDocument();
     expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  // And its sibling for a join link removed while the visitor was at Google: the
+  // API's own sentence, shown as it arrives.
+  it("shows the gate's refusal for a join link that is no longer live", async () => {
+    signInWithGoogle.mockRejectedValue({
+      response: {
+        status: 403,
+        data: {
+          detail:
+            "This join link is no longer active. You can request an invitation from the home page.",
+        },
+      },
+    });
+    const state = await startAttempt(undefined, "reddit");
+
+    renderCallback(`code=real-code&state=${state}`);
+
+    expect(
+      await screen.findByText(/this join link is no longer active/i),
+    ).toBeInTheDocument();
+  });
+
+  // A failure worth retrying - Google unreachable, a throttled request - on an
+  // attempt started on a join link sends the visitor back to that link, since a
+  // new visitor retrying from `/signin` would be refused as uninvited.
+  it("offers the join link, not /signin, as the way to try again", async () => {
+    signInWithGoogle.mockRejectedValue(new Error("Network Error"));
+    const state = await startAttempt(undefined, "reddit");
+
+    renderCallback(`code=real-code&state=${state}`);
+
+    await waitFor(() => expect(errorText()).toBeInTheDocument());
+    expect(
+      screen.getByRole("link", { name: /back to sign in/i }),
+    ).toHaveAttribute("href", "/join?via=reddit");
   });
 });
 
@@ -226,6 +281,19 @@ describe("cancelling at Google", () => {
     await waitFor(() =>
       expect(router.replace).toHaveBeenCalledWith("/signin?next=%2Fdives"),
     );
+  });
+
+  // `/signin` knows nothing of the join link, so a new visitor sent there would
+  // be refused as uninvited on their second try.
+  it("returns an attempt started on a join link to that link", async () => {
+    const state = await startAttempt(undefined, "reddit");
+
+    renderCallback(`error=access_denied&state=${state}`);
+
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith("/join?via=reddit"),
+    );
+    expect(errorText()).toBeNull();
   });
 
   it("returns to sign-in even when the attempt is already gone", async () => {

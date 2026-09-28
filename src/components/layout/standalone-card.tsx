@@ -35,9 +35,10 @@ interface StandaloneCardHeaderProps {
   title?: ReactNode;
   /**
    * `h1` on a page of its own. `AuthForm` and `CheckEmailCard` pass `h3` under the
-   * landing page's hero, which already has the page's `h1`; only the tag changes.
+   * landing page's hero, which already has the page's `h1`, and `h2` where the card
+   * carries a heading of its own there; only the tag changes.
    */
-  titleAs?: "h1" | "h3";
+  titleAs?: "h1" | "h2" | "h3";
   description?: ReactNode;
 }
 

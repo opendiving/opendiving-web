@@ -369,8 +369,9 @@ _Rejected:_ counting mounts, which cannot tell a return from a genuine change.
 
 There is one auth form, `components/auth/AuthForm.tsx` (email, "Continue", "Continue with Google"),
 for the passwordless flow; Settings has no "Change Password" card. Its host page depends on
-`REGISTRATION_MODE`; see "The landing hero holds one of two forms, and the API is what says which"
-and "`/signin` is a dedicated sign-in page, and carries where the visitor was headed".
+`REGISTRATION_MODE` and on join links; see "The landing hero holds one of two forms, and the API is
+what says which" and "`/signin` is a dedicated sign-in page, and carries where the visitor was
+headed".
 
 - `/auth/verify` (`components/auth/verify-page-content.tsx`) is the magic-link target
   (`{FRONTEND_URL}/auth/verify?token=...`): a page rather than the `POST /auth/email/verify` call,
@@ -1136,8 +1137,8 @@ after the auth bootstrap resolves. The page is a Server Component for `metadata`
 expired session onto the marketing page, where the form is one section among many and nothing
 records the destination. There is still exactly one form and one entry point, not a password-based
 `/signin`/`/signup` pair. On an `open`-mode instance the landing hero hosts its own `AuthForm`; on
-`invite`-mode, the default, the hero holds the invite-request form and `/signin` is `AuthForm`'s
-only mount, which makes this page load-bearing.
+`invite`-mode, the default, the hero holds the invite-request form and, outside a join link's
+`/join`, `/signin` is `AuthForm`'s only mount, which makes this page load-bearing.
 
 `Header`'s signed-out state shows a coral "Sign in" button linking here, kept in the actions row at
 every breakpoint rather than folded into the mobile menu: on a phone it is the most important thing
@@ -3502,7 +3503,9 @@ analytics, because none exist and the CSP forbids one structurally (`connect-src
 nothing else). Template claims like "Usage Data: pages visited, features used, time spent", "analyze
 usage patterns" or an "Analytics Cookies" bullet do not belong there: a policy that overstates what
 is collected is not the safe direction to be wrong, since it is the document a reader uses to decide
-whether to trust the rest.
+whether to trust the rest. The daily totals are not usage analytics in that sense: per-day counts of
+the whole copy — accounts created by door, sign-ins, active accounts — naming nobody, and §2.2
+admits the one-sign-up-day inference rather than calling them anonymous.
 
 ## HSTS is decided per request, and omits `preload`
 
@@ -3817,9 +3820,10 @@ failed verify covers a challenge expired in an open page.
 
 It arms in the landing hero too (`AuthForm` in `open` mode), one POST per signed-out page view; the
 lever, if ever needed, is arming on first focus of the email input, not a lower ceiling. In `invite`
-mode the hero's `InviteRequestForm` (plain `autoComplete="email"`) arms nothing; `/signin` covers
-the returning member. The email input's `autoComplete="username webauthn"` is load-bearing; v13 will
-not arm conditionally without `webauthn`.
+mode the hero's `InviteRequestForm` (plain `autoComplete="email"`) arms nothing unless a join link
+puts `AuthForm` there; `/signin` covers the returning member. The email input's
+`autoComplete="username webauthn"` is load-bearing; v13 will not arm conditionally without
+`webauthn`.
 
 ## Passkey sign-in: Three things about the ceremony that are easy to get wrong
 
@@ -4304,6 +4308,8 @@ page, where `app/privacy/page.test.tsx` pins it, not here.
 analytics technology — not disabled, absent, with no such dependency in the build. Sign-in and map
 functionality that contacts a third party is function, not tracking, and each is disclosed on
 `/privacy` rather than denied; Google sign-in on a Google-enabled instance is disclosed in §4.11.
+§2.2's daily totals leave it standing: the operator's bookkeeping, counted on the server and naming
+nobody.
 
 §10 does not claim "no third-party cookies". The app sets none, but the operator picks the tile
 provider through `MAP_TILE_URL`, and that provider's servers answer the image requests §4.4
@@ -4327,6 +4333,13 @@ every key found as switch-covered or excluded, `theme` by hand.
 Stated gaps: `theme` (next-themes' default, no `storageKey`), run-time-assembled keys, comments
 naming a write form. The server-set `HttpOnly` `refresh_token` cookie (`lib/api-proxy.ts`) is
 disclosed by hand in §10.1.
+
+## A join link on the Google attempt record is sign-in, not analytics storage
+
+`via` rides `opendiving:google-sign-in-attempts` beside the verifier, and the consent clause of the
+rule above does not reach it. On an invite-only copy it is what admits the visitor, part of the
+sign-in they asked for; on an open one, where it only counts, the owner ruled for §10.2's disclosure
+over a consent step. No new key, so `storage-keys.test.ts` is unchanged.
 
 ## Privacy page: §6.3 enumerates every email, and the enumeration is exhaustive on purpose
 
@@ -4364,9 +4377,11 @@ Conditional sections sit last. §4.11 exists only when `GOOGLE_CLIENT_ID` is set
 leaves no gap. The invitations disclosure is unconditional — `REGISTRATION_MODE` flips with a
 restart, and a section that came and went would change under a reader for no stated reason — so it
 holds a fixed number and hedges in prose ("where this copy is invite-only"); the check-in links and
-linking sections are unconditional because every copy offers them. `page.test.tsx` asserts §4.8 to
-§4.10 always present and §4.11 present only when configured. `git grep '4\.11'` misses the page's
-and `lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.(9|1[01])'`.
+linking sections are unconditional because every copy offers them. §4.8's join-link paragraph alone
+comes and goes, with `join_links`: a copy without join links says nothing of them. `page.test.tsx`
+asserts §4.8 to §4.10 always present and §4.11 present only when configured. `git grep '4\.11'`
+misses the page's and `lib/google-oauth.test.ts`'s regex literals; use
+`git grep -n -E '4\\?\.(9|1[01])'`.
 
 ## The ICO's `localStorage` suggestion, read and answered rather than passed over
 
@@ -4985,10 +5000,11 @@ confirmation fires before the request, so the dialog never knows how many rows t
 ## Every closed list on the privacy page has a pin
 
 `app/privacy/page.test.tsx` pins every section whose prose closes a list: §2.2 ("Five things … all
-five") by list length plus the word in both places; §3, numberless, by both §2.2 records appearing
-among its purposes with "And nothing else." intact; §6.2's ordinals ("The first four", "The last
-two") by adding up to its list, plus the export carve-out; §6.1 by the entry that Settings signs a
-device out; §7's retention periods as figures, being API constants rather than operator settings.
+five") by list length plus the word in both places; §3, numberless, by both §2.2 records and the
+daily totals appearing among its purposes with "And nothing else." intact; §6.2's ordinals ("The
+first four", "The last two") by adding up to its list, plus the export carve-out; §6.1 by the entry
+that Settings signs a device out; §7's retention periods as figures, being API constants rather than
+operator settings.
 
 §2.2's account-security-events list has no pin: its authority is the API's `AuthEventType` enum,
 unreadable from here, so the entry claims completeness and the enum is what to re-read. An operator
@@ -5313,10 +5329,11 @@ Authorship alone grants the project nothing, but every such sentence is scoped b
 is not the one running this copy"; as operator, the operator's sections speak for it. The per-copy
 framing ("this copy", "the operator of this copy") resolves on either kind of instance.
 
-The pages announce no project-operated instance and nothing about aggregation or telemetry (new
-collection owing its own disclosure). Terms §9 limits the author's liability and §10 indemnifies the
-writing; neither transfers to the same party as operator, and the AGPL finding stands. No project
-address is printed: the one that can act is the operator's, which the support page reaches.
+The pages announce no project-operated instance and nothing about aggregation or telemetry beyond
+§2.2's daily totals (new collection owing its own disclosure). Terms §9 limits the author's
+liability and §10 indemnifies the writing; neither transfers to the same party as operator, and the
+AGPL finding stands. No project address is printed: the one that can act is the operator's, which
+the support page reaches.
 
 Claims to hunt are about identity ("a different party", "not parties to these Terms"), not servers;
 read each section whole.
@@ -5505,9 +5522,10 @@ repository drops it.
 ## The landing hero holds one of two forms, and the API is what says which
 
 Registration mode is `open` or `invite`; the hero holds `InviteRequestForm` in `invite` and
-`AuthForm` only in `open`, since sign-in there ends in refusal. The mode comes from `GET /config`
-via `useInstanceConfig`, not this container's environment: a mirrored variable is a server fact the
-web cannot check, `runtimeConfig()` (`lib/runtime-config.ts`) is memoised per process, so a flip
+`AuthForm` only in `open`, since sign-in there ends in refusal. On `/join` a live join link
+overrides the mode with `AuthForm`, since the link admits. The mode comes from `GET /config` via
+`useInstanceConfig`, not this container's environment: a mirrored variable is a server fact the web
+cannot check, `runtimeConfig()` (`lib/runtime-config.ts`) is memoised per process, so a flip
 restarts the web too, and the bundle hands this container a curated variable list. Rejected: a
 `PublicConfig` field fed from a web-side `REGISTRATION_MODE`.
 
@@ -5516,6 +5534,17 @@ The fetch shares the auth bootstrap's gate, so the hero never swaps forms. A fai
 `code-quality.yml` sees. The mode is not stored in the browser: every key is registered in
 `lib/storage-keys.ts` and named on `/privacy` §10, and a `public, max-age=60` response earns none,
 so a flip shows within a minute.
+
+## `/join` is the landing page with a join link's form, and its canonical is `/`
+
+`/join?via=<slug>` resolves the slug through `GET /join-channel/{slug}` and renders `LandingPage`
+with `channel`, or plain `<LandingPage />` for no slug, an unknown one or a failed request. One slug
+per request, never a list in `GET /config`: a visitor holding one link learns nothing of the others.
+The address bar keeps the slug; a rewrite to `/` loses the channel on reload, and `/privacy`
+promises no `sessionStorage`. `metadata` names `/` as canonical, which hands forum links' weight to
+the home page; `noindex` would discard it, and `robots.txt` leaves the page fetchable because an
+unfetched page's canonical is never seen. Next renders a root canonical as the bare origin, the same
+URL. The body is `join-page.tsx`, not `-page-content`, so like `/` it is no frame destination.
 
 ## The invitations card learns the registration mode from a 404, and knows nothing else
 

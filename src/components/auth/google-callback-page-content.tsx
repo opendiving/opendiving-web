@@ -45,11 +45,21 @@ const SIGN_IN_FAILED = "We couldn't finish signing you in with Google.";
 const UNKNOWN_ATTEMPT =
   "This sign-in didn't come from a Google sign-in started in this browser, or it took too long to come back.";
 
+// Where a visitor goes to try again. An attempt started on a join link goes back
+// to that link rather than to `/signin`, which knows nothing of it: a new visitor
+// signing in there is refused as uninvited while the link is still live.
+function retryHref(via: string | null): string {
+  return via ? `/join?via=${via}` : "/signin";
+}
+
 function GoogleCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { signInWithGoogle } = useAuth();
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{
+    message: string;
+    via: string | null;
+  } | null>(null);
 
   const errorParam = searchParams.get("error");
   const state = searchParams.get("state");
@@ -76,10 +86,15 @@ function GoogleCallbackContent() {
     // and nothing phrased as though something went wrong. The attempt is
     // consumed on the way past so an abandoned one does not sit in storage, and
     // its destination is carried back into the sign-in link so a second try
-    // still lands where the first one was headed.
+    // still lands where the first one was headed - or, for one started on a join
+    // link, back to that link (`retryHref`).
     if (errorParam) {
       const abandoned = consumeGoogleAttempt(state);
-      router.replace(signInHref(abandoned?.redirectTo));
+      router.replace(
+        abandoned?.via
+          ? retryHref(abandoned.via)
+          : signInHref(abandoned?.redirectTo),
+      );
       return;
     }
 
@@ -97,7 +112,7 @@ function GoogleCallbackContent() {
       // shape the rule asks for. The cascade it costs is one render on a page
       // that has nothing further to do.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setError(UNKNOWN_ATTEMPT);
+      setFailure({ message: UNKNOWN_ATTEMPT, via: null });
       return;
     }
 
@@ -108,6 +123,7 @@ function GoogleCallbackContent() {
       // Google requires the exchange to repeat the URI it saw and the API
       // refuses any other.
       redirectUri: googleRedirectUri(),
+      via: attempt.via,
     })
       .then((outcome) => {
         // `replace`, not `push`: the code is in this page's own URL, and a
@@ -119,14 +135,28 @@ function GoogleCallbackContent() {
         );
       })
       .catch((err) => {
-        setError(getApiErrorMessage(err, SIGN_IN_FAILED));
+        setFailure({
+          message: getApiErrorMessage(err, SIGN_IN_FAILED),
+          via: attempt.via,
+        });
       });
   }, [errorParam, state, code, router, signInWithGoogle]);
 
-  return <CallbackStatus error={error} />;
+  return (
+    <CallbackStatus
+      error={failure?.message}
+      retry={retryHref(failure?.via ?? null)}
+    />
+  );
 }
 
-function CallbackStatus({ error }: { error?: string | null }) {
+function CallbackStatus({
+  error,
+  retry = "/signin",
+}: {
+  error?: string | null;
+  retry?: string;
+}) {
   return (
     <StandaloneShell className="text-center">
       <StandaloneCard>
@@ -141,7 +171,7 @@ function CallbackStatus({ error }: { error?: string | null }) {
             <p className="text-sm text-muted-foreground">
               <Link
                 replace
-                href="/signin"
+                href={retry}
                 className="underline hover:text-foreground"
               >
                 Back to sign in

@@ -21,24 +21,35 @@ import type { InstanceConfig } from "./config";
  */
 const REQUEST_TIMEOUT_MS = 2_000;
 
+/** What the legal pages render differently on. */
+export interface LegalPageConfig {
+  /** Whether the OpenDiving project itself operates this instance. */
+  projectOperated: boolean;
+  /** Whether this instance has any join link - never which. */
+  joinLinks: boolean;
+}
+
+const NEITHER: LegalPageConfig = { projectOperated: false, joinLinks: false };
+
 /**
- * Whether the OpenDiving project itself operates this instance.
+ * The two facts about this instance the legal pages render on, from one request.
  *
- * `true` only where the API answered `project_operated: true`. Every other outcome -
+ * Each is `true` only where the API answered `true` for it. Every other outcome -
  * `false`, an API too old to carry the field, a timeout, a connection refused, a
  * response that is not JSON - is `false`, and the asymmetry is the point: the copy that
  * gets the wrong answer in that direction is a project-run one that reads like any other
  * instance, which costs nothing. Wrong in the other direction is a self-hoster's privacy
- * policy naming a person who has never touched their machine.
+ * policy naming a person who has never touched their machine, or describing join links
+ * nobody set up.
  *
  * That is also what keeps a self-hosted copy whose API is down rendering its legal pages
  * unchanged rather than failing: there is no error path out of here, only `false`.
  *
  * Read per request, never memoised. `lib/runtime-config.ts` caches for the life of the
- * process because the environment cannot change under it; this value can, the moment the
- * operator restarts the API.
+ * process because the environment cannot change under it; these values can, the moment
+ * the operator restarts the API.
  */
-export async function projectOperatesThisInstance(): Promise<boolean> {
+export async function readLegalPageConfig(): Promise<LegalPageConfig> {
   // Stops the prerender here. Under `cacheComponents` a build renders every route once,
   // and this fetch is rejected mid-prerender - caught below and read as "not
   // project-operated", which is the answer that would be baked in. The pages that call
@@ -64,20 +75,23 @@ export async function projectOperatesThisInstance(): Promise<boolean> {
     if (!response.ok) {
       console.warn(
         `[instance-config] GET /config answered ${response.status}; ` +
-          `reading this instance as not project-operated.`,
+          `reading this instance as not project-operated and without join links.`,
       );
-      return false;
+      return NEITHER;
     }
 
     const config = (await response.json()) as Partial<InstanceConfig>;
-    return config.project_operated === true;
+    return {
+      projectOperated: config.project_operated === true,
+      joinLinks: config.join_links === true,
+    };
   } catch (error: unknown) {
     console.warn(
       "[instance-config] Couldn't read this instance's configuration; " +
-        "reading it as not project-operated.",
+        "reading it as not project-operated and without join links.",
       error,
     );
-    return false;
+    return NEITHER;
   } finally {
     clearTimeout(deadline);
   }

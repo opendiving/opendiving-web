@@ -21,6 +21,7 @@
 // Google returns only a single-use code; it is this app's server that redeems it,
 // so nothing identifying anyone passes through the browser.
 
+import { JOIN_CHANNEL_SLUG } from "@/lib/api/config";
 import { sanitizeRedirectPath } from "@/lib/auth-redirect";
 
 // The OAuth 2.0 authorization endpoint, from Google's OpenID discovery document
@@ -63,6 +64,12 @@ export interface PendingGoogleAttempt {
   // the first tab would then sign in perfectly and land on the wrong page with
   // nothing anywhere reporting a problem.
   redirectTo: string | null;
+  // The join link this attempt started from, if it started on `/join`: the slug
+  // the API resolved, sent back with the code so the API can admit the visitor by
+  // it. It rides here because this flow leaves the tab and `state` itself stays
+  // an opaque nonce - this record is already the session-bound place the round
+  // trip keeps what it needs.
+  via: string | null;
   expiresAt: number;
 }
 
@@ -118,7 +125,7 @@ async function codeChallenge(verifier: string): Promise<string> {
 // by an older build would otherwise sit there being rejected forever.
 function asAttempt(value: unknown): PendingGoogleAttempt | null {
   if (typeof value !== "object" || value === null) return null;
-  const { codeVerifier, redirectTo, expiresAt } =
+  const { codeVerifier, redirectTo, via, expiresAt } =
     value as Partial<PendingGoogleAttempt>;
   if (typeof codeVerifier !== "string" || typeof expiresAt !== "number") {
     return null;
@@ -128,6 +135,9 @@ function asAttempt(value: unknown): PendingGoogleAttempt | null {
     // Sanitized again on the way out, not only on the way in: the value has sat
     // in storage that anything else at this browser could have rewritten.
     redirectTo: sanitizeRedirectPath(redirectTo),
+    // Absent on an entry an older build wrote, and dropped rather than sent if it
+    // is not a slug at all - the API would refuse the whole exchange over it.
+    via: typeof via === "string" && JOIN_CHANNEL_SLUG.test(via) ? via : null,
     expiresAt,
   };
 }
@@ -189,6 +199,8 @@ interface BeginGoogleSignIn {
   clientId: string;
   // Where the visitor was headed before they were asked to sign in, if anywhere.
   redirectTo?: string | null;
+  // The join link's slug, when the button is on `/join`.
+  via?: string | null;
 }
 
 /**
@@ -211,6 +223,7 @@ interface BeginGoogleSignIn {
 export async function beginGoogleSignIn({
   clientId,
   redirectTo,
+  via,
 }: BeginGoogleSignIn): Promise<string> {
   const state = randomToken();
   const codeVerifier = randomToken();
@@ -221,6 +234,7 @@ export async function beginGoogleSignIn({
     [state]: {
       codeVerifier,
       redirectTo: sanitizeRedirectPath(redirectTo),
+      via: via ?? null,
       expiresAt: Date.now() + ATTEMPT_TTL_MS,
     },
   });

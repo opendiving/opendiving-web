@@ -15,6 +15,7 @@ import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import { useInstanceConfig } from "@/hooks/useInstanceConfig";
 import { AuthForm } from "@/components/auth/auth-form";
 import { InviteRequestForm } from "@/components/auth/invite-request-form";
+import type { JoinChannel } from "@/lib/api/config";
 import { Fish, Anchor, ArrowRight, HardDriveDownload } from "lucide-react";
 
 // Every claim on this page has to be true of the software as it stands, because
@@ -33,7 +34,22 @@ const ROADMAP_URL = "https://github.com/opendiving/opendiving-web#planned";
 // links below share it. See "The install lives in the product repository" in DECISIONS.md.
 const SELF_HOSTING_URL = "https://github.com/opendiving/opendiving";
 
-export function LandingPage() {
+// The line under a join link's heading, in the two voices `InviteRequestForm`'s
+// `COPY` takes and on the same rule: `project` only where `/config` said the
+// project runs this copy, `generic` everywhere else, because it is true everywhere.
+const JOIN_COPY = {
+  generic: "Enter your email to create your account.",
+  project: "Enter your email to join the OpenDiving beta.",
+} as const;
+
+interface LandingPageProps {
+  // A live join link, resolved by `/join` before this renders. It puts the sign-in
+  // form in the hero in either mode, carrying the link's slug, under a heading that
+  // names where the link was posted.
+  channel?: JoinChannel;
+}
+
+export function LandingPage({ channel }: LandingPageProps = {}) {
   const { isAuthenticated, isLoading } = useRedirectIfAuthenticated();
   // Under the same gate as the auth bootstrap below, and that is the point: the
   // hero must never paint one form and then swap it for the other, nor one voice
@@ -84,39 +100,56 @@ export function LandingPage() {
             </div>
 
             {/* Which form the hero holds is the one thing on this page that
-                depends on the instance. In `invite` mode there is nothing a
-                stranger can do with a sign-in form, so the column holds the
-                request form instead; every other route in - the header's Sign in
-                button, "Sign in to this instance" below, and the link inside the
-                request form - still reaches `/signin`, which is unchanged in both
-                modes.
+                depends on the instance, and on how the visitor arrived. In
+                `invite` mode there is nothing a stranger can do with a sign-in
+                form, so the column holds the request form instead; every other
+                route in - the header's Sign in button, "Sign in to this instance"
+                below, and the link inside the request form - still reaches
+                `/signin`, which is unchanged in both modes.
+
+                A join link is the exception, and it wins over the mode: `/join`
+                hands this page the channel its slug resolved to, and that link is
+                what admits a stranger, so the column holds the sign-in form
+                carrying the slug, whatever the mode.
 
                 An unknown config renders the sign-in form. A landing page has
                 to work on an instance whose API is briefly down, and `/signin`
                 is the answer that is right on any instance; it is also what the
                 axe scan sees, since that job runs the web with no API at all.
 
-                Which voice the request form speaks in is the second thing here
-                that depends on the instance, and the only copy in the app that
-                knows who runs it. `project_operated: true` means the OpenDiving
-                project operates this copy, and the form invites the visitor onto
-                a waitlist in the project's own voice. Anything else - `false`,
+                Which voice the hero speaks in - the request form, or the line
+                under a join link's heading - is the second thing here that
+                depends on the instance, and the only copy in the app that knows
+                who runs it. `project_operated: true` means the OpenDiving project
+                operates this copy, and the form invites the visitor onto a
+                waitlist in the project's own voice. Anything else - `false`,
                 or a `/config` from an API that predates the field - gets the
                 generic copy, which is true of every instance; with no `/config`
                 at all the question never arises, since the sign-in form is what
                 an unknown config renders, as above. The asymmetry is the rule:
                 a self-hoster's hero must never say "we'll notify you" on the
                 project's behalf, so nothing short of the API answering `true`
-                earns that voice. It picks copy and only copy - the mode alone
-                decides which form is here.
+                earns that voice. It picks copy and only copy - the mode, or a
+                join link, decides which form is here.
 
                 What the swap costs, accepted deliberately: `AuthForm` is the only
                 mount of the conditional passkey ceremony and of the passkey and
                 Google buttons, so in `invite` mode the landing page arms none of
-                them. A returning member takes Sign in and has all three on
-                `/signin`, one tap away. */}
+                them unless a join link put `AuthForm` here. A returning member
+                takes Sign in and has all three on `/signin`, one tap away. */}
             <div className="flex justify-center">
-              {config?.registration_mode === "invite" ? (
+              {channel ? (
+                <AuthForm
+                  via={channel.slug}
+                  title={`Invited from ${channel.label}`}
+                  titleAs="h2"
+                  description={
+                    JOIN_COPY[
+                      config?.project_operated === true ? "project" : "generic"
+                    ]
+                  }
+                />
+              ) : config?.registration_mode === "invite" ? (
                 <InviteRequestForm
                   variant={
                     config.project_operated === true ? "waitlist" : "generic"
