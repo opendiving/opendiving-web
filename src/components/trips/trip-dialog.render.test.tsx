@@ -72,10 +72,10 @@ describe("TripDialog", () => {
     expect(labels).toEqual([
       "Name *",
       "Parts",
-      "Location, part 1 of 1",
-      "Accommodation, part 1 of 1",
-      "Start date, part 1 of 1",
-      "End date, part 1 of 1",
+      "Location part 1 of 1",
+      "Accommodation part 1 of 1",
+      "Start date part 1 of 1",
+      "End date part 1 of 1",
       "People",
       "Notes",
     ]);
@@ -132,9 +132,9 @@ describe("TripDialog", () => {
     await userEvent.type(screen.getByLabelText("Name *"), "Egypt, spring");
     await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
 
-    await userEvent.click(screen.getByLabelText("Start date, part 2 of 2"));
+    await userEvent.click(screen.getByLabelText("Start date part 2 of 2"));
     await userEvent.paste("2026-04-22");
-    await userEvent.click(screen.getByLabelText("End date, part 2 of 2"));
+    await userEvent.click(screen.getByLabelText("End date part 2 of 2"));
     await userEvent.paste("2026-04-18");
     await userEvent.click(screen.getByRole("button", { name: /Create trip/ }));
 
@@ -161,7 +161,7 @@ describe("TripDialog", () => {
     renderDialog();
 
     const map = screen.getByTestId("locations-map");
-    const picker = screen.getByRole("combobox", { name: /^Location,/ });
+    const picker = screen.getByRole("combobox", { name: /^Location part/ });
     const notes = screen.getByLabelText("Notes");
 
     expect(picker.compareDocumentPosition(map)).toBe(

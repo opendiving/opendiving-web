@@ -8,10 +8,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { IconTooltip } from "@/components/ui/tooltip";
-import { GripVertical, Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  RepeatableRow,
+  RepeatableRowField,
+} from "@/components/ui/repeatable-row";
 import {
   ComboboxItem,
   ComboboxSearchResult,
@@ -474,11 +477,11 @@ export function SpeciesMultiSelect({
   });
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {(value.length > 0 || pending.length > 0) && (
         // Text selection would otherwise sweep across the rows mid-drag.
         <ul
-          className={cn("space-y-1", draggingIndex !== null && "select-none")}
+          className={cn("space-y-4", draggingIndex !== null && "select-none")}
         >
           {value.map((sighting, index) => {
             const uuid = sighting.species_uuid;
@@ -489,18 +492,37 @@ export function SpeciesMultiSelect({
             const binomial = species && speciesSecondaryName(species);
             const isDragging = draggingIndex === index;
             const rowErrors = errors?.[index];
-            const countErrorId = `${idPrefix}-${uuid}-count-error`;
-            const notesErrorId = `${idPrefix}-${uuid}-notes-error`;
+            const countId = `${idPrefix}-${uuid}-count`;
+            const notesId = `${idPrefix}-${uuid}-notes`;
+            const countErrorId = `${countId}-error`;
+            const notesErrorId = `${notesId}-error`;
             return (
-              // Both inputs on every row whether or not they hold anything, so a
-              // row with a one-line note stands as tall as a bare one and the
-              // list does not jump as the diver types into it.
-              <li
+              <RepeatableRow
                 key={uuid}
+                as="li"
                 ref={setItemRef(index)}
+                title={
+                  <>
+                    {label}
+                    {binomial && (
+                      <span className="italic font-normal"> {binomial}</span>
+                    )}
+                  </>
+                }
+                removeLabel={`Remove ${label}`}
+                onRemove={() => removeSpecies(uuid)}
+                dragHandle={
+                  value.length > 1
+                    ? {
+                        label: `Reorder ${label}, position ${index + 1} of ${value.length}. Use arrow up and arrow down to move it.`,
+                        props: handleProps(index),
+                      }
+                    : undefined
+                }
+                disabled={disabled}
                 className={cn(
-                  "space-y-1.5 rounded-md border bg-background px-2 py-1.5 text-sm",
-                  isDragging && "relative z-10 shadow-lg ring-2 ring-ring",
+                  isDragging &&
+                    "relative z-10 bg-card shadow-lg ring-2 ring-ring",
                 )}
                 // The dragged row is translated to follow the pointer; the rest
                 // stay put and are simply re-ordered around it by React.
@@ -510,96 +532,71 @@ export function SpeciesMultiSelect({
                     : undefined
                 }
               >
-                <div className="flex items-center gap-2">
-                  {/* The gesture's keyboard equivalent lives on this button
-                      (Up/Down), so the label has to say so - "drag to reorder"
-                      alone would be a dead end for keyboard users. */}
-                  {value.length > 1 && (
-                    <IconTooltip
-                      label={`Reorder ${label}, position ${index + 1} of ${value.length}. Use arrow up and arrow down to move it.`}
-                    >
-                      <button
-                        type="button"
-                        disabled={disabled}
-                        className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
-                        {...handleProps(index)}
-                      >
-                        <GripVertical className="h-4 w-4" />
-                      </button>
-                    </IconTooltip>
-                  )}
-                  <span className="min-w-0 flex-1 truncate">
-                    {label}
-                    {binomial && (
-                      <span className="italic text-muted-foreground">
-                        {" "}
-                        {binomial}
-                      </span>
-                    )}
-                  </span>
-                  {/* Text with a numeric keypad rather than `type="number"`,
-                      which lets "e", "-" and "1.5" into the box and reports
-                      them as an empty value - so a refused keystroke would read
-                      as a cleared count. */}
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    aria-label={`Count of ${label}`}
-                    aria-invalid={rowErrors?.count ? true : undefined}
-                    aria-describedby={
-                      rowErrors?.count ? countErrorId : undefined
-                    }
-                    placeholder="Count"
-                    className="h-9 w-20 shrink-0"
-                    disabled={disabled}
-                    value={sighting.count === undefined ? "" : sighting.count}
-                    onChange={(event) => setCount(uuid, event.target.value)}
-                  />
-                  <IconTooltip label={`Remove ${label}`}>
-                    <button
-                      type="button"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <RepeatableRowField
+                    id={countId}
+                    label="Count"
+                    labelSuffix={`of ${label}`}
+                  >
+                    {/* Text with a numeric keypad rather than `type="number"`,
+                        which lets "e", "-" and "1.5" into the box and reports
+                        them as an empty value - so a refused keystroke would
+                        read as a cleared count. */}
+                    <Input
+                      id={countId}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      aria-invalid={rowErrors?.count ? true : undefined}
+                      aria-describedby={
+                        rowErrors?.count ? countErrorId : undefined
+                      }
                       disabled={disabled}
-                      className="shrink-0 text-muted-foreground hover:text-foreground"
-                      onClick={() => removeSpecies(uuid)}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </IconTooltip>
+                      value={sighting.count === undefined ? "" : sighting.count}
+                      onChange={(event) => setCount(uuid, event.target.value)}
+                    />
+                    {rowErrors?.count && (
+                      <p
+                        id={countErrorId}
+                        className="text-sm font-medium text-destructive"
+                      >
+                        {rowErrors.count}
+                      </p>
+                    )}
+                  </RepeatableRowField>
+                  <RepeatableRowField
+                    id={notesId}
+                    label="Notes"
+                    labelSuffix={`on ${label}`}
+                  >
+                    {/* A textarea for the line breaks a merge or an import puts
+                        in a note, as the dive's own notes field is one - but one
+                        line tall until the note needs more. `field-sizing` does
+                        the growing; a browser without it keeps the one line and
+                        scrolls. */}
+                    <Textarea
+                      id={notesId}
+                      rows={1}
+                      aria-invalid={rowErrors?.notes ? true : undefined}
+                      aria-describedby={
+                        rowErrors?.notes ? notesErrorId : undefined
+                      }
+                      className="field-sizing-content max-h-40 min-h-10 resize-none leading-5"
+                      disabled={disabled}
+                      value={sighting.notes ?? ""}
+                      onChange={(event) => setNotes(uuid, event.target.value)}
+                    />
+                    {rowErrors?.notes && (
+                      <p
+                        id={notesErrorId}
+                        className="text-sm font-medium text-destructive"
+                      >
+                        {rowErrors.notes}
+                      </p>
+                    )}
+                  </RepeatableRowField>
                 </div>
-                {/* A textarea for the line breaks a merge or an import puts in a
-                    note, as the dive's own notes field is one - but one line tall
-                    until the note needs more, so a bare row stays compact.
-                    `field-sizing` does the growing; a browser without it keeps
-                    the one line and scrolls. */}
-                <Textarea
-                  rows={1}
-                  aria-label={`Notes on ${label}`}
-                  aria-invalid={rowErrors?.notes ? true : undefined}
-                  aria-describedby={rowErrors?.notes ? notesErrorId : undefined}
-                  placeholder="Notes"
-                  className="field-sizing-content max-h-40 min-h-9 resize-none py-1.5"
-                  disabled={disabled}
-                  value={sighting.notes ?? ""}
-                  onChange={(event) => setNotes(uuid, event.target.value)}
-                />
-                {rowErrors?.count && (
-                  <p
-                    id={countErrorId}
-                    className="text-sm font-medium text-destructive"
-                  >
-                    {rowErrors.count}
-                  </p>
-                )}
-                {rowErrors?.notes && (
-                  <p
-                    id={notesErrorId}
-                    className="text-sm font-medium text-destructive"
-                  >
-                    {rowErrors.notes}
-                  </p>
-                )}
-              </li>
+              </RepeatableRow>
             );
           })}
 
@@ -610,7 +607,7 @@ export function SpeciesMultiSelect({
           {pending.map((entry) => (
             <li
               key={pendingSpeciesId(entry.aphiaId)}
-              className="flex items-center gap-2 rounded-md border border-dashed bg-background px-2 py-1.5 text-sm text-muted-foreground"
+              className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground"
             >
               <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
               <span className="flex-1 truncate">{entry.label}</span>

@@ -8,7 +8,7 @@ import type { SpeciesSummary } from "@/lib/api/species";
 
 // **Load-bearing, and it looks like a stray import** - the one every geometry
 // test in this lane carries. Without it the count box and the notes box have no
-// height of their own, a bare row collapses to a line of text, and the level
+// height of their own, a bare row collapses to three lines of text, and the level
 // test below passes against any markup at all. The third test is the canary.
 import "@/app/globals.css";
 
@@ -85,13 +85,14 @@ describe("the species picker's rows stay level", () => {
     expect(noted).toBeGreaterThan(bare + 20);
   });
 
-  it("stands a bare row taller than its two boxes, which only the stylesheet makes true", async () => {
-    // The stylesheet canary. `h-9` and `min-h-9` are 36px each, stacked; without
-    // Tailwind a bare row is a line of text and the level test measures nothing.
+  it("stands a bare row taller than its padding, header and boxes, which only the stylesheet makes true", async () => {
+    // The stylesheet canary. At `md` the row's `p-4`, its 36px header and the
+    // labelled 40px boxes side by side come to 148px; without Tailwind a bare row
+    // is three lines of text, under 80px, and the level test measures nothing.
     await page.viewport(WIDE, 800);
 
     const [bare] = rowHeights([{ species_uuid: CLOWNFISH.uuid }]);
 
-    expect(bare).toBeGreaterThan(72);
+    expect(bare).toBeGreaterThan(120);
   });
 });

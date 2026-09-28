@@ -2,7 +2,6 @@
 
 import {
   Fragment,
-  type ReactNode,
   useCallback,
   useEffect,
   useId,
@@ -15,8 +14,11 @@ import {
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Label } from "@/components/ui/label";
-import { AddRowButton, RepeatableRow } from "@/components/ui/repeatable-row";
+import {
+  AddRowButton,
+  RepeatableRow,
+  RepeatableRowField,
+} from "@/components/ui/repeatable-row";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import {
   geocodingAPI,
@@ -455,7 +457,10 @@ function TripPartRow({
   const errorId = `${fieldId}-error`;
   const location = part.location ?? null;
   const name = describeTripPart(part, index);
-  const position = `part ${index + 1} of ${total}`;
+  // The fields are named by position rather than by `describeTripPart`, unlike
+  // the row's buttons: they are what names a part, so naming them after it
+  // would rename the control under the diver as they filled it in.
+  const labelSuffix = `part ${index + 1} of ${total}`;
   // A place typed in by hand has no position, and `LocationsMap` draws only
   // what has one. Said out loud on the row, because the map below simply omits
   // it and an absence nobody explains reads as the map having missed a place.
@@ -548,7 +553,11 @@ function TripPartRow({
         isDragging ? { transform: `translateY(${dragOffset}px)` } : undefined
       }
     >
-      <PartField id={fieldId} label="Location" position={position}>
+      <RepeatableRowField
+        id={fieldId}
+        label="Location"
+        labelSuffix={labelSuffix}
+      >
         <CreatableCombobox
           id={fieldId}
           onSearch={searchPlaces}
@@ -597,13 +606,13 @@ function TripPartRow({
         {isUnmapped && (
           <p className="text-xs text-muted-foreground">Not on the map</p>
         )}
-      </PartField>
+      </RepeatableRowField>
 
       {/* A contact made from here starts as a place to stay. */}
-      <PartField
+      <RepeatableRowField
         id={`${fieldId}-accommodation`}
         label="Accommodation"
-        position={position}
+        labelSuffix={labelSuffix}
       >
         <ContactCombobox
           id={`${fieldId}-accommodation`}
@@ -616,13 +625,13 @@ function TripPartRow({
           addNewLabel="Add accommodation..."
           disabled={disabled}
         />
-      </PartField>
+      </RepeatableRowField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <PartField
+        <RepeatableRowField
           id={`${fieldId}-start`}
           label="Start date"
-          position={position}
+          labelSuffix={labelSuffix}
         >
           <DatePicker
             id={`${fieldId}-start`}
@@ -632,8 +641,12 @@ function TripPartRow({
             aria-invalid={!!error}
             disabled={disabled}
           />
-        </PartField>
-        <PartField id={`${fieldId}-end`} label="End date" position={position}>
+        </RepeatableRowField>
+        <RepeatableRowField
+          id={`${fieldId}-end`}
+          label="End date"
+          labelSuffix={labelSuffix}
+        >
           <DatePicker
             id={`${fieldId}-end`}
             value={part.end_date ?? ""}
@@ -642,7 +655,7 @@ function TripPartRow({
             aria-invalid={!!error}
             disabled={disabled}
           />
-        </PartField>
+        </RepeatableRowField>
       </div>
 
       {/* On the row rather than once above the list. What the schema objects
@@ -654,31 +667,5 @@ function TripPartRow({
         </p>
       )}
     </RepeatableRow>
-  );
-}
-
-interface PartFieldProps {
-  id: string;
-  label: string;
-  // How the part is announced after the visible word, e.g. "part 2 of 3".
-  position: string;
-  children: ReactNode;
-}
-
-// A labelled field in a part, laid out as `FormItem` lays one out. The part's
-// position follows the visible word for a screen reader only: twenty controls all
-// called "Start date" tell a controls list nothing about which part they set. The
-// position rather than `describeTripPart`, unlike the row's buttons: these fields
-// are what names a part, so naming them after it would rename the control under
-// the diver as they filled it in.
-function PartField({ id, label, position, children }: PartFieldProps) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>
-        {label}
-        <span className="sr-only">, {position}</span>
-      </Label>
-      {children}
-    </div>
   );
 }
