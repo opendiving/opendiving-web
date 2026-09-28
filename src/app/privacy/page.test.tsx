@@ -23,16 +23,17 @@ import { PROJECT_OPERATOR } from "@/lib/operator";
 // count here has two correct answers rather than one, and an instance that has not
 // turned Google on must not read as though it had.
 //
-// The second instance-dependent half is the operator block, and it is mocked at the
-// module that asks the API rather than at `fetch`: what the page branches on is the
-// one boolean that function returns, and staging a response body here would be
-// testing `config.server.ts` a second time in the wrong file.
-const { runtimeConfig, projectOperatesThisInstance } = vi.hoisted(() => ({
+// The other instance-dependent halves are the operator block and the join-link
+// sentences, and both are mocked at the module that asks the API rather than at
+// `fetch`: what the page branches on is the two booleans that function returns, and
+// staging a response body here would be testing `config.server.ts` a second time in
+// the wrong file.
+const { runtimeConfig, readLegalPageConfig } = vi.hoisted(() => ({
   runtimeConfig: vi.fn(),
-  projectOperatesThisInstance: vi.fn(),
+  readLegalPageConfig: vi.fn(),
 }));
 vi.mock("@/lib/runtime-config", () => ({ runtimeConfig }));
-vi.mock("@/lib/api/config.server", () => ({ projectOperatesThisInstance }));
+vi.mock("@/lib/api/config.server", () => ({ readLegalPageConfig }));
 
 // `await PrivacyPage()` rather than `render(<PrivacyPage />)`: the page is an async
 // Server Component, and React Testing Library renders elements rather than awaiting
@@ -40,14 +41,16 @@ vi.mock("@/lib/api/config.server", () => ({ projectOperatesThisInstance }));
 async function renderPage({
   google,
   projectOperated = false,
+  joinLinks = false,
 }: {
   google: boolean;
   projectOperated?: boolean;
+  joinLinks?: boolean;
 }) {
   runtimeConfig.mockReturnValue({
     googleClientId: google ? "abc.apps.googleusercontent.com" : undefined,
   });
-  projectOperatesThisInstance.mockResolvedValue(projectOperated);
+  readLegalPageConfig.mockResolvedValue({ projectOperated, joinLinks });
   render(await PrivacyPage());
 }
 
@@ -198,6 +201,9 @@ describe.each([
     const uses = listAfterHeading(/3\. How We Use Your Information/).join(" ");
     expect(uses).toMatch(/signed-in devices/i);
     expect(uses).toMatch(/account security events/i);
+    // And the daily totals §2.2 counts two of those records into, which are kept
+    // for a purpose of their own.
+    expect(uses).toMatch(/Count how this copy is used:.*daily\s+totals/i);
     // And the one use that shows your entries to somebody else, which the closure
     // below would otherwise deny.
     expect(uses).toMatch(/whoever holds a check-in link you made/i);
@@ -507,6 +513,147 @@ describe.each([
     expect(
       screen.getByText(/an address you later moved off are not named/i),
     ).toBeInTheDocument();
+  });
+});
+
+// The daily totals, which are the one counting this copy does over its records, and
+// the sentences they would otherwise make false: §2.2's "none of the five above is
+// counted", §7's session that goes "once it can no longer sign you in", the two
+// waiting-list exits, and what an invitation records.
+describe.each([
+  ["with Google sign-in configured", true],
+  ["without Google sign-in", false],
+])("the daily totals %s", (_label, google) => {
+  it("§2.2 says what is counted, that it names nobody, and where it does not hold", async () => {
+    await renderPage({ google });
+
+    expect(screen.queryByText(/No usage data is collected/)).toBeNull();
+    expect(screen.queryByText(/none of the five above is counted/)).toBeNull();
+    expect(
+      screen.queryByText(/ordinary machinery rather than measurement/),
+    ).toBeNull();
+
+    const totals = screen.getByText(/What is counted is a set of/).textContent!;
+    expect(totals).toMatch(/how many accounts\s+were created/);
+    expect(totals).toMatch(/how many accounts\s+signed in/);
+    expect(totals).toMatch(/how many were active/);
+    expect(totals).toMatch(/No account is named in any of them/);
+    expect(totals).toMatch(/on a day when only one account was created/);
+
+    // The two records it is counted from each say so where they are described.
+    const records = listAfterHeading(
+      /2\.2 Automatically Collected Information/,
+    ).join(" ");
+    expect(records).toMatch(/total of active accounts/);
+    expect(records).toMatch(/total of accounts that signed in/);
+  });
+
+  it("§7 keeps the totals for as long as the copy runs, through a deletion", async () => {
+    await renderPage({ google });
+
+    expect(
+      screen.getByText(/are kept for as long as this copy runs/),
+    ).toHaveTextContent(/deleting an account does not lower them/);
+  });
+
+  // The session sweep keeps a signed-out session until its day has closed, so the
+  // day's count of active accounts can include it.
+  it("§7 keeps a signed-out session until the day it was last used is over", async () => {
+    await renderPage({ google });
+
+    expect(
+      screen.queryByText(/deleted once it can no longer sign you in/),
+    ).toBeNull();
+    expect(
+      screen.getByText(/stops being able to sign you in/),
+    ).toHaveTextContent(/kept until the end of the day it was last\s+used/);
+  });
+
+  // A pending request has a third exit, an account created for its address, and
+  // an unused invitation says whether it answered one.
+  it("§2.1 and §7 name every way a pending request goes", async () => {
+    await renderPage({ google });
+
+    expect(
+      screen.getByText(/stored while the request is pending/),
+    ).toHaveTextContent(
+      /or an account is created here with that address[\s\S]*until it is used, whether it answered a request to be\s+invited/,
+    );
+    expect(
+      screen
+        .getByText(
+          /Two more expire on their own where this copy is invite-only/i,
+        )
+        .closest("p"),
+    ).toHaveTextContent(/or if an account is created with that address/);
+  });
+});
+
+// Join links exist only on a copy whose API says so, and a copy without them carries
+// no word about them anywhere on this page - which is also what keeps the setting
+// undocumented on a self-hosted copy.
+describe.each([
+  ["with Google sign-in configured", true],
+  ["without Google sign-in", false],
+])("join links %s", (_label, google) => {
+  const joinParagraph = () => screen.queryByText(/This copy also has/);
+
+  it("appear nowhere where the API said there are none", async () => {
+    await renderPage({ google, joinLinks: false });
+
+    expect(joinParagraph()).toBeNull();
+    expect(document.body.textContent).not.toMatch(/join link/i);
+  });
+
+  it("have a paragraph in §4.8 where the API said there are some", async () => {
+    await renderPage({ google, joinLinks: true });
+
+    const paragraph = joinParagraph()!;
+    expect(paragraph).toHaveTextContent(/without an\s+invitation/);
+    expect(paragraph).toHaveTextContent(/deleted within about a week/);
+    expect(paragraph).toHaveTextContent(/never written onto your account/);
+    expect(paragraph).toHaveTextContent(
+      /on a day\s+when only one account was created/,
+    );
+    // Inside §4.8, after its heading and before §4.9's.
+    const heading = screen.getByText(/4\.8 Inviting Someone to This Copy/);
+    const next = screen.getByText(/4\.9 Check-in Links/);
+    expect(
+      heading.compareDocumentPosition(paragraph) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      paragraph.compareDocumentPosition(next) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // It moves no section's number.
+    expect(screen.getByText(/4\.10 Linking a Person/)).toBeInTheDocument();
+  });
+
+  it("are counted as a door of their own in §2.2 and admitted under §3", async () => {
+    await renderPage({ google, joinLinks: true });
+
+    expect(screen.getByText(/What is counted is a set of/)).toHaveTextContent(
+      /a join link, counted under where it was posted/,
+    );
+    expect(
+      listAfterHeading(/3\. How We Use Your Information/).join(" "),
+    ).toMatch(/let in whoever follows one of its join links/);
+  });
+
+  it("are named in the Google attempt's storage entry only where Google is", async () => {
+    await renderPage({ google, joinLinks: true });
+
+    const entry = storageEntries().find((row) =>
+      row.includes("opendiving:google-sign-in-attempts"),
+    );
+    if (google) {
+      expect(entry).toMatch(/if you came by a join link, which link/);
+      expect(joinParagraph()).toHaveTextContent(/section 10\.2/);
+    } else {
+      expect(entry).toBeUndefined();
+      expect(joinParagraph()).not.toHaveTextContent(/Google/);
+    }
   });
 });
 

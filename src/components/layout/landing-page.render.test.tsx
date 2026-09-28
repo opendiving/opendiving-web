@@ -171,3 +171,75 @@ describe("the landing hero", () => {
     },
   );
 });
+
+// A join link, resolved by `/join` and handed in as `channel`. It wins over the
+// mode: the link is what admits a stranger, so the hero is the sign-in form
+// carrying the slug, under a heading naming where the link was posted.
+describe("the landing hero on a join link", () => {
+  const channel = { slug: "scubaboard", label: "ScubaBoard" };
+  const channelHeading = () =>
+    screen.queryByRole("heading", { name: "Invited from ScubaBoard" });
+
+  it.each(["invite", "open"] as const)(
+    "holds the sign-in form and never the request form in %s mode",
+    (mode) => {
+      known({ registration_mode: mode, project_operated: false });
+
+      render(<LandingPage channel={channel} />);
+
+      expect(channelHeading()).toBeInTheDocument();
+      expect(channelHeading()!.tagName).toBe("H2");
+      expect(signInButton()).toBeInTheDocument();
+      expect(requestButton()).toBeNull();
+      expect(waitlistButton()).toBeNull();
+    },
+  );
+
+  // The same asymmetry as the request form's two voices: the project's only on
+  // the literal `true`, the generic line - true of any copy - otherwise, including
+  // when `/config` could not be read at all.
+  it("speaks as the project only when /config says the project operates this instance", () => {
+    known({ registration_mode: "invite", project_operated: true });
+
+    render(<LandingPage channel={channel} />);
+
+    expect(
+      screen.getByText("Enter your email to join the OpenDiving beta."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/create your account/)).toBeNull();
+  });
+
+  it.each([
+    ["false", { registration_mode: "invite", project_operated: false }],
+    ["absent", { registration_mode: "invite" }],
+  ])("keeps the generic line when project_operated is %s", (_l, config) => {
+    known(config);
+
+    render(<LandingPage channel={channel} />);
+
+    expect(
+      screen.getByText("Enter your email to create your account."),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("beta");
+  });
+
+  it("keeps the generic line when the config cannot be read", () => {
+    useInstanceConfig.mockReturnValue({ config: null, isLoading: false });
+
+    render(<LandingPage channel={channel} />);
+
+    expect(channelHeading()).toBeInTheDocument();
+    expect(
+      screen.getByText("Enter your email to create your account."),
+    ).toBeInTheDocument();
+  });
+
+  it("paints no form until the config is known", () => {
+    useInstanceConfig.mockReturnValue({ config: null, isLoading: true });
+
+    render(<LandingPage channel={channel} />);
+
+    expect(channelHeading()).toBeNull();
+    expect(signInButton()).toBeNull();
+  });
+});

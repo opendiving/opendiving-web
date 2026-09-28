@@ -10,15 +10,15 @@ import { PROJECT_OPERATOR } from "@/lib/operator";
 // So this file pins the pair rather than the page: on a copy the OpenDiving project does
 // not run these Terms read exactly as they always have, and on one it does they carry an
 // operator block and nothing else moves.
-const { projectOperatesThisInstance } = vi.hoisted(() => ({
-  projectOperatesThisInstance: vi.fn(),
+const { readLegalPageConfig } = vi.hoisted(() => ({
+  readLegalPageConfig: vi.fn(),
 }));
-vi.mock("@/lib/api/config.server", () => ({ projectOperatesThisInstance }));
+vi.mock("@/lib/api/config.server", () => ({ readLegalPageConfig }));
 
 // `await TermsPage()`: an async Server Component is a function returning a promise, and
 // handing the component to `render` renders the promise instead of the page.
-async function renderPage(projectOperated: boolean) {
-  projectOperatesThisInstance.mockResolvedValue(projectOperated);
+async function renderPage(projectOperated: boolean, joinLinks = false) {
+  readLegalPageConfig.mockResolvedValue({ projectOperated, joinLinks });
   render(await TermsPage());
 }
 
@@ -260,6 +260,39 @@ describe("linking a person to an account", () => {
 // test rather than here: a test file that rendered both pages to compare two strings
 // would be asserting an agreement neither page owes the other, since the two documents
 // can legitimately be revised on different days.
+// A join link admits whoever follows it, so every sentence saying registration needs
+// an invitation names it - and only where the API said the copy has one, since a copy
+// without them carries no word about them.
+describe("join links", () => {
+  it.each([[false], [true]])(
+    "appear nowhere where the API said there are none, project-operated: %s",
+    async (projectOperated) => {
+      await renderPage(projectOperated, false);
+
+      expect(document.body.textContent).not.toMatch(/join link/i);
+    },
+  );
+
+  it("are named beside the invitation wherever registration needs one", async () => {
+    await renderPage(true, true);
+
+    expect(
+      screen.getByText(/registering also needs an invitation/),
+    ).toHaveTextContent(
+      /unless you came by one of the join links the operator has\s+published/,
+    );
+    const block = screen
+      .getByRole("heading", { name: /Who Runs This Copy/ })
+      .closest("section")!;
+    expect(block).toHaveTextContent(
+      /only people who have been invited or who follow one of its join links/,
+    );
+    expect(block).toHaveTextContent(
+      /registration needs an invitation or a join link/,
+    );
+  });
+});
+
 describe("the date on this page", () => {
   it.each([[false], [true]])(
     "states one effective month in both places, project-operated: %s",

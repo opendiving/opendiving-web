@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Metadata } from "next";
-import { projectOperatesThisInstance } from "@/lib/api/config.server";
+import { readLegalPageConfig } from "@/lib/api/config.server";
 import {
   OperatorAnswer,
   OperatorBlock,
@@ -34,11 +34,13 @@ export const metadata: Metadata = {
 // them. See "The terms page has two speakers" in DECISIONS.md.
 
 export default async function TermsPage() {
-  // The one thing on this page that depends on the instance, and it adds a block
-  // rather than rewording a section: nothing short of the API answering `true` earns
-  // it, so a self-hosted copy - including one whose API is briefly down - renders these
-  // Terms exactly as they have always read.
-  const projectOperated = await projectOperatesThisInstance();
+  // The operator block depends on the instance, and it adds a block rather than
+  // rewording a section: nothing short of the API answering `true` earns it, so a
+  // self-hosted copy - including one whose API is briefly down - renders these Terms
+  // exactly as they have always read. The other thing that does is a clause naming
+  // join links wherever registration is said to need an invitation, on the same rule,
+  // so a copy that has set none up carries no word about them.
+  const { projectOperated, joinLinks } = await readLegalPageConfig();
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
@@ -69,10 +71,12 @@ export default async function TermsPage() {
                 points at.
               </OperatorAnswer>
               <OperatorAnswer question="What this copy costs, and who may register — §2, §3">
-                Nothing, and only people who have been invited. This copy is in
-                a closed beta: it is free of charge, there is no paid tier, and
-                registration needs an invitation, which is the state §3&rsquo;s
-                second paragraph describes.
+                Nothing, and only people who have been invited
+                {joinLinks && <> or who follow one of its join links</>}. This
+                copy is in a closed beta: it is free of charge, there is no paid
+                tier, and registration needs an invitation
+                {joinLinks && <> or a join link</>}, which is the state
+                §3&rsquo;s second paragraph describes.
               </OperatorAnswer>
               <OperatorAnswer question="What is promised about availability — §8">
                 Nothing, and §8 stands exactly as written. This is a beta: the
@@ -294,9 +298,16 @@ export default async function TermsPage() {
               <p className="text-foreground mb-4">
                 Where the operator of this copy has closed it to new accounts,
                 registering also needs an invitation, and the address you
-                register with must be the one that was invited. The exception is
-                the very first account on a copy that has none: whoever signs in
-                first is its operator, and needs no invitation to do so.
+                register with must be the one that was invited
+                {joinLinks && (
+                  <>
+                    , unless you came by one of the join links the operator has
+                    published, which lets in whoever follows it
+                  </>
+                )}
+                . The exception is the very first account on a copy that has
+                none: whoever signs in first is its operator, and needs no
+                invitation to do so.
               </p>
             </section>
 

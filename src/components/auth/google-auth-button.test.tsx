@@ -22,7 +22,8 @@ beforeEach(() => {
 function renderButton({
   clientId,
   redirectTo,
-}: { clientId?: string; redirectTo?: string } = {}) {
+  via,
+}: { clientId?: string; redirectTo?: string; via?: string } = {}) {
   const onError = vi.fn();
   const user = userEvent.setup();
   render(
@@ -32,7 +33,7 @@ function renderButton({
         googleClientId: clientId,
       }}
     >
-      <GoogleAuthButton onError={onError} redirectTo={redirectTo} />
+      <GoogleAuthButton onError={onError} redirectTo={redirectTo} via={via} />
     </ConfigProvider>,
   );
   return { user, onError };
@@ -135,6 +136,21 @@ describe("pressing it", () => {
     expect(
       consumeGoogleAttempt(url.searchParams.get("state"))?.redirectTo,
     ).toBe("/dives");
+  });
+
+  // The join link has the same trip to survive, and nothing but the stored attempt
+  // survives it: `state` stays an opaque nonce.
+  it("carries a join link into the attempt, and nowhere else", async () => {
+    const { user } = renderButton({ clientId: CLIENT_ID, via: "reddit" });
+
+    await user.click(control());
+
+    const url = await navigatedTo();
+    expect(url.search).not.toContain("reddit");
+    const { consumeGoogleAttempt } = await import("@/lib/google-oauth");
+    expect(consumeGoogleAttempt(url.searchParams.get("state"))?.via).toBe(
+      "reddit",
+    );
   });
 
   it("mints one attempt per press, not one per render", async () => {

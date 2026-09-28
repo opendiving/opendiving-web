@@ -76,10 +76,16 @@ function GoogleCallbackContent() {
     // and nothing phrased as though something went wrong. The attempt is
     // consumed on the way past so an abandoned one does not sit in storage, and
     // its destination is carried back into the sign-in link so a second try
-    // still lands where the first one was headed.
+    // still lands where the first one was headed. One started on a join link goes
+    // back to that link instead: `/signin` knows nothing of it, and a new visitor
+    // there is refused as uninvited.
     if (errorParam) {
       const abandoned = consumeGoogleAttempt(state);
-      router.replace(signInHref(abandoned?.redirectTo));
+      router.replace(
+        abandoned?.via
+          ? `/join?via=${abandoned.via}`
+          : signInHref(abandoned?.redirectTo),
+      );
       return;
     }
 
@@ -108,6 +114,7 @@ function GoogleCallbackContent() {
       // Google requires the exchange to repeat the URI it saw and the API
       // refuses any other.
       redirectUri: googleRedirectUri(),
+      via: attempt.via,
     })
       .then((outcome) => {
         // `replace`, not `push`: the code is in this page's own URL, and a

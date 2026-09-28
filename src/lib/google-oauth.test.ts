@@ -120,6 +120,16 @@ describe("consuming an attempt", () => {
 
     expect(attempt?.redirectTo).toBe("/dives");
     expect(attempt?.codeVerifier).toBeTruthy();
+    expect(attempt?.via).toBeNull();
+  });
+
+  // A join page's button: the slug has to survive the trip to Google, and `state`
+  // - the one value Google echoes back - stays a nonce that carries none of it.
+  it("hands back the join link the attempt was minted on", async () => {
+    const url = await beginGoogleSignIn({ clientId: CLIENT_ID, via: "reddit" });
+
+    expect(stateOf(url)).not.toContain("reddit");
+    expect(consumeGoogleAttempt(stateOf(url))?.via).toBe("reddit");
   });
 
   it("is single-use: a second read of the same state finds nothing", async () => {
@@ -232,6 +242,31 @@ describe("what is stored", () => {
     );
 
     expect(consumeGoogleAttempt("tampered")?.redirectTo).toBeNull();
+  });
+
+  // The API refuses the whole exchange over a `via` that is not a slug, so a
+  // rewritten one is dropped rather than sent - and an entry an older build wrote,
+  // with no `via` at all, still completes its sign-in.
+  it.each([
+    ["rewritten into something that is not a slug", "../../admin"],
+    ["a number", 7],
+    ["absent", undefined],
+  ])("reads a join link that is %s as none", (_label, via) => {
+    window.localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        s: {
+          codeVerifier: "x".repeat(43),
+          redirectTo: null,
+          via,
+          expiresAt: Date.now() + 60_000,
+        },
+      }),
+    );
+
+    const attempt = consumeGoogleAttempt("s");
+    expect(attempt).not.toBeNull();
+    expect(attempt?.via).toBeNull();
   });
 
   it.each([

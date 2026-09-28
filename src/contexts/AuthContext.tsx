@@ -63,8 +63,12 @@ interface AuthContextType {
   restore: RestoreSession | null;
   // Step 1 of the email flow - always resolves with the same generic message,
   // regardless of whether `email` belongs to an existing account. The `request_id`
-  // it resolves with is what `verifyEmailCode` below needs.
-  requestEmailLink: (email: string) => Promise<EmailLinkRequestResult>;
+  // it resolves with is what `verifyEmailCode` below needs. `via` is the join link
+  // the form is on, if it is on one.
+  requestEmailLink: (
+    email: string,
+    via?: string,
+  ) => Promise<EmailLinkRequestResult>;
   // Step 2 of the email flow - resolves with the applied outcome, whose `status`
   // says which of the three things happened (signed in, onboarding started, or an
   // account offered back). Callers route on it: `destinationForOutcome` in
@@ -219,7 +223,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // react-hook-form's `isSubmitting`, so this isn't needed for button loading
   // UI either.
   const requestEmailLink = useCallback(
-    (email: string) => authAPI.requestEmailLink(email),
+    (email: string, via?: string) => authAPI.requestEmailLink(email, via),
     [],
   );
 

@@ -101,9 +101,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-async function requestLink(redirectTo: string | null) {
+async function requestLink(redirectTo: string | null, via?: string) {
   const user = userEvent.setup();
-  render(<AuthForm redirectTo={redirectTo} />);
+  render(<AuthForm redirectTo={redirectTo} via={via} />);
 
   await user.type(screen.getByLabelText("Email"), "diver@example.com");
   // Anchored, so it can't also match "Sign in with a passkey" beside it.
@@ -197,6 +197,28 @@ describe("AuthForm heading", () => {
     expect(heading.tagName).toBe("H1");
   });
 
+  // `/join`'s hero names its link in the card, one level under the page's `h1`,
+  // and the card that replaces the form keeps that level rather than jumping.
+  it("renders the title at the level asked for, before and after the swap", async () => {
+    const user = userEvent.setup();
+    render(
+      <AuthForm redirectTo={null} title="Invited from Reddit" titleAs="h2" />,
+    );
+
+    expect(
+      (await screen.findByRole("heading", { name: "Invited from Reddit" }))
+        .tagName,
+    ).toBe("H2");
+
+    await user.type(screen.getByLabelText("Email"), "diver@example.com");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    const heading = await screen.findByRole("heading", {
+      name: "Check your email",
+    });
+    expect(heading.tagName).toBe("H2");
+  });
+
   // On the landing page it stays an `h3`, nested under the hero's own `h1`.
   it("leaves that card an h3 where the page has its own heading", async () => {
     const user = userEvent.setup();
@@ -249,6 +271,53 @@ describe("AuthForm", () => {
       expect(rememberPostAuthRedirect).toHaveBeenCalledWith("/dives/abc"),
     );
     expect(requestEmailLink).toHaveBeenCalledTimes(2);
+  });
+
+  // Every sign-in not on a join link sends the address alone.
+  it("asks for a link with no join link unless it is on one", async () => {
+    await requestLink(null);
+
+    expect(requestEmailLink).toHaveBeenCalledWith(
+      "diver@example.com",
+      undefined,
+    );
+  });
+
+  // Each request is a row of its own and the gate reads `via` off the one that is
+  // redeemed, so a resent link without it would be refused as uninvited.
+  it("sends the join link with the first request and with every resend", async () => {
+    const user = await requestLink(null, "scubaboard");
+
+    await runOutCooldown();
+    await user.click(screen.getByRole("button", { name: /^resend link$/i }));
+
+    await waitFor(() => expect(requestEmailLink).toHaveBeenCalledTimes(2));
+    for (const call of requestEmailLink.mock.calls) {
+      expect(call).toEqual(["diver@example.com", "scubaboard"]);
+    }
+  });
+
+  // The API's refusal of a join link removed since the page loaded is a sentence
+  // of its own, and the form shows it as it arrives.
+  it("shows the API's sentence for a join link that is no longer live", async () => {
+    requestEmailLink.mockRejectedValue({
+      response: {
+        status: 403,
+        data: {
+          detail:
+            "This join link is no longer active. You can request an invitation from the home page.",
+        },
+      },
+    });
+    const user = userEvent.setup();
+    render(<AuthForm redirectTo={null} via="reddit" />);
+
+    await user.type(screen.getByLabelText("Email"), "diver@example.com");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    expect(
+      await screen.findByText(/this join link is no longer active/i),
+    ).toBeInTheDocument();
   });
 
   // A resend supersedes the request row the previous email was about, so the code

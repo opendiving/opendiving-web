@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Metadata } from "next";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { CERTIFICATION_EXPIRING_SOON_DAYS } from "@/lib/certification";
-import { projectOperatesThisInstance } from "@/lib/api/config.server";
+import { readLegalPageConfig } from "@/lib/api/config.server";
 import { DeviceMemorySwitch } from "@/components/device-memory-switch";
 import {
   OperatorAnswer,
@@ -37,11 +37,13 @@ export default async function PrivacyPage() {
   // without shipping it to the browser. The Google section below exists only where
   // an instance has Google sign-in turned on.
   const { googleClientId } = runtimeConfig();
-  // The second thing about this instance the page renders differently, and the only
-  // other one. Nothing short of the API answering `true` earns the operator block, on
-  // the same asymmetry the landing hero's two voices run on: a page that names a person
-  // who never touched the reader's machine is the expensive direction to be wrong in.
-  const projectOperated = await projectOperatesThisInstance();
+  // The other two things about this instance the page renders differently, and the
+  // only other ones, read in one request. Nothing short of the API answering `true`
+  // earns the operator block, on the same asymmetry the landing hero's two voices run
+  // on: a page that names a person who never touched the reader's machine is the
+  // expensive direction to be wrong in. The join-link sentences follow the same rule,
+  // so a copy that has set up no join link carries no word about them.
+  const { projectOperated, joinLinks } = await readLegalPageConfig();
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
@@ -299,11 +301,13 @@ export default async function PrivacyPage() {
                 <strong>asking to be invited</strong>: the address you type
                 there is stored while the request is pending, for up to 90 days,
                 or until whoever runs this copy invites you or removes the
-                request. Being invited does not erase it &mdash; it becomes an{" "}
+                request, or an account is created here with that address. Being
+                invited does not erase it &mdash; it becomes an{" "}
                 <strong>invitation</strong> instead, which records the address
-                invited, the account that sent it, and whether it has been used,
-                and is what lets you create an account here. Section 4.8 is
-                about both, and section 7 says how long each is kept.
+                invited, the account that sent it, whether it has been used,
+                and, until it is used, whether it answered a request to be
+                invited; it is what lets you create an account here. Section 4.8
+                is about both, and section 7 says how long each is kept.
               </p>
               <p className="text-foreground mb-4">
                 There are no photos of dives, no bio, no experience level, and
@@ -316,7 +320,10 @@ export default async function PrivacyPage() {
               </h3>
               <p className="text-foreground mb-4">
                 Five things are recorded without you asking for them, and all
-                five are ordinary machinery rather than measurement:
+                five are ordinary machinery. Two of them &mdash; signed-in
+                devices and account security events &mdash; are also counted,
+                into daily totals that name nobody, which the end of this
+                section describes:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
@@ -335,8 +342,9 @@ export default async function PrivacyPage() {
                   sign-in came from, your browser&rsquo;s user agent as it sent
                   it, and when the session was made and last used. That record
                   is what makes the list in Settings possible, and it is the
-                  only reason signing another device out can work at all. It
-                  holds nothing from the sign-in cookie itself
+                  only reason signing another device out can work at all. It is
+                  also counted into the day&rsquo;s total of active accounts,
+                  below. It holds nothing from the sign-in cookie itself
                 </li>
                 <li>
                   <strong>Account security events:</strong> A record of things
@@ -363,7 +371,9 @@ export default async function PrivacyPage() {
                   Nothing in the app shows these to you; they are there for
                   whoever runs this copy to look into a break-in or a burst of
                   sign-in attempts, and section 6.2 says what that means for
-                  asking for a copy
+                  asking for a copy. The successful sign-ins among them are also
+                  counted into the day&rsquo;s total of accounts that signed in,
+                  below
                 </li>
                 <li>
                   <strong>Rate-limit counters:</strong> To stop sign-in, the
@@ -393,11 +403,30 @@ export default async function PrivacyPage() {
               </ul>
               <p className="text-foreground mb-4">
                 What is kept in your browser is a separate matter, and section
-                10 lists all of it. No usage data is collected: nothing here
-                measures which pages you visit, which dives you open, or how
-                long you spend, and none of the five above is counted, compared
-                or profiled. The security record names things that happened to
-                your account &mdash; not what you were doing in the app.
+                10 lists all of it. No usage data about <em>you</em> is
+                collected: nothing here measures which pages you visit, which
+                dives you open, or how long you spend, and none of the five
+                above is compared or profiled. The security record names things
+                that happened to your account &mdash; not what you were doing in
+                the app.
+              </p>
+              <p className="text-foreground mb-4">
+                What is counted is a set of <strong>daily totals</strong>, each
+                a number per day for this copy as a whole: how many accounts
+                were created, and through which door &mdash; an invitation, an
+                invitation answering a request to be invited, signing up where
+                this copy lets anyone in,{" "}
+                {joinLinks && (
+                  <>a join link, counted under where it was posted, </>
+                )}
+                or being the first account on a new copy; how many accounts
+                signed in; and how many were active, meaning a signed-in session
+                of theirs was used that day. No account is named in any of them.
+                They are not anonymous in every case, though, and this page will
+                not claim they are: on a day when only one account was created,
+                that day&rsquo;s total and the account&rsquo;s own creation date
+                together show which door it came through. Section 7 says how
+                long the totals are kept.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -478,8 +507,12 @@ export default async function PrivacyPage() {
                   copy is invite-only, keep its invitations and the requests
                   waiting on them, so that the address that was invited is the
                   one that gets in, and so that whoever runs this copy can see
-                  who has asked. Section 4.8 says what that shows to whom, and
-                  section 7 how long either is kept
+                  who has asked
+                  {joinLinks && (
+                    <>, and let in whoever follows one of its join links</>
+                  )}
+                  . Section 4.8 says what that shows to whom, and section 7 how
+                  long either is kept
                 </li>
                 <li>
                   <strong>Keep the instance standing:</strong> Apply the rate
@@ -492,6 +525,13 @@ export default async function PrivacyPage() {
                   so whoever runs this copy can look into a break-in or a burst
                   of sign-in attempts. Both expire on a schedule &mdash; section
                   7
+                </li>
+                <li>
+                  <strong>Count how this copy is used:</strong> Keep the daily
+                  totals from section 2.2 &mdash; accounts created and through
+                  which door, accounts that signed in, accounts that were active
+                  &mdash; so whoever runs this copy can see how many people it
+                  serves and how they got in. They name nobody
                 </li>
               </ul>
               <p className="text-foreground mb-4">
@@ -732,19 +772,23 @@ export default async function PrivacyPage() {
                 restart, so a section that appeared and disappeared with the mode
                 would be a page that changes under a reader for a reason nothing
                 on it explains. It is hedged in prose instead - the same shape §5's
-                passwordless bullet uses for Google. See "The numbering in §4 is
+                passwordless bullet uses for Google. Its last paragraph, on join
+                links, is the one part that comes and goes, with `join_links`: a
+                copy that has set none up must carry no word about them, and a
+                paragraph moves no number. See "The numbering in §4 is
                 load-bearing, and conditional sections sit last" in DECISIONS.md. */}
               <h3 className="text-xl font-semibold text-foreground mb-3">
                 4.8 Inviting Someone to This Copy
               </h3>
               <p className="text-foreground mb-4">
                 Whoever runs this copy decides whether anyone may create an
-                account on it or only people who have been invited. Where it is
-                invitations, this is one of the three places in the software
-                where something about one person is shown to another &mdash; the
-                others are a check-in link, in section 4.9, and linking a person
-                to an account, in section 4.10 &mdash; and this section is the
-                whole of it.
+                account on it or only people who have been invited
+                {joinLinks && <> or who follow one of its join links</>}. Where
+                it is invitations, this is one of the three places in the
+                software where something about one person is shown to another
+                &mdash; the others are a check-in link, in section 4.9, and
+                linking a person to an account, in section 4.10 &mdash; and this
+                section is the whole of it.
               </p>
               <p className="text-foreground mb-4">
                 An invitation carries no code, no link and no token &mdash; it
@@ -788,6 +832,32 @@ export default async function PrivacyPage() {
                 Section 7 says how long a pending request and an unused
                 invitation are kept.
               </p>
+              {joinLinks && (
+                <p className="text-foreground mb-4">
+                  This copy also has <strong>join links</strong>. A join link is
+                  an address on this site carrying the name of a place whoever
+                  runs this copy posted it &mdash; a forum, say &mdash; and
+                  following one lets you create an account here without an
+                  invitation; the page it opens names the place. That name is
+                  what lets you in, and it is kept only where letting you in
+                  needs it: signing in by email, on the sign-in link&rsquo;s own
+                  record, which is deleted within about a week
+                  {googleClientId && (
+                    <>
+                      ; signing in with Google, in your browser until Google
+                      sends you back, as section 10.2 says
+                    </>
+                  )}
+                  . It is never written onto your account, nor into the record
+                  of account security events. When your account is created, that
+                  day&rsquo;s total of accounts made through that link goes up
+                  by one &mdash; the daily totals in section 2.2 &mdash; and
+                  nothing else of the link remains. That total names nobody, but
+                  on a day when only one account was created, it and the
+                  account&rsquo;s creation date together show which link the
+                  account came by.
+                </p>
+              )}
 
               {/* Unconditional for the reason §4.8 is: every diver on every copy can
                 make one, so Google stays last and takes the number after §4.10. */}
@@ -1234,15 +1304,19 @@ export default async function PrivacyPage() {
                 Two of the records in section 2.2 expire on their own, whether
                 or not you delete anything, because neither is anything you
                 entered. A <strong>signed-in device&rsquo;s session</strong> is
-                deleted once it can no longer sign you in: you signed that
-                device out, you signed out on it, or it went unused long enough
-                to lapse. And the <strong>account security events</strong> are
-                swept on a schedule &mdash; entries tied to an account after 90
-                days, and entries that name only an email address, from before
-                any account existed, after 7 days. That shorter one is
-                deliberately the same short life the sign-in link&rsquo;s own
-                record already has: an address someone typed into this copy and
-                never came back to should not outlive it here.
+                deleted after it stops being able to sign you in: one that went
+                unused long enough to lapse goes within the hour, and one that
+                ended before that &mdash; you signed that device out, or signed
+                out on it &mdash; is kept until the end of the day it was last
+                used, midnight UTC, so that it still counts in that day&rsquo;s
+                total of active accounts, and goes within the hour after. And
+                the <strong>account security events</strong> are swept on a
+                schedule &mdash; entries tied to an account after 90 days, and
+                entries that name only an email address, from before any account
+                existed, after 7 days. That shorter one is deliberately the same
+                short life the sign-in link&rsquo;s own record already has: an
+                address someone typed into this copy and never came back to
+                should not outlive it here.
               </p>
               <p className="text-foreground mb-4">
                 Two more expire on their own where this copy is invite-only, and
@@ -1250,17 +1324,25 @@ export default async function PrivacyPage() {
                 account here at all. A <strong>request to be invited</strong> is
                 kept for up to 90 days from when it was made, and goes sooner if
                 whoever runs this copy invites the address or removes the
-                request. An <strong>invitation nobody has used</strong> is kept
-                for up to 90 days from when it was sent, whether or not it was
-                taken back before then; after that the address is refused again
-                until somebody invites it afresh. An invitation that{" "}
-                <em>was</em> used is not swept, because by then it belongs to
-                two accounts and goes when either of them does.
+                request, or if an account is created with that address. An{" "}
+                <strong>invitation nobody has used</strong> is kept for up to 90
+                days from when it was sent, whether or not it was taken back
+                before then; after that the address is refused again until
+                somebody invites it afresh. An invitation that <em>was</em> used
+                is not swept, because by then it belongs to two accounts and
+                goes when either of them does.
               </p>
               <p className="text-foreground mb-4">
                 A <strong>check-in link</strong> is deleted by a sweep that runs
                 every hour once it has stopped working: 24 hours after you made
                 it, or sooner if you revoked it or made another.
+              </p>
+              <p className="text-foreground mb-4">
+                The <strong>daily totals</strong> in section 2.2 are kept for as
+                long as this copy runs, and deleting an account does not lower
+                them: each is a count of what happened on one day rather than a
+                record about anyone, and a total that shrank when somebody left
+                would no longer say what happened that day.
               </p>
               <p className="text-foreground mb-4">
                 When you delete your account:
@@ -1304,13 +1386,14 @@ export default async function PrivacyPage() {
                 </li>
               </ul>
               <p className="text-foreground mb-4">
-                Nothing is held back for &ldquo;legitimate business
-                purposes&rdquo;; there is no business here to have them. Two
-                honest caveats remain, and both belong to the deployment rather
-                than to the software: whatever backups the operator keeps are
-                theirs to expire, and a deletion cannot reach into a backup
-                already written; and an operator under a legal obligation to
-                preserve something is subject to it whatever this page says.
+                Apart from the daily totals above, which name nobody, nothing is
+                held back for &ldquo;legitimate business purposes&rdquo;; there
+                is no business here to have them. Two honest caveats remain, and
+                both belong to the deployment rather than to the software:
+                whatever backups the operator keeps are theirs to expire, and a
+                deletion cannot reach into a backup already written; and an
+                operator under a legal obligation to preserve something is
+                subject to it whatever this page says.
               </p>
             </section>
 
@@ -1455,8 +1538,11 @@ export default async function PrivacyPage() {
                     <StorageKey name="opendiving:google-sign-in-attempts" />{" "}
                     &mdash; the one-time secret that proves a &ldquo;Continue
                     with Google&rdquo; sign-in coming back from Google is the
-                    one you started here, along with where you were headed.
-                    Written only when you press that button, one entry per
+                    one you started here, along with where you were headed
+                    {joinLinks && (
+                      <> and, if you came by a join link, which link</>
+                    )}
+                    . Written only when you press that button, one entry per
                     attempt so that two tabs cannot spoil each other&rsquo;s,
                     read once and removed the moment Google returns you, and
                     expiring after 30 minutes if it never does
@@ -1576,12 +1662,14 @@ export default async function PrivacyPage() {
                 There is no session storage, no IndexedDB database and no
                 service worker. There is no analytics or telemetry of any kind
                 &mdash; not disabled, not configurable, simply absent, and no
-                such dependency is in the build. The fonts this site is written
-                in are served from this instance and fetched from nowhere else.
-                The one exception is the lettering on the map itself: its labels
-                are drawn from glyph ranges requested, as they are needed, from
-                the same basemap provider that serves its tiles &mdash; so it is
-                the party already described in section 4.4, and not a new one.
+                such dependency is in the build. The daily totals in section 2.2
+                are counted by this server, and nothing in your browser takes
+                part. The fonts this site is written in are served from this
+                instance and fetched from nowhere else. The one exception is the
+                lettering on the map itself: its labels are drawn from glyph
+                ranges requested, as they are needed, from the same basemap
+                provider that serves its tiles &mdash; so it is the party
+                already described in section 4.4, and not a new one.
               </p>
               <p className="text-foreground mb-4">
                 This software sets no third-party cookies of its own. One

@@ -21,10 +21,11 @@ interface CheckEmailCardProps {
   className?: string;
   // The heading level for "Check your email". `h3` suits the landing page, where
   // this card swaps in under the hero's own `h1`; `/signin` passes `h1`, because
-  // there this card *replaces* the only heading the page has (see `AuthForm`).
+  // there this card *replaces* the only heading the page has (see `AuthForm`), and
+  // `/join`'s hero passes `h2`, the level of the heading it replaces there.
   // Only the tag changes - the size is carried by the classes, the same trade
   // `CardTitle`'s `as` makes.
-  titleAs?: "h1" | "h3";
+  titleAs?: "h1" | "h2" | "h3";
   // The address the email just went to, shown back to the diver so a typo is
   // obvious before they go looking in the wrong inbox.
   email: string;

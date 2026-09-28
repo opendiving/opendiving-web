@@ -15,6 +15,8 @@ interface GoogleAuthButtonProps {
   // `beginGoogleSignIn`, which stores it inside the attempt it mints: this flow
   // leaves the tab, so a prop alone would not survive the trip to Google.
   redirectTo?: string | null;
+  // The join link's slug on `/join`, stored in the attempt the same way.
+  via?: string;
 }
 
 // "Continue with Google" - one of the alternatives to the email field on the
@@ -47,6 +49,7 @@ interface GoogleAuthButtonProps {
 export function GoogleAuthButton({
   onError,
   redirectTo,
+  via,
 }: GoogleAuthButtonProps) {
   // Runtime configuration, not a build-time constant: a published image has to be
   // able to learn its client ID from the container it runs in - see
@@ -67,7 +70,7 @@ export function GoogleAuthButton({
       // another origin. `hardNavigate` also marks this document as on its way
       // out, which stands down any effect that would otherwise start a
       // navigation nobody will see.
-      hardNavigate(await beginGoogleSignIn({ clientId, redirectTo }));
+      hardNavigate(await beginGoogleSignIn({ clientId, redirectTo, via }));
     } catch {
       // The only way this fails before leaving is `crypto.subtle` being
       // unavailable, which means a non-secure context. Nothing has been sent
