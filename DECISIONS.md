@@ -4543,7 +4543,7 @@ rows per list, since a constant name satisfies a one-row test.
 
 ## Row-action names: The same rule holds for chips in a form field
 
-`DiveSiteMultiSelect`, `SpeciesMultiSelect` and `GearItemMultiSelect` name each chip's remove button
+`DiveSiteMultiSelect`, `SpeciesMultiSelect` and `GearItemMultiSelect` name each row's remove button
 `Remove <label>`, as `TripPartsField` does. The field's own label reaches neither the flat page-wide
 controls list nor the focus announcement, so bare `Remove` buttons collide like bare `Edit` rows;
 the drag handles beside them (`Reorder Blue Hole, position 1 of 2 (primary site). ...`) already

@@ -151,9 +151,10 @@ function Field({
   );
 }
 
+// Each row as it reads: a sighting by its header, a pending pick whole.
 const rows = () =>
   Array.from(document.querySelectorAll("li")).map((li) =>
-    li.textContent?.trim(),
+    (li.querySelector(":scope > div") ?? li).textContent?.trim(),
   );
 
 const openMenu = async () => {
