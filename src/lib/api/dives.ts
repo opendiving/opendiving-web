@@ -231,6 +231,31 @@ export interface DiveGasUse {
   duration?: number | null;
 }
 
+/**
+ * One species seen on a dive, as a dive read carries it: the species' summary, how
+ * many were counted and what the diver wrote about it.
+ *
+ * `uuid` is the species' own, so this is also a `SpeciesSummary`; a write names the
+ * same species as `species_uuid` (`SightingWrite`).
+ */
+export interface Sighting extends SpeciesSummary {
+  // `null` is "seen, not counted", which is not 1.
+  count: number | null;
+  // `""` when the diver wrote nothing.
+  notes: string;
+}
+
+/**
+ * One species seen on a dive, on the way in. At most one per species per dive: the API
+ * refuses a list naming a species twice.
+ */
+export interface SightingWrite {
+  species_uuid: string;
+  // A positive whole number. Omitted, never 0 or 1, for "seen, not counted".
+  count?: number;
+  notes?: string;
+}
+
 export interface Dive {
   uuid: string;
   dive_number: number;
@@ -334,16 +359,14 @@ export interface Dive {
   gas_use?: DiveGasUse | null;
   // What was spotted on the dive, in the order the diver listed them.
   //
-  // Optional for the same reason as `recordings` and `gas_use` above: the API
-  // sends it on the detail response only, since embedding it on the list would
-  // cost the app's hottest query a lookup per row and nothing in the list draws
-  // it. It is also absent - rather than `[]` - on any detail payload the API
-  // cached before species existed, so read it through `?.` and default it.
-  species?: SpeciesSummary[];
+  // Optional because the API sends it on the detail response only: embedding it
+  // on the list would cost the app's hottest query a lookup per row, and nothing
+  // in the list draws it. Read it through `?.` and default it.
+  sightings?: Sighting[];
   // Who the diver was with, in the diver's order, each with what they were on
   // this dive. References only - the names are read through `usePeopleByUuid`.
-  // A detail-response field like `species`, and absent on a list row, so read it
-  // through `?.` and default it.
+  // A detail-response field like `sightings`, and absent on a list row, so read
+  // it through `?.` and default it.
   people?: PersonReference[];
 }
 
@@ -770,10 +793,10 @@ export interface DiveCreate {
   contact_uuid?: string;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
-  // Catalog uuids, in spotting order. Every uuid must already exist - the
-  // picker resolves an upstream pick into a catalog row before it reaches form
-  // state, so saving a dive never waits on WoRMS.
-  species_uuids?: string[];
+  // In spotting order. Every species must already be a catalog row - the picker
+  // resolves an upstream pick into one before it reaches form state, so saving a
+  // dive never waits on WoRMS.
+  sightings?: SightingWrite[];
   // Each person the diver owns, at most once; a person named twice keeps the
   // first reference's role.
   people?: PersonReference[];
@@ -820,11 +843,11 @@ export interface DiveUpdate {
   contact_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
-  // Same wholesale-replace contract as the two lists above: an omitted key
-  // leaves the dive's species alone, and any list provided - `[]` included -
-  // replaces them. See "Locations are always sent on edit" in DECISIONS.md for
-  // why the form always sends it.
-  species_uuids?: string[];
+  // Same wholesale-replace contract as the two lists above, counts and notes
+  // included: an omitted key leaves the dive's sightings alone, and any list
+  // provided - `[]` included - replaces them. See "Locations are always sent on
+  // edit" in DECISIONS.md for why the form always sends it.
+  sightings?: SightingWrite[];
   // The same wholesale-replace contract, roles and order included.
   people?: PersonReference[];
   notes?: string;
@@ -1022,7 +1045,7 @@ export interface ParsedDiveMatch {
  * merging and numbering.
  *
  * Two things differ from the other resources here. Updates replace the list-valued fields
- * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`, `species_uuids`, `people`) wholesale rather than
+ * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`, `sightings`, `people`) wholesale rather than
  * merging, so a caller must send the full intended list. And importing a file is two steps - parse to
  * pre-fill the form, then attach against the created dive - because the diver gets to
  * correct the parsed values before anything is stored.

@@ -132,7 +132,7 @@ const storedDive = (overrides: Partial<Dive> = {}): Dive =>
     mixtures: [],
     gear_items: [],
     dive_sites: [],
-    species: [],
+    sightings: [],
     ...overrides,
   }) as Dive;
 
@@ -390,6 +390,117 @@ describe("a dive whose depth carries more precision than a step would allow", ()
 
     await waitFor(() => expect(divesAPI.updateDive).toHaveBeenCalled());
     expect(vi.mocked(divesAPI.updateDive).mock.calls[0][1].weight).toBe(5.9);
+  });
+});
+
+describe("a dive's sightings", () => {
+  const MANTA = {
+    uuid: "species-manta",
+    scientific_name: "Mobula birostris",
+    common_name: "Giant manta ray",
+    rank: "Species",
+    count: 2,
+    notes: "Overhead at the cleaning station",
+  };
+  const TURTLE = {
+    uuid: "species-turtle",
+    scientific_name: "Chelonia mydas",
+    common_name: "Green sea turtle",
+    rank: "Species",
+    count: null,
+    notes: "",
+  };
+
+  it("carries each row's count and note from the load to the save", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ sightings: [MANTA, TURTLE] }),
+    );
+
+    render(<EditDivePage />);
+
+    const mantaCount = await screen.findByRole("textbox", {
+      name: "Count of Giant manta ray",
+    });
+    expect(mantaCount).toHaveValue("2");
+    expect(
+      screen.getByRole("textbox", { name: "Notes on Giant manta ray" }),
+    ).toHaveValue("Overhead at the cleaning station");
+    expect(
+      screen.getByRole("textbox", { name: "Count of Green sea turtle" }),
+    ).toHaveValue("");
+
+    await userEvent.clear(mantaCount);
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Count of Green sea turtle" }),
+      "4",
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Notes on Green sea turtle" }),
+      "Resting under the ledge",
+    );
+    await saveChanges();
+
+    await waitFor(() => expect(divesAPI.updateDive).toHaveBeenCalled());
+    // The emptied count goes out as no count at all - "seen, not counted" - and
+    // the note beside it is untouched.
+    expect(vi.mocked(divesAPI.updateDive).mock.calls[0][1].sightings).toEqual([
+      {
+        species_uuid: "species-manta",
+        notes: "Overhead at the cleaning station",
+      },
+      {
+        species_uuid: "species-turtle",
+        count: 4,
+        notes: "Resting under the ledge",
+      },
+    ]);
+  });
+
+  it("says on the row why a count was refused, and saves nothing", async () => {
+    // The field's own error for a list is an array with no message, so the
+    // reason has to reach the row that caused it or the save just stops.
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ sightings: [TURTLE] }),
+    );
+
+    render(<EditDivePage />);
+    const count = await screen.findByRole("textbox", {
+      name: "Count of Green sea turtle",
+    });
+
+    await userEvent.type(count, "3000000000");
+    await saveChanges();
+
+    expect(
+      await screen.findByText("That's more than a count can hold"),
+    ).toBeInTheDocument();
+    expect(count).toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText("undefined")).not.toBeInTheDocument();
+    expect(divesAPI.updateDive).not.toHaveBeenCalled();
+  });
+
+  it("is hidden by the key a stored set names it by", async () => {
+    // The stored key is the field's, so a set naming `sightings` has to reach
+    // the picker: an unknown key is dropped on read and the field would show.
+    stable.auth.user.dive_form_hidden_fields = ["sightings"];
+
+    render(<EditDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(screen.queryByLabelText("Species spotted")).not.toBeInTheDocument();
+  });
+
+  it("comes back under that set for a dive that records sightings", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["sightings"];
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ sightings: [MANTA] }),
+    );
+
+    render(<EditDivePage />);
+
+    expect(
+      await screen.findByRole("textbox", { name: "Count of Giant manta ray" }),
+    ).toHaveValue("2");
   });
 });
 

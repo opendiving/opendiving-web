@@ -3441,11 +3441,11 @@ the `dive-site-map-field.tsx` skeleton matches. `/privacy` §4.5 covers both for
 
 Search returns catalog rows (`uuid`) and upstream-only rows (`aphia_id`); only the former attach.
 `SpeciesMultiSelect` calls `POST /species/resolve` at pick time; a synthetic `aphia:` value resolved
-on submit puts a non-uuid in `species_uuids` and ties saves to upstream. Pending picks are local
-rows (`aphia:` id in `excludeIds`); via `onPendingChange`, `DiveFormActions` disables submit as
-"Adding species...", not `isSubmitting`. `appendUuid` reads an eagerly claimed ref, not `value`:
-`keepOpenOnSelect` allows concurrent resolves. No free-text hatch: a global row has no owner.
-Prefill (`new-dive-page-content.tsx`) skips species but lists them in `form.reset` as `[]`.
+on submit puts a non-uuid in a sighting's `species_uuid` and ties saves to upstream. Pending picks
+are local rows (`aphia:` id in `excludeIds`); via `onPendingChange`, `DiveFormActions` disables
+submit as "Adding species...", not `isSubmitting`. `appendSighting` reads an eagerly claimed ref,
+not `value`: `keepOpenOnSelect` allows concurrent resolves. No free-text hatch: a global row has no
+owner. Prefill (`new-dive-page-content.tsx`) skips species but lists them in `form.reset` as `[]`.
 `speciesDisplayName` falls back from `common_name` to the binomial; `hintFor` shows `matched_name`
 verbatim, any language. `"unknown"` is the API's rank sentinel from both `_wikidata_result` and
 `_worms_taxon`; `speciesRankLabel` drops it and `speciesNameWithRank` (appending any rank but
@@ -5948,10 +5948,10 @@ the exposure card shows, its profile opens the chart, and its samples go into th
 `primaryRecording()` in `lib/dive-recordings.ts` is the one place that picks it, rather than an
 `[0]` per card. `diveRecordings()` normalizes two facts rather than trusting the call site: the list
 is absent, not `[]`, on a list row and on a cached detail payload (the same `?.` discipline as
-`species`), and it is sorted by ordinal here even though the API documents the order, because a card
-reading `recordings[0]` would otherwise be one response shape away from drawing the wrong device's
-figures. A recording is one machine's record of a dive and can hold several files — a Suunto app
-JSON beside the same watch's FIT — each filling what the other left blank.
+`sightings`), and it is sorted by ordinal here even though the API documents the order, because a
+card reading `recordings[0]` would otherwise be one response shape away from drawing the wrong
+device's figures. A recording is one machine's record of a dive and can hold several files — a
+Suunto app JSON beside the same watch's FIT — each filling what the other left blank.
 
 ## The dive form holds a _list_ of pending files, and the server decides where each one lands
 

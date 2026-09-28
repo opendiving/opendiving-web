@@ -14,6 +14,7 @@ import {
   type DiveMixture,
   type DiveUpdate,
   type GasRole,
+  type Sighting,
   type TankUsage,
 } from "@/lib/api/dives";
 import { barToPsi, displayBound } from "@/lib/units";
@@ -307,6 +308,40 @@ export const diveMixtureSchema = z
 
 export type DiveMixtureInput = z.input<typeof diveMixtureSchema>;
 
+// The API's `POSTGRES_INTEGER_MAX`: a count is stored in a Postgres `integer`, and the
+// format sets no ceiling of its own.
+export const SIGHTING_COUNT_MAX = 2 ** 31 - 1;
+
+/**
+ * One species seen on the dive, as the form holds it - the wire shape exactly, so it
+ * goes out as it is. No `count` is "seen, not counted": the picker takes the key off
+ * when its box is emptied rather than writing a `0` or a `1` there. The bounds are the
+ * API's, mirrored the way the altitude range is.
+ */
+export const sightingSchema = z.object({
+  species_uuid: z.string(),
+  count: z
+    .number()
+    .int("A count is a whole number")
+    .min(1, "A count is at least 1 — leave it blank if you didn't count")
+    .max(SIGHTING_COUNT_MAX, "That's more than a count can hold")
+    .optional(),
+  notes: notesField().optional(),
+});
+
+export type SightingInput = z.input<typeof sightingSchema>;
+
+// A stored sighting as the picker edits it: the species under the key a write names
+// it by, and a count only where one was recorded - `null` is "seen, not counted",
+// which the form spells by leaving the key off.
+function toSightingInput(sighting: Sighting): SightingInput {
+  return {
+    species_uuid: sighting.uuid,
+    ...(sighting.count != null && { count: sighting.count }),
+    notes: sighting.notes,
+  };
+}
+
 export interface NormalizedDiveMixture {
   volume?: number;
   start_pressure?: number;
@@ -441,7 +476,7 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
     people: dive.people ?? [],
     dive_site_uuids: dive.dive_sites?.map((site) => site.uuid) ?? [],
     gear_item_uuids: dive.gear_items?.map((item) => item.uuid) ?? [],
-    species_uuids: dive.species?.map((s) => s.uuid) ?? [],
+    sightings: dive.sightings?.map(toSightingInput) ?? [],
     notes: dive.notes || "",
     // Converted field by field rather than spread: every optional field arrives
     // as an explicit `null` when the mixture doesn't record it, and `null`
@@ -487,7 +522,7 @@ export const diveCreateSchema = z.object({
   people: z.array(personReferenceSchema).default([]),
   dive_site_uuids: z.array(z.string()).default([]),
   gear_item_uuids: z.array(z.string()).default([]),
-  species_uuids: z.array(z.string()).default([]),
+  sightings: z.array(sightingSchema).default([]),
   notes: notesField().default(""),
   mixtures: z.array(diveMixtureSchema).default([]),
 });
@@ -529,7 +564,7 @@ export const diveUpdateSchema = z.object({
   people: z.array(personReferenceSchema).optional(),
   dive_site_uuids: z.array(z.string()).optional(),
   gear_item_uuids: z.array(z.string()).optional(),
-  species_uuids: z.array(z.string()).optional(),
+  sightings: z.array(sightingSchema).optional(),
   notes: notesField().optional(),
   mixtures: z.array(diveMixtureSchema).optional(),
 });
@@ -594,9 +629,7 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
   if (data.gear_item_uuids !== undefined) {
     update.gear_item_uuids = data.gear_item_uuids;
   }
-  if (data.species_uuids !== undefined) {
-    update.species_uuids = data.species_uuids;
-  }
+  if (data.sightings !== undefined) update.sightings = data.sightings;
   if (data.notes !== undefined) update.notes = data.notes;
   if (data.mixtures !== undefined) {
     update.mixtures = normalizeMixtures(data.mixtures);

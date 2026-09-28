@@ -201,7 +201,7 @@ describe("the edit form's round trip", () => {
         // Sent even though the dive has none, like every other list field: an
         // omitted key means "leave them alone", so a form that showed the whole
         // set and omitted it could never express "remove them all".
-        species_uuids: [],
+        sightings: [],
         // And the same for the people, which a dive read without any seeds as
         // nobody.
         people: [],
@@ -214,6 +214,52 @@ describe("the edit form's round trip", () => {
         water_type: null,
       }),
     );
+  });
+
+  it("hands a dive's sightings back with their counts and notes", async () => {
+    // Through the resolver, which strips whatever `diveUpdateSchema` does not
+    // name - so a count or a note missing from the sighting schema would be
+    // deleted from the dive by a save that never touched it.
+    const onSave = vi.fn();
+    render(
+      <Harness
+        dive={{
+          ...DIVE,
+          sightings: [
+            {
+              uuid: "species-1",
+              scientific_name: "Mobula birostris",
+              common_name: "Giant manta ray",
+              rank: "Species",
+              count: 3,
+              notes: "Cleaning station\nat 18 m",
+            },
+            {
+              uuid: "species-2",
+              scientific_name: "Chelonia mydas",
+              common_name: "Green sea turtle",
+              rank: "Species",
+              count: null,
+              notes: "",
+            },
+          ],
+        }}
+        onSave={onSave}
+      />,
+    );
+    await seeded();
+
+    await save();
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0].sightings).toEqual([
+      {
+        species_uuid: "species-1",
+        count: 3,
+        notes: "Cleaning station\nat 18 m",
+      },
+      { species_uuid: "species-2", notes: "" },
+    ]);
   });
 
   it("hands a recorded water type and altitude back unchanged", async () => {

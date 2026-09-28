@@ -45,7 +45,7 @@ const DIGEST =
 // The same fixture shape `dive-detail-main.render.test.tsx` uses, spread through
 // `Partial<Dive>` for the same reason: a `Dive` has a dozen fields this card
 // never reads, and a literal naming only the ones it does is not assignable.
-function dive(species: Dive["species"]): Dive {
+function dive(sightings: Dive["sightings"]): Dive {
   return {
     uuid: "test",
     dive_number: 1,
@@ -53,7 +53,7 @@ function dive(species: Dive["species"]): Dive {
     duration: 2700,
     dive_sites: [],
     mixtures: [],
-    ...({ species } as Partial<Dive>),
+    ...({ sightings } as Partial<Dive>),
   } as Dive;
 }
 
@@ -61,9 +61,9 @@ function dive(species: Dive["species"]): Dive {
 // never loads. That is the right thing to measure against anyway: the row height
 // must come from the reserved box rather than from the bytes, or it would depend
 // on a network round trip and shift as photos arrived.
-function rowHeights(species: Dive["species"]): number[] {
+function rowHeights(sightings: Dive["sightings"]): number[] {
   const { container, unmount } = render(
-    <DiveDetailMain dive={dive(species)} />,
+    <DiveDetailMain dive={dive(sightings)} />,
   );
   const rows = [...container.querySelectorAll("tbody tr")];
   // Measured *before* unmounting: a detached element's bounding rect is all
@@ -80,6 +80,8 @@ const WITH_PHOTO = {
   common_name: "Ocellaris clownfish",
   rank: "Species",
   photo_sha256: DIGEST,
+  count: null,
+  notes: "",
 };
 
 const WITHOUT_PHOTO = {
@@ -88,6 +90,8 @@ const WITHOUT_PHOTO = {
   common_name: "Anna's chromodoris",
   rank: "Species",
   photo_sha256: null,
+  count: null,
+  notes: "",
 };
 
 // A second photo-less species, because a table of two rows keyed the same is a
@@ -99,6 +103,8 @@ const ALSO_WITHOUT_PHOTO = {
   common_name: null,
   rank: "Family",
   photo_sha256: null,
+  count: null,
+  notes: "",
 };
 
 // Rows are compared to within a pixel rather than for exact equality. The

@@ -1,8 +1,17 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { GripVertical, Loader2, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ComboboxItem,
   ComboboxSearchResult,
@@ -20,6 +29,7 @@ import {
   SpeciesSummary,
 } from "@/lib/api/species";
 import { getApiErrorMessage } from "@/lib/api/error";
+import type { SightingWrite } from "@/lib/api/dives";
 import {
   speciesDisplayName,
   speciesRankLabel,
@@ -151,6 +161,25 @@ function equalsIgnoringCase(a: string, b: string | null): boolean {
   return b !== null && a.toLowerCase() === b.toLowerCase();
 }
 
+// What a count box takes: a positive whole number and nothing else. A keystroke that
+// would leave anything else in it is refused rather than committed, so a count is never
+// a `0` or a fraction waiting for the schema to object.
+const COUNT_TEXT = /^[1-9]\d*$/;
+
+// A sighting with its count taken off, which is how an emptied box says "seen, not
+// counted" - never with a `0` or a `1`.
+function withoutCount(sighting: SightingWrite): SightingWrite {
+  const next = { ...sighting };
+  delete next.count;
+  return next;
+}
+
+/** What the form refused on one sighting's two inputs. */
+export interface SightingErrors {
+  count?: string;
+  notes?: string;
+}
+
 // A species picked from the menu that isn't a catalog row yet, while its resolve
 // is in flight. Local state rather than form state on purpose - see the
 // component's doc comment.
@@ -160,17 +189,19 @@ interface PendingSpecies {
 }
 
 export interface SpeciesMultiSelectProps extends FormControlSlotProps {
-  // Ordered list of catalog uuids, in the order the diver listed them. Order is
-  // presentation only here - unlike the dive site picker, where the first entry
-  // is the dive's primary site - but it is preserved end to end, so a diver who
-  // puts the manta first sees the manta first.
-  value: string[];
+  // The sightings, in the order the diver listed them, each naming a catalog
+  // species at most once. Order is presentation only here - unlike the dive site
+  // picker, where the first entry is the dive's primary site - but it is preserved
+  // end to end, so a diver who puts the manta first sees the manta first.
+  value: SightingWrite[];
   // Names for the species already in `value`, when the caller has them (the edit
-  // form does: `Dive.species` carries them). Purely an optimization - any uuid
+  // form does: `Dive.sightings` carries them). Purely an optimization - any uuid
   // not covered here is fetched individually - but it saves a request per row on
   // the form that always has selections.
   knownSpecies?: SpeciesSummary[];
-  onChange: (speciesUuids: string[]) => void;
+  onChange: (sightings: SightingWrite[]) => void;
+  // What the form refused on each row, by position in `value`.
+  errors?: readonly (SightingErrors | undefined)[];
   // Reports whether a pick is still being resolved into a catalog row, so the
   // form can stop a save from racing it. Without this the window is small but
   // the loss is silent: the diver picks a species, hits Save inside the second
@@ -186,7 +217,8 @@ export interface SpeciesMultiSelectProps extends FormControlSlotProps {
  *
  * Wraps the generic `CreatableCombobox` the way `DiveSiteMultiSelect` does (see
  * DECISIONS.md) - the combobox is the "add a species" input, with a
- * drag-sortable list of what's already added above it.
+ * drag-sortable list of what's already added above it, each row carrying how
+ * many were counted and a note.
  *
  * The one thing this picker does that no other does: **a pick can require a
  * round trip before it has a value at all.** A species the catalog has never
@@ -210,14 +242,15 @@ export function SpeciesMultiSelect({
   value,
   knownSpecies,
   onChange,
+  errors,
   onPendingChange,
   disabled,
-  // Forwarded to the "add a species" combobox - the field's one focusable
-  // control. The selected-species list above it is a `<ul>` of remove buttons,
-  // which the label has nothing to say about.
+  // Forwarded to the "add a species" combobox - the one control the field's
+  // label names. The rows above it name their own, after their species.
   ...slotProps
 }: SpeciesMultiSelectProps) {
   const { toast } = useToast();
+  const idPrefix = useId();
   const [labels, setLabels] = useState<Record<string, SpeciesSummary>>({});
   const [pending, setPending] = useState<PendingSpecies[]>([]);
   // Kept for the session rather than cleared with each query: the credit is a
@@ -294,12 +327,14 @@ export function SpeciesMultiSelect({
   // that keeps a selection from ever rendering nameless. A dive has a handful of
   // species at most, so these are one-off single-record fetches.
   useEffect(() => {
-    const unresolved = value.filter(
-      (uuid) =>
-        !labels[uuid] &&
-        !knownSpecies?.some((entry) => entry.uuid === uuid) &&
-        !requestedRef.current.has(uuid),
-    );
+    const unresolved = value
+      .map((sighting) => sighting.species_uuid)
+      .filter(
+        (uuid) =>
+          !labels[uuid] &&
+          !knownSpecies?.some((entry) => entry.uuid === uuid) &&
+          !requestedRef.current.has(uuid),
+      );
     if (unresolved.length === 0) return;
 
     // Marked before the request, not after: a failed lookup must not be retried
@@ -341,15 +376,16 @@ export function SpeciesMultiSelect({
     [rememberLabels, rememberAttributions],
   );
 
-  // Appends a uuid, claiming it in `valueRef` first so a sibling resolve landing
-  // in the same tick appends to this list rather than the one before it.
-  const appendUuid = (uuid: string) => {
+  // Appends a sighting of the species alone, claiming it in `valueRef` first so a
+  // sibling resolve landing in the same tick appends to this list rather than the
+  // one before it.
+  const appendSighting = (uuid: string) => {
     const current = valueRef.current;
     // The same species can be reached from two queries, and resolve is
     // idempotent server-side - so a stale menu row's second pick would otherwise
     // add the row it already added.
-    if (current.includes(uuid)) return;
-    const next = [...current, uuid];
+    if (current.some((sighting) => sighting.species_uuid === uuid)) return;
+    const next = [...current, { species_uuid: uuid }];
     valueRef.current = next;
     onChange(next);
   };
@@ -358,7 +394,7 @@ export function SpeciesMultiSelect({
     if (id === undefined) return;
     const aphiaId = parsePendingSpeciesId(id);
     if (aphiaId === null) {
-      appendUuid(id);
+      appendSighting(id);
       return;
     }
     resolveAndAdd(aphiaId, id);
@@ -383,7 +419,7 @@ export function SpeciesMultiSelect({
     try {
       const species = await speciesAPI.resolveSpecies(aphiaId);
       rememberLabels([species]);
-      appendUuid(species.uuid);
+      appendSighting(species.uuid);
     } catch (error) {
       toast({
         title: "Error",
@@ -395,7 +431,36 @@ export function SpeciesMultiSelect({
     }
   };
 
-  const removeSpecies = (id: string) => onChange(value.filter((v) => v !== id));
+  const removeSpecies = (uuid: string) =>
+    onChange(value.filter((sighting) => sighting.species_uuid !== uuid));
+
+  // Through `valueRef` and claiming it, as `appendSighting` does: a resolve that
+  // lands between a keystroke and the render after it would otherwise append to
+  // the list from before the keystroke, dropping what was typed.
+  const updateSighting = (
+    uuid: string,
+    change: (sighting: SightingWrite) => SightingWrite,
+  ) => {
+    const next = valueRef.current.map((sighting) =>
+      sighting.species_uuid === uuid ? change(sighting) : sighting,
+    );
+    valueRef.current = next;
+    onChange(next);
+  };
+
+  const setCount = (uuid: string, text: string) => {
+    if (text === "") {
+      updateSighting(uuid, withoutCount);
+    } else if (COUNT_TEXT.test(text)) {
+      updateSighting(uuid, (sighting) => ({
+        ...sighting,
+        count: Number(text),
+      }));
+    }
+  };
+
+  const setNotes = (uuid: string, notes: string) =>
+    updateSighting(uuid, (sighting) => ({ ...sighting, notes }));
 
   const reorder = useCallback(
     (from: number, to: number) => onChange(moveItem(value, from, to)),
@@ -415,19 +480,26 @@ export function SpeciesMultiSelect({
         <ul
           className={cn("space-y-1", draggingIndex !== null && "select-none")}
         >
-          {value.map((id, index) => {
-            const species = labelFor(id);
+          {value.map((sighting, index) => {
+            const uuid = sighting.species_uuid;
+            const species = labelFor(uuid);
             // The fallback is only ever visible for the moment between a species
             // being selected and its name being resolved.
             const label = species ? speciesDisplayName(species) : "Species...";
             const binomial = species && speciesSecondaryName(species);
             const isDragging = draggingIndex === index;
+            const rowErrors = errors?.[index];
+            const countErrorId = `${idPrefix}-${uuid}-count-error`;
+            const notesErrorId = `${idPrefix}-${uuid}-notes-error`;
             return (
+              // Both inputs on every row whether or not they hold anything, so a
+              // row with a one-line note stands as tall as a bare one and the
+              // list does not jump as the diver types into it.
               <li
-                key={id}
+                key={uuid}
                 ref={setItemRef(index)}
                 className={cn(
-                  "flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm",
+                  "space-y-1.5 rounded-md border bg-background px-2 py-1.5 text-sm",
                   isDragging && "relative z-10 shadow-lg ring-2 ring-ring",
                 )}
                 // The dragged row is translated to follow the pointer; the rest
@@ -438,42 +510,95 @@ export function SpeciesMultiSelect({
                     : undefined
                 }
               >
-                {/* The gesture's keyboard equivalent lives on this button
-                    (Up/Down), so the label has to say so - "drag to reorder"
-                    alone would be a dead end for keyboard users. */}
-                {value.length > 1 && (
-                  <IconTooltip
-                    label={`Reorder ${label}, position ${index + 1} of ${value.length}. Use arrow up and arrow down to move it.`}
-                  >
+                <div className="flex items-center gap-2">
+                  {/* The gesture's keyboard equivalent lives on this button
+                      (Up/Down), so the label has to say so - "drag to reorder"
+                      alone would be a dead end for keyboard users. */}
+                  {value.length > 1 && (
+                    <IconTooltip
+                      label={`Reorder ${label}, position ${index + 1} of ${value.length}. Use arrow up and arrow down to move it.`}
+                    >
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+                        {...handleProps(index)}
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </button>
+                    </IconTooltip>
+                  )}
+                  <span className="min-w-0 flex-1 truncate">
+                    {label}
+                    {binomial && (
+                      <span className="italic text-muted-foreground">
+                        {" "}
+                        {binomial}
+                      </span>
+                    )}
+                  </span>
+                  {/* Text with a numeric keypad rather than `type="number"`,
+                      which lets "e", "-" and "1.5" into the box and reports
+                      them as an empty value - so a refused keystroke would read
+                      as a cleared count. */}
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    aria-label={`Count of ${label}`}
+                    aria-invalid={rowErrors?.count ? true : undefined}
+                    aria-describedby={
+                      rowErrors?.count ? countErrorId : undefined
+                    }
+                    placeholder="Count"
+                    className="h-9 w-20 shrink-0"
+                    disabled={disabled}
+                    value={sighting.count === undefined ? "" : sighting.count}
+                    onChange={(event) => setCount(uuid, event.target.value)}
+                  />
+                  <IconTooltip label={`Remove ${label}`}>
                     <button
                       type="button"
                       disabled={disabled}
-                      className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
-                      {...handleProps(index)}
+                      className="shrink-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => removeSpecies(uuid)}
                     >
-                      <GripVertical className="h-4 w-4" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </IconTooltip>
-                )}
-                <span className="flex-1 truncate">
-                  {label}
-                  {binomial && (
-                    <span className="italic text-muted-foreground">
-                      {" "}
-                      {binomial}
-                    </span>
-                  )}
-                </span>
-                <IconTooltip label={`Remove ${label}`}>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    className="shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => removeSpecies(id)}
+                </div>
+                {/* A textarea for the line breaks a merge or an import puts in a
+                    note, as the dive's own notes field is one - but one line tall
+                    until the note needs more, so a bare row stays compact.
+                    `field-sizing` does the growing; a browser without it keeps
+                    the one line and scrolls. */}
+                <Textarea
+                  rows={1}
+                  aria-label={`Notes on ${label}`}
+                  aria-invalid={rowErrors?.notes ? true : undefined}
+                  aria-describedby={rowErrors?.notes ? notesErrorId : undefined}
+                  placeholder="Notes"
+                  className="field-sizing-content max-h-40 min-h-9 resize-none py-1.5"
+                  disabled={disabled}
+                  value={sighting.notes ?? ""}
+                  onChange={(event) => setNotes(uuid, event.target.value)}
+                />
+                {rowErrors?.count && (
+                  <p
+                    id={countErrorId}
+                    className="text-sm font-medium text-destructive"
                   >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </IconTooltip>
+                    {rowErrors.count}
+                  </p>
+                )}
+                {rowErrors?.notes && (
+                  <p
+                    id={notesErrorId}
+                    className="text-sm font-medium text-destructive"
+                  >
+                    {rowErrors.notes}
+                  </p>
+                )}
               </li>
             );
           })}
@@ -509,7 +634,7 @@ export function SpeciesMultiSelect({
         // twice, and so are the ones being resolved: re-picking a pending row
         // would fire a second resolve for a species that is on its way in.
         excludeIds={[
-          ...value,
+          ...value.map((sighting) => sighting.species_uuid),
           ...pending.map((entry) => pendingSpeciesId(entry.aphiaId)),
         ]}
         value={undefined}
