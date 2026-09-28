@@ -279,7 +279,7 @@ export function LandingPage() {
           ("1,000+ Active Divers" and friends) for a product with no central
           service to count anything. It now carries the argument those numbers
           were standing in for. */}
-      <section className="py-20 bg-primary text-primary-foreground">
+      <section className="py-20 bg-coral dark:bg-teal text-primary-foreground">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold mb-6">
             Built to Outlive the Vendor
@@ -299,16 +299,7 @@ export function LandingPage() {
           <div className="mt-10 grid gap-4 text-sm font-medium sm:grid-cols-3">
             <div>AGPL-3.0, server side included</div>
             <div>No trackers, no analytics</div>
-            {/* Four formats out, and still deliberately not "and back": three of
-                the four come back now, but a round-trip claim spanning all four
-                would be false of the CSV. The paragraph above carries the import
-                half, naming the formats it is actually true of.
-
-                This comment read "only DiveJSON and the archive import … false
-                of UDDF and CSV" until the API grew a converter, which is the
-                hazard it exists to describe happening to itself: a claim about
-                what one format cannot do is a claim about every other one. */}
-            <div>DiveJSON, UDDF, CSV or a full archive, one click</div>
+            <div>DiveJSON, UDDF, CSV and more</div>
           </div>
         </div>
       </section>
