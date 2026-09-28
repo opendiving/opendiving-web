@@ -80,7 +80,7 @@ export function NewDivePageContent() {
       // never opened the gas card could not tell it from something they logged - and
       // `diveModWarning` would then raise a depth-safety warning derived from it. The
       // prefill below still carries the last dive's cylinders over, which is where
-      // the convenience actually lives; "Add mixture" still starts from
+      // the convenience actually lives; "Add tank" still starts from
       // `DEFAULT_MIXTURE`.
       mixtures: [],
     },

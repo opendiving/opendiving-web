@@ -82,7 +82,7 @@ export const MIXTURE_FORM_FIELDS = DIVE_FORM_FIELDS.filter(isMixtureField);
  * `volume` and `oxygen` became blank-able when a cylinder was allowed to record a mix
  * with no vessel, and they are exempt on the substance rather than on the type: they
  * are what a cylinder *is*. A tank card that can lose both records a row with nothing
- * in it, and "Add mixture" would propose `DEFAULT_MIXTURE` where the diver could
+ * in it, and "Add tank" would propose `DEFAULT_MIXTURE` where the diver could
  * neither see nor change it - which is the half of that change the split was chosen to
  * protect.
  *
@@ -131,7 +131,7 @@ export const DIVE_FORM_FIELD_GROUPS = [
   "Trip, course & site",
   "Dive info",
   "Environment",
-  "Gas mixtures",
+  "Tanks",
   "Gear & weight",
   "Species",
   "Notes",
@@ -175,21 +175,21 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
   { key: "visibility", label: "Visibility", group: "Environment" },
   { key: "water_type", label: "Water type", group: "Environment" },
   { key: "altitude", label: "Altitude", group: "Environment" },
-  { key: "mixtures", label: "Gas Mixtures", group: "Gas mixtures" },
+  { key: "mixtures", label: "Tanks", group: "Tanks" },
   { key: "gear_item_uuids", label: "Gear", group: "Gear & weight" },
   { key: "weight", label: "Weight", group: "Gear & weight" },
   { key: "sightings", label: "Species spotted", group: "Species" },
   { key: "notes", label: "Notes", group: "Notes" },
-  { key: "mixture.po2_limit", label: "ppO₂ limit", group: "Gas mixtures" },
-  { key: "mixture.helium", label: "He", group: "Gas mixtures" },
+  { key: "mixture.po2_limit", label: "ppO₂ limit", group: "Tanks" },
+  { key: "mixture.helium", label: "He", group: "Tanks" },
   {
     key: "mixture.start_pressure",
     label: "Start pressure",
-    group: "Gas mixtures",
+    group: "Tanks",
   },
-  { key: "mixture.end_pressure", label: "End pressure", group: "Gas mixtures" },
-  { key: "mixture.role", label: "Role", group: "Gas mixtures" },
-  { key: "mixture.usage", label: "Usage", group: "Gas mixtures" },
+  { key: "mixture.end_pressure", label: "End pressure", group: "Tanks" },
+  { key: "mixture.role", label: "Role", group: "Tanks" },
+  { key: "mixture.usage", label: "Usage", group: "Tanks" },
 ];
 
 /**
@@ -210,8 +210,8 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   { label: "Start time", group: "Dive info" },
   { label: "Dive number", group: "Dive info" },
   { label: "Duration", group: "Dive info" },
-  { label: "Volume", group: "Gas mixtures" },
-  { label: "O₂", group: "Gas mixtures" },
+  { label: "Volume", group: "Tanks" },
+  { label: "O₂", group: "Tanks" },
 ];
 
 /**

@@ -379,7 +379,7 @@ describe("logging a dive without touching the gas card", () => {
     render(<NewDivePage />);
 
     expect(
-      await screen.findByText(/no cylinders recorded for this dive/i),
+      await screen.findByText(/no tanks recorded for this dive/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
   });
@@ -399,24 +399,24 @@ describe("logging a dive without touching the gas card", () => {
 });
 
 describe("the gas card, once the diver opens it", () => {
-  it("proposes a cylinder on Add mixture, and lets it be taken back off", async () => {
+  it("proposes a cylinder on Add tank, and lets it be taken back off", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
-    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
     // The proposal is still `DEFAULT_MIXTURE` - that is what the button is for.
     expect(screen.getByText(/^tank 1$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/O₂ \(%\)/)).toHaveValue(21);
 
     // Tank 1 had no remove button at all until this change, which is what made
-    // "no cylinders" unreachable once a diver had added one.
+    // "no tanks" unreachable once a diver had added one.
     await userEvent.click(
       screen.getByRole("button", { name: /remove tank 1/i }),
     );
 
     expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
     expect(
-      screen.getByText(/no cylinders recorded for this dive/i),
+      screen.getByText(/no tanks recorded for this dive/i),
     ).toBeInTheDocument();
   });
 
@@ -425,7 +425,7 @@ describe("the gas card, once the diver opens it", () => {
     await screen.findByLabelText(/duration/i);
     fillRequiredFields();
 
-    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
     await userEvent.click(
       screen.getByRole("button", { name: /remove tank 1/i }),
     );
@@ -444,7 +444,7 @@ describe("the gas card, once the diver opens it", () => {
     await screen.findByLabelText(/duration/i);
     fillRequiredFields();
 
-    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
     // `fireEvent.change` rather than clear-then-type: react-hook-form re-displays a
     // field's default whenever its value resolves to `undefined`, so emptying the box
     // snaps it back to the appended 21 and the typed digits land after it.
@@ -553,7 +553,7 @@ describe("the last-dive prefill", () => {
     await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
 
     expect(
-      await screen.findByText(/no cylinders recorded for this dive/i),
+      await screen.findByText(/no tanks recorded for this dive/i),
     ).toBeInTheDocument();
     // The bug this pins: a cylinder-less dive used to hand the next form a
     // fabricated one, so the phantom propagated down the log rather than staying
@@ -830,17 +830,17 @@ describe("a stored hidden set", () => {
     expect(screen.getByLabelText(/water type/i)).toBeInTheDocument();
   });
 
-  it("takes the whole Gas Mixtures section with `mixtures`", async () => {
+  it("takes the whole Tanks section with `mixtures`", async () => {
     stable.auth.user.dive_form_hidden_fields = ["mixtures"];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
-    expect(screen.queryByText(/^gas mixtures$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^tanks$/i)).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /add mixture/i }),
+      screen.queryByRole("button", { name: /add tank/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/no cylinders recorded for this dive/i),
+      screen.queryByText(/no tanks recorded for this dive/i),
     ).not.toBeInTheDocument();
   });
 
@@ -849,8 +849,8 @@ describe("a stored hidden set", () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
-    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
-    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
 
     expect(screen.getAllByLabelText(/^usage$/i)).toHaveLength(2);
     expect(screen.queryByLabelText(/^role$/i)).not.toBeInTheDocument();
@@ -1010,9 +1010,7 @@ describe("what the prefill does to a hidden field", () => {
     expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
 
     await openFieldsPanel();
-    await userEvent.click(
-      screen.getByRole("switch", { name: /^gas mixtures$/i }),
-    );
+    await userEvent.click(screen.getByRole("switch", { name: /^tanks$/i }));
     await closeFieldsPanel();
 
     await waitFor(() =>
@@ -1024,9 +1022,7 @@ describe("what the prefill does to a hidden field", () => {
     ).toHaveValue(null);
 
     await openFieldsPanel();
-    await userEvent.click(
-      screen.getByRole("switch", { name: /^gas mixtures$/i }),
-    );
+    await userEvent.click(screen.getByRole("switch", { name: /^tanks$/i }));
     await closeFieldsPanel();
     await waitFor(() =>
       expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument(),
@@ -1042,7 +1038,7 @@ describe("what the prefill does to a hidden field", () => {
 
   it("sends the same helium for a carried cylinder and a hand-added one", async () => {
     // The two paths into the cylinder list disagreed: a carried tank went through
-    // the hide rule and got helium `""` -> null, while "Add mixture" takes
+    // the hide rule and got helium `""` -> null, while "Add tank" takes
     // `DEFAULT_MIXTURE` whole and kept 0. Two rows of one dive, one of them
     // un-nameable by `gasName`, in a column neither was showing.
     lastDiveWith({
@@ -1066,7 +1062,7 @@ describe("what the prefill does to a hidden field", () => {
     );
     expect(screen.queryByLabelText(/He \(%\)/)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
 
     fillRequiredFields();
     await logDive();
@@ -1563,7 +1559,7 @@ describe("the depth entry-unit toggle", () => {
 
     // And the gas hint still says which unit its MOD is in, which is what makes a
     // form with no depth control readable rather than ambiguous.
-    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
     expect(screen.getByText(/MOD \d+(\.\d+)? m/)).toBeInTheDocument();
   });
 
@@ -1632,7 +1628,7 @@ describe("the Fields control", () => {
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
 
-    const section = screen.getByRole("group", { name: /gas mixtures/i });
+    const section = screen.getByRole("group", { name: /^tanks$/i });
     const rows = within(section)
       .getAllByRole("switch")
       .map((control) =>
@@ -1642,7 +1638,7 @@ describe("the Fields control", () => {
       );
 
     expect(rows).toEqual([
-      "Gas Mixtures",
+      "Tanks",
       "Volume",
       "O₂",
       "ppO₂ limit",
@@ -1662,9 +1658,7 @@ describe("the Fields control", () => {
 
     expect(screen.getByRole("switch", { name: /^role$/i })).toBeDisabled();
 
-    await userEvent.click(
-      screen.getByRole("switch", { name: /^gas mixtures$/i }),
-    );
+    await userEvent.click(screen.getByRole("switch", { name: /^tanks$/i }));
     expect(screen.getByRole("switch", { name: /^role$/i })).toBeEnabled();
   });
 });

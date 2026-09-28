@@ -114,7 +114,7 @@ describe("MixtureFields with no cylinders", () => {
     render(<Harness mixtures={[]} maxDepth={30} />);
 
     expect(
-      screen.getByText(/no cylinders recorded for this dive/i),
+      screen.getByText(/no tanks recorded for this dive/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
   });
@@ -126,7 +126,7 @@ describe("MixtureFields with no cylinders", () => {
 
     expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
     expect(
-      screen.getByText(/no cylinders recorded for this dive/i),
+      screen.getByText(/no tanks recorded for this dive/i),
     ).toBeInTheDocument();
   });
 
@@ -153,7 +153,7 @@ describe("MixtureFields add button placement", () => {
   it("follows the last tank rather than preceding the first", () => {
     render(<Harness mixtures={[EAN54, EAN54]} maxDepth={30} />);
 
-    const add = screen.getByRole("button", { name: /add mixture/i });
+    const add = screen.getByRole("button", { name: /add tank/i });
     const lastRemove = screen.getByRole("button", { name: /remove tank 2/i });
 
     expect(
@@ -165,8 +165,8 @@ describe("MixtureFields add button placement", () => {
   it("follows the empty-state line when there are no tanks", () => {
     render(<Harness mixtures={[]} maxDepth={30} />);
 
-    const add = screen.getByRole("button", { name: /add mixture/i });
-    const empty = screen.getByText(/no cylinders recorded for this dive/i);
+    const add = screen.getByRole("button", { name: /add tank/i });
+    const empty = screen.getByText(/no tanks recorded for this dive/i);
 
     expect(
       empty.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -528,7 +528,7 @@ describe("MixtureFields entry units", () => {
   it("shows no pressure toggle over an empty cylinder list", () => {
     render(<Harness mixtures={[]} maxDepth={30} />);
 
-    expect(screen.getByText("Gas Mixtures")).toBeInTheDocument();
+    expect(screen.getByText("Tanks")).toBeInTheDocument();
     expect(
       screen.queryByLabelText(/switch pressure entry/),
     ).not.toBeInTheDocument();
@@ -540,7 +540,7 @@ describe("MixtureFields entry units", () => {
     writeEntryUnits({ pressure: "imperial" });
     render(<Harness mixtures={[]} maxDepth={30} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
 
     expect(
       screen.getByLabelText("bar | psi — switch pressure entry to bar"),
@@ -664,7 +664,7 @@ describe("MixtureFields under a hidden set", () => {
   });
 });
 
-describe("Add mixture", () => {
+describe("Add tank", () => {
   it("adds a tank without taking the focus into it", async () => {
     // react-hook-form's `append` focuses the first field of the new row that
     // registered a focusable ref, and `VolumeCombobox` registers none - so the
@@ -673,7 +673,7 @@ describe("Add mixture", () => {
     // this button having gone through to the field underneath.
     render(<Harness mixtures={[]} maxDepth={20} />);
 
-    const add = screen.getByRole("button", { name: /add mixture/i });
+    const add = screen.getByRole("button", { name: /add tank/i });
     await userEvent.click(add);
 
     expect(screen.getByText(/^tank 1$/i)).toBeInTheDocument();

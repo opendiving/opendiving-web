@@ -277,7 +277,7 @@ describe("describeMixtureImport", () => {
     );
 
     expect(note).not.toMatch(/\d/);
-    expect(note).toContain("check the gas mixtures below");
+    expect(note).toContain("check the tanks below");
   });
 
   it("names helium on its own rather than an oxygen it didn't guess", () => {

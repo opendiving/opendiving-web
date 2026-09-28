@@ -373,7 +373,7 @@ export function describeMixtureImport(
       ? "That value was already on this form"
       : "Those values were already on this form";
     sentences.push(
-      `This file doesn't record ${labels.join(" or ")}. ${provenance}, not read from the file — check the gas mixtures below before saving.`,
+      `This file doesn't record ${labels.join(" or ")}. ${provenance}, not read from the file — check the tanks below before saving.`,
     );
   }
   if (notes.keptPressures) {

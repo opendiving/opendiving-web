@@ -294,14 +294,14 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Gas Mixtures</h3>
+        <h3 className="text-sm font-medium">Tanks</h3>
         {/* One toggle for the section rather than one per box: the two pressure
             fields repeat per tank card, so a four-cylinder dive would carry
             eight identical controls with eight identical accessible names.
             Gated on there being a cylinder, because the create form seeds no
             mixtures and an ungated control would govern no visible field. The
             stored override is untouched by the gate, so it comes back exactly
-            as the diver left it with the first "Add mixture".
+            as the diver left it with the first "Add tank".
 
             And gated a second time on one of the two pressure boxes being on
             screen, for the same reason rather than a new one: a diver who hides
@@ -650,7 +650,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           heading over nothing. */}
       {fields.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No cylinders recorded for this dive.
+          No tanks recorded for this dive.
         </p>
       )}
 
@@ -669,7 +669,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
         // as the tap having gone through to the field underneath.
         onClick={() => append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })}
       >
-        Add mixture
+        Add tank
       </AddRowButton>
 
       <MixtureSetWarning
