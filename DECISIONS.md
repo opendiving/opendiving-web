@@ -4761,8 +4761,9 @@ with different gases is a switch plan; two identical unflagged cylinders could b
 to. Nothing is inferred from `DiveGasUse.tanks` here; the flag is the diver's statement that every
 cylinder saw the same depths. Fractions are compared, not `gasName`, which rounds 31.6% and 32.4%
 both to "EAN32"; `helium` normalizes to `0` because `OxygenFractions` allows it absent while the
-form and parsers write a flat zero. `DiveMixturesCard`'s amber MOD cell follows the same predicate,
-marking every row, since every row holds the gas named.
+form writes a flat zero and an import leaves it absent where the file recorded none.
+`DiveMixturesCard`'s amber MOD cell follows the same predicate, marking every row, since every row
+holds the gas named.
 
 ## `DiveGasUse`'s doc comments are swept by claim, not by list
 

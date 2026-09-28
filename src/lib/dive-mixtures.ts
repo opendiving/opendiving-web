@@ -665,9 +665,9 @@ export function gasHintParts({
 // below - and the gas comparison uses the recorded fractions rather than `gasName`,
 // which rounds: two rows at 31.6% and 32.4% are both "EAN32" and are not the same fill.
 //
-// `helium` is normalized to 0 because that is what the form and every parser write for
-// a non-trimix, while `OxygenFractions` allows it absent - and an absent one now
-// genuinely arrives, from an import that stopped writing a 0 the file never recorded.
+// `helium` is normalized to 0 because that is what the form writes for a non-trimix,
+// while `OxygenFractions` allows it absent - and an absent one genuinely arrives, from
+// an import that writes no 0 the file never recorded.
 // That normalization is safe where the same one on oxygen would not be: every figure
 // this predicate feeds is derived from the oxygen fraction alone (`modWarning`), so a
 // pairing that is wrong about helium changes nothing that gets warned about, while one
