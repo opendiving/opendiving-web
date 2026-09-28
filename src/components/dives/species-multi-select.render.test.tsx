@@ -3,6 +3,7 @@ import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SpeciesMultiSelect } from "./species-multi-select";
+import type { SightingWrite } from "@/lib/api/dives";
 import type {
   Species,
   SpeciesSearchResponse,
@@ -128,16 +129,16 @@ beforeEach(() => {
 // than from the render, which would be a side effect during render - and would
 // also stop telling "the field reported nothing" apart from "it reported the
 // list it already had".
-let submitted: string[] = [];
+let submitted: SightingWrite[] = [];
 
 function Field({
-  initial = [] as string[],
+  initial = [] as SightingWrite[],
   known,
 }: {
-  initial?: string[];
+  initial?: SightingWrite[];
   known?: SpeciesSummary[];
 }) {
-  const [value, setValue] = useState<string[]>(initial);
+  const [value, setValue] = useState<SightingWrite[]>(initial);
   return (
     <SpeciesMultiSelect
       value={value}
@@ -180,7 +181,8 @@ describe("SpeciesMultiSelect", () => {
     await waitFor(() =>
       expect(rows()).toEqual(["Giant manta ray Mobula birostris"]),
     );
-    expect(submitted).toEqual(["species-manta"]);
+    // The species alone: nothing counted and nothing written yet.
+    expect(submitted).toEqual([{ species_uuid: "species-manta" }]);
     expect(resolveSpecies).not.toHaveBeenCalled();
   });
 
@@ -191,7 +193,9 @@ describe("SpeciesMultiSelect", () => {
     await userEvent.paste("Giant manta ray");
     await userEvent.keyboard("{Enter}");
 
-    await waitFor(() => expect(submitted).toEqual(["species-manta"]));
+    await waitFor(() =>
+      expect(submitted).toEqual([{ species_uuid: "species-manta" }]),
+    );
   });
 
   it("adds nothing from typing the name alone", async () => {
@@ -253,7 +257,9 @@ describe("SpeciesMultiSelect", () => {
       screen.getByRole("option", { name: /Ocellaris clownfish/ }),
     );
 
-    await waitFor(() => expect(submitted).toEqual(["species-clownfish"]));
+    await waitFor(() =>
+      expect(submitted).toEqual([{ species_uuid: "species-clownfish" }]),
+    );
     expect(resolveSpecies).toHaveBeenCalledWith(278400);
     expect(rows()).toEqual(["Ocellaris clownfish Amphiprion ocellaris"]);
   });
@@ -278,7 +284,9 @@ describe("SpeciesMultiSelect", () => {
     expect(submitted).toEqual([]);
 
     settle(RESOLVED);
-    await waitFor(() => expect(submitted).toEqual(["species-clownfish"]));
+    await waitFor(() =>
+      expect(submitted).toEqual([{ species_uuid: "species-clownfish" }]),
+    );
   });
 
   it("reports a pick as pending until the resolve settles", async () => {
@@ -434,10 +442,9 @@ describe("SpeciesMultiSelect", () => {
     settlers[0]({ ...RESOLVED, uuid: "species-first" });
 
     await waitFor(() =>
-      expect([...submitted].sort()).toEqual([
-        "species-first",
-        "species-second",
-      ]),
+      expect(submitted.map((sighting) => sighting.species_uuid).sort()).toEqual(
+        ["species-first", "species-second"],
+      ),
     );
   });
 
@@ -463,7 +470,7 @@ describe("SpeciesMultiSelect", () => {
   it("labels a selection it was handed the names for without a lookup", async () => {
     render(
       <SpeciesMultiSelect
-        value={["species-manta"]}
+        value={[{ species_uuid: "species-manta" }]}
         knownSpecies={[MANTA_SUMMARY]}
         onChange={() => {}}
       />,
@@ -476,7 +483,10 @@ describe("SpeciesMultiSelect", () => {
   it("fetches the name for a selection it was told nothing about", async () => {
     getSpecies.mockResolvedValue(RESOLVED);
     render(
-      <SpeciesMultiSelect value={["species-clownfish"]} onChange={() => {}} />,
+      <SpeciesMultiSelect
+        value={[{ species_uuid: "species-clownfish" }]}
+        onChange={() => {}}
+      />,
     );
 
     await waitFor(() =>
@@ -485,24 +495,32 @@ describe("SpeciesMultiSelect", () => {
     expect(getSpecies).toHaveBeenCalledWith("species-clownfish");
   });
 
-  it("names both per-row controls after the species they act on", async () => {
+  it("names every per-row control after the species it acts on", async () => {
     // Two rows is the smallest list that can prove it: with one, "Remove" and
     // "Remove Giant manta ray" are equally unambiguous. The name is the display
-    // name alone - the italic binomial beside it is not part of either label.
+    // name alone - the italic binomial beside it is not part of any label.
     render(
       <SpeciesMultiSelect
-        value={["species-manta", "species-clownfish"]}
+        value={[
+          { species_uuid: "species-manta" },
+          { species_uuid: "species-clownfish" },
+        ]}
         knownSpecies={[MANTA_SUMMARY, CLOWNFISH_SUMMARY]}
         onChange={() => {}}
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: "Remove Giant manta ray" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Remove Ocellaris clownfish" }),
-    ).toBeInTheDocument();
+    for (const name of ["Giant manta ray", "Ocellaris clownfish"]) {
+      expect(
+        screen.getByRole("button", { name: `Remove ${name}` }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: `Count of ${name}` }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: `Notes on ${name}` }),
+      ).toBeInTheDocument();
+    }
     expect(
       screen.getByRole("button", {
         name: /^Reorder Giant manta ray, position 1 of 2\./,
@@ -518,7 +536,14 @@ describe("SpeciesMultiSelect", () => {
   it("removes a species without touching the others", async () => {
     render(
       <Field
-        initial={["species-manta", "species-clownfish"]}
+        initial={[
+          { species_uuid: "species-manta", count: 2 },
+          {
+            species_uuid: "species-clownfish",
+            count: 5,
+            notes: "In the anemone",
+          },
+        ]}
         known={[MANTA_SUMMARY, CLOWNFISH_SUMMARY]}
       />,
     );
@@ -527,6 +552,157 @@ describe("SpeciesMultiSelect", () => {
       screen.getByRole("button", { name: "Remove Giant manta ray" }),
     );
 
-    expect(submitted).toEqual(["species-clownfish"]);
+    // The row that stays keeps what was typed on it.
+    expect(submitted).toEqual([
+      { species_uuid: "species-clownfish", count: 5, notes: "In the anemone" },
+    ]);
+  });
+});
+
+describe("SpeciesMultiSelect counts and notes", () => {
+  beforeEach(() => {
+    submitted = [];
+  });
+
+  const twoRows = (initial?: SightingWrite[]) =>
+    render(
+      <Field
+        initial={
+          initial ?? [
+            { species_uuid: "species-manta" },
+            { species_uuid: "species-clownfish" },
+          ]
+        }
+        known={[MANTA_SUMMARY, CLOWNFISH_SUMMARY]}
+      />,
+    );
+
+  const countOf = (name: string) =>
+    screen.getByRole("textbox", { name: `Count of ${name}` });
+  const notesOn = (name: string) =>
+    screen.getByRole("textbox", { name: `Notes on ${name}` });
+
+  it("puts a count typed on a row on that row's sighting", async () => {
+    twoRows();
+
+    await userEvent.type(countOf("Ocellaris clownfish"), "12");
+
+    expect(submitted).toEqual([
+      { species_uuid: "species-manta" },
+      { species_uuid: "species-clownfish", count: 12 },
+    ]);
+    expect(countOf("Ocellaris clownfish")).toHaveValue("12");
+  });
+
+  it("sends no count once the box is emptied, rather than a 0 or a 1", async () => {
+    twoRows([
+      { species_uuid: "species-manta", count: 3 },
+      { species_uuid: "species-clownfish" },
+    ]);
+
+    await userEvent.clear(countOf("Giant manta ray"));
+
+    expect(submitted[0]).toEqual({ species_uuid: "species-manta" });
+    expect("count" in submitted[0]).toBe(false);
+    expect(countOf("Giant manta ray")).toHaveValue("");
+  });
+
+  it("takes a positive whole number and nothing else", async () => {
+    // Refused keystrokes leave the box as it was, so the count can never hold
+    // a value the API would turn away.
+    twoRows();
+    const box = countOf("Giant manta ray");
+
+    await userEvent.type(box, "0");
+    expect(box).toHaveValue("");
+    await userEvent.type(box, "-a.");
+    expect(box).toHaveValue("");
+
+    await userEvent.type(box, "2.5");
+    expect(box).toHaveValue("25");
+    expect(submitted[0]).toEqual({ species_uuid: "species-manta", count: 25 });
+  });
+
+  it("keeps the line breaks in a note, on that row's sighting", async () => {
+    twoRows();
+
+    await userEvent.type(
+      notesOn("Giant manta ray"),
+      "Cleaning station{Enter}at 18 m",
+    );
+
+    expect(submitted[0]).toEqual({
+      species_uuid: "species-manta",
+      notes: "Cleaning station\nat 18 m",
+    });
+    expect(submitted[1]).toEqual({ species_uuid: "species-clownfish" });
+  });
+
+  it("sends an empty note once the diver clears it", async () => {
+    // What the dive's own notes field sends, and the API's spelling of none.
+    twoRows([
+      { species_uuid: "species-manta", notes: "Two juveniles" },
+      { species_uuid: "species-clownfish" },
+    ]);
+
+    await userEvent.clear(notesOn("Giant manta ray"));
+
+    expect(submitted[0]).toEqual({ species_uuid: "species-manta", notes: "" });
+  });
+
+  it("moves a row with its count and note when it is reordered", async () => {
+    twoRows([
+      { species_uuid: "species-manta", count: 2, notes: "Overhead" },
+      { species_uuid: "species-clownfish" },
+    ]);
+
+    screen.getByRole("button", { name: /^Reorder Giant manta ray/ }).focus();
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(submitted).toEqual([
+      { species_uuid: "species-clownfish" },
+      { species_uuid: "species-manta", count: 2, notes: "Overhead" },
+    ]);
+  });
+
+  it("shows neither input on a row still being resolved", async () => {
+    // There is nothing in form state for them to write to yet.
+    resolveSpecies.mockReturnValue(new Promise(() => {}));
+    render(<Field />);
+    await openMenu();
+
+    await userEvent.click(
+      screen.getByRole("option", { name: /Ocellaris clownfish/ }),
+    );
+
+    await waitFor(() => expect(rows()).toEqual(["Ocellaris clownfishAdding"]));
+    expect(
+      screen.queryByRole("textbox", { name: /Ocellaris clownfish/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says under its row what the form refused, and marks that input", () => {
+    render(
+      <SpeciesMultiSelect
+        value={[
+          { species_uuid: "species-manta" },
+          { species_uuid: "species-clownfish", count: 3_000_000_000 },
+        ]}
+        knownSpecies={[MANTA_SUMMARY, CLOWNFISH_SUMMARY]}
+        onChange={() => {}}
+        errors={[undefined, { count: "That's more than a count can hold" }]}
+      />,
+    );
+
+    const box = screen.getByRole("textbox", {
+      name: "Count of Ocellaris clownfish",
+    });
+    expect(box).toHaveAttribute("aria-invalid", "true");
+    expect(box).toHaveAccessibleDescription(
+      "That's more than a count can hold",
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Count of Giant manta ray" }),
+    ).not.toHaveAttribute("aria-invalid");
   });
 });

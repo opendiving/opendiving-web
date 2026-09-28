@@ -684,12 +684,14 @@ describe("what the create form carries over from the last dive", () => {
             is_archived: false,
           } as Dive["gear_items"][number],
         ],
-        species: [
+        sightings: [
           {
             uuid: "species-1",
             scientific_name: "Chelonia mydas",
             common_name: "Green sea turtle",
             rank: "Species",
+            count: 2,
+            notes: "Resting under the ledge",
           },
         ],
       }),
@@ -704,7 +706,7 @@ describe("what the create form carries over from the last dive", () => {
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
     const body = vi.mocked(divesAPI.createDive).mock.calls[0][0];
     expect(body.gear_item_uuids).toEqual(["item-1"]);
-    expect(body.species_uuids).toEqual([]);
+    expect(body.sightings).toEqual([]);
   });
 });
 
@@ -763,9 +765,9 @@ describe("saving while a species pick is still resolving", () => {
     await logDive();
 
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
-    expect(
-      vi.mocked(divesAPI.createDive).mock.calls[0][0].species_uuids,
-    ).toEqual(["species-1"]);
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].sightings).toEqual([
+      { species_uuid: "species-1" },
+    ]);
   });
 });
 

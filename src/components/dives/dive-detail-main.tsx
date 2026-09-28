@@ -40,6 +40,11 @@ interface DiveDetailMainProps {
 export function DiveDetailMain({ dive }: DiveDetailMainProps) {
   const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
   const units = useUnits();
+  const sightings = dive.sightings ?? [];
+  // A column only when some row fills it, so a dive whose species were logged
+  // without a count or a note shows the names alone.
+  const hasCounts = sightings.some((sighting) => sighting.count != null);
+  const hasNotes = sightings.some((sighting) => Boolean(sighting.notes));
 
   return (
     <div className="lg:col-span-2 space-y-6">
@@ -172,7 +177,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
           the eye nothing to scan down. Common name leads the two text columns,
           because that is the one a diver reads - the binomial is what makes it
           unambiguous, not what makes it findable. */}
-      {dive.species && dive.species.length > 0 && (
+      {sightings.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle as="h2" className="flex items-center gap-2">
@@ -192,18 +197,22 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                   </TableHead>
                   <TableHead>Common name</TableHead>
                   <TableHead>Scientific name</TableHead>
+                  {hasCounts && (
+                    <TableHead className="text-right">Count</TableHead>
+                  )}
+                  {hasNotes && <TableHead>Notes</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dive.species.map((species) => (
-                  <TableRow key={species.uuid}>
+                {sightings.map((sighting) => (
+                  <TableRow key={sighting.uuid}>
                     {/* Every row gets this cell, and `SpeciesThumbnail` reserves
                         its box whether or not there is a photo to put in it - so
                         the rows stay the same height down the table instead of a
                         photo-less one collapsing to the height of its text. */}
                     <TableCell className="w-16">
                       <Link
-                        href={`/species/${species.uuid}`}
+                        href={`/species/${sighting.uuid}`}
                         // The name cell beside this links to the same page and
                         // carries the accessible name. Two adjacent links to one
                         // destination is a tab stop nobody wants and a link list
@@ -213,8 +222,8 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                         tabIndex={-1}
                       >
                         <SpeciesThumbnail
-                          uuid={species.uuid}
-                          photoSha256={species.photo_sha256}
+                          uuid={sighting.uuid}
+                          photoSha256={sighting.photo_sha256}
                           className="h-12 w-12"
                         />
                       </Link>
@@ -231,11 +240,11 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                           label is that same string, so nothing diverges from
                           what is on screen. */}
                       <Link
-                        href={`/species/${species.uuid}`}
+                        href={`/species/${sighting.uuid}`}
                         className="hover:underline"
-                        aria-label={speciesDisplayName(species)}
+                        aria-label={speciesDisplayName(sighting)}
                       >
-                        {species.common_name || (
+                        {sighting.common_name || (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </Link>
@@ -244,8 +253,21 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                         along when the row isn't one - "Muraenidae" on its own
                         reads as a species and isn't. */}
                     <TableCell className="italic text-muted-foreground">
-                      {speciesNameWithRank(species)}
+                      {speciesNameWithRank(sighting)}
                     </TableCell>
+                    {/* Blank for "seen, not counted", which is not 1. */}
+                    {hasCounts && (
+                      <TableCell className="text-right tabular-nums">
+                        {sighting.count}
+                      </TableCell>
+                    )}
+                    {/* Pre-wrap, as the Notes card below keeps the dive's own:
+                        a merge or an import can put line breaks in a note. */}
+                    {hasNotes && (
+                      <TableCell className="whitespace-pre-wrap text-muted-foreground">
+                        {sighting.notes}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

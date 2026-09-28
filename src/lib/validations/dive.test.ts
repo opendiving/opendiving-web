@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  SIGHTING_COUNT_MAX,
   buildDiveUpdate,
   diveCreateSchema,
   diveMixtureSchema,
@@ -8,7 +9,13 @@ import {
   normalizeMixtures,
   toDiveMixtureInput,
 } from "./dive";
-import { WATER_TYPES, type Dive, type DiveMixture } from "@/lib/api/dives";
+import { NOTES_MAX_LENGTH } from "./notes";
+import {
+  WATER_TYPES,
+  type Dive,
+  type DiveMixture,
+  type Sighting,
+} from "@/lib/api/dives";
 
 const validDive = {
   dive_number: 1,
@@ -1150,7 +1157,7 @@ describe("diveToFormValues", () => {
 
 // A dive as the detail endpoint sends one, for the seeding direction. Local to
 // this block because the fixture the edit-form tests share lives inside theirs.
-const DIVE_FOR_SPECIES: Dive = {
+const DIVE_FOR_SIGHTINGS: Dive = {
   uuid: "dive-1",
   dive_number: 42,
   start_time: "2026-04-04T10:04:47+02:00",
@@ -1163,47 +1170,104 @@ const DIVE_FOR_SPECIES: Dive = {
   mixtures: [],
 };
 
-describe("species_uuids", () => {
+const sighting = (overrides: Partial<Sighting>): Sighting => ({
+  uuid: "species-1",
+  scientific_name: "Chelonia mydas",
+  common_name: "Green sea turtle",
+  rank: "Species",
+  count: null,
+  notes: "",
+  ...overrides,
+});
+
+const createWith = (sightings: unknown) =>
+  diveCreateSchema.safeParse({ ...validDive, sightings });
+
+describe("sightings", () => {
   it("defaults to an empty list on create", () => {
     const parsed = diveCreateSchema.safeParse(validDive);
 
     expect(parsed.success).toBe(true);
-    expect(parsed.success && parsed.data.species_uuids).toEqual([]);
+    expect(parsed.success && parsed.data.sightings).toEqual([]);
   });
 
-  it("maps a dive's embedded species onto the form in order", () => {
+  it("maps a dive's sightings onto the form in order, keyed as a write names them", () => {
+    // The read's key is the species' own `uuid`; the write's is `species_uuid`.
     const dive: Dive = {
-      ...DIVE_FOR_SPECIES,
-      species: [
-        { uuid: "species-2" } as NonNullable<Dive["species"]>[number],
-        { uuid: "species-1" } as NonNullable<Dive["species"]>[number],
+      ...DIVE_FOR_SIGHTINGS,
+      sightings: [
+        sighting({
+          uuid: "species-2",
+          count: 3,
+          notes: "At the cleaning station",
+        }),
+        sighting({ uuid: "species-1" }),
       ],
     };
 
-    expect(diveToFormValues(dive).species_uuids).toEqual([
-      "species-2",
-      "species-1",
+    expect(diveToFormValues(dive).sightings).toEqual([
+      { species_uuid: "species-2", count: 3, notes: "At the cleaning station" },
+      { species_uuid: "species-1", notes: "" },
     ]);
   });
 
-  it("seeds an empty list for a dive payload that predates species", () => {
-    // The API caches a dive read for an hour, so a payload written before
-    // species existed has no key at all - and `undefined` here would make the
-    // field reset to its default after the form is seeded.
-    expect(diveToFormValues(DIVE_FOR_SPECIES).species_uuids).toEqual([]);
+  it("seeds no count at all for a sighting that was not counted", () => {
+    // `null` is "seen, not counted", and the form spells that by the key's
+    // absence - so saving the dive untouched sends none rather than a `null` or
+    // a `1` the diver never entered.
+    const [seeded] = diveToFormValues({
+      ...DIVE_FOR_SIGHTINGS,
+      sightings: [sighting({ count: null })],
+    }).sightings!;
+
+    expect("count" in seeded).toBe(false);
+  });
+
+  it("seeds an empty list for a dive payload that carries no sightings", () => {
+    // `sightings` is a detail-response member, and `undefined` here would make
+    // the field reset to its default after the form is seeded.
+    expect(diveToFormValues(DIVE_FOR_SIGHTINGS).sightings).toEqual([]);
+  });
+
+  it("takes a count from one to the column's ceiling", () => {
+    expect(SIGHTING_COUNT_MAX).toBe(2147483647);
+    for (const count of [1, 12, SIGHTING_COUNT_MAX]) {
+      expect(createWith([{ species_uuid: "a", count }]).success).toBe(true);
+    }
+  });
+
+  it("refuses a count of zero, a fraction and one past the ceiling", () => {
+    // Zero is not a sighting, and absent - not `0` - is "seen, not counted".
+    for (const count of [0, 2.5, SIGHTING_COUNT_MAX + 1]) {
+      expect(createWith([{ species_uuid: "a", count }]).success).toBe(false);
+    }
+  });
+
+  it("holds a sighting's note to the cap every note has", () => {
+    expect(
+      createWith([{ species_uuid: "a", notes: "x".repeat(NOTES_MAX_LENGTH) }])
+        .success,
+    ).toBe(true);
+    const tooLong = createWith([
+      { species_uuid: "a", notes: "x".repeat(NOTES_MAX_LENGTH + 1) },
+    ]);
+    expect(tooLong.success).toBe(false);
+    expect(tooLong.error?.issues[0].path).toEqual(["sightings", 0, "notes"]);
   });
 
   it("sends the list on update, including the empty one that clears it", () => {
     // `[]` and "untouched" are different requests: an omitted key leaves the
-    // dive's species alone, so collapsing the two would make "remove them all"
+    // dive's sightings alone, so collapsing the two would make "remove them all"
     // inexpressible. See "Locations are always sent on edit" in DECISIONS.md.
-    expect(
-      buildDiveUpdate({ species_uuids: ["a", "b"] }).species_uuids,
-    ).toEqual(["a", "b"]);
-    expect(buildDiveUpdate({ species_uuids: [] }).species_uuids).toEqual([]);
+    const sightings = [
+      { species_uuid: "a", count: 3, notes: "Two juveniles" },
+      { species_uuid: "b" },
+    ];
+    expect(buildDiveUpdate({ sightings }).sightings).toEqual(sightings);
+    expect(buildDiveUpdate({ sightings: [] }).sightings).toEqual([]);
   });
 
   it("omits the key entirely when the form never had the field", () => {
-    expect("species_uuids" in buildDiveUpdate({})).toBe(false);
+    expect("sightings" in buildDiveUpdate({})).toBe(false);
   });
 });

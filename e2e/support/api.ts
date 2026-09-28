@@ -51,7 +51,7 @@ export const DIVE_A: Dive = {
   created_at: "2026-04-17T14:00:00+02:00",
   mixtures: [],
   recordings: [],
-  species: [],
+  sightings: [],
 };
 
 export const DIVE_B: Dive = {
@@ -69,7 +69,7 @@ export const DIVE_B: Dive = {
   created_at: "2026-04-16T12:00:00+02:00",
   mixtures: [],
   recordings: [],
-  species: [],
+  sightings: [],
 };
 
 export const GEAR_ITEM: GearItem = {
