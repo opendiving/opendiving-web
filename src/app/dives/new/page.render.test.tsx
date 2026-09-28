@@ -76,7 +76,7 @@ vi.mock("@/components/ui/use-toast", () => ({
 }));
 
 // `importOriginal` throughout: these modules also export the constants and enums the
-// form itself renders from (`GAS_ROLES`, `DIVE_FILE_ACCEPT`), so replacing a whole
+// form itself renders from (`GAS_ROLES`, `MAX_DIVE_FILE_SIZE`), so replacing a whole
 // module wholesale breaks the page rather than stubbing its requests.
 vi.mock("@/lib/api/dives", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/dives")>();
@@ -2057,7 +2057,7 @@ describe("importing a file onto a form with fields hidden", () => {
     // The import path itself stays visibility-blind: it sets whatever the file
     // carries, which is the owner's rule for free. What this pins is the other half -
     // that the section comes back so the diver can see, and correct, a volume the
-    // parser guessed.
+    // file carried.
     stable.auth.user.dive_form_hidden_fields = ["mixtures"];
     vi.mocked(divesAPI.parseDiveFile).mockResolvedValue({
       dive_number: null,

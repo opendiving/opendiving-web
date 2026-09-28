@@ -10,6 +10,7 @@ import {
   channelsOnAxis,
   depthDomain,
   displayChannel,
+  cylinderName,
   describeEvent,
   drawnSampleIndexAt,
   elapsedTicks,
@@ -441,16 +442,57 @@ describe("PROFILE_CHANNELS gap semantics", () => {
   });
 });
 
-describe("describeEvent", () => {
-  it("names the cylinder a switch went to", () => {
-    expect(describeEvent(event({ type: "gas_switch", gas_number: 1 }))).toBe(
-      "Gas switch to gas 1",
-    );
+describe("cylinderName", () => {
+  it("names a label by the position of the one cylinder carrying it", () => {
+    // The reader's labels count from 0; the mixtures card counts from 1.
+    const cylinders = [{ gas_number: 0 }, { gas_number: 1 }];
+    expect(cylinderName(0, cylinders)).toBe("tank 1");
+    expect(cylinderName(1, cylinders)).toBe("tank 2");
   });
 
-  it("treats gas 0 as a real cylinder", () => {
-    // A Suunto Ocean numbers its cylinders from zero, so a falsiness check here
-    // would drop the number off every switch to the back gas on that computer.
+  it("follows the label rather than the list order", () => {
+    const cylinders = [{ gas_number: 1 }, { gas_number: 0 }];
+    expect(cylinderName(0, cylinders)).toBe("tank 2");
+  });
+
+  it("keeps the word for a label no cylinder carries", () => {
+    // A bare 3 would read as the card's third row, which is exactly what this
+    // label is not.
+    expect(cylinderName(3, [{ gas_number: 0 }, { gas_number: null }])).toBe(
+      "gas 3",
+    );
+    expect(cylinderName(0, [])).toBe("gas 0");
+  });
+
+  it("joins a label two cylinders share to neither", () => {
+    // `tankGasUseRows`'s rule: a label naming two tanks names neither.
+    expect(cylinderName(1, [{ gas_number: 1 }, { gas_number: 1 }])).toBe(
+      "gas 1",
+    );
+  });
+});
+
+describe("describeEvent", () => {
+  it("names the tank a switch went to", () => {
+    expect(
+      describeEvent(event({ type: "gas_switch", gas_number: 1 }), [
+        { gas_number: 0 },
+        { gas_number: 1 },
+      ]),
+    ).toBe("Gas switch to tank 2");
+  });
+
+  it("treats label 0 as a real cylinder", () => {
+    // The reader labels the first cylinder 0, so a falsiness check here would
+    // drop the name off every switch to it.
+    expect(
+      describeEvent(event({ type: "gas_switch", gas_number: 0 }), [
+        { gas_number: 0 },
+      ]),
+    ).toBe("Gas switch to tank 1");
+  });
+
+  it("names a switch to a label no cylinder carries by the label, word kept", () => {
     expect(describeEvent(event({ type: "gas_switch", gas_number: 0 }))).toBe(
       "Gas switch to gas 0",
     );
@@ -542,7 +584,7 @@ describe("describeEvent", () => {
   });
 
   it("falls back for an unlabelled marker the API should never have sent", () => {
-    // `_validate_events` rejects a typeless event with no label server-side, so
+    // `shape_events` drops a typeless event with no label server-side, so
     // this is only reachable through a broken payload - where a neutral word
     // beats the string "undefined" on a chart.
     expect(describeEvent(event({ type: null }))).toBe("Device event");

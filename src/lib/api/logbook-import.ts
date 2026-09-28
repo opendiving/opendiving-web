@@ -7,8 +7,9 @@ import { apiClient } from "./client";
  * closed vocabulary: the pin moves by dependency bump with no change here, so a
  * `conversion.format` outside this union is an ordinary event rather than an
  * error. Everything that renders one goes through `importSourceLabel`, which
- * falls back to the id - the `diveParserLabel` stance, not the lockstep one the
- * hand-kept enum mirrors take.
+ * falls back to the id rather than taking the lockstep stance the hand-kept
+ * enum mirrors take. The same ids label a file stored on a recording, since the
+ * dive form reads through the same converter.
  */
 export type ImportSourceFormat =
   "uddf" | "ssrf" | "fit" | "suunto_json" | "suunto_xml";
@@ -18,7 +19,8 @@ export type ImportSourceFormat =
  *
  * `Record<ImportSourceFormat, ...>`, so widening the union without offering an
  * extension stops this file compiling rather than silently greying a format out
- * of the file dialog - the `DIVE_FILE_ACCEPT` pin's reasoning, one surface over.
+ * of the file dialog - on both pickers, since the dive form offers the same
+ * extensions (`DIVE_COMPUTER_FILE_ACCEPT`).
  *
  * Each entry mirrors that adapter's own `suffixes` in the converter, which is
  * why a UDDF file named `.xml` is not offered and `.json` - the Suunto app's
@@ -62,8 +64,7 @@ const IMPORT_SOURCE_LABELS: Record<ImportSourceFormat, string> = {
  * list is derived from its pinned converter on every call, that pin moves by
  * dependency bump alone, and a `Record` lookup would render `undefined` in the
  * card header the day a new reader ships. Showing a bare `shearwater_db` is
- * worse than a label and far better than a blank - the same trade
- * `diveParserLabel` makes.
+ * worse than a label and far better than a blank.
  *
  * **It has already happened once, which is the argument for keeping it.** The
  * converter gained `suunto_xml` in a release the API absorbed by a version
@@ -75,6 +76,18 @@ export function importSourceLabel(format: string): string {
   const labels: Record<string, string> = IMPORT_SOURCE_LABELS;
   return labels[format] ?? format;
 }
+
+/**
+ * What the dive form's picker offers: every dive-computer format the API
+ * converts, and nothing else. The form takes one dive in any format the import
+ * reads, so the two pickers share this list - but not the import's own two,
+ * `.divejson` and `.zip`, which the parse route refuses.
+ */
+export const DIVE_COMPUTER_FILE_ACCEPT = Object.values(
+  LOGBOOK_IMPORT_SOURCE_EXTENSIONS,
+)
+  .flat()
+  .join(",");
 
 /**
  * What may be offered to the logbook import: the app's own two, and every
@@ -91,7 +104,7 @@ export function importSourceLabel(format: string): string {
 export const LOGBOOK_IMPORT_ACCEPT = [
   ".divejson",
   ".zip",
-  ...Object.values(LOGBOOK_IMPORT_SOURCE_EXTENSIONS).flat(),
+  DIVE_COMPUTER_FILE_ACCEPT,
   "application/vnd.dive+json",
   "application/zip",
 ].join(",");

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  DIVE_COMPUTER_FILE_ACCEPT,
   importSourceLabel,
   logbookImportAPI,
   LOGBOOK_IMPORT_ACCEPT,
@@ -18,12 +19,11 @@ const post = vi.mocked(apiClient.post);
 
 describe("LOGBOOK_IMPORT_ACCEPT", () => {
   it("offers a file extension for every format the API converts", () => {
-    // The pin `DIVE_FILE_ACCEPT` gets in `dives.test.ts`, for the other import
-    // surface: an independent literal, `satisfies` against the union, so a
-    // format added to `ImportSourceFormat` and left out of one of the two maps
-    // stops this file compiling rather than quietly disappearing from the file
-    // dialog. A hand-written `Record<string, ...>` on either side would look
-    // like it did this and would not - a fifth format would compile and pass.
+    // An independent literal, `satisfies` against the union, so a format added
+    // to `ImportSourceFormat` and left out of one of the two maps stops this
+    // file compiling rather than quietly disappearing from the file dialog. A
+    // hand-written `Record<string, ...>` on either side would look like it did
+    // this and would not - a sixth format would compile and pass.
     //
     // Acceptance itself is decided API-side by sniffing the bytes; this list
     // only decides what the picker greys out.
@@ -53,6 +53,27 @@ describe("LOGBOOK_IMPORT_ACCEPT", () => {
     expect(offered).toContain(".zip");
     expect(offered).toContain("application/vnd.dive+json");
     expect(offered).toContain("application/zip");
+  });
+});
+
+describe("DIVE_COMPUTER_FILE_ACCEPT", () => {
+  it("is the import's list of dive-computer extensions, so the form and the import offer one set", () => {
+    // The dive form takes one dive in any format the import reads, so a format
+    // the import gains reaches the form's picker with no change there.
+    expect(new Set(DIVE_COMPUTER_FILE_ACCEPT.split(","))).toEqual(
+      new Set(Object.values(LOGBOOK_IMPORT_SOURCE_EXTENSIONS).flat()),
+    );
+
+    const importOffers = new Set(LOGBOOK_IMPORT_ACCEPT.split(","));
+    for (const extension of DIVE_COMPUTER_FILE_ACCEPT.split(",")) {
+      expect(importOffers).toContain(extension);
+    }
+  });
+
+  it("leaves out the import's own document and archive, which the parse route refuses", () => {
+    const offered = DIVE_COMPUTER_FILE_ACCEPT.split(",");
+    expect(offered).not.toContain(".divejson");
+    expect(offered).not.toContain(".zip");
   });
 });
 

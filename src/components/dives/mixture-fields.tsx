@@ -428,9 +428,9 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                     <Input
                       type="number"
                       // `any`, not the API's own two decimals: `oxygen` is a
-                      // `Float` column and only the two Suunto parsers round to
-                      // it, so a FIT analysis arrives at whatever precision the
-                      // computer recorded. A `step` finer than the data is a
+                      // `Float` column, and while the form's prefill rounds to
+                      // two places, a logbook import keeps whatever precision
+                      // the file recorded. A `step` finer than the data is a
                       // constraint that cancels the save - see DECISIONS.md,
                       // "`step` is a claim about the column". `min`/`max` stay:
                       // 0-100 is a fact about a percentage.

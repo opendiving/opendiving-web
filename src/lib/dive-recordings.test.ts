@@ -248,12 +248,12 @@ describe("diveFileRows", () => {
     ]);
   });
 
-  it("resolves the parser's label rather than handing on the raw key", () => {
+  it("labels the file's format as the import does rather than handing on the raw id", () => {
     const [row] = diveFileRows([
       recording({ files: [file({ parser_key: "suunto_json" })] }),
     ]);
 
-    expect(row.kind === "file" && row.parserLabel).toBe("Suunto JSON export");
+    expect(row.kind === "file" && row.formatLabel).toBe("Suunto app JSON");
   });
 
   it("falls back to a word for a recording whose source named no computer", () => {

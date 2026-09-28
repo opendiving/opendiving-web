@@ -671,7 +671,7 @@ describe("toDiveMixtureInput", () => {
       oxygen: 32,
       helium: 0,
       po2_limit: 1.6,
-      // Zero, not dropped: a Suunto Ocean numbers its cylinders from 0, so `??`
+      // Zero, not dropped: the reader labels the first cylinder 0, so `??`
       // rather than `||` is load-bearing here.
       gas_number: 0,
       role: "deco",
@@ -1050,8 +1050,8 @@ describe("diveToFormValues", () => {
     // `po2_limit`, `role` and `gas_number` are the three the form holds without
     // the diver ever being asked about them - `gas_number` has no input at all -
     // so an untouched save is the only thing keeping them on the dive. A
-    // `gas_number` of 0 is a real value (a Suunto Ocean numbers from 0) and the
-    // one a truthiness check would drop.
+    // `gas_number` of 0 is a real value (the reader labels the first cylinder 0)
+    // and the one a truthiness check would drop.
     const dive: Dive = {
       ...DIVE,
       mixtures: [

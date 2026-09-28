@@ -239,7 +239,9 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
         {result === null ? (
           <SectionSpinner />
         ) : result.status === "ready" ? (
-          <DiveProfileChart profile={result.profile} />
+          // Every recording's labels join the dive's own cylinders - the API
+          // maps a second computer's onto them - so one list names them all.
+          <DiveProfileChart profile={result.profile} mixtures={dive.mixtures} />
         ) : (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">{result.message}</p>

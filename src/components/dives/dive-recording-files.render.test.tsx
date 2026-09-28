@@ -84,6 +84,34 @@ describe("DiveRecordingFiles", () => {
     expect(within(rows[1]).getByText(/Suunto Ocean/)).toBeVisible();
   });
 
+  it("labels each stored file's format as logbook import labels it", () => {
+    // The form reads any format the import reads, so a one-dive UDDF is kept
+    // under the converter's id and named by the import's own label.
+    render(
+      <DiveRecordingFiles
+        recordings={[
+          recording({
+            files: [
+              file({
+                uuid: "a",
+                original_filename: "perdix.uddf",
+                parser_key: "uddf",
+              }),
+              file({ uuid: "b", original_filename: "ocean.fit" }),
+            ],
+          }),
+        ]}
+        pending={[]}
+        onRemovePending={vi.fn()}
+        onRemoveStored={vi.fn()}
+      />,
+    );
+
+    const rows = screen.getAllByTestId("dive-file-row");
+    expect(within(rows[0]).getByText(/^UDDF · /)).toBeVisible();
+    expect(within(rows[1]).getByText(/^FIT · /)).toBeVisible();
+  });
+
   it("puts a delete control inside each stored row, named by its file", () => {
     render(
       <DiveRecordingFiles

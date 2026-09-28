@@ -989,11 +989,11 @@ describe("DiveProfileChart with every channel switched off", () => {
 });
 
 describe("DiveProfileChart markers past the end of the recorded profile", () => {
-  // The API clamps event times at zero and deliberately leaves the high end
-  // alone, signing off with "a chart that draws past its x domain is the chart's
-  // to clip" (`_rebase_events`). Undrawn, 6 000 s on a 3 000 s dive lands at 1304 in
-  // a 720-unit viewBox; 3 200 s lands at 716, which is inside the viewBox but in the
-  // right-hand axis-label gutter, aligned with no time on the axis.
+  // The API clamps event times at zero and leaves the high end alone
+  // (`shape_events`), so the chart clips. Undrawn, 6 000 s on a 3 000 s dive
+  // lands at 1304 in a 720-unit viewBox; 3 200 s lands at 716, which is inside the
+  // viewBox but in the right-hand axis-label gutter, aligned with no time on the
+  // axis.
   const late = longProfile({
     events: [
       { time: 1_500_000, type: "bookmark" },
@@ -1025,6 +1025,43 @@ describe("DiveProfileChart markers past the end of the recorded profile", () => 
     expect(name).toContain("Bookmark at 25min");
     expect(name).not.toContain("53min");
     expect(name).not.toContain("1h 40min");
+  });
+});
+
+describe("DiveProfileChart naming cylinders", () => {
+  // Labels count from 0 and the mixtures card numbers its rows from 1, so a bare
+  // label would name the card's next row. The chart names the joined tank by the
+  // card's position, and a label no cylinder carries by the device's label with
+  // the word kept.
+  const times = [0, 1_000_000, 2_000_000, 3_000_000];
+  const twoTanks = longProfile({
+    pressures: [
+      { gas_number: 0, times, values: [2000, 1700, 1400, 1100] },
+      { gas_number: 7, times, values: [2000, 2000, 1800, 1600] },
+    ],
+    events: [
+      { time: 600_000, type: "gas_switch", gas_number: 1 },
+      { time: 2_400_000, type: "gas_switch", gas_number: 7 },
+    ],
+  });
+  const mixtures = [{ gas_number: 0 }, { gas_number: 1 }];
+
+  it("names a pressure curve by the tank its label joins to", () => {
+    render(<DiveProfileChart profile={twoTanks} mixtures={mixtures} />);
+
+    hoverAt(0.5);
+
+    expect(readoutText()).toContain("Tank pressure (tank 1)");
+    expect(readoutText()).toContain("Tank pressure (gas 7)");
+  });
+
+  it("names a gas switch by the tank its label joins to", () => {
+    render(<DiveProfileChart profile={twoTanks} mixtures={mixtures} />);
+
+    const name = screen.getByRole("img").getAttribute("aria-label") ?? "";
+
+    expect(name).toContain("Gas switch to tank 2 at 10min");
+    expect(name).toContain("Gas switch to gas 7 at 40min");
   });
 });
 

@@ -38,18 +38,18 @@ one.
   it ran in, the salinity it was set to and the **decompression model** behind those numbers, and
   keeps its own **CNS/OTU** oxygen exposure and surface pressure from the import; per-cylinder ppO₂
   limits and gas roles are kept too.
-- **Dive-computer import** — upload a FIT file (Garmin Descent, Suunto Ocean/D5) or a Suunto
-  XML/JSON export and the form pre-fills itself, keeping the file's own UTC offset where it records
-  one (FIT and the JSON exports do; Suunto's XML carries no offset at all, so those fall back to
-  your current timezone). Every file you upload stays with the **recording** it came from and can be
-  re-downloaded any time — a dive logged off two computers has two recordings, and one computer's
-  JSON beside its FIT is two files of one recording, each filling what the other left blank. The
-  per-sample **dive profile** is extracted and charted per recording, with a switcher when there is
-  more than one: depth, temperature, tank pressure and the deco ceiling on the depth plot, the six
-  readouts the computer itself computed — **no-deco time, time to surface, ppO₂, CNS and both
-  gradient factors** — on a panel under it, and the device's own event markers along the axis. A
-  computer that chopped one dive into two logs them as two dives, and **Merge** folds them back into
-  one.
+- **Dive-computer import** — upload one dive's file in any format **logbook import** reads (below)
+  and the form pre-fills itself, keeping the file's own UTC offset where it records one and falling
+  back to your current timezone where it does not; a file holding several dives, or one file
+  carrying two computers' records of a dive, goes through logbook import instead. Every file you
+  upload stays with the **recording** it came from and can be re-downloaded any time — a dive logged
+  off two computers has two recordings, and one computer's JSON beside its FIT is two files of one
+  recording, each filling what the other left blank. The per-sample **dive profile** is extracted
+  and charted per recording, with a switcher when there is more than one: depth, temperature, tank
+  pressure and the deco ceiling on the depth plot, the six readouts the computer itself computed —
+  **no-deco time, time to surface, ppO₂, CNS and both gradient factors** — on a panel under it, and
+  the device's own event markers along the axis. A computer that chopped one dive into two logs them
+  as two dives, and **Merge** folds them back into one.
 - **Air consumption** — SAC and RMV are derived automatically, including a **per-tank breakdown**
   across recorded gas switches on multi-tank dives, with a consumption trend chart on the dashboard.
 - **Trips** — group dives into a liveaboard or a holiday week, a part at a time: each part carries
@@ -126,12 +126,12 @@ one.
 Roadmap items, roughly in priority order — contributions welcome:
 
 - **More importers** — Shearwater Cloud's whole-database export, which keeps each dive's samples in
-  the computer's own binary log rather than in readable rows: reading it takes a dive-computer
-  parser, not a format adapter, and until there is one, Shearwater Cloud's UDDF export of the same
+  the computer's own binary log rather than in readable rows: reading it takes a decoder for that
+  log, not only a format adapter, and until there is one, Shearwater Cloud's UDDF export of the same
   dives is the route that works. UDDF, Subsurface, FIT and Suunto's own two — the app's JSON and
-  DM5's XML — already import, through the DiveJSON converter, and a new format is an adapter there
-  rather than a change here. Longer term, [libdivecomputer](https://www.libdivecomputer.org/) for
-  direct hardware support.
+  DM5's XML — already import and fill the dive form, both through the DiveJSON converter, and a new
+  format is a reader there, for both, rather than a change here. Longer term,
+  [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware support.
 - **Statistics** — depth/time records, dives per year, sites map.
 - **Sharing** — public link to a dive or trip.
 - **iOS companion app** — parked until the server story is done
