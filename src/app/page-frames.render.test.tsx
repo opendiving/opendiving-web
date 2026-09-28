@@ -21,9 +21,9 @@ import {
 // the state it arrives in.
 //
 // The set is derived from the route tree below rather than listed, so a new route inside
-// the chrome fails here rather than being noticed months later. `/admin/invites` is the
-// one destination checked elsewhere - in its own directory, since nothing outside the
-// admin section may import it (`lib/admin-isolation.test.ts`).
+// the chrome fails here rather than being noticed months later. The admin section's
+// screens are checked elsewhere - each in its own directory, since nothing outside the
+// section may import it (`lib/admin-isolation.test.ts`).
 
 vi.mock("next/navigation", async () => {
   const { frameMocks } = await import("@/test/page-frame");
@@ -184,8 +184,8 @@ const isClientDrawn = (file: string) => {
 };
 
 // A destination is a page a signed-in diver navigates to inside the app chrome. The other
-// server-rendered pages are the public ones and the `/admin` and `/settings` redirects; the
-// chrome-free ones are reached from an email link or a redirect and draw their own layout.
+// server-rendered pages are the public ones and the `/settings` redirect; the chrome-free
+// ones are reached from an email link or a redirect and draw their own layout.
 const destinations = files
   .filter((file) => file.endsWith("/page.tsx"))
   .filter(isClientDrawn)
@@ -203,8 +203,8 @@ const destinations = files
 // `/dives/new` renders its real form as soon as that same bootstrap settles.
 const NO_FRAME = ["/settings", "/data", "/dives/new"];
 
-// The admin queue draws one, and it is checked inside `app/admin` because nothing out
-// here may import that section (`lib/admin-isolation.test.ts`).
+// Each admin screen draws one, checked inside `app/admin` because nothing out here may
+// import that section (`lib/admin-isolation.test.ts`).
 const framedInsideAdmin = (route: string) =>
   route === "/admin" || route.startsWith("/admin/");
 
