@@ -2,8 +2,10 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-interface MeterProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "role" | "children"> {
+interface MeterProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "role" | "children"
+> {
   /** The measured amount, in whatever unit `max` is in. */
   value: number;
   /** The top of the range; the bottom is always zero. */

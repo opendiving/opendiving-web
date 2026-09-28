@@ -67,7 +67,9 @@ describe("StorageCard", () => {
     );
     expect(
       screen.getByText(/Dive-computer files are stored compressed/),
-    ).toHaveTextContent(/before compression was introduced counts at its full size/);
+    ).toHaveTextContent(
+      /before compression was introduced counts at its full size/,
+    );
   });
 
   it("fills the bar and says so once the account is past its limit", async () => {
@@ -96,9 +98,7 @@ describe("StorageCard", () => {
   });
 
   it("shows totals and no bar where the instance sets no limit", async () => {
-    mocks.getUsage.mockImplementation(async () =>
-      usage({ limit_bytes: null }),
-    );
+    mocks.getUsage.mockImplementation(async () => usage({ limit_bytes: null }));
     render(<StorageCard />);
 
     expect(await screen.findByText("256.0 MB used")).toBeInTheDocument();
