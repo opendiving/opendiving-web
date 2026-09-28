@@ -608,8 +608,8 @@ describe("SpeciesMultiSelect counts and notes", () => {
   });
 
   it("takes a positive whole number and nothing else", async () => {
-    // Refused keystrokes leave the box as it was, so the count can never hold
-    // a value the API would turn away.
+    // Refused keystrokes leave the box as it was, so it never holds a 0, a
+    // fraction or anything but digits. The ceiling is the schema's to refuse.
     twoRows();
     const box = countOf("Giant manta ray");
 
