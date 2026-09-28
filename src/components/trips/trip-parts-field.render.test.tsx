@@ -71,7 +71,7 @@ function Field({ initial = [] }: { initial?: TripPartFormValue[] }) {
 
 // Each row carries two pickers, the place and the accommodation beneath it; these
 // read the first kind only.
-const PLACE = /^Place,/;
+const PLACE = /^Location,/;
 const placeInput = () => screen.getByRole("combobox", { name: PLACE });
 const places = () =>
   screen
@@ -122,14 +122,18 @@ describe("TripPartsField", () => {
     );
 
     expect(places()).toEqual(["Dahab, Egypt"]);
-    expect(screen.getByLabelText("From part 1 of 1")).toHaveValue("2026-04-18");
-    expect(screen.getByLabelText("To part 1 of 1")).toHaveValue("2026-04-22");
+    expect(screen.getByLabelText("Start date, part 1 of 1")).toHaveValue(
+      "2026-04-18",
+    );
+    expect(screen.getByLabelText("End date, part 1 of 1")).toHaveValue(
+      "2026-04-22",
+    );
   });
 
   it("edits a date without leaving the row", async () => {
     render(<Field initial={[placed("Dahab")]} />);
 
-    const from = screen.getByLabelText("From part 1 of 1");
+    const from = screen.getByLabelText("Start date, part 1 of 1");
     await userEvent.click(from);
     await userEvent.paste("2026-04-18");
     await userEvent.tab();
@@ -177,11 +181,11 @@ describe("TripPartsField", () => {
     expect(message).toBeInTheDocument();
     expect(screen.queryByText("undefined")).not.toBeInTheDocument();
     // And the two dates it is about point at it.
-    expect(screen.getByLabelText("From part 2 of 2")).toHaveAttribute(
+    expect(screen.getByLabelText("Start date, part 2 of 2")).toHaveAttribute(
       "aria-describedby",
       message.id,
     );
-    expect(screen.getByLabelText("To part 2 of 2")).toHaveAttribute(
+    expect(screen.getByLabelText("End date, part 2 of 2")).toHaveAttribute(
       "aria-describedby",
       message.id,
     );
@@ -207,7 +211,7 @@ describe("TripPartsField", () => {
     ).toBeInTheDocument();
   });
 
-  it("removes only the part whose X was clicked, repeats included", async () => {
+  it("removes only the part whose Remove was clicked, repeats included", async () => {
     // Two parts may name the same place, so rows keyed by content would remove
     // as a pair.
     render(

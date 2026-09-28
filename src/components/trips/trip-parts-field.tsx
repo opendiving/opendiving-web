@@ -2,21 +2,21 @@
 
 import {
   Fragment,
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
   useRef,
   useState,
 } from "react";
-import { IconTooltip } from "@/components/ui/tooltip";
-import { GripVertical, Plus, X } from "lucide-react";
 import {
   ComboboxItem,
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Label } from "@/components/ui/label";
+import { AddRowButton, RepeatableRow } from "@/components/ui/repeatable-row";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import {
   geocodingAPI,
@@ -29,7 +29,11 @@ import {
   MAX_LOCATION_NAME_LENGTH,
   type LocationFormValue,
 } from "@/lib/validations/location";
-import { MAX_TRIP_PARTS, type TripPartFormValue } from "@/lib/validations/trip";
+import {
+  emptyTripPart,
+  MAX_TRIP_PARTS,
+  type TripPartFormValue,
+} from "@/lib/validations/trip";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
 import { geocodeResultToLocation } from "@/lib/locations";
@@ -257,15 +261,7 @@ export function TripPartsField({
     if (isFull) return;
     setNotice(null);
     focusNewRowRef.current = true;
-    onChange([
-      ...value,
-      {
-        location: null,
-        start_date: "",
-        end_date: "",
-        accommodation_uuid: null,
-      },
-    ]);
+    onChange([...value, emptyTripPart()]);
   };
 
   const updatePart = useCallback(
@@ -298,11 +294,11 @@ export function TripPartsField({
   });
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {value.length > 0 ? (
         // Text selection would otherwise sweep across the rows mid-drag.
         <ul
-          className={cn("space-y-2", draggingIndex !== null && "select-none")}
+          className={cn("space-y-4", draggingIndex !== null && "select-none")}
         >
           {value.map((part, index) => (
             <TripPartRow
@@ -339,19 +335,14 @@ export function TripPartsField({
         </p>
       )}
 
-      <Button
+      <AddRowButton
         {...slotProps}
-        type="button"
-        variant="outline"
-        // 44px, like every other control a finger has to hit in this field.
-        className="h-11"
         aria-label="Add a part"
         disabled={disabled || isFull}
         onClick={addPart}
       >
-        <Plus className="h-4 w-4 mr-2" />
         Add a part
-      </Button>
+      </AddRowButton>
 
       {isFull && (
         <p className="text-xs text-muted-foreground">
@@ -530,18 +521,26 @@ function TripPartRow({
   };
 
   return (
-    <li
+    <RepeatableRow
+      as="li"
       ref={setRef}
+      title={`Part ${index + 1}`}
+      // Named by what the part holds, as in the sibling multiselects. The
+      // handle's label carries its keyboard equivalent, since "drag to reorder"
+      // alone is a dead end for keyboard users.
+      removeLabel={`Remove ${name}`}
+      onRemove={() => onRemove(index)}
+      dragHandle={
+        total > 1
+          ? {
+              label: `Reorder ${name}, position ${index + 1} of ${total}. Use arrow up and arrow down to move it.`,
+              props: handleProps(index),
+            }
+          : undefined
+      }
+      disabled={disabled}
       className={cn(
-        "space-y-2 rounded-md border bg-background p-2",
-        // Every control in a row is sized for a finger. The two icon buttons
-        // carry their own box; this is what raises the text inputs - the place
-        // and accommodation searches and both date fields - off the app-wide
-        // 40px, without threading a size prop through the shared primitives to
-        // reach the one row that wants it. Each of them renders exactly one
-        // `<input>`.
-        "[&_input]:h-11",
-        isDragging && "relative z-10 shadow-lg ring-2 ring-ring",
+        isDragging && "relative z-10 bg-background shadow-lg ring-2 ring-ring",
       )}
       // The dragged row is translated to follow the pointer; the rest stay put
       // and are simply re-ordered around it by React.
@@ -549,207 +548,137 @@ function TripPartRow({
         isDragging ? { transform: `translateY(${dragOffset}px)` } : undefined
       }
     >
-      <div className="flex items-center gap-1">
-        {/* The gesture's keyboard equivalent lives on this button (Up/Down), so
-            the label has to say so - "drag to reorder" alone would be a dead end
-            for keyboard users. A part has no name of its own, so it is named by
-            whatever it does have. */}
-        {total > 1 && (
-          <IconTooltip
-            label={`Reorder ${name}, position ${index + 1} of ${total}. Use arrow up and arrow down to move it.`}
-          >
-            <button
-              type="button"
-              disabled={disabled}
-              className="flex h-11 w-11 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
-              {...handleProps(index)}
-            >
-              <GripVertical className="h-4 w-4" />
-            </button>
-          </IconTooltip>
+      <PartField id={fieldId} label="Location" position={position}>
+        <CreatableCombobox
+          id={fieldId}
+          onSearch={searchPlaces}
+          searchDebounceMs={PLACE_SEARCH_DEBOUNCE_MS}
+          // No `excludeIds`, deliberately: a trip that goes Dahab, then Sharm,
+          // then back to Dahab names the same place in two parts, and hiding
+          // it from the second menu would make that trip unrecordable.
+          value={location ? locationKey(location) : undefined}
+          // What the row holds was picked under some other query, or in an
+          // earlier session entirely, so the current results rarely contain
+          // it and the field would sit empty without this.
+          selectedItem={
+            location
+              ? { id: locationKey(location), name: location.name }
+              : undefined
+          }
+          onChange={setPickedPlace}
+          onCreate={setTypedPlace}
+          disabled={disabled}
+          placeholder="Search for a place..."
+          noItemsLabel="Type to search places."
+          // What `searchPlaces` will actually ask about - a shorter query is
+          // answered `[]` locally, and calling that "no places found" would be
+          // reporting on a search that never happened.
+          minSearchLength={MIN_PLACE_QUERY_LENGTH}
+          maxSearchLength={MAX_PLACE_QUERY_LENGTH}
+          // Not "type to search": there is already a paragraph in the field,
+          // and the only thing left to do with it is add it as text.
+          queryTooLongLabel="Too long to search - press Enter to add as text."
+          // The two ways a search comes back empty are indistinguishable here
+          // on purpose (the API answers a throttled provider with `[]` too),
+          // and the same sentence is the right advice for both.
+          noMatchesLabel="No places found - press Enter to add as text."
+          // The third case: not "no such place", but no answer at all. Enter
+          // still adds the typed text, which is the difference between a
+          // failing geocoder costing a diver the display name and costing
+          // them the place.
+          searchErrorLabel="Couldn't reach the place search - press Enter to add as text."
+          commitOnEnterOnly
+        />
+        {/* Not a warning - a typed-in place is a perfectly good answer - but
+            the map below the field only draws what has a position, and its
+            absence should be explained rather than read as the map having
+            missed one. `LocationsMap` says this is where that explanation
+            lives. */}
+        {isUnmapped && (
+          <p className="text-xs text-muted-foreground">Not on the map</p>
         )}
+      </PartField>
 
-        {/* `min-w-0` is what lets this shrink: a flex item's default
-            `min-width: auto` is its content, and a combobox holding "Ko Tao, Ko
-            Tao, Ko Pha-ngan District, Surat Thani Province, Thailand" would
-            otherwise refuse to narrow and push the row out past the side of the
-            dialog. */}
-        <div className="min-w-0 flex-1">
-          <CreatableCombobox
-            id={fieldId}
-            // Named per row: with up to twenty of them, a screen reader would
-            // otherwise announce twenty identical comboboxes in a list whose
-            // order is the point.
-            aria-label={`Place, ${position}`}
-            onSearch={searchPlaces}
-            searchDebounceMs={PLACE_SEARCH_DEBOUNCE_MS}
-            // No `excludeIds`, deliberately: a trip that goes Dahab, then Sharm,
-            // then back to Dahab names the same place in two parts, and hiding
-            // it from the second menu would make that trip unrecordable.
-            value={location ? locationKey(location) : undefined}
-            // What the row holds was picked under some other query, or in an
-            // earlier session entirely, so the current results rarely contain
-            // it and the field would sit empty without this.
-            selectedItem={
-              location
-                ? { id: locationKey(location), name: location.name }
-                : undefined
-            }
-            onChange={setPickedPlace}
-            onCreate={setTypedPlace}
-            disabled={disabled}
-            placeholder="Search for a place..."
-            noItemsLabel="Type to search places."
-            // What `searchPlaces` will actually ask about - a shorter query is
-            // answered `[]` locally, and calling that "no places found" would be
-            // reporting on a search that never happened.
-            minSearchLength={MIN_PLACE_QUERY_LENGTH}
-            maxSearchLength={MAX_PLACE_QUERY_LENGTH}
-            // Not "type to search": there is already a paragraph in the field,
-            // and the only thing left to do with it is add it as text.
-            queryTooLongLabel="Too long to search - press Enter to add as text."
-            // The two ways a search comes back empty are indistinguishable here
-            // on purpose (the API answers a throttled provider with `[]` too),
-            // and the same sentence is the right advice for both.
-            noMatchesLabel="No places found - press Enter to add as text."
-            // The third case: not "no such place", but no answer at all. Enter
-            // still adds the typed text, which is the difference between a
-            // failing geocoder costing a diver the display name and costing
-            // them the place.
-            searchErrorLabel="Couldn't reach the place search - press Enter to add as text."
-            commitOnEnterOnly
-          />
-          {/* Not a warning - a typed-in place is a perfectly good answer - but
-              the map below the field only draws what has a position, and its
-              absence should be explained rather than read as the map having
-              missed one. `LocationsMap` says this is where that explanation
-              lives. */}
-          {isUnmapped && (
-            <p className="mt-1 text-xs text-muted-foreground">Not on the map</p>
-          )}
-        </div>
+      {/* A contact made from here starts as a place to stay. */}
+      <PartField
+        id={`${fieldId}-accommodation`}
+        label="Accommodation"
+        position={position}
+      >
+        <ContactCombobox
+          id={`${fieldId}-accommodation`}
+          value={part.accommodation_uuid ?? null}
+          onChange={(accommodation_uuid) =>
+            onChange(index, { accommodation_uuid })
+          }
+          initialRoles={ACCOMMODATION}
+          placeholder="Select accommodation..."
+          addNewLabel="Add accommodation..."
+          disabled={disabled}
+        />
+      </PartField>
 
-        {/* Named per row, as in the sibling multiselects: bare "Remove" buttons
-            collide in a screen reader's controls list. */}
-        <IconTooltip label={`Remove ${name}`}>
-          <button
-            type="button"
-            disabled={disabled}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => onRemove(index)}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </IconTooltip>
-      </div>
-
-      {/* Beneath the place, being where in it the diver slept. Unlabelled on
-          screen, like the place above it - the placeholder says what it is and
-          the name carries the part - and at the row's 44px like every input
-          here. A contact made from here starts as a place to stay. */}
-      <ContactCombobox
-        aria-label={`Accommodation, ${position}`}
-        value={part.accommodation_uuid ?? null}
-        onChange={(accommodation_uuid) =>
-          onChange(index, { accommodation_uuid })
-        }
-        initialRoles={ACCOMMODATION}
-        placeholder="Where you stayed..."
-        addNewLabel="Add accommodation..."
-        disabled={disabled}
-      />
-
-      {/* One column on a phone, two once there is room. Both dates beside each
-          other at 375px would be two ~120px boxes plus their labels inside a
-          279px row, which is the width at which a date field starts hiding its
-          own text. */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <PartDateField
+      <div className="grid gap-4 sm:grid-cols-2">
+        <PartField
           id={`${fieldId}-start`}
-          label="From"
+          label="Start date"
           position={position}
-          value={part.start_date ?? ""}
-          onChange={(start_date) => onChange(index, { start_date })}
-          describedBy={error ? errorId : undefined}
-          invalid={!!error}
-          disabled={disabled}
-        />
-        <PartDateField
-          id={`${fieldId}-end`}
-          label="To"
-          position={position}
-          value={part.end_date ?? ""}
-          onChange={(end_date) => onChange(index, { end_date })}
-          describedBy={error ? errorId : undefined}
-          invalid={!!error}
-          disabled={disabled}
-        />
+        >
+          <DatePicker
+            id={`${fieldId}-start`}
+            value={part.start_date ?? ""}
+            onChange={(start_date) => onChange(index, { start_date })}
+            aria-describedby={error ? errorId : undefined}
+            aria-invalid={!!error}
+            disabled={disabled}
+          />
+        </PartField>
+        <PartField id={`${fieldId}-end`} label="End date" position={position}>
+          <DatePicker
+            id={`${fieldId}-end`}
+            value={part.end_date ?? ""}
+            onChange={(end_date) => onChange(index, { end_date })}
+            aria-describedby={error ? errorId : undefined}
+            aria-invalid={!!error}
+            disabled={disabled}
+          />
+        </PartField>
       </div>
 
       {/* On the row rather than once above the list. What the schema objects
-          to is a part - a To before its From - and twenty rows under one
+          to is a part - an end before its start - and twenty rows under one
           message is a diver hunting for which. */}
       {error && (
         <p id={errorId} className="text-sm font-medium text-destructive">
           {error}
         </p>
       )}
-    </li>
+    </RepeatableRow>
   );
 }
 
-interface PartDateFieldProps {
+interface PartFieldProps {
   id: string;
   label: string;
   // How the part is announced after the visible word, e.g. "part 2 of 3".
   position: string;
-  value: string;
-  onChange: (value: string) => void;
-  describedBy?: string;
-  invalid?: boolean;
-  disabled?: boolean;
+  children: ReactNode;
 }
 
-// "From" and "To" beside the box rather than above it, so that a part is one
-// block a reader's eye can take in whether it has a place, only dates, or
-// neither: the label and its control share a line and a baseline in all three.
-//
-// The part's position follows the visible word for a screen reader only. Twenty
-// controls all called "From" tell a controls list nothing about which stretch of
-// the trip they set, and the visible text stays the start of the accessible
-// name, so the two still agree for anyone speaking what they can see. The
-// position rather than `describeTripPart`, unlike the row's buttons: this
-// field is what names an undated part, so naming it after its own dates would
-// rename the control under the diver as they filled it in.
-function PartDateField({
-  id,
-  label,
-  position,
-  value,
-  onChange,
-  describedBy,
-  invalid,
-  disabled,
-}: PartDateFieldProps) {
+// A labelled field in a part, laid out as `FormItem` lays one out. The part's
+// position follows the visible word for a screen reader only: twenty controls all
+// called "Start date" tell a controls list nothing about which part they set. The
+// position rather than `describeTripPart`, unlike the row's buttons: these fields
+// are what names a part, so naming them after it would rename the control under
+// the diver as they filled it in.
+function PartField({ id, label, position, children }: PartFieldProps) {
   return (
-    <div className="flex items-baseline gap-2">
-      <label
-        htmlFor={id}
-        className="w-10 shrink-0 text-xs font-medium text-muted-foreground"
-      >
+    <div className="space-y-2">
+      <Label htmlFor={id}>
         {label}
-        <span className="sr-only"> {position}</span>
-      </label>
-      <div className="min-w-0 flex-1">
-        <DatePicker
-          id={id}
-          value={value}
-          onChange={onChange}
-          aria-describedby={describedBy}
-          aria-invalid={invalid}
-          disabled={disabled}
-        />
-      </div>
+        <span className="sr-only">, {position}</span>
+      </Label>
+      {children}
     </div>
   );
 }

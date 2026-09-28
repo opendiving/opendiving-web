@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { MAX_TRIP_PARTS, normalizeTripParts, tripFormSchema } from "./trip";
+import {
+  emptyTripPart,
+  MAX_TRIP_PARTS,
+  normalizeTripParts,
+  tripFormSchema,
+} from "./trip";
 
 describe("tripFormSchema", () => {
   const validTrip = { name: "Red Sea Liveaboard" };
@@ -172,15 +177,28 @@ describe("tripFormSchema", () => {
 describe("normalizeTripParts", () => {
   it("converts '' placeholders to undefined", () => {
     expect(
-      normalizeTripParts([{ start_date: "", end_date: "", location: null }]),
+      normalizeTripParts([
+        { start_date: "2024-06-01", end_date: "", location: null },
+      ]),
     ).toEqual([
       {
-        start_date: undefined,
+        start_date: "2024-06-01",
         end_date: undefined,
         location: null,
         accommodation_uuid: null,
       },
     ]);
+  });
+
+  it("drops a part that holds nothing, and keeps its neighbours in order", () => {
+    // What a new trip opens with, saved untouched.
+    expect(
+      normalizeTripParts([
+        { start_date: "2024-06-01" },
+        emptyTripPart(),
+        { end_date: "2024-06-08" },
+      ]).map((part) => part.start_date ?? part.end_date),
+    ).toEqual(["2024-06-01", "2024-06-08"]);
   });
 
   it("preserves non-empty date strings", () => {
@@ -201,16 +219,19 @@ describe("normalizeTripParts", () => {
   it("sends an absent place as null rather than dropping the member", () => {
     // `null` is how the API reads "this stretch has no place"; an omitted key
     // would be indistinguishable from a part that was never edited.
-    expect(normalizeTripParts([{}])[0].location).toBeNull();
+    expect(
+      normalizeTripParts([{ start_date: "2024-06-01" }])[0].location,
+    ).toBeNull();
   });
 
   it("names the accommodation on every part, null where there is none", () => {
     // The API replaces the parts wholesale, so a part sent without the member
     // is a part whose accommodation the save clears.
     expect(
-      normalizeTripParts([{ accommodation_uuid: "contact-1" }, {}]).map(
-        (part) => part.accommodation_uuid,
-      ),
+      normalizeTripParts([
+        { accommodation_uuid: "contact-1" },
+        { start_date: "2024-06-01" },
+      ]).map((part) => part.accommodation_uuid),
     ).toEqual(["contact-1", null]);
   });
 
