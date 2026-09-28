@@ -3,12 +3,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import DashboardPage from "./page";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 
-// The Species Seen tile was deleted once, because `species_seen` was hardcoded to
-// zero on the API and the tile read "0" for every diver forever (see "The
-// dashboard shows only what the app actually tracks" in DECISIONS.md). It is back
-// because the field is derived now, so what is worth pinning is that the tile
-// renders the number it is given rather than a constant - and that it holds the
-// stats row's "—" while the request is still in flight, like its three siblings.
+// The Species Seen tile must render the `species_seen` it is given rather than a
+// constant, and hold the stats row's "—" while the request is still in flight, like
+// its three siblings.
 
 // Returned by identity rather than rebuilt per call, and for `user` that is
 // load-bearing rather than tidiness: the real `AuthContext` holds it in state, so it
