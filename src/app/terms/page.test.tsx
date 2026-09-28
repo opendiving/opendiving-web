@@ -255,11 +255,6 @@ describe("linking a person to an account", () => {
   });
 });
 
-// This page carries the month twice - the header and the closing line - and they are
-// two literals for one fact. The privacy page's own copy of it is pinned in that page's
-// test rather than here: a test file that rendered both pages to compare two strings
-// would be asserting an agreement neither page owes the other, since the two documents
-// can legitimately be revised on different days.
 // A join link admits whoever follows it, so every sentence saying registration needs
 // an invitation names it - and only where the API said the copy has one, since a copy
 // without them carries no word about them.
@@ -293,6 +288,11 @@ describe("join links", () => {
   });
 });
 
+// This page carries the month twice - the header and the closing line - and they are
+// two literals for one fact. The privacy page's own copy of it is pinned in that page's
+// test rather than here: a test file that rendered both pages to compare two strings
+// would be asserting an agreement neither page owes the other, since the two documents
+// can legitimately be revised on different days.
 describe("the date on this page", () => {
   it.each([[false], [true]])(
     "states one effective month in both places, project-operated: %s",
