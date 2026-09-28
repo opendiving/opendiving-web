@@ -167,6 +167,21 @@ describe("a callback that matches an attempt this browser started", () => {
       await screen.findByText(/this join link is no longer active/i),
     ).toBeInTheDocument();
   });
+
+  // A failure worth retrying - Google unreachable, a throttled request - on an
+  // attempt started on a join link sends the visitor back to that link, since a
+  // new visitor retrying from `/signin` would be refused as uninvited.
+  it("offers the join link, not /signin, as the way to try again", async () => {
+    signInWithGoogle.mockRejectedValue(new Error("Network Error"));
+    const state = await startAttempt(undefined, "reddit");
+
+    renderCallback(`code=real-code&state=${state}`);
+
+    await waitFor(() => expect(errorText()).toBeInTheDocument());
+    expect(
+      screen.getByRole("link", { name: /back to sign in/i }),
+    ).toHaveAttribute("href", "/join?via=reddit");
+  });
 });
 
 // Google's codes are single-use, and React Strict Mode invokes effects twice in

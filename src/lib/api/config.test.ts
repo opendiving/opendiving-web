@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { configAPI } from "./config";
 
 // Two calls. For `/config` what matters is the path and that the body reaches the
-// caller whole - the landing page decides which form to show and which voice it
-// speaks in from it, and `hooks/useInstanceConfig.test.tsx` pins that the hook
-// hands it on whole - with the one field an older API leaves out read as `false`.
+// caller unreshaped - the landing page decides which form to show and which voice
+// it speaks in from it, and `hooks/useInstanceConfig.test.tsx` pins that the hook
+// hands it on whole.
 vi.mock("./client", () => ({ apiClient: { get: vi.fn() } }));
 
 const { apiClient } = await import("./client");
@@ -33,20 +33,6 @@ describe("getInstanceConfig", () => {
       expect(get).toHaveBeenCalledWith("/config");
     },
   );
-
-  // The minutes between the two halves deploying: an API build older than this
-  // one sends no `join_links` at all, and a reader must not find `undefined`.
-  it("reads a missing join_links as false", async () => {
-    get.mockResolvedValue({
-      data: { registration_mode: "invite", project_operated: true },
-    });
-
-    await expect(configAPI.getInstanceConfig()).resolves.toEqual({
-      registration_mode: "invite",
-      project_operated: true,
-      join_links: false,
-    });
-  });
 
   // Anonymous on both sides: no token is attached here and none is needed, which
   // is the whole point - the caller has no session yet and is deciding whether to

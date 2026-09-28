@@ -28,9 +28,9 @@ export interface InstanceConfig {
   project_operated: boolean;
   /**
    * Whether this instance has any join link at all - a yes or no, never the list,
-   * which is resolved one slug at a time (`getJoinChannel`). `/privacy` shows its
-   * join-link paragraphs on it. `false` when an API that predates the field
-   * leaves it out, which `getInstanceConfig` does rather than every reader.
+   * which is resolved one slug at a time (`getJoinChannel`). `/privacy` and
+   * `/terms` show their join-link sentences on it, read from the server by
+   * `lib/api/config.server.ts`.
    */
   join_links: boolean;
 }
@@ -75,14 +75,10 @@ export const configAPI = {
    * (`ClientCacheMiddleware`), so a mode flip is not visible to a browser that
    * already has one until that minute is up or the page is hard-reloaded. That is
    * intended - the value only changes when the operator restarts the API.
-   *
-   * `join_links` is read as `false` unless the API said `true`: an API build older
-   * than this one - the minutes a deploy takes to reach both halves - sends no
-   * such key.
    */
   async getInstanceConfig(): Promise<InstanceConfig> {
     const response = await apiClient.get<InstanceConfig>("/config");
-    return { ...response.data, join_links: response.data.join_links === true };
+    return response.data;
   },
 
   /**
