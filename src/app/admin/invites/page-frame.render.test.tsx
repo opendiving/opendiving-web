@@ -6,10 +6,7 @@ import { drawFrame, resetFrameMocks } from "@/test/page-frame";
 // The invite queue's half of the page-frame check, which lives here rather than beside
 // the other sixteen because nothing outside this directory may import the admin section
 // (`lib/admin-isolation.test.ts`) - one import from a shared module is what would pull
-// the whole section into every diver's bundle.
-//
-// `/admin` itself is a server redirect onto this screen, so this is the only frame the
-// section draws.
+// the whole section into every diver's bundle. `/admin/stats` checks its own beside it.
 
 vi.mock("next/navigation", async () => {
   const { frameMocks } = await import("@/test/page-frame");
