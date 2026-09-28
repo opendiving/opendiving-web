@@ -62,9 +62,52 @@ export interface InviteRequestsRemoved {
   removed: number;
 }
 
+/** A configured join channel, as the stats route lists it for the legend. */
+export interface AdminStatsChannel {
+  slug: string;
+  label: string;
+}
+
 /**
- * The superuser-only operator routes: the invite queue, and the two things that
- * can be done to a selection from it.
+ * One UTC day of `GET /admin/stats`.
+ *
+ * `accounts_created` is keyed by the door an account came through: a channel
+ * slug, or one of the fixed words `invitation`, `waitlist`, `open` and
+ * `bootstrap`. Only a source that created an account that day has a key, so a
+ * missing key is a zero. A slug may be one no longer configured, since a
+ * retired channel keeps its history.
+ */
+export interface AdminStatsDay {
+  day: string;
+  accounts_created: Record<string, number>;
+  sign_ins: number;
+  active_accounts: number;
+}
+
+/**
+ * Two figures as of the request rather than of any day: every account, and the
+ * accounts holding a session that can still authenticate.
+ */
+export interface AdminStatsTotals {
+  accounts: number;
+  active_now: number;
+}
+
+/**
+ * `GET /admin/stats`' answer: every day from `from` to `to` inclusive,
+ * zero-filled, so a chart needs no gap logic of its own.
+ */
+export interface AdminStats {
+  from: string;
+  to: string;
+  channels: AdminStatsChannel[];
+  days: AdminStatsDay[];
+  totals: AdminStatsTotals;
+}
+
+/**
+ * The superuser-only operator routes: the invite queue, the two things that can
+ * be done to a selection from it, and the daily totals.
  *
  * Every one of these answers `401` signed out and `403` for a signed-in account
  * that is not a superuser - the API's gate is the one that counts, and the
@@ -127,6 +170,21 @@ export const adminAPI = {
       "/admin/invite-requests",
       { data: { emails } },
     );
+    return response.data;
+  },
+
+  /**
+   * The daily totals for every UTC day from `from` to `to`, both inclusive and
+   * written `YYYY-MM-DD`.
+   *
+   * The API refuses a range that runs backwards or is longer than 92 days with a
+   * 422; the stats page asks for one calendar month at a time, which is always
+   * inside it.
+   */
+  async getStats(from: string, to: string): Promise<AdminStats> {
+    const response = await apiClient.get<AdminStats>("/admin/stats", {
+      params: { from, to },
+    });
     return response.data;
   },
 };
