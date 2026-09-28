@@ -47,7 +47,7 @@ function isWebsite(value: string | undefined): boolean {
 const addressSchema = z.object({
   street: z
     .string()
-    .max(ADDRESS_LINE_MAX, "Street cannot exceed 255 characters"),
+    .max(ADDRESS_LINE_MAX, "Address cannot exceed 255 characters"),
   city: z.string().max(ADDRESS_LINE_MAX, "City cannot exceed 255 characters"),
   postcode: z
     .string()

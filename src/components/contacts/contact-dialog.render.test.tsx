@@ -75,8 +75,6 @@ const ticked = () =>
     .filter((box) => (box as HTMLInputElement).checked)
     .map((box) => box.closest("label")?.textContent);
 
-const addressToggle = () => screen.getByRole("button", { name: /^Address/ });
-
 const create = () =>
   userEvent.click(screen.getByRole("button", { name: "Create contact" }));
 
@@ -115,38 +113,20 @@ describe("ContactDialog", () => {
     );
   });
 
-  it("opens the address group for a country the diver has not given", async () => {
-    // Collapsed, the group still validates - so a city typed and folded away
-    // would otherwise block the save with its message out of sight.
+  it("refuses an address without its country, and focuses the box", async () => {
     open();
 
     await userEvent.type(screen.getByLabelText("Name *"), "Grandma's house");
-    await userEvent.click(addressToggle());
-    await userEvent.type(screen.getByLabelText("City"), "Dahab");
-    await userEvent.click(addressToggle());
-    expect(screen.getByLabelText("City")).not.toBeVisible();
-
+    await userEvent.type(screen.getByLabelText("Address"), "12 Harbour Road");
     await create();
 
     expect(
       await screen.findByText("An address needs its country"),
     ).toBeVisible();
-    expect(addressToggle()).toHaveAttribute("aria-expanded", "true");
     await waitFor(() =>
-      expect(screen.getByLabelText(/^Country/)).toHaveFocus(),
+      expect(screen.getByLabelText("Country *")).toHaveFocus(),
     );
     expect(createContact).not.toHaveBeenCalled();
-  });
-
-  it("shows what a folded address holds beside its toggle", async () => {
-    open();
-
-    await userEvent.click(addressToggle());
-    await userEvent.type(screen.getByLabelText("City"), "Dahab");
-    await userEvent.type(screen.getByLabelText(/^Country/), "Egypt");
-    await userEvent.click(addressToggle());
-
-    expect(addressToggle()).toHaveTextContent("Dahab, Egypt");
   });
 
   it("opens an existing contact with its address showing, and saves every field", async () => {
@@ -155,7 +135,7 @@ describe("ContactDialog", () => {
     await waitFor(() =>
       expect(screen.getByLabelText("Name *")).toHaveValue("Blue Ocean"),
     );
-    expect(addressToggle()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByLabelText("City")).toBeVisible();
     expect(ticked()).toEqual(["Dive center", "Accommodation"]);
 
     // Clearing a field is sending null for it: the update leaves an absent key

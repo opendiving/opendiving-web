@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown, Loader2, Plus, Save } from "lucide-react";
+import { Loader2, Plus, Save } from "lucide-react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { FormApiError } from "@/components/ui/form-api-error";
@@ -62,10 +62,12 @@ interface ContactDialogProps {
   initialRoles?: readonly ContactRole[];
 }
 
-// The address group's parts in the order a postal address is written, with the
-// label each one shows. `country` is last and the one the group cannot go without.
+// The address's parts in the order a postal address is written, with the label
+// each one shows. `street` is the whole first line - number, building, unit - so it
+// is labelled for that rather than for the street alone. `country` is last and the
+// one an address cannot go without.
 const ADDRESS_PARTS = [
-  { name: "street", label: "Street" },
+  { name: "street", label: "Address" },
   { name: "city", label: "City" },
   { name: "postcode", label: "Postcode" },
   { name: "region", label: "Region" },
@@ -87,14 +89,6 @@ export function ContactDialog({
 }: ContactDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useDialogApiError(open);
-  // Collapsed on a new contact, which most often has no address worth typing -
-  // a boat, a friend's flat - and open on one that has an address to show.
-  const [isAddressOpen, setIsAddressOpen] = useState(false);
-  // Raised when a submit fails on a part of the address, so the country box is
-  // focused once the group that holds it is open. A fresh object each time, so a
-  // second refusal focuses it again - the shape `DiveFormCard`'s request has.
-  const [focusRequest, setFocusRequest] = useState<object | null>(null);
-  const addressId = useId();
   const isEdit = !!contact;
 
   const form = useForm<ContactInput>({
@@ -120,7 +114,7 @@ export function ContactDialog({
 
   // Reload the form whenever the dialog opens, so it shows the contact being
   // edited rather than whatever the previous invocation left behind.
-  const { reset, setFocus } = form;
+  const { reset } = form;
   useEffectOnChange(() => {
     if (!open) return;
     reset({
@@ -136,25 +130,12 @@ export function ContactDialog({
       address: contactAddressToForm(contact?.address),
       notes: contact?.notes ?? "",
     });
-    setIsAddressOpen(!!contact?.address);
     // Same deliberate reset-on-open pattern as `course-dialog.tsx`.
   }, [open, contact, initialName, initialRolesKey, reset]);
-
-  useEffect(() => {
-    if (focusRequest) setFocus("address.country");
-  }, [focusRequest, setFocus]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setApiError(null);
     onOpenChange(next);
-  };
-
-  // A collapsed group still validates, so a refused country would otherwise block
-  // the save with its message out of sight.
-  const onInvalid = (errors: Record<string, unknown>) => {
-    if (!errors.address) return;
-    setIsAddressOpen(true);
-    setFocusRequest({});
   };
 
   const onSubmit = async (data: ContactInput) => {
@@ -220,7 +201,7 @@ export function ContactDialog({
               such as the certification dialog's course dialog. See
               `lib/dialog-form.ts`. */}
           <form
-            onSubmit={dialogFormSubmit(form.handleSubmit(onSubmit, onInvalid))}
+            onSubmit={dialogFormSubmit(form.handleSubmit(onSubmit))}
             className="space-y-4"
           >
             <FormField
@@ -333,63 +314,38 @@ export function ContactDialog({
               )}
             />
 
-            <div className="rounded-md border">
-              <button
-                type="button"
-                className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-expanded={isAddressOpen}
-                aria-controls={addressId}
-                onClick={() => setIsAddressOpen((open) => !open)}
-              >
-                <span className="shrink-0">Address</span>
-                {/* What the collapsed group holds, so closing it never hides that
-                    there is one. */}
-                {!isAddressOpen && addressSummary && (
-                  <span className="min-w-0 flex-1 truncate font-normal text-muted-foreground">
-                    {addressSummary}
-                  </span>
-                )}
-                <ChevronDown
-                  className={cn(
-                    "ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                    isAddressOpen && "rotate-180",
+            <div className="grid gap-4 sm:grid-cols-2">
+              {ADDRESS_PARTS.map((part) => (
+                <FormField
+                  key={part.name}
+                  control={form.control}
+                  name={`address.${part.name}`}
+                  render={({ field }) => (
+                    <FormItem
+                      className={cn(part.name === "street" && "sm:col-span-2")}
+                    >
+                      <FormLabel>
+                        {part.label}
+                        {/* Required only once the address holds anything - no
+                            part filled in is no address at all. */}
+                        {part.name === "country" && addressSummary && " *"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          autoComplete="off"
+                          placeholder={
+                            part.name === "street"
+                              ? "Street, number, building, unit"
+                              : undefined
+                          }
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  aria-hidden
                 />
-              </button>
-              {/* Kept mounted while collapsed, so what was typed survives a close
-                  and the resolver still sees every part. */}
-              <div
-                id={addressId}
-                hidden={!isAddressOpen}
-                className="grid gap-4 border-t p-3 sm:grid-cols-2"
-              >
-                {ADDRESS_PARTS.map((part) => (
-                  <FormField
-                    key={part.name}
-                    control={form.control}
-                    name={`address.${part.name}`}
-                    render={({ field }) => (
-                      <FormItem
-                        className={cn(
-                          part.name === "street" && "sm:col-span-2",
-                        )}
-                      >
-                        <FormLabel>
-                          {part.label}
-                          {/* Required only once the group holds anything - an
-                              empty group is no address at all. */}
-                          {part.name === "country" && addressSummary && " *"}
-                        </FormLabel>
-                        <FormControl>
-                          <Input autoComplete="off" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ))}
-              </div>
+              ))}
             </div>
 
             <FormField
