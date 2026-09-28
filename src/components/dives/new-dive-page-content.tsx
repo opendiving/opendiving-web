@@ -72,7 +72,7 @@ export function NewDivePageContent() {
       dive_site_uuids:
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       gear_item_uuids: [],
-      species_uuids: [],
+      sightings: [],
       notes: "",
       // Empty, not a seeded cylinder. A form must not write gas the diver never
       // entered: `DEFAULT_MIXTURE`'s 11.1 L of air is a plausible enough cylinder
@@ -298,7 +298,7 @@ export function NewDivePageContent() {
               // into today's dive would fabricate a record of seeing it. Listed
               // rather than omitted because this `reset` enumerates every field, and
               // a field left out of it comes back `undefined`.
-              species_uuids: [],
+              sightings: [],
               notes: "",
               // Spread so this object still enumerates every field, for the reason
               // directly above. `prefill` rewrites each of these keys against the

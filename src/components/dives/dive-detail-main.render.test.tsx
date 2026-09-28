@@ -114,16 +114,27 @@ describe("DiveDetailMain duration and depth card", () => {
   });
 });
 
-describe("DiveDetailMain species card", () => {
-  const CLOWNFISH = {
+// A sighting as the detail read carries one: the species' summary, and nothing
+// counted or written unless a test says so.
+function sighting(
+  overrides: Partial<NonNullable<Dive["sightings"]>[number]> = {},
+): NonNullable<Dive["sightings"]>[number] {
+  return {
     uuid: "species-1",
     scientific_name: "Amphiprion ocellaris",
     common_name: "Ocellaris clownfish",
     rank: "Species",
+    count: null,
+    notes: "",
+    ...overrides,
   };
+}
+
+describe("DiveDetailMain species card", () => {
+  const CLOWNFISH = sighting();
 
   it("lists what was spotted, common name first", () => {
-    render(<DiveDetailMain dive={dive({ species: [CLOWNFISH] })} />);
+    render(<DiveDetailMain dive={dive({ sightings: [CLOWNFISH] })} />);
 
     expect(screen.getByText("Species Spotted")).toBeInTheDocument();
     expect(screen.getByText("Ocellaris clownfish")).toBeInTheDocument();
@@ -131,7 +142,7 @@ describe("DiveDetailMain species card", () => {
   });
 
   it("italicises the scientific name, by the binomial convention", () => {
-    render(<DiveDetailMain dive={dive({ species: [CLOWNFISH] })} />);
+    render(<DiveDetailMain dive={dive({ sightings: [CLOWNFISH] })} />);
 
     expect(screen.getByText("Amphiprion ocellaris")).toHaveClass("italic");
   });
@@ -142,13 +153,13 @@ describe("DiveDetailMain species card", () => {
     render(
       <DiveDetailMain
         dive={dive({
-          species: [
-            {
+          sightings: [
+            sighting({
               uuid: "species-2",
               scientific_name: "Muraenidae",
               common_name: null,
               rank: "Family",
-            },
+            }),
           ],
         })}
       />,
@@ -161,13 +172,12 @@ describe("DiveDetailMain species card", () => {
     render(
       <DiveDetailMain
         dive={dive({
-          species: [
-            {
+          sightings: [
+            sighting({
               uuid: "species-3",
               scientific_name: "Chromodoris annae",
               common_name: null,
-              rank: "Species",
-            },
+            }),
           ],
         })}
       />,
@@ -177,13 +187,80 @@ describe("DiveDetailMain species card", () => {
   });
 
   it("renders no card at all for a dive with nothing spotted", () => {
-    // Absent and empty alike: the API only embeds species on the detail
-    // response, and a payload it cached before species existed has no key.
-    render(<DiveDetailMain dive={dive({ species: [] })} />);
+    // Absent and empty alike: the API embeds sightings on the detail response
+    // only, so a list row has no key.
+    render(<DiveDetailMain dive={dive({ sightings: [] })} />);
     expect(screen.queryByText("Species Spotted")).not.toBeInTheDocument();
 
     render(<DiveDetailMain dive={dive()} />);
     expect(screen.queryByText("Species Spotted")).not.toBeInTheDocument();
+  });
+});
+
+describe("DiveDetailMain species card counts and notes", () => {
+  const MANTA = sighting({
+    uuid: "species-manta",
+    scientific_name: "Mobula birostris",
+    common_name: "Giant manta ray",
+    count: 3,
+    notes: "Cleaning station\nat 18 m",
+  });
+  const TURTLE = sighting({
+    uuid: "species-turtle",
+    scientific_name: "Chelonia mydas",
+    common_name: "Green sea turtle",
+  });
+
+  const cellsOf = (name: string) =>
+    [...screen.getByRole("link", { name }).closest("tr")!.children].map(
+      (cell) => cell.textContent,
+    );
+
+  it("shows how many were counted and the note beside the names", () => {
+    render(<DiveDetailMain dive={dive({ sightings: [MANTA, TURTLE] })} />);
+
+    expect(
+      screen.getByRole("columnheader", { name: "Count" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Notes" }),
+    ).toBeInTheDocument();
+    expect(cellsOf("Giant manta ray").slice(1)).toEqual([
+      "Giant manta ray",
+      "Mobula birostris",
+      "3",
+      "Cleaning station\nat 18 m",
+    ]);
+  });
+
+  it("leaves an uncounted sighting's count blank, never 1", () => {
+    render(<DiveDetailMain dive={dive({ sightings: [MANTA, TURTLE] })} />);
+
+    expect(cellsOf("Green sea turtle").slice(1)).toEqual([
+      "Green sea turtle",
+      "Chelonia mydas",
+      "",
+      "",
+    ]);
+  });
+
+  it("keeps a note's line breaks", () => {
+    render(<DiveDetailMain dive={dive({ sightings: [MANTA] })} />);
+
+    expect(
+      screen.getByText((_, element) => element?.textContent === MANTA.notes),
+    ).toHaveClass("whitespace-pre-wrap");
+  });
+
+  it("adds no column that no sighting fills", () => {
+    render(<DiveDetailMain dive={dive({ sightings: [TURTLE] })} />);
+
+    expect(
+      screen.queryByRole("columnheader", { name: "Count" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Notes" }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -196,26 +273,21 @@ describe("DiveDetailMain species card", () => {
 // an image, a row without renders none, and the photo is never the thing that
 // carries a species' name.
 describe("DiveDetailMain species photos", () => {
-  const PHOTOGRAPHED = {
-    uuid: "species-1",
-    scientific_name: "Amphiprion ocellaris",
-    common_name: "Ocellaris clownfish",
-    rank: "Species",
+  const PHOTOGRAPHED = sighting({
     photo_sha256:
       "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-  };
+  });
 
-  const UNPHOTOGRAPHED = {
+  const UNPHOTOGRAPHED = sighting({
     uuid: "species-2",
     scientific_name: "Chromodoris annae",
     common_name: "Anna's chromodoris",
-    rank: "Species",
     photo_sha256: null,
-  };
+  });
 
   it("renders a thumbnail for a species that has a photo", () => {
     const { container } = render(
-      <DiveDetailMain dive={dive({ species: [PHOTOGRAPHED] })} />,
+      <DiveDetailMain dive={dive({ sightings: [PHOTOGRAPHED] })} />,
     );
 
     const images = [...container.querySelectorAll("img")];
@@ -232,7 +304,7 @@ describe("DiveDetailMain species photos", () => {
     // cell is still there - that is what keeps the rows aligned - and it is
     // empty.
     const { container } = render(
-      <DiveDetailMain dive={dive({ species: [UNPHOTOGRAPHED] })} />,
+      <DiveDetailMain dive={dive({ sightings: [UNPHOTOGRAPHED] })} />,
     );
 
     expect(container.querySelectorAll("img")).toHaveLength(0);
@@ -241,7 +313,7 @@ describe("DiveDetailMain species photos", () => {
   it("renders one image for the photographed row of a mixed table", () => {
     const { container } = render(
       <DiveDetailMain
-        dive={dive({ species: [PHOTOGRAPHED, UNPHOTOGRAPHED] })}
+        dive={dive({ sightings: [PHOTOGRAPHED, UNPHOTOGRAPHED] })}
       />,
     );
 
@@ -250,7 +322,7 @@ describe("DiveDetailMain species photos", () => {
   });
 
   it("links each species to its page, naming the link once", () => {
-    render(<DiveDetailMain dive={dive({ species: [PHOTOGRAPHED] })} />);
+    render(<DiveDetailMain dive={dive({ sightings: [PHOTOGRAPHED] })} />);
 
     // Exactly one *named* link per species, even though the thumbnail beside it
     // is clickable too: the image link is `aria-hidden` and out of the tab order
@@ -269,14 +341,14 @@ describe("DiveDetailMain species photos", () => {
     render(
       <DiveDetailMain
         dive={dive({
-          species: [
-            {
+          sightings: [
+            sighting({
               uuid: "species-3",
               scientific_name: "Muraenidae",
               common_name: null,
               rank: "Family",
               photo_sha256: null,
-            },
+            }),
           ],
         })}
       />,

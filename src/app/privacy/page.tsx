@@ -226,7 +226,8 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   <strong>Dive Logs:</strong> Dive location, depth, duration,
-                  conditions, gas mixes, species seen, and your notes
+                  conditions, gas mixes, species seen, each with a count and a
+                  note, and your notes
                 </li>
                 <li>
                   <strong>Dive-Computer Files:</strong> When you fill a dive in

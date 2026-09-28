@@ -36,8 +36,11 @@ import { PeopleMultiSelect } from "@/components/people/people-multi-select";
 import type { PersonReference } from "@/lib/api/people";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
-import { SpeciesMultiSelect } from "@/components/dives/species-multi-select";
-import { DiveMixtureInput } from "@/lib/validations/dive";
+import {
+  SpeciesMultiSelect,
+  type SightingErrors,
+} from "@/components/dives/species-multi-select";
+import { DiveMixtureInput, type SightingInput } from "@/lib/validations/dive";
 import {
   DiveSiteSummary,
   WATER_TYPES,
@@ -54,6 +57,17 @@ import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
 // What a contact created from the dive form starts as.
 const DIVE_CENTER: readonly ContactRole[] = ["dive_center"];
+
+// What each sighting's inputs were refused for, by row, out of the field's error -
+// which for a list is an array of per-row errors with no message of its own.
+function sightingErrors(
+  error: unknown,
+): (SightingErrors | undefined)[] | undefined {
+  if (!Array.isArray(error)) return undefined;
+  return error.map(
+    (row) => row && { count: row.count?.message, notes: row.notes?.message },
+  );
+}
 
 // The field shape shared by both `DiveCreateInput` and `DiveUpdateInput`
 // (see `lib/validations/dive.ts`): the create schema's fields, all optional
@@ -94,7 +108,7 @@ export interface DiveFormValues extends FieldValues {
   people?: PersonReference[];
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
-  species_uuids?: string[];
+  sightings?: SightingInput[];
   notes?: string;
   mixtures?: DiveMixtureInput[];
 }
@@ -123,7 +137,7 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // Same idea for gear: `Dive.gear_items` already carries what a picked row
   // renders, so the picker needn't fetch each item back by uuid.
   knownGearItems?: GearItemSummary[];
-  // And for species: `Dive.species` carries the names the picker's rows need,
+  // And for species: `Dive.sightings` carries the names the picker's rows need,
   // so an edit form starts out labelled without a lookup per row.
   knownSpecies?: SpeciesSummary[];
   // Raised by the species picker while a pick is still being resolved into a
@@ -810,11 +824,13 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           the dive page's own card sits: what was seen is an observation about
           the dive, and the notes underneath are where anything this picker
           can't name ends up. */}
-      {isVisible("species_uuids") && (
+      {isVisible("sightings") && (
         <FormField
           control={control}
-          name={"species_uuids" as Path<TFieldValues>}
-          render={({ field }) => (
+          name={"sightings" as Path<TFieldValues>}
+          render={({ field, fieldState }) => (
+            // No `FormMessage`: it would print that array's missing message as
+            // "undefined". Each row shows its own.
             <FormItem>
               <FormLabel>Species spotted</FormLabel>
               <FormControl>
@@ -822,10 +838,10 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   value={field.value ?? []}
                   knownSpecies={knownSpecies}
                   onChange={field.onChange}
+                  errors={sightingErrors(fieldState.error)}
                   onPendingChange={onSpeciesPendingChange}
                 />
               </FormControl>
-              <FormMessage />
             </FormItem>
           )}
         />
