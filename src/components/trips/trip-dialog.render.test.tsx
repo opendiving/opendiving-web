@@ -98,7 +98,7 @@ describe("TripDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: /Create trip/ }));
 
     await waitFor(() => expect(createTrip).toHaveBeenCalled());
-    expect(createTrip.mock.calls.at(-1)?.[0].parts).toEqual([]);
+    expect(createTrip.mock.calls[0][0].parts).toEqual([]);
   });
 
   it("opens an existing trip with its own parts and no extra one", () => {
