@@ -184,8 +184,8 @@ const isClientDrawn = (file: string) => {
 };
 
 // A destination is a page a signed-in diver navigates to inside the app chrome. The other
-// server-rendered pages are the public ones and the `/admin` and `/settings` redirects; the
-// chrome-free ones are reached from an email link or a redirect and draw their own layout.
+// server-rendered pages are the public ones and the `/settings` redirect; the chrome-free
+// ones are reached from an email link or a redirect and draw their own layout.
 const destinations = files
   .filter((file) => file.endsWith("/page.tsx"))
   .filter(isClientDrawn)
