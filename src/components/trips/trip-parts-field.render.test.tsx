@@ -71,7 +71,7 @@ function Field({ initial = [] }: { initial?: TripPartFormValue[] }) {
 
 // Each row carries two pickers, the place and the accommodation beneath it; these
 // read the first kind only.
-const PLACE = /^Location,/;
+const PLACE = /^Location part/;
 const placeInput = () => screen.getByRole("combobox", { name: PLACE });
 const places = () =>
   screen
@@ -122,10 +122,10 @@ describe("TripPartsField", () => {
     );
 
     expect(places()).toEqual(["Dahab, Egypt"]);
-    expect(screen.getByLabelText("Start date, part 1 of 1")).toHaveValue(
+    expect(screen.getByLabelText("Start date part 1 of 1")).toHaveValue(
       "2026-04-18",
     );
-    expect(screen.getByLabelText("End date, part 1 of 1")).toHaveValue(
+    expect(screen.getByLabelText("End date part 1 of 1")).toHaveValue(
       "2026-04-22",
     );
   });
@@ -133,7 +133,7 @@ describe("TripPartsField", () => {
   it("edits a date without leaving the row", async () => {
     render(<Field initial={[placed("Dahab")]} />);
 
-    const from = screen.getByLabelText("Start date, part 1 of 1");
+    const from = screen.getByLabelText("Start date part 1 of 1");
     await userEvent.click(from);
     await userEvent.paste("2026-04-18");
     await userEvent.tab();
@@ -181,11 +181,11 @@ describe("TripPartsField", () => {
     expect(message).toBeInTheDocument();
     expect(screen.queryByText("undefined")).not.toBeInTheDocument();
     // And the two dates it is about point at it.
-    expect(screen.getByLabelText("Start date, part 2 of 2")).toHaveAttribute(
+    expect(screen.getByLabelText("Start date part 2 of 2")).toHaveAttribute(
       "aria-describedby",
       message.id,
     );
-    expect(screen.getByLabelText("End date, part 2 of 2")).toHaveAttribute(
+    expect(screen.getByLabelText("End date part 2 of 2")).toHaveAttribute(
       "aria-describedby",
       message.id,
     );
@@ -494,7 +494,7 @@ describe("TripPartsField", () => {
     );
     const stays = () =>
       screen
-        .getAllByRole("combobox", { name: /^Accommodation,/ })
+        .getAllByRole("combobox", { name: /^Accommodation part/ })
         .map((input) => (input as HTMLInputElement).value);
     await waitFor(() => expect(stays()).toEqual([CORAL_HOTEL.name, ""]));
 
@@ -511,7 +511,7 @@ describe("TripPartsField", () => {
     render(<Field initial={[placed("Dahab")]} />);
 
     await userEvent.click(
-      screen.getByRole("combobox", { name: "Accommodation, part 1 of 1" }),
+      screen.getByRole("combobox", { name: "Accommodation part 1 of 1" }),
     );
     await userEvent.click(
       await screen.findByRole("option", { name: "Add accommodation..." }),
