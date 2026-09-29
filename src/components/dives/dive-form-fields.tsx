@@ -284,7 +284,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         isVisible("course_uuid") ||
         isVisible("contact_uuid") ||
         isVisible("people") ||
-        isVisible("dive_site_uuids")) &&
+        isVisible("dive_site_uuids") ||
+        isVisible("entry_type") ||
+        showBoatName) &&
         section(
           "Trip, course & site",
           <>
@@ -432,6 +434,49 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   </FormItem>
                 )}
               />
+            )}
+
+            {/* How the diver got in, under where: a property of the site as much as
+                of the dive. A boat name only for a boat entry, beside it. */}
+            {(isVisible("entry_type") || showBoatName) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {isVisible("entry_type") && (
+                  <DiveVocabularyField
+                    control={control}
+                    name={"entry_type" as Path<TFieldValues>}
+                    label="Entry type"
+                    icon={LogIn}
+                    values={ENTRY_TYPES}
+                    labels={ENTRY_TYPE_LABELS}
+                  />
+                )}
+                {showBoatName && (
+                  <FormField
+                    control={control}
+                    name={"boat_name" as Path<TFieldValues>}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Boat name</FormLabel>
+                        <div className="relative">
+                          <Ship className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                          <FormControl>
+                            {/* `""` is not recorded, and the submit paths trim it into
+                      the API's `null` - see `boatNameOrNull`. */}
+                            <Input
+                              type="text"
+                              placeholder="e.g. Legend"
+                              className="pl-9"
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
             )}
           </>,
         )}
@@ -637,9 +682,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         isVisible("altitude") ||
         isVisible("current") ||
         isVisible("waves") ||
-        isVisible("weather") ||
-        isVisible("entry_type") ||
-        showBoatName) &&
+        isVisible("weather")) &&
         section(
           "Environment",
           <>
@@ -834,9 +877,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 />
               )}
 
-              {/* The day at the surface and how the diver got in. Observations like
-          the water above them, which is why they follow it rather than joining
-          the kit carried in below. */}
+              {/* The day at the surface. Observations like the water above it, which
+                  is why they follow it rather than joining the kit carried in below. */}
               {isVisible("current") && (
                 <DiveVocabularyField
                   control={control}
@@ -865,42 +907,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   icon={CloudSun}
                   values={WEATHER}
                   labels={WEATHER_LABELS}
-                />
-              )}
-              {isVisible("entry_type") && (
-                <DiveVocabularyField
-                  control={control}
-                  name={"entry_type" as Path<TFieldValues>}
-                  label="Entry type"
-                  icon={LogIn}
-                  values={ENTRY_TYPES}
-                  labels={ENTRY_TYPE_LABELS}
-                />
-              )}
-              {showBoatName && (
-                <FormField
-                  control={control}
-                  name={"boat_name" as Path<TFieldValues>}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Boat name</FormLabel>
-                      <div className="relative">
-                        <Ship className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                        <FormControl>
-                          {/* `""` is not recorded, and the submit paths trim it into
-                      the API's `null` - see `boatNameOrNull`. */}
-                          <Input
-                            type="text"
-                            placeholder="e.g. Legend"
-                            className="pl-9"
-                            {...field}
-                            value={field.value ?? ""}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
                 />
               )}
             </div>

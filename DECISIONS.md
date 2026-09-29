@@ -6714,12 +6714,12 @@ pressure: a preset is only a litre hint.
 
 ## Hidden dive-form fields leave a ragged edge, never a hole
 
-A gap in the middle of a form reads as breakage; a short last row does not. Every reading, from the
-two depths to the boat name, is one grid guarded by "any of them visible"; auto-flow packs
-survivors, and an odd count leaves one half-width field at the bottom.
+A gap in the middle of a form reads as breakage; a short last row does not. Every Environment
+reading is one grid guarded by "any of them visible"; auto-flow packs survivors, and an odd count
+leaves one half-width field at the bottom.
 
-`gap-x-4 gap-y-6`: the row gap matches the form's `space-y-6`, so a full row is pixel-identical to a
-pair, where `gap-4` would pull reading rows 8px closer.
+`gap-x-4 gap-y-6`: the row gap matches the section's `space-y-6`, so a full row is pixel-identical
+to a pair, where `gap-4` would pull reading rows 8px closer.
 
 Dive number pairs with Duration, `dive_number`, `start_time` and `duration` having no `isVisible`
 guard. `DIVE_FORM_ALWAYS_ON_FIELDS` must list them in the form's order — a hand-checked invariant,
