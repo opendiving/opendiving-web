@@ -28,7 +28,7 @@ export function DiveFormSection({
   const contentId = useId();
 
   return (
-    <section className="space-y-6">
+    <section className="group/section">
       {/* Bled to the card's edges with its padding, so content scrolling under it
           is covered from border to border rather than showing either side. */}
       <h3 className="sticky top-[var(--header-height)] z-10 -mx-6 border-b bg-card px-6 max-sm:-mx-4 max-sm:px-4">
@@ -49,7 +49,14 @@ export function DiveFormSection({
           />
         </button>
       </h3>
-      <div id={contentId} hidden={!open} className="space-y-6">
+      {/* The section's spacing is its content's padding rather than a margin between
+          sections - see `DiveFormFields`. The last one leaves the gap above the
+          buttons to the form. */}
+      <div
+        id={contentId}
+        hidden={!open}
+        className="space-y-6 py-6 group-last/section:pb-0"
+      >
         {open && children}
       </div>
     </section>

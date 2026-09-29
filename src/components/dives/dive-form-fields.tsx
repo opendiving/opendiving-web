@@ -276,7 +276,10 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
     );
 
   return (
-    <>
+    // One block in the form's `space-y-6`, its sections flush inside it: a stuck
+    // heading leaves with its section's bottom edge, so any gap between sections is
+    // distance it scrolls away before the next heading arrives.
+    <div>
       {(isVisible("trip_uuid") ||
         isVisible("course_uuid") ||
         isVisible("contact_uuid") ||
@@ -1127,6 +1130,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             )}
           />,
         )}
-    </>
+    </div>
   );
 }
