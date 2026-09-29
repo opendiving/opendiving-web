@@ -6044,10 +6044,10 @@ recordings with samples get a button, since one without answers 404 at
 
 ## Merge offers the two neighbours, and says what it does not combine
 
-`DiveMergeAction` in the dive page header offers exactly the dives from
+`DiveMergeAction` in the dive page's actions menu offers exactly the dives from
 `GET /dive/{uuid}/neighbors`: a computer that surfaced briefly logs one dive as two consecutive
 ones, and a second computer's record sits in the same place, so candidates are never more than one
-step away. It renders nothing on a dive with no recording, since the API refuses to merge a
+step away. The menu offers no Merge on a dive with no recording, since the API refuses to merge a
 hand-entered dive. The dialog says two things the word "merge" hides. Which dive survives is the
 server's answer — the earlier by the match gates' clock rule — so the action navigates to whatever
 comes back; the losing uuid is soft-deleted and would 404. And the oxygen-exposure readings are not
