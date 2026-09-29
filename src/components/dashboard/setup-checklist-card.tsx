@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Circle } from "lucide-react";
+import { ArrowRight, Check, Circle, Sparkles } from "lucide-react";
 import { certificationsAPI } from "@/lib/api/certifications";
 import { gearAPI } from "@/lib/api/gear";
 import { Badge } from "@/components/ui/badge";
@@ -111,7 +111,10 @@ export function SetupChecklistCard({ totalDives }: SetupChecklistCardProps) {
           as="h2"
           className="flex items-center justify-between gap-3 text-base"
         >
-          <span>Getting Started</span>
+          <span className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Getting Started
+          </span>
           <Badge variant="secondary">
             {doneCount}/{steps.length}
           </Badge>
