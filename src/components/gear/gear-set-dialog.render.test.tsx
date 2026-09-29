@@ -235,6 +235,28 @@ describe("the gear set dialog's other save paths", () => {
     expect(updateGearSet.mock.calls[0][0]).toBe("set-1");
     expect(body.gear_item_uuids).toEqual(["item-9", "item-8"]);
   });
+
+  it("creates a copy of a duplicated set rather than editing it", async () => {
+    render(
+      <GearSetDialog
+        open
+        onOpenChange={vi.fn()}
+        duplicateOf={SIDEMOUNT}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Set name *")).toHaveValue("Sidemount copy");
+    await userEvent.click(screen.getByRole("button", { name: /Create set/ }));
+
+    await waitFor(() => expect(createGearSet).toHaveBeenCalled());
+    expect(createGearSet.mock.calls[0][0]).toEqual({
+      name: "Sidemount copy",
+      weight: 6,
+      gear_item_uuids: ["item-1", "item-2"],
+    });
+    expect(updateGearSet).not.toHaveBeenCalled();
+  });
 });
 
 // The weight field's entry-unit switch, and the one place two of them can be on

@@ -54,6 +54,9 @@ interface GearSetDialogProps {
   onOpenChange: (open: boolean) => void;
   // Pass an existing set to edit it in place (gear page). Omit to create one.
   gearSet?: GearSet | null;
+  // Pass a set to create a new one prefilled from it - its gear, its weight and
+  // its name with " copy" on the end. Ignored when editing a specific `gearSet`.
+  duplicateOf?: GearSet | null;
   // Items to prefill the set with - this is how the dive form's "Save as set"
   // hands over whatever gear is currently on the dive.
   initialItemUuids?: string[];
@@ -74,6 +77,7 @@ export function GearSetDialog({
   open,
   onOpenChange,
   gearSet,
+  duplicateOf,
   initialItemUuids,
   initialWeight,
   allowChoosingTarget = false,
@@ -91,6 +95,7 @@ export function GearSetDialog({
   const [targetUuid, setTargetUuid] = useState<string | undefined>(undefined);
 
   const showTargetPicker = allowChoosingTarget && !gearSet;
+  const source = gearSet ?? duplicateOf;
   const isEdit = !!gearSet || targetUuid !== undefined;
 
   const form = useForm<GearSetInput>({
@@ -104,13 +109,13 @@ export function GearSetDialog({
   useEffectOnChange(() => {
     if (!open) return;
     reset({
-      name: gearSet?.name ?? "",
-      weight: initialWeight ?? gearSet?.weight,
+      name: gearSet?.name ?? (duplicateOf ? `${duplicateOf.name} copy` : ""),
+      weight: initialWeight ?? source?.weight,
       gear_item_uuids:
-        initialItemUuids ?? gearSet?.gear_items.map((i) => i.uuid) ?? [],
+        initialItemUuids ?? source?.gear_items.map((i) => i.uuid) ?? [],
     });
     setTargetUuid(undefined);
-  }, [open, gearSet, initialItemUuids, initialWeight, reset]);
+  }, [open, gearSet, duplicateOf, initialItemUuids, initialWeight, reset]);
 
   // The target picker needs the user's sets; only fetched when it's actually shown.
   useEffect(() => {
@@ -272,9 +277,9 @@ export function GearSetDialog({
                   <FormControl>
                     <GearItemMultiSelect
                       value={field.value ?? []}
-                      // An edited set already carries its members' details, so
-                      // the picker needn't fetch each one back by uuid.
-                      knownItems={gearSet?.gear_items}
+                      // An edited or duplicated set already carries its members'
+                      // details, so the picker needn't fetch each one back by uuid.
+                      knownItems={source?.gear_items}
                       onChange={field.onChange}
                     />
                   </FormControl>

@@ -49,6 +49,7 @@ const PENDING_SETS: GearSetsCardProps = {
   onLoadMore: noop,
   onCreate: noop,
   onEdit: noop,
+  onDuplicate: noop,
   deletingId: null,
   onDelete: noop,
 };

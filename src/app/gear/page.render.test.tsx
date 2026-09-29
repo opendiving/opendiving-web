@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { reveal } from "@/test/intersection";
 import userEvent from "@testing-library/user-event";
 import GearPage from "./page";
@@ -215,8 +215,27 @@ describe("gear row actions name their row", () => {
       screen.getByRole("button", { name: "Edit Warm water rig" }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("button", { name: "Duplicate Warm water rig" }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("button", { name: "Delete Warm water rig" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens a duplicated set as a new one, named after the original", async () => {
+    vi.mocked(gearAPI.getGearSets).mockResolvedValue(page([gearSet()]));
+
+    render(<GearPage />);
+    await act(async () => reveal());
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Duplicate Warm water rig" }),
+    );
+
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByText("New Gear Set")).toBeInTheDocument();
+    expect(dialog.getByLabelText("Set name *")).toHaveValue(
+      "Warm water rig copy",
+    );
   });
 });
 
