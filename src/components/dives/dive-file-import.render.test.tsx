@@ -139,6 +139,17 @@ describe("DiveFileImport", () => {
     expect(fileInput()).toHaveAttribute("multiple");
   });
 
+  it("offers the dive-computer formats logbook import offers, and not its archive or document", () => {
+    render(<Harness />);
+
+    // One dive in any format the import reads - but the parse route refuses a
+    // `.zip` and a DiveJSON document, so the picker does not offer them.
+    const offered = fileInput().accept.split(",");
+    expect(new Set(offered)).toEqual(
+      new Set([".uddf", ".ssrf", ".fit", ".json", ".xml"]),
+    );
+  });
+
   it("parses picked files in order, and only the first one overwrites", async () => {
     // First-file-wins has to survive a batch, where none of the state saying
     // "a file is already here" has re-rendered yet. The second file's deeper

@@ -1,4 +1,5 @@
 import type {
+  DiveMixture,
   DiveProfile,
   DiveProfileEvent,
   DiveProfilePressureSeries,
@@ -643,8 +644,8 @@ export function toChannelSeries(
   };
 }
 
-// Same, per cylinder. Each cylinder is its own line on the chart, labelled by
-// its `gas_number`.
+// Same, per cylinder. Each cylinder is its own line on the chart, keyed by its
+// `gas_number` and named through `cylinderName`.
 export function toPressureSeries(
   profile: DiveProfile,
   units: UnitSystem,
@@ -660,6 +661,29 @@ export function toPressureSeries(
         toChannelDisplay(value / channel.scale, "pressure", units),
       ),
     }));
+}
+
+// The dive's cylinders as far as naming one goes: only their labels, in the
+// order the mixtures card lists them.
+export type CylinderLabels = readonly Pick<DiveMixture, "gas_number">[];
+
+// What to call the cylinder a pressure series or a gas switch names by its
+// label: the tank's position in the mixtures card's own 1-based numbering where
+// exactly one of the dive's cylinders carries that label, and otherwise the
+// device's label with the word kept - "gas 3", never a bare 3 that reads as a
+// row of the card. That is the rule `tankGasUseRows` names a tank by, including
+// a label two cylinders share joining neither. The label itself counts from 0,
+// so showing it bare would name the card's next row.
+export function cylinderName(
+  gasNumber: number,
+  cylinders: CylinderLabels,
+): string {
+  const positions = cylinders.flatMap((cylinder, index) =>
+    cylinder.gas_number === gasNumber ? [index] : [],
+  );
+  return positions.length === 1
+    ? `tank ${positions[0] + 1}`
+    : `gas ${gasNumber}`;
 }
 
 // The one vertical axis depth and the deco ceiling are both scaled against.
@@ -700,7 +724,7 @@ export function depthDomain(
 // **Ties go to the earlier event**, and that is compared on `time` rather than left
 // to iteration order. `delta < bestDelta` alone would mean "first in the array",
 // which is only the same thing on a sorted list - and not assuming sorted input
-// is the whole reason this is a scan. The API does sort in `normalize`, so this
+// is the whole reason this is a scan. The API does sort in `shape_events`, so this
 // decides nothing today; a comment claiming one rule while the code follows
 // another is the part that would eventually cost someone an afternoon.
 export function nearestEvent(
@@ -735,7 +759,7 @@ export function nearestEvent(
 // it stands: that is the entire point of the absent type, and rephrasing
 // "Mandatory Safety Stop Broken" into something tidier would be inventing a
 // claim about a dive. The API guarantees a label wherever it sends no type (its
-// `_validate_events` rejects one without), so the fallback noun here is only for
+// `shape_events` drops one without), so the fallback noun here is only for
 // a payload that broke that promise - an unlabelled tick with no words is still
 // better than the string "undefined".
 //
@@ -754,15 +778,18 @@ export function nearestEvent(
 // `aria-label`. It is also where a null type lands, and where an older build's
 // `"other"` lands - three arrivals, one honest answer, and deliberately one
 // `return` rather than three copies of it.
-export function describeEvent(event: DiveProfileEvent): string {
+export function describeEvent(
+  event: DiveProfileEvent,
+  cylinders: CylinderLabels = [],
+): string {
   switch (event.type) {
     case "gas_switch":
-      // The cylinder's own number, the same label the mixtures table and the
-      // pressure curves carry - and `0` is a real gas number on a Suunto Ocean,
-      // so this tests for null rather than for falsiness.
+      // Named as the pressure curves name the cylinder - and `0` is a real
+      // label, the first the reader gives, so this tests for null rather than
+      // for falsiness.
       return event.gas_number == null
         ? "Gas switch"
-        : `Gas switch to gas ${event.gas_number}`;
+        : `Gas switch to ${cylinderName(event.gas_number, cylinders)}`;
     case "deep_stop":
       return "Deep stop";
     case "safety_stop":

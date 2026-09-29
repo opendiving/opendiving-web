@@ -7,14 +7,9 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Dive,
-  DiveFileInfo,
-  divesAPI,
-  diveParserLabel,
-  Recording,
-} from "@/lib/api/dives";
+import { Dive, DiveFileInfo, divesAPI, Recording } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { importSourceLabel } from "@/lib/api/logbook-import";
 import {
   deleteFileConfirmation,
   deleteRecordingConfirmation,
@@ -269,7 +264,7 @@ export function DiveRecordingsCard({
                               {file.original_filename}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {diveParserLabel(file.parser_key)} &middot;{" "}
+                              {importSourceLabel(file.parser_key)} &middot;{" "}
                               {formatFileSize(file.byte_size)}
                             </div>
                           </div>

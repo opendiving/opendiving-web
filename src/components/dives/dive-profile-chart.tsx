@@ -37,6 +37,8 @@ import {
   axisUnitSuffix,
   channelWord,
   channelsOnAxis,
+  cylinderName,
+  type CylinderLabels,
   depthDomain,
   displayChannel,
   describeEvent,
@@ -156,7 +158,12 @@ const MAX_DESCRIBED_EVENTS = 8;
 
 export interface DiveProfileChartProps {
   profile: DiveProfile;
+  // The dive's cylinders, which a pressure curve and a gas switch are named by -
+  // see `cylinderName`. Absent, every label is named as one no cylinder carries.
+  mixtures?: CylinderLabels;
 }
+
+const NO_CYLINDERS: CylinderLabels = [];
 
 interface PlottedChannel {
   key: string;
@@ -238,7 +245,10 @@ function drawnValues(
   return [...drawn].map((index) => series.values[index]);
 }
 
-export function DiveProfileChart({ profile }: DiveProfileChartProps) {
+export function DiveProfileChart({
+  profile,
+  mixtures = NO_CYLINDERS,
+}: DiveProfileChartProps) {
   const units = useUnits();
   // Names the clip paths below, so two charts on one page cannot clip each other
   // - the trap `components/icons/google-icon.tsx` already records for the mask and
@@ -305,14 +315,12 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
     PADDING.left + (duration > 0 ? at / duration : 0) * plotWidth;
 
   // Markers that land inside the plot, which is this chart's job rather than the
-  // API's and is stated as such at the other end: `_rebase_events` clamps the low
-  // side at zero, deliberately leaves the high side alone - the profile's
-  // `duration` is the span of the *samples*, and a device goes on recording after
-  // the last one, so a FIT `user_marker` pressed after surfacing happened when the
-  // file says it did - and signs off with "a chart that draws past its x domain is
-  // the chart's to clip". This is that clip. The DiveJSON spec blesses the same
-  // arrangement (§6.4), so the rename that brought `duration` here changed the
-  // word and nothing about which markers exist.
+  // API's: its `shape_events` clamps the low side at zero and leaves the high side
+  // alone - the profile's `duration` is the span of the *samples*, and a device
+  // goes on recording after the last one, so a FIT `user_marker` pressed after
+  // surfacing happened when the file says it did. This is the clip. The DiveJSON
+  // spec blesses the same arrangement (§6.4), so the rename that brought
+  // `duration` here changed the word and nothing about which markers exist.
   //
   // Dropped rather than clamped to the plot's last instant, which would invent a
   // time to keep a marker on screen, and rather than left to the SVG's own clipping,
@@ -450,7 +458,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
           axis: "pressure",
           label:
             pressure.length > 1
-              ? `${PROFILE_CHANNELS.pressure.label} (gas ${cylinder.gasNumber})`
+              ? `${PROFILE_CHANNELS.pressure.label} (${cylinderName(cylinder.gasNumber, mixtures)})`
               : PROFILE_CHANNELS.pressure.label,
           series: cylinder,
           domain,
@@ -837,6 +845,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
             // all-or-nothing - and this is the same "only what's on screen"
             // rule the channels go through `shownValues` for.
             events: eventsShown ? events : [],
+            cylinders: mixtures,
             duration,
             units,
           })}
@@ -1155,6 +1164,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
         {hoveredMs !== null && (readouts.length > 0 || hoveredEvent) && (
           <ProfileTooltip
             at={hoveredMs}
+            cylinders={mixtures}
             readouts={readouts}
             event={hoveredEvent}
             cx={x(hoveredMs)}
@@ -1237,10 +1247,10 @@ interface Readout {
 //
 // A stop is deliberately *not* drawn in the ceiling's red, which is what an
 // earlier version did on the grounds that "a stop is the obligation the ceiling
-// describes". That is not true of either type this build can receive. Both reach
-// us through `_STOP_TYPE_BY_NOTIFY` in the API's `suunto_json.py`, which maps
-// them from Suunto `Notify` values - the computer *recommending* a pause, not a
-// ceiling forbidding an ascent. A safety stop is the clearest case: it is
+// describes". That is not true of either type this build can receive. Both are
+// the Suunto app's `Notify` values as the `divejson` package's reader maps them
+// (`STOP_TYPES`) - the computer *recommending* a pause, not a ceiling forbidding
+// an ascent. A safety stop is the clearest case: it is
 // precisely the stop that is not an obligation, and a red triangle in the
 // forbidden zone's exact colour would put an obligation on a recreational
 // no-deco profile that never had one. Red means the ceiling, and only the
@@ -1395,6 +1405,7 @@ function EventMarker({
 // 'unsafe-inline'`); an injected `<style>` element would not be.
 function ProfileTooltip({
   at,
+  cylinders,
   readouts,
   event,
   cx,
@@ -1403,6 +1414,7 @@ function ProfileTooltip({
   topmostY,
 }: {
   at: number;
+  cylinders: CylinderLabels;
   readouts: Readout[];
   event: DiveProfileEvent | null;
   cx: number;
@@ -1470,7 +1482,7 @@ function ProfileTooltip({
         // anything `useKeepInside` can pull back.
         <div className="mt-1.5 max-w-64 whitespace-normal border-t border-white/10 pt-1.5 text-sm">
           <span className={`${glyphFor(event.type).colorClass} font-semibold`}>
-            {describeEvent(event)}
+            {describeEvent(event, cylinders)}
           </span>
         </div>
       )}
@@ -1488,8 +1500,8 @@ function ProfileTooltip({
 // One toggle per *channel*, not per plotted line, which is only a distinction on
 // a dive with two cylinders. Both pressure lines draw in the same `--pressure`
 // violet, so listing them separately never distinguished them by eye anyway, and
-// the crosshair readout still names each cylinder ("Tank pressure (gas 2)").
-// Toggling by channel is also what makes the choice worth remembering: "gas 2"
+// the crosshair readout still names each cylinder ("Tank pressure (tank 2)").
+// Toggling by channel is also what makes the choice worth remembering: "tank 2"
 // means a different cylinder on the next dive, while "tank pressure" doesn't.
 //
 // The markers get an entry too, last, and it is the one that is not a curve -
@@ -1603,6 +1615,7 @@ function LegendToggles({
 function describeProfile({
   readings,
   events,
+  cylinders,
   duration,
   units,
 }: {
@@ -1614,6 +1627,7 @@ function describeProfile({
   // with one check.
   readings: (key: ProfileChannelKey) => number[];
   events: readonly DiveProfileEvent[];
+  cylinders: CylinderLabels;
   duration: number;
   // The system those readings are already in, so this can name it. Spelled out
   // rather than abbreviated throughout - "ft" is read aloud as a word and "°C"
@@ -1692,7 +1706,7 @@ function describeProfile({
   // of the dive" on a list that arrived in time order. `nearestEvent` goes out of
   // its way not to assume that (it is a scan for exactly that reason), and two
   // functions in one file taking opposite stances on the same input is how the
-  // weaker assumption eventually wins. The API does sort in `_rebase_events`, so
+  // weaker assumption eventually wins. The API does sort in `shape_events`, so
   // this reorders nothing today; at n <= 200 it costs nothing to not depend on it.
   if (events.length > 0) {
     const named = [...events]
@@ -1700,7 +1714,7 @@ function describeProfile({
       .slice(0, MAX_DESCRIBED_EVENTS)
       .map(
         (event) =>
-          `${describeEvent(event)} at ${formatElapsedSpoken(event.time)}`,
+          `${describeEvent(event, cylinders)} at ${formatElapsedSpoken(event.time)}`,
       );
     if (events.length > named.length) {
       named.push(`and ${events.length - named.length} more`);

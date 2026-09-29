@@ -5,14 +5,14 @@ import type {
   RecordingDecoModel,
   RecordingDevice,
 } from "./api/dives";
-import { diveParserLabel } from "./api/dives";
+import { importSourceLabel } from "./api/logbook-import";
 
 /**
  * What to call a recording whose source named no computer at all.
  *
  * A dive imported from a document that recorded samples and nothing about the
  * machine is an ordinary case, not a broken row, so it gets a word rather than a
- * blank cell — the `diveParserLabel` stance applied to a device.
+ * blank cell — the `importSourceLabel` stance applied to a device.
  */
 export const UNNAMED_DEVICE_LABEL = "Dive computer";
 
@@ -527,8 +527,8 @@ export type DiveFileRow =
       /** Only set when the dive has more than one recording. */
       recordingName: string | null;
       file: DiveFileInfo;
-      /** The parser's own label, already resolved. */
-      parserLabel: string | null;
+      /** The file's format, already labelled. */
+      formatLabel: string;
     }
   | {
       kind: "empty";
@@ -579,7 +579,7 @@ export function diveFileRows(recordings: Recording[]): DiveFileRow[] {
       deviceLabel,
       recordingName,
       file,
-      parserLabel: diveParserLabel(file.parser_key),
+      formatLabel: importSourceLabel(file.parser_key),
     }));
   });
 }

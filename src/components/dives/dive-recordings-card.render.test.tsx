@@ -297,6 +297,25 @@ describe("DiveRecordingsCard", () => {
     expect(screen.getByText(/^Started /)).toBeVisible();
   });
 
+  it("labels a stored file's format as logbook import labels it", () => {
+    render(
+      <DiveRecordingsCard
+        dive={dive({
+          recordings: [
+            recording({
+              files: [
+                file({ original_filename: "perdix.uddf", parser_key: "uddf" }),
+              ],
+            }),
+          ],
+        })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/^UDDF ·/)).toBeVisible();
+  });
+
   it("asks the file route for the file, not the dive", async () => {
     // The old route took the dive alone because a dive had one file. A dive now
     // has several across its recordings, so the uuid in the path is the file's.

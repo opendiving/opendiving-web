@@ -111,8 +111,8 @@ describe("mergeMixture", () => {
     ).value;
 
     expect(mixture.po2_limit).toBe(1.4);
-    // Zero is a value, not an absence - a Suunto Ocean numbers its cylinders from 0,
-    // so `??` rather than `||` is what keeps that number from being replaced.
+    // Zero is a value, not an absence - the reader labels the first cylinder 0, so
+    // `??` rather than `||` is what keeps that number from being replaced.
     expect(mixture.gas_number).toBe(0);
   });
 

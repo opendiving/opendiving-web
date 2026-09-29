@@ -95,13 +95,16 @@ export default function SupportPage() {
                 <Heart className="h-5 w-5 text-destructive" />
                 Contributing
               </CardTitle>
-              <CardDescription>Code, docs, or a new parser</CardDescription>
+              <CardDescription>
+                Code, docs, or a new file format
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-foreground">
                 Support for a dive computer we cannot read yet is the single
-                most useful thing you can add. The contributing guide covers
-                setup and how a parser fits in.
+                most useful thing you can add, and it goes in the DiveJSON
+                converter, which reads every file the app takes. The
+                contributing guide covers setup.
               </p>
               <Button asChild variant="outline" className="w-full">
                 <a

@@ -760,7 +760,7 @@ export function tankGasUseRows(dive: Dive): TankGasUseRow[] {
         mixture.id != null ? `mixture-id-${mixture.id}` : `mixture-at-${index}`,
       // Same label as the mixtures card's first column, down to the 1-based
       // position - which is the cylinder's place in the list, and deliberately
-      // not its gas number, since a Suunto Ocean numbers from 0. Bare, because
+      // not its gas number, which the reader counts from 0. Bare, because
       // both tables now head this column `#` and carry the word nowhere.
       label: `${index + 1}`,
       gas: gasName(mixture.oxygen, mixture.helium),

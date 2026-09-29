@@ -8,7 +8,6 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
   divesAPI,
-  DIVE_FILE_ACCEPT,
   MAX_DIVE_FILE_SIZE,
   ParsedDive,
   ParsedDiveMatch,
@@ -21,6 +20,7 @@ import {
   normalizeParsedStartTime,
 } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { DIVE_COMPUTER_FILE_ACCEPT } from "@/lib/api/logbook-import";
 import { DiveFormValues } from "@/components/dives/dive-form-fields";
 import {
   DiveRecordingFiles,
@@ -505,11 +505,11 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
             Import from a dive computer file
           </p>
           <p className="text-sm text-muted-foreground">
-            Upload a dive log export — a FIT file from a Garmin Descent or
-            Suunto computer, or a Suunto XML or JSON export — to fill in the
-            fields below. Pick as many as you like at once: one per computer
-            that recorded this dive, or one computer&apos;s second export
-            alongside its first.
+            Upload this dive&apos;s file, in any format logbook import reads, to
+            fill in the fields below. Pick as many as you like at once: one per
+            computer that recorded this dive, or one computer&apos;s second
+            export alongside its first. A file holding several dives goes
+            through logbook import instead.
           </p>
           {/* Rendered unconditionally and `sr-only` until there is something to say: a
               `role="status"` region that mounts together with its text is typically not
@@ -531,7 +531,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
           <input
             ref={fileInputRef}
             type="file"
-            accept={DIVE_FILE_ACCEPT}
+            accept={DIVE_COMPUTER_FILE_ACCEPT}
             // A dive off two computers, or one computer's JSON beside its FIT,
             // was always two trips through this picker for no reason: the form
             // already holds a list and the server already decides per file

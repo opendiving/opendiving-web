@@ -488,10 +488,10 @@ describe("diveModWarning", () => {
   });
 
   it("reads an absent helium as zero when comparing a flagged pair's gas", () => {
-    // `OxygenFractions` allows `helium` absent, while the form and every parser
-    // write a flat 0 - so a pair mixing the two spellings is the same gas and has
-    // to be judged as one, not dropped to the dive-wide rule on a `undefined`
-    // versus `0` comparison.
+    // `OxygenFractions` allows `helium` absent, while the form writes a flat 0 -
+    // so a pair mixing the two spellings is the same gas and has to be judged as
+    // one, not dropped to the dive-wide rule on a `undefined` versus `0`
+    // comparison.
     const pair = [
       { oxygen: 32, usage: "parallel" as const },
       { oxygen: 32, helium: 0, usage: "parallel" as const },

@@ -297,7 +297,7 @@ function FileRow({
             beside the pending rows, which say the mirror-image thing. */}
         {isRemoved
           ? "Deleted when you save"
-          : `${row.parserLabel ? `${row.parserLabel} · ` : ""}${formatFileSize(row.file.byte_size)}`}
+          : `${row.formatLabel ? `${row.formatLabel} · ` : ""}${formatFileSize(row.file.byte_size)}`}
       </div>
     </Row>
   );

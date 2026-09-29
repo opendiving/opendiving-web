@@ -463,9 +463,8 @@ endpoint exists.
 
 ## FIT imports: one vendor-neutral label, and gas gaps filled here but declared
 
-`diveParserLabel` says "FIT export", not "Garmin FIT": one parser reads every vendor's FIT files
-under `parser_key` `fit`. `DIVE_FILE_ACCEPT` is `.xml,.json,.fit`; `dives.test.ts` pins both against
-the API's registry with `satisfies Record<keyof typeof DIVE_PARSER_LABELS, string>`.
+A stored FIT file reads "FIT", not "Garmin FIT": one reader reads every vendor's FIT files under the
+format id `fit`, and the label is logbook import's, as for every format the form takes.
 
 Gaps are never filled: an invented 11.1 L of air corrupts `compute_gas_use`, so a gap stays `""`,
 saves as NULL, and the import box names it in a line that stays on screen. `guessed` is keyed off
@@ -957,9 +956,10 @@ cannot be called from an effect body.
 The same `Dive` interface backs `GET /dives` and `GET /dive/{uuid}`, and the API sends `recordings`
 only on the detail one — the list is its hottest query and nothing in the table renders an
 attachment. Hence `recordings?:` rather than a required member; do not "fix" the missing value by
-adding it to the list server-side. `diveParserLabel` falls back to the raw `parser_key` for a parser
-this build has not heard of, rather than to a blank or "Unknown": the API can grow a parser ahead of
-the frontend, and a slug in the cell beats an empty one that reads as a bug.
+adding it to the list server-side. A file's `parser_key` renders through `importSourceLabel`, which
+falls back to the raw id for a format this build has not heard of, rather than to a blank or
+"Unknown": the API can grow a reader ahead of the frontend, and a slug in the cell beats an empty
+one that reads as a bug.
 
 ## Air consumption is the API's number; the browser only explains its absence
 
@@ -2075,9 +2075,9 @@ cylinder never claims a limit the diver did not choose.
 ## `gas_number` round-trips through the form untouched, and 0 is a real value
 
 `DiveMixture.gas_number` is on `diveMixtureSchema` and `normalizeMixtures` with no input: it is the
-source export's cylinder identifier and the join key to that cylinder's pressure curve on the
-profile chart. In `mergeMixture` it needs `??`, not `||`: a Suunto Ocean numbers cylinders from 0.
-The zod rule is `min(0)`, mirroring `ck_dive_mixture_gas_number_non_negative`.
+API reader's cylinder label and the join key to that cylinder's pressure curve on the profile chart.
+In `mergeMixture` it needs `??`, not `||`: the reader labels the first cylinder 0. The zod rule is
+`min(0)`, mirroring `ck_dive_mixture_gas_number_non_negative`.
 
 `role` is a plain `<select>`, not the shadcn `Select`, because it needs "unset" as a real option and
 Radix reserves `""` for clearing. Its empty value stays `""`, converted to `undefined` by
@@ -2177,8 +2177,8 @@ toggled off; not a fifth `PROFILE_CHANNELS` entry (switch: _"The markers have a 
 it is not a fifth channel"_).
 
 Three glyph families, not five. Colour marks only what joins elsewhere: a gas switch is `--pressure`
-violet for its `gas_number`. A stop is not the ceiling's red: both types arrive via
-`_STOP_TYPE_BY_NOTIFY` in `suunto_json.py` as a recommended pause.
+violet for its `gas_number`. A stop is not the ceiling's red: both types are the Suunto app's
+`Notify` values as the `divejson` package's reader maps them (`STOP_TYPES`), a recommended pause.
 
 `describeEvent` passes an `other`'s label through unchanged; `gas_number` is tested with `== null`.
 `label` is free text, so the tooltip line is `max-w-64 whitespace-normal`.
@@ -2256,12 +2256,12 @@ draws a forbidden zone over free water, so only it pays the cost of refusing. It
 `dashed` and says something different: `dashed` is how a curve is drawn, this is what its absence
 means. `dive-profile-chart.render.test.tsx` covers the component wiring the `lib` tests cannot.
 
-## Markers are clipped to the plot, because the API says in so many words that they aren't
+## Markers are clipped to the plot, because the API leaves their high end alone
 
-`_rebase_events` clamps an event's time at zero and deliberately leaves the high end alone: the
-profile's `duration` spans the samples, a device keeps recording after the last one, and a FIT
-`user_marker` can be pressed after surfacing. The API's contract closes with "A chart that draws
-past its x domain is the chart's to clip", and that sentence is the requirement.
+The API's `shape_events` clamps an event's time at zero and leaves the high end alone: the profile's
+`duration` spans the samples, a device keeps recording after the last one, and a FIT `user_marker`
+can be pressed after surfacing. A chart that draws past its x domain is therefore the chart's to
+clip.
 
 Unclipped, a marker at 6 000 s on a 3 000 s dive lands outside the viewBox and one at 3 200 s inside
 it, in the axis-label gutter aligned with no time — while `describeProfile` names both. One filtered
@@ -2330,7 +2330,7 @@ Both get rows keyed by position in `tanks`.
 Invariant, test-pinned: every tank reaches exactly one row. Two asymmetries: a mixture with no tank
 stays, "Not attributed"; a tank with no mixture is appended as `Gas N`, not `Tank N`: the mixtures
 card numbers by position and this row has none. Row keys use `mixture.id` or position, never
-`gas_number`. No `!number` shortcut: Suunto Ocean numbers from 0.
+`gas_number`. No `!number` shortcut: the reader labels the first cylinder 0.
 
 ## Attribution coverage is stated when it's short, and silent when it isn't
 
@@ -4761,8 +4761,9 @@ with different gases is a switch plan; two identical unflagged cylinders could b
 to. Nothing is inferred from `DiveGasUse.tanks` here; the flag is the diver's statement that every
 cylinder saw the same depths. Fractions are compared, not `gasName`, which rounds 31.6% and 32.4%
 both to "EAN32"; `helium` normalizes to `0` because `OxygenFractions` allows it absent while the
-form and parsers write a flat zero. `DiveMixturesCard`'s amber MOD cell follows the same predicate,
-marking every row, since every row holds the gas named.
+form writes a flat zero and an import leaves it absent where the file recorded none.
+`DiveMixturesCard`'s amber MOD cell follows the same predicate, marking every row, since every row
+holds the gas named.
 
 ## `DiveGasUse`'s doc comments are swept by claim, not by list
 
@@ -5719,6 +5720,15 @@ is unpickable until its extension lands.
 Nothing in the browser parses a dive file; the API groups findings by `(kind, message)` through the
 converter's `grouped()`, and this side owns only presentation, including the "and N more" count
 (`count` minus the three `wheres` sent).
+
+## The dive form and logbook import read one set of formats, labelled from one map
+
+The API reads the dive form's file through the converter logbook import uses, so the form's picker
+offers `DIVE_COMPUTER_FILE_ACCEPT` — the flattened `LOGBOOK_IMPORT_SOURCE_EXTENSIONS`, without the
+import's `.divejson` and `.zip`, which the parse route refuses — and a stored file's `parser_key`
+renders through `importSourceLabel`. A second list beside these would have to move whenever the
+converter pin adds a reader. The form's copy names no formats of its own for the same reason: it
+says "any format logbook import reads", and the lists that name them are the import's.
 
 ## "The original file is kept" is a claim about an upload to a dive, not about an import
 

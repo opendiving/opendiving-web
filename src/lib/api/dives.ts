@@ -74,12 +74,12 @@ export interface DiveMixture {
   // Imported from the dive computer where the export records one, and editable.
   // Null/undefined falls back to `PPO2_WORKING` at every call site computing a MOD.
   po2_limit?: number | null;
-  // How the source export identifies this cylinder, and the join key to the profile's
-  // per-cylinder pressure channels. **A label, not an index** - a Suunto Ocean numbers
-  // its cylinders from 0 while the other parsers count from 1 (see the API's
-  // DECISIONS.md). Carried through edits rather than edited: the form round-trips it
-  // untouched so an import's numbering survives a save, and a hand-added cylinder has
-  // none.
+  // The reader's label for this cylinder, and the join key to the profile's
+  // per-cylinder pressure channels and gas switches. **A label, not an index** - the API's reader numbers
+  // a dive's cylinders from 0, and only where a pressure channel or a gas switch needs
+  // one to point at (see the API's DECISIONS.md). Carried through edits rather than
+  // edited: the form round-trips it untouched so an import's numbering survives a save,
+  // and a hand-added cylinder has none.
   gas_number?: number | null;
   // What the cylinder was carried for. Rarely present on an import - most exports
   // don't record it - so this is mostly the diver's own label.
@@ -711,12 +711,11 @@ export interface DiveProfile {
 }
 
 /**
- * What the API accepts as a dive-computer export, mirrored here so the file
- * picker can filter and so an obviously-oversized file is rejected before it
- * is uploaded. The API re-checks both regardless - this is convenience, not
- * validation.
+ * The API's size cap on a dive-computer file, mirrored so an obviously-oversized
+ * file is rejected before it is uploaded. The API re-checks regardless - this is
+ * convenience, not validation. The picker's filter is the import's
+ * (`DIVE_COMPUTER_FILE_ACCEPT` in `logbook-import.ts`).
  */
-export const DIVE_FILE_ACCEPT = ".xml,.json,.fit";
 export const MAX_DIVE_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 // Metadata about one dive-computer export a recording was read from - never its
@@ -728,44 +727,12 @@ export interface DiveFileInfo {
   original_filename: string;
   content_type: string;
   byte_size: number;
-  // Which parser read the file, e.g. "suunto_xml". Render it with
-  // `diveParserLabel` rather than showing the raw key.
+  // The format the API's reader recognised the file as - a converter format id
+  // such as "suunto_json", or `divejson_import` for an archive-restored file
+  // this build cannot read. Render it with `importSourceLabel`, the logbook
+  // import's label, which falls back to the raw id.
   parser_key: string;
   updated_at?: string | null;
-}
-
-/**
- * Human-readable label per API parser key (`DiveParser.key` in the API's
- * `dive_parsers` registry).
- *
- * Exported so `DIVE_FILE_ACCEPT` can be pinned against it in `dives.test.ts` via
- * `satisfies Record<keyof typeof DIVE_PARSER_LABELS, string>` — adding a parser
- * here without offering its extension stops the test compiling, rather than
- * silently greying the file out in the picker.
- *
- * Not "Garmin FIT": one API parser reads the FIT files of every vendor that
- * writes them, so naming a single manufacturer would mislabel the other one's
- * dives.
- */
-export const DIVE_PARSER_LABELS = {
-  suunto_xml: "Suunto XML export",
-  suunto_json: "Suunto JSON export",
-  fit: "FIT export",
-};
-
-/**
- * Human-readable name for a `parser_key`. Falls back to the raw key rather
- * than to a blank or "Unknown": if the API grows a parser this build hasn't
- * heard of, showing "garmin_fit" is worse than a label but far better than an
- * empty cell that looks like a bug.
- */
-export function diveParserLabel(key: string | null | undefined): string | null {
-  if (!key) return null;
-  // Widened at the lookup rather than on the declaration, so the map keeps its
-  // literal key type for the accept-list test while still accepting a parser
-  // key this build has never heard of.
-  const labels: Record<string, string> = DIVE_PARSER_LABELS;
-  return labels[key] ?? key;
 }
 
 export interface DiveCreate {
@@ -961,15 +928,14 @@ export interface ParsedDiveMixture {
   end_pressure: number | null;
   oxygen: number | null;
   helium: number | null;
-  // All nullable like everything else here, and for the same reason: a parser reports
-  // what the file recorded. Only the two Suunto exports carry a ppO₂ at all, and only
-  // the JSON one carries anything role-shaped.
+  // All nullable like everything else here, and for the same reason: the reader reports
+  // what the file recorded, and most formats record neither a ppO₂ nor a role.
   po2_limit: number | null;
   gas_number: number | null;
   role: GasRole | null;
 }
 
-// Result of parsing a dive-computer export file (Suunto XML or JSON, or a FIT file) via /dive/parse.
+// Result of reading one dive's file, in any format the API reads, via /dive/parse.
 // Most fields are nullable since not every dive-computer format populates every field.
 export interface ParsedDive {
   dive_number: number | null;
@@ -1160,7 +1126,7 @@ export const divesAPI = {
     return response.data;
   },
 
-  // Parse a dive-computer export file (Suunto XML or JSON, or a FIT file) into structured dive data
+  // Read one dive's file, in any format the API reads, into structured dive data
   async parseDiveFile(file: File): Promise<ParsedDive> {
     const formData = new FormData();
     formData.append("file", file);

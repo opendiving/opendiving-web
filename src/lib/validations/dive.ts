@@ -244,10 +244,10 @@ export const diveMixtureSchema = z
           .max(2.0, "ppO₂ limit must be at most 2.0 bar"),
       ])
       .optional(),
-    // Carried, never edited - there is no input for it. It is the file's own identifier
-    // for the cylinder, so the form's job is to round-trip it untouched rather than let
-    // it be retyped. `min(0)` mirrors `ck_dive_mixture_gas_number_non_negative`: a
-    // Suunto Ocean numbers from 0.
+    // Carried, never edited - there is no input for it. It is the reader's label for the
+    // cylinder, so the form's job is to round-trip it untouched rather than let it be
+    // retyped. `min(0)` mirrors `ck_dive_mixture_gas_number_non_negative`: the reader
+    // labels the first cylinder 0.
     gas_number: z.number().int().min(0).optional(),
     // `""` for the same reason as the numeric fields above, not for symmetry: the
     // `<select>` has a real "Not recorded" option, and writing `undefined` when it is

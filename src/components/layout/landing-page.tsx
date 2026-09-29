@@ -244,8 +244,13 @@ export function LandingPage({ channel }: LandingPageProps = {}) {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• FIT files from Garmin Descent and Suunto</li>
-                  <li>• Suunto XML and JSON exports</li>
+                  {/* The import's own list, since the form reads through the
+                      same converter: one dive per file here, a whole logbook
+                      there. */}
+                  <li>
+                    • FIT, Suunto&apos;s app and DM5 exports, UDDF and
+                    Subsurface, one dive per file
+                  </li>
                   <li>
                     • Full depth, temperature and pressure profile, with the
                     computer&rsquo;s own deco readouts
