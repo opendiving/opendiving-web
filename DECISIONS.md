@@ -5039,9 +5039,9 @@ separately designed dark style, OpenFreeMap's Dark included, is rejected: it lab
 without regenerating looks like.
 
 Land is a mid grey, lighter than the dark `--card` so the frame reads as a map rather than a hole;
-water is a mid blue, lighter than land, which reads more clearly than the night-map convention of
-darker water. Colours move in OKLCH, mirrored about land, so each of Liberty's contrasts keeps its
-direction.
+water sits on `teal`'s hue and lighter than land, which reads more clearly than the night-map
+convention of darker water. Colours move in OKLCH, mirrored about land, so each of Liberty's
+contrasts keeps its direction.
 
 ## The worker is same-origin, and `worker-src 'self'` is what makes the blob path fail loudly
 
