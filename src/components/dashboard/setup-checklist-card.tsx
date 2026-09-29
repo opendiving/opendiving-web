@@ -7,6 +7,7 @@ import { certificationsAPI } from "@/lib/api/certifications";
 import { gearAPI } from "@/lib/api/gear";
 import { Badge } from "@/components/ui/badge";
 import {
+  CARD_TITLE_SMALL,
   Card,
   CardContent,
   CardDescription,
@@ -107,15 +108,10 @@ export function SetupChecklistCard({ totalDives }: SetupChecklistCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle
-          as="h2"
-          className="flex items-center justify-between gap-3 text-base"
-        >
-          <span className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            Getting Started
-          </span>
-          <Badge variant="secondary">
+        <CardTitle as="h2" className={CARD_TITLE_SMALL}>
+          <Sparkles className="h-4 w-4" />
+          Getting Started
+          <Badge variant="secondary" className="ml-auto">
             {doneCount}/{steps.length}
           </Badge>
         </CardTitle>

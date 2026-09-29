@@ -16,7 +16,13 @@ import {
 } from "@/lib/certification";
 import { formatDateOnly } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CARD_TITLE_SMALL,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { TruncatedNote } from "@/components/ui/truncated-note";
 
 // One line of the card, whatever it is a renewal of: what runs out, what kind of
@@ -107,7 +113,7 @@ export function CertificationExpiryCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h2" className="flex items-center gap-2 text-base">
+        <CardTitle as="h2" className={CARD_TITLE_SMALL}>
           <BadgeCheck className="h-4 w-4" />
           Renewals
         </CardTitle>

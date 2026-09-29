@@ -4,7 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { KeyRound, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  CARD_TITLE_SMALL,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { usePasskeyRegistration } from "@/hooks/usePasskeyRegistration";
 import { passkeysAPI } from "@/lib/api/passkeys";
@@ -14,7 +21,7 @@ import {
 } from "@/lib/passkey-nudge";
 
 /**
- * "Sign in faster next time - add a passkey", on the dashboard, once.
+ * "Sign in faster next time" with a passkey, on the dashboard, once.
  *
  * Passkeys are worth almost nothing to a diver who never finds them, and the
  * settings card only reaches people already looking. This is the other half: an
@@ -82,41 +89,37 @@ export function PasskeyNudgeCard() {
 
   return (
     <Card>
-      <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
-        <div className="flex items-start gap-3">
-          <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">
-              Sign in faster next time — add a passkey
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Your fingerprint, face or device PIN, instead of waiting for an
-              email. Your email link keeps working either way.
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              dismissPasskeyNudge();
-              setOffer(false);
-            }}
-          >
-            Not now
-          </Button>
-          <Button
-            size="sm"
-            onClick={registration.register}
-            disabled={registration.isRegistering}
-          >
-            {registration.isRegistering && (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            )}
-            Add a passkey
-          </Button>
-        </div>
+      <CardHeader>
+        <CardTitle as="h2" className={CARD_TITLE_SMALL}>
+          <KeyRound className="h-4 w-4" />
+          Sign in faster next time
+        </CardTitle>
+        <CardDescription>
+          Add a passkey: your fingerprint, face or device PIN, instead of
+          waiting for an email. Your email link keeps working either way.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            dismissPasskeyNudge();
+            setOffer(false);
+          }}
+        >
+          Not now
+        </Button>
+        <Button
+          size="sm"
+          onClick={registration.register}
+          disabled={registration.isRegistering}
+        >
+          {registration.isRegistering && (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          )}
+          Add a passkey
+        </Button>
       </CardContent>
     </Card>
   );
