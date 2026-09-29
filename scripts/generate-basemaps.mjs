@@ -1,21 +1,13 @@
 // Regenerates both shipped styles from the vendored Liberty: recolours the
 // water in `public/basemap/liberty.json` in place, then derives
-// `public/basemap/dark.json` from the result. Run it after re-vendoring Liberty.
+// `public/basemap/dark.json` from the result by rewriting paint colours and
+// nothing else. Run it after re-vendoring Liberty. With `--check` it writes
+// nothing and exits non-zero if either file differs from what it would write,
+// which is how `src/lib/basemap.test.ts` runs it.
 //
-// Liberty's periwinkle water (chroma 0.10) outweighs every other fill on its
-// map, whose pastels sit around 0.03-0.06, so it becomes a teal at that
-// saturation. Nothing else in the light style is touched.
-//
-// The dark style is Liberty with its paint recoloured and nothing else touched:
-// same layers, filters, zoom ranges and text layout, so a place is labelled the
-// same way in both themes. A separately designed dark style (OpenFreeMap's Dark,
-// which this replaced) labels by its own rules - different classes, case and
-// sizes - so switching theme changed what the map said, not only its colours.
-//
-// Colours are moved in OKLCH, which keeps a hue's lightness honest as it is
-// inverted. Everything is measured against the land colour: a feature that sat
-// darker than Liberty's land sits lighter than ours by a proportional amount,
-// which keeps each light-theme contrast on the same side of the scale.
+// The reasons are in DECISIONS.md: "The dark basemap is Liberty recoloured, not
+// a second style" and "Liberty's water is recoloured teal, and nothing else of
+// it".
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,6 +118,8 @@ const water = fromOklch(WATER);
 const waterText = fromOklch(WATER_TEXT);
 const libertyLand = toOklch(parseColor("#f8f4f0"))[0];
 
+// Mirrored about land in OKLCH: a feature that sat darker than Liberty's land
+// sits lighter than ours, by a proportional amount.
 function feature(rgb) {
   const [L, C, h] = toOklch(rgb);
   const lightness = LAND[0] + (libertyLand - L) * SPREAD;
@@ -203,8 +197,25 @@ for (const layer of style.layers) {
   layer.paint = paint;
 }
 
-writeFileSync(lightPath, JSON.stringify(light));
-writeFileSync(darkPath, JSON.stringify(style));
-console.log(
-  `Wrote ${path.relative(root, lightPath)} and ${path.relative(root, darkPath)}`,
-);
+const outputs = [
+  [lightPath, JSON.stringify(light)],
+  [darkPath, JSON.stringify(style)],
+];
+
+if (process.argv.includes("--check")) {
+  const stale = outputs.filter(
+    ([file, content]) => readFileSync(file, "utf8") !== content,
+  );
+  for (const [file] of stale) {
+    console.error(`${path.relative(root, file)} is stale`);
+  }
+  if (stale.length) {
+    console.error("Run `node scripts/generate-basemaps.mjs` to regenerate.");
+    process.exitCode = 1;
+  }
+} else {
+  for (const [file, content] of outputs) {
+    writeFileSync(file, content);
+    console.log(`Wrote ${path.relative(root, file)}`);
+  }
+}

@@ -5035,8 +5035,8 @@ stay silent; `runtime-config.test.ts` pins all three.
 which rewrites paint colours and nothing else, so both themes label a place identically. A
 separately designed dark style, OpenFreeMap's Dark included, is rejected: it labels by its own rules
 — other place classes, case and sizes — so a theme switch changes what the map says.
-`basemap.test.ts` fails when the two differ outside `paint`, which is what re-vendoring Liberty
-without regenerating looks like.
+`basemap.test.ts` fails when the two differ outside `paint`, and runs the script's `--check`, which
+fails when either file is not what the script would write — a re-vendor that skipped it included.
 
 Land is a mid grey, lighter than the dark `--card` so the frame reads as a map rather than a hole;
 water sits on `teal`'s hue and lighter than land, which reads more clearly than the night-map

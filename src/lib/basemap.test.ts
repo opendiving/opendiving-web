@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -339,8 +340,7 @@ describe("the bundled styles", () => {
   );
 
   // What makes a place read the same in both themes: every label's text, case,
-  // size and zoom range lives outside `paint`. A re-vendored Liberty with a
-  // stale dark.json fails here.
+  // size and zoom range lives outside `paint`.
   it("dark.json is liberty.json with only its paint changed", () => {
     const withoutPaint = (style: { layers: Record<string, unknown>[] }) => ({
       ...style,
@@ -350,10 +350,21 @@ describe("the bundled styles", () => {
         ),
       ),
     });
-    expect(
-      withoutPaint(shipped("dark.json")),
-      "run scripts/generate-basemaps.mjs",
-    ).toEqual(withoutPaint(shipped("liberty.json")));
+    expect(withoutPaint(shipped("dark.json"))).toEqual(
+      withoutPaint(shipped("liberty.json")),
+    );
+  });
+
+  // A re-vendored Liberty that skipped the script fails here whatever upstream
+  // changed, paint included: its water is Liberty's own again.
+  it("are what scripts/generate-basemaps.mjs makes of them", () => {
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        ["scripts/generate-basemaps.mjs", "--check"],
+        { stdio: "pipe" },
+      ),
+    ).not.toThrow();
   });
 });
 
