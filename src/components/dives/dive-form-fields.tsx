@@ -50,12 +50,7 @@ import {
 import { DiveVocabularyField } from "@/components/dives/dive-vocabulary-field";
 import { RatingInput, RatingLabelRow } from "@/components/dives/rating-input";
 import { TagsMultiSelect } from "@/components/dives/tags-multi-select";
-import {
-  BOAT_NAME_MAX,
-  boatNameApplies,
-  DiveMixtureInput,
-  type SightingInput,
-} from "@/lib/validations/dive";
+import { DiveMixtureInput, type SightingInput } from "@/lib/validations/dive";
 import {
   CURRENT_LABELS,
   CURRENTS,
@@ -209,9 +204,6 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // back-filling a log, reconciled later with Renumber, so this must not block
   // a save.
   diveNumberNotice?: { forValue: number; message: string } | null;
-  // The edited dive's boat name as stored, which keeps the box on screen under any
-  // entry - see `boatNameApplies`. Absent when creating.
-  storedBoatName?: string | null;
   // Owned by `DiveFormCard`, whose failed-submit path opens the sections an error
   // landed in.
   collapsedGroups: ReadonlySet<DiveFormFieldGroup>;
@@ -228,7 +220,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   knownSpecies,
   onSpeciesPendingChange,
   diveNumberNotice,
-  storedBoatName,
   collapsedGroups,
   onGroupOpenChange,
 }: DiveFormFieldsProps<TFieldValues>) {
@@ -243,13 +234,15 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   // The rating is a group, which a label names by reference rather than by `for`.
   const ratingLabelId = useId();
   const ratingRef = useRef<HTMLDivElement>(null);
-  // On screen, and sent by the pages, on the same condition: `boatNameApplies`.
-  const entryType = useWatch({
+  // Offered for a boat entry, and kept on screen whenever it holds a name - typed
+  // before the entry changed, or stored - so a name is never both kept and out of
+  // reach. Submitted like any other field.
+  const [entryType, boatName] = useWatch({
     control,
-    name: "entry_type" as Path<TFieldValues>,
+    name: ["entry_type", "boat_name"] as Path<TFieldValues>[],
   });
   const showBoatName =
-    isVisible("boat_name") && boatNameApplies(entryType, storedBoatName);
+    isVisible("boat_name") && (entryType === "boat" || Boolean(boatName));
   const section = (group: DiveFormFieldGroup, children: ReactNode) => (
     <DiveFormSection
       title={group}
@@ -466,7 +459,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                             <Input
                               type="text"
                               placeholder="e.g. Legend"
-                              maxLength={BOAT_NAME_MAX}
                               className="pl-9"
                               {...field}
                               value={field.value ?? ""}

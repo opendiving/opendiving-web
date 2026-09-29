@@ -145,7 +145,7 @@ export function EditDivePageContent() {
     try {
       setIsSubmitting(true);
 
-      const updateData = buildDiveUpdate(data, dive?.boat_name);
+      const updateData = buildDiveUpdate(data);
 
       await divesAPI.updateDive(diveId, updateData);
 
@@ -289,7 +289,6 @@ export function EditDivePageContent() {
         // The dive already carries its sites' names, so the picker doesn't have
         // to look them up again just to label the rows it starts out with.
         knownDiveSites={dive.dive_sites}
-        storedBoatName={dive.boat_name}
         knownGearItems={dive.gear_items}
         knownSpecies={dive.sightings}
       />

@@ -800,6 +800,34 @@ describe("the classification and conditions on the way to the API", () => {
     });
   });
 
+  it("keeps a typed boat name on screen, and sends it, when the entry changes", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    fillRequiredFields();
+
+    expect(screen.queryByLabelText(/^boat name$/i)).not.toBeInTheDocument();
+    await userEvent.selectOptions(
+      screen.getByLabelText(/^entry type$/i),
+      "boat",
+    );
+    fireEvent.change(screen.getByLabelText(/^boat name$/i), {
+      target: { value: "Legend" },
+    });
+    await userEvent.selectOptions(
+      screen.getByLabelText(/^entry type$/i),
+      "pier",
+    );
+
+    expect(screen.getByLabelText(/^boat name$/i)).toHaveValue("Legend");
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0]).toMatchObject({
+      entry_type: "pier",
+      boat_name: "Legend",
+    });
+  });
+
   it("takes a stored tag's spelling for one typed in another case, and adds a new one as typed", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);

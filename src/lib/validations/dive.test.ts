@@ -360,41 +360,11 @@ describe("diveCreateSchema boat_name and tags", () => {
     ).toBe(true);
   });
 
-  it("rejects a boat dive's name past the API's 255 characters", () => {
-    const result = diveCreateSchema.safeParse({
-      ...validDive,
-      entry_type: "boat",
-      boat_name: "x".repeat(256),
-    });
-    expect(result.success).toBe(false);
-    expect(result.error?.issues.map((issue) => issue.path)).toEqual([
-      ["boat_name"],
-    ]);
-  });
-
-  // Off screen and never sent, so nothing about it may refuse the save.
-  it("ignores the name left on a dive that is not a boat dive", () => {
-    for (const schema of [diveCreateSchema, diveUpdateSchema]) {
-      expect(
-        schema.safeParse({
-          ...validDive,
-          entry_type: "shore",
-          boat_name: "x".repeat(256),
-        }).success,
-      ).toBe(true);
-    }
-  });
-
-  // Reported alongside another field's error, not only once the rest is valid.
-  it("reports the boat name beside another refused field", () => {
-    const result = diveUpdateSchema.safeParse({
-      dive_number: -1,
-      entry_type: "boat",
-      boat_name: "x".repeat(256),
-    });
-    expect(result.error?.issues.map((issue) => issue.path[0])).toEqual(
-      expect.arrayContaining(["dive_number", "boat_name"]),
-    );
+  it("rejects a boat name past the API's 255 characters", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, boat_name: "x".repeat(256) })
+        .success,
+    ).toBe(false);
   });
 
   it("accepts a tag at the API's bound, counted in code points", () => {
@@ -1105,34 +1075,10 @@ describe("buildDiveUpdate", () => {
   });
 
   it("sends a cleared rating and an emptied boat name as nulls", () => {
-    expect(
-      buildDiveUpdate({ rating: null, entry_type: "boat", boat_name: "  " }),
-    ).toEqual({
+    expect(buildDiveUpdate({ rating: null, boat_name: "  " })).toEqual({
       rating: null,
-      entry_type: "boat",
       boat_name: null,
     });
-  });
-
-  it("sends a boat name on another entry when the dive already stores one", () => {
-    // The form shows the box for it, so what the box says is what is sent.
-    expect(
-      buildDiveUpdate({ entry_type: "shore", boat_name: "" }, "Legend")
-        .boat_name,
-    ).toBeNull();
-    expect(
-      buildDiveUpdate({ entry_type: "shore", boat_name: "Legend" }, "Legend")
-        .boat_name,
-    ).toBe("Legend");
-  });
-
-  it("sends a boat name only for a boat dive", () => {
-    expect(
-      buildDiveUpdate({ entry_type: "shore", boat_name: "Legend" }),
-    ).not.toHaveProperty("boat_name");
-    expect(
-      buildDiveUpdate({ entry_type: "", boat_name: "Legend" }),
-    ).not.toHaveProperty("boat_name");
   });
 
   it("sends the tags whole, an emptied list included", () => {

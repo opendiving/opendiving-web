@@ -11,7 +11,6 @@ import { divesAPI } from "@/lib/api/dives";
 import { coursesAPI, type Course } from "@/lib/api/courses";
 import { carriedPeople } from "@/lib/people";
 import {
-  boatNameApplies,
   boatNameOrNull,
   diveCreateSchema,
   DiveCreateInput,
@@ -392,10 +391,7 @@ export function NewDivePageContent() {
         waves: data.waves === "" ? undefined : data.waves,
         weather: data.weather === "" ? undefined : data.weather,
         entry_type: data.entry_type === "" ? undefined : data.entry_type,
-        // A new dive stores no name yet, so only a boat dive sends one.
-        boat_name: boatNameApplies(data.entry_type)
-          ? (boatNameOrNull(data.boat_name ?? "") ?? undefined)
-          : undefined,
+        boat_name: boatNameOrNull(data.boat_name ?? "") ?? undefined,
         mixtures: normalizeMixtures(data.mixtures ?? []),
       };
 

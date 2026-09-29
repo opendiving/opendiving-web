@@ -251,7 +251,7 @@ describe("a dive's classification and conditions", () => {
 });
 
 describe("a boat name stored on a dive that is not a boat dive", () => {
-  // An import or an older save can leave one; it stays in reach to keep or clear.
+  // An import or an older save can leave one; a name is never kept out of reach.
   it("is on screen, and clearing it sends the clear", async () => {
     vi.mocked(divesAPI.getDive).mockResolvedValue(
       storedDive({ entry_type: "shore", boat_name: "Legend" }),

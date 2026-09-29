@@ -117,7 +117,8 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
  * **The dialog lists fields in the order the form renders them**, and that order is the
  * invariant to preserve when either side moves: it is what makes a diver looking for a
  * field in the dialog find it where they would look for it on the form. Each group is
- * one section of the form and one run of `DIVE_FORM_FIELDS`; runs never interleave.
+ * one section of the form and one run of `DIVE_FORM_FIELDS`, except that the
+ * per-cylinder `mixture.` keys trail the list rather than following `mixtures`.
  *
  * Coarser than the form's rows, deliberately: a heading per row would offer more
  * choices than there are decisions to make. Groups carried only by always-on rows are
