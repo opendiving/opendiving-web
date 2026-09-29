@@ -155,7 +155,9 @@ describe("TripDetailPage", () => {
       "Red Sea Divers, Blue Ocean",
     );
     // Every dive of the trip, filtered by it - not the page the dives card shows.
-    expect(divesAPI.getDives).toHaveBeenCalledWith(1, 100, "trip-1");
+    expect(divesAPI.getDives).toHaveBeenCalledWith(1, 100, {
+      tripUuid: "trip-1",
+    });
   });
 
   it("leaves the line off a trip whose dives name nobody", async () => {

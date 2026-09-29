@@ -228,8 +228,10 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   <strong>Dive Logs:</strong> Dive location, depth, duration,
-                  conditions, gas mixes, species seen, each with a count and a
-                  note, and your notes
+                  the kind of dive it was, conditions, the boat you dived from,
+                  gas mixes, species seen, each with a count and a note, your
+                  own rating of the dive, the tags you file it under, and your
+                  notes
                 </li>
                 <li>
                   <strong>Dive-Computer Files:</strong> When you fill a dive in
@@ -480,10 +482,11 @@ export default async function PrivacyPage() {
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
                   <strong>Provide the Service:</strong> Store your dives, sites,
-                  trips, gear, courses, certifications, contacts, people and
-                  check-in details, show them back to you, show you the current
-                  username of an account you linked a person to, and show your
-                  check-in page to whoever holds a check-in link you made
+                  trips, gear, courses, certifications, contacts, people, tags
+                  and check-in details, show them back to you, show you the
+                  current username of an account you linked a person to, and
+                  show your check-in page to whoever holds a check-in link you
+                  made
                 </li>
                 <li>
                   <strong>Account Management:</strong> Sign you in, keep you
@@ -552,14 +555,15 @@ export default async function PrivacyPage() {
               </h3>
               <p className="text-foreground mb-4">
                 Nothing you enter is published. There are no public profiles, no
-                public dive logs, no feeds, no forums, and no ratings or
-                reviews. Every dive, dive site, trip, gear item, course,
-                certification, contact and person belongs to one account and is
-                visible to that account alone. There is no setting that makes
-                any of it public, because there is nothing for such a setting to
-                do. The one exception is one you make yourself, a page at a
-                time: a check-in link shows your check-in page to whoever holds
-                it, for a day, and section 4.9 says exactly what that shows.
+                public dive logs, no feeds, no forums, and no public ratings or
+                reviews: the rating you give a dive is part of your own log.
+                Every dive, dive site, trip, gear item, course, certification,
+                contact, person and tag belongs to one account and is visible to
+                that account alone. There is no setting that makes any of it
+                public, because there is nothing for such a setting to do. The
+                one exception is one you make yourself, a page at a time: a
+                check-in link shows your check-in page to whoever holds it, for
+                a day, and section 4.9 says exactly what that shows.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -571,12 +575,12 @@ export default async function PrivacyPage() {
                 shared logs, and the people you record are your own notes about
                 them rather than a connection between two accounts. Another
                 diver with an account on this same copy cannot see any dive,
-                dive site, trip, gear item, course, certification, contact or
-                person of yours. What does cross between accounts, when you link
-                a person to one, runs towards you and is small: that an account
-                with the username you typed, or with the identifier a file you
-                imported carried, exists here; what its username is now; and, in
-                your own export, its identifier.
+                dive site, trip, gear item, course, certification, contact,
+                person or tag of yours. What does cross between accounts, when
+                you link a person to one, runs towards you and is small: that an
+                account with the username you typed, or with the identifier a
+                file you imported carried, exists here; what its username is
+                now; and, in your own export, its identifier.
               </p>
               <p className="text-foreground mb-4">
                 There are three exceptions. The first is not about anything you
@@ -1359,7 +1363,7 @@ export default async function PrivacyPage() {
                 <li>
                   The deletion is not a flag or an archive: the account row and
                   everything hanging off it &mdash; dives, sites, trips, gear,
-                  courses, certifications, contacts, people &mdash; are
+                  courses, certifications, contacts, people, tags &mdash; are
                   destroyed, and the files you uploaded are unlinked from disk
                   with them
                 </li>

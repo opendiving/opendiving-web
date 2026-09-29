@@ -203,15 +203,24 @@ describe("the edit form's round trip", () => {
         // set and omitted it could never express "remove them all".
         sightings: [],
         // And the same for the people, which a dive read without any seeds as
-        // nobody.
+        // nobody, and the tags.
         people: [],
+        tags: [],
         notes: "Thermocline at 18m",
         mixtures: [],
         // An unrecorded water type goes out as the null it arrived as: the seed
         // holds the select's `""` and `buildDiveUpdate` converts it back. A
         // no-op against a dive that already has none, and the same echo every
-        // other untouched field makes.
+        // other untouched field makes - the other selects' and the boat
+        // name's included, and the rating's `null`.
         water_type: null,
+        type: null,
+        current: null,
+        waves: null,
+        weather: null,
+        entry_type: null,
+        boat_name: null,
+        rating: null,
       }),
     );
   });
@@ -281,6 +290,46 @@ describe("the edit form's round trip", () => {
     expect(onSave.mock.calls[0][0]).toMatchObject({
       water_type: "brackish",
       altitude: 372,
+    });
+  });
+
+  it("hands a recorded type, rating, conditions, boat name and tags back unchanged", async () => {
+    // The same half of the sentinel for every select and the box, and the tags
+    // as the list the API replaces wholesale - one missing from the echo would
+    // be deleted from the dive by a save that never touched it.
+    const onSave = vi.fn();
+    render(
+      <Harness
+        dive={{
+          ...DIVE,
+          type: "closed_circuit",
+          rating: 4,
+          air_temperature: 24,
+          current: "strong",
+          waves: "slight",
+          weather: "overcast",
+          entry_type: "boat",
+          boat_name: "Legend",
+          tags: ["night", "Wreck"],
+        }}
+        onSave={onSave}
+      />,
+    );
+    await seeded();
+
+    await save();
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      type: "closed_circuit",
+      rating: 4,
+      air_temperature: 24,
+      current: "strong",
+      waves: "slight",
+      weather: "overcast",
+      entry_type: "boat",
+      boat_name: "Legend",
+      tags: ["night", "Wreck"],
     });
   });
 

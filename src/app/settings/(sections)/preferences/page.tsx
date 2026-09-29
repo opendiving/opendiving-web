@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DeviceMemoryCard } from "@/components/settings/device-memory-card";
+import { TagsCard } from "@/components/settings/tags-card";
 import { UnitsCard } from "@/components/settings/units-card";
 import { pageTitle } from "@/lib/page-title";
 
@@ -15,6 +16,7 @@ export default function PreferencesSettingsPage() {
   return (
     <>
       <UnitsCard />
+      <TagsCard />
       <DeviceMemoryCard />
     </>
   );

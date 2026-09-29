@@ -4,11 +4,16 @@ import { useCallback, useRef, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useTags } from "@/hooks/useTags";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveTitle } from "@/components/dives/dive-title";
 import { DiveNumberingCard } from "@/components/dives/dive-numbering-card";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
+import {
+  NO_DIVE_FILTERS,
+  type DiveListFilters,
+} from "@/components/dives/dives-filters";
 import {
   formatDiveDateTime,
   formatDurationHoursMinutes,
@@ -41,9 +46,20 @@ export function DivesPageContent() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const focusHeading = useCallback(() => headingRef.current?.focus(), []);
 
+  // No debounce: each control commits a whole value at once.
+  const [filters, setFilters] = useState<DiveListFilters>(NO_DIVE_FILTERS);
+  // Latched by the filter panel's first open, since nothing before that needs
+  // the diver's tags.
+  const [wantsTags, setWantsTags] = useState(false);
+  const { tags } = useTags(!!user && wantsTags);
+
+  // Changing a filter changes this callback's identity, which is what makes
+  // `useInfiniteResource` throw every loaded page away and read the new query
+  // from the first - rows of one order are not rows of another.
   const fetchDives = useCallback(
-    (page: number, perPage: number) => divesAPI.getDives(page, perPage),
-    [],
+    (page: number, perPage: number) =>
+      divesAPI.getDives(page, perPage, filters),
+    [filters],
   );
 
   const {
@@ -102,6 +118,10 @@ export function DivesPageContent() {
         loadFailed={loadFailed}
         hasMore={hasMore}
         onLoadMore={loadMore}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onFiltersOpened={() => setWantsTags(true)}
+        tags={tags ?? undefined}
         headingRef={headingRef}
         numbering={
           <DiveNumberingCard

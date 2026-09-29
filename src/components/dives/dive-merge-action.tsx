@@ -172,7 +172,7 @@ export function DiveMergeAction({
         // device's own running accounting, not a per-dive quantity that can be
         // added up: every recording keeps its own, and a fold of one computer's
         // two records only fills the blanks the surviving one had.
-        description="Their recordings, cylinders, sites, gear, species, people and notes all end up on one dive — the earlier of the two — and the other is deleted for good. Each recording keeps its own oxygen-exposure readings rather than having them combined."
+        description="Their recordings, cylinders, sites, gear, species, people, tags and notes all end up on one dive — the earlier of the two — and the other is deleted for good. Each recording keeps its own oxygen-exposure readings rather than having them combined."
         confirmText="Merge"
         variant="default"
         isLoading={isMerging}

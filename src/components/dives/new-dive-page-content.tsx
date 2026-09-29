@@ -11,6 +11,7 @@ import { divesAPI } from "@/lib/api/dives";
 import { coursesAPI, type Course } from "@/lib/api/courses";
 import { carriedPeople } from "@/lib/people";
 import {
+  boatNameOrNull,
   diveCreateSchema,
   DiveCreateInput,
   normalizeMixtures,
@@ -64,6 +65,15 @@ export function NewDivePageContent() {
       // `undefined` - so it has to be the empty state rather than a gap.
       water_type: "",
       altitude: undefined,
+      // The selects' "Not recorded" and an empty box, for the same reason.
+      type: "",
+      rating: null,
+      air_temperature: undefined,
+      current: "",
+      waves: "",
+      weather: "",
+      entry_type: "",
+      boat_name: "",
       weight: undefined,
       trip_uuid: initialTripId,
       course_uuid: initialCourseId,
@@ -73,6 +83,7 @@ export function NewDivePageContent() {
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       gear_item_uuids: [],
       sightings: [],
+      tags: [],
       notes: "",
       // Empty, not a seeded cylinder. A form must not write gas the diver never
       // entered: `DEFAULT_MIXTURE`'s 11.1 L of air is a plausible enough cylinder
@@ -210,6 +221,12 @@ export function NewDivePageContent() {
           // the same water at the same place. Same argument as the weight below.
           water_type: lastDive.water_type ?? "",
           altitude: lastDive.altitude,
+          // Carried for the same reason: a trip's dives are the same kind of dive,
+          // from the same boat or the same shore, dive after dive. The rating, the
+          // tags and the day's conditions are not - see the reset below.
+          type: lastDive.type ?? "",
+          entry_type: lastDive.entry_type ?? "",
+          boat_name: lastDive.boat_name ?? "",
           // Carried over for the same reason as the gear below: weight is a
           // property of the kit and exposure suit, so it rarely changes between
           // consecutive dives.
@@ -293,6 +310,15 @@ export function NewDivePageContent() {
               avg_depth: undefined,
               bottom_temperature: undefined,
               visibility: undefined,
+              // The day's, like the temperature and visibility above: a new dive
+              // gets its own air, current, waves and weather, and its own rating
+              // and tags, which are the diver's word on this dive and no other.
+              air_temperature: undefined,
+              current: "",
+              waves: "",
+              weather: "",
+              rating: null,
+              tags: [],
               // Deliberately *not* carried over, unlike the gear above: gear is
               // habitual, sightings are observations. Copying yesterday's turtle
               // into today's dive would fabricate a record of seeing it. Listed
@@ -359,6 +385,13 @@ export function NewDivePageContent() {
         // cleared this"); on create there is nothing to clear, so - exactly like
         // `trip_uuid` above - the field is simply omitted.
         water_type: data.water_type === "" ? undefined : data.water_type,
+        // The same for the other selects and the boat name's box.
+        type: data.type === "" ? undefined : data.type,
+        current: data.current === "" ? undefined : data.current,
+        waves: data.waves === "" ? undefined : data.waves,
+        weather: data.weather === "" ? undefined : data.weather,
+        entry_type: data.entry_type === "" ? undefined : data.entry_type,
+        boat_name: boatNameOrNull(data.boat_name ?? "") ?? undefined,
         mixtures: normalizeMixtures(data.mixtures ?? []),
       };
 

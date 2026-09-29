@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { DiveDetailSidebar } from "./dive-detail-sidebar";
 import type { LocationsMapProps } from "@/components/map/locations-map";
 import type { Dive, DiveSiteSummary } from "@/lib/api/dives";
@@ -221,8 +221,8 @@ describe("DiveDetailSidebar locations", () => {
 });
 
 // The Environment card has the same shape of gate as the Location one above: it
-// renders when *any* of its four rows has something to say, and each row is on
-// its own `!= null` guard.
+// renders when *any* of its rows has something to say, and each row is on its
+// own `!= null` guard.
 describe("DiveDetailSidebar environment", () => {
   it("names the water type rather than showing the wire value", () => {
     renderSidebar(dive({ water_type: "salt" }));
@@ -268,6 +268,82 @@ describe("DiveDetailSidebar environment", () => {
     renderSidebar(dive());
 
     expect(screen.queryByText("Environment")).not.toBeInTheDocument();
+  });
+});
+
+// The water type's describe, once per value the card gained beside it: each row
+// is on its own guard, carries the card alone, and names its value.
+describe.each([
+  ["Current", { current: "strong" }, "Strong"],
+  ["Waves", { waves: "slight" }, "Slight"],
+  ["Weather", { weather: "partly_cloudy" }, "Partly cloudy"],
+  ["Entry Type", { entry_type: "pier" }, "Pier"],
+  ["Boat Name", { boat_name: "Legend" }, "Legend"],
+  ["Air Temperature", { air_temperature: 24 }, "24°C"],
+] as const)("DiveDetailSidebar environment: %s", (label, fields, shown) => {
+  it("carries the card alone, and names the value", () => {
+    renderSidebar(dive(fields));
+
+    expect(screen.getByText("Environment")).toBeInTheDocument();
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByText(shown)).toBeInTheDocument();
+  });
+
+  it("hides the row on a dive that does not record it", () => {
+    renderSidebar(dive({ bottom_temperature: 22.5 }));
+
+    expect(screen.queryByText(label)).not.toBeInTheDocument();
+  });
+});
+
+describe("DiveDetailSidebar environment, read from a newer API", () => {
+  // A member the API grew before this build shipped a label renders as itself
+  // rather than as a blank row.
+  it("shows a value this build has no label for as the wire value", () => {
+    renderSidebar(dive({ current: "surge" as Dive["current"] }));
+
+    expect(screen.getByText("surge")).toBeInTheDocument();
+  });
+});
+
+// The diver's own classification sits in Dive Information beside "Logged on",
+// not in the header and not among the readings.
+describe("DiveDetailSidebar dive information", () => {
+  const information = () =>
+    within(
+      screen
+        .getByRole("heading", { name: "Dive Information" })
+        .closest(".rounded-lg") as HTMLElement,
+    );
+
+  it("shows the type, the rating and the tags beside the date it was logged", () => {
+    renderSidebar(
+      dive({
+        type: "closed_circuit",
+        rating: 4,
+        tags: ["night", "Wreck"],
+      }),
+    );
+
+    expect(information().getByText("Closed circuit")).toBeInTheDocument();
+    expect(
+      information().getByRole("img", { name: "4 of 5 stars" }),
+    ).toBeInTheDocument();
+    expect(
+      information()
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["night", "Wreck"]);
+    expect(information().getByText("Logged on")).toBeInTheDocument();
+  });
+
+  it("shows none of the three on a dive that records none", () => {
+    renderSidebar(dive());
+
+    expect(screen.queryByText("Dive type")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rating")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tags")).not.toBeInTheDocument();
+    expect(screen.getByText("Logged on")).toBeInTheDocument();
   });
 });
 

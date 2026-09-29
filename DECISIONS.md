@@ -3244,11 +3244,12 @@ untouched, `[]` after add-then-remove, the cylinder when one is entered.
 
 ## A dive-level select carries the same three states, and the two submit paths disagree about the third
 
-`water_type`, a dive-level `<select>`, carries the `""`/`null`/`undefined` tri-state the cylinder
-`role` field has — see "The 'cleared field resets to default' React Hook Form quirk" and "The API
-sends `null`, the form schema only understood `""`". `""` is the live cleared state and what
-`diveToFormValues` seeds from `null` — never `undefined`, or react-hook-form re-displays the
-default. `undefined` means untouched and is dropped from a PATCH; `null` means cleared and is sent.
+`water_type` and every other dive-level `<select>` (`DiveVocabularyField`) carry the
+`""`/`null`/`undefined` tri-state the cylinder `role` field has — see "The 'cleared field resets to
+default' React Hook Form quirk" and "The API sends `null`, the form schema only understood `""`".
+`""` is the live cleared state and what `diveToFormValues` seeds from `null` — never `undefined`, or
+react-hook-form re-displays the default. `undefined` means untouched and is dropped from a PATCH;
+`null` means cleared and is sent.
 
 `buildDiveUpdate` converts `""` to an explicit `null`: an edit may already hold a value, and
 dropping the key would keep it while the toast says otherwise. The create page omits it instead, as
@@ -4231,7 +4232,7 @@ the margin.
 ## The privacy page describes this app, and there is still no cookie banner
 
 `/privacy` needs no GDPR cookie banner; it needs to be true. It describes this copy of OpenDiving:
-no password login, public profiles, forums, photos, ratings, security audits, Data Protection
+no password login, public profiles, forums, photos, public ratings, security audits, Data Protection
 Officer or `privacy@opendiving.app` address, none of which exist. A policy that overstates what is
 collected is not the safe direction to be wrong in.
 
@@ -4836,8 +4837,8 @@ changing it discards every loaded page. "No courses match" and "no courses yet" 
 states; only the second offers create.
 
 `/dives/new` does not inherit the last dive's course; the course page passes `?course_uuid=`. The
-dive page's course is its own Training card, not a Location row. `getDives`' `courseUuid` is
-appended last, its parameters being positional `string | undefined`. The resource sweep needs
+dive page's course is its own Training card, not a Location row. `getDives` takes its filters as one
+`DiveFilters` object, so a new one is a key rather than a position. The resource sweep needs
 `git grep -ni c-card -- src/ README.md` too: `git grep -lni certifications -- src/ README.md` misses
 `components/layout/landing-page.tsx`.
 
@@ -5898,7 +5899,8 @@ listens on `document` in the capture phase.
 `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
 
 A switch shows the effective state and edits the stored one. Depth's entry-unit toggle follows the
-first visible depth field; pressure's renders only while Tanks and a pressure box are on screen.
+first visible depth field and temperature's the first visible temperature; pressure's renders only
+while Tanks and a pressure box are on screen.
 
 ## The Fields dialog is switches, and it is the sections that share the columns
 
@@ -6712,9 +6714,9 @@ pressure: a preset is only a litre hint.
 
 ## Hidden dive-form fields leave a ragged edge, never a hole
 
-A gap in the middle of a form reads as breakage; a short last row does not. The six readings (both
-depths, bottom temperature, visibility, water type, altitude) are one grid guarded by "any of the
-six visible"; auto-flow packs survivors, and an odd count leaves one half-width field at the bottom.
+A gap in the middle of a form reads as breakage; a short last row does not. Every reading, from the
+two depths to the boat name, is one grid guarded by "any of them visible"; auto-flow packs
+survivors, and an odd count leaves one half-width field at the bottom.
 
 `gap-x-4 gap-y-6`: the row gap matches the form's `space-y-6`, so a full row is pixel-identical to a
 pair, where `gap-4` would pull reading rows 8px closer.

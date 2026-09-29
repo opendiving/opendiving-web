@@ -1,8 +1,8 @@
 "use client";
 
-import { type ReactNode, type Ref } from "react";
+import { useState, type ReactNode, type Ref } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus, SlidersHorizontal, X } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -15,6 +15,15 @@ import {
   useIsEmptyList,
 } from "@/components/ui/list-card-header";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
+import { IconTooltip } from "@/components/ui/tooltip";
+import {
+  DivesFilters,
+  diveFiltersChanged,
+  hasDiveFilters,
+  NO_DIVE_FILTERS,
+  type DiveListFilters,
+} from "@/components/dives/dives-filters";
+import type { Tag } from "@/lib/api/tags";
 import {
   Table,
   TableBody,
@@ -45,6 +54,17 @@ export interface DivesPageFrameProps {
   loadFailed?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
+  /** The tag, the type and the order the list is read in. */
+  filters?: DiveListFilters;
+  onFiltersChange?: (filters: DiveListFilters) => void;
+  /**
+   * Fired each time the filter panel is opened. The page reads the diver's tags
+   * off the back of it - the panel is shut on arrival, so most visits need no
+   * such request at all.
+   */
+  onFiltersOpened?: () => void;
+  /** What the tag select offers. */
+  tags?: readonly Tag[];
 }
 
 const noop = () => {};
@@ -63,13 +83,19 @@ export function DivesPageFrame({
   loadFailed = false,
   hasMore = false,
   onLoadMore = noop,
+  filters = NO_DIVE_FILTERS,
+  onFiltersChange = noop,
+  onFiltersOpened = noop,
+  tags,
 }: DivesPageFrameProps) {
-  // An unstarted logbook. Nothing narrows this list, so an empty one is the
-  // whole story.
+  const [isPanelOpen, setPanelOpen] = useState(false);
+  const isNarrowed = hasDiveFilters(filters);
+  // An unstarted logbook, rather than one filtered down to nothing - see
+  // `useIsEmptyList`.
   const isEmptyList = useIsEmptyList({
     isLoading,
     count: rows.length,
-    isNarrowed: false,
+    isNarrowed,
   });
 
   // Spaced by the container rather than by a margin on each block: the
@@ -100,9 +126,65 @@ export function DivesPageFrame({
             isLoading={isLoading}
             label="total dive"
           />
+          {/* The courses list's panel, and for its reason: shutting it takes the
+              filters with it, so a folded row never narrows the list unseen, and
+              the button's name says so while there is something to lose - the
+              sort included, which a shut panel would otherwise keep applying. */}
+          <IconTooltip
+            label={
+              !isPanelOpen
+                ? "Filter and sort dives"
+                : diveFiltersChanged(filters)
+                  ? "Close filters, clearing them"
+                  : "Close filters"
+            }
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              aria-expanded={isPanelOpen}
+              aria-controls="dive-filters"
+              onClick={() => {
+                if (isPanelOpen) {
+                  onFiltersChange(NO_DIVE_FILTERS);
+                } else {
+                  onFiltersOpened();
+                }
+                setPanelOpen((open) => !open);
+              }}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {isPanelOpen ? (
+                <X className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </IconTooltip>
         </ListCardHeader>
         <CardContent>
-          {!isLoading && rows.length === 0 ? (
+          {/* Hidden rather than unmounted, so `aria-controls` points at
+              something, and gone with the button that opens it for a list with
+              nothing in it to narrow. */}
+          {!isEmptyList && (
+            <div id="dive-filters" hidden={!isPanelOpen}>
+              <DivesFilters
+                filters={filters}
+                onFiltersChange={onFiltersChange}
+                tags={tags}
+              />
+            </div>
+          )}
+
+          {!isLoading && rows.length === 0 && isNarrowed ? (
+            // A list filtered to nothing is not an empty logbook, so it keeps one
+            // line and no "log your first dive" - see "One `EmptyState`, and the
+            // filtered list is not one" in DECISIONS.md.
+            <div className="text-center py-12 text-muted-foreground">
+              No dives match those filters.
+            </div>
+          ) : !isLoading && rows.length === 0 ? (
             <EmptyState
               icon={DiveIcon}
               title="No dives logged yet"

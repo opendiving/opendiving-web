@@ -7,9 +7,14 @@ import {
   parseUtcOffsetMinutes,
 } from "@/lib/date-time";
 import {
+  CURRENTS,
+  DIVE_TYPES,
+  ENTRY_TYPES,
   GAS_ROLES,
   TANK_USAGE,
   WATER_TYPES,
+  WAVES,
+  WEATHER,
   type Dive,
   type DiveMixture,
   type DiveUpdate,
@@ -17,6 +22,7 @@ import {
   type Sighting,
   type TankUsage,
 } from "@/lib/api/dives";
+import { TAG_NAME_MAX } from "@/lib/api/tags";
 import { barToPsi, displayBound } from "@/lib/units";
 
 // Same ISO 8601 shape as the API's `Dive.start_time`, e.g.
@@ -87,16 +93,55 @@ const durationField = (
 const weightField = () =>
   z.number().min(0, "Weight must be zero or positive").nullable().optional();
 
-// The water the dive was in, as a `<select>` edits it. `""` is the "Not recorded"
-// option's value and a live form state, never something sent to the API: it is the
-// cleared sentinel react-hook-form needs (see `diveMixtureSchema.role`, the same
-// pattern for the same reason), converted away by `buildDiveUpdate` and by the create
-// page's submit.
-const waterTypeField = () =>
+// A dive-level vocabulary - the water, the dive type, the conditions, the entry - as a
+// `<select>` edits it. `""` is the "Not recorded" option's value and a live form
+// state, never something sent to the API: it is the cleared sentinel react-hook-form
+// needs (see `diveMixtureSchema.role`, the same pattern for the same reason),
+// converted away by `buildDiveUpdate` and by the create page's submit.
+const vocabularyField = <const T extends readonly [string, ...string[]]>(
+  values: T,
+) =>
   z
-    .union([z.literal(""), z.enum(WATER_TYPES)])
+    .union([z.literal(""), z.enum(values)])
     .nullable()
     .optional();
+
+// The diver's own 1 to 5, mirroring the API's `ck_dive_rating_range`. `null` is
+// unrated, which is what the control's clear writes.
+export const RATING_MIN = 1;
+export const RATING_MAX = 5;
+
+const ratingField = () =>
+  z
+    .number()
+    .int("Rating must be a whole number")
+    .min(RATING_MIN, `Rating must be between ${RATING_MIN} and ${RATING_MAX}`)
+    .max(RATING_MAX, `Rating must be between ${RATING_MIN} and ${RATING_MAX}`)
+    .nullable()
+    .optional();
+
+// The API's bound on a boat's name.
+const BOAT_NAME_MAX = 255;
+
+// A single-line box, `""` meaning not recorded - the select's sentinel, for the same
+// reason. The API trims it and refuses a blank one, so both submit paths trim it
+// first and turn what is left of an empty box into "not recorded".
+const boatNameField = () =>
+  z
+    .string()
+    .max(BOAT_NAME_MAX, `Boat name cannot exceed ${BOAT_NAME_MAX} characters`)
+    .optional();
+
+// By name, in the diver's order - the picker trims each and keeps one of any two
+// that match. One message for the list rather than one per tag, which would have
+// nowhere to render: the field's error is the array's. Counted in code points, as
+// the API counts `TAG_NAME_MAX`.
+const tagsField = () =>
+  z
+    .array(z.string())
+    .refine((tags) => tags.every((tag) => [...tag].length <= TAG_NAME_MAX), {
+      message: `A tag can be at most ${TAG_NAME_MAX} characters`,
+    });
 
 // Metres above sea level of the water surface, mirroring the API's
 // `ck_dive_altitude_range`. The band is a unit/typo check rather than a judgement about
@@ -466,9 +511,17 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
     // `""`, not `null`: the picker's "Not recorded" option is what an unrecorded
     // water type has to select, and `null` is a member of the field's union only so
     // the *submit* direction can say "cleared". Same conversion at the same boundary
-    // as `toDiveMixtureInput`'s.
+    // as `toDiveMixtureInput`'s, and the same for every select and box below.
     water_type: dive.water_type ?? "",
     altitude: dive.altitude,
+    type: dive.type ?? "",
+    rating: dive.rating ?? null,
+    air_temperature: dive.air_temperature,
+    current: dive.current ?? "",
+    waves: dive.waves ?? "",
+    weather: dive.weather ?? "",
+    entry_type: dive.entry_type ?? "",
+    boat_name: dive.boat_name ?? "",
     weight: dive.weight,
     trip_uuid: dive.trip_uuid,
     course_uuid: dive.course_uuid,
@@ -477,6 +530,7 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
     dive_site_uuids: dive.dive_sites?.map((site) => site.uuid) ?? [],
     gear_item_uuids: dive.gear_items?.map((item) => item.uuid) ?? [],
     sightings: dive.sightings?.map(toSightingInput) ?? [],
+    tags: dive.tags ?? [],
     notes: dive.notes || "",
     // Converted field by field rather than spread: every optional field arrives
     // as an explicit `null` when the mixture doesn't record it, and `null`
@@ -510,8 +564,16 @@ export const diveCreateSchema = z.object({
     .positive("Visibility must be positive")
     .nullable()
     .optional(),
-  water_type: waterTypeField(),
+  water_type: vocabularyField(WATER_TYPES),
   altitude: altitudeField(),
+  type: vocabularyField(DIVE_TYPES),
+  rating: ratingField(),
+  air_temperature: z.number().nullable().optional(),
+  current: vocabularyField(CURRENTS),
+  waves: vocabularyField(WAVES),
+  weather: vocabularyField(WEATHER),
+  entry_type: vocabularyField(ENTRY_TYPES),
+  boat_name: boatNameField(),
   // Kilograms. `min(0)` rather than `positive()`, unlike the depths above:
   // diving with no lead at all is a real entry, and it's worth distinguishing
   // from not having recorded it - mirrors `ck_dive_weight_non_negative`.
@@ -523,6 +585,7 @@ export const diveCreateSchema = z.object({
   dive_site_uuids: z.array(z.string()).default([]),
   gear_item_uuids: z.array(z.string()).default([]),
   sightings: z.array(sightingSchema).default([]),
+  tags: tagsField().default([]),
   notes: notesField().default(""),
   mixtures: z.array(diveMixtureSchema).default([]),
 });
@@ -552,8 +615,16 @@ export const diveUpdateSchema = z.object({
     .positive("Visibility must be positive")
     .nullable()
     .optional(),
-  water_type: waterTypeField(),
+  water_type: vocabularyField(WATER_TYPES),
   altitude: altitudeField(),
+  type: vocabularyField(DIVE_TYPES),
+  rating: ratingField(),
+  air_temperature: z.number().nullable().optional(),
+  current: vocabularyField(CURRENTS),
+  waves: vocabularyField(WAVES),
+  weather: vocabularyField(WEATHER),
+  entry_type: vocabularyField(ENTRY_TYPES),
+  boat_name: boatNameField(),
   weight: weightField(),
   // Nullable, not just optional: `null` is how the edit form says "detach this
   // dive from its trip". See `DiveUpdate.trip_uuid` in `lib/api/dives.ts`.
@@ -565,12 +636,22 @@ export const diveUpdateSchema = z.object({
   dive_site_uuids: z.array(z.string()).optional(),
   gear_item_uuids: z.array(z.string()).optional(),
   sightings: z.array(sightingSchema).optional(),
+  tags: tagsField().optional(),
   notes: notesField().optional(),
   mixtures: z.array(diveMixtureSchema).optional(),
 });
 
 export type DiveCreateInput = z.input<typeof diveCreateSchema>;
 export type DiveUpdateInput = z.input<typeof diveUpdateSchema>;
+
+/**
+ * The boat's name as the API takes it: trimmed, and `null` for a box holding
+ * nothing once trimmed, which the API would refuse.
+ */
+export function boatNameOrNull(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
 
 // Turns the edit form's values into the PATCH body for `divesAPI.updateDive`.
 //
@@ -618,6 +699,29 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
     update.water_type = data.water_type === "" ? null : data.water_type;
   }
   if (data.altitude !== undefined) update.altitude = data.altitude;
+  // The other selects, the same way and for the same reason.
+  if (data.type !== undefined) {
+    update.type = data.type === "" ? null : data.type;
+  }
+  if (data.current !== undefined) {
+    update.current = data.current === "" ? null : data.current;
+  }
+  if (data.waves !== undefined) {
+    update.waves = data.waves === "" ? null : data.waves;
+  }
+  if (data.weather !== undefined) {
+    update.weather = data.weather === "" ? null : data.weather;
+  }
+  if (data.entry_type !== undefined) {
+    update.entry_type = data.entry_type === "" ? null : data.entry_type;
+  }
+  if (data.rating !== undefined) update.rating = data.rating;
+  if (data.air_temperature !== undefined) {
+    update.air_temperature = data.air_temperature;
+  }
+  if (data.boat_name !== undefined) {
+    update.boat_name = boatNameOrNull(data.boat_name);
+  }
   if (data.weight !== undefined) update.weight = data.weight;
   if (data.trip_uuid !== undefined) update.trip_uuid = data.trip_uuid;
   if (data.course_uuid !== undefined) update.course_uuid = data.course_uuid;
@@ -630,6 +734,7 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
     update.gear_item_uuids = data.gear_item_uuids;
   }
   if (data.sightings !== undefined) update.sightings = data.sightings;
+  if (data.tags !== undefined) update.tags = data.tags;
   if (data.notes !== undefined) update.notes = data.notes;
   if (data.mixtures !== undefined) {
     update.mixtures = normalizeMixtures(data.mixtures);
