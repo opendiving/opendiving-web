@@ -575,12 +575,12 @@ export default async function PrivacyPage() {
                 shared logs, and the people you record are your own notes about
                 them rather than a connection between two accounts. Another
                 diver with an account on this same copy cannot see any dive,
-                dive site, trip, gear item, course, certification, contact or
-                person of yours. What does cross between accounts, when you link
-                a person to one, runs towards you and is small: that an account
-                with the username you typed, or with the identifier a file you
-                imported carried, exists here; what its username is now; and, in
-                your own export, its identifier.
+                dive site, trip, gear item, course, certification, contact,
+                person or tag of yours. What does cross between accounts, when
+                you link a person to one, runs towards you and is small: that an
+                account with the username you typed, or with the identifier a
+                file you imported carried, exists here; what its username is
+                now; and, in your own export, its identifier.
               </p>
               <p className="text-foreground mb-4">
                 There are three exceptions. The first is not about anything you
