@@ -209,8 +209,8 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   label: string;
   group: DiveFormFieldGroup;
 }[] = [
-  // Form order, which is the invariant above: Start time is its own row, and Dive
-  // number and Duration are the pair below it, left to right.
+  // Form order, which is the invariant above: Start time is its own row under Dive
+  // type, and Dive number and Duration are the pair below it, left to right.
   { label: "Start time", group: "Dive info" },
   { label: "Dive number", group: "Dive info" },
   { label: "Duration", group: "Dive info" },

@@ -35,7 +35,9 @@ const SWITCH_LABEL = "font-normal leading-5";
 /**
  * The hideable field a group lists ahead of everything else, where it has one.
  *
- * Only `mixtures` does. It is the switch that decides whether the Tanks section
+ * `type` leads Dive info because the form renders it first, above the always-on rows.
+ *
+ * `mixtures` is the switch that decides whether the Tanks section
  * is on the form at all, and every other row in that group is downstream of it - the
  * always-on cylinder columns as much as the per-cylinder ones, which this list disables
  * outright while it is off. Listing it after them would put the reason
@@ -48,6 +50,7 @@ const SWITCH_LABEL = "font-normal leading-5";
 const LEADING_GROUP_FIELD: Partial<
   Record<DiveFormFieldGroup, DiveFormFieldKey>
 > = {
+  "Dive info": "type",
   Tanks: "mixtures",
 };
 

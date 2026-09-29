@@ -84,6 +84,12 @@ import type {
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveFormSection } from "@/components/dives/dive-form-section";
 
+// Freediving and snorkeling stay in the vocabulary, which a stored dive can hold,
+// but the form does not offer them yet.
+const OFFERED_DIVE_TYPES = DIVE_TYPES.filter(
+  (type) => type !== "freedive" && type !== "snorkel",
+);
+
 // What a contact created from the dive form starts as.
 const DIVE_CENTER: readonly ContactRole[] = ["dive_center"];
 
@@ -470,6 +476,22 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
       {section(
         "Dive info",
         <>
+          {/* What kind of dive it was, first: it frames every fact below it. Half
+          width in a grid of its own, for the reason Weight is: a select as wide as
+          the form is wider than anything it offers. */}
+          {isVisible("type") && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <DiveVocabularyField
+                control={control}
+                name={"type" as Path<TFieldValues>}
+                label="Dive type"
+                icon={Shapes}
+                values={OFFERED_DIVE_TYPES}
+                labels={DIVE_TYPE_LABELS}
+              />
+            </div>
+          )}
+
           {/* Date and Time */}
           <FormField
             control={control}
@@ -562,23 +584,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               )}
             />
           </div>
-
-          {/* What kind of dive it was, with the dive's own facts rather than among
-          the readings below it. Half width in a grid of its own, for the reason
-          Weight is: a select as wide as the form is wider than anything it
-          offers. */}
-          {isVisible("type") && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <DiveVocabularyField
-                control={control}
-                name={"type" as Path<TFieldValues>}
-                label="Dive type"
-                icon={Shapes}
-                values={DIVE_TYPES}
-                labels={DIVE_TYPE_LABELS}
-              />
-            </div>
-          )}
 
           {/* The depths, the pair that closes the dive's own facts. A lone survivor
           sits half-width rather than spanning: see the readings grid below. */}
