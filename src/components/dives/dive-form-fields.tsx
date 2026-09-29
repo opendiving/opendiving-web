@@ -288,7 +288,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         isVisible("entry_type") ||
         showBoatName) &&
         section(
-          "Trip, course & site",
+          "Context",
           <>
             {/* Trip & Course, a pair in a two-column grid so each keeps the same column
           width, gap and label rhythm as every other row in this form.
@@ -927,7 +927,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           />,
         )}
 
-      {/* Gear & weight - grouped as "how the diver was configured for this
+      {/* Gear, weight included - grouped as "how the diver was configured for this
           dive", as opposed to the environment readings above. Weight is a plain
           per-dive number rather than one of the gear items (see DECISIONS.md),
           but it belongs next to them here.
@@ -945,7 +945,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           `shouldUnregister: false`. */}
       {(isVisible("gear_item_uuids") || isVisible("weight")) &&
         section(
-          "Gear & weight",
+          "Gear",
           <FormField
             control={control}
             name={"weight" as Path<TFieldValues>}
