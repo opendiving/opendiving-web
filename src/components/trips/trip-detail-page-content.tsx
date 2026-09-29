@@ -18,6 +18,10 @@ import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
+import {
+  DeleteMenuItem,
+  ItemActionsMenu,
+} from "@/components/ui/item-actions-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
@@ -26,15 +30,7 @@ import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import {
-  BedDouble,
-  Edit,
-  Trash2,
-  Plus,
-  Calendar,
-  MapPin,
-  Loader2,
-} from "lucide-react";
+import { BedDouble, Edit, Plus, Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -188,18 +184,12 @@ export function TripDetailPageContent() {
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => del.requestDelete(trip.uuid)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Delete
-            </Button>
+            <ItemActionsMenu>
+              <DeleteMenuItem
+                onSelect={() => del.requestDelete(trip.uuid)}
+                disabled={isDeleting}
+              />
+            </ItemActionsMenu>
           </>
         }
       />

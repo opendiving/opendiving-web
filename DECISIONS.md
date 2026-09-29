@@ -503,7 +503,8 @@ holds the `useFieldArray` generic parameter and cast in one place. `DiveFormCard
 (`dive-form-card.tsx`) wraps `Card`/`Form`/`form` + `DiveFileImport` + `DiveFormFields` +
 `DiveFormActions`; the per-page inputs are `mode`, `onSubmit`, `cancelHref`, `submittingLabel` and
 `submitLabel`. `PageHeader` (`components/ui/page-header.tsx`) is the resource-agnostic back-button +
-title/subtitle block, with an optional `actions` slot for the `[id]` detail pages' Edit/Delete row.
+title/subtitle block, with an optional `actions` slot on the back link's row for the `[id]` detail
+pages' Edit button and `ItemActionsMenu`.
 
 `PageSpinner` (`components/ui/page-spinner.tsx`) is the full-viewport `min-h-screen` `<Loader2>` for
 the top-level auth-loading gate. The list and detail pages render below `AppShell`'s header and
@@ -5513,16 +5514,15 @@ row. `layout.render.test.tsx` holds the second `getTrip` unresolved to pin it.
 ## The adjacent-dive pager is two buttons on the title line, and the title row wraps on a phone
 
 The adjacent-dive pager is `‹ Previous` and `Next ›`, two `outline`/`sm` buttons on the title's line
-after the dive number, opposite Edit and Delete, not chevrons inside the date subtitle, which read
-as punctuation and split on wrap. The back link's row is rejected: right-aligned there, `Next ›`
-sits one button-height from `Delete`, the control never hit by accident. The title row is
-`flex-wrap` for five-digit numbers on a phone. `PageHeader` has a `nav` slot and stacks its title
-row below `sm`; `subtitle` stays `ReactNode` for `DetailPageSkeleton`. Labels are fixed words, never
-the neighbour's date: neighbours arrive by a second request while the component stays mounted, so a
-derived label would empty mid-click. The date rides `aria-label` and `title`
-(`Previous dive: #11, Apr 3, 2021`), the visible word starting that string (WCAG 2.5.3), inside a
-`<nav aria-label="Adjacent dives">`. `dive-neighbor-nav.tsx` exports `DiveNeighborNav`; the subtitle
-is plain text from `formatDiveStartTime`.
+after the dive number, not chevrons inside the date subtitle, which read as punctuation and split on
+wrap. The back link's row is rejected: right-aligned there, `Next ›` sits beside the menu holding
+`Delete`, the control never hit by accident. The title row is `flex-wrap` for five-digit numbers on
+a phone. `PageHeader` has a `nav` slot; `subtitle` stays `ReactNode` for `DetailPageSkeleton`.
+Labels are fixed words, never the neighbour's date: neighbours arrive by a second request while the
+component stays mounted, so a derived label would empty mid-click. The date rides `aria-label` and
+`title` (`Previous dive: #11, Apr 3, 2021`), the visible word starting that string (WCAG 2.5.3),
+inside a `<nav aria-label="Adjacent dives">`. `dive-neighbor-nav.tsx` exports `DiveNeighborNav`; the
+subtitle is plain text from `formatDiveStartTime`.
 
 ## Admin is superuser routes and web pages, not a panel
 
@@ -6065,10 +6065,10 @@ recordings with samples get a button, since one without answers 404 at
 
 ## Merge offers the two neighbours, and says what it does not combine
 
-`DiveMergeAction` in the dive page header offers exactly the dives from
+`DiveMergeAction` in the dive page's actions menu offers exactly the dives from
 `GET /dive/{uuid}/neighbors`: a computer that surfaced briefly logs one dive as two consecutive
 ones, and a second computer's record sits in the same place, so candidates are never more than one
-step away. It renders nothing on a dive with no recording, since the API refuses to merge a
+step away. The menu offers no Merge on a dive with no recording, since the API refuses to merge a
 hand-entered dive. The dialog says two things the word "merge" hides. Which dive survives is the
 server's answer — the earlier by the match gates' clock rule — so the action navigates to whatever
 comes back; the losing uuid is soft-deleted and would 404. And the oxygen-exposure readings are not

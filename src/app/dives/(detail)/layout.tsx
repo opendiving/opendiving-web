@@ -21,7 +21,12 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, Trash2, Loader2 } from "lucide-react";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+  DeleteMenuItem,
+  ItemActionsMenu,
+} from "@/components/ui/item-actions-menu";
+import { Edit, Merge } from "lucide-react";
 import { formatDiveStartTime } from "@/lib/date-time";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -235,18 +240,20 @@ export default function DiveDetailLayout({
         // date in the header and the clock it was on two scroll positions away.
         subtitle={formatDiveStartTime(dive.start_time)}
         // Beside the dive it steps away from, rather than inside the date line
-        // below it. The far end of this row is Delete, and the width between
-        // them is the point: a step is a thing you do repeatedly and quickly,
-        // and it should not share a corner with the button you must not miss.
+        // below it, and off the back link's row: a step is a thing you do
+        // repeatedly and quickly, and it should not share a corner with the
+        // menu that holds Delete.
         nav={
           <DiveNeighborNav diveUuid={dive.uuid} reloadToken={neighborsToken} />
         }
         actions={
           <>
-            {/* Before Edit rather than beside Delete: a merge is a repair to
-                what the computer recorded, which is the same kind of act as
-                editing, and the far corner belongs to the button you must not
-                miss. It renders nothing on a hand-logged dive. */}
+            <Button variant="outline" asChild>
+              <Link href={`/dives/${dive.uuid}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
             <DiveMergeAction
               dive={dive}
               reloadToken={neighborsToken}
@@ -254,25 +261,23 @@ export default function DiveDetailLayout({
                 refreshDive();
                 setNeighborsToken((count) => count + 1);
               }}
-            />
-            <Button variant="outline" asChild>
-              <Link href={`/dives/${dive.uuid}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => del.requestDelete(dive.uuid)}
-              disabled={isDeleting}
             >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
+              {(openMerge) => (
+                <ItemActionsMenu>
+                  {/* Absent on a hand-logged dive, or one with no neighbour. */}
+                  {openMerge && (
+                    <DropdownMenuItem onSelect={openMerge}>
+                      <Merge className="h-4 w-4 mr-2" />
+                      Merge
+                    </DropdownMenuItem>
+                  )}
+                  <DeleteMenuItem
+                    onSelect={() => del.requestDelete(dive.uuid)}
+                    disabled={isDeleting}
+                  />
+                </ItemActionsMenu>
               )}
-              Delete
-            </Button>
+            </DiveMergeAction>
           </>
         }
       />

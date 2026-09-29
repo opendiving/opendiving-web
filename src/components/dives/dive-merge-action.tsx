@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Merge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
@@ -23,6 +22,10 @@ interface DiveMergeActionProps {
   // The page's reload signal, shared with `DiveNeighborNav` - see that
   // component's prop for why the dive's uuid cannot carry it.
   reloadToken?: number;
+  // Renders the trigger - on the dive page, a menu item. It lives in a menu that
+  // unmounts on close, so the state and the dialog stay here and only the
+  // opener is handed out: `null` while there is nothing to merge with.
+  children: (openMerge: (() => void) | null) => ReactNode;
 }
 
 // How a neighbour is named in the dialog: the diver's own number and the day.
@@ -50,7 +53,7 @@ function neighborName(neighbor: DiveNeighbor): string {
  * the two, by the same clock rule the match gates use. So this navigates to
  * whichever came back rather than assuming it stayed put.
  *
- * Renders nothing for a dive with no recording. The API refuses to merge a
+ * Offers no opener for a dive with no recording. The API refuses to merge a
  * hand-entered dive - Subsurface's own rule - and an action that can only 422 is
  * not an action.
  */
@@ -58,6 +61,7 @@ export function DiveMergeAction({
   dive,
   onMerged,
   reloadToken = 0,
+  children,
 }: DiveMergeActionProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -89,7 +93,7 @@ export function DiveMergeAction({
           ),
         });
       } catch (error) {
-        // Silent, and the button simply doesn't appear. This is a shortcut for
+        // Silent, and the menu simply offers no Merge. This is a shortcut for
         // an occasional repair, not part of the dive the diver came to read.
         console.error("Failed to load neighbouring dives:", error);
       }
@@ -102,7 +106,7 @@ export function DiveMergeAction({
   }, [diveUuid, mergeable, reloadToken]);
 
   const neighbors = loaded?.diveUuid === diveUuid ? loaded.neighbors : [];
-  if (!mergeable || neighbors.length === 0) return null;
+  if (!mergeable || neighbors.length === 0) return children(null);
 
   const handleMerge = async () => {
     if (!chosen) return;
@@ -124,7 +128,7 @@ export function DiveMergeAction({
       // here would be a 404 on the next reload.
       if (result.dive.uuid === dive.uuid) {
         // Cleared before the page's `onMerged` bumps `reloadToken` and the
-        // effect refetches, so the button goes away for the one round trip
+        // effect refetches, so the offer goes away for the one round trip
         // rather than offering a list that is now wrong. The same
         // dead-until-known stance `DiveNeighborNav` takes, and for the same
         // reason: a control pointing somewhere that no longer exists is worse
@@ -151,16 +155,10 @@ export function DiveMergeAction({
 
   return (
     <>
-      <Button
-        variant="outline"
-        onClick={() => {
-          setChosen(neighbors.length === 1 ? neighbors[0] : null);
-          setIsOpen(true);
-        }}
-      >
-        <Merge className="h-4 w-4 mr-2" />
-        Merge
-      </Button>
+      {children(() => {
+        setChosen(neighbors.length === 1 ? neighbors[0] : null);
+        setIsOpen(true);
+      })}
 
       <ConfirmDialog
         open={isOpen}

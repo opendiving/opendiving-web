@@ -18,6 +18,11 @@ import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 import { GearServiceCard } from "@/components/gear/gear-service-card";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+  DeleteMenuItem,
+  ItemActionsMenu,
+} from "@/components/ui/item-actions-menu";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -25,14 +30,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import {
-  Edit,
-  Trash2,
-  Backpack,
-  Archive,
-  ArchiveRestore,
-  Loader2,
-} from "lucide-react";
+import { Edit, Backpack, Archive, ArchiveRestore } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 export function GearItemDetailPageContent() {
@@ -131,34 +129,27 @@ export function GearItemDetailPageContent() {
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <Button
-              variant="outline"
-              disabled={isArchiving}
-              onClick={() =>
-                gearItem.is_archived
-                  ? handleToggleArchived()
-                  : setIsArchiveConfirmOpen(true)
-              }
-            >
-              {gearItem.is_archived ? (
-                <ArchiveRestore className="h-4 w-4 mr-2" />
-              ) : (
-                <Archive className="h-4 w-4 mr-2" />
-              )}
-              {gearItem.is_archived ? "Unarchive" : "Archive"}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => del.requestDelete(gearItem.uuid)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Delete
-            </Button>
+            <ItemActionsMenu>
+              <DropdownMenuItem
+                disabled={isArchiving}
+                onSelect={() =>
+                  gearItem.is_archived
+                    ? handleToggleArchived()
+                    : setIsArchiveConfirmOpen(true)
+                }
+              >
+                {gearItem.is_archived ? (
+                  <ArchiveRestore className="h-4 w-4 mr-2" />
+                ) : (
+                  <Archive className="h-4 w-4 mr-2" />
+                )}
+                {gearItem.is_archived ? "Unarchive" : "Archive"}
+              </DropdownMenuItem>
+              <DeleteMenuItem
+                onSelect={() => del.requestDelete(gearItem.uuid)}
+                disabled={isDeleting}
+              />
+            </ItemActionsMenu>
           </>
         }
       />
