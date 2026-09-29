@@ -95,12 +95,14 @@ export const DEFAULT_TILE_ATTRIBUTION =
 /**
  * The styles this app ships, served from `public/basemap/`.
  *
- * OpenFreeMap's Liberty and Dark, vendored rather than fetched from
+ * OpenFreeMap's Liberty, vendored rather than fetched from
  * `tiles.openfreemap.org/styles/...` on purpose: the vendored copy is what keeps
  * the map looking the same after an upstream restyle, and a basemap that changes
- * appearance under the app is a regression nobody committed. They are also the
- * one part of this an operator can replace without a rebuild - they are static
- * files, not bundle contents.
+ * appearance under the app is a regression nobody committed.
+ * `scripts/generate-basemaps.mjs` recolours its water teal and derives the dark
+ * style from it by recolouring alone, so both themes label a place the same
+ * way. They are also the one part of this an operator can replace without a
+ * rebuild - they are static files, not bundle contents.
  */
 export const DEFAULT_STYLE_URL = "/basemap/liberty.json";
 export const DEFAULT_STYLE_URL_DARK = "/basemap/dark.json";

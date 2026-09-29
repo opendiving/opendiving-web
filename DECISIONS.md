@@ -2709,7 +2709,7 @@ the map emitted from one typed into the coordinate fields, plus the gestures tha
 `LocationsMap` emits nothing: give it locations, it draws them.
 
 Pins are `bg-coral`, not `bg-primary`: primary is near-black in light and mid-grey in dark,
-invisible on Dark Matter tiles, and coral is the one accent constant across themes.
+invisible on the dark basemap's grey land, and coral is the one accent constant across themes.
 
 The attribution overlay sits outside the `role="img"` surface, so the frame is two nested elements:
 a link inside an image role drops out of the accessibility tree.
@@ -4908,16 +4908,15 @@ watermarked `@2x` tile is a valid PNG at a plausible ~2.5× the plain size, so
 a raster template is MapLibre's `{ratio}`; see "The basemap is a MapLibre style, and raster is the
 escape hatch".
 
-## The default basemap is OpenStreetMap's own, and the dark theme is a CSS filter
+## No keyless raster basemap is fit for a default
 
-The default basemap is OpenFreeMap's Liberty and Dark, per "The basemap is a MapLibre style, and
-raster is the escape hatch". The raster escape hatch documents a key because no keyless raster
-provider is fit for a default. Surveyed at one decoded tile (z10/608/432, Safaga) from three
-`Referer` values: Carto watermarks every style, `rastertiles/voyager` included;
-`tile.openstreetmap.org` and its DE, France, CyclOSM and OpenTopoMap mirrors are clean and labelled
-but have no dark variant and no `@2x`; Esri Canvas's Reference layer is a blank tile, so no place
-names; Stadia `alidade_smooth` answers 200 only to `Referer: http://localhost:3000/` and 401
-otherwise; Wikimedia `osm-intl` 403s off-domain.
+The default basemap is OpenFreeMap's Liberty, per "The basemap is a MapLibre style, and raster is
+the escape hatch". The raster escape hatch documents a key because no keyless raster provider is fit
+for a default. Surveyed at one decoded tile (z10/608/432, Safaga) from three `Referer` values: Carto
+watermarks every style, `rastertiles/voyager` included; `tile.openstreetmap.org` and its DE, France,
+CyclOSM and OpenTopoMap mirrors are clean and labelled but have no dark variant and no `@2x`; Esri
+Canvas's Reference layer is a blank tile, so no place names; Stadia `alidade_smooth` answers 200
+only to `Referer: http://localhost:3000/` and 401 otherwise; Wikimedia `osm-intl` 403s off-domain.
 
 Keyed Carto stays in `.env.example`, `{r}` included. `MAP_TILE_API_KEY` fills a `{key}` placeholder
 in both templates, so the credential is written once and each provider's parameter spelling (`?key=`
@@ -5015,10 +5014,10 @@ interceptor turns the refused refresh into `AUTH_SESSION_EXPIRED_EVENT`.
 
 ## The basemap is a MapLibre style, and raster is the escape hatch
 
-The default basemap is a MapLibre vector style, OpenFreeMap's Liberty and Dark: their labels render
-bilingually (Safaga over سفاجا), which no keyless raster basemap does. Liberty over Positron, whose
-sea is grey. Style and sprites are vendored; glyphs are hotlinked, since `glyphs` is one URL
-template per style and CJK is 89.9 MB.
+The default basemap is a MapLibre vector style, OpenFreeMap's Liberty: its labels render bilingually
+(Safaga over سفاجا), which no keyless raster basemap does. Liberty over Positron, whose sea is grey.
+Style and sprites are vendored; glyphs are hotlinked, since `glyphs` is one URL template per style
+and CJK is 89.9 MB.
 
 Raster is configuration: `rasterStyle` wraps `MAP_TILE_URL` into a one-source style with `tileSize`
 256 (spec default 512) and renames `.env.example`'s `{r}` to MapLibre's `{ratio}`, since a literal
@@ -5029,6 +5028,28 @@ the app refuses to serve: the request path may not fetch a remote style, a defau
 and no credit breaches the licence. Lazy `runtimeConfig()` throws on the first request, so pages 500
 while `/healthz` and the `Dockerfile` `HEALTHCHECK` stay green. The unset default and raster mode
 stay silent; `runtime-config.test.ts` pins all three.
+
+## The dark basemap is Liberty recoloured, not a second style
+
+`public/basemap/dark.json` is generated from `liberty.json` by `scripts/generate-basemaps.mjs`,
+which rewrites paint colours and nothing else, so both themes label a place identically. A
+separately designed dark style, OpenFreeMap's Dark included, is rejected: it labels by its own rules
+— other place classes, case and sizes — so a theme switch changes what the map says.
+`basemap.test.ts` fails when the two differ outside `paint`, and runs the script's `--check`, which
+fails when either file is not what the script would write — a re-vendor that skipped it included.
+
+Land is a mid grey, lighter than the dark `--card` so the frame reads as a map rather than a hole;
+water sits on `teal`'s hue and lighter than land, which reads more clearly than the night-map
+convention of darker water. Colours move in OKLCH, mirrored about land, so each of Liberty's
+contrasts keeps its direction.
+
+## Liberty's water is recoloured teal, and nothing else of it
+
+The same script rewrites the water fill, river lines and water labels of
+`public/basemap/liberty.json` in place before deriving the dark style. Liberty's periwinkle (OKLCH
+chroma 0.10) outweighs every other fill, whose pastels sit around 0.03–0.06; its replacement shares
+`teal`'s hue at that saturation, as the dark water does. A re-vendor overwrites the edit, so the
+script runs after every re-vendor.
 
 ## The worker is same-origin, and `worker-src 'self'` is what makes the blob path fail loudly
 

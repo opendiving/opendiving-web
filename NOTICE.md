@@ -65,19 +65,22 @@ checkout will not find them.
 
 <https://openfreemap.org>
 
-`public/basemap/liberty.json`, `public/basemap/dark.json` and the shared sprite set under
-`public/basemap/sprite/` are OpenFreeMap's Liberty and Dark styles, vendored so the map's appearance
-cannot change under the app after an upstream restyle (see `DECISIONS.md`). They come from
+`public/basemap/liberty.json` and the sprite set under `public/basemap/sprite/` are OpenFreeMap's
+Liberty style, vendored so the map's appearance cannot change under the app after an upstream
+restyle (see `DECISIONS.md`). They come from
 [hyperknot/openfreemap-styles](https://github.com/hyperknot/openfreemap-styles), whose own licence
-is MIT, © 2023 Zsolt Ero; the two JSON files are what `https://tiles.openfreemap.org/styles/liberty`
-and `.../dark` serve, unchanged except for the `sprite` URL, which is repointed at the vendored
-copy, and all four sprite files are byte-identical to
-`https://tiles.openfreemap.org/sprites/ofm_f384/` — `ofm.png`, `ofm@2x.png` and the two `.json`
-manifests beside them.
+is MIT, © 2023 Zsolt Ero; `liberty.json` is what `https://tiles.openfreemap.org/styles/liberty`
+serves with two changes: the `sprite` URL is repointed at the vendored copy, and
+`scripts/generate-basemaps.mjs` recolours the water, river lines and water labels teal. All four
+sprite files are byte-identical to `https://tiles.openfreemap.org/sprites/ofm_f384/` — `ofm.png`,
+`ofm@2x.png` and the two `.json` manifests beside them.
+
+`public/basemap/dark.json` is a further modified Liberty: the same script rewrites its paint colours
+and changes nothing else, so it carries Liberty's licences below.
 
 The vendored files themselves carry no licence metadata — style JSON has nowhere to put a comment —
-so this entry is where it lives. Each style is a fork with two licences, one for the code and one
-for the look:
+so this entry is where it lives. Liberty is a fork with two licences, one for the code and one for
+the look:
 
 - **Liberty** is forked from [maputnik/osm-liberty](https://github.com/maputnik/osm-liberty), itself
   a fork of the OSM Bright GL Style, derived from
@@ -85,11 +88,6 @@ for the look:
   copyright (c) 2014, Mapbox, all rights reserved". The style JSON is under the **3-Clause BSD
   License**; the design is under **CC BY**, 3.0 upstream at Mapbox and 4.0 as redistributed by
   OpenMapTiles and OpenFreeMap.
-- **Dark** is forked from
-  [openmaptiles/dark-matter-gl-style](https://github.com/openmaptiles/dark-matter-gl-style) —
-  "Copyright (c) 2024, MapTiler.com & OpenMapTiles contributors. Copyright (c) 2015, CartoDB Inc.",
-  derived from CartoDB Basemaps designed by Stamen and Paul Norman for CartoDB Inc. under CC BY 3.0.
-  Code under the **3-Clause BSD License**, design under **CC BY 4.0**.
 - **The sprite set** is built by openfreemap-styles from the
   [Maki POI icon set](https://github.com/mapbox/maki/blob/master/LICENSE.txt), which is CC0 1.0
   Universal, plus a right-arrow derived from
@@ -123,9 +121,8 @@ conditions are reproduced here because the JSON cannot carry them, and this file
 
 The full upstream texts are
 [openfreemap-styles](https://github.com/hyperknot/openfreemap-styles/blob/main/LICENSE.md),
-[osm-liberty](https://github.com/maputnik/osm-liberty/blob/gh-pages/LICENSE.md),
-[dark-matter-gl-style](https://github.com/openmaptiles/dark-matter-gl-style/blob/master/LICENSE.md)
-and [Mapbox Open Styles](https://github.com/mapbox/mapbox-gl-styles/blob/master/LICENSE.md).
+[osm-liberty](https://github.com/maputnik/osm-liberty/blob/gh-pages/LICENSE.md) and
+[Mapbox Open Styles](https://github.com/mapbox/mapbox-gl-styles/blob/master/LICENSE.md).
 
 **CC BY is satisfied on the map itself, not here.** These are style definitions, not map data, and
 both the design licence and OpenMapTiles' own terms ask for a credit reachable from the map rather
