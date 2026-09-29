@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Layers, Loader2, Plus, Trash2 } from "lucide-react";
+import { Copy, Edit, Layers, Loader2, Plus, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useUnits } from "@/hooks/useUnits";
 import { formatWeight } from "@/lib/units";
@@ -40,6 +40,7 @@ export interface GearSetsCardProps {
   onLoadMore: () => void;
   onCreate: () => void;
   onEdit: (set: GearSet) => void;
+  onDuplicate: (set: GearSet) => void;
   deletingId: string | null;
   onDelete: (uuid: string) => void;
 }
@@ -61,6 +62,7 @@ export function GearSetsCard({
   onLoadMore,
   onCreate,
   onEdit,
+  onDuplicate,
   deletingId,
   onDelete,
 }: GearSetsCardProps) {
@@ -139,6 +141,15 @@ export function GearSetsCard({
                           onClick={() => onEdit(set)}
                         >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                      </IconTooltip>
+                      <IconTooltip label={`Duplicate ${set.name}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDuplicate(set)}
+                        >
+                          <Copy className="h-4 w-4" />
                         </Button>
                       </IconTooltip>
                       <IconTooltip label={`Delete ${set.name}`}>

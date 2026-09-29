@@ -23,9 +23,12 @@ export function GearPageContent() {
   const [editingItem, setEditingItem] = useState<GearItem | null | undefined>(
     null,
   );
-  const [editingSet, setEditingSet] = useState<GearSet | null | undefined>(
-    null,
-  );
+  // `null` = the set dialog is closed; otherwise the props it opens with, so
+  // `{}` creates, `{ gearSet }` edits and `{ duplicateOf }` creates a copy.
+  const [setDialog, setSetDialog] = useState<{
+    gearSet?: GearSet;
+    duplicateOf?: GearSet;
+  } | null>(null);
   const [archivingItem, setArchivingItem] = useState<GearItem | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
 
@@ -216,8 +219,9 @@ export function GearPageContent() {
           itemsPerPage: setsPerPage,
           hasMore: setsHaveMore,
           onLoadMore: loadMoreSets,
-          onCreate: () => setEditingSet(undefined),
-          onEdit: setEditingSet,
+          onCreate: () => setSetDialog({}),
+          onEdit: (gearSet) => setSetDialog({ gearSet }),
+          onDuplicate: (duplicateOf) => setSetDialog({ duplicateOf }),
           deletingId: deletingSetId,
           onDelete: requestDeleteSet,
         }}
@@ -231,9 +235,10 @@ export function GearPageContent() {
       />
 
       <GearSetDialog
-        open={editingSet !== null}
-        onOpenChange={(open) => !open && setEditingSet(null)}
-        gearSet={editingSet}
+        open={setDialog !== null}
+        onOpenChange={(open) => !open && setSetDialog(null)}
+        gearSet={setDialog?.gearSet}
+        duplicateOf={setDialog?.duplicateOf}
         onSaved={reloadSets}
       />
 
