@@ -105,7 +105,14 @@ vi.mock("@/lib/api/gear", async (importOriginal) => {
   };
 });
 
+// The tag picker completes from one read of the diver's whole list.
+vi.mock("@/lib/api/tags", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/tags")>();
+  return { ...actual, fetchAllTags: vi.fn() };
+});
+
 const { authAPI } = await import("@/lib/api/auth");
+const tags = await import("@/lib/api/tags");
 const presets = await import("@/lib/api/dive-form-presets");
 const { tripsAPI } = await import("@/lib/api/trips");
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
@@ -152,6 +159,7 @@ beforeEach(() => {
     results: [],
     has_more: false,
   });
+  vi.mocked(tags.fetchAllTags).mockResolvedValue([]);
 });
 
 // The Fields control is a menu now, and the switches live behind its last entry.
@@ -176,6 +184,71 @@ const inFieldsPanel = () => within(screen.getByRole("dialog"));
 
 const saveChanges = () =>
   userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+
+describe("a dive's classification and conditions", () => {
+  const CLASSIFIED = {
+    type: "closed_circuit",
+    rating: 4,
+    tags: ["night", "Wreck"],
+    air_temperature: 24,
+    current: "strong",
+    waves: "slight",
+    weather: "overcast",
+    entry_type: "boat",
+    boat_name: "Legend",
+  } as const;
+
+  it("shows every control as the dive holds it", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ ...CLASSIFIED, tags: [...CLASSIFIED.tags] }),
+    );
+    render(<EditDivePage />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^dive type$/i)).toHaveValue(
+        "closed_circuit",
+      ),
+    );
+    expect(screen.getByRole("radio", { name: "4 stars" })).toBeChecked();
+    expect(
+      screen.getByRole("spinbutton", { name: /^air temperature/i }),
+    ).toHaveValue(24);
+    expect(screen.getByLabelText(/^current$/i)).toHaveValue("strong");
+    expect(screen.getByLabelText(/^waves$/i)).toHaveValue("slight");
+    expect(screen.getByLabelText(/^weather$/i)).toHaveValue("overcast");
+    expect(screen.getByLabelText(/^entry type$/i)).toHaveValue("boat");
+    expect(screen.getByLabelText(/^boat name$/i)).toHaveValue("Legend");
+    expect(
+      screen.getByRole("button", { name: "Remove night" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Wreck" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sends a cleared rating, an emptied boat name and a removed tag as what they now are", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ ...CLASSIFIED, tags: [...CLASSIFIED.tags] }),
+    );
+    render(<EditDivePage />);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^boat name$/i)).toHaveValue("Legend"),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear rating" }));
+    await userEvent.clear(screen.getByLabelText(/^boat name$/i));
+    await userEvent.click(screen.getByRole("button", { name: "Remove Wreck" }));
+    await saveChanges();
+
+    await waitFor(() => expect(divesAPI.updateDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.updateDive).mock.calls[0][1]).toMatchObject({
+      rating: null,
+      boat_name: null,
+      tags: ["night"],
+      type: "closed_circuit",
+    });
+  });
+});
 
 describe("a dive whose fields the diver keeps hidden", () => {
   it("shows the notes it records, and says why they are on screen", async () => {

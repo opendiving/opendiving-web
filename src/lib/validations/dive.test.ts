@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  RATING_MAX,
+  RATING_MIN,
   SIGHTING_COUNT_MAX,
+  boatNameOrNull,
   buildDiveUpdate,
   diveCreateSchema,
   diveMixtureSchema,
@@ -11,11 +14,17 @@ import {
 } from "./dive";
 import { NOTES_MAX_LENGTH } from "./notes";
 import {
+  CURRENTS,
+  DIVE_TYPES,
+  ENTRY_TYPES,
   WATER_TYPES,
+  WAVES,
+  WEATHER,
   type Dive,
   type DiveMixture,
   type Sighting,
 } from "@/lib/api/dives";
+import { TAG_NAME_MAX } from "@/lib/api/tags";
 
 const validDive = {
   dive_number: 1,
@@ -274,6 +283,119 @@ describe("diveCreateSchema water_type", () => {
 
   it("accepts an explicit null, which is how the field is cleared", () => {
     expect(diveUpdateSchema.safeParse({ water_type: null }).success).toBe(true);
+  });
+});
+
+// The water type's guard, once per vocabulary the dive gained beside it: each is a
+// hand-kept mirror of an API enum, so the schema has to take every member the
+// picker offers, the picker's own `""`, and a PATCH's `null`, and nothing else.
+describe.each([
+  ["type", DIVE_TYPES],
+  ["current", CURRENTS],
+  ["waves", WAVES],
+  ["weather", WEATHER],
+  ["entry_type", ENTRY_TYPES],
+] as const)("diveCreateSchema %s", (field, values) => {
+  it("accepts every member of the API's vocabulary", () => {
+    for (const value of values) {
+      expect(
+        diveCreateSchema.safeParse({ ...validDive, [field]: value }).success,
+      ).toBe(true);
+    }
+  });
+
+  it("accepts the cleared select's empty string", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, [field]: "" }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a value outside the vocabulary", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, [field]: "other" }).success,
+    ).toBe(false);
+  });
+
+  it("accepts an explicit null, which is how the field is cleared", () => {
+    expect(diveUpdateSchema.safeParse({ [field]: null }).success).toBe(true);
+  });
+});
+
+describe("diveCreateSchema rating", () => {
+  // Mirrors the API's `ck_dive_rating_range`, so the form says no before the
+  // database does.
+  it("accepts every step from one to five", () => {
+    for (let rating = RATING_MIN; rating <= RATING_MAX; rating += 1) {
+      expect(diveCreateSchema.safeParse({ ...validDive, rating }).success).toBe(
+        true,
+      );
+    }
+  });
+
+  it("rejects zero, which is not how an unrated dive is spelled", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, rating: 0 }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a sixth star and half a star", () => {
+    for (const rating of [6, 3.5]) {
+      expect(diveCreateSchema.safeParse({ ...validDive, rating }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it("accepts null, which is unrated", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, rating: null }).success,
+    ).toBe(true);
+  });
+});
+
+describe("diveCreateSchema boat_name and tags", () => {
+  it("accepts an empty boat name, which is none", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, boat_name: "" }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a boat name past the API's 255 characters", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, boat_name: "x".repeat(256) })
+        .success,
+    ).toBe(false);
+  });
+
+  it("accepts a tag at the API's bound, counted in code points", () => {
+    // Sixty-four whales are 128 UTF-16 units and 64 characters to the API.
+    expect(
+      diveCreateSchema.safeParse({
+        ...validDive,
+        tags: ["🐋".repeat(TAG_NAME_MAX)],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a tag past it, with one message for the list", () => {
+    const result = diveCreateSchema.safeParse({
+      ...validDive,
+      tags: ["night", "x".repeat(TAG_NAME_MAX + 1)],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toEqual([["tags"]]);
+  });
+});
+
+describe("boatNameOrNull", () => {
+  it("trims a name", () => {
+    expect(boatNameOrNull("  Legend ")).toBe("Legend");
+  });
+
+  // The API trims and then refuses a blank name, so a box of spaces is none.
+  it("reads a box holding nothing but spaces as no name", () => {
+    expect(boatNameOrNull("   ")).toBeNull();
+    expect(boatNameOrNull("")).toBeNull();
   });
 });
 
@@ -911,6 +1033,60 @@ describe("buildDiveUpdate", () => {
     );
   });
 
+  it("sends an explicit null for every cleared select, as for the water", () => {
+    const update = buildDiveUpdate({
+      type: "",
+      current: "",
+      waves: "",
+      weather: "",
+      entry_type: "",
+    });
+    expect(update).toEqual({
+      type: null,
+      current: null,
+      waves: null,
+      weather: null,
+      entry_type: null,
+    });
+  });
+
+  it("sends chosen values through unchanged", () => {
+    expect(
+      buildDiveUpdate({
+        type: "closed_circuit",
+        current: "strong",
+        waves: "slight",
+        weather: "overcast",
+        entry_type: "boat",
+        rating: 4,
+        air_temperature: 24,
+        tags: ["night"],
+      }),
+    ).toEqual({
+      type: "closed_circuit",
+      current: "strong",
+      waves: "slight",
+      weather: "overcast",
+      entry_type: "boat",
+      rating: 4,
+      air_temperature: 24,
+      tags: ["night"],
+    });
+  });
+
+  it("sends a cleared rating and an emptied boat name as nulls", () => {
+    expect(buildDiveUpdate({ rating: null, boat_name: "  " })).toEqual({
+      rating: null,
+      boat_name: null,
+    });
+  });
+
+  it("sends the tags whole, an emptied list included", () => {
+    // `[]` removes them all; an omitted key would leave them.
+    expect(buildDiveUpdate({ tags: [] })).toEqual({ tags: [] });
+    expect(buildDiveUpdate({})).not.toHaveProperty("tags");
+  });
+
   it("distinguishes a cleared altitude from an untouched one", () => {
     expect(buildDiveUpdate({ altitude: null }).altitude).toBeNull();
     expect(buildDiveUpdate({ altitude: 372 }).altitude).toBe(372);
@@ -1122,6 +1298,30 @@ describe("diveToFormValues", () => {
     const update = buildDiveUpdate(seeded);
     expect(update.water_type).toBe("brackish");
     expect(update.altitude).toBe(0);
+  });
+
+  it("seeds an unrecorded select as its empty option, and a missing boat name as an empty box", () => {
+    const seeded = diveToFormValues({
+      ...DIVE,
+      type: null,
+      current: null,
+      waves: null,
+      weather: null,
+      entry_type: null,
+      boat_name: null,
+      rating: null,
+    });
+
+    expect(seeded).toMatchObject({
+      type: "",
+      current: "",
+      waves: "",
+      weather: "",
+      entry_type: "",
+      boat_name: "",
+      rating: null,
+      tags: [],
+    });
   });
 
   it("turns a mixture's unrecorded fields into the form's cleared state", () => {

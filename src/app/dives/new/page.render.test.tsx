@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   act,
   fireEvent,
@@ -9,7 +9,21 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import NewDivePage from "./page";
-import { divesAPI, type Dive } from "@/lib/api/dives";
+import {
+  CURRENT_LABELS,
+  CURRENTS,
+  DIVE_TYPE_LABELS,
+  DIVE_TYPES,
+  divesAPI,
+  ENTRY_TYPE_LABELS,
+  ENTRY_TYPES,
+  WAVES,
+  WAVES_LABELS,
+  WEATHER,
+  WEATHER_LABELS,
+  type Dive,
+} from "@/lib/api/dives";
+import type { Tag } from "@/lib/api/tags";
 import type { Species } from "@/lib/api/species";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
@@ -19,6 +33,7 @@ import {
   DIVE_FORM_FIELDS,
 } from "@/lib/dive-form-fields";
 import { SAVE_DEBOUNCE_MS } from "@/hooks/useDiveFormVisibility";
+import { clearEntryUnits } from "@/lib/entry-units";
 
 // The seam this covers is the page's own seeding, which no unit test can reach: the
 // form's `defaultValues` and the last-dive prefill both decide what `mixtures` holds
@@ -201,7 +216,14 @@ vi.mock("@/lib/api/people", async (importOriginal) => {
   };
 });
 
+// The tag picker completes from one read of the diver's whole list.
+vi.mock("@/lib/api/tags", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/tags")>();
+  return { ...actual, fetchAllTags: vi.fn() };
+});
+
 const { authAPI } = await import("@/lib/api/auth");
+const tags = await import("@/lib/api/tags");
 const { coursesAPI } = await import("@/lib/api/courses");
 const { contactsAPI } = await import("@/lib/api/contacts");
 const people = await import("@/lib/api/people");
@@ -279,6 +301,15 @@ const INSTRUCTOR = personNamed("person-instructor", "Ana Instructor");
 const CLASSMATE = personNamed("person-classmate", "Ben Classmate");
 const PEOPLE = [BUDDY, INSTRUCTOR, CLASSMATE];
 
+const tagNamed = (uuid: string, name: string, dive_count = 1): Tag => ({
+  uuid,
+  name,
+  dive_count,
+  created_at: "2026-01-01T00:00:00Z",
+});
+
+const TAGS = [tagNamed("tag-night", "night"), tagNamed("tag-drift", "drift")];
+
 const COURSES = [
   courseRun("course-9", "Advanced Open Water", COURSE_SHOP.uuid),
   courseRun("course-10", "Rescue Diver", OTHER_SHOP.uuid),
@@ -333,6 +364,7 @@ beforeEach(() => {
     return found;
   });
   vi.mocked(people.fetchAllPeople).mockResolvedValue(PEOPLE);
+  vi.mocked(tags.fetchAllTags).mockResolvedValue(TAGS);
   vi.mocked(people.peopleAPI.getPeople).mockResolvedValue({
     ...emptyPage<Person>(),
     data: PEOPLE,
@@ -664,7 +696,164 @@ describe("the water type on the way to the API", () => {
   });
 });
 
+// The water type's guard, once per vocabulary beside it: each select offers "Not
+// recorded" and then exactly the API's members, in its order.
+describe.each([
+  ["Dive type", DIVE_TYPES, DIVE_TYPE_LABELS],
+  ["Current", CURRENTS, CURRENT_LABELS],
+  ["Waves", WAVES, WAVES_LABELS],
+  ["Weather", WEATHER, WEATHER_LABELS],
+  ["Entry type", ENTRY_TYPES, ENTRY_TYPE_LABELS],
+] as const)("the %s select", (label, values, labels) => {
+  it("offers Not recorded, then every member of the API's vocabulary", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    const options = [
+      ...screen
+        .getByLabelText(new RegExp(`^${label}$`, "i"))
+        .querySelectorAll("option"),
+    ];
+
+    expect(options.map((option) => option.value)).toEqual(["", ...values]);
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Not recorded",
+      ...values.map((value) => (labels as Record<string, string>)[value]),
+    ]);
+  });
+});
+
+describe("the classification and conditions on the way to the API", () => {
+  it("sends no blank for a select left at Not recorded or an empty boat name", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    fillRequiredFields();
+
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    const body = vi.mocked(divesAPI.createDive).mock.calls[0][0];
+    for (const key of [
+      "type",
+      "current",
+      "waves",
+      "weather",
+      "entry_type",
+      "boat_name",
+    ] as const) {
+      expect(body[key]).toBeUndefined();
+    }
+    expect(body.tags).toEqual([]);
+  });
+
+  it("sends what the diver chose, the boat's name trimmed", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    fillRequiredFields();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/^dive type$/i),
+      "closed_circuit",
+    );
+    await userEvent.selectOptions(
+      screen.getByLabelText(/^current$/i),
+      "strong",
+    );
+    await userEvent.selectOptions(screen.getByLabelText(/^waves$/i), "slight");
+    await userEvent.selectOptions(
+      screen.getByLabelText(/^weather$/i),
+      "overcast",
+    );
+    await userEvent.selectOptions(
+      screen.getByLabelText(/^entry type$/i),
+      "boat",
+    );
+    fireEvent.change(screen.getByLabelText(/^boat name$/i), {
+      target: { value: "  Legend " },
+    });
+    await userEvent.click(screen.getByRole("radio", { name: "4 stars" }));
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0]).toMatchObject({
+      type: "closed_circuit",
+      current: "strong",
+      waves: "slight",
+      weather: "overcast",
+      entry_type: "boat",
+      boat_name: "Legend",
+      rating: 4,
+    });
+  });
+
+  it("takes a stored tag's spelling for one typed in another case, and adds a new one as typed", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    fillRequiredFields();
+
+    const picker = screen.getByRole("combobox", { name: /^tags$/i });
+    await userEvent.type(picker, "NIGHT{Enter}");
+    await userEvent.type(picker, "Wreck{Enter}");
+    // Twice is still once.
+    await userEvent.type(picker, "wreck{Enter}");
+
+    expect(
+      screen.getByRole("button", { name: "Remove night" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Wreck" }),
+    ).toBeInTheDocument();
+
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].tags).toEqual([
+      "night",
+      "Wreck",
+    ]);
+  });
+});
+
 describe("what the create form carries over from the last dive", () => {
+  it("carries the type, the entry and the boat, and none of the day's conditions", async () => {
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      ...emptyPage<Dive>(),
+      data: [storedDive()],
+      total_count: 1,
+    });
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        type: "closed_circuit",
+        entry_type: "boat",
+        boat_name: "Legend",
+        rating: 4,
+        tags: ["night"],
+        air_temperature: 24,
+        current: "strong",
+        waves: "slight",
+        weather: "overcast",
+      }),
+    );
+
+    render(<NewDivePage />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^dive type$/i)).toHaveValue(
+        "closed_circuit",
+      ),
+    );
+    expect(screen.getByLabelText(/^entry type$/i)).toHaveValue("boat");
+    expect(screen.getByLabelText(/^boat name$/i)).toHaveValue("Legend");
+    expect(screen.getByLabelText(/^current$/i)).toHaveValue("");
+    expect(screen.getByLabelText(/^waves$/i)).toHaveValue("");
+    expect(screen.getByLabelText(/^weather$/i)).toHaveValue("");
+    expect(screen.getByLabelText(/^air temperature/i)).toHaveValue(null);
+    expect(screen.getByRole("radio", { name: "4 stars" })).not.toBeChecked();
+    expect(
+      screen.queryByRole("button", { name: "Remove night" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("carries the gear but not the species", async () => {
     // Gear is habitual, sightings are observations: copying yesterday's turtle
     // into today's dive would fabricate a record of having seen it. The
@@ -1578,6 +1767,67 @@ describe("the depth entry-unit toggle", () => {
     expect(
       screen.getByRole("spinbutton", { name: /maximum depth/i }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("the temperature entry-unit toggle", () => {
+  // A press is remembered on this device, which here is every later test.
+  afterEach(clearEntryUnits);
+
+  const temperatureToggles = () =>
+    screen.queryAllByRole("button", { name: /switch temperature entry/i });
+  // The field whose label row carries the one toggle.
+  const toggledField = () => temperatureToggles()[0]?.closest("div.space-y-2");
+
+  it("sits on Bottom temperature, and only there, while both are shown", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(temperatureToggles()).toHaveLength(1);
+    expect(
+      within(toggledField() as HTMLElement).getByRole("spinbutton"),
+    ).toHaveAccessibleName(/bottom temperature/i);
+  });
+
+  it("moves onto Air temperature when Bottom temperature is hidden", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["bottom_temperature"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(temperatureToggles()).toHaveLength(1);
+    expect(
+      within(toggledField() as HTMLElement).getByRole("spinbutton"),
+    ).toHaveAccessibleName(/air temperature/i);
+  });
+
+  it("leaves the form with no temperature control when both are hidden", async () => {
+    stable.auth.user.dive_form_hidden_fields = [
+      "bottom_temperature",
+      "air_temperature",
+    ];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(temperatureToggles()).toHaveLength(0);
+  });
+
+  it("stores an air temperature typed in °F as °C", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["bottom_temperature"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    fillRequiredFields();
+
+    await userEvent.click(temperatureToggles()[0]);
+    await userEvent.type(
+      screen.getByRole("spinbutton", { name: /air temperature/i }),
+      "75",
+    );
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(
+      vi.mocked(divesAPI.createDive).mock.calls[0][0].air_temperature,
+    ).toBeCloseTo(23.89, 2);
   });
 });
 
