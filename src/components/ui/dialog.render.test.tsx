@@ -14,7 +14,7 @@ import {
 import { Input } from "./input";
 
 // A press on the scrim must not be able to discard a half-filled form, which is
-// the whole of what these cover. The opt-back-in case is the control: it proves
+// what the dismissal tests cover. The opt-back-in case is the control: it proves
 // the press below really reaches Radix's outside-interaction path, so the first
 // test cannot pass by never having clicked anything.
 
