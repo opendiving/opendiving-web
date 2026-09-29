@@ -9,9 +9,9 @@ import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
  * field changes what the diver sees and leaves the preset alone until they write it
  * back with `updatePreset`.
  *
- * `hidden_fields` always comes back canonical - form order, duplicates collapsed -
- * which is what lets the panel decide which preset matches the current state by
- * comparing lists (`hiddenFieldsEqual`).
+ * `hidden_fields` comes back de-duplicated in the API's own order; `hiddenFieldsEqual`
+ * puts both sides in form order before comparing, which is what lets the panel decide
+ * which preset matches the current state by comparing lists.
  */
 export interface DiveFormPreset {
   uuid: string;

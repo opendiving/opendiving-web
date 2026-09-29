@@ -40,7 +40,7 @@ import {
   MapPin,
   Mountain,
   Phone,
-  Sailboat,
+  Ship,
   Thermometer,
   ThermometerSun,
   Waves,
@@ -161,9 +161,12 @@ export function DiveDetailSidebar({
     dive.current != null ||
     dive.waves != null ||
     dive.weather != null ||
-    dive.entry_type != null ||
-    dive.boat_name != null;
+    dive.entry_type != null;
   const tags = dive.tags ?? [];
+
+  // Only a boat dive has a boat: the form sends a name on no other entry, and
+  // leaves a stored one alone when the entry changes.
+  const boatName = dive.entry_type === "boat" ? dive.boat_name : null;
 
   // Where the dive computer put the diver, which is a different claim from where
   // the site is pinned - so both are drawn, and the ring/dot pair is what tells
@@ -426,9 +429,9 @@ export function DiveDetailSidebar({
                 {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
               </Reading>
             )}
-            {dive.boat_name != null && (
-              <Reading label="Boat Name" icon={Sailboat}>
-                {dive.boat_name}
+            {boatName != null && (
+              <Reading label="Boat Name" icon={Ship}>
+                {boatName}
               </Reading>
             )}
           </CardContent>

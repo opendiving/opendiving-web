@@ -278,7 +278,7 @@ describe.each([
   ["Waves", { waves: "slight" }, "Slight"],
   ["Weather", { weather: "partly_cloudy" }, "Partly cloudy"],
   ["Entry Type", { entry_type: "pier" }, "Pier"],
-  ["Boat Name", { boat_name: "Legend" }, "Legend"],
+  ["Boat Name", { entry_type: "boat", boat_name: "Legend" }, "Legend"],
   ["Air Temperature", { air_temperature: 24 }, "24°C"],
 ] as const)("DiveDetailSidebar environment: %s", (label, fields, shown) => {
   it("carries the card alone, and names the value", () => {
@@ -293,6 +293,17 @@ describe.each([
     renderSidebar(dive({ bottom_temperature: 22.5 }));
 
     expect(screen.queryByText(label)).not.toBeInTheDocument();
+  });
+});
+
+describe("DiveDetailSidebar boat name", () => {
+  // The form keeps a stored name when the entry moves off Boat, and sends none.
+  it("is not shown on a dive that is not a boat dive", () => {
+    renderSidebar(dive({ entry_type: "shore", boat_name: "Legend" }));
+
+    expect(screen.getByText("Shore")).toBeInTheDocument();
+    expect(screen.queryByText("Boat Name")).not.toBeInTheDocument();
+    expect(screen.queryByText("Legend")).not.toBeInTheDocument();
   });
 });
 

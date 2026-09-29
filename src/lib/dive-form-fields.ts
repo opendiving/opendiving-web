@@ -15,10 +15,11 @@
 /**
  * Every field of the dive form a diver may hide, in form order.
  *
- * **Order is load-bearing.** It is the canonical order the API stores every hidden
- * set in, so two equal sets are two equal lists and "which preset matches the current
- * state?" is one element-by-element comparison; and it is the order the Fields dialog
- * takes its rows from.
+ * **Order is load-bearing, and it is this client's.** Every hidden set is put in this
+ * order on the way in and on the way out (`canonicalHiddenFields`), so two equal sets
+ * are two equal lists and "which preset matches the current state?" is one
+ * element-by-element comparison; and it is the order the Fields dialog takes its rows
+ * from. The API canonicalizes too, into its own stable order, which need not match.
  *
  * **These are stored data, not labels.** A preset row and a diver's own hidden set
  * name them, so renaming one is a data migration on both sides rather than a rename.
@@ -239,8 +240,7 @@ export function diveFormFieldGroup(
 }
 
 /**
- * Collapses duplicates and imposes `DIVE_FORM_FIELDS` order, exactly as the API's
- * `canonical_hidden_fields` does on every write.
+ * Collapses duplicates and imposes `DIVE_FORM_FIELDS` order.
  *
  * Applied before every `PATCH` and to everything read back, so a hidden set is a
  * *set* spelled as a list and comparing two of them is one loop.

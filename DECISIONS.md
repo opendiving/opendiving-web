@@ -5825,8 +5825,9 @@ carries the set, so the first paint omits them.
 Storing the hidden set makes a new field visible under every preset and "Technical" the empty list.
 A preset is a snapshot: applying one copies its `hidden_fields` into the account state, later
 toggles change the state only, and the Fields menu marks the preset whose set equals the stored
-state. Equality is a list comparison because the API canonicalizes every write;
-`canonicalHiddenFields` in `lib/dive-form-fields.ts` does the same before every `PATCH /user`.
+state. Equality is a list comparison because `canonicalHiddenFields` in `lib/dive-form-fields.ts`
+puts every set read or written in form order. The API canonicalizes into its own stable order, so
+the web never relies on the two agreeing.
 
 Hidden means not in the DOM: the `FormField` is not rendered. react-hook-form's default
 `shouldUnregister: false` keeps the value and validates it, so a hidden field is submitted as a

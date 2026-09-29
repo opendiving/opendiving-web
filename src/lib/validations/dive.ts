@@ -126,11 +126,27 @@ const BOAT_NAME_MAX = 255;
 // A single-line box, `""` meaning not recorded - the select's sentinel, for the same
 // reason. The API trims it and refuses a blank one, so both submit paths trim it
 // first and turn what is left of an empty box into "not recorded".
-const boatNameField = () =>
-  z
-    .string()
-    .max(BOAT_NAME_MAX, `Boat name cannot exceed ${BOAT_NAME_MAX} characters`)
-    .optional();
+//
+// Bounded by `checkBoatName` rather than here: only a boat dive sends one, so a name
+// left behind by switching the entry away from Boat must not refuse the save - its
+// box is off screen, and the error would have nowhere to show.
+const boatNameField = () => z.string().optional();
+
+function checkBoatName(
+  data: { entry_type?: string | null; boat_name?: string },
+  ctx: z.RefinementCtx,
+) {
+  if (
+    data.entry_type === "boat" &&
+    (data.boat_name?.length ?? 0) > BOAT_NAME_MAX
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["boat_name"],
+      message: `Boat name cannot exceed ${BOAT_NAME_MAX} characters`,
+    });
+  }
+}
 
 // By name, in the diver's order - the picker trims each and keeps one of any two
 // that match. One message for the list rather than one per tag, which would have
@@ -540,106 +556,110 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
   };
 }
 
-export const diveCreateSchema = z.object({
-  dive_number: z
-    .number()
-    .int()
-    .positive("Dive number must be a positive integer"),
-  start_time: dateTimeField(),
-  duration: durationField(),
-  max_depth: z
-    .number()
-    .positive("Max depth must be positive")
-    .nullable()
-    .optional(),
-  avg_depth: z
-    .number()
-    .positive("Average depth must be positive")
-    .nullable()
-    .optional(),
-  bottom_temperature: z.number().nullable().optional(),
-  visibility: z
-    .number()
-    .int("Visibility must be an integer")
-    .positive("Visibility must be positive")
-    .nullable()
-    .optional(),
-  water_type: vocabularyField(WATER_TYPES),
-  altitude: altitudeField(),
-  type: vocabularyField(DIVE_TYPES),
-  rating: ratingField(),
-  air_temperature: z.number().nullable().optional(),
-  current: vocabularyField(CURRENTS),
-  waves: vocabularyField(WAVES),
-  weather: vocabularyField(WEATHER),
-  entry_type: vocabularyField(ENTRY_TYPES),
-  boat_name: boatNameField(),
-  // Kilograms. `min(0)` rather than `positive()`, unlike the depths above:
-  // diving with no lead at all is a real entry, and it's worth distinguishing
-  // from not having recorded it - mirrors `ck_dive_weight_non_negative`.
-  weight: weightField(),
-  trip_uuid: z.string().nullable().optional(),
-  course_uuid: z.string().nullable().optional(),
-  contact_uuid: z.string().nullable().optional(),
-  people: z.array(personReferenceSchema).default([]),
-  dive_site_uuids: z.array(z.string()).default([]),
-  gear_item_uuids: z.array(z.string()).default([]),
-  sightings: z.array(sightingSchema).default([]),
-  tags: tagsField().default([]),
-  notes: notesField().default(""),
-  mixtures: z.array(diveMixtureSchema).default([]),
-});
+export const diveCreateSchema = z
+  .object({
+    dive_number: z
+      .number()
+      .int()
+      .positive("Dive number must be a positive integer"),
+    start_time: dateTimeField(),
+    duration: durationField(),
+    max_depth: z
+      .number()
+      .positive("Max depth must be positive")
+      .nullable()
+      .optional(),
+    avg_depth: z
+      .number()
+      .positive("Average depth must be positive")
+      .nullable()
+      .optional(),
+    bottom_temperature: z.number().nullable().optional(),
+    visibility: z
+      .number()
+      .int("Visibility must be an integer")
+      .positive("Visibility must be positive")
+      .nullable()
+      .optional(),
+    water_type: vocabularyField(WATER_TYPES),
+    altitude: altitudeField(),
+    type: vocabularyField(DIVE_TYPES),
+    rating: ratingField(),
+    air_temperature: z.number().nullable().optional(),
+    current: vocabularyField(CURRENTS),
+    waves: vocabularyField(WAVES),
+    weather: vocabularyField(WEATHER),
+    entry_type: vocabularyField(ENTRY_TYPES),
+    boat_name: boatNameField(),
+    // Kilograms. `min(0)` rather than `positive()`, unlike the depths above:
+    // diving with no lead at all is a real entry, and it's worth distinguishing
+    // from not having recorded it - mirrors `ck_dive_weight_non_negative`.
+    weight: weightField(),
+    trip_uuid: z.string().nullable().optional(),
+    course_uuid: z.string().nullable().optional(),
+    contact_uuid: z.string().nullable().optional(),
+    people: z.array(personReferenceSchema).default([]),
+    dive_site_uuids: z.array(z.string()).default([]),
+    gear_item_uuids: z.array(z.string()).default([]),
+    sightings: z.array(sightingSchema).default([]),
+    tags: tagsField().default([]),
+    notes: notesField().default(""),
+    mixtures: z.array(diveMixtureSchema).default([]),
+  })
+  .superRefine(checkBoatName);
 
-export const diveUpdateSchema = z.object({
-  dive_number: z
-    .number()
-    .int()
-    .positive("Dive number must be a positive integer")
-    .optional(),
-  start_time: updatedDateTimeField().optional(),
-  duration: durationField().optional(),
-  max_depth: z
-    .number()
-    .positive("Max depth must be positive")
-    .nullable()
-    .optional(),
-  avg_depth: z
-    .number()
-    .positive("Average depth must be positive")
-    .nullable()
-    .optional(),
-  bottom_temperature: z.number().nullable().optional(),
-  visibility: z
-    .number()
-    .int("Visibility must be an integer")
-    .positive("Visibility must be positive")
-    .nullable()
-    .optional(),
-  water_type: vocabularyField(WATER_TYPES),
-  altitude: altitudeField(),
-  type: vocabularyField(DIVE_TYPES),
-  rating: ratingField(),
-  air_temperature: z.number().nullable().optional(),
-  current: vocabularyField(CURRENTS),
-  waves: vocabularyField(WAVES),
-  weather: vocabularyField(WEATHER),
-  entry_type: vocabularyField(ENTRY_TYPES),
-  boat_name: boatNameField(),
-  weight: weightField(),
-  // Nullable, not just optional: `null` is how the edit form says "detach this
-  // dive from its trip". See `DiveUpdate.trip_uuid` in `lib/api/dives.ts`.
-  trip_uuid: z.string().nullable().optional(),
-  // And the same for the training course and the contact, for the same reason.
-  course_uuid: z.string().nullable().optional(),
-  contact_uuid: z.string().nullable().optional(),
-  people: z.array(personReferenceSchema).optional(),
-  dive_site_uuids: z.array(z.string()).optional(),
-  gear_item_uuids: z.array(z.string()).optional(),
-  sightings: z.array(sightingSchema).optional(),
-  tags: tagsField().optional(),
-  notes: notesField().optional(),
-  mixtures: z.array(diveMixtureSchema).optional(),
-});
+export const diveUpdateSchema = z
+  .object({
+    dive_number: z
+      .number()
+      .int()
+      .positive("Dive number must be a positive integer")
+      .optional(),
+    start_time: updatedDateTimeField().optional(),
+    duration: durationField().optional(),
+    max_depth: z
+      .number()
+      .positive("Max depth must be positive")
+      .nullable()
+      .optional(),
+    avg_depth: z
+      .number()
+      .positive("Average depth must be positive")
+      .nullable()
+      .optional(),
+    bottom_temperature: z.number().nullable().optional(),
+    visibility: z
+      .number()
+      .int("Visibility must be an integer")
+      .positive("Visibility must be positive")
+      .nullable()
+      .optional(),
+    water_type: vocabularyField(WATER_TYPES),
+    altitude: altitudeField(),
+    type: vocabularyField(DIVE_TYPES),
+    rating: ratingField(),
+    air_temperature: z.number().nullable().optional(),
+    current: vocabularyField(CURRENTS),
+    waves: vocabularyField(WAVES),
+    weather: vocabularyField(WEATHER),
+    entry_type: vocabularyField(ENTRY_TYPES),
+    boat_name: boatNameField(),
+    weight: weightField(),
+    // Nullable, not just optional: `null` is how the edit form says "detach this
+    // dive from its trip". See `DiveUpdate.trip_uuid` in `lib/api/dives.ts`.
+    trip_uuid: z.string().nullable().optional(),
+    // And the same for the training course and the contact, for the same reason.
+    course_uuid: z.string().nullable().optional(),
+    contact_uuid: z.string().nullable().optional(),
+    people: z.array(personReferenceSchema).optional(),
+    dive_site_uuids: z.array(z.string()).optional(),
+    gear_item_uuids: z.array(z.string()).optional(),
+    sightings: z.array(sightingSchema).optional(),
+    tags: tagsField().optional(),
+    notes: notesField().optional(),
+    mixtures: z.array(diveMixtureSchema).optional(),
+  })
+  .superRefine(checkBoatName);
 
 export type DiveCreateInput = z.input<typeof diveCreateSchema>;
 export type DiveUpdateInput = z.input<typeof diveUpdateSchema>;
