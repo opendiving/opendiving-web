@@ -1,6 +1,13 @@
 "use client";
 
-import { useId, type KeyboardEvent, type ReactNode, type Ref } from "react";
+import {
+  useId,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { Star } from "lucide-react";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { RATING_MAX, RATING_MIN } from "@/lib/validations/dive";
@@ -60,6 +67,13 @@ export function RatingInput({
   // One group per control: a second rating on the page must not share its
   // radios' name, or the browser would treat the ten as one set.
   const name = useId();
+  // The step under a mouse pointer, drawn as if picked so the diver sees what a
+  // click would give. Touch has no hover, and a tap would leave one stuck.
+  const [hovered, setHovered] = useState<number | null>(null);
+  const shown = hovered ?? value;
+  const hover = (step: number | null) => (event: PointerEvent) => {
+    if (event.pointerType !== "touch" && !disabled) setHovered(step);
+  };
 
   const clearOnKey = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Backspace" && event.key !== "Delete") return;
@@ -78,6 +92,7 @@ export function RatingInput({
       // `h-10`, an input's height, so the field sits on its grid row like the
       // boxes beside it rather than a few pixels short of them.
       className="flex h-10 items-center gap-1"
+      onPointerLeave={hover(null)}
     >
       {STEPS.map((step) => (
         <label
@@ -86,6 +101,7 @@ export function RatingInput({
             "relative flex h-8 w-8 items-center justify-center",
             disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer",
           )}
+          onPointerEnter={hover(step)}
         >
           <input
             type="radio"
@@ -102,7 +118,7 @@ export function RatingInput({
             aria-hidden
             className={cn(
               "h-6 w-6 rounded-sm peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background",
-              value !== null && step <= value
+              shown !== null && step <= shown
                 ? "fill-coral text-coral"
                 : "text-muted-foreground",
             )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Control,
   FieldValues,
@@ -31,7 +31,7 @@ import {
 import { GAS_ROLES, TANK_USAGE } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 import { UnitNumberInput } from "@/components/unit-number-input";
-import { EntryUnitToggle } from "@/components/entry-unit-toggle";
+import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
 import { useEntryUnits } from "@/hooks/useEntryUnits";
 import { unitLabel } from "@/lib/units";
 import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
@@ -253,7 +253,7 @@ function MixtureSetWarning({
           tracks every keystroke. */}
       {warning && (
         <p
-          className="flex items-start gap-1.5 text-xs text-warning"
+          className="mt-4 flex items-start gap-1.5 text-xs text-warning"
           aria-hidden
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
@@ -285,37 +285,20 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
   const { fields, append, remove } = fieldArray;
   const { entryUnits, toggleEntryUnits } = useEntryUnits();
   const pressureUnits = entryUnits("pressure");
-  // Pressure is the one dimension whose toggle governs two hideable keys rather than
-  // one field, which is why it needs a condition the label rows don't: it belongs on
-  // screen only while there is a pressure box for it to convert.
-  const showsAPressureBox =
-    isVisible("mixture.start_pressure") || isVisible("mixture.end_pressure");
+  // On every pressure box of every tank, one setting between them - see the depth
+  // and temperature label rows in `DiveFormFields`.
+  const pressureLabelRow = (label: ReactNode) => (
+    <EntryUnitLabelRow
+      dimension="pressure"
+      entryUnits={pressureUnits}
+      onToggle={() => toggleEntryUnits("pressure")}
+    >
+      {label}
+    </EntryUnitLabelRow>
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Tanks</h3>
-        {/* One toggle for the section rather than one per box: the two pressure
-            fields repeat per tank card, so a four-cylinder dive would carry
-            eight identical controls with eight identical accessible names.
-            Gated on there being a cylinder, because the create form seeds no
-            mixtures and an ungated control would govern no visible field. The
-            stored override is untouched by the gate, so it comes back exactly
-            as the diver left it with the first "Add tank".
-
-            And gated a second time on one of the two pressure boxes being on
-            screen, for the same reason rather than a new one: a diver who hides
-            both keeps a control over nothing. A section an edit or an import
-            reveals with both pressures still hidden shows no pressure control. */}
-        {fields.length > 0 && showsAPressureBox && (
-          <EntryUnitToggle
-            dimension="pressure"
-            entryUnits={pressureUnits}
-            onToggle={() => toggleEntryUnits("pressure")}
-          />
-        )}
-      </div>
-
       {fields.map((field, index) => (
         // Removable on every row, tank 1 included: "this dive records no gas" is
         // a state the API supports outright (`DiveCreate.mixtures` is
@@ -504,9 +487,11 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 name={`mixtures.${index}.start_pressure` as Path<TFieldValues>}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Start pressure ({unitLabel("pressure", pressureUnits)})
-                    </FormLabel>
+                    {pressureLabelRow(
+                      <FormLabel>
+                        Start pressure ({unitLabel("pressure", pressureUnits)})
+                      </FormLabel>,
+                    )}
                     <FormControl>
                       {/* `emptyValue=""`, unlike every other number box in the
                         dive form: these two pressures are the fields
@@ -534,9 +519,11 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 name={`mixtures.${index}.end_pressure` as Path<TFieldValues>}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      End pressure ({unitLabel("pressure", pressureUnits)})
-                    </FormLabel>
+                    {pressureLabelRow(
+                      <FormLabel>
+                        End pressure ({unitLabel("pressure", pressureUnits)})
+                      </FormLabel>,
+                    )}
                     <FormControl>
                       <UnitNumberInput
                         dimension="pressure"
@@ -547,6 +534,43 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                         value={field.value}
                         onChange={field.onChange}
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {isVisible("mixture.usage") && (
+              <FormField
+                control={control}
+                name={`mixtures.${index}.usage` as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Usage</FormLabel>
+                    {/* A plain `<select>` for the same reason as Role below, and
+                      beside it deliberately: the two are the cylinder's
+                      answers to "what for" and "how", and a diver setting one
+                      is usually about to consider the other. Per row rather
+                      than once for the dive, so a mixed set - a parallel pair
+                      plus a staged bottle - stays expressible, which is the
+                      shape the API refuses by design and can only refuse if
+                      the form can say it. */}
+                    <FormControl>
+                      <NativeSelect
+                        {...field}
+                        value={field.value ?? ""}
+                        // `""` straight through, same sentinel and same
+                        // react-hook-form trap as Role below.
+                        onChange={(e) => field.onChange(e.target.value)}
+                      >
+                        <option value="">Not recorded</option>
+                        {TANK_USAGE.map((usage) => (
+                          <option key={usage} value={usage}>
+                            {TANK_USAGE_OPTION_LABELS[usage]}
+                          </option>
+                        ))}
+                      </NativeSelect>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -594,43 +618,6 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 )}
               />
             )}
-
-            {isVisible("mixture.usage") && (
-              <FormField
-                control={control}
-                name={`mixtures.${index}.usage` as Path<TFieldValues>}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Usage</FormLabel>
-                    {/* A plain `<select>` for the same reason as Role above, and
-                      following it deliberately: the two are the cylinder's
-                      answers to "what for" and "how", and a diver setting one
-                      is usually about to consider the other. Per row rather
-                      than once for the dive, so a mixed set - a parallel pair
-                      plus a staged bottle - stays expressible, which is the
-                      shape the API refuses by design and can only refuse if
-                      the form can say it. */}
-                    <FormControl>
-                      <NativeSelect
-                        {...field}
-                        value={field.value ?? ""}
-                        // `""` straight through, same sentinel and same
-                        // react-hook-form trap as Role above.
-                        onChange={(e) => field.onChange(e.target.value)}
-                      >
-                        <option value="">Not recorded</option>
-                        {TANK_USAGE.map((usage) => (
-                          <option key={usage} value={usage}>
-                            {TANK_USAGE_OPTION_LABELS[usage]}
-                          </option>
-                        ))}
-                      </NativeSelect>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
           </div>
 
           {/* Narrowing to `MixtureFieldsValues` is sound for the same reason it is in
@@ -654,27 +641,32 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
         </p>
       )}
 
-      {/* Under the tank cards rather than in the section header, so it sits where
+      {/* One block with the warning under it, which spaces itself: the always-mounted
+          `sr-only` status after the button would otherwise be the container's last
+          child and leave the button its `space-y-4` margin over the section's end. */}
+      <div>
+        {/* Under the tank cards rather than in the section header, so it sits where
           the next tank will appear: the button and the card it adds are then in
           reading order, and on a multi-cylinder dive the diver is already
           scrolled to it after filling in the last one. */}
-      <AddRowButton
-        // `shouldFocus: false`, which is not react-hook-form's default. Its
-        // default focuses the first field of the new row that registered a
-        // focusable ref - and `VolumeCombobox` registers none, so the focus
-        // skipped past Volume and landed on whichever box came next: the ppO₂
-        // limit `<select>` where that column is on screen. On iOS, focusing a
-        // `<select>` opens its picker wheel, so one tap on this button added a
-        // tank *and* opened a dropdown the diver never asked for - which reads
-        // as the tap having gone through to the field underneath.
-        onClick={() => append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })}
-      >
-        Add tank
-      </AddRowButton>
+        <AddRowButton
+          // `shouldFocus: false`, which is not react-hook-form's default. Its
+          // default focuses the first field of the new row that registered a
+          // focusable ref - and `VolumeCombobox` registers none, so the focus
+          // skipped past Volume and landed on whichever box came next: the ppO₂
+          // limit `<select>` where that column is on screen. On iOS, focusing a
+          // `<select>` opens its picker wheel, so one tap on this button added a
+          // tank *and* opened a dropdown the diver never asked for - which reads
+          // as the tap having gone through to the field underneath.
+          onClick={() => append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })}
+        >
+          Add tank
+        </AddRowButton>
 
-      <MixtureSetWarning
-        control={control as unknown as Control<MixtureFieldsValues>}
-      />
+        <MixtureSetWarning
+          control={control as unknown as Control<MixtureFieldsValues>}
+        />
+      </div>
     </div>
   );
 }

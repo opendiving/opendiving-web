@@ -103,10 +103,6 @@ export function EntryUnitToggle({
  * had before. Nothing about the non-toggle fields changes, and nothing here needs
  * to know the toggle's height — which is what stops this drifting the next time
  * the control's padding moves.
- *
- * Not used by the Tanks header, where the toggle's only companion is an
- * `<h3>` - block-level already, so the flex row has nothing to blockify and the
- * alignment is right without any of this.
  */
 export function EntryUnitLabelRow({
   children,

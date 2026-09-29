@@ -40,7 +40,7 @@ import {
   MapPin,
   Mountain,
   Phone,
-  Sailboat,
+  Ship,
   Thermometer,
   ThermometerSun,
   Waves,
@@ -427,7 +427,7 @@ export function DiveDetailSidebar({
               </Reading>
             )}
             {dive.boat_name != null && (
-              <Reading label="Boat Name" icon={Sailboat}>
+              <Reading label="Boat Name" icon={Ship}>
                 {dive.boat_name}
               </Reading>
             )}

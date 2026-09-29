@@ -35,7 +35,9 @@ const SWITCH_LABEL = "font-normal leading-5";
 /**
  * The hideable field a group lists ahead of everything else, where it has one.
  *
- * Only `mixtures` does. It is the switch that decides whether the Tanks section
+ * `type` leads Dive info because the form renders it first, above the always-on rows.
+ *
+ * `mixtures` is the switch that decides whether the Tanks section
  * is on the form at all, and every other row in that group is downstream of it - the
  * always-on cylinder columns as much as the per-cylinder ones, which this list disables
  * outright while it is off. Listing it after them would put the reason
@@ -48,6 +50,7 @@ const SWITCH_LABEL = "font-normal leading-5";
 const LEADING_GROUP_FIELD: Partial<
   Record<DiveFormFieldGroup, DiveFormFieldKey>
 > = {
+  "Dive info": "type",
   Tanks: "mixtures",
 };
 
@@ -134,7 +137,7 @@ export function DiveFormFieldSwitches({
     // to bottom rather than as a pair of half-lists to scan across.
     //
     // CSS multi-column rather than a grid, because the sections are wildly different
-    // heights - one row under "Species", nine under "Tanks" - and a grid would
+    // heights - one row under "Marine life", nine under "Tanks" - and a grid would
     // make every row as tall as its tallest cell and leave the short sections sitting
     // in holes. Multi-column packs by height instead. `break-inside-avoid` is what
     // stops a section being split down the middle of itself, which is the one thing

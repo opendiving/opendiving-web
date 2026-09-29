@@ -15,10 +15,11 @@
 /**
  * Every field of the dive form a diver may hide, in form order.
  *
- * **Order is load-bearing.** It is the canonical order the API stores every hidden
- * set in, so two equal sets are two equal lists and "which preset matches the current
- * state?" is one element-by-element comparison; and it is the order the Fields dialog
- * takes its rows from.
+ * **Order is load-bearing, and it is this client's.** Every hidden set is put in this
+ * order on the way in and on the way out (`canonicalHiddenFields`), so two equal sets
+ * are two equal lists and "which preset matches the current state?" is one
+ * element-by-element comparison; and it is the order the Fields dialog takes its rows
+ * from. The API canonicalizes too, into its own stable order, which need not match.
  *
  * **These are stored data, not labels.** A preset row and a diver's own hidden set
  * name them, so renaming one is a data migration on both sides rather than a rename.
@@ -29,19 +30,19 @@ export const DIVE_FORM_FIELDS = [
   "contact_uuid",
   "people",
   "dive_site_uuids",
+  "entry_type",
+  "boat_name",
   "type",
   "max_depth",
   "avg_depth",
   "bottom_temperature",
-  "air_temperature",
   "visibility",
   "water_type",
   "altitude",
-  "current",
   "waves",
+  "current",
   "weather",
-  "entry_type",
-  "boat_name",
+  "air_temperature",
   "mixtures",
   "gear_item_uuids",
   "weight",
@@ -53,8 +54,8 @@ export const DIVE_FORM_FIELDS = [
   "mixture.helium",
   "mixture.start_pressure",
   "mixture.end_pressure",
-  "mixture.role",
   "mixture.usage",
+  "mixture.role",
 ] as const;
 
 export type DiveFormFieldKey = (typeof DIVE_FORM_FIELDS)[number];
@@ -110,40 +111,26 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
 ] as const;
 
 /**
- * The form's own field groups, in the order the form renders them.
+ * The form's sections, in the order the form renders them, which the Fields dialog
+ * groups its rows by.
  *
  * **The dialog lists fields in the order the form renders them**, and that order is the
  * invariant to preserve when either side moves: it is what makes a diver looking for a
- * field in the dialog find it where they would look for it on the form. Headings mark
- * runs of that one order; they never reorder it and never interleave.
+ * field in the dialog find it where they would look for it on the form. Each group is
+ * one section of the form and one run of `DIVE_FORM_FIELDS`, except that the
+ * per-cylinder `mixture.` keys trail the list rather than following `mixtures`.
  *
- * This used to be stated in terms of blocks - "a group is a run of adjacent blocks,
- * never part of one" - where a block was a row, and a row was a set of fields that had
- * to appear and disappear together. The readings grid ended that: every reading from
- * the depths to the boat name shares one grid in which each hides on its own and the
- * survivors reflow, so there is no row-sized unit left for a heading to align to, and
- * "Dive info" and "Environment" would each own part of the same one. What the block rule was protecting is the order, so the order is what
- * this now says. See "Hidden dive-form fields leave a ragged edge, never a hole" in
- * `DECISIONS.md`.
- *
- * Headings are still coarser than the form's rows, deliberately. "Trip, course & site"
- * covers the trip/course pair, the dive center under it, the people under that and the
- * dive site below them;
- * "Dive info" covers start time, the dive number/duration pair, the dive type and the
- * two depths; "Environment" covers every other reading in the grid. A heading per row
- * would offer more choices than there are decisions to make.
- *
- * Groups carried only by always-on rows are listed anyway - a gap where Start time should
- * be reads as a field that went missing.
+ * Coarser than the form's rows, deliberately: a heading per row would offer more
+ * choices than there are decisions to make. Groups carried only by always-on rows are
+ * listed anyway - a gap where Start time should be reads as a field that went missing.
  */
 export const DIVE_FORM_FIELD_GROUPS = [
-  "Trip, course & site",
+  "Context",
   "Dive info",
   "Environment",
   "Tanks",
-  "Gear & weight",
-  "Species",
-  "Rating & tags",
+  "Gear",
+  "Marine life",
   "Notes",
 ] as const;
 
@@ -165,16 +152,18 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
   {
     key: "trip_uuid",
     label: "Trip",
-    group: "Trip, course & site",
+    group: "Context",
   },
-  { key: "course_uuid", label: "Course", group: "Trip, course & site" },
-  { key: "contact_uuid", label: "Dive center", group: "Trip, course & site" },
-  { key: "people", label: "People", group: "Trip, course & site" },
+  { key: "course_uuid", label: "Course", group: "Context" },
+  { key: "contact_uuid", label: "Dive center", group: "Context" },
+  { key: "people", label: "People", group: "Context" },
   {
     key: "dive_site_uuids",
     label: "Dive site(s)",
-    group: "Trip, course & site",
+    group: "Context",
   },
+  { key: "entry_type", label: "Entry type", group: "Context" },
+  { key: "boat_name", label: "Boat name", group: "Context" },
   { key: "type", label: "Dive type", group: "Dive info" },
   { key: "max_depth", label: "Maximum depth", group: "Dive info" },
   { key: "avg_depth", label: "Average depth", group: "Dive info" },
@@ -183,21 +172,19 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
     label: "Bottom temperature",
     group: "Environment",
   },
-  { key: "air_temperature", label: "Air temperature", group: "Environment" },
   { key: "visibility", label: "Visibility", group: "Environment" },
   { key: "water_type", label: "Water type", group: "Environment" },
   { key: "altitude", label: "Altitude", group: "Environment" },
-  { key: "current", label: "Current", group: "Environment" },
   { key: "waves", label: "Waves", group: "Environment" },
+  { key: "current", label: "Current", group: "Environment" },
   { key: "weather", label: "Weather", group: "Environment" },
-  { key: "entry_type", label: "Entry type", group: "Environment" },
-  { key: "boat_name", label: "Boat name", group: "Environment" },
+  { key: "air_temperature", label: "Air temperature", group: "Environment" },
   { key: "mixtures", label: "Tanks", group: "Tanks" },
-  { key: "gear_item_uuids", label: "Gear", group: "Gear & weight" },
-  { key: "weight", label: "Weight", group: "Gear & weight" },
-  { key: "sightings", label: "Species spotted", group: "Species" },
-  { key: "rating", label: "Rating", group: "Rating & tags" },
-  { key: "tags", label: "Tags", group: "Rating & tags" },
+  { key: "gear_item_uuids", label: "Gear", group: "Gear" },
+  { key: "weight", label: "Weight", group: "Gear" },
+  { key: "sightings", label: "Species spotted", group: "Marine life" },
+  { key: "rating", label: "Rating", group: "Notes" },
+  { key: "tags", label: "Tags", group: "Notes" },
   { key: "notes", label: "Notes", group: "Notes" },
   { key: "mixture.po2_limit", label: "ppO₂ limit", group: "Tanks" },
   { key: "mixture.helium", label: "He", group: "Tanks" },
@@ -207,8 +194,8 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
     group: "Tanks",
   },
   { key: "mixture.end_pressure", label: "End pressure", group: "Tanks" },
-  { key: "mixture.role", label: "Role", group: "Tanks" },
   { key: "mixture.usage", label: "Usage", group: "Tanks" },
+  { key: "mixture.role", label: "Role", group: "Tanks" },
 ];
 
 /**
@@ -224,8 +211,8 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   label: string;
   group: DiveFormFieldGroup;
 }[] = [
-  // Form order, which is the invariant above: Start time is its own row, and Dive
-  // number and Duration are the pair below it, left to right.
+  // Form order, which is the invariant above: Start time is its own row under Dive
+  // type, and Dive number and Duration are the pair below it, left to right.
   { label: "Start time", group: "Dive info" },
   { label: "Dive number", group: "Dive info" },
   { label: "Duration", group: "Dive info" },
@@ -233,9 +220,28 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   { label: "O₂", group: "Tanks" },
 ];
 
+// The always-on inputs by form name, which `DIVE_FORM_ALWAYS_ON_FIELDS` lists by label.
+const ALWAYS_ON_FIELD_GROUPS: Readonly<Record<string, DiveFormFieldGroup>> = {
+  start_time: "Dive info",
+  dive_number: "Dive info",
+  duration: "Dive info",
+};
+
 /**
- * Collapses duplicates and imposes `DIVE_FORM_FIELDS` order, exactly as the API's
- * `canonical_hidden_fields` does on every write.
+ * The section a top-level form field renders in, hideable or not - what a failed submit
+ * reads to open the collapsed sections its errors are in.
+ */
+export function diveFormFieldGroup(
+  name: string,
+): DiveFormFieldGroup | undefined {
+  return (
+    ALWAYS_ON_FIELD_GROUPS[name] ??
+    DIVE_FORM_FIELD_REGISTRY.find((entry) => entry.key === name)?.group
+  );
+}
+
+/**
+ * Collapses duplicates and imposes `DIVE_FORM_FIELDS` order.
  *
  * Applied before every `PATCH` and to everything read back, so a hidden set is a
  * *set* spelled as a list and comparing two of them is one loop.
@@ -276,6 +282,8 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
   contact_uuid: null,
   people: [],
   dive_site_uuids: [],
+  entry_type: "",
+  boat_name: "",
   type: "",
   max_depth: null,
   avg_depth: null,
@@ -287,8 +295,6 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
   current: "",
   waves: "",
   weather: "",
-  entry_type: "",
-  boat_name: "",
   mixtures: [],
   gear_item_uuids: [],
   weight: null,

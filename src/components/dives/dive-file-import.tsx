@@ -36,7 +36,13 @@ import {
   type MixtureImportNotes,
 } from "@/lib/dive-import";
 import { recordingDeviceLabel } from "@/lib/dive-recordings";
-import { Loader2, Upload } from "lucide-react";
+import { Info, Loader2, Upload } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { IconTooltip } from "@/components/ui/tooltip";
 
 // Applies the fields parsed from a dive-computer export file onto a dive
 // form. Shared between the "new dive" and "edit dive" forms since both
@@ -501,16 +507,32 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-medium text-sm">
-            Import from a dive computer file
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Upload this dive&apos;s file, in any format logbook import reads, to
-            fill in the fields below. Pick as many as you like at once: one per
-            computer that recorded this dive, or one computer&apos;s second
-            export alongside its first. A file holding several dives goes
-            through logbook import instead.
-          </p>
+          <div className="flex items-center gap-1">
+            <p className="font-medium text-sm">Import from a dive computer</p>
+            {/* A popover rather than a hover hint: a paragraph is more than a hint
+                carries, and a tap has to open it on a phone. */}
+            <Popover>
+              <IconTooltip label="About importing a file">
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
+                  >
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </IconTooltip>
+              <PopoverContent align="start" className="text-sm">
+                Upload this dive&apos;s file, in any format logbook import
+                reads, to fill in the fields below. Pick as many as you like at
+                once: one per computer that recorded this dive, or one
+                computer&apos;s second export alongside its first. A file
+                holding several dives goes through logbook import instead.
+              </PopoverContent>
+            </Popover>
+          </div>
           {/* Rendered unconditionally and `sr-only` until there is something to say: a
               `role="status"` region that mounts together with its text is typically not
               announced at all, since screen readers register it on insertion and read

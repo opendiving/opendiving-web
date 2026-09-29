@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   act,
+  configure,
   fireEvent,
   render,
   screen,
@@ -12,7 +13,6 @@ import NewDivePage from "./page";
 import {
   CURRENT_LABELS,
   CURRENTS,
-  DIVE_TYPE_LABELS,
   DIVE_TYPES,
   divesAPI,
   ENTRY_TYPE_LABELS,
@@ -34,6 +34,12 @@ import {
 } from "@/lib/dive-form-fields";
 import { SAVE_DEBOUNCE_MS } from "@/hooks/useDiveFormVisibility";
 import { clearEntryUnits } from "@/lib/entry-units";
+
+// Whole-page flows run close to both defaults on CI, where coverage instruments
+// every render of the full form: 5s a test, and 1s for a `waitFor` to see the
+// last dive's prefill land.
+vi.setConfig({ testTimeout: 15_000 });
+configure({ asyncUtilTimeout: 5_000 });
 
 // The seam this covers is the page's own seeding, which no unit test can reach: the
 // form's `defaultValues` and the last-dive prefill both decide what `mixtures` holds
@@ -696,10 +702,25 @@ describe("the water type on the way to the API", () => {
   });
 });
 
+describe("the Dive type select", () => {
+  it("offers every dive type but freediving and snorkeling, which wait", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    const options = [
+      ...screen.getByLabelText(/^dive type$/i).querySelectorAll("option"),
+    ].map((option) => option.value);
+
+    expect(options).toEqual([
+      "",
+      ...DIVE_TYPES.filter((type) => type !== "freedive" && type !== "snorkel"),
+    ]);
+  });
+});
+
 // The water type's guard, once per vocabulary beside it: each select offers "Not
 // recorded" and then exactly the API's members, in its order.
 describe.each([
-  ["Dive type", DIVE_TYPES, DIVE_TYPE_LABELS],
   ["Current", CURRENTS, CURRENT_LABELS],
   ["Waves", WAVES, WAVES_LABELS],
   ["Weather", WEATHER, WEATHER_LABELS],
@@ -783,6 +804,34 @@ describe("the classification and conditions on the way to the API", () => {
       entry_type: "boat",
       boat_name: "Legend",
       rating: 4,
+    });
+  });
+
+  it("keeps a typed boat name on screen, and sends it, when the entry changes", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    fillRequiredFields();
+
+    expect(screen.queryByLabelText(/^boat name$/i)).not.toBeInTheDocument();
+    await userEvent.selectOptions(
+      screen.getByLabelText(/^entry type$/i),
+      "boat",
+    );
+    fireEvent.change(screen.getByLabelText(/^boat name$/i), {
+      target: { value: "Legend" },
+    });
+    await userEvent.selectOptions(
+      screen.getByLabelText(/^entry type$/i),
+      "pier",
+    );
+
+    expect(screen.getByLabelText(/^boat name$/i)).toHaveValue("Legend");
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0]).toMatchObject({
+      entry_type: "pier",
+      boat_name: "Legend",
     });
   });
 
@@ -1678,6 +1727,46 @@ describe("the people", () => {
   });
 });
 
+describe("the form's sections", () => {
+  const heading = (name: RegExp) => screen.getByRole("button", { name });
+
+  it("collapse from their heading and keep what they hold", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    fillRequiredFields();
+
+    await userEvent.click(heading(/^dive info$/i));
+
+    expect(heading(/^dive info$/i)).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("textbox", { name: /duration/i }),
+    ).not.toBeInTheDocument();
+
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].duration).toBe(2700);
+  });
+
+  // A collapsed field is unmounted, so an error in it would otherwise block the
+  // save with no message on the page - always-on fields included.
+  it("open again on a failed save, with the refused field focused", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await userEvent.click(heading(/^dive info$/i));
+    await logDive();
+
+    await waitFor(() =>
+      expect(heading(/^dive info$/i)).toHaveAttribute("aria-expanded", "true"),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: /duration/i })).toHaveFocus(),
+    );
+    expect(divesAPI.createDive).not.toHaveBeenCalled();
+  });
+});
+
 describe("a hidden field that fails validation", () => {
   it("comes back on screen with its message rather than doing nothing", async () => {
     // Nearly unreachable by hand - a hidden new-form field is empty and valid - and
@@ -1720,17 +1809,33 @@ describe("a hidden field that fails validation", () => {
 });
 
 describe("the depth entry-unit toggle", () => {
+  // A press is remembered on this device, which here is every later test.
+  afterEach(clearEntryUnits);
+
   const depthToggles = () =>
     screen.queryAllByRole("button", { name: /switch depth entry/i });
 
-  it("moves onto Average depth when Maximum depth is hidden", async () => {
+  it("sits on both depths, and either one flips both", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(depthToggles()).toHaveLength(2);
+    await userEvent.click(depthToggles()[1]);
+
+    expect(
+      screen.getByRole("spinbutton", { name: /maximum depth \(ft\)/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("spinbutton", { name: /average depth \(ft\)/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("stays on Average depth when Maximum depth is hidden", async () => {
     stable.auth.user.dive_form_hidden_fields = ["max_depth"];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
     expect(depthToggles()).toHaveLength(1);
-    // The toggle sits inside the label row of the field it governs, so the field
-    // beside it in the DOM is the one that carries it.
     expect(
       screen.getByRole("spinbutton", { name: /average depth/i }),
     ).toBeInTheDocument();
@@ -1752,7 +1857,7 @@ describe("the depth entry-unit toggle", () => {
     expect(screen.getByText(/MOD \d+(\.\d+)? m/)).toBeInTheDocument();
   });
 
-  it("is back on Maximum depth as soon as it is shown again", async () => {
+  it("comes back with Maximum depth as soon as it is shown again", async () => {
     stable.auth.user.dive_form_hidden_fields = ["max_depth"];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
@@ -1763,7 +1868,7 @@ describe("the depth entry-unit toggle", () => {
     );
     await closeFieldsPanel();
 
-    await waitFor(() => expect(depthToggles()).toHaveLength(1));
+    await waitFor(() => expect(depthToggles()).toHaveLength(2));
     expect(
       screen.getByRole("spinbutton", { name: /maximum depth/i }),
     ).toBeInTheDocument();
@@ -1776,27 +1881,31 @@ describe("the temperature entry-unit toggle", () => {
 
   const temperatureToggles = () =>
     screen.queryAllByRole("button", { name: /switch temperature entry/i });
-  // The field whose label row carries the one toggle.
-  const toggledField = () => temperatureToggles()[0]?.closest("div.space-y-2");
+  // The field whose label row carries a toggle.
+  const toggledField = (index: number) =>
+    temperatureToggles()[index]?.closest("div.space-y-2");
 
-  it("sits on Bottom temperature, and only there, while both are shown", async () => {
+  it("sits on both temperatures, though they are apart", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
-    expect(temperatureToggles()).toHaveLength(1);
+    expect(temperatureToggles()).toHaveLength(2);
     expect(
-      within(toggledField() as HTMLElement).getByRole("spinbutton"),
+      within(toggledField(0) as HTMLElement).getByRole("spinbutton"),
     ).toHaveAccessibleName(/bottom temperature/i);
+    expect(
+      within(toggledField(1) as HTMLElement).getByRole("spinbutton"),
+    ).toHaveAccessibleName(/air temperature/i);
   });
 
-  it("moves onto Air temperature when Bottom temperature is hidden", async () => {
+  it("stays on Air temperature when Bottom temperature is hidden", async () => {
     stable.auth.user.dive_form_hidden_fields = ["bottom_temperature"];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
     expect(temperatureToggles()).toHaveLength(1);
     expect(
-      within(toggledField() as HTMLElement).getByRole("spinbutton"),
+      within(toggledField(0) as HTMLElement).getByRole("spinbutton"),
     ).toHaveAccessibleName(/air temperature/i);
   });
 
@@ -1895,8 +2004,8 @@ describe("the Fields control", () => {
       "He",
       "Start pressure",
       "End pressure",
-      "Role",
       "Usage",
+      "Role",
     ]);
   });
 
@@ -1938,8 +2047,8 @@ const aPreset = (
 const RECREATIONAL = aPreset("Recreational", [
   "altitude",
   "mixture.po2_limit",
-  "mixture.role",
   "mixture.usage",
+  "mixture.role",
 ]);
 const TECHNICAL = aPreset("Technical", []);
 
@@ -1959,8 +2068,8 @@ describe("the preset list", () => {
     stable.auth.user.dive_form_hidden_fields = [
       "altitude",
       "mixture.po2_limit",
-      "mixture.role",
       "mixture.usage",
+      "mixture.role",
     ];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);

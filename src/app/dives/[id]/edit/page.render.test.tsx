@@ -250,6 +250,40 @@ describe("a dive's classification and conditions", () => {
   });
 });
 
+describe("a boat name stored on a dive that is not a boat dive", () => {
+  // An import or an older save can leave one; a name is never kept out of reach.
+  it("is on screen, and clearing it sends the clear", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ entry_type: "shore", boat_name: "Legend" }),
+    );
+    render(<EditDivePage />);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^boat name$/i)).toHaveValue("Legend"),
+    );
+
+    await userEvent.clear(screen.getByLabelText(/^boat name$/i));
+    await saveChanges();
+
+    await waitFor(() => expect(divesAPI.updateDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.updateDive).mock.calls[0][1]).toMatchObject({
+      entry_type: "shore",
+      boat_name: null,
+    });
+  });
+
+  it("is not offered on a shore dive that stores none", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ entry_type: "shore" }),
+    );
+    render(<EditDivePage />);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^entry type$/i)).toHaveValue("shore"),
+    );
+
+    expect(screen.queryByLabelText(/^boat name$/i)).not.toBeInTheDocument();
+  });
+});
+
 describe("a dive whose fields the diver keeps hidden", () => {
   it("shows the notes it records, and says why they are on screen", async () => {
     stable.auth.user.dive_form_hidden_fields = ["notes"];

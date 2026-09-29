@@ -462,8 +462,9 @@ describe("MixtureFields entry units", () => {
     useStorage(memoryStorage());
   });
 
+  // Every pressure box carries one; any of them flips them all.
   const pressureToggle = () =>
-    screen.getByLabelText("bar | psi — switch pressure entry to psi");
+    screen.getAllByLabelText("bar | psi — switch pressure entry to psi")[0];
 
   it("enters in the account's units until the toggle is pressed", () => {
     render(<Harness mixtures={[EAN54]} maxDepth={30} />);
@@ -496,16 +497,13 @@ describe("MixtureFields entry units", () => {
     // what keeps the wire shape and every Zod rule untouched by this feature -
     // had 3000 landed in state, this box would read 3000.
     await userEvent.click(
-      screen.getByLabelText("bar | psi — switch pressure entry to bar"),
+      screen.getAllByLabelText("bar | psi — switch pressure entry to bar")[0],
     );
 
     expect(screen.getByLabelText("Start pressure (bar)")).toHaveValue(206.84);
   });
 
-  // One control for the section, not one per box: the pressure fields repeat per
-  // tank, so a per-field toggle would put eight identically-named controls on a
-  // four-cylinder dive - and `getByLabelText` would throw on all of them.
-  it("governs every tank from one uniquely-named control", async () => {
+  it("puts a toggle on every pressure box, and flips every tank from any one", async () => {
     render(
       <Harness
         mixtures={[
@@ -516,19 +514,19 @@ describe("MixtureFields entry units", () => {
       />,
     );
 
+    expect(
+      screen.getAllByLabelText("bar | psi — switch pressure entry to psi"),
+    ).toHaveLength(4);
+
     await userEvent.click(pressureToggle());
 
     expect(screen.getAllByLabelText("Start pressure (psi)")).toHaveLength(2);
     expect(screen.getAllByLabelText("End pressure (psi)")).toHaveLength(2);
   });
 
-  // The create form seeds `mixtures: []`, and the header renders above the empty
-  // state - so an ungated toggle would open every fresh form with a control
-  // governing no visible field.
   it("shows no pressure toggle over an empty cylinder list", () => {
     render(<Harness mixtures={[]} maxDepth={30} />);
 
-    expect(screen.getByText("Tanks")).toBeInTheDocument();
     expect(
       screen.queryByLabelText(/switch pressure entry/),
     ).not.toBeInTheDocument();
@@ -543,8 +541,8 @@ describe("MixtureFields entry units", () => {
     await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
 
     expect(
-      screen.getByLabelText("bar | psi — switch pressure entry to bar"),
-    ).toBeInTheDocument();
+      screen.getAllByLabelText("bar | psi — switch pressure entry to bar"),
+    ).toHaveLength(2);
     expect(screen.getByLabelText("Start pressure (psi)")).toBeInTheDocument();
   });
 
@@ -621,7 +619,7 @@ describe("MixtureFields under a hidden set", () => {
     expect(screen.getAllByLabelText(/volume/i)).toHaveLength(2);
   });
 
-  it("keeps the pressure toggle while either pressure is on screen", () => {
+  it("keeps a pressure toggle on the pressure still on screen", () => {
     render(
       <Harness
         mixtures={[AIR]}
@@ -636,9 +634,6 @@ describe("MixtureFields under a hidden set", () => {
   });
 
   it("drops the pressure toggle when both pressures are hidden", () => {
-    // Pressure is the one dimension whose single toggle governs two hideable keys,
-    // so it needs a condition the per-field label rows do not: a control over
-    // nothing is a control that converts nothing.
     render(
       <Harness
         mixtures={[AIR]}
@@ -655,7 +650,6 @@ describe("MixtureFields under a hidden set", () => {
   });
 
   it("still has no pressure toggle when there is no cylinder to convert", () => {
-    // The older gate, unchanged: the create form seeds no mixtures.
     render(<Harness mixtures={[]} maxDepth={20} />);
 
     expect(

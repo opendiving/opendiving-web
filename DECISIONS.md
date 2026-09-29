@@ -4210,11 +4210,11 @@ renders weight; `writeEntryUnits`/`clearEntryUnits` notify. Writes happen only i
 handler. `signOut` clears the key after the `authAPI.signOut()` try/catch: an inherited psi label
 parses 200 as 13.79 bar.
 
-One toggle per dimension: `max_depth` carries depth's; pressure's sits in the Tanks header and
-renders only while `fields.length > 0`; the gear-set dialog keeps its own weight toggle.
-`MixtureGasHint`/`MixtureSetWarning` follow entry units; `/gear`'s list stays on `useUnits()`.
-`UnitNumberInput` discards its draft on a flip during render. Tests must install
-`useStorage(memoryStorage())`.
+Every box with a unit carries a toggle, and a dimension's toggles share one setting: flipping
+Maximum depth flips Average depth, and every tank's pressures flip together. The gear-set dialog
+keeps its own weight toggle on the same store. `MixtureGasHint`/`MixtureSetWarning` follow entry
+units; `/gear`'s list stays on `useUnits()`. `UnitNumberInput` discards its draft on a flip during
+render. Tests must install `useStorage(memoryStorage())`.
 
 ## The toggle sits in the label row without being laid out in it, and a flex wrapper is wrong twice
 
@@ -4224,10 +4224,8 @@ flow, absolutely positioned and vertically centred. A `flex items-center` wrappe
 17px content area its font metrics give it to the 14px line box `leading-none` declares, and the
 18px toggle sets the row height. And `FormItem`'s `space-y-2` is a margin-bottom, which an inline
 box ignores — wrapping the label in anything block-level collects 8px it never had, so the wrapper
-carries `mb-0`. The Tanks header toggle is not this component: its only sibling is an `<h3>`,
-already block-level, so flex alignment holds. jsdom does no layout, so the render tests pin
-structure only: the label is not a flex or grid item, the toggle is out of flow, and the row cancels
-the margin.
+carries `mb-0`. jsdom does no layout, so the render tests pin structure only: the label is not a
+flex or grid item, the toggle is out of flow, and the row cancels the margin.
 
 ## The privacy page describes this app, and there is still no cookie banner
 
@@ -4893,11 +4891,10 @@ the one control pointing backwards, and a four-cylinder dive would scroll back p
 add a fifth. On an empty form the sentence "No tanks recorded for this dive." describes the state
 and the button follows as the way out.
 
-It is left in normal flow, not wrapped. It is `inline-flex` (`ui/button.tsx`); measured bare and
-wrapped in `flex`, the container is 36px either way, because an `h-9` inline-flex box holds the
-strut's descent and `space-y-4`'s `margin-top` applies to atomic inlines. The pressure toggle's row
-height derives from the `<h3>`, not this button; see "The Tanks header toggle is deliberately not
-this component".
+It shares a plain block with the set warning under it, so the always-mounted `sr-only` status is
+never the Tanks container's last child and the section ends on the same gap as the others. It is
+`inline-flex` (`ui/button.tsx`) and needs no `flex` wrapper: an `h-9` inline-flex box holds the
+strut's descent, so the block is 36px either way.
 
 ## Retina tiles are plumbed and switched off, because Carto's `@2x` is a watermark
 
@@ -5829,8 +5826,9 @@ carries the set, so the first paint omits them.
 Storing the hidden set makes a new field visible under every preset and "Technical" the empty list.
 A preset is a snapshot: applying one copies its `hidden_fields` into the account state, later
 toggles change the state only, and the Fields menu marks the preset whose set equals the stored
-state. Equality is a list comparison because the API canonicalizes every write;
-`canonicalHiddenFields` in `lib/dive-form-fields.ts` does the same before every `PATCH /user`.
+state. Equality is a list comparison because `canonicalHiddenFields` in `lib/dive-form-fields.ts`
+puts every set read or written in form order. The API canonicalizes into its own stable order, so
+the web never relies on the two agreeing.
 
 Hidden means not in the DOM: the `FormField` is not rendered. react-hook-form's default
 `shouldUnregister: false` keeps the value and validates it, so a hidden field is submitted as a
@@ -5898,9 +5896,8 @@ listens on `document` in the capture phase.
 `useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name prompt uses
 `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
 
-A switch shows the effective state and edits the stored one. Depth's entry-unit toggle follows the
-first visible depth field and temperature's the first visible temperature; pressure's renders only
-while Tanks and a pressure box are on screen.
+A switch shows the effective state and edits the stored one. A unit toggle rides on every visible
+box with a unit, so hiding one of a dimension's fields leaves the toggle on the others.
 
 ## The Fields dialog is switches, and it is the sections that share the columns
 
@@ -6714,12 +6711,12 @@ pressure: a preset is only a litre hint.
 
 ## Hidden dive-form fields leave a ragged edge, never a hole
 
-A gap in the middle of a form reads as breakage; a short last row does not. Every reading, from the
-two depths to the boat name, is one grid guarded by "any of them visible"; auto-flow packs
-survivors, and an odd count leaves one half-width field at the bottom.
+A gap in the middle of a form reads as breakage; a short last row does not. Every Environment
+reading is one grid guarded by "any of them visible"; auto-flow packs survivors, and an odd count
+leaves one half-width field at the bottom.
 
-`gap-x-4 gap-y-6`: the row gap matches the form's `space-y-6`, so a full row is pixel-identical to a
-pair, where `gap-4` would pull reading rows 8px closer.
+`gap-x-4 gap-y-6`: the row gap matches the section's `space-y-6`, so a full row is pixel-identical
+to a pair, where `gap-4` would pull reading rows 8px closer.
 
 Dive number pairs with Duration, `dive_number`, `start_time` and `duration` having no `isVisible`
 guard. `DIVE_FORM_ALWAYS_ON_FIELDS` must list them in the form's order — a hand-checked invariant,

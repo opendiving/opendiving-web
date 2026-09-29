@@ -53,6 +53,23 @@ describe("RatingInput", () => {
     expect(screen.getByRole("radio", { name: "4 stars" })).toBeChecked();
   });
 
+  it("fills the stars up to the one under the mouse, without picking it", async () => {
+    render(<Field initial={4} />);
+    const filled = () =>
+      screen
+        .getAllByRole("radio")
+        .filter((radio) =>
+          radio.nextElementSibling?.classList.contains("fill-coral"),
+        ).length;
+
+    await userEvent.hover(screen.getByRole("radio", { name: "2 stars" }));
+    expect(filled()).toBe(2);
+    expect(value()).toBe("4");
+
+    await userEvent.unhover(screen.getByRole("radiogroup"));
+    expect(filled()).toBe(4);
+  });
+
   it("moves the step with the arrow keys", async () => {
     render(<Field initial={3} />);
 
