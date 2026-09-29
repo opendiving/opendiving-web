@@ -253,7 +253,7 @@ function MixtureSetWarning({
           tracks every keystroke. */}
       {warning && (
         <p
-          className="flex items-start gap-1.5 text-xs text-warning"
+          className="mt-4 flex items-start gap-1.5 text-xs text-warning"
           aria-hidden
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
@@ -641,27 +641,32 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
         </p>
       )}
 
-      {/* Under the tank cards rather than in the section header, so it sits where
+      {/* One block with the warning under it, which spaces itself: the always-mounted
+          `sr-only` status after the button would otherwise be the container's last
+          child and leave the button its `space-y-4` margin over the section's end. */}
+      <div>
+        {/* Under the tank cards rather than in the section header, so it sits where
           the next tank will appear: the button and the card it adds are then in
           reading order, and on a multi-cylinder dive the diver is already
           scrolled to it after filling in the last one. */}
-      <AddRowButton
-        // `shouldFocus: false`, which is not react-hook-form's default. Its
-        // default focuses the first field of the new row that registered a
-        // focusable ref - and `VolumeCombobox` registers none, so the focus
-        // skipped past Volume and landed on whichever box came next: the ppO₂
-        // limit `<select>` where that column is on screen. On iOS, focusing a
-        // `<select>` opens its picker wheel, so one tap on this button added a
-        // tank *and* opened a dropdown the diver never asked for - which reads
-        // as the tap having gone through to the field underneath.
-        onClick={() => append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })}
-      >
-        Add tank
-      </AddRowButton>
+        <AddRowButton
+          // `shouldFocus: false`, which is not react-hook-form's default. Its
+          // default focuses the first field of the new row that registered a
+          // focusable ref - and `VolumeCombobox` registers none, so the focus
+          // skipped past Volume and landed on whichever box came next: the ppO₂
+          // limit `<select>` where that column is on screen. On iOS, focusing a
+          // `<select>` opens its picker wheel, so one tap on this button added a
+          // tank *and* opened a dropdown the diver never asked for - which reads
+          // as the tap having gone through to the field underneath.
+          onClick={() => append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })}
+        >
+          Add tank
+        </AddRowButton>
 
-      <MixtureSetWarning
-        control={control as unknown as Control<MixtureFieldsValues>}
-      />
+        <MixtureSetWarning
+          control={control as unknown as Control<MixtureFieldsValues>}
+        />
+      </div>
     </div>
   );
 }

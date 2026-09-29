@@ -651,17 +651,20 @@ export function SpeciesMultiSelect({
           are - through `Attribution`, in case a provider's credit arrives as a
           markdown link the way the geocoder's does.
 
-          Takes no room until there is a credit to show: an empty line under the
-          picker reads as a gap in the form. Sized and joined like the trip
+          Not rendered until there is a credit to show: an empty line under the
+          picker reads as a gap in the form, and a hidden one would still leave
+          the picker its `space-y-4` margin. Sized and joined like the trip
           picker's, which is the same credit line in the same role. */}
-      <p className="text-[10px] leading-4 text-muted-foreground empty:hidden">
-        {attributions.map((attribution, index) => (
-          <Fragment key={attribution}>
-            {index > 0 && " · "}
-            <Attribution value={attribution} />
-          </Fragment>
-        ))}
-      </p>
+      {attributions.length > 0 && (
+        <p className="text-[10px] leading-4 text-muted-foreground">
+          {attributions.map((attribution, index) => (
+            <Fragment key={attribution}>
+              {index > 0 && " · "}
+              <Attribution value={attribution} />
+            </Fragment>
+          ))}
+        </p>
+      )}
     </div>
   );
 }
