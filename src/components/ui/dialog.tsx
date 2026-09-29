@@ -87,13 +87,68 @@ function VisualViewportEffects() {
   return null;
 }
 
+/**
+ * The element a closing dialog should hand focus back to: whatever held it as
+ * the dialog opened, unless that was an item in a menu. A dialog chosen from a
+ * menu mounts while the item still has focus, and the menu closes straight
+ * after and takes the item with it - so the answer is the button that opened
+ * the menu, found through the `aria-controls` it carries while the menu is
+ * open. Looped for a submenu, whose opener is itself a menu item.
+ */
+function returnFocusTarget(element: Element | null): HTMLElement | null {
+  let target = element;
+  for (
+    let menu = target?.closest('[role="menu"]');
+    menu?.id;
+    menu = target?.closest('[role="menu"]')
+  ) {
+    const menuId = menu.id;
+    target =
+      Array.from(document.querySelectorAll("[aria-controls]")).find(
+        (node) => node.getAttribute("aria-controls") === menuId,
+      ) ?? null;
+  }
+  return target instanceof HTMLElement && target !== document.body
+    ? target
+    : null;
+}
+
+/**
+ * Records where focus was as the dialog opened, for `DialogContent` to return
+ * it there on close. Renders nothing.
+ *
+ * Radix's modal content always cancels its own focus restore and focuses the
+ * `DialogTrigger` instead, and no dialog here has one - each is opened by a
+ * plain button setting state - so without this focus fell to `<body>`.
+ *
+ * Read in a state initializer, during the first render, because every later
+ * point is after an `autoFocus` field in the children has taken focus in the
+ * commit - and `StrictMode` re-runs effects after that commit, so even a
+ * layout effect ahead of the field reads the field on its second run.
+ */
+function RememberOpener({
+  openerRef,
+}: {
+  openerRef: React.RefObject<HTMLElement | null>;
+}) {
+  const [opener] = React.useState(() =>
+    returnFocusTarget(document.activeElement),
+  );
+  React.useLayoutEffect(() => {
+    openerRef.current = opener;
+  }, [openerRef, opener]);
+  return null;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    {/* **Nothing may come between `DialogPortal` and this.** The portal wraps
+>(({ className, children, onCloseAutoFocus, ...props }, ref) => {
+  const openerRef = React.useRef<HTMLElement | null>(null);
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      {/* **Nothing may come between `DialogPortal` and this.** The portal wraps
         each of its own children in a `Presence`, which reads the exit animation
         off the node its ref lands on - and a wrapper component that is not a
         `forwardRef` swallows that ref silently, leaving `getAnimationName(null)`
@@ -110,43 +165,55 @@ const DialogContent = React.forwardRef<
         device that reported the bug - iOS measures it against the viewport
         Safari would have with its toolbars retracted, and displaces the layout
         viewport without resizing it when the keyboard opens. */}
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        // `max-h`/`overflow-y` live here rather than on individual dialogs:
-        // content taller than the viewport would otherwise be clipped with no
-        // way to reach it, since the dialog is fixed-positioned and Radix locks
-        // scrolling on the page behind it.
-        //
-        // `w-[calc(100%-2rem)]` rather than `w-full`, and `rounded-lg` rather
-        // than `sm:rounded-lg`: the dialog used to run edge to edge on a phone,
-        // with its close button in the corner of the screen.
-        //
-        // `max-sm:px-4` is `Card`'s own phone padding, so a form reads the same
-        // width in a dialog as in the card it also appears in.
-        "fixed left-[50%] top-[calc(var(--visual-viewport-top)_+_var(--visual-viewport-height)/2)] z-50 grid max-h-[calc(var(--visual-viewport-height)_-_2rem)] w-[calc(100%_-_2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border bg-background p-6 shadow-lg max-sm:px-4 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
-        className,
-      )}
-      // Radix dismisses on pointer-down outside by default, which spends a
-      // half-filled dive, gear item or certification on one missed click. The
-      // cross, Cancel and Escape all still close, and each of those is
-      // deliberate. Before the spread, so a dialog can opt back in.
-      onPointerDownOutside={(event) => event.preventDefault()}
-      {...props}
-    >
-      <VisualViewportEffects />
-      {children}
-      {/* `IconTooltip` supplies the `aria-label` the `sr-only` span used to,
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          // `max-h`/`overflow-y` live here rather than on individual dialogs:
+          // content taller than the viewport would otherwise be clipped with no
+          // way to reach it, since the dialog is fixed-positioned and Radix locks
+          // scrolling on the page behind it.
+          //
+          // `w-[calc(100%-2rem)]` rather than `w-full`, and `rounded-lg` rather
+          // than `sm:rounded-lg`: the dialog used to run edge to edge on a phone,
+          // with its close button in the corner of the screen.
+          //
+          // `max-sm:px-4` is `Card`'s own phone padding, so a form reads the same
+          // width in a dialog as in the card it also appears in.
+          "fixed left-[50%] top-[calc(var(--visual-viewport-top)_+_var(--visual-viewport-height)/2)] z-50 grid max-h-[calc(var(--visual-viewport-height)_-_2rem)] w-[calc(100%_-_2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border bg-background p-6 shadow-lg max-sm:px-4 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+          className,
+        )}
+        // Radix dismisses on pointer-down outside by default, which spends a
+        // half-filled dive, gear item or certification on one missed click. The
+        // cross, Cancel and Escape all still close, and each of those is
+        // deliberate. Before the spread, so a dialog can opt back in.
+        onPointerDownOutside={(event) => event.preventDefault()}
+        // A caller's own handler runs first and can still take over by
+        // preventing the default. An opener that has left the page meanwhile
+        // falls through to Radix, which finds no trigger and leaves focus be.
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          const target = openerRef.current;
+          if (event.defaultPrevented || !target?.isConnected) return;
+          event.preventDefault();
+          target.focus({ preventScroll: true });
+        }}
+        {...props}
+      >
+        <RememberOpener openerRef={openerRef} />
+        <VisualViewportEffects />
+        {children}
+        {/* `IconTooltip` supplies the `aria-label` the `sr-only` span used to,
           so the cross keeps its name and gains the hover hint every other icon
           button in the app has. */}
-      <IconTooltip label="Close">
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-          <X className="h-4 w-4" />
-        </DialogPrimitive.Close>
-      </IconTooltip>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+        <IconTooltip label="Close">
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <X className="h-4 w-4" />
+          </DialogPrimitive.Close>
+        </IconTooltip>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({

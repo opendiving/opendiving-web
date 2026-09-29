@@ -1,11 +1,20 @@
+import { StrictMode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Button } from "./button";
+import { ConfirmDialog } from "./confirm-dialog";
 import { Dialog, DialogContent, DialogTitle } from "./dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./dropdown-menu";
 import { Input } from "./input";
 
 // A press on the scrim must not be able to discard a half-filled form, which is
-// the whole of what these cover. The opt-back-in case is the control: it proves
+// what the dismissal tests cover. The opt-back-in case is the control: it proves
 // the press below really reaches Radix's outside-interaction path, so the first
 // test cannot pass by never having clicked anything.
 
@@ -76,5 +85,96 @@ describe("DialogContent dismissal", () => {
     fireEvent.keyDown(screen.getByLabelText("Notes"), { key: "Escape" });
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+// Every dialog here is controlled and opened by a plain button, never by a
+// `DialogTrigger`, so Radix has no trigger to hand focus back to on its own.
+// Rendered in `StrictMode`, as `next dev` renders the app: its second run of
+// the content's effects comes after an `autoFocus` field has taken focus.
+describe("DialogContent focus return", () => {
+  it("hands focus back to the button that opened it", async () => {
+    function EditCourse() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button onClick={() => setOpen(true)}>Edit</Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent>
+              <DialogTitle>Edit course</DialogTitle>
+              {/* The course dialog's own first field, which is what moves
+                  focus before Radix gets a look at it. */}
+              <Input aria-label="Name" autoFocus />
+            </DialogContent>
+          </Dialog>
+        </>
+      );
+    }
+    const user = userEvent.setup();
+    render(
+      <StrictMode>
+        <EditCourse />
+      </StrictMode>,
+    );
+    const edit = screen.getByRole("button", { name: "Edit" });
+
+    edit.focus();
+    await user.keyboard("{Enter}");
+    await settle();
+    expect(screen.getByLabelText("Name")).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    await settle();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(edit).toHaveFocus();
+  });
+
+  it("hands focus back to the menu button a confirmation was chosen from", async () => {
+    function DeleteFromMenu() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>More actions</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onSelect={() => setOpen(true)}>
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <ConfirmDialog
+            open={open}
+            onOpenChange={setOpen}
+            title="Delete course"
+            confirmText="Delete"
+            onConfirm={() => {}}
+          />
+        </>
+      );
+    }
+    const user = userEvent.setup();
+    render(
+      <StrictMode>
+        <DeleteFromMenu />
+      </StrictMode>,
+    );
+    const more = screen.getByRole("button", { name: "More actions" });
+
+    more.focus();
+    await user.keyboard("{Enter}");
+    await settle();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await settle();
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    await settle();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(more).toHaveFocus();
   });
 });
