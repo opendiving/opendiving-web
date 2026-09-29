@@ -5895,9 +5895,8 @@ listens on `document` in the capture phase.
 `useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name prompt uses
 `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
 
-A switch shows the effective state and edits the stored one. Depth's entry-unit toggle follows the
-first visible depth field and temperature's the first visible temperature; pressure's renders only
-while Tanks and a pressure box are on screen.
+A switch shows the effective state and edits the stored one. A unit toggle rides on every visible
+box with a unit, so hiding one of a dimension's fields leaves the toggle on the others.
 
 ## The Fields dialog is switches, and it is the sections that share the columns
 

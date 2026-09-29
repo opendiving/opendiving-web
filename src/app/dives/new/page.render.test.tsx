@@ -695,8 +695,6 @@ describe("the water type on the way to the API", () => {
   });
 });
 
-// The water type's guard, once per vocabulary beside it: each select offers "Not
-// recorded" and then exactly the API's members, in its order.
 describe("the Dive type select", () => {
   it("offers every dive type but freediving and snorkeling, which wait", async () => {
     render(<NewDivePage />);
@@ -713,6 +711,8 @@ describe("the Dive type select", () => {
   });
 });
 
+// The water type's guard, once per vocabulary beside it: each select offers "Not
+// recorded" and then exactly the API's members, in its order.
 describe.each([
   ["Current", CURRENTS, CURRENT_LABELS],
   ["Waves", WAVES, WAVES_LABELS],
