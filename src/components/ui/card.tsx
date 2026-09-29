@@ -63,6 +63,10 @@ const CARD_TITLE_ROW =
   "flex flex-wrap items-start justify-between gap-x-3 gap-y-4.5";
 const CARD_TITLE_ACTION = "-mt-1.5";
 
+// The smaller title of a card that flags something above a page's main content, such
+// as the dashboard's notices, led by an `h-4 w-4` icon. A trailing count takes `ml-auto`.
+const CARD_TITLE_SMALL = "flex items-center gap-2 text-base";
+
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
@@ -98,6 +102,7 @@ CardFooter.displayName = "CardFooter";
 export {
   CARD_TITLE_ACTION,
   CARD_TITLE_ROW,
+  CARD_TITLE_SMALL,
   Card,
   CardHeader,
   CardFooter,

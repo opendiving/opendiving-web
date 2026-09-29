@@ -12,7 +12,13 @@ import {
 } from "@/lib/api/gear-service";
 import { formatServiceDue, serviceStatus } from "@/lib/gear-service";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CARD_TITLE_SMALL,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { TruncatedNote } from "@/components/ui/truncated-note";
 import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
@@ -102,7 +108,7 @@ export function ServiceDueCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h2" className="flex items-center gap-2 text-base">
+        <CardTitle as="h2" className={CARD_TITLE_SMALL}>
           <Wrench className="h-4 w-4" />
           Service Due
         </CardTitle>
