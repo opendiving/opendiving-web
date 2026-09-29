@@ -34,6 +34,10 @@ import {
 import { SAVE_DEBOUNCE_MS } from "@/hooks/useDiveFormVisibility";
 import { clearEntryUnits } from "@/lib/entry-units";
 
+// Whole-page flows through the Fields dialog run close to the 5s default on CI,
+// where coverage instruments every render of the full form.
+vi.setConfig({ testTimeout: 15_000 });
+
 // The seam this covers is the page's own seeding, which no unit test can reach: the
 // form's `defaultValues` and the last-dive prefill both decide what `mixtures` holds
 // before the diver touches anything, and `onSubmit` sends it unconditionally. The
