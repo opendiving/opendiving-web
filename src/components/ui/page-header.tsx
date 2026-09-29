@@ -46,7 +46,7 @@ export function PageHeader({
     <div className="mb-6">
       {/* `min-h-10` is the actions' height, so the title sits at one offset
           whether or not a page has any. `mb-6` rather than the page's `pt-8`
-          above: the title's line box carries its own ~8px of space over the
+          above: the title's line box carries its own ~6px of space over the
           capitals, and it is the visible gaps either side of the row that
           match. */}
       <div className="mb-6 flex min-h-10 items-center justify-between gap-4">
