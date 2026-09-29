@@ -337,6 +337,24 @@ describe("the bundled styles", () => {
       expect(shipped(file).sprite).toBe("/basemap/sprite/ofm");
     },
   );
+
+  // What makes a place read the same in both themes: every label's text, case,
+  // size and zoom range lives outside `paint`. A re-vendored Liberty with a
+  // stale dark.json fails here.
+  it("dark.json is liberty.json with only its paint changed", () => {
+    const withoutPaint = (style: { layers: Record<string, unknown>[] }) => ({
+      ...style,
+      layers: style.layers.map((layer) =>
+        Object.fromEntries(
+          Object.entries(layer).filter(([key]) => key !== "paint"),
+        ),
+      ),
+    });
+    expect(
+      withoutPaint(shipped("dark.json")),
+      "run scripts/generate-dark-basemap.mjs",
+    ).toEqual(withoutPaint(shipped("liberty.json")));
+  });
 });
 
 // MapLibre measures zoom against a 512px tile, the slippy convention against
