@@ -508,9 +508,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1">
-            <p className="font-medium text-sm">
-              Import from a dive computer file
-            </p>
+            <p className="font-medium text-sm">Import from a dive computer</p>
             {/* A popover rather than a hover hint: a paragraph is more than a hint
                 carries, and a tap has to open it on a phone. */}
             <Popover>

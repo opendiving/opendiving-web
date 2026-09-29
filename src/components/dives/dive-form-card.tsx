@@ -211,7 +211,7 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
             onSubmit={handleSubmitEvent}
             className="space-y-6"
           >
-            {/* Import from dive computer file */}
+            {/* Import from a dive computer */}
             <DiveFileImport
               form={form}
               replaceMixtures={mixtureFieldArray.replace}
