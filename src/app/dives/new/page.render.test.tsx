@@ -1692,6 +1692,46 @@ describe("the people", () => {
   });
 });
 
+describe("the form's sections", () => {
+  const heading = (name: RegExp) => screen.getByRole("button", { name });
+
+  it("collapse from their heading and keep what they hold", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    fillRequiredFields();
+
+    await userEvent.click(heading(/^dive info$/i));
+
+    expect(heading(/^dive info$/i)).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("textbox", { name: /duration/i }),
+    ).not.toBeInTheDocument();
+
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].duration).toBe(2700);
+  });
+
+  // A collapsed field is unmounted, so an error in it would otherwise block the
+  // save with no message on the page - always-on fields included.
+  it("open again on a failed save, with the refused field focused", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await userEvent.click(heading(/^dive info$/i));
+    await logDive();
+
+    await waitFor(() =>
+      expect(heading(/^dive info$/i)).toHaveAttribute("aria-expanded", "true"),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: /duration/i })).toHaveFocus(),
+    );
+    expect(divesAPI.createDive).not.toHaveBeenCalled();
+  });
+});
+
 describe("a hidden field that fails validation", () => {
   it("comes back on screen with its message rather than doing nothing", async () => {
     // Nearly unreachable by hand - a hidden new-form field is empty and valid - and

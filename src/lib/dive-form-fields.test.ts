@@ -10,6 +10,7 @@ import {
   NON_BLANK_EMPTY_FIELD_VALUES,
   NON_HIDEABLE_MIXTURE_SCHEMA_KEYS,
   canonicalHiddenFields,
+  diveFormFieldGroup,
   diveFormFieldsWithErrors,
   hiddenFieldsEqual,
   isNonEmptyFieldValue,
@@ -99,6 +100,21 @@ describe("the vocabulary's order", () => {
       ),
     ).toEqual(["contact_uuid", "people"]);
     expect(EMPTY_DIVE_FORM_VALUES.people).toEqual([]);
+  });
+});
+
+describe("diveFormFieldGroup", () => {
+  it("names the section of an always-on field, a hideable one and a list", () => {
+    expect(diveFormFieldGroup("start_time")).toBe("Dive info");
+    expect(diveFormFieldGroup("dive_number")).toBe("Dive info");
+    expect(diveFormFieldGroup("duration")).toBe("Dive info");
+    expect(diveFormFieldGroup("entry_type")).toBe("Context");
+    expect(diveFormFieldGroup("mixtures")).toBe("Tanks");
+    expect(diveFormFieldGroup("sightings")).toBe("Marine life");
+  });
+
+  it("names none for a field the form does not render", () => {
+    expect(diveFormFieldGroup("id")).toBeUndefined();
   });
 });
 
