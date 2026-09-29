@@ -651,12 +651,10 @@ export function SpeciesMultiSelect({
           are - through `Attribution`, in case a provider's credit arrives as a
           markdown link the way the geocoder's does.
 
-          Always mounted, with its one line of height reserved rather than
-          `empty:hidden`: a credit that materialises with the first search would
-          grow the field and shove Notes down the form while the diver is still
-          typing into it. Sized and joined like the trip picker's, which is the
-          same credit line in the same role. */}
-      <p className="min-h-4 text-[10px] leading-4 text-muted-foreground">
+          Takes no room until there is a credit to show: an empty line under the
+          picker reads as a gap in the form. Sized and joined like the trip
+          picker's, which is the same credit line in the same role. */}
+      <p className="text-[10px] leading-4 text-muted-foreground empty:hidden">
         {attributions.map((attribution, index) => (
           <Fragment key={attribution}>
             {index > 0 && " · "}
