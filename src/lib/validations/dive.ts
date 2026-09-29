@@ -121,16 +121,29 @@ const ratingField = () =>
     .optional();
 
 // The API's bound on a boat's name.
-const BOAT_NAME_MAX = 255;
+export const BOAT_NAME_MAX = 255;
 
 // A single-line box, `""` meaning not recorded - the select's sentinel, for the same
 // reason. The API trims it and refuses a blank one, so both submit paths trim it
 // first and turn what is left of an empty box into "not recorded".
 //
-// Bounded by `checkBoatName` rather than here: only a boat dive sends one, so a name
-// left behind by switching the entry away from Boat must not refuse the save - its
-// box is off screen, and the error would have nowhere to show.
+// Bounded by `checkBoatName` rather than here: a name left behind by switching the
+// entry away from Boat is neither shown nor sent, so it must not refuse the save -
+// the error would have nowhere to show. The box's own `maxLength` bounds a name
+// shown on another entry for being stored (`boatNameApplies`).
 const boatNameField = () => z.string().optional();
+
+/**
+ * Whether the dive form shows a boat name, and so sends one: on a boat dive, or on
+ * any dive that already stores a name - one imported or saved under another entry
+ * stays in reach, to keep or clear, rather than hidden where nothing can change it.
+ */
+export function boatNameApplies(
+  entryType: unknown,
+  storedBoatName?: string | null,
+): boolean {
+  return entryType === "boat" || Boolean(storedBoatName);
+}
 
 function checkBoatName(
   data: { entry_type?: string | null; boat_name?: string },
@@ -697,7 +710,10 @@ export function boatNameOrNull(value: string): string | null {
 // and the API takes seconds. Done here rather than in the schema because
 // `z.transform()` on a field feeding a `z.input<>`-derived form type breaks
 // `useForm()`'s binding - see CONTRIBUTING.md.
-export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
+export function buildDiveUpdate(
+  data: DiveUpdateInput,
+  storedBoatName?: string | null,
+): DiveUpdate {
   const update: DiveUpdate = {};
 
   if (data.dive_number !== undefined) update.dive_number = data.dive_number;
@@ -739,9 +755,11 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
   if (data.air_temperature !== undefined) {
     update.air_temperature = data.air_temperature;
   }
-  // Only a boat dive has a boat: another entry leaves the stored name alone, as the
-  // form leaves its box off screen.
-  if (data.boat_name !== undefined && data.entry_type === "boat") {
+  // Sent exactly when the form shows it; otherwise the stored name is left alone.
+  if (
+    data.boat_name !== undefined &&
+    boatNameApplies(data.entry_type, storedBoatName)
+  ) {
     update.boat_name = boatNameOrNull(data.boat_name);
   }
   if (data.weight !== undefined) update.weight = data.weight;

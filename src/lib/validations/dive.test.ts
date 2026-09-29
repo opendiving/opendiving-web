@@ -1114,6 +1114,18 @@ describe("buildDiveUpdate", () => {
     });
   });
 
+  it("sends a boat name on another entry when the dive already stores one", () => {
+    // The form shows the box for it, so what the box says is what is sent.
+    expect(
+      buildDiveUpdate({ entry_type: "shore", boat_name: "" }, "Legend")
+        .boat_name,
+    ).toBeNull();
+    expect(
+      buildDiveUpdate({ entry_type: "shore", boat_name: "Legend" }, "Legend")
+        .boat_name,
+    ).toBe("Legend");
+  });
+
   it("sends a boat name only for a boat dive", () => {
     expect(
       buildDiveUpdate({ entry_type: "shore", boat_name: "Legend" }),

@@ -58,6 +58,8 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   knownSpecies?: SpeciesSummary[];
   // Note shown under the dive number - see `DiveFormFields`.
   diveNumberNotice?: { forValue: number; message: string } | null;
+  // The edited dive's boat name - see `DiveFormFields`.
+  storedBoatName?: string | null;
 }
 
 // The "Dive Details" card shared by the create and edit dive pages: file
@@ -87,6 +89,7 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   knownGearItems,
   knownSpecies,
   diveNumberNotice,
+  storedBoatName,
 }: DiveFormCardProps<TFieldValues>) {
   // Owned here rather than in `DiveFormFields` because the button that has to
   // wait for it is this component's, not that one's. A species picked but not
@@ -241,6 +244,7 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
               knownSpecies={knownSpecies}
               onSpeciesPendingChange={setIsResolvingSpecies}
               diveNumberNotice={diveNumberNotice}
+              storedBoatName={storedBoatName}
               collapsedGroups={collapsedGroups}
               onGroupOpenChange={setGroupOpen}
             />
