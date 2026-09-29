@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   act,
+  configure,
   fireEvent,
   render,
   screen,
@@ -34,9 +35,11 @@ import {
 import { SAVE_DEBOUNCE_MS } from "@/hooks/useDiveFormVisibility";
 import { clearEntryUnits } from "@/lib/entry-units";
 
-// Whole-page flows through the Fields dialog run close to the 5s default on CI,
-// where coverage instruments every render of the full form.
+// Whole-page flows run close to both defaults on CI, where coverage instruments
+// every render of the full form: 5s a test, and 1s for a `waitFor` to see the
+// last dive's prefill land.
 vi.setConfig({ testTimeout: 15_000 });
+configure({ asyncUtilTimeout: 5_000 });
 
 // The seam this covers is the page's own seeding, which no unit test can reach: the
 // form's `defaultValues` and the last-dive prefill both decide what `mixtures` holds
