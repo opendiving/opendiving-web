@@ -40,8 +40,8 @@ export const DIVE_FORM_FIELDS = [
   "altitude",
   "waves",
   "current",
-  "air_temperature",
   "weather",
+  "air_temperature",
   "mixtures",
   "gear_item_uuids",
   "weight",
@@ -53,8 +53,8 @@ export const DIVE_FORM_FIELDS = [
   "mixture.helium",
   "mixture.start_pressure",
   "mixture.end_pressure",
-  "mixture.role",
   "mixture.usage",
+  "mixture.role",
 ] as const;
 
 export type DiveFormFieldKey = (typeof DIVE_FORM_FIELDS)[number];
@@ -175,8 +175,8 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
   { key: "altitude", label: "Altitude", group: "Environment" },
   { key: "waves", label: "Waves", group: "Environment" },
   { key: "current", label: "Current", group: "Environment" },
-  { key: "air_temperature", label: "Air temperature", group: "Environment" },
   { key: "weather", label: "Weather", group: "Environment" },
+  { key: "air_temperature", label: "Air temperature", group: "Environment" },
   { key: "mixtures", label: "Tanks", group: "Tanks" },
   { key: "gear_item_uuids", label: "Gear", group: "Gear" },
   { key: "weight", label: "Weight", group: "Gear" },
@@ -192,8 +192,8 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
     group: "Tanks",
   },
   { key: "mixture.end_pressure", label: "End pressure", group: "Tanks" },
-  { key: "mixture.role", label: "Role", group: "Tanks" },
   { key: "mixture.usage", label: "Usage", group: "Tanks" },
+  { key: "mixture.role", label: "Role", group: "Tanks" },
 ];
 
 /**

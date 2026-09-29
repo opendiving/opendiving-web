@@ -1720,17 +1720,33 @@ describe("a hidden field that fails validation", () => {
 });
 
 describe("the depth entry-unit toggle", () => {
+  // A press is remembered on this device, which here is every later test.
+  afterEach(clearEntryUnits);
+
   const depthToggles = () =>
     screen.queryAllByRole("button", { name: /switch depth entry/i });
 
-  it("moves onto Average depth when Maximum depth is hidden", async () => {
+  it("sits on both depths, and either one flips both", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(depthToggles()).toHaveLength(2);
+    await userEvent.click(depthToggles()[1]);
+
+    expect(
+      screen.getByRole("spinbutton", { name: /maximum depth \(ft\)/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("spinbutton", { name: /average depth \(ft\)/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("stays on Average depth when Maximum depth is hidden", async () => {
     stable.auth.user.dive_form_hidden_fields = ["max_depth"];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
     expect(depthToggles()).toHaveLength(1);
-    // The toggle sits inside the label row of the field it governs, so the field
-    // beside it in the DOM is the one that carries it.
     expect(
       screen.getByRole("spinbutton", { name: /average depth/i }),
     ).toBeInTheDocument();
@@ -1752,7 +1768,7 @@ describe("the depth entry-unit toggle", () => {
     expect(screen.getByText(/MOD \d+(\.\d+)? m/)).toBeInTheDocument();
   });
 
-  it("is back on Maximum depth as soon as it is shown again", async () => {
+  it("comes back with Maximum depth as soon as it is shown again", async () => {
     stable.auth.user.dive_form_hidden_fields = ["max_depth"];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
@@ -1763,7 +1779,7 @@ describe("the depth entry-unit toggle", () => {
     );
     await closeFieldsPanel();
 
-    await waitFor(() => expect(depthToggles()).toHaveLength(1));
+    await waitFor(() => expect(depthToggles()).toHaveLength(2));
     expect(
       screen.getByRole("spinbutton", { name: /maximum depth/i }),
     ).toBeInTheDocument();
@@ -1776,27 +1792,31 @@ describe("the temperature entry-unit toggle", () => {
 
   const temperatureToggles = () =>
     screen.queryAllByRole("button", { name: /switch temperature entry/i });
-  // The field whose label row carries the one toggle.
-  const toggledField = () => temperatureToggles()[0]?.closest("div.space-y-2");
+  // The field whose label row carries a toggle.
+  const toggledField = (index: number) =>
+    temperatureToggles()[index]?.closest("div.space-y-2");
 
-  it("sits on Bottom temperature, and only there, while both are shown", async () => {
+  it("sits on both temperatures, though they are apart", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
-    expect(temperatureToggles()).toHaveLength(1);
+    expect(temperatureToggles()).toHaveLength(2);
     expect(
-      within(toggledField() as HTMLElement).getByRole("spinbutton"),
+      within(toggledField(0) as HTMLElement).getByRole("spinbutton"),
     ).toHaveAccessibleName(/bottom temperature/i);
+    expect(
+      within(toggledField(1) as HTMLElement).getByRole("spinbutton"),
+    ).toHaveAccessibleName(/air temperature/i);
   });
 
-  it("moves onto Air temperature when Bottom temperature is hidden", async () => {
+  it("stays on Air temperature when Bottom temperature is hidden", async () => {
     stable.auth.user.dive_form_hidden_fields = ["bottom_temperature"];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
     expect(temperatureToggles()).toHaveLength(1);
     expect(
-      within(toggledField() as HTMLElement).getByRole("spinbutton"),
+      within(toggledField(0) as HTMLElement).getByRole("spinbutton"),
     ).toHaveAccessibleName(/air temperature/i);
   });
 
@@ -1895,8 +1915,8 @@ describe("the Fields control", () => {
       "He",
       "Start pressure",
       "End pressure",
-      "Role",
       "Usage",
+      "Role",
     ]);
   });
 
@@ -1938,8 +1958,8 @@ const aPreset = (
 const RECREATIONAL = aPreset("Recreational", [
   "altitude",
   "mixture.po2_limit",
-  "mixture.role",
   "mixture.usage",
+  "mixture.role",
 ]);
 const TECHNICAL = aPreset("Technical", []);
 
@@ -1959,8 +1979,8 @@ describe("the preset list", () => {
     stable.auth.user.dive_form_hidden_fields = [
       "altitude",
       "mixture.po2_limit",
-      "mixture.role",
       "mixture.usage",
+      "mixture.role",
     ];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);

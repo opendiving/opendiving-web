@@ -245,35 +245,21 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
     </DiveFormSection>
   );
 
-  // A dimension shared by two fields has one toggle, on the first *visible* of
-  // them, so hiding Maximum depth moves depth's onto Average depth and hiding
-  // Bottom temperature moves temperature's onto Air temperature, rather than
-  // stranding the dimension without a control. Never both at once - a second
-  // control would be a duplicate accessible name over the same dimension. With
-  // both hidden the form has no control for it at all, and the gas hints render
-  // depth in the effective unit, labelled as they already are.
-  const firstVisible = (...keys: DiveFormFieldKey[]) =>
-    keys.find((key) => isVisible(key)) ?? null;
-  const toggleFields = {
-    depth: firstVisible("max_depth", "avg_depth"),
-    temperature: firstVisible("bottom_temperature", "air_temperature"),
-  };
-  const toggledLabelRow = (
-    dimension: keyof typeof toggleFields,
-    key: DiveFormFieldKey,
+  // Every field with a unit carries its own toggle, and the fields of one dimension
+  // share it: flipping Maximum depth flips Average depth too, since both read the one
+  // setting `useEntryUnits` keeps per dimension.
+  const unitLabelRow = (
+    dimension: "depth" | "temperature",
     label: ReactNode,
-  ): ReactNode =>
-    toggleFields[dimension] === key ? (
-      <EntryUnitLabelRow
-        dimension={dimension}
-        entryUnits={entryUnits(dimension)}
-        onToggle={() => toggleEntryUnits(dimension)}
-      >
-        {label}
-      </EntryUnitLabelRow>
-    ) : (
-      label
-    );
+  ): ReactNode => (
+    <EntryUnitLabelRow
+      dimension={dimension}
+      entryUnits={entryUnits(dimension)}
+      onToggle={() => toggleEntryUnits(dimension)}
+    >
+      {label}
+    </EntryUnitLabelRow>
+  );
 
   return (
     // One block in the form's `space-y-6`, its sections flush inside it: a stuck
@@ -604,12 +590,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   name={"max_depth" as Path<TFieldValues>}
                   render={({ field }) => (
                     <FormItem>
-                      {/* Depth's one toggle, and whether it sits here is a question about
-                  what is on screen: `avg_depth` below carries it instead when this
-                  field is hidden - see `toggleFields`. */}
-                      {toggledLabelRow(
+                      {unitLabelRow(
                         "depth",
-                        "max_depth",
                         <FormLabel>
                           Maximum depth (
                           {unitLabel("depth", entryUnits("depth"))})
@@ -642,9 +624,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   name={"avg_depth" as Path<TFieldValues>}
                   render={({ field }) => (
                     <FormItem>
-                      {toggledLabelRow(
+                      {unitLabelRow(
                         "depth",
-                        "avg_depth",
                         <FormLabel>
                           Average depth (
                           {unitLabel("depth", entryUnits("depth"))})
@@ -708,9 +689,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   name={"bottom_temperature" as Path<TFieldValues>}
                   render={({ field }) => (
                     <FormItem>
-                      {toggledLabelRow(
+                      {unitLabelRow(
                         "temperature",
-                        "bottom_temperature",
                         <FormLabel>
                           Bottom temperature (
                           {unitLabel("temperature", entryUnits("temperature"))})
@@ -859,15 +839,25 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   labels={CURRENT_LABELS}
                 />
               )}
+              {isVisible("weather") && (
+                <DiveVocabularyField
+                  control={control}
+                  name={"weather" as Path<TFieldValues>}
+                  label="Weather"
+                  icon={CloudSun}
+                  values={WEATHER}
+                  labels={WEATHER_LABELS}
+                />
+              )}
+
               {isVisible("air_temperature") && (
                 <FormField
                   control={control}
                   name={"air_temperature" as Path<TFieldValues>}
                   render={({ field }) => (
                     <FormItem>
-                      {toggledLabelRow(
+                      {unitLabelRow(
                         "temperature",
-                        "air_temperature",
                         <FormLabel>
                           Air temperature (
                           {unitLabel("temperature", entryUnits("temperature"))})
@@ -892,17 +882,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       <FormMessage />
                     </FormItem>
                   )}
-                />
-              )}
-
-              {isVisible("weather") && (
-                <DiveVocabularyField
-                  control={control}
-                  name={"weather" as Path<TFieldValues>}
-                  label="Weather"
-                  icon={CloudSun}
-                  values={WEATHER}
-                  labels={WEATHER_LABELS}
                 />
               )}
             </div>

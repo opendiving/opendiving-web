@@ -4210,11 +4210,11 @@ renders weight; `writeEntryUnits`/`clearEntryUnits` notify. Writes happen only i
 handler. `signOut` clears the key after the `authAPI.signOut()` try/catch: an inherited psi label
 parses 200 as 13.79 bar.
 
-One toggle per dimension: `max_depth` carries depth's; pressure's sits in the Tanks header and
-renders only while `fields.length > 0`; the gear-set dialog keeps its own weight toggle.
-`MixtureGasHint`/`MixtureSetWarning` follow entry units; `/gear`'s list stays on `useUnits()`.
-`UnitNumberInput` discards its draft on a flip during render. Tests must install
-`useStorage(memoryStorage())`.
+Every box with a unit carries a toggle, and a dimension's toggles share one setting: flipping
+Maximum depth flips Average depth, and every tank's pressures flip together. The gear-set dialog
+keeps its own weight toggle on the same store. `MixtureGasHint`/`MixtureSetWarning` follow entry
+units; `/gear`'s list stays on `useUnits()`. `UnitNumberInput` discards its draft on a flip during
+render. Tests must install `useStorage(memoryStorage())`.
 
 ## The toggle sits in the label row without being laid out in it, and a flex wrapper is wrong twice
 
@@ -4224,10 +4224,8 @@ flow, absolutely positioned and vertically centred. A `flex items-center` wrappe
 17px content area its font metrics give it to the 14px line box `leading-none` declares, and the
 18px toggle sets the row height. And `FormItem`'s `space-y-2` is a margin-bottom, which an inline
 box ignores — wrapping the label in anything block-level collects 8px it never had, so the wrapper
-carries `mb-0`. The Tanks header toggle is not this component: its only sibling is an `<h3>`,
-already block-level, so flex alignment holds. jsdom does no layout, so the render tests pin
-structure only: the label is not a flex or grid item, the toggle is out of flow, and the row cancels
-the margin.
+carries `mb-0`. jsdom does no layout, so the render tests pin structure only: the label is not a
+flex or grid item, the toggle is out of flow, and the row cancels the margin.
 
 ## The privacy page describes this app, and there is still no cookie banner
 
@@ -4895,9 +4893,7 @@ and the button follows as the way out.
 
 It is left in normal flow, not wrapped. It is `inline-flex` (`ui/button.tsx`); measured bare and
 wrapped in `flex`, the container is 36px either way, because an `h-9` inline-flex box holds the
-strut's descent and `space-y-4`'s `margin-top` applies to atomic inlines. The pressure toggle's row
-height derives from the `<h3>`, not this button; see "The Tanks header toggle is deliberately not
-this component".
+strut's descent and `space-y-4`'s `margin-top` applies to atomic inlines.
 
 ## Retina tiles are plumbed and switched off, because Carto's `@2x` is a watermark
 
