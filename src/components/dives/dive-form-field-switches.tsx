@@ -134,7 +134,7 @@ export function DiveFormFieldSwitches({
     // to bottom rather than as a pair of half-lists to scan across.
     //
     // CSS multi-column rather than a grid, because the sections are wildly different
-    // heights - one row under "Species", nine under "Tanks" - and a grid would
+    // heights - one row under "Marine life", nine under "Tanks" - and a grid would
     // make every row as tall as its tallest cell and leave the short sections sitting
     // in holes. Multi-column packs by height instead. `break-inside-avoid` is what
     // stops a section being split down the middle of itself, which is the one thing

@@ -741,42 +741,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 />
               )}
 
-              {isVisible("air_temperature") && (
-                <FormField
-                  control={control}
-                  name={"air_temperature" as Path<TFieldValues>}
-                  render={({ field }) => (
-                    <FormItem>
-                      {toggledLabelRow(
-                        "temperature",
-                        "air_temperature",
-                        <FormLabel>
-                          Air temperature (
-                          {unitLabel("temperature", entryUnits("temperature"))})
-                        </FormLabel>,
-                      )}
-                      <div className="relative">
-                        <ThermometerSun className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                        <FormControl>
-                          <UnitNumberInput
-                            dimension="temperature"
-                            units={entryUnits("temperature")}
-                            min={-60}
-                            max={60}
-                            placeholderValue={28}
-                            className="pl-9"
-                            {...field}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
               {isVisible("visibility") && (
                 <FormField
                   control={control}
@@ -818,9 +782,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 />
               )}
               {/* Water and altitude - what the water was and where it was, which the
-          computer treats as calibration settings and the log treats as facts
-          about the dive. Last in the grid rather than with the gear because
-          they are observations, not choices carried in. */}
+                  computer treats as calibration settings and the log treats as facts
+                  about the dive. */}
               {isVisible("water_type") && (
                 <DiveVocabularyField
                   control={control}
@@ -831,7 +794,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   labels={WATER_TYPE_LABELS}
                 />
               )}
-
               {isVisible("altitude") && (
                 <FormField
                   control={control}
@@ -876,19 +838,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   )}
                 />
               )}
-
-              {/* The day at the surface. Observations like the water above it, which
-                  is why they follow it rather than joining the kit carried in below. */}
-              {isVisible("current") && (
-                <DiveVocabularyField
-                  control={control}
-                  name={"current" as Path<TFieldValues>}
-                  label="Current"
-                  icon={Wind}
-                  values={CURRENTS}
-                  labels={CURRENT_LABELS}
-                />
-              )}
+              {/* Then up from the water: the surface, and the air above it. */}
               {isVisible("waves") && (
                 <DiveVocabularyField
                   control={control}
@@ -899,6 +849,52 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   labels={WAVES_LABELS}
                 />
               )}
+              {isVisible("current") && (
+                <DiveVocabularyField
+                  control={control}
+                  name={"current" as Path<TFieldValues>}
+                  label="Current"
+                  icon={Wind}
+                  values={CURRENTS}
+                  labels={CURRENT_LABELS}
+                />
+              )}
+              {isVisible("air_temperature") && (
+                <FormField
+                  control={control}
+                  name={"air_temperature" as Path<TFieldValues>}
+                  render={({ field }) => (
+                    <FormItem>
+                      {toggledLabelRow(
+                        "temperature",
+                        "air_temperature",
+                        <FormLabel>
+                          Air temperature (
+                          {unitLabel("temperature", entryUnits("temperature"))})
+                        </FormLabel>,
+                      )}
+                      <div className="relative">
+                        <ThermometerSun className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <FormControl>
+                          <UnitNumberInput
+                            dimension="temperature"
+                            units={entryUnits("temperature")}
+                            min={-60}
+                            max={60}
+                            placeholderValue={28}
+                            className="pl-9"
+                            {...field}
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               {isVisible("weather") && (
                 <DiveVocabularyField
                   control={control}
@@ -1031,7 +1027,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           can't name ends up. */}
       {isVisible("sightings") &&
         section(
-          "Species",
+          "Marine life",
           <FormField
             control={control}
             name={"sightings" as Path<TFieldValues>}
@@ -1054,12 +1050,11 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           />,
         )}
 
-      {/* The diver's own word on the dive: how it rated and what it is filed
-          under. After everything observed about it and before the notes, which
-          is where the dive page's own reading of them sits too. */}
-      {(isVisible("rating") || isVisible("tags")) &&
+      {/* The diver's own word on the dive: how it rated, what it is filed
+          under, and the notes - the order the dive page reads them in. */}
+      {(isVisible("rating") || isVisible("tags") || isVisible("notes")) &&
         section(
-          "Rating & tags",
+          "Notes",
           <>
             {isVisible("rating") && (
               <FormField
@@ -1112,29 +1107,27 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 )}
               />
             )}
-          </>,
-        )}
 
-      {isVisible("notes") &&
-        section(
-          "Notes",
-          <FormField
-            control={control}
-            name={"notes" as Path<TFieldValues>}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Notes</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Enter any additional notes about your dive..."
-                    className="min-h-[100px]"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+            {isVisible("notes") && (
+              <FormField
+                control={control}
+                name={"notes" as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter any additional notes about your dive..."
+                        className="min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
-          />,
+          </>,
         )}
     </div>
   );
