@@ -169,6 +169,9 @@ describe("noteIsWarning", () => {
         // A person linked to the account its entry names: what the file asked
         // for, under the limit a typed username counts against.
         "account_linked",
+        // The tags an import adds to the diver's list: the dives carry them, so
+        // nothing is lost.
+        "tags_created",
       ].some(noteIsWarning),
     ).toBe(false);
   });

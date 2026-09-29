@@ -171,8 +171,8 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
           <p className="text-sm text-muted-foreground mb-3">
             Deleting locks you out straight away, on this device and every other
             one. Your dives, dive sites, trips, courses, certifications, gear,
-            contacts, people and profile are then erased for good once this
-            instance&apos;s grace period runs out. We&apos;ll email you the
+            contacts, people, tags and profile are then erased for good once
+            this instance&apos;s grace period runs out. We&apos;ll email you the
             exact date; nothing is erased before it, and signing in again before
             then brings the account back.
           </p>
@@ -186,7 +186,7 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
         open={isConfirmOpen}
         onOpenChange={setIsConfirmOpen}
         title="Delete your account"
-        description="This erases your whole logbook: every dive and its profile, your dive sites, trips, gear and service history, your courses, your certifications and the scans of your cards, your contacts and people, and the dive-computer files you imported. Take a copy first if you might want any of it - afterwards there is nowhere to take it from."
+        description="This erases your whole logbook: every dive and its profile, your dive sites, trips, gear and service history, your courses, your certifications and the scans of your cards, your contacts and people, your tags, and the dive-computer files you imported. Take a copy first if you might want any of it - afterwards there is nowhere to take it from."
         confirmText="Delete my account"
         isLoading={isDeleting}
         // Blocked while the archive is still being saved, as well as until the

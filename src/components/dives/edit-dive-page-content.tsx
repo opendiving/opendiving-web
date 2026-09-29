@@ -59,12 +59,21 @@ export function EditDivePageContent() {
       // page: `undefined` is what react-hook-form re-displays a default for.
       water_type: "",
       altitude: undefined,
+      type: "",
+      rating: null,
+      air_temperature: undefined,
+      current: "",
+      waves: "",
+      weather: "",
+      entry_type: "",
+      boat_name: "",
       weight: undefined,
       trip_uuid: undefined,
       course_uuid: undefined,
       contact_uuid: undefined,
       dive_site_uuids: [],
       gear_item_uuids: [],
+      tags: [],
       notes: "",
       // Empty, and the same for the seed `diveToFormValues` overwrites this
       // with: the whole form is submitted on save, so a cylinder invented here

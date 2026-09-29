@@ -95,9 +95,8 @@ export type PaginatedCoursesResponse = PaginatedResponse<Course>;
  *
  * An object rather than four more positional parameters: `getCourses` would
  * otherwise read `(page, perPage, search, dateFrom, dateTo, agency, status)`,
- * and a caller wanting only the last would count `undefined`s to reach it - the
- * shape `getDives` has, and the one DECISIONS.md records as the cost of having
- * appended `courseUuid` last.
+ * and a caller wanting only the last would count `undefined`s to reach it.
+ * `DiveFilters` has the same shape for the same reason.
  */
 export interface CourseFilters {
   /** Case-insensitive substring of the course's name. */

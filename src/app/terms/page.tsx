@@ -245,17 +245,18 @@ export default async function TermsPage() {
               <p className="text-foreground mb-4">
                 What it does not do is worth stating, because a page like this
                 one usually claims otherwise: there are no public profiles, no
-                feeds, no forums, no comments, no ratings and no photo sharing.
-                The people you record are private records of yours, not
-                connections between accounts. An account on this copy gives its
-                holder no view of anything you enter. This copy shows one person
-                to another in three cases only: an invitation, which is about
-                your name rather than about anything you entered; a check-in
-                link you make, which shows your check-in page to whoever holds
-                it, account or not; and a person you link to an account here,
-                which shows you that account&rsquo;s current username and puts
-                its identifier in your own export. Section 5 says exactly what
-                each is, and what follows from the rest.
+                feeds, no forums, no comments, no public ratings and no photo
+                sharing. The rating you give a dive is part of your own log. The
+                people you record are private records of yours, not connections
+                between accounts. An account on this copy gives its holder no
+                view of anything you enter. This copy shows one person to
+                another in three cases only: an invitation, which is about your
+                name rather than about anything you entered; a check-in link you
+                make, which shows your check-in page to whoever holds it,
+                account or not; and a person you link to an account here, which
+                shows you that account&rsquo;s current username and puts its
+                identifier in your own export. Section 5 says exactly what each
+                is, and what follows from the rest.
               </p>
               <p className="text-foreground mb-4">
                 Whether this copy costs anything, who may register for it, and
@@ -363,7 +364,7 @@ export default async function TermsPage() {
               </h2>
               <p className="text-foreground mb-4">
                 What you enter into this copy &mdash; dives, sites, trips, gear,
-                courses, certifications, contacts, people, your check-in
+                courses, certifications, contacts, people, tags, your check-in
                 details, notes, and the files you import &mdash; is yours, and
                 you are responsible for it. You agree not to use this copy to
                 hold or send:
@@ -430,9 +431,9 @@ export default async function TermsPage() {
                 invited them, naming you, and to tell you whether that address
                 went on to register here. Nothing you have logged is involved
                 &mdash; no dive, site, trip, gear item, course, certification,
-                contact or person &mdash; and nobody you have not invited learns
-                anything either way. The privacy policy&rsquo;s section 4.8 sets
-                out the same in its own register.
+                contact, person or tag &mdash; and nobody you have not invited
+                learns anything either way. The privacy policy&rsquo;s section
+                4.8 sets out the same in its own register.
               </p>
               <p className="text-foreground mb-4">
                 Where you make a check-in link, you grant the operator the

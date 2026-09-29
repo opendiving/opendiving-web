@@ -102,16 +102,14 @@ export function RecentDivesCard({
 
   const fetchDives = useCallback(
     (page: number, perPage: number) =>
-      divesAPI.getDives(
-        page,
-        perPage,
-        tripId,
-        diveSiteId,
-        gearItemId,
-        courseId,
-        speciesId,
-        personId,
-      ),
+      divesAPI.getDives(page, perPage, {
+        tripUuid: tripId,
+        diveSiteUuid: diveSiteId,
+        gearItemUuid: gearItemId,
+        courseUuid: courseId,
+        speciesUuid: speciesId,
+        personUuid: personId,
+      }),
     [tripId, diveSiteId, gearItemId, courseId, speciesId, personId],
   );
 

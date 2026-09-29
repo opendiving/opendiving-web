@@ -82,7 +82,7 @@ export function TripDetailPageContent() {
     if (!tripUuid) return;
     const controller = new AbortController();
     fetchAllPages(
-      (page, perPage) => divesAPI.getDives(page, perPage, tripUuid),
+      (page, perPage) => divesAPI.getDives(page, perPage, { tripUuid }),
       {
         signal: controller.signal,
         label: "the trip's dives",

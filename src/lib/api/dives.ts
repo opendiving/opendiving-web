@@ -48,6 +48,99 @@ export const WATER_TYPE_LABELS: Record<WaterType, string> = {
   brackish: "Brackish",
 };
 
+// What kind of dive it was, the diver's own statement - never read off a recording's
+// mode, since a backup computer run in gauge mode was on an open-circuit dive. The
+// four below are the conditions on the day and where the diver got in. Each mirrors
+// its enum in the API's `schemas/dive.py` (`DiveType`, `Current`, `Waves`, `Weather`,
+// `EntryType`) by hand, as `WATER_TYPES` does, in the picker's order, with no
+// "other": a value the list cannot name is not recorded.
+export const DIVE_TYPES = [
+  "open_circuit",
+  "closed_circuit",
+  "semi_closed",
+  "freedive",
+  "snorkel",
+  "surface_supplied",
+] as const;
+export type DiveType = (typeof DIVE_TYPES)[number];
+
+// "Snorkeling" rather than "Snorkel": the value is the outing, and the bare noun is
+// the gear item of that name.
+export const DIVE_TYPE_LABELS: Record<DiveType, string> = {
+  open_circuit: "Open circuit",
+  closed_circuit: "Closed circuit",
+  semi_closed: "Semi-closed circuit",
+  freedive: "Freediving",
+  snorkel: "Snorkeling",
+  surface_supplied: "Surface-supplied",
+};
+
+export const CURRENTS = [
+  "none",
+  "light",
+  "moderate",
+  "strong",
+  "extreme",
+] as const;
+export type DiveCurrent = (typeof CURRENTS)[number];
+
+export const CURRENT_LABELS: Record<DiveCurrent, string> = {
+  none: "None",
+  light: "Light",
+  moderate: "Moderate",
+  strong: "Strong",
+  extreme: "Extreme",
+};
+
+export const WAVES = ["calm", "slight", "moderate", "rough"] as const;
+export type DiveWaves = (typeof WAVES)[number];
+
+export const WAVES_LABELS: Record<DiveWaves, string> = {
+  calm: "Calm",
+  slight: "Slight",
+  moderate: "Moderate",
+  rough: "Rough",
+};
+
+export const WEATHER = [
+  "clear",
+  "partly_cloudy",
+  "overcast",
+  "rain",
+  "storm",
+  "snow",
+  "fog",
+] as const;
+export type DiveWeather = (typeof WEATHER)[number];
+
+export const WEATHER_LABELS: Record<DiveWeather, string> = {
+  clear: "Clear",
+  partly_cloudy: "Partly cloudy",
+  overcast: "Overcast",
+  rain: "Rain",
+  storm: "Storm",
+  snow: "Snow",
+  fog: "Fog",
+};
+
+// `pier` covers a jetty, a dock, a pontoon and a harbour wall; the technique - a
+// giant stride, a back roll - is a tag.
+export const ENTRY_TYPES = ["shore", "boat", "pier", "pool"] as const;
+export type EntryType = (typeof ENTRY_TYPES)[number];
+
+export const ENTRY_TYPE_LABELS: Record<EntryType, string> = {
+  shore: "Shore",
+  boat: "Boat",
+  pier: "Pier",
+  pool: "Pool",
+};
+
+// The dive list's two orders, the API's `DiveListSort`: `date` newest first, the
+// default; `rating` highest first, every unrated dive after every rated one, ties
+// newest first.
+export const DIVE_LIST_SORTS = ["date", "rating"] as const;
+export type DiveListSort = (typeof DIVE_LIST_SORTS)[number];
+
 // Every field but `id` is `| null` because that is what comes back on the wire, not
 // merely what could be missing: the API declares them `X | None` (`DiveMixtureBase`
 // in `schemas/dive_mixture.py`) and sets no `exclude_none`, so an unrecorded field
@@ -290,6 +383,18 @@ export interface Dive {
   // absent key.
   water_type?: WaterType | null;
   altitude?: number | null;
+  // The diver's classification of the dive and the conditions on the day, on the
+  // same terms as the two above: hand-entered, never seeded from a file on the
+  // form, and an explicit `null` when unrecorded. `rating` is 1 to 5;
+  // `air_temperature` is °C.
+  type?: DiveType | null;
+  rating?: number | null;
+  air_temperature?: number | null;
+  current?: DiveCurrent | null;
+  waves?: DiveWaves | null;
+  weather?: DiveWeather | null;
+  entry_type?: EntryType | null;
+  boat_name?: string | null;
   // Where the diver actually entered and left the water, as the dive computer's GPS
   // recorded it. The API's `DiveTechScalars`: written by the import, **not settable
   // through the form**, explicit `null` rather than an absent key on a dive that has
@@ -368,6 +473,11 @@ export interface Dive {
   // A detail-response field like `sightings`, and absent on a list row, so read
   // it through `?.` and default it.
   people?: PersonReference[];
+  // The dive's tags by name, in the diver's order. Names rather than references,
+  // so a chip renders without a second read - which is why the API drops the
+  // diver's dive caches on a rename or a delete. A detail-response field like
+  // `sightings`, absent on a list row.
+  tags?: string[];
 }
 
 // What recorded a dive, as that device's own export named it.
@@ -754,6 +864,18 @@ export interface DiveCreate {
   // Metres above sea level of the water surface. Bounded by the API's
   // `ck_dive_altitude_range` (-450 to 6500), which `diveCreateSchema` mirrors.
   altitude?: number | null;
+  type?: DiveType | null;
+  // 1 to 5, bounded by the API's `ck_dive_rating_range`, which `diveCreateSchema`
+  // mirrors.
+  rating?: number | null;
+  air_temperature?: number | null;
+  current?: DiveCurrent | null;
+  waves?: DiveWaves | null;
+  weather?: DiveWeather | null;
+  entry_type?: EntryType | null;
+  // Trimmed by the API, which refuses one that is blank once trimmed - so the
+  // form sends none rather than an empty string.
+  boat_name?: string | null;
   weight?: number | null;
   trip_uuid?: string;
   course_uuid?: string;
@@ -767,6 +889,11 @@ export interface DiveCreate {
   // Each person the diver owns, at most once; a person named twice keeps the
   // first reference's role.
   people?: PersonReference[];
+  // By name, in the diver's order. Each is matched to the diver's tag of that
+  // name compared case-folded, or creates one - so there is no tag route to call
+  // first - and two that fold to one keep the first spelling. The API's fold
+  // decides which stored spelling a name meets, not this app's.
+  tags?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -794,6 +921,16 @@ export interface DiveUpdate {
   // cleared `""` to `null` rather than dropping the field - see `buildDiveUpdate`.
   water_type?: WaterType | null;
   altitude?: number | null;
+  // The same contract again, and the same `""`-to-`null` conversion for the
+  // selects and the boat name's box.
+  type?: DiveType | null;
+  rating?: number | null;
+  air_temperature?: number | null;
+  current?: DiveCurrent | null;
+  waves?: DiveWaves | null;
+  weather?: DiveWeather | null;
+  entry_type?: EntryType | null;
+  boat_name?: string | null;
   weight?: number | null;
   // `null` detaches the dive from its trip; omitting the field leaves whatever
   // trip it already has alone. Same "explicit null clears, absent means no
@@ -817,6 +954,8 @@ export interface DiveUpdate {
   sightings?: SightingWrite[];
   // The same wholesale-replace contract, roles and order included.
   people?: PersonReference[];
+  // And again, by name - see `DiveCreate.tags`.
+  tags?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -909,6 +1048,30 @@ export interface DiveNeighbors {
 }
 
 export type PaginatedDivesResponse = PaginatedResponse<Dive>;
+
+/**
+ * What narrows a dive list, and the order it comes in. Every filter set is AND-ed
+ * with the others. One naming a record that doesn't exist or isn't the caller's
+ * answers an empty page rather than an error, so it reveals nothing about whether
+ * that record exists.
+ */
+export interface DiveFilters {
+  tripUuid?: string;
+  /** Any dive that *includes* the site, since a dive can span several. */
+  diveSiteUuid?: string;
+  gearItemUuid?: string;
+  courseUuid?: string;
+  /** Any dive that recorded the species. */
+  speciesUuid?: string;
+  /** Any dive whose `people` name the person. */
+  personUuid?: string;
+  /** Any dive carrying the tag. */
+  tagUuid?: string;
+  /** An exact match on the stored type. */
+  type?: DiveType | "";
+  /** `date` when not given. */
+  sort?: DiveListSort;
+}
 
 // A gas mixture as read out of a dive-computer export, mirroring the API's
 // `DiveMixtureSchema`. Every field is nullable and `null` means "the file didn't
@@ -1011,8 +1174,8 @@ export interface ParsedDiveMatch {
  * merging and numbering.
  *
  * Two things differ from the other resources here. Updates replace the list-valued fields
- * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`, `sightings`, `people`) wholesale rather than
- * merging, so a caller must send the full intended list. And importing a file is two steps - parse to
+ * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`, `sightings`, `people`, `tags`) wholesale
+ * rather than merging, so a caller must send the full intended list. And importing a file is two steps - parse to
  * pre-fill the form, then attach against the created dive - because the diver gets to
  * correct the parsed values before anything is stored.
  */
@@ -1023,38 +1186,43 @@ export const divesAPI = {
     return response.data;
   },
 
-  // Get all dives for a user (paginated). Pass `tripUuid`/`diveSiteUuid`/
-  // `gearItemUuid`/`courseUuid`/`speciesUuid`/`personUuid` to only return dives
-  // that belong to a given trip / were made at a given site / used a given piece
-  // of gear / were part of a given training course / recorded a given species /
-  // name a given person. The filters are combinable, and one naming something
-  // that doesn't exist or isn't the caller's returns an empty page rather than
-  // an error.
-  //
-  // `courseUuid`, `speciesUuid` and `personUuid` come last rather than beside `tripUuid`, where
-  // they belong by meaning: these are positional, and inserting a parameter would
-  // silently re-point every existing call's site and gear filters. Appending is
-  // the only safe direction, which is why each new filter joins the end.
+  /**
+   * A page of the signed-in user's dives, newest first or by rating, narrowed by
+   * whichever of `filters` is set. See `DiveFilters` for what each one matches.
+   *
+   * An unset filter - `undefined` or `""` - is dropped from the query string here
+   * rather than by each caller, and that is not tidiness: `type` is an enum on the
+   * API, and FastAPI answers `?type=` with a 422 rather than reading it as "any".
+   */
   async getDives(
     page: number = 1,
     items_per_page: number = 10,
-    tripUuid?: string,
-    diveSiteUuid?: string,
-    gearItemUuid?: string,
-    courseUuid?: string,
-    speciesUuid?: string,
-    personUuid?: string,
+    filters: DiveFilters = {},
   ): Promise<PaginatedDivesResponse> {
+    const {
+      tripUuid,
+      diveSiteUuid,
+      gearItemUuid,
+      courseUuid,
+      speciesUuid,
+      personUuid,
+      tagUuid,
+      type,
+      sort,
+    } = filters;
     const response = await apiClient.get(`/dives`, {
       params: {
         page,
         items_per_page,
-        ...(tripUuid !== undefined ? { trip_uuid: tripUuid } : {}),
-        ...(diveSiteUuid !== undefined ? { dive_site_uuid: diveSiteUuid } : {}),
-        ...(gearItemUuid !== undefined ? { gear_item_uuid: gearItemUuid } : {}),
-        ...(courseUuid !== undefined ? { course_uuid: courseUuid } : {}),
-        ...(speciesUuid !== undefined ? { species_uuid: speciesUuid } : {}),
-        ...(personUuid !== undefined ? { person_uuid: personUuid } : {}),
+        ...(tripUuid ? { trip_uuid: tripUuid } : {}),
+        ...(diveSiteUuid ? { dive_site_uuid: diveSiteUuid } : {}),
+        ...(gearItemUuid ? { gear_item_uuid: gearItemUuid } : {}),
+        ...(courseUuid ? { course_uuid: courseUuid } : {}),
+        ...(speciesUuid ? { species_uuid: speciesUuid } : {}),
+        ...(personUuid ? { person_uuid: personUuid } : {}),
+        ...(tagUuid ? { tag_uuid: tagUuid } : {}),
+        ...(type ? { type } : {}),
+        ...(sort ? { sort } : {}),
       },
     });
     return response.data;

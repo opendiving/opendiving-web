@@ -28,10 +28,13 @@ one.
 
 ## Features
 
-- **Dive logging** — times, depths, duration, temperature, visibility, water type, altitude, weight,
-  notes, and any number of gas mixtures (O₂/He, start/end pressures) per dive. A dive can span
-  multiple dive sites (drift dives happen), in order. Switch off the fields you never fill in and
-  save the arrangement as a named set — the choice follows your account, not the device.
+- **Dive logging** — times, depths, duration, the kind of dive, water and air temperature,
+  visibility, water type, altitude, current, waves, weather, how you got in and the boat you dived
+  from, weight, notes, your own rating out of five, and any number of gas mixtures (O₂/He, start/end
+  pressures) per dive. File dives under tags of your own words, then filter the log by a tag or by
+  the kind of dive, or read it best-rated first. A dive can span multiple dive sites (drift dives
+  happen), in order. Switch off the fields you never fill in and save the arrangement as a named set
+  — the choice follows your account, not the device.
 - **Technical diving** — trimix and nitrox mixes get derived gas names and per-mix **MOD** at your
   ppO₂ limit, plus END/EAD; the profile chart shades the **deco ceiling**, plots the computer's own
   **NDL, TTS, ppO₂, CNS and gradient factors** and marks dive events; each recording says the mode

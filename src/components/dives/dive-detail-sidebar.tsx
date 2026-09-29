@@ -1,7 +1,16 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { Dive, WATER_TYPE_LABELS } from "@/lib/api/dives";
+import {
+  CURRENT_LABELS,
+  Dive,
+  DIVE_TYPE_LABELS,
+  ENTRY_TYPE_LABELS,
+  WATER_TYPE_LABELS,
+  WAVES_LABELS,
+  WEATHER_LABELS,
+} from "@/lib/api/dives";
 import { Trip } from "@/lib/api/trips";
 import { Course } from "@/lib/api/courses";
 import { Contact } from "@/lib/api/contacts";
@@ -17,18 +26,27 @@ import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { PeopleList } from "@/components/people/people-list";
+import { RatingStars } from "@/components/dives/rating-input";
+import { Badge } from "@/components/ui/badge";
 import type { MappableLocation } from "@/components/map/locations-map";
 import {
   Building2,
+  CloudSun,
   Eye,
   Globe,
   GraduationCap,
+  LogIn,
   Luggage,
   MapPin,
   Mountain,
   Phone,
+  Sailboat,
   Thermometer,
+  ThermometerSun,
   Waves,
+  WavesArrowUp,
+  Wind,
+  type LucideIcon,
 } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
 import {
@@ -57,6 +75,50 @@ interface DiveDetailSidebarProps {
 }
 
 const NO_PEOPLE: Readonly<Record<string, Person>> = {};
+
+// One row of the Environment card: what it is, and the value beside its icon.
+function Reading({
+  label,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  icon: LucideIcon;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <div className="text-sm font-medium text-muted-foreground mb-1">
+        {label}
+      </div>
+      <div className="flex items-center gap-2 text-xl font-semibold">
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 break-words">{children}</span>
+      </div>
+    </div>
+  );
+}
+
+// One row of the Dive Information card, the size of the "Logged on" beside it.
+function InfoRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="text-sm font-medium text-muted-foreground">{label}</div>
+      <div className="text-sm">{children}</div>
+    </div>
+  );
+}
+
+// A stored vocabulary value's label, falling back to the wire value, like
+// `gearTypeLabel` and the mixtures table's role badge: the API can grow a member
+// before this build ships a label for it, and rendering the slug beats rendering
+// a blank row.
+function labelOf<T extends string>(
+  labels: Record<T, string>,
+  value: T,
+): string {
+  return labels[value] ?? value;
+}
 
 // A recorded pair as a point, or null when the dive has no fix on that side.
 //
@@ -92,9 +154,16 @@ export function DiveDetailSidebar({
   );
   const hasEnvironmentInfo =
     dive.bottom_temperature != null ||
+    dive.air_temperature != null ||
     dive.visibility != null ||
     dive.water_type != null ||
-    dive.altitude != null;
+    dive.altitude != null ||
+    dive.current != null ||
+    dive.waves != null ||
+    dive.weather != null ||
+    dive.entry_type != null ||
+    dive.boat_name != null;
+  const tags = dive.tags ?? [];
 
   // Where the dive computer put the diver, which is a different claim from where
   // the site is pinned - so both are drawn, and the ring/dot pair is what tells
@@ -313,52 +382,54 @@ export function DiveDetailSidebar({
           </CardHeader>
           <CardContent className="space-y-4">
             {dive.bottom_temperature != null && (
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Bottom Temperature
-                </div>
-                <div className="flex items-center gap-2 text-xl font-semibold">
-                  <Thermometer className="h-4 w-4 text-muted-foreground" />
-                  {formatTemperature(dive.bottom_temperature, units)}
-                </div>
-              </div>
+              <Reading label="Bottom Temperature" icon={Thermometer}>
+                {formatTemperature(dive.bottom_temperature, units)}
+              </Reading>
+            )}
+            {dive.air_temperature != null && (
+              <Reading label="Air Temperature" icon={ThermometerSun}>
+                {formatTemperature(dive.air_temperature, units)}
+              </Reading>
             )}
             {dive.visibility != null && (
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Visibility
-                </div>
-                <div className="flex items-center gap-2 text-xl font-semibold">
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                  {formatVisibility(dive.visibility, units)}
-                </div>
-              </div>
+              <Reading label="Visibility" icon={Eye}>
+                {formatVisibility(dive.visibility, units)}
+              </Reading>
             )}
             {dive.water_type != null && (
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Water Type
-                </div>
-                <div className="flex items-center gap-2 text-xl font-semibold">
-                  <Waves className="h-4 w-4 text-muted-foreground" />
-                  {/* Falls back to the wire value, like `gearTypeLabel` and the
-                      mixtures table's role badge: the API can grow a member
-                      before this build ships a label for it, and rendering the
-                      slug beats rendering a blank row. */}
-                  {WATER_TYPE_LABELS[dive.water_type] ?? dive.water_type}
-                </div>
-              </div>
+              <Reading label="Water Type" icon={Waves}>
+                {labelOf(WATER_TYPE_LABELS, dive.water_type)}
+              </Reading>
             )}
             {dive.altitude != null && (
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Altitude
-                </div>
-                <div className="flex items-center gap-2 text-xl font-semibold">
-                  <Mountain className="h-4 w-4 text-muted-foreground" />
-                  {formatAltitude(dive.altitude, units)}
-                </div>
-              </div>
+              <Reading label="Altitude" icon={Mountain}>
+                {formatAltitude(dive.altitude, units)}
+              </Reading>
+            )}
+            {dive.current != null && (
+              <Reading label="Current" icon={Wind}>
+                {labelOf(CURRENT_LABELS, dive.current)}
+              </Reading>
+            )}
+            {dive.waves != null && (
+              <Reading label="Waves" icon={WavesArrowUp}>
+                {labelOf(WAVES_LABELS, dive.waves)}
+              </Reading>
+            )}
+            {dive.weather != null && (
+              <Reading label="Weather" icon={CloudSun}>
+                {labelOf(WEATHER_LABELS, dive.weather)}
+              </Reading>
+            )}
+            {dive.entry_type != null && (
+              <Reading label="Entry Type" icon={LogIn}>
+                {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
+              </Reading>
+            )}
+            {dive.boat_name != null && (
+              <Reading label="Boat Name" icon={Sailboat}>
+                {dive.boat_name}
+              </Reading>
             )}
           </CardContent>
         </Card>
@@ -372,20 +443,41 @@ export function DiveDetailSidebar({
           <CardTitle as="h2">Dive Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div>
-            <div className="text-sm font-medium text-muted-foreground">
-              Logged on
-            </div>
-            <div className="text-sm">
-              {formatDateTime(dive.created_at, {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </div>
-          </div>
+          {/* The diver's own classification of the dive, beside the record's
+              own facts rather than among the readings: none of the three was
+              measured. */}
+          {dive.type != null && (
+            <InfoRow label="Dive type">
+              {labelOf(DIVE_TYPE_LABELS, dive.type)}
+            </InfoRow>
+          )}
+          {dive.rating != null && (
+            <InfoRow label="Rating">
+              <RatingStars rating={dive.rating} />
+            </InfoRow>
+          )}
+          {tags.length > 0 && (
+            <InfoRow label="Tags">
+              <ul className="flex flex-wrap gap-1.5 pt-1">
+                {tags.map((tag) => (
+                  <li key={tag}>
+                    <Badge variant="outline" className="font-medium">
+                      {tag}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            </InfoRow>
+          )}
+          <InfoRow label="Logged on">
+            {formatDateTime(dive.created_at, {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </InfoRow>
         </CardContent>
       </Card>
     </div>

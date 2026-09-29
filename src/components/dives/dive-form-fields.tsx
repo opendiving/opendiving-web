@@ -1,18 +1,25 @@
 "use client";
 
+import { useId, useRef, type ReactNode } from "react";
 import { Control, FieldValues, Path } from "react-hook-form";
 import {
   ArrowDownToLine,
   ChevronsDownUp,
   Clock,
+  CloudSun,
   Eye,
+  LogIn,
   Mountain,
+  Sailboat,
+  Shapes,
   Thermometer,
+  ThermometerSun,
   Waves,
+  WavesArrowUp,
   Weight,
+  Wind,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { DiveStartTimeField } from "@/components/dives/dive-start-time-field";
@@ -40,11 +47,29 @@ import {
   SpeciesMultiSelect,
   type SightingErrors,
 } from "@/components/dives/species-multi-select";
+import { DiveVocabularyField } from "@/components/dives/dive-vocabulary-field";
+import { RatingInput, RatingLabelRow } from "@/components/dives/rating-input";
+import { TagsMultiSelect } from "@/components/dives/tags-multi-select";
 import { DiveMixtureInput, type SightingInput } from "@/lib/validations/dive";
 import {
+  CURRENT_LABELS,
+  CURRENTS,
+  DIVE_TYPE_LABELS,
+  DIVE_TYPES,
   DiveSiteSummary,
+  ENTRY_TYPE_LABELS,
+  ENTRY_TYPES,
   WATER_TYPES,
   WATER_TYPE_LABELS,
+  WAVES,
+  WAVES_LABELS,
+  WEATHER,
+  WEATHER_LABELS,
+  type DiveCurrent,
+  type DiveType,
+  type DiveWaves,
+  type DiveWeather,
+  type EntryType,
   type WaterType,
 } from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
@@ -96,6 +121,17 @@ export interface DiveFormValues extends FieldValues {
   // because `diveToFormValues` seeds one and `buildDiveUpdate` reads the other.
   water_type?: WaterType | "" | null;
   altitude?: number | null;
+  // The same three states for every other select, and `""` for a boat name
+  // nobody typed.
+  type?: DiveType | "" | null;
+  current?: DiveCurrent | "" | null;
+  waves?: DiveWaves | "" | null;
+  weather?: DiveWeather | "" | null;
+  entry_type?: EntryType | "" | null;
+  boat_name?: string;
+  air_temperature?: number | null;
+  // `null` is unrated, which the control's clear writes.
+  rating?: number | null;
   weight?: number | null;
   // `null` means "no trip", and is distinct from `undefined` ("field not
   // touched") on the edit form - see `DiveUpdate.trip_uuid`.
@@ -109,6 +145,8 @@ export interface DiveFormValues extends FieldValues {
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   sightings?: SightingInput[];
+  // By name, in the diver's order.
+  tags?: string[];
   notes?: string;
   mixtures?: DiveMixtureInput[];
 }
@@ -177,25 +215,33 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   // this says - see `UnitNumberInput`.
   const { entryUnits, toggleEntryUnits } = useEntryUnits();
   const isVisible = visibility.isVisible;
+  // The rating is a group, which a label names by reference rather than by `for`.
+  const ratingLabelId = useId();
+  const ratingRef = useRef<HTMLDivElement>(null);
 
-  // Depth's one toggle follows the first *visible* depth field, so hiding Maximum
-  // depth moves it onto Average depth rather than stranding the dimension without a
-  // control. With both hidden the form has no depth control at all and the gas
-  // hints render in the effective unit, labelled as they already are.
-  const depthToggleField: DiveFormFieldKey | null = isVisible("max_depth")
-    ? "max_depth"
-    : isVisible("avg_depth")
-      ? "avg_depth"
-      : null;
-  const depthLabelRow = (
+  // A dimension shared by two fields has one toggle, on the first *visible* of
+  // them, so hiding Maximum depth moves depth's onto Average depth and hiding
+  // Bottom temperature moves temperature's onto Air temperature, rather than
+  // stranding the dimension without a control. Never both at once - a second
+  // control would be a duplicate accessible name over the same dimension. With
+  // both hidden the form has no control for it at all, and the gas hints render
+  // depth in the effective unit, labelled as they already are.
+  const firstVisible = (...keys: DiveFormFieldKey[]) =>
+    keys.find((key) => isVisible(key)) ?? null;
+  const toggleFields = {
+    depth: firstVisible("max_depth", "avg_depth"),
+    temperature: firstVisible("bottom_temperature", "air_temperature"),
+  };
+  const toggledLabelRow = (
+    dimension: keyof typeof toggleFields,
     key: DiveFormFieldKey,
-    label: React.ReactNode,
-  ): React.ReactNode =>
-    depthToggleField === key ? (
+    label: ReactNode,
+  ): ReactNode =>
+    toggleFields[dimension] === key ? (
       <EntryUnitLabelRow
-        dimension="depth"
-        entryUnits={entryUnits("depth")}
-        onToggle={() => toggleEntryUnits("depth")}
+        dimension={dimension}
+        entryUnits={entryUnits(dimension)}
+        onToggle={() => toggleEntryUnits(dimension)}
       >
         {label}
       </EntryUnitLabelRow>
@@ -439,36 +485,51 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         />
       </div>
 
+      {/* What kind of dive it was, with the dive's own facts rather than among
+          the readings below it. Half width in a grid of its own, for the reason
+          Weight is: a select as wide as the form is wider than anything it
+          offers. */}
+      {isVisible("type") && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <DiveVocabularyField
+            control={control}
+            name={"type" as Path<TFieldValues>}
+            label="Dive type"
+            icon={Shapes}
+            values={DIVE_TYPES}
+            labels={DIVE_TYPE_LABELS}
+          />
+        </div>
+      )}
+
       {/* The readings: depth, then the environment the Fields dialog groups
-          under that name. One grid rather than three fixed pairs, because every
-          one of these six hides on its own. Paired up, hiding half of a pair
-          left the other half in its column with an empty one beside it, which
-          reads as a field that failed to load; a single grid lets auto-flow
-          pack whatever survives from the left, so a hidden field costs a slot
-          and not a hole. With all six visible the rows hold what they always
-          held - depth, temperature and visibility, water and altitude - and
-          sit where they always sat, which is what the row gap below is for.
+          under that name. One grid rather than fixed pairs, because every one
+          of them hides on its own. Paired up, hiding half of a pair left the
+          other half in its column with an empty one beside it, which reads as a
+          field that failed to load; a single grid lets auto-flow pack whatever
+          survives from the left, so a hidden field costs a slot and not a hole.
+          The fields follow the Fields dialog's order, two to a row.
 
           An odd number visible leaves one field half-width on the last row.
           That is accepted and deliberately not spanned: a ragged bottom edge
           reads as the end of a list, a gap in the middle reads as breakage.
 
-          `gap-y-6` rather than `gap-4`'s 1rem, because these rows used to be
-          three separate children of the form's `space-y-6` and the 1.5rem
-          between them was the form's own rhythm, not a pair's. Merging them
-          into one grid would otherwise tighten the whole card by 8px a row
-          while every other block boundary stayed where it was. The column gap
-          is still 1rem, so a visible row is pixel-identical to the one it
-          replaces. On a phone the six stack at 1.5rem where the old pairs
-          stacked at 1rem inside themselves - one grid has one row gap, and
-          after this merge there are no pairs left for the tighter one to mean
-          anything about. */}
+          `gap-y-6` rather than `gap-4`'s 1rem, because the row gap is the
+          form's own `space-y-6` rhythm, not a pair's: a full row sits exactly
+          where a pair of its own would. The column gap is still 1rem. On a
+          phone the fields stack at 1.5rem - one grid has one row gap. */}
       {(isVisible("max_depth") ||
         isVisible("avg_depth") ||
         isVisible("bottom_temperature") ||
+        isVisible("air_temperature") ||
         isVisible("visibility") ||
         isVisible("water_type") ||
-        isVisible("altitude")) && (
+        isVisible("altitude") ||
+        isVisible("current") ||
+        isVisible("waves") ||
+        isVisible("weather") ||
+        isVisible("entry_type") ||
+        isVisible("boat_name")) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
           {isVisible("max_depth") && (
             <FormField
@@ -478,11 +539,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 <FormItem>
                   {/* Depth's one toggle, and whether it sits here is a question about
                   what is on screen: `avg_depth` below carries it instead when this
-                  field is hidden, so the dimension never loses its control while a
-                  field it governs is still being typed into. Never both at once - a
-                  second control would be a duplicate accessible name over the same
-                  dimension. */}
-                  {depthLabelRow(
+                  field is hidden - see `toggleFields`. */}
+                  {toggledLabelRow(
+                    "depth",
                     "max_depth",
                     <FormLabel>
                       Maximum depth ({unitLabel("depth", entryUnits("depth"))})
@@ -515,7 +574,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               name={"avg_depth" as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
-                  {depthLabelRow(
+                  {toggledLabelRow(
+                    "depth",
                     "avg_depth",
                     <FormLabel>
                       Average depth ({unitLabel("depth", entryUnits("depth"))})
@@ -547,16 +607,14 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               name={"bottom_temperature" as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
-                  <EntryUnitLabelRow
-                    dimension="temperature"
-                    entryUnits={entryUnits("temperature")}
-                    onToggle={() => toggleEntryUnits("temperature")}
-                  >
+                  {toggledLabelRow(
+                    "temperature",
+                    "bottom_temperature",
                     <FormLabel>
                       Bottom temperature (
                       {unitLabel("temperature", entryUnits("temperature"))})
-                    </FormLabel>
-                  </EntryUnitLabelRow>
+                    </FormLabel>,
+                  )}
                   <div className="relative">
                     <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                     <FormControl>
@@ -569,6 +627,42 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         min={-50}
                         max={50}
                         placeholderValue={22.5}
+                        className="pl-9"
+                        {...field}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {isVisible("air_temperature") && (
+            <FormField
+              control={control}
+              name={"air_temperature" as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  {toggledLabelRow(
+                    "temperature",
+                    "air_temperature",
+                    <FormLabel>
+                      Air temperature (
+                      {unitLabel("temperature", entryUnits("temperature"))})
+                    </FormLabel>,
+                  )}
+                  <div className="relative">
+                    <ThermometerSun className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                    <FormControl>
+                      <UnitNumberInput
+                        dimension="temperature"
+                        units={entryUnits("temperature")}
+                        min={-60}
+                        max={60}
+                        placeholderValue={28}
                         className="pl-9"
                         {...field}
                         value={field.value}
@@ -627,42 +721,13 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           about the dive. Last in the grid rather than with the gear because
           they are observations, not choices carried in. */}
           {isVisible("water_type") && (
-            <FormField
+            <DiveVocabularyField
               control={control}
               name={"water_type" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Water type</FormLabel>
-                  {/* A plain `<select>` rather than the shadcn `Select` used
-                  elsewhere, for the same reason as the cylinder Role picker in
-                  `mixture-fields.tsx`: this one needs "unset" as a real,
-                  selectable option, and Radix reserves `""` for clearing. */}
-                  <div className="relative">
-                    <Waves className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      <NativeSelect
-                        className="pl-9"
-                        {...field}
-                        value={field.value ?? ""}
-                        // `""` straight through, not `|| undefined`: react-hook-form
-                        // re-displays a field's default whenever its value resolves
-                        // to `undefined`, so mapping "Not recorded" to it would snap
-                        // the dive's stored water type back the moment it was
-                        // cleared. The submit paths convert the sentinel away.
-                        onChange={(e) => field.onChange(e.target.value)}
-                      >
-                        <option value="">Not recorded</option>
-                        {WATER_TYPES.map((waterType) => (
-                          <option key={waterType} value={waterType}>
-                            {WATER_TYPE_LABELS[waterType]}
-                          </option>
-                        ))}
-                      </NativeSelect>
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Water type"
+              icon={Waves}
+              values={WATER_TYPES}
+              labels={WATER_TYPE_LABELS}
             />
           )}
 
@@ -701,6 +766,76 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         {...field}
                         value={field.value}
                         onChange={field.onChange}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {/* The day at the surface and how the diver got in. Observations like
+          the water above them, which is why they follow it rather than joining
+          the kit carried in below. */}
+          {isVisible("current") && (
+            <DiveVocabularyField
+              control={control}
+              name={"current" as Path<TFieldValues>}
+              label="Current"
+              icon={Wind}
+              values={CURRENTS}
+              labels={CURRENT_LABELS}
+            />
+          )}
+          {isVisible("waves") && (
+            <DiveVocabularyField
+              control={control}
+              name={"waves" as Path<TFieldValues>}
+              label="Waves"
+              icon={WavesArrowUp}
+              values={WAVES}
+              labels={WAVES_LABELS}
+            />
+          )}
+          {isVisible("weather") && (
+            <DiveVocabularyField
+              control={control}
+              name={"weather" as Path<TFieldValues>}
+              label="Weather"
+              icon={CloudSun}
+              values={WEATHER}
+              labels={WEATHER_LABELS}
+            />
+          )}
+          {isVisible("entry_type") && (
+            <DiveVocabularyField
+              control={control}
+              name={"entry_type" as Path<TFieldValues>}
+              label="Entry type"
+              icon={LogIn}
+              values={ENTRY_TYPES}
+              labels={ENTRY_TYPE_LABELS}
+            />
+          )}
+          {isVisible("boat_name") && (
+            <FormField
+              control={control}
+              name={"boat_name" as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Boat name</FormLabel>
+                  <div className="relative">
+                    <Sailboat className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                    <FormControl>
+                      {/* `""` is not recorded, and the submit paths trim it into
+                      the API's `null` - see `boatNameOrNull`. */}
+                      <Input
+                        type="text"
+                        placeholder="e.g. Legend"
+                        className="pl-9"
+                        {...field}
+                        value={field.value ?? ""}
                       />
                     </FormControl>
                   </div>
@@ -842,6 +977,61 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   onPendingChange={onSpeciesPendingChange}
                 />
               </FormControl>
+            </FormItem>
+          )}
+        />
+      )}
+
+      {/* The diver's own word on the dive: how it rated and what it is filed
+          under. After everything observed about it and before the notes, which
+          is where the dive page's own reading of them sits too. */}
+      {isVisible("rating") && (
+        <FormField
+          control={control}
+          name={"rating" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <RatingLabelRow
+                canClear={field.value != null}
+                onClear={() => {
+                  field.onChange(null);
+                  // The button goes with the rating it cleared, so the focus
+                  // it held lands on the stars rather than on the page.
+                  ratingRef.current
+                    ?.querySelector<HTMLInputElement>("input")
+                    ?.focus();
+                }}
+              >
+                <FormLabel id={ratingLabelId}>Rating</FormLabel>
+              </RatingLabelRow>
+              <FormControl>
+                <RatingInput
+                  ref={ratingRef}
+                  aria-labelledby={ratingLabelId}
+                  value={field.value ?? null}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {isVisible("tags") && (
+        <FormField
+          control={control}
+          name={"tags" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tags</FormLabel>
+              <FormControl>
+                <TagsMultiSelect
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />

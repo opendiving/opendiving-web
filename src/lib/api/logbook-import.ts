@@ -178,7 +178,11 @@ export type ImportNoteCode =
   // instance its entry names; the sentence names that account's current
   // username. Information: the link is what the file asked for, under the same
   // per-user limit a typed username counts against.
-  | "account_linked";
+  | "account_linked"
+  // The tags the import adds to the diver's list (apply) or would (preview),
+  // named in one note. Tags are members of a dive rather than a collection, so
+  // no row of counts has them. Information: nothing is lost.
+  | "tags_created";
 
 /** One thing the import decided, addressed to the diver. */
 export interface ImportNote {

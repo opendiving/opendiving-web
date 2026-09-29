@@ -29,16 +29,25 @@ export const DIVE_FORM_FIELDS = [
   "contact_uuid",
   "people",
   "dive_site_uuids",
+  "type",
   "max_depth",
   "avg_depth",
   "bottom_temperature",
+  "air_temperature",
   "visibility",
   "water_type",
   "altitude",
+  "current",
+  "waves",
+  "weather",
+  "entry_type",
+  "boat_name",
   "mixtures",
   "gear_item_uuids",
   "weight",
   "sightings",
+  "rating",
+  "tags",
   "notes",
   "mixture.po2_limit",
   "mixture.helium",
@@ -110,19 +119,19 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
  *
  * This used to be stated in terms of blocks - "a group is a run of adjacent blocks,
  * never part of one" - where a block was a row, and a row was a set of fields that had
- * to appear and disappear together. The readings grid ended that: max depth, average
- * depth, bottom temperature, visibility, water type and altitude share one grid in
- * which each hides on its own and the survivors reflow, so there is no row-sized unit
- * left for a heading to align to, and "Dive info" and "Environment" would each own part
- * of the same one. What the block rule was protecting is the order, so the order is what
+ * to appear and disappear together. The readings grid ended that: every reading from
+ * the depths to the boat name shares one grid in which each hides on its own and the
+ * survivors reflow, so there is no row-sized unit left for a heading to align to, and
+ * "Dive info" and "Environment" would each own part of the same one. What the block rule was protecting is the order, so the order is what
  * this now says. See "Hidden dive-form fields leave a ragged edge, never a hole" in
  * `DECISIONS.md`.
  *
  * Headings are still coarser than the form's rows, deliberately. "Trip, course & site"
  * covers the trip/course pair, the dive center under it, the people under that and the
  * dive site below them;
- * "Dive info" covers start time, the dive number/duration pair and the two depths;
- * "Environment" covers the other four readings. A heading per row would offer more choices than there are decisions to make.
+ * "Dive info" covers start time, the dive number/duration pair, the dive type and the
+ * two depths; "Environment" covers every other reading in the grid. A heading per row
+ * would offer more choices than there are decisions to make.
  *
  * Groups carried only by always-on rows are listed anyway - a gap where Start time should
  * be reads as a field that went missing.
@@ -134,6 +143,7 @@ export const DIVE_FORM_FIELD_GROUPS = [
   "Tanks",
   "Gear & weight",
   "Species",
+  "Rating & tags",
   "Notes",
 ] as const;
 
@@ -165,6 +175,7 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
     label: "Dive site(s)",
     group: "Trip, course & site",
   },
+  { key: "type", label: "Dive type", group: "Dive info" },
   { key: "max_depth", label: "Maximum depth", group: "Dive info" },
   { key: "avg_depth", label: "Average depth", group: "Dive info" },
   {
@@ -172,13 +183,21 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
     label: "Bottom temperature",
     group: "Environment",
   },
+  { key: "air_temperature", label: "Air temperature", group: "Environment" },
   { key: "visibility", label: "Visibility", group: "Environment" },
   { key: "water_type", label: "Water type", group: "Environment" },
   { key: "altitude", label: "Altitude", group: "Environment" },
+  { key: "current", label: "Current", group: "Environment" },
+  { key: "waves", label: "Waves", group: "Environment" },
+  { key: "weather", label: "Weather", group: "Environment" },
+  { key: "entry_type", label: "Entry type", group: "Environment" },
+  { key: "boat_name", label: "Boat name", group: "Environment" },
   { key: "mixtures", label: "Tanks", group: "Tanks" },
   { key: "gear_item_uuids", label: "Gear", group: "Gear & weight" },
   { key: "weight", label: "Weight", group: "Gear & weight" },
   { key: "sightings", label: "Species spotted", group: "Species" },
+  { key: "rating", label: "Rating", group: "Rating & tags" },
+  { key: "tags", label: "Tags", group: "Rating & tags" },
   { key: "notes", label: "Notes", group: "Notes" },
   { key: "mixture.po2_limit", label: "ppO₂ limit", group: "Tanks" },
   { key: "mixture.helium", label: "He", group: "Tanks" },
@@ -257,16 +276,25 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
   contact_uuid: null,
   people: [],
   dive_site_uuids: [],
+  type: "",
   max_depth: null,
   avg_depth: null,
   bottom_temperature: null,
+  air_temperature: null,
   visibility: null,
   water_type: "",
   altitude: null,
+  current: "",
+  waves: "",
+  weather: "",
+  entry_type: "",
+  boat_name: "",
   mixtures: [],
   gear_item_uuids: [],
   weight: null,
   sightings: [],
+  rating: null,
+  tags: [],
   notes: "",
   "mixture.po2_limit": "",
   // The one column that clears to a *number*, and the only one whose absence means
