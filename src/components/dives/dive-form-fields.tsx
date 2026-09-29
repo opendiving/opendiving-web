@@ -712,8 +712,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         </div>
       )}
 
-      {/* Gas Mixtures. Hidden, the whole section goes - the heading, the pressure
-          toggle, every tank card, "Add mixture" and the empty-state line - while the
+      {/* Tanks. Hidden, the whole section goes - the heading, the pressure
+          toggle, every tank card, "Add tank" and the empty-state line - while the
           cylinders themselves stay in form state and are submitted, exactly as a
           hidden scalar is. */}
       {isVisible("mixtures") && (

@@ -3057,8 +3057,8 @@ at its seam, with no synthetic row.
 The narrower fix, omitting `mixtures` in `buildDiveUpdate` when the dive had none and the field
 holds one pristine `DEFAULT_MIXTURE`, is wrong: `DEFAULT_MIXTURE` is the `"11.1 L (AL80)"` preset,
 and a value-equality guard makes exactly that cylinder unsavable. `MixtureFields` renders
-`mixtures: []` with "No cylinders recorded for this dive." and its Trash button has no `index > 0`
-gate, so zero is reachable by hand.
+`mixtures: []` with "No tanks recorded for this dive." and its Trash button has no `index > 0` gate,
+so zero is reachable by hand.
 
 ## `dirtyFields` is maintained only when it is read during render
 
@@ -3234,7 +3234,7 @@ Gas alone goes unproposed: `diveModWarning` computes a MOD from whatever cylinde
 so a seeded cylinder of air raises an oxygen-exposure warning past ~56.7 m about gas the diver never
 entered.
 
-`DEFAULT_MIXTURE` stays for "Add mixture" and the placeholders; `prefillFromLastDive` copies the
+`DEFAULT_MIXTURE` stays for "Add tank" and the placeholders; `prefillFromLastDive` copies the
 previous dive's cylinders and invents none. The ungated remove button also lets the edit form clear
 a dive's cylinders (`DiveUpdate.mixtures` accepts `[]`) and carries an `aria-label` naming its tank.
 
@@ -4208,8 +4208,8 @@ renders weight; `writeEntryUnits`/`clearEntryUnits` notify. Writes happen only i
 handler. `signOut` clears the key after the `authAPI.signOut()` try/catch: an inherited psi label
 parses 200 as 13.79 bar.
 
-One toggle per dimension: `max_depth` carries depth's; pressure's sits in the Gas Mixtures header
-and renders only while `fields.length > 0`; the gear-set dialog keeps its own weight toggle.
+One toggle per dimension: `max_depth` carries depth's; pressure's sits in the Tanks header and
+renders only while `fields.length > 0`; the gear-set dialog keeps its own weight toggle.
 `MixtureGasHint`/`MixtureSetWarning` follow entry units; `/gear`'s list stays on `useUnits()`.
 `UnitNumberInput` discards its draft on a flip during render. Tests must install
 `useStorage(memoryStorage())`.
@@ -4222,7 +4222,7 @@ flow, absolutely positioned and vertically centred. A `flex items-center` wrappe
 17px content area its font metrics give it to the 14px line box `leading-none` declares, and the
 18px toggle sets the row height. And `FormItem`'s `space-y-2` is a margin-bottom, which an inline
 box ignores — wrapping the label in anything block-level collects 8px it never had, so the wrapper
-carries `mb-0`. The Gas Mixtures header toggle is not this component: its only sibling is an `<h3>`,
+carries `mb-0`. The Tanks header toggle is not this component: its only sibling is an `<h3>`,
 already block-level, so flex alignment holds. jsdom does no layout, so the render tests pin
 structure only: the label is not a flex or grid item, the toggle is out of flow, and the row cancels
 the margin.
@@ -4883,19 +4883,19 @@ Do not untrack the script too: the next `git pull` deletes an ignored-but-tracke
 a missing hook command exits non-blocking, so the guard would go quiet in the primary checkout as
 well.
 
-## "Add mixture" sits under the tanks
+## "Add tank" sits under the tanks
 
-The button renders after the tank cards, at the foot of the Gas Mixtures section, not in its header.
-It sits where the tank it adds appears, so control and effect are adjacent; in the header it would
-be the one control pointing backwards, and a four-cylinder dive would scroll back past every card to
-add a fifth. On an empty form the sentence "No cylinders recorded for this dive." describes the
-state and the button follows as the way out.
+The button renders after the tank cards, at the foot of the Tanks section, not in its header. It
+sits where the tank it adds appears, so control and effect are adjacent; in the header it would be
+the one control pointing backwards, and a four-cylinder dive would scroll back past every card to
+add a fifth. On an empty form the sentence "No tanks recorded for this dive." describes the state
+and the button follows as the way out.
 
 It is left in normal flow, not wrapped. It is `inline-flex` (`ui/button.tsx`); measured bare and
 wrapped in `flex`, the container is 36px either way, because an `h-9` inline-flex box holds the
 strut's descent and `space-y-4`'s `margin-top` applies to atomic inlines. The pressure toggle's row
-height derives from the `<h3>`, not this button; see "The Gas Mixtures header toggle is deliberately
-not this component".
+height derives from the `<h3>`, not this button; see "The Tanks header toggle is deliberately not
+this component".
 
 ## Retina tiles are plumbed and switched off, because Carto's `@2x` is a watermark
 
@@ -5788,7 +5788,7 @@ that one: it needs an hour past local midnight and before UTC's, so pin the cloc
 type compiles clean; `toDiveMixtureInput` and `normalizeMixtures` convert at the boundary.
 
 Blank means blank on import; the manual path keeps its prefill. `mergeMixture` in
-`lib/dive-import.ts` has no `DEFAULT_MIXTURE` tier; that default lives only on "Add mixture".
+`lib/dive-import.ts` has no `DEFAULT_MIXTURE` tier; that default lives only on "Add tank".
 Defaulting everywhere invents a number for a stored NULL; blank everywhere makes air divers type
 `21` and `0`. `MixtureValueSource` reports only `"form"`. `""` is the cleared spelling, never
 `undefined`, which react-hook-form refills, via `UnitNumberInput`'s `emptyValue`.
@@ -5877,8 +5877,7 @@ listens on `document` in the capture phase.
 `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
 
 A switch shows the effective state and edits the stored one. Depth's entry-unit toggle follows the
-first visible depth field; pressure's renders only while Gas Mixtures and a pressure box are on
-screen.
+first visible depth field; pressure's renders only while Tanks and a pressure box are on screen.
 
 ## The Fields dialog is switches, and it is the sections that share the columns
 
@@ -6455,12 +6454,12 @@ the one still open. And each caller registers its own closure rather than the sh
 `syncViewportVars`: `addEventListener` de-duplicates identical `(type, listener)` pairs, so a shared
 function is one registration that the first `removeEventListener` takes from everybody.
 
-## "Add mixture" takes the focus nowhere, because iOS opens a focused `<select>`
+## "Add tank" takes the focus nowhere, because iOS opens a focused `<select>`
 
 `useFieldArray().append()` defaults to `shouldFocus: true`, focusing the first field of the new row
 that registered a focusable ref. `VolumeCombobox` registers none, so focus lands on the next box —
 the ppO₂ limit `<select>`, or the O₂ box where that column is hidden — and on iOS focusing a
-`<select>` opens its picker wheel, so one tap on Add mixture adds a tank and opens a dropdown nobody
+`<select>` opens its picker wheel, so one tap on Add tank adds a tank and opens a dropdown nobody
 asked for. Hence `append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })`.
 
 The app's plain `<select>`s (ppO₂ limit, Role, Usage, water type) are chosen over the shadcn
