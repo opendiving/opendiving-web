@@ -191,7 +191,7 @@ export function PeopleMultiSelect({
         disabled={disabled}
         placeholder={
           placeholder ??
-          (value.length ? "Add another person..." : "Add a person...")
+          (value.length ? "Add another person..." : "Select a person...")
         }
         noItemsLabel="No people yet. Type a name and press Enter to add one."
         noMatchesLabel="Nobody matches. Press Enter to add a person of that name."
