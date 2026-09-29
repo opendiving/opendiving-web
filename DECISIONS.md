@@ -4891,9 +4891,10 @@ the one control pointing backwards, and a four-cylinder dive would scroll back p
 add a fifth. On an empty form the sentence "No tanks recorded for this dive." describes the state
 and the button follows as the way out.
 
-It is left in normal flow, not wrapped. It is `inline-flex` (`ui/button.tsx`); measured bare and
-wrapped in `flex`, the container is 36px either way, because an `h-9` inline-flex box holds the
-strut's descent and `space-y-4`'s `margin-top` applies to atomic inlines.
+It shares a plain block with the set warning under it, so the always-mounted `sr-only` status is
+never the Tanks container's last child and the section ends on the same gap as the others. It is
+`inline-flex` (`ui/button.tsx`) and needs no `flex` wrapper: an `h-9` inline-flex box holds the
+strut's descent, so the block is 36px either way.
 
 ## Retina tiles are plumbed and switched off, because Carto's `@2x` is a watermark
 

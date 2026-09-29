@@ -431,7 +431,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             )}
 
             {/* How the diver got in, under where: a property of the site as much as
-                of the dive. A boat name only for a boat entry, beside it. */}
+                of the dive. The boat name beside it - see `showBoatName`. */}
             {(isVisible("entry_type") || showBoatName) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {isVisible("entry_type") && (
