@@ -16,10 +16,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 // [lightness, chroma, hue]. Land is a near-neutral mid grey, lighter than the
-// app's dark cards so the frame reads as a map rather than a hole. Water sits
-// on the brand teal's hue (`teal`, #008080), and clearly lighter than land.
+// app's dark cards so the frame reads as a map rather than a hole. Water is a
+// teal ten degrees bluer than the brand's (`teal`, #008080, sits at 195), so it
+// reads as sea, and clearly lighter than land.
 const LAND = [0.38, 0.004, 90];
-const WATER = [0.5, 0.07, 195];
+const WATER = [0.5, 0.07, 205];
 // Text runs from Liberty's black (top) to its lightest grey (bottom).
 const TEXT_LIGHTNESS = [0.98, 0.84];
 const WATER_TEXT = [0.88, 0.05, WATER[2]];
