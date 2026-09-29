@@ -391,7 +391,11 @@ export function NewDivePageContent() {
         waves: data.waves === "" ? undefined : data.waves,
         weather: data.weather === "" ? undefined : data.weather,
         entry_type: data.entry_type === "" ? undefined : data.entry_type,
-        boat_name: boatNameOrNull(data.boat_name ?? "") ?? undefined,
+        // Only a boat dive has a boat - see `DiveFormFields.showBoatName`.
+        boat_name:
+          data.entry_type === "boat"
+            ? (boatNameOrNull(data.boat_name ?? "") ?? undefined)
+            : undefined,
         mixtures: normalizeMixtures(data.mixtures ?? []),
       };
 

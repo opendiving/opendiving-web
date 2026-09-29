@@ -719,7 +719,9 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
   if (data.air_temperature !== undefined) {
     update.air_temperature = data.air_temperature;
   }
-  if (data.boat_name !== undefined) {
+  // Only a boat dive has a boat: another entry leaves the stored name alone, as the
+  // form leaves its box off screen.
+  if (data.boat_name !== undefined && data.entry_type === "boat") {
     update.boat_name = boatNameOrNull(data.boat_name);
   }
   if (data.weight !== undefined) update.weight = data.weight;

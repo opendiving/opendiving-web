@@ -1075,10 +1075,22 @@ describe("buildDiveUpdate", () => {
   });
 
   it("sends a cleared rating and an emptied boat name as nulls", () => {
-    expect(buildDiveUpdate({ rating: null, boat_name: "  " })).toEqual({
+    expect(
+      buildDiveUpdate({ rating: null, entry_type: "boat", boat_name: "  " }),
+    ).toEqual({
       rating: null,
+      entry_type: "boat",
       boat_name: null,
     });
+  });
+
+  it("sends a boat name only for a boat dive", () => {
+    expect(
+      buildDiveUpdate({ entry_type: "shore", boat_name: "Legend" }),
+    ).not.toHaveProperty("boat_name");
+    expect(
+      buildDiveUpdate({ entry_type: "", boat_name: "Legend" }),
+    ).not.toHaveProperty("boat_name");
   });
 
   it("sends the tags whole, an emptied list included", () => {

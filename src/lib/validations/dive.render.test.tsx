@@ -211,15 +211,14 @@ describe("the edit form's round trip", () => {
         // An unrecorded water type goes out as the null it arrived as: the seed
         // holds the select's `""` and `buildDiveUpdate` converts it back. A
         // no-op against a dive that already has none, and the same echo every
-        // other untouched field makes - the other selects' and the boat
-        // name's included, and the rating's `null`.
+        // other untouched field makes - the other selects' included, and the
+        // rating's `null`. No boat name: this is not a boat dive.
         water_type: null,
         type: null,
         current: null,
         waves: null,
         weather: null,
         entry_type: null,
-        boat_name: null,
         rating: null,
       }),
     );

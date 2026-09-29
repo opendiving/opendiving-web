@@ -293,8 +293,8 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Tanks</h3>
+      {/* No heading of its own: the dive form's Tanks section carries it. */}
+      <div className="flex items-center justify-end empty:hidden">
         {/* One toggle for the section rather than one per box: the two pressure
             fields repeat per tank card, so a four-cylinder dive would carry
             eight identical controls with eight identical accessible names.

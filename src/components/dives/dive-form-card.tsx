@@ -18,8 +18,9 @@ import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { GearItemSummary } from "@/lib/api/gear";
 import { SpeciesSummary } from "@/lib/api/species";
 import {
+  diveFormFieldGroup,
   diveFormFieldsWithErrors,
-  type DiveFormFieldKey,
+  type DiveFormFieldGroup,
 } from "@/lib/dive-form-fields";
 import { describeBlockedSubmit } from "@/lib/form-validity";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
@@ -102,8 +103,18 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   // the `reveal` beside it are batched into one render, which is the render after
   // which the input exists.
   const [focusRequest, setFocusRequest] = useState<{
-    key: DiveFormFieldKey;
+    key: string;
   } | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<
+    ReadonlySet<DiveFormFieldGroup>
+  >(() => new Set());
+  const setGroupOpen = (group: DiveFormFieldGroup, open: boolean) =>
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (open) next.delete(group);
+      else next.add(group);
+      return next;
+    });
   const { isVisible, reveal } = visibility;
   useEffect(() => {
     if (!focusRequest) return;
@@ -121,12 +132,28 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   // anywhere on the page, which is the failure "The API sends `null` and the
   // form schema wants `""`, so `toDiveMixtureInput` converts at the boundary"
   // in DECISIONS.md.
+  //
+  // A collapsed section is the same failure by another route - its fields are not
+  // mounted either - so the sections holding an error open with it, always-on fields
+  // included.
   const handleInvalid = (errors: Record<string, unknown>) => {
+    const inCollapsed = Object.keys(errors).filter((name) => {
+      const group = diveFormFieldGroup(name);
+      return group !== undefined && collapsedGroups.has(group);
+    });
+    if (inCollapsed.length > 0) {
+      setCollapsedGroups((current) => {
+        const next = new Set(current);
+        for (const name of inCollapsed) next.delete(diveFormFieldGroup(name)!);
+        return next;
+      });
+    }
+
     const keys = diveFormFieldsWithErrors(errors);
-    if (keys.length === 0) return;
     const stillHidden = keys.filter((key) => !isVisible(key));
-    if (stillHidden.length > 0) setFocusRequest({ key: stillHidden[0] });
-    reveal(keys);
+    const unmounted = stillHidden[0] ?? inCollapsed[0];
+    if (unmounted !== undefined) setFocusRequest({ key: unmounted });
+    if (keys.length > 0) reveal(keys);
   };
 
   // The other half of the same defect, and the half nothing here could see.
@@ -214,6 +241,8 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
               knownSpecies={knownSpecies}
               onSpeciesPendingChange={setIsResolvingSpecies}
               diveNumberNotice={diveNumberNotice}
+              collapsedGroups={collapsedGroups}
+              onGroupOpenChange={setGroupOpen}
             />
 
             {/* Above the buttons, so a refusal is on screen next to the control

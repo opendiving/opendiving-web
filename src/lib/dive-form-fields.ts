@@ -233,6 +233,26 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   { label: "O₂", group: "Tanks" },
 ];
 
+// The always-on inputs by form name, which `DIVE_FORM_ALWAYS_ON_FIELDS` lists by label.
+const ALWAYS_ON_FIELD_GROUPS: Readonly<Record<string, DiveFormFieldGroup>> = {
+  start_time: "Dive info",
+  dive_number: "Dive info",
+  duration: "Dive info",
+};
+
+/**
+ * The section a top-level form field renders in, hideable or not - what a failed submit
+ * reads to open the collapsed sections its errors are in.
+ */
+export function diveFormFieldGroup(
+  name: string,
+): DiveFormFieldGroup | undefined {
+  return (
+    ALWAYS_ON_FIELD_GROUPS[name] ??
+    DIVE_FORM_FIELD_REGISTRY.find((entry) => entry.key === name)?.group
+  );
+}
+
 /**
  * Collapses duplicates and imposes `DIVE_FORM_FIELDS` order, exactly as the API's
  * `canonical_hidden_fields` does on every write.

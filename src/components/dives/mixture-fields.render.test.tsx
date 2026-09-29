@@ -528,7 +528,6 @@ describe("MixtureFields entry units", () => {
   it("shows no pressure toggle over an empty cylinder list", () => {
     render(<Harness mixtures={[]} maxDepth={30} />);
 
-    expect(screen.getByText("Tanks")).toBeInTheDocument();
     expect(
       screen.queryByLabelText(/switch pressure entry/),
     ).not.toBeInTheDocument();

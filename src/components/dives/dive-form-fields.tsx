@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, type ReactNode } from "react";
-import { Control, FieldValues, Path } from "react-hook-form";
+import { Control, FieldValues, Path, useWatch } from "react-hook-form";
 import {
   ArrowDownToLine,
   ChevronsDownUp,
@@ -10,8 +10,8 @@ import {
   Eye,
   LogIn,
   Mountain,
-  Sailboat,
   Shapes,
+  Ship,
   Thermometer,
   ThermometerSun,
   Waves,
@@ -77,8 +77,12 @@ import { SpeciesSummary } from "@/lib/api/species";
 import { useEntryUnits } from "@/hooks/useEntryUnits";
 import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
 import { unitLabel } from "@/lib/units";
-import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
+import type {
+  DiveFormFieldGroup,
+  DiveFormFieldKey,
+} from "@/lib/dive-form-fields";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
+import { DiveFormSection } from "@/components/dives/dive-form-section";
 
 // What a contact created from the dive form starts as.
 const DIVE_CENTER: readonly ContactRole[] = ["dive_center"];
@@ -194,6 +198,10 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // back-filling a log, reconciled later with Renumber, so this must not block
   // a save.
   diveNumberNotice?: { forValue: number; message: string } | null;
+  // Owned by `DiveFormCard`, whose failed-submit path opens the sections an error
+  // landed in.
+  collapsedGroups: ReadonlySet<DiveFormFieldGroup>;
+  onGroupOpenChange: (group: DiveFormFieldGroup, open: boolean) => void;
 }
 
 export function DiveFormFields<TFieldValues extends DiveFormValues>({
@@ -206,6 +214,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   knownSpecies,
   onSpeciesPendingChange,
   diveNumberNotice,
+  collapsedGroups,
+  onGroupOpenChange,
 }: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
@@ -218,6 +228,22 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   // The rating is a group, which a label names by reference rather than by `for`.
   const ratingLabelId = useId();
   const ratingRef = useRef<HTMLDivElement>(null);
+  // A boat name belongs to a boat dive only: off screen for any other entry, and
+  // left out of the submit by the pages on the same condition.
+  const entryType = useWatch({
+    control,
+    name: "entry_type" as Path<TFieldValues>,
+  });
+  const showBoatName = isVisible("boat_name") && entryType === "boat";
+  const section = (group: DiveFormFieldGroup, children: ReactNode) => (
+    <DiveFormSection
+      title={group}
+      open={!collapsedGroups.has(group)}
+      onOpenChange={(open) => onGroupOpenChange(group, open)}
+    >
+      {children}
+    </DiveFormSection>
+  );
 
   // A dimension shared by two fields has one toggle, on the first *visible* of
   // them, so hiding Maximum depth moves depth's onto Average depth and hiding
@@ -251,13 +277,21 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 
   return (
     <>
-      {/* Trip & Course, a pair in a two-column grid so each keeps the same column
+      {(isVisible("trip_uuid") ||
+        isVisible("course_uuid") ||
+        isVisible("contact_uuid") ||
+        isVisible("people") ||
+        isVisible("dive_site_uuids")) &&
+        section(
+          "Trip, course & site",
+          <>
+            {/* Trip & Course, a pair in a two-column grid so each keeps the same column
           width, gap and label rhythm as every other row in this form.
 
           Guarded, and that guard is load-bearing now that Dive number has moved
           out from under it: with both of these hidden the grid would render empty
-          and leave the form's `space-y-6` gap between the card's top and the dive
-          site, which reads as a field that failed to load.
+          and leave the section's `space-y-6` gap between its heading and the
+          next field, which reads as a field that failed to load.
 
           With exactly one of them visible the survivor spans both columns rather
           than sitting half-width beside a hole - `FormField` renders `FormItem`
@@ -267,155 +301,160 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           same problem by packing instead; this row cannot, having only the two
           fields, and a full-width combobox reads well directly above the
           full-width dive site picker. */}
-      {(isVisible("trip_uuid") || isVisible("course_uuid")) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:[&>:only-child]:col-span-2">
-          {isVisible("trip_uuid") && (
-            <FormField
-              control={control}
-              name={"trip_uuid" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Trip</FormLabel>
-                  <FormControl>
-                    <TripCombobox
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+            {(isVisible("trip_uuid") || isVisible("course_uuid")) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:[&>:only-child]:col-span-2">
+                {isVisible("trip_uuid") && (
+                  <FormField
+                    control={control}
+                    name={"trip_uuid" as Path<TFieldValues>}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Trip</FormLabel>
+                        <FormControl>
+                          <TripCombobox
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-          {isVisible("course_uuid") && (
-            <FormField
-              control={control}
-              name={"course_uuid" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Course</FormLabel>
-                  <FormControl>
-                    <CourseCombobox
-                      value={field.value}
-                      onChange={field.onChange}
-                      // A dive logged on a course was run by whoever ran the
-                      // course, unless the diver has said otherwise - so the pick
-                      // fills the dive center, through the one write that can
-                      // show a hidden field without handing it to the diver. A
-                      // course naming none leaves the field alone. New dives
-                      // only: relinking a stored dive corrects the link, not
-                      // the dive.
-                      onCourseSelected={
-                        mode === "create"
-                          ? (course) => {
-                              if (course.contact_uuid) {
-                                visibility.autofill(
-                                  "contact_uuid",
-                                  course.contact_uuid,
-                                );
-                              }
+                {isVisible("course_uuid") && (
+                  <FormField
+                    control={control}
+                    name={"course_uuid" as Path<TFieldValues>}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Course</FormLabel>
+                        <FormControl>
+                          <CourseCombobox
+                            value={field.value}
+                            onChange={field.onChange}
+                            // A dive logged on a course was run by whoever ran the
+                            // course, unless the diver has said otherwise - so the pick
+                            // fills the dive center, through the one write that can
+                            // show a hidden field without handing it to the diver. A
+                            // course naming none leaves the field alone. New dives
+                            // only: relinking a stored dive corrects the link, not
+                            // the dive.
+                            onCourseSelected={
+                              mode === "create"
+                                ? (course) => {
+                                    if (course.contact_uuid) {
+                                      visibility.autofill(
+                                        "contact_uuid",
+                                        course.contact_uuid,
+                                      );
+                                    }
+                                  }
+                                : undefined
                             }
-                          : undefined
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-        </div>
-      )}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            )}
 
-      {/* A row of its own, not a third child of the pair above: that grid is two
+            {/* A row of its own, not a third child of the pair above: that grid is two
           columns and renders only while the trip or the course does, and a dive
           center belongs on a fun dive with neither. Full width for the reason the
           lone survivor of the pair spans both columns. */}
-      {isVisible("contact_uuid") && (
-        <FormField
-          control={control}
-          name={"contact_uuid" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Dive center</FormLabel>
-              <FormControl>
-                <ContactCombobox
-                  value={field.value}
-                  onChange={field.onChange}
-                  initialRoles={DIVE_CENTER}
-                  placeholder="Select a dive center..."
-                  addNewLabel="Add dive center..."
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
-
-      {/* Under the dive center: the shop that ran the dive, then who was on it.
-          A person picked here is a buddy until the diver says otherwise. */}
-      {isVisible("people") && (
-        <FormField
-          control={control}
-          name={"people" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>People</FormLabel>
-              <FormControl>
-                <PeopleMultiSelect
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                  defaultRole="buddy"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
-
-      {/* Dive Site(s) */}
-      {isVisible("dive_site_uuids") && (
-        <FormField
-          control={control}
-          name={"dive_site_uuids" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Dive site(s)</FormLabel>
-              <FormControl>
-                <DiveSiteMultiSelect
-                  value={field.value ?? []}
-                  knownSites={knownDiveSites}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
-
-      {/* Date and Time */}
-      <FormField
-        control={control}
-        name={"start_time" as Path<TFieldValues>}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Start time{requiredMark}</FormLabel>
-            <FormControl>
-              <DiveStartTimeField
-                value={field.value}
-                onChange={field.onChange}
+            {isVisible("contact_uuid") && (
+              <FormField
+                control={control}
+                name={"contact_uuid" as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dive center</FormLabel>
+                    <FormControl>
+                      <ContactCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        initialRoles={DIVE_CENTER}
+                        placeholder="Select a dive center..."
+                        addNewLabel="Add dive center..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+            )}
 
-      {/* Dive number & Duration. Paired because both are always rendered -
+            {/* Under the dive center: the shop that ran the dive, then who was on it.
+          A person picked here is a buddy until the diver says otherwise. */}
+            {isVisible("people") && (
+              <FormField
+                control={control}
+                name={"people" as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>People</FormLabel>
+                    <FormControl>
+                      <PeopleMultiSelect
+                        value={field.value ?? []}
+                        onChange={field.onChange}
+                        defaultRole="buddy"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Dive Site(s) */}
+            {isVisible("dive_site_uuids") && (
+              <FormField
+                control={control}
+                name={"dive_site_uuids" as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dive site(s)</FormLabel>
+                    <FormControl>
+                      <DiveSiteMultiSelect
+                        value={field.value ?? []}
+                        knownSites={knownDiveSites}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </>,
+        )}
+
+      {section(
+        "Dive info",
+        <>
+          {/* Date and Time */}
+          <FormField
+            control={control}
+            name={"start_time" as Path<TFieldValues>}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Start time{requiredMark}</FormLabel>
+                <FormControl>
+                  <DiveStartTimeField
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Dive number & Duration. Paired because both are always rendered -
           neither is in the Fields dialog - so this row is the one pair no
           visibility choice can break, and neither field has to sit half-width
           beside a hole. Dive number was alone in a grid of its own until then,
@@ -426,101 +465,169 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           Unequal heights are expected here: `diveNumberNotice` adds a line
           under the number when the suggestion is already taken, and Duration
           has nothing to match it with. */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={control}
-          name={"dive_number" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Dive number{requiredMark}</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min="1"
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={(e) => {
-                    // `parseInt(...) || 1` looked equivalent and wasn't: `||`
-                    // treats an emptied box (NaN) and a typed 0 alike, so
-                    // clearing the field instantly rewrote it to 1. That write
-                    // also marked the field dirty, and `useSuggestedDiveNumber`
-                    // reads `isDirty` as its permanent "the diver chose a
-                    // number" latch - so one accidental clear stopped the
-                    // number following the date for the rest of the form's
-                    // life, including after a file import changed the date.
-                    // An emptied box must stay empty and let the schema speak.
-                    const parsed = parseInt(e.target.value, 10);
-                    field.onChange(Number.isNaN(parsed) ? undefined : parsed);
-                  }}
-                />
-              </FormControl>
-              {diveNumberNotice && field.value === diveNumberNotice.forValue ? (
-                <FormDescription>{diveNumberNotice.message}</FormDescription>
-              ) : null}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={control}
+              name={"dive_number" as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Dive number{requiredMark}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        // `parseInt(...) || 1` looked equivalent and wasn't: `||`
+                        // treats an emptied box (NaN) and a typed 0 alike, so
+                        // clearing the field instantly rewrote it to 1. That write
+                        // also marked the field dirty, and `useSuggestedDiveNumber`
+                        // reads `isDirty` as its permanent "the diver chose a
+                        // number" latch - so one accidental clear stopped the
+                        // number following the date for the rest of the form's
+                        // life, including after a file import changed the date.
+                        // An emptied box must stay empty and let the schema speak.
+                        const parsed = parseInt(e.target.value, 10);
+                        field.onChange(
+                          Number.isNaN(parsed) ? undefined : parsed,
+                        );
+                      }}
+                    />
+                  </FormControl>
+                  {diveNumberNotice &&
+                  field.value === diveNumberNotice.forValue ? (
+                    <FormDescription>
+                      {diveNumberNotice.message}
+                    </FormDescription>
+                  ) : null}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={control}
-          name={"duration" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Duration{requiredMark}</FormLabel>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                <FormControl>
-                  <Input
-                    type="text"
-                    placeholder="e.g. 45 or 67:30"
-                    className="pl-9"
-                    {...field}
-                  />
-                </FormControl>
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+            <FormField
+              control={control}
+              name={"duration" as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Duration{requiredMark}</FormLabel>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="e.g. 45 or 67:30"
+                        className="pl-9"
+                        {...field}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-      {/* What kind of dive it was, with the dive's own facts rather than among
+          {/* What kind of dive it was, with the dive's own facts rather than among
           the readings below it. Half width in a grid of its own, for the reason
           Weight is: a select as wide as the form is wider than anything it
           offers. */}
-      {isVisible("type") && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <DiveVocabularyField
-            control={control}
-            name={"type" as Path<TFieldValues>}
-            label="Dive type"
-            icon={Shapes}
-            values={DIVE_TYPES}
-            labels={DIVE_TYPE_LABELS}
-          />
-        </div>
+          {isVisible("type") && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <DiveVocabularyField
+                control={control}
+                name={"type" as Path<TFieldValues>}
+                label="Dive type"
+                icon={Shapes}
+                values={DIVE_TYPES}
+                labels={DIVE_TYPE_LABELS}
+              />
+            </div>
+          )}
+
+          {/* The depths, the pair that closes the dive's own facts. A lone survivor
+          sits half-width rather than spanning: see the readings grid below. */}
+          {(isVisible("max_depth") || isVisible("avg_depth")) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {isVisible("max_depth") && (
+                <FormField
+                  control={control}
+                  name={"max_depth" as Path<TFieldValues>}
+                  render={({ field }) => (
+                    <FormItem>
+                      {/* Depth's one toggle, and whether it sits here is a question about
+                  what is on screen: `avg_depth` below carries it instead when this
+                  field is hidden - see `toggleFields`. */}
+                      {toggledLabelRow(
+                        "depth",
+                        "max_depth",
+                        <FormLabel>
+                          Maximum depth (
+                          {unitLabel("depth", entryUnits("depth"))})
+                        </FormLabel>,
+                      )}
+                      <div className="relative">
+                        <ArrowDownToLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <FormControl>
+                          <UnitNumberInput
+                            dimension="depth"
+                            units={entryUnits("depth")}
+                            min={0}
+                            placeholderValue={30.52}
+                            className="pl-9"
+                            {...field}
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {isVisible("avg_depth") && (
+                <FormField
+                  control={control}
+                  name={"avg_depth" as Path<TFieldValues>}
+                  render={({ field }) => (
+                    <FormItem>
+                      {toggledLabelRow(
+                        "depth",
+                        "avg_depth",
+                        <FormLabel>
+                          Average depth (
+                          {unitLabel("depth", entryUnits("depth"))})
+                        </FormLabel>,
+                      )}
+                      <div className="relative">
+                        <ChevronsDownUp className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <FormControl>
+                          <UnitNumberInput
+                            dimension="depth"
+                            units={entryUnits("depth")}
+                            min={0}
+                            placeholderValue={18.24}
+                            className="pl-9"
+                            {...field}
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+          )}
+        </>,
       )}
 
-      {/* The readings: depth, then the environment the Fields dialog groups
-          under that name. One grid rather than fixed pairs, because every one
-          of them hides on its own. Paired up, hiding half of a pair left the
-          other half in its column with an empty one beside it, which reads as a
-          field that failed to load; a single grid lets auto-flow pack whatever
-          survives from the left, so a hidden field costs a slot and not a hole.
-          The fields follow the Fields dialog's order, two to a row.
-
-          An odd number visible leaves one field half-width on the last row.
-          That is accepted and deliberately not spanned: a ragged bottom edge
-          reads as the end of a list, a gap in the middle reads as breakage.
-
-          `gap-y-6` rather than `gap-4`'s 1rem, because the row gap is the
-          form's own `space-y-6` rhythm, not a pair's: a full row sits exactly
-          where a pair of its own would. The column gap is still 1rem. On a
-          phone the fields stack at 1.5rem - one grid has one row gap. */}
-      {(isVisible("max_depth") ||
-        isVisible("avg_depth") ||
-        isVisible("bottom_temperature") ||
+      {(isVisible("bottom_temperature") ||
         isVisible("air_temperature") ||
         isVisible("visibility") ||
         isVisible("water_type") ||
@@ -529,335 +636,287 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         isVisible("waves") ||
         isVisible("weather") ||
         isVisible("entry_type") ||
-        isVisible("boat_name")) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
-          {isVisible("max_depth") && (
-            <FormField
-              control={control}
-              name={"max_depth" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  {/* Depth's one toggle, and whether it sits here is a question about
-                  what is on screen: `avg_depth` below carries it instead when this
-                  field is hidden - see `toggleFields`. */}
-                  {toggledLabelRow(
-                    "depth",
-                    "max_depth",
-                    <FormLabel>
-                      Maximum depth ({unitLabel("depth", entryUnits("depth"))})
-                    </FormLabel>,
-                  )}
-                  <div className="relative">
-                    <ArrowDownToLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      <UnitNumberInput
-                        dimension="depth"
-                        units={entryUnits("depth")}
-                        min={0}
-                        placeholderValue={30.52}
-                        className="pl-9"
-                        {...field}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+        showBoatName) &&
+        section(
+          "Environment",
+          <>
+            {/* The readings. One grid rather than fixed pairs, because every one of
+          them hides on its own. Paired up, hiding half of a pair left the other
+          half in its column with an empty one beside it, which reads as a field
+          that failed to load; a single grid lets auto-flow pack whatever
+          survives from the left, so a hidden field costs a slot and not a hole.
+          The fields follow the Fields dialog's order, two to a row.
 
-          {isVisible("avg_depth") && (
-            <FormField
-              control={control}
-              name={"avg_depth" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  {toggledLabelRow(
-                    "depth",
-                    "avg_depth",
-                    <FormLabel>
-                      Average depth ({unitLabel("depth", entryUnits("depth"))})
-                    </FormLabel>,
-                  )}
-                  <div className="relative">
-                    <ChevronsDownUp className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      <UnitNumberInput
-                        dimension="depth"
-                        units={entryUnits("depth")}
-                        min={0}
-                        placeholderValue={18.24}
-                        className="pl-9"
-                        {...field}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-          {isVisible("bottom_temperature") && (
-            <FormField
-              control={control}
-              name={"bottom_temperature" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  {toggledLabelRow(
-                    "temperature",
-                    "bottom_temperature",
-                    <FormLabel>
-                      Bottom temperature (
-                      {unitLabel("temperature", entryUnits("temperature"))})
-                    </FormLabel>,
-                  )}
-                  <div className="relative">
-                    <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      {/* The 2-decimal entry rounding this field has always done is
+          An odd number visible leaves one field half-width on the last row.
+          That is accepted and deliberately not spanned: a ragged bottom edge
+          reads as the end of a list, a gap in the middle reads as breakage.
+
+          `gap-y-6` rather than `gap-4`'s 1rem, because the row gap is the
+          section's own `space-y-6` rhythm, not a pair's: a full row sits exactly
+          where a pair of its own would. The column gap is still 1rem. On a
+          phone the fields stack at 1.5rem - one grid has one row gap. */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
+              {isVisible("bottom_temperature") && (
+                <FormField
+                  control={control}
+                  name={"bottom_temperature" as Path<TFieldValues>}
+                  render={({ field }) => (
+                    <FormItem>
+                      {toggledLabelRow(
+                        "temperature",
+                        "bottom_temperature",
+                        <FormLabel>
+                          Bottom temperature (
+                          {unitLabel("temperature", entryUnits("temperature"))})
+                        </FormLabel>,
+                      )}
+                      <div className="relative">
+                        <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <FormControl>
+                          {/* The 2-decimal entry rounding this field has always done is
                       now the component's, and every float sibling above and
                       below gets it too. */}
-                      <UnitNumberInput
-                        dimension="temperature"
-                        units={entryUnits("temperature")}
-                        min={-50}
-                        max={50}
-                        placeholderValue={22.5}
-                        className="pl-9"
-                        {...field}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-
-          {isVisible("air_temperature") && (
-            <FormField
-              control={control}
-              name={"air_temperature" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  {toggledLabelRow(
-                    "temperature",
-                    "air_temperature",
-                    <FormLabel>
-                      Air temperature (
-                      {unitLabel("temperature", entryUnits("temperature"))})
-                    </FormLabel>,
+                          <UnitNumberInput
+                            dimension="temperature"
+                            units={entryUnits("temperature")}
+                            min={-50}
+                            max={50}
+                            placeholderValue={22.5}
+                            className="pl-9"
+                            {...field}
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  <div className="relative">
-                    <ThermometerSun className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      <UnitNumberInput
-                        dimension="temperature"
-                        units={entryUnits("temperature")}
-                        min={-60}
-                        max={60}
-                        placeholderValue={28}
-                        className="pl-9"
-                        {...field}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
+                />
               )}
-            />
-          )}
 
-          {isVisible("visibility") && (
-            <FormField
-              control={control}
-              name={"visibility" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <EntryUnitLabelRow
-                    dimension="visibility"
-                    entryUnits={entryUnits("visibility")}
-                    onToggle={() => toggleEntryUnits("visibility")}
-                  >
-                    <FormLabel>
-                      Visibility (
-                      {unitLabel("visibility", entryUnits("visibility"))})
-                    </FormLabel>
-                  </EntryUnitLabelRow>
-                  <div className="relative">
-                    <Eye className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      {/* An `Integer` column, so feet commit whole metres: 50 ft is
+              {isVisible("air_temperature") && (
+                <FormField
+                  control={control}
+                  name={"air_temperature" as Path<TFieldValues>}
+                  render={({ field }) => (
+                    <FormItem>
+                      {toggledLabelRow(
+                        "temperature",
+                        "air_temperature",
+                        <FormLabel>
+                          Air temperature (
+                          {unitLabel("temperature", entryUnits("temperature"))})
+                        </FormLabel>,
+                      )}
+                      <div className="relative">
+                        <ThermometerSun className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <FormControl>
+                          <UnitNumberInput
+                            dimension="temperature"
+                            units={entryUnits("temperature")}
+                            min={-60}
+                            max={60}
+                            placeholderValue={28}
+                            className="pl-9"
+                            {...field}
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {isVisible("visibility") && (
+                <FormField
+                  control={control}
+                  name={"visibility" as Path<TFieldValues>}
+                  render={({ field }) => (
+                    <FormItem>
+                      <EntryUnitLabelRow
+                        dimension="visibility"
+                        entryUnits={entryUnits("visibility")}
+                        onToggle={() => toggleEntryUnits("visibility")}
+                      >
+                        <FormLabel>
+                          Visibility (
+                          {unitLabel("visibility", entryUnits("visibility"))})
+                        </FormLabel>
+                      </EntryUnitLabelRow>
+                      <div className="relative">
+                        <Eye className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <FormControl>
+                          {/* An `Integer` column, so feet commit whole metres: 50 ft is
                       stored as 15 m and reads back as 49 ft. Accepted - see
                       DECISIONS.md - because visibility is an estimate and
                       whole-metre resolution is finer than anyone judges it to. */}
-                      <UnitNumberInput
-                        dimension="visibility"
-                        units={entryUnits("visibility")}
-                        min={0}
-                        placeholderValue={15}
-                        className="pl-9"
-                        {...field}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
+                          <UnitNumberInput
+                            dimension="visibility"
+                            units={entryUnits("visibility")}
+                            min={0}
+                            placeholderValue={15}
+                            className="pl-9"
+                            {...field}
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            />
-          )}
-          {/* Water and altitude - what the water was and where it was, which the
+              {/* Water and altitude - what the water was and where it was, which the
           computer treats as calibration settings and the log treats as facts
           about the dive. Last in the grid rather than with the gear because
           they are observations, not choices carried in. */}
-          {isVisible("water_type") && (
-            <DiveVocabularyField
-              control={control}
-              name={"water_type" as Path<TFieldValues>}
-              label="Water type"
-              icon={Waves}
-              values={WATER_TYPES}
-              labels={WATER_TYPE_LABELS}
-            />
-          )}
+              {isVisible("water_type") && (
+                <DiveVocabularyField
+                  control={control}
+                  name={"water_type" as Path<TFieldValues>}
+                  label="Water type"
+                  icon={Waves}
+                  values={WATER_TYPES}
+                  labels={WATER_TYPE_LABELS}
+                />
+              )}
 
-          {isVisible("altitude") && (
-            <FormField
-              control={control}
-              name={"altitude" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <EntryUnitLabelRow
-                    dimension="altitude"
-                    entryUnits={entryUnits("altitude")}
-                    onToggle={() => toggleEntryUnits("altitude")}
-                  >
-                    <FormLabel>
-                      Altitude ({unitLabel("altitude", entryUnits("altitude"))})
-                    </FormLabel>
-                  </EntryUnitLabelRow>
-                  <div className="relative">
-                    <Mountain className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      {/* Bounds declared in metres, which is what the Zod schema and
+              {isVisible("altitude") && (
+                <FormField
+                  control={control}
+                  name={"altitude" as Path<TFieldValues>}
+                  render={({ field }) => (
+                    <FormItem>
+                      <EntryUnitLabelRow
+                        dimension="altitude"
+                        entryUnits={entryUnits("altitude")}
+                        onToggle={() => toggleEntryUnits("altitude")}
+                      >
+                        <FormLabel>
+                          Altitude (
+                          {unitLabel("altitude", entryUnits("altitude"))})
+                        </FormLabel>
+                      </EntryUnitLabelRow>
+                      <div className="relative">
+                        <Mountain className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <FormControl>
+                          {/* Bounds declared in metres, which is what the Zod schema and
                       the DB `CHECK` behind it are written in; the component
                       converts them inward for the spinner, so what the arrows
                       offer is always something the schema will accept. */}
-                      <UnitNumberInput
-                        dimension="altitude"
-                        units={entryUnits("altitude")}
-                        // Not Visibility's `min={0}`, which this box otherwise
-                        // copies: the Dead Sea is below sea level and admitting it
-                        // is the whole reason the API's bound is -450 rather than 0.
-                        min={-450}
-                        max={6500}
-                        placeholderValue={372}
-                        className="pl-9"
-                        {...field}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
+                          <UnitNumberInput
+                            dimension="altitude"
+                            units={entryUnits("altitude")}
+                            // Not Visibility's `min={0}`, which this box otherwise
+                            // copies: the Dead Sea is below sea level and admitting it
+                            // is the whole reason the API's bound is -450 rather than 0.
+                            min={-450}
+                            max={6500}
+                            placeholderValue={372}
+                            className="pl-9"
+                            {...field}
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            />
-          )}
 
-          {/* The day at the surface and how the diver got in. Observations like
+              {/* The day at the surface and how the diver got in. Observations like
           the water above them, which is why they follow it rather than joining
           the kit carried in below. */}
-          {isVisible("current") && (
-            <DiveVocabularyField
-              control={control}
-              name={"current" as Path<TFieldValues>}
-              label="Current"
-              icon={Wind}
-              values={CURRENTS}
-              labels={CURRENT_LABELS}
-            />
-          )}
-          {isVisible("waves") && (
-            <DiveVocabularyField
-              control={control}
-              name={"waves" as Path<TFieldValues>}
-              label="Waves"
-              icon={WavesArrowUp}
-              values={WAVES}
-              labels={WAVES_LABELS}
-            />
-          )}
-          {isVisible("weather") && (
-            <DiveVocabularyField
-              control={control}
-              name={"weather" as Path<TFieldValues>}
-              label="Weather"
-              icon={CloudSun}
-              values={WEATHER}
-              labels={WEATHER_LABELS}
-            />
-          )}
-          {isVisible("entry_type") && (
-            <DiveVocabularyField
-              control={control}
-              name={"entry_type" as Path<TFieldValues>}
-              label="Entry type"
-              icon={LogIn}
-              values={ENTRY_TYPES}
-              labels={ENTRY_TYPE_LABELS}
-            />
-          )}
-          {isVisible("boat_name") && (
-            <FormField
-              control={control}
-              name={"boat_name" as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Boat name</FormLabel>
-                  <div className="relative">
-                    <Sailboat className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      {/* `""` is not recorded, and the submit paths trim it into
-                      the API's `null` - see `boatNameOrNull`. */}
-                      <Input
-                        type="text"
-                        placeholder="e.g. Legend"
-                        className="pl-9"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
+              {isVisible("current") && (
+                <DiveVocabularyField
+                  control={control}
+                  name={"current" as Path<TFieldValues>}
+                  label="Current"
+                  icon={Wind}
+                  values={CURRENTS}
+                  labels={CURRENT_LABELS}
+                />
               )}
-            />
-          )}
-        </div>
-      )}
+              {isVisible("waves") && (
+                <DiveVocabularyField
+                  control={control}
+                  name={"waves" as Path<TFieldValues>}
+                  label="Waves"
+                  icon={WavesArrowUp}
+                  values={WAVES}
+                  labels={WAVES_LABELS}
+                />
+              )}
+              {isVisible("weather") && (
+                <DiveVocabularyField
+                  control={control}
+                  name={"weather" as Path<TFieldValues>}
+                  label="Weather"
+                  icon={CloudSun}
+                  values={WEATHER}
+                  labels={WEATHER_LABELS}
+                />
+              )}
+              {isVisible("entry_type") && (
+                <DiveVocabularyField
+                  control={control}
+                  name={"entry_type" as Path<TFieldValues>}
+                  label="Entry type"
+                  icon={LogIn}
+                  values={ENTRY_TYPES}
+                  labels={ENTRY_TYPE_LABELS}
+                />
+              )}
+              {showBoatName && (
+                <FormField
+                  control={control}
+                  name={"boat_name" as Path<TFieldValues>}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Boat name</FormLabel>
+                      <div className="relative">
+                        <Ship className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <FormControl>
+                          {/* `""` is not recorded, and the submit paths trim it into
+                      the API's `null` - see `boatNameOrNull`. */}
+                          <Input
+                            type="text"
+                            placeholder="e.g. Legend"
+                            className="pl-9"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+          </>,
+        )}
 
       {/* Tanks. Hidden, the whole section goes - the heading, the pressure
           toggle, every tank card, "Add tank" and the empty-state line - while the
           cylinders themselves stay in form state and are submitted, exactly as a
           hidden scalar is. */}
-      {isVisible("mixtures") && (
-        <MixtureFields<TFieldValues>
-          control={control}
-          fieldArray={mixtureFieldArray}
-          isVisible={isVisible}
-        />
-      )}
+      {isVisible("mixtures") &&
+        section(
+          "Tanks",
+          <MixtureFields<TFieldValues>
+            control={control}
+            fieldArray={mixtureFieldArray}
+            isVisible={isVisible}
+          />,
+        )}
 
       {/* Gear & weight - grouped as "how the diver was configured for this
           dive", as opposed to the environment readings above. Weight is a plain
@@ -875,188 +934,199 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           however many of the two are on screen. The pair is skipped altogether when
           neither is - `weight`'s value survives that, which is
           `shouldUnregister: false`. */}
-      {(isVisible("gear_item_uuids") || isVisible("weight")) && (
-        <FormField
-          control={control}
-          name={"weight" as Path<TFieldValues>}
-          render={({ field: weightField }) => (
-            <div className="space-y-6">
-              {isVisible("gear_item_uuids") && (
-                <FormField
-                  control={control}
-                  name={"gear_item_uuids" as Path<TFieldValues>}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gear</FormLabel>
-                      <FormControl>
-                        <DiveGearField
-                          value={field.value ?? []}
-                          knownItems={knownGearItems}
-                          onChange={field.onChange}
-                          weight={weightField.value ?? null}
-                          onWeightChange={weightField.onChange}
-                          // One of the moments a value arrives from outside the
-                          // diver's typing: a set that carries a weight fills the
-                          // box, so the box has to be on screen to be seen and changed.
-                          onSetApplied={(set) => {
-                            const revealed: DiveFormFieldKey[] = [];
-                            if (set.gear_items.length > 0) {
-                              revealed.push("gear_item_uuids");
-                            }
-                            if (set.weight != null) revealed.push("weight");
-                            visibility.reveal(revealed);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+      {(isVisible("gear_item_uuids") || isVisible("weight")) &&
+        section(
+          "Gear & weight",
+          <FormField
+            control={control}
+            name={"weight" as Path<TFieldValues>}
+            render={({ field: weightField }) => (
+              <div className="space-y-6">
+                {isVisible("gear_item_uuids") && (
+                  <FormField
+                    control={control}
+                    name={"gear_item_uuids" as Path<TFieldValues>}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gear</FormLabel>
+                        <FormControl>
+                          <DiveGearField
+                            value={field.value ?? []}
+                            knownItems={knownGearItems}
+                            onChange={field.onChange}
+                            weight={weightField.value ?? null}
+                            onWeightChange={weightField.onChange}
+                            // One of the moments a value arrives from outside the
+                            // diver's typing: a set that carries a weight fills the
+                            // box, so the box has to be on screen to be seen and changed.
+                            onSetApplied={(set) => {
+                              const revealed: DiveFormFieldKey[] = [];
+                              if (set.gear_items.length > 0) {
+                                revealed.push("gear_item_uuids");
+                              }
+                              if (set.weight != null) revealed.push("weight");
+                              visibility.reveal(revealed);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-              {isVisible("weight") && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormItem>
-                    {/* Weight is the one dimension with a second toggle elsewhere:
+                {isVisible("weight") && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormItem>
+                      {/* Weight is the one dimension with a second toggle elsewhere:
                     the gear-set dialog opens from inside this form and enters a
                     weight of its own. Both read the same store, so the two never
                     disagree, and Radix's modal `aria-hidden` keeps only one of
                     them exposed at a time. */}
-                    <EntryUnitLabelRow
-                      dimension="weight"
-                      entryUnits={entryUnits("weight")}
-                      onToggle={() => toggleEntryUnits("weight")}
-                    >
-                      <FormLabel>
-                        Weight ({unitLabel("weight", entryUnits("weight"))})
-                      </FormLabel>
-                    </EntryUnitLabelRow>
-                    <div className="relative">
-                      <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                      <FormControl>
-                        <UnitNumberInput
-                          dimension="weight"
-                          units={entryUnits("weight")}
-                          min={0}
-                          placeholderValue={6}
-                          className="pl-9"
-                          {...weightField}
-                          value={weightField.value}
-                          onChange={weightField.onChange}
-                        />
-                      </FormControl>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                </div>
-              )}
-            </div>
-          )}
-        />
-      )}
+                      <EntryUnitLabelRow
+                        dimension="weight"
+                        entryUnits={entryUnits("weight")}
+                        onToggle={() => toggleEntryUnits("weight")}
+                      >
+                        <FormLabel>
+                          Weight ({unitLabel("weight", entryUnits("weight"))})
+                        </FormLabel>
+                      </EntryUnitLabelRow>
+                      <div className="relative">
+                        <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <FormControl>
+                          <UnitNumberInput
+                            dimension="weight"
+                            units={entryUnits("weight")}
+                            min={0}
+                            placeholderValue={6}
+                            className="pl-9"
+                            {...weightField}
+                            value={weightField.value}
+                            onChange={weightField.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  </div>
+                )}
+              </div>
+            )}
+          />,
+        )}
 
       {/* Species spotted - after the kit and before the notes, which is where
           the dive page's own card sits: what was seen is an observation about
           the dive, and the notes underneath are where anything this picker
           can't name ends up. */}
-      {isVisible("sightings") && (
-        <FormField
-          control={control}
-          name={"sightings" as Path<TFieldValues>}
-          render={({ field, fieldState }) => (
-            // No `FormMessage`: it would print that array's missing message as
-            // "undefined". Each row shows its own.
-            <FormItem>
-              <FormLabel>Species spotted</FormLabel>
-              <FormControl>
-                <SpeciesMultiSelect
-                  value={field.value ?? []}
-                  knownSpecies={knownSpecies}
-                  onChange={field.onChange}
-                  errors={sightingErrors(fieldState.error)}
-                  onPendingChange={onSpeciesPendingChange}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-      )}
+      {isVisible("sightings") &&
+        section(
+          "Species",
+          <FormField
+            control={control}
+            name={"sightings" as Path<TFieldValues>}
+            render={({ field, fieldState }) => (
+              // No `FormMessage`: it would print that array's missing message as
+              // "undefined". Each row shows its own.
+              <FormItem>
+                <FormLabel>Species spotted</FormLabel>
+                <FormControl>
+                  <SpeciesMultiSelect
+                    value={field.value ?? []}
+                    knownSpecies={knownSpecies}
+                    onChange={field.onChange}
+                    errors={sightingErrors(fieldState.error)}
+                    onPendingChange={onSpeciesPendingChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />,
+        )}
 
       {/* The diver's own word on the dive: how it rated and what it is filed
           under. After everything observed about it and before the notes, which
           is where the dive page's own reading of them sits too. */}
-      {isVisible("rating") && (
-        <FormField
-          control={control}
-          name={"rating" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <RatingLabelRow
-                canClear={field.value != null}
-                onClear={() => {
-                  field.onChange(null);
-                  // The button goes with the rating it cleared, so the focus
-                  // it held lands on the stars rather than on the page.
-                  ratingRef.current
-                    ?.querySelector<HTMLInputElement>("input")
-                    ?.focus();
-                }}
-              >
-                <FormLabel id={ratingLabelId}>Rating</FormLabel>
-              </RatingLabelRow>
-              <FormControl>
-                <RatingInput
-                  ref={ratingRef}
-                  aria-labelledby={ratingLabelId}
-                  value={field.value ?? null}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
+      {(isVisible("rating") || isVisible("tags")) &&
+        section(
+          "Rating & tags",
+          <>
+            {isVisible("rating") && (
+              <FormField
+                control={control}
+                name={"rating" as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <RatingLabelRow
+                      canClear={field.value != null}
+                      onClear={() => {
+                        field.onChange(null);
+                        // The button goes with the rating it cleared, so the focus
+                        // it held lands on the stars rather than on the page.
+                        ratingRef.current
+                          ?.querySelector<HTMLInputElement>("input")
+                          ?.focus();
+                      }}
+                    >
+                      <FormLabel id={ratingLabelId}>Rating</FormLabel>
+                    </RatingLabelRow>
+                    <FormControl>
+                      <RatingInput
+                        ref={ratingRef}
+                        aria-labelledby={ratingLabelId}
+                        value={field.value ?? null}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-      {isVisible("tags") && (
-        <FormField
-          control={control}
-          name={"tags" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tags</FormLabel>
-              <FormControl>
-                <TagsMultiSelect
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
+            {isVisible("tags") && (
+              <FormField
+                control={control}
+                name={"tags" as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tags</FormLabel>
+                    <FormControl>
+                      <TagsMultiSelect
+                        value={field.value ?? []}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </>,
+        )}
 
-      {/* Notes */}
-      {isVisible("notes") && (
-        <FormField
-          control={control}
-          name={"notes" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Notes</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Enter any additional notes about your dive..."
-                  className="min-h-[100px]"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
+      {isVisible("notes") &&
+        section(
+          "Notes",
+          <FormField
+            control={control}
+            name={"notes" as Path<TFieldValues>}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Notes</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Enter any additional notes about your dive..."
+                    className="min-h-[100px]"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />,
+        )}
     </>
   );
 }
