@@ -12,13 +12,17 @@ import { formatCoordinates } from "@/lib/validations/dive-site";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { Button } from "@/components/ui/button";
+import {
+  DeleteMenuItem,
+  ItemActionsMenu,
+} from "@/components/ui/item-actions-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, Trash2, Plus, MapPin, Loader2 } from "lucide-react";
+import { Edit, Plus, MapPin } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -97,18 +101,12 @@ export function DiveSiteDetailPageContent() {
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => del.requestDelete(diveSite.uuid)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Delete
-            </Button>
+            <ItemActionsMenu>
+              <DeleteMenuItem
+                onSelect={() => del.requestDelete(diveSite.uuid)}
+                disabled={isDeleting}
+              />
+            </ItemActionsMenu>
           </>
         }
       />

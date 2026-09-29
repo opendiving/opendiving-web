@@ -11,13 +11,17 @@ import { formatDateTime } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { PersonDialog } from "@/components/people/person-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DeleteMenuItem,
+  ItemActionsMenu,
+} from "@/components/ui/item-actions-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { Edit, Loader2, Trash2, User } from "lucide-react";
+import { Edit, User } from "lucide-react";
 
 // One labelled fact in the person's info card, rendered only when it is
 // recorded - the shape the course page's rows take.
@@ -105,18 +109,12 @@ export function PersonDetailPageContent() {
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => del.requestDelete(person.uuid)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Delete
-            </Button>
+            <ItemActionsMenu>
+              <DeleteMenuItem
+                onSelect={() => del.requestDelete(person.uuid)}
+                disabled={isDeleting}
+              />
+            </ItemActionsMenu>
           </>
         }
       />

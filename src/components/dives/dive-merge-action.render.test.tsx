@@ -60,6 +60,12 @@ function mergeResult(
   };
 }
 
+// The page hands the opener to a menu item; a plain button is the same opener
+// without a menu to open first.
+function trigger(openMerge: (() => void) | null) {
+  return openMerge && <button onClick={openMerge}>Merge</button>;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue({
@@ -74,7 +80,9 @@ describe("DiveMergeAction", () => {
     // own rule - so the button could only ever produce a 422. It also asks for
     // no neighbours, since it has nothing to do with them.
     const { container } = render(
-      <DiveMergeAction dive={dive({ recordings: [] })} onMerged={vi.fn()} />,
+      <DiveMergeAction dive={dive({ recordings: [] })} onMerged={vi.fn()}>
+        {trigger}
+      </DiveMergeAction>,
     );
 
     expect(container).toBeEmptyDOMElement();
@@ -87,7 +95,11 @@ describe("DiveMergeAction", () => {
       next: null,
     });
 
-    render(<DiveMergeAction dive={dive()} onMerged={vi.fn()} />);
+    render(
+      <DiveMergeAction dive={dive()} onMerged={vi.fn()}>
+        {trigger}
+      </DiveMergeAction>,
+    );
 
     await waitFor(() => expect(divesAPI.getDiveNeighbors).toHaveBeenCalled());
     expect(
@@ -98,7 +110,11 @@ describe("DiveMergeAction", () => {
   it("names the candidate by the diver's number and the day", async () => {
     // `#212` alone is ambiguous in a log with duplicate numbers, which the
     // numbering summary exists because logs have.
-    render(<DiveMergeAction dive={dive()} onMerged={vi.fn()} />);
+    render(
+      <DiveMergeAction dive={dive()} onMerged={vi.fn()}>
+        {trigger}
+      </DiveMergeAction>,
+    );
 
     await userEvent.click(
       await screen.findByRole("button", { name: /merge/i }),
@@ -112,7 +128,11 @@ describe("DiveMergeAction", () => {
     // The natural reading of a merge is that everything comes along. CNS and OTU
     // are each device's own running accounting rather than a per-dive quantity
     // that can be added up, so every recording keeps its own.
-    render(<DiveMergeAction dive={dive()} onMerged={vi.fn()} />);
+    render(
+      <DiveMergeAction dive={dive()} onMerged={vi.fn()}>
+        {trigger}
+      </DiveMergeAction>,
+    );
 
     await userEvent.click(
       await screen.findByRole("button", { name: /merge/i }),
@@ -129,7 +149,11 @@ describe("DiveMergeAction", () => {
     vi.mocked(divesAPI.mergeDives).mockResolvedValue(mergeResult());
     const onMerged = vi.fn();
 
-    render(<DiveMergeAction dive={dive()} onMerged={onMerged} />);
+    render(
+      <DiveMergeAction dive={dive()} onMerged={onMerged}>
+        {trigger}
+      </DiveMergeAction>,
+    );
 
     await userEvent.click(
       await screen.findByRole("button", { name: /merge/i }),
@@ -156,7 +180,11 @@ describe("DiveMergeAction", () => {
     );
     const onMerged = vi.fn();
 
-    render(<DiveMergeAction dive={dive()} onMerged={onMerged} />);
+    render(
+      <DiveMergeAction dive={dive()} onMerged={onMerged}>
+        {trigger}
+      </DiveMergeAction>,
+    );
 
     await userEvent.click(
       await screen.findByRole("button", { name: /merge/i }),
@@ -210,7 +238,9 @@ describe("DiveMergeAction", () => {
           dive={dive()}
           reloadToken={token}
           onMerged={() => setToken((count) => count + 1)}
-        />
+        >
+          {trigger}
+        </DiveMergeAction>
       );
     }
 

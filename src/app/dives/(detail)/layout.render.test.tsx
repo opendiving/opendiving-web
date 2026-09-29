@@ -68,13 +68,15 @@ vi.mock("@/components/dives/dive-merge-action", () => ({
   DiveMergeAction: ({
     onMerged,
     reloadToken,
+    children,
   }: {
     onMerged: () => void;
     reloadToken?: number;
+    children: (openMerge: null) => React.ReactNode;
   }) => {
     merge.onMerged = onMerged;
     merge.tokens.push(reloadToken);
-    return null;
+    return children(null);
   },
 }));
 
@@ -296,7 +298,10 @@ describe("the dive delete confirmation", () => {
       </DiveDetailLayout>,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" }),
+    );
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent(/dive-computer files you imported/);

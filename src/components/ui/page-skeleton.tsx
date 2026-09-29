@@ -32,8 +32,8 @@ export function DetailPageSkeleton({ backHref, backLabel }: PageSkeletonProps) {
         subtitle={<Skeleton className="h-6 w-44" />}
         actions={
           <>
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-20" />
+            <Skeleton className="h-10 w-10" />
           </>
         }
       />
