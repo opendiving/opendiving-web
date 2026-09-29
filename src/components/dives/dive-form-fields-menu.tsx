@@ -118,9 +118,9 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
             <DropdownMenuItem disabled>No presets yet</DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          {/* Radix closes the menu on select and returns focus to the trigger as it
-              unmounts, which is exactly what the dialog wants: it mounts into a
-              settled focus, rather than racing the menu for it. */}
+          {/* The dialog mounts while this item still has focus - Radix flushes
+              `onSelect` before it closes the menu - and `DialogContent` hands
+              focus back to the Fields button, not to the item, when it closes. */}
           <DropdownMenuItem onSelect={() => setIsConfigureOpen(true)}>
             <Settings className="mr-2 h-3.5 w-3.5" aria-hidden />
             Configure...
