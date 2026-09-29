@@ -1,5 +1,10 @@
-// Regenerates `public/basemap/dark.json` from `public/basemap/liberty.json`.
-// Run it after re-vendoring Liberty; `src/lib/basemap.test.ts` fails until you do.
+// Regenerates both shipped styles from the vendored Liberty: recolours the
+// water in `public/basemap/liberty.json` in place, then derives
+// `public/basemap/dark.json` from the result. Run it after re-vendoring Liberty.
+//
+// Liberty's periwinkle water (chroma 0.10) outweighs every other fill on its
+// map, whose pastels sit around 0.03-0.06, so it becomes a teal at that
+// saturation. Nothing else in the light style is touched.
 //
 // The dark style is Liberty with its paint recoloured and nothing else touched:
 // same layers, filters, zoom ranges and text layout, so a place is labelled the
@@ -15,23 +20,33 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// [lightness, chroma, hue]. Land is a near-neutral mid grey, lighter than the
-// app's dark cards so the frame reads as a map rather than a hole. Water sits
-// on the brand teal's hue (`teal`, #008080), and clearly lighter than land;
-// its chroma is held down to the faded level of everything else on the map.
+// Colours are [lightness, chroma, hue]. Water in both themes sits on the brand
+// teal's hue (`teal`, #008080).
+const TEAL = 195;
+
+// Light: about Liberty's own water lightness. Its two water-label weights keep
+// their roles on the new hue - sea and lake names dark over the water, river
+// names lighter, since they run over land.
+const LIGHT_WATER = [0.82, 0.045, TEAL];
+const LIGHT_WATER_TEXT = [0.45, 0.06, TEAL];
+const LIGHT_RIVER_TEXT = [0.6, 0.07, TEAL];
+
+// Dark: land is a near-neutral mid grey, lighter than the app's dark cards so
+// the frame reads as a map rather than a hole. Water is clearly lighter than
+// land, its chroma held down to the faded level of everything else on the map.
 const LAND = [0.38, 0.004, 90];
-const WATER = [0.5, 0.045, 195];
+const WATER = [0.5, 0.045, TEAL];
 // Text runs from Liberty's black (top) to its lightest grey (bottom).
 const TEXT_LIGHTNESS = [0.98, 0.84];
-const WATER_TEXT = [0.88, 0.05, WATER[2]];
+const WATER_TEXT = [0.88, 0.05, TEAL];
 // How far a feature moves from land, per unit it differed from Liberty's land.
 const SPREAD = 0.8;
 // Liberty's pastels would turn neon at these lightnesses.
 const CHROMA = 0.55;
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const source = path.join(root, "public", "basemap", "liberty.json");
-const dest = path.join(root, "public", "basemap", "dark.json");
+const lightPath = path.join(root, "public", "basemap", "liberty.json");
+const darkPath = path.join(root, "public", "basemap", "dark.json");
 
 function parseColor(value) {
   const v = value.trim().toLowerCase();
@@ -133,21 +148,43 @@ function recolour(value, fn) {
   return Array.isArray(value) ? value.map((v) => recolour(v, fn)) : value;
 }
 
-const style = JSON.parse(readFileSync(source, "utf8"));
+const isWaterLabel = (layer) =>
+  layer.type === "symbol" &&
+  ["water", "water_name", "waterway"].includes(layer["source-layer"]);
+const isWater = (layer) =>
+  layer.type !== "symbol" &&
+  ["water", "waterway"].includes(layer["source-layer"]);
+
+const light = JSON.parse(readFileSync(lightPath, "utf8"));
+
+for (const layer of light.layers) {
+  const paint = layer.paint ?? {};
+  for (const key of Object.keys(paint)) {
+    if (isWater(layer) && key.endsWith("-color")) {
+      paint[key] = format(fromOklch(LIGHT_WATER));
+    } else if (isWaterLabel(layer) && key === "text-color") {
+      const river = layer["source-layer"] === "waterway";
+      paint[key] = format(
+        fromOklch(river ? LIGHT_RIVER_TEXT : LIGHT_WATER_TEXT),
+      );
+    }
+  }
+}
+
+const style = structuredClone(light);
 
 for (const layer of style.layers) {
   const paint = layer.paint ?? {};
-  const isWaterLabel = layer.id.startsWith("water") && layer.type === "symbol";
-  const isWater = /^water(way)?(_|$)/.test(layer.id) && !isWaterLabel;
 
   for (const key of Object.keys(paint)) {
     if (!key.endsWith("-color")) continue;
     let fn = feature;
     if (layer.type === "background") fn = () => land;
-    else if (isWater) fn = () => water;
+    else if (isWater(layer)) fn = () => water;
     else if (key === "text-halo-color")
-      fn = () => (isWaterLabel ? water : land);
-    else if (key === "text-color") fn = isWaterLabel ? () => waterText : text;
+      fn = () => (isWaterLabel(layer) ? water : land);
+    else if (key === "text-color")
+      fn = isWaterLabel(layer) ? () => waterText : text;
     paint[key] = recolour(paint[key], fn);
   }
 
@@ -166,5 +203,8 @@ for (const layer of style.layers) {
   layer.paint = paint;
 }
 
-writeFileSync(dest, JSON.stringify(style));
-console.log(`Wrote ${path.relative(root, dest)}`);
+writeFileSync(lightPath, JSON.stringify(light));
+writeFileSync(darkPath, JSON.stringify(style));
+console.log(
+  `Wrote ${path.relative(root, lightPath)} and ${path.relative(root, darkPath)}`,
+);

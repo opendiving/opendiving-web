@@ -5031,7 +5031,7 @@ stay silent; `runtime-config.test.ts` pins all three.
 
 ## The dark basemap is Liberty recoloured, not a second style
 
-`public/basemap/dark.json` is generated from `liberty.json` by `scripts/generate-dark-basemap.mjs`,
+`public/basemap/dark.json` is generated from `liberty.json` by `scripts/generate-basemaps.mjs`,
 which rewrites paint colours and nothing else, so both themes label a place identically. A
 separately designed dark style, OpenFreeMap's Dark included, is rejected: it labels by its own rules
 — other place classes, case and sizes — so a theme switch changes what the map says.
@@ -5042,6 +5042,14 @@ Land is a mid grey, lighter than the dark `--card` so the frame reads as a map r
 water sits on `teal`'s hue and lighter than land, which reads more clearly than the night-map
 convention of darker water. Colours move in OKLCH, mirrored about land, so each of Liberty's
 contrasts keeps its direction.
+
+## Liberty's water is recoloured teal, and nothing else of it
+
+The same script rewrites the water fill, river lines and water labels of
+`public/basemap/liberty.json` in place before deriving the dark style. Liberty's periwinkle (OKLCH
+chroma 0.10) outweighs every other fill, whose pastels sit around 0.03–0.06; its replacement shares
+`teal`'s hue at that saturation, as the dark water does. A re-vendor overwrites the edit, so the
+script runs after every re-vendor.
 
 ## The worker is same-origin, and `worker-src 'self'` is what makes the blob path fail loudly
 

@@ -352,7 +352,7 @@ describe("the bundled styles", () => {
     });
     expect(
       withoutPaint(shipped("dark.json")),
-      "run scripts/generate-dark-basemap.mjs",
+      "run scripts/generate-basemaps.mjs",
     ).toEqual(withoutPaint(shipped("liberty.json")));
   });
 });

@@ -70,12 +70,13 @@ Liberty style, vendored so the map's appearance cannot change under the app afte
 restyle (see `DECISIONS.md`). They come from
 [hyperknot/openfreemap-styles](https://github.com/hyperknot/openfreemap-styles), whose own licence
 is MIT, © 2023 Zsolt Ero; `liberty.json` is what `https://tiles.openfreemap.org/styles/liberty`
-serves, unchanged except for the `sprite` URL, which is repointed at the vendored copy, and all four
+serves with two changes: the `sprite` URL is repointed at the vendored copy, and
+`scripts/generate-basemaps.mjs` recolours the water, river lines and water labels teal. All four
 sprite files are byte-identical to `https://tiles.openfreemap.org/sprites/ofm_f384/` — `ofm.png`,
 `ofm@2x.png` and the two `.json` manifests beside them.
 
-`public/basemap/dark.json` is a modified Liberty: `scripts/generate-dark-basemap.mjs` rewrites its
-paint colours and changes nothing else, so it carries Liberty's licences below.
+`public/basemap/dark.json` is a further modified Liberty: the same script rewrites its paint colours
+and changes nothing else, so it carries Liberty's licences below.
 
 The vendored files themselves carry no licence metadata — style JSON has nowhere to put a comment —
 so this entry is where it lives. Liberty is a fork with two licences, one for the code and one for
