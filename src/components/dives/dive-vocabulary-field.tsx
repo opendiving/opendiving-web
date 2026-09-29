@@ -19,7 +19,11 @@ export interface DiveVocabularyFieldProps<
   name: Path<TFieldValues>;
   label: string;
   icon: LucideIcon;
-  /** The API's vocabulary, in the order the picker offers it. */
+  /**
+   * What the picker offers, in order: the API's vocabulary or part of it. A stored
+   * value outside it is still offered while the field holds it, so a save never
+   * drops it unasked.
+   */
   values: readonly TValue[];
   labels: Record<TValue, string>;
 }
@@ -65,7 +69,10 @@ export function DiveVocabularyField<
                 onChange={(e) => field.onChange(e.target.value)}
               >
                 <option value="">Not recorded</option>
-                {values.map((value) => (
+                {(values.includes(field.value) || !(field.value in labels)
+                  ? values
+                  : [...values, field.value as TValue]
+                ).map((value) => (
                   <option key={value} value={value}>
                     {labels[value]}
                   </option>

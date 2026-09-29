@@ -12,7 +12,6 @@ import NewDivePage from "./page";
 import {
   CURRENT_LABELS,
   CURRENTS,
-  DIVE_TYPE_LABELS,
   DIVE_TYPES,
   divesAPI,
   ENTRY_TYPE_LABELS,
@@ -698,8 +697,23 @@ describe("the water type on the way to the API", () => {
 
 // The water type's guard, once per vocabulary beside it: each select offers "Not
 // recorded" and then exactly the API's members, in its order.
+describe("the Dive type select", () => {
+  it("offers every dive type but freediving and snorkeling, which wait", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    const options = [
+      ...screen.getByLabelText(/^dive type$/i).querySelectorAll("option"),
+    ].map((option) => option.value);
+
+    expect(options).toEqual([
+      "",
+      ...DIVE_TYPES.filter((type) => type !== "freedive" && type !== "snorkel"),
+    ]);
+  });
+});
+
 describe.each([
-  ["Dive type", DIVE_TYPES, DIVE_TYPE_LABELS],
   ["Current", CURRENTS, CURRENT_LABELS],
   ["Waves", WAVES, WAVES_LABELS],
   ["Weather", WEATHER, WEATHER_LABELS],
