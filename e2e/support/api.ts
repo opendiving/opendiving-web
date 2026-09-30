@@ -155,6 +155,9 @@ function respond(method: string, path: string): unknown | undefined {
   if (path === "/dives") return page1([DIVE_A, DIVE_B]);
   if (path === "/gear-items") return page1([GEAR_ITEM]);
   if (path === "/gear-sets") return page1([GEAR_SET]);
+  // The header's notifications bell reads both on every page; nothing is due.
+  if (path === "/gear-service-due") return { data: [] };
+  if (path === "/certifications-expiring") return { data: [] };
 
   const neighbors = /^\/dive\/([0-9a-f-]+)\/neighbors$/.exec(path);
   if (neighbors) return NEIGHBORS[neighbors[1]];
