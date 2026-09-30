@@ -15,13 +15,12 @@ import { Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // What the trip's dives add up to, laid out as the dive page lays out its
-// duration and depths, a size down. On every trip, zeros included, and zeros
-// too from an API that sends no counts yet.
+// duration and depths, a size down. On every trip, zeros included.
 function TripCounts({ trip }: { trip: Trip }) {
   const counts = [
-    { label: "Dives", value: trip.dive_count ?? 0 },
-    { label: "Dive Sites", value: trip.dive_site_count ?? 0 },
-    { label: "Species Seen", value: trip.species_count ?? 0 },
+    { label: "Dives", value: trip.dive_count },
+    { label: "Dive Sites", value: trip.dive_site_count },
+    { label: "Species Seen", value: trip.species_count },
   ];
 
   return (
@@ -150,13 +149,13 @@ export function RecentTripRow({
             {trip.name}
           </Link>
         </div>
+        {dates && <div className="text-xs">{dates}</div>}
         {/* `w-fit`, so the place's hover hint is lifted over the link only
             where the text is. */}
         <TripLocationsLabel
           locations={locations}
           className="relative z-10 block w-fit max-w-full text-xs"
         />
-        {dates && <div className="text-xs">{dates}</div>}
         <TripCounts trip={trip} />
       </div>
     </li>

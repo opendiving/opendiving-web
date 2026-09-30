@@ -105,6 +105,9 @@ const TRIP: Trip = {
   notes: "",
   user_uuid: "user-1",
   created_at: "2026-04-01T09:00:00Z",
+  dive_count: 0,
+  dive_site_count: 0,
+  species_count: 0,
 };
 
 const dive = (uuid: string, contact_uuid: string | null) =>

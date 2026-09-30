@@ -46,6 +46,9 @@ const trip = (overrides: Partial<Trip>): Trip => ({
   notes: "",
   user_uuid: "user-1",
   created_at: "2026-01-01T00:00:00Z",
+  dive_count: 0,
+  dive_site_count: 0,
+  species_count: 0,
   ...overrides,
 });
 
@@ -101,11 +104,10 @@ describe("RecentTripsCard", () => {
     vi.mocked(tripsAPI.getTrips).mockResolvedValue({
       data: [
         { ...MAPPED, dive_count: 12, dive_site_count: 1, species_count: 23 },
-        // No dives yet, and an API that sends no counts: both read as zeros.
-        { ...TYPED, dive_count: 0, dive_site_count: 0, species_count: 0 },
-        trip({ uuid: "trip-3", name: "Palau 2024" }),
+        // No dives yet still shows the line, at zero.
+        TYPED,
       ],
-      total_count: 3,
+      total_count: 2,
       has_more: false,
       page: 1,
       items_per_page: 5,
@@ -124,13 +126,11 @@ describe("RecentTripsCard", () => {
       ["Dive Sites", "1"],
       ["Species Seen", "23"],
     ]);
-    for (const name of ["Koh Tao 2025", "Palau 2024"]) {
-      expect(countsOf(name)).toEqual([
-        ["Dives", "0"],
-        ["Dive Sites", "0"],
-        ["Species Seen", "0"],
-      ]);
-    }
+    expect(countsOf("Koh Tao 2025")).toEqual([
+      ["Dives", "0"],
+      ["Dive Sites", "0"],
+      ["Species Seen", "0"],
+    ]);
   });
 
   it("names each row's menu after its trip", async () => {
