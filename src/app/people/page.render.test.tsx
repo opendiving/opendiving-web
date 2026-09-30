@@ -23,6 +23,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => stable.router,
 }));
 
+// Lives in `AppShell`, above the page rendered here.
+vi.mock("@/components/layout/quick-create", () => ({
+  useQuickCreate: () => vi.fn(),
+}));
+
 vi.mock("@/lib/api/people", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/people")>();
   return {

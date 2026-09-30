@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { PeoplePageFrame } from "@/components/people/people-page-frame";
 import { PersonDialog } from "@/components/people/person-dialog";
+import { useQuickCreate } from "@/components/layout/quick-create";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Edit, Trash2, Loader2 } from "lucide-react";
@@ -29,10 +30,8 @@ const NONE = <span className="text-muted-foreground">-</span>;
 
 export function PeoplePageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  // `null` = the dialog is closed; a person = editing them; `undefined` = creating.
-  const [editingPerson, setEditingPerson] = useState<Person | null | undefined>(
-    null,
-  );
+  const openCreate = useQuickCreate();
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
 
   // What the box holds, and what has actually been asked for.
   const [searchInput, setSearchInput] = useState("");
@@ -109,7 +108,7 @@ export function PeoplePageContent() {
         search={searchInput}
         onSearchChange={setSearchInput}
         isSearching={search.length > 0}
-        onNew={() => setEditingPerson(undefined)}
+        onNew={() => openCreate("person")}
         rows={people.map((person) => (
           <TableRow key={person.uuid}>
             <TableCell className="font-medium">

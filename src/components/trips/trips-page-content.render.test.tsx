@@ -10,6 +10,7 @@ import type { Trip } from "@/lib/api/trips";
 
 const stable = vi.hoisted(() => ({
   guard: { user: { uuid: "user-1" }, isAuthenticated: true, isLoading: false },
+  openCreate: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAuthGuard", () => ({
@@ -27,6 +28,9 @@ vi.mock("@/components/map/locations-map-lazy", () => ({
 }));
 vi.mock("@/components/trips/trip-dialog", () => ({
   TripDialog: () => null,
+}));
+vi.mock("@/components/layout/quick-create", () => ({
+  useQuickCreate: () => stable.openCreate,
 }));
 
 vi.mock("@/lib/api/trips", async (importOriginal) => ({
@@ -91,6 +95,17 @@ beforeEach(() => {
 });
 
 describe("TripsPageContent", () => {
+  // The app-wide create dialog, not one of the list's own: it is the one that
+  // opens the new trip's page once saved.
+  it("creates through the shared create dialog", async () => {
+    render(<TripsPageContent />);
+    await screen.findByRole("link", { name: "Dahab 2026" });
+
+    await userEvent.click(screen.getByRole("button", { name: "New trip" }));
+
+    expect(stable.openCreate).toHaveBeenCalledWith("trip");
+  });
+
   it("reads the list again when a delete moves the trip's dives", async () => {
     render(<TripsPageContent />);
     await screen.findByRole("link", { name: "Dahab 2026" });

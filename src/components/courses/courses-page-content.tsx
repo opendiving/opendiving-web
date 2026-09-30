@@ -20,6 +20,7 @@ import {
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CourseDialog } from "@/components/courses/course-dialog";
+import { useQuickCreate } from "@/components/layout/quick-create";
 import { Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -31,10 +32,8 @@ const SEARCH_DEBOUNCE_MS = 250;
 
 export function CoursesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  // `null` = the dialog is closed; a course = editing it; `undefined` = creating.
-  const [editingCourse, setEditingCourse] = useState<Course | null | undefined>(
-    null,
-  );
+  const openCreate = useQuickCreate();
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   // What the box holds, and what has actually been asked for. Splitting them is
   // what keeps the debounce off the input's own responsiveness.
   const [searchInput, setSearchInput] = useState("");
@@ -138,7 +137,7 @@ export function CoursesPageContent() {
         loadFailed={loadFailed}
         hasMore={hasMore}
         onLoadMore={loadMore}
-        onNew={() => setEditingCourse(undefined)}
+        onNew={() => openCreate("course")}
         onFiltersOpened={() => setWantsFilterOptions(true)}
         agencies={agencies}
         statuses={statuses}
@@ -231,8 +230,8 @@ export function CoursesPageContent() {
         open={editingCourse !== null}
         onOpenChange={(open) => !open && setEditingCourse(null)}
         course={editingCourse}
-        // The vocabulary too, not just the row: a first course with a new
-        // agency is what adds that agency to the filter.
+        // The vocabulary too, not just the row: an edit naming a new agency is
+        // what adds that agency to the filter.
         onSaved={(course) => {
           applySaved(course);
           reloadFilterOptions();
