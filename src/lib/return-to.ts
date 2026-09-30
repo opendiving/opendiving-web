@@ -19,7 +19,9 @@ export interface ReturnTarget {
 }
 
 // Section labels for the back link, in both their list and single-record forms:
-// `/trips` is "Back to trips", `/trips/{uuid}` is "Back to trip".
+// `/trips` is "Back to trips", `/trips/{uuid}` is "Back to trip". Every page inside
+// the chrome needs one, since the header's create menu opens the dive form from
+// any of them - `app/page-frames.render.test.tsx` derives that set and checks it.
 const SECTIONS: Record<string, { index: string; item: string }> = {
   dashboard: { index: "dashboard", item: "dashboard" },
   dives: { index: "dives", item: "dive" },
@@ -29,6 +31,16 @@ const SECTIONS: Record<string, { index: string; item: string }> = {
   certifications: { index: "certifications", item: "certification" },
   courses: { index: "courses", item: "course" },
   contacts: { index: "contacts", item: "contact" },
+  people: { index: "people", item: "person" },
+  species: { index: "species", item: "species" },
+  checkin: { index: "check-in", item: "check-in" },
+  import: { index: "import", item: "import" },
+  data: { index: "export", item: "export" },
+  settings: { index: "settings", item: "settings" },
+  admin: { index: "admin", item: "admin" },
+  support: { index: "support", item: "support" },
+  privacy: { index: "privacy policy", item: "privacy policy" },
+  terms: { index: "terms of service", item: "terms of service" },
 };
 
 export function labelForPath(path: string): string {
