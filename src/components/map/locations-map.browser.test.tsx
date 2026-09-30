@@ -547,6 +547,35 @@ describe("LocationsMap", () => {
     expect(clip.getPropertyValue("mask-image")).not.toBe("none");
   });
 
+  it("keeps every pin clear of a faded bottom edge", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          fadeBottom
+          locations={[
+            { name: "Dahab", latitude: 28.49, longitude: 34.51 },
+            { name: "Sharm", latitude: 27.91, longitude: 34.33 },
+          ]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    const image = screen.getByRole("img");
+    expect(getComputedStyle(image).maskImage).toContain("48px");
+
+    // The southern place is the one the fit puts nearest the bottom edge.
+    const frameBottom = image.getBoundingClientRect().bottom;
+    const lowest = Math.max(
+      ...Array.from(
+        markers(),
+        (marker) => marker.getBoundingClientRect().bottom,
+      ),
+    );
+    expect(frameBottom - lowest).toBeGreaterThanOrEqual(48);
+  });
+
   // **MapLibre does not refit on its own.** Its `trackResize` calls `resize()`,
   // which recomputes the projection for the new box and leaves centre and zoom
   // where they were - so without an explicit refit a frame that narrows keeps a

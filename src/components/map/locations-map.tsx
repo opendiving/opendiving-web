@@ -21,6 +21,10 @@ import { cn } from "@/lib/utils";
 // pin never sits on the border where half of its context is cropped away.
 const FIT_PADDING = 24;
 
+// How tall the fade along the bottom of a `fadeBottom` map is. The fit pads its
+// bottom by the same amount, so no pin lands in the part that is fading out.
+const FADE_HEIGHT = 48;
+
 /**
  * As much of a place as this map needs, which is the position and the name.
  * Loose enough to take a trip location - both what the API returns and what the
@@ -134,6 +138,13 @@ export interface LocationsMapProps {
    * the height, which the lazy wrapper's placeholder is drawn at too.
    */
   className?: string;
+  /**
+   * Fade the map out along its bottom edge into whatever is behind it, for a
+   * map that heads a card rather than sitting boxed inside one. The frame
+   * draws no background of its own then, so the fade meets the card's -
+   * hover colour included.
+   */
+  fadeBottom?: boolean;
 }
 
 /**
@@ -151,6 +162,7 @@ export function LocationsMap({
   subject,
   showWhenEmpty,
   className,
+  fadeBottom,
 }: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
   // From the instance's runtime configuration, so a published image can be
@@ -213,7 +225,14 @@ export function LocationsMap({
           [bounds.east, bounds.north],
         ],
         {
-          padding: FIT_PADDING,
+          padding: fadeBottom
+            ? {
+                top: FIT_PADDING,
+                right: FIT_PADDING,
+                bottom: FIT_PADDING + FADE_HEIGHT,
+                left: FIT_PADDING,
+              }
+            : FIT_PADDING,
           maxZoom: MAX_FIT_ZOOM,
           // This map is drawn once and not touched again; an animation on first
           // paint is a map that arrives already moving.
@@ -237,7 +256,7 @@ export function LocationsMap({
     return () => {
       map.off("resize", fit);
     };
-  }, [map, placed]);
+  }, [map, placed, fadeBottom]);
 
   // Markers are MapLibre's rather than absolutely positioned children, which is
   // what hands it the job of drawing a place at 178E in the copy of the world
@@ -304,7 +323,8 @@ export function LocationsMap({
   return (
     <div
       className={cn(
-        "relative h-40 w-full overflow-hidden rounded-md border bg-muted sm:h-48",
+        "relative h-40 w-full overflow-hidden rounded-md border sm:h-48",
+        fadeBottom ? "bg-transparent" : "bg-muted",
         className,
       )}
     >
@@ -313,11 +333,20 @@ export function LocationsMap({
           inside `role="img"` is dropped from the accessibility tree, and a
           licence credit nobody can follow is not much of a credit. */}
       {/* `rounded-[inherit]` hands the frame's corners down to `MapCanvas`,
-          which is what clips the map to them. */}
+          which is what clips the map to them. The fade masks this element
+          rather than the frame, so the attribution beside it stays solid and
+          outside the stacking context a mask makes. */}
       <div
         role="img"
         aria-label={label}
         className="absolute inset-0 rounded-[inherit]"
+        style={
+          fadeBottom
+            ? {
+                maskImage: `linear-gradient(to bottom, #000 calc(100% - ${FADE_HEIGHT}px), transparent)`,
+              }
+            : undefined
+        }
       >
         <MapCanvas
           basemap={basemap}

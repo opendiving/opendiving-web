@@ -133,7 +133,8 @@ export function RecentTripsCard() {
                     <LocationsMap
                       locations={mappedLocations}
                       subject={`the places of ${trip.name}`}
-                      className="rounded-b-none rounded-t-[calc(var(--radius)-1px)] border-x-0 border-t-0"
+                      className="rounded-b-none rounded-t-[calc(var(--radius)-1px)] border-0"
+                      fadeBottom
                     />
                   )}
                   <div className="p-3">
