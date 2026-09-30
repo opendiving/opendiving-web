@@ -14,20 +14,14 @@ import {
 } from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export interface TripsPageFrameProps {
   isLoading: boolean;
   totalCount: number;
   itemsPerPage: number;
-  rows?: ReactNode[];
+  /** One `TripCard` per trip - list items, for the list this frame draws. */
+  cards?: ReactNode[];
   /** What the search box holds. Empty on arrival. */
   search?: string;
   onSearchChange?: (value: string) => void;
@@ -43,14 +37,14 @@ export interface TripsPageFrameProps {
 
 const noop = () => {};
 
-// Everything /trips draws before its rows exist, kept apart from the data render so
+// Everything /trips draws before its cards exist, kept apart from the data render so
 // the page's first render is this frame. Every data-varying prop is optional,
 // and the defaults are that first render.
 export function TripsPageFrame({
   isLoading,
   totalCount,
   itemsPerPage,
-  rows = [],
+  cards = [],
   search = "",
   onSearchChange = noop,
   isSearching = false,
@@ -62,11 +56,11 @@ export function TripsPageFrame({
 }: TripsPageFrameProps) {
   // Nothing to count and nothing to search. A term in flight and one still in the
   // box waiting for the debounce both count as narrowing, and `useIsEmptyList`
-  // holds that reading across the commit where neither is true yet the rows are
+  // holds that reading across the commit where neither is true yet the cards are
   // still the search's.
   const isEmptyList = useIsEmptyList({
     isLoading,
-    count: rows.length,
+    count: cards.length,
     isNarrowed: isSearching || search.length > 0,
   });
 
@@ -104,7 +98,7 @@ export function TripsPageFrame({
           />
         </ListCardHeader>
         <CardContent>
-          {!isLoading && rows.length === 0 ? (
+          {!isLoading && cards.length === 0 ? (
             // A searched list with nothing in it is a different statement from
             // an empty one, so it keeps its one line: no icon, no heading, and
             // pointedly no "add your first trip", which would be answering a
@@ -127,36 +121,30 @@ export function TripsPageFrame({
               />
             )
           ) : (
-            <Table
-              // Busy on the outside, hidden on each placeholder row within - the
-              // split `ListRowsSkeleton` documents, applied here because the rows
-              // themselves are `aria-hidden` and would otherwise leave a reader
-              // with a table that is silently empty rather than one that is
-              // loading.
-              aria-busy={rows.length === 0 || undefined}
+            // Two columns at most: every card on screen holds a live map, and a
+            // browser keeps only so many of those per page - see `TripCard`.
+            <ul
+              className="grid gap-4 sm:grid-cols-2"
+              // Busy on the outside, hidden on each placeholder within - the
+              // split `ListRowsSkeleton` documents, so a reader meets a list
+              // that is loading rather than one that is silently empty.
+              aria-busy={cards.length === 0 || undefined}
             >
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Locations</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRowsSkeleton columns={4} rows={itemsPerPage} />
-                )}
-                {rows}
-              </TableBody>
-            </Table>
+              {cards.length === 0 &&
+                Array.from({ length: itemsPerPage }, (_, index) => (
+                  <li key={index} aria-hidden>
+                    <Skeleton className="h-60 rounded-lg sm:h-64" />
+                  </li>
+                ))}
+              {cards}
+            </ul>
           )}
 
           <LoadMoreTrigger
             hasMore={hasMore}
             isLoading={isLoadingMore}
             hasFailed={loadFailed}
-            loadedCount={rows.length}
+            loadedCount={cards.length}
             totalCount={totalCount}
             itemsPerPage={itemsPerPage}
             itemLabel="trips"

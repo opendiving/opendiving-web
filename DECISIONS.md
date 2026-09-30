@@ -2788,12 +2788,12 @@ splits the answer in two.
 A hint that repeats the label is worse than none, so `formatTripLocationNamesHint` sits beside
 `formatTripLocationNames`, answers `undefined` when nothing is hidden, and decides that under the
 same blank-dropping rule: `["Moalboal", " "]` under `max: 1` shows no "+N" and gets no tooltip.
-`TripLocationsLabel` calls both, as `DiveSitesLabel` does for dives; the trips table and the
-dashboard card pass locations and a fallback only.
+`TripLocationsLabel` calls both, as `DiveSitesLabel` does for dives; the trip card passes locations
+only.
 
 `SHOWN_LOCATIONS` is **one**: a place's name carries its country, so two of "Dahab, Egypt" do not
-fit a table cell. It stays private because every surface that joins a trip's places for a reader —
-the trips table, the dashboard card, the dive sidebar and the trip page's own subtitle — renders
+fit a trip card's line beside its dates. It stays private because every surface that joins a trip's
+places for a reader — the trip card, the dive sidebar and the trip page's own subtitle — renders
 this component, so there is one number and nothing for a second one to disagree with. Every such
 list separates with `; `, a comma being indistinguishable from the commas inside each name.
 `LocationsMap`'s accessible label takes the separator and not the cap: a cap withholds names from
@@ -4523,17 +4523,18 @@ the dashboard under three route names and never renders the landing page or sign
 
 ## Ten rows of "Edit" name nothing
 
-Row-action controls in all seven tables (dives, trips, dive sites, certifications, gear items, gear
-sets, courses) name their row: `View dive #412`, `Edit Palau 2025`, `Delete Pescador Island`.
-Uniqueness among the page's controls is the point: axe's `button-name` and `link-name` pass
-`aria-label="Edit"` ten times over, so only reading the controls list catches a bare label. Dive
-rows key off `dive.dive_number`, what the row leads with and what a diver says out loud.
-Certification rows carry agency and level through `certificationLabel` in
-`lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no unique-name constraint
-by design, and level alone gives two `Edit Advanced Nitrox` buttons. Gear rows use `gearItemLabel`'s
-brand-then-name shape. A qualifier belongs in the name where the diver says it and the collision is
-structural; otherwise it is a second sentence. `app/certifications/page.render.test.tsx` and
-`app/gear/page.render.test.tsx` render two rows, because a constant name passes a one-row test.
+Row-action controls in all six tables (dives, dive sites, certifications, gear items, gear sets,
+courses) and the trip cards' actions menu name their row: `View dive #412`,
+`Actions for Palau 2025`, `Delete Pescador Island`. Uniqueness among the page's controls is the
+point: axe's `button-name` and `link-name` pass `aria-label="Edit"` ten times over, so only reading
+the controls list catches a bare label. Dive rows key off `dive.dive_number`, what the row leads
+with and what a diver says out loud. Certification rows carry agency and level through
+`certificationLabel` in `lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no
+unique-name constraint by design, and level alone gives two `Edit Advanced Nitrox` buttons. Gear
+rows use `gearItemLabel`'s brand-then-name shape. A qualifier belongs in the name where the diver
+says it and the collision is structural; otherwise it is a second sentence.
+`app/certifications/page.render.test.tsx` and `app/gear/page.render.test.tsx` render two rows,
+because a constant name passes a one-row test.
 
 ## The gear detail page's service card, where the row is not the unit
 

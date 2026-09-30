@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RecentTripsCard } from "./recent-trips-card";
 import type { Trip } from "@/lib/api/trips";
+import { reveal } from "@/test/intersection";
 
 // Each row names its own controls, draws a map only for a trip with a place on
 // one, and deletes where it stands. Two trips on purpose: a control named from a
@@ -93,6 +94,7 @@ describe("RecentTripsCard", () => {
   it("draws a map only for a trip with a place on one", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
+    await act(async () => reveal());
 
     expect(screen.getAllByTestId("map")).toHaveLength(1);
     expect(within(rowOf("Dahab 2026")).getByTestId("map")).toBeInTheDocument();
@@ -149,6 +151,17 @@ describe("RecentTripsCard", () => {
     );
     expect(rowOf("Koh Tao 2025")).toHaveTextContent("Koh Tao");
     expect(rowOf("Koh Tao 2025")).not.toHaveTextContent("·");
+  });
+
+  // A browser keeps only so many live maps per page, and /trips holds every
+  // trip, so a card mounts its map only once it is near the screen.
+  it("waits for a card to near the screen before drawing its map", async () => {
+    render(<RecentTripsCard />);
+    await screen.findByRole("link", { name: "Dahab 2026" });
+
+    expect(screen.queryByTestId("map")).toBeNull();
+    await act(async () => reveal());
+    expect(screen.getByTestId("map")).toBeInTheDocument();
   });
 
   it("names each row's menu after its trip", async () => {

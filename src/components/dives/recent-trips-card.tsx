@@ -19,7 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
-import { RecentTripRow } from "@/components/dives/recent-trip-row";
+import { TripCard } from "@/components/trips/trip-card";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { Luggage, Plus } from "lucide-react";
 
@@ -99,7 +99,7 @@ export function RecentTripsCard() {
         ) : (
           <ul className="space-y-3">
             {recentTrips.map((trip) => (
-              <RecentTripRow
+              <TripCard
                 key={trip.uuid}
                 trip={trip}
                 onEdit={() => setEditingTrip(trip)}

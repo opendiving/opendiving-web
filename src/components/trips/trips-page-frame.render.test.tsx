@@ -14,7 +14,7 @@ const frame = (props: Partial<Parameters<typeof TripsPageFrame>[0]> = {}) =>
       isLoading={false}
       totalCount={0}
       itemsPerPage={10}
-      rows={[]}
+      cards={[]}
       {...props}
     />,
   );
@@ -24,8 +24,29 @@ const header = () =>
   screen.getByRole("heading", { name: "Trip List" }).parentElement!;
 
 describe("TripsPageFrame", () => {
+  it("draws the trips as one list of cards", () => {
+    frame({
+      totalCount: 2,
+      cards: [<li key="a">Dahab 2026</li>, <li key="b">Koh Tao 2025</li>],
+    });
+
+    const items = within(screen.getByRole("list")).getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Dahab 2026",
+      "Koh Tao 2025",
+    ]);
+  });
+
+  it("holds the list's place with placeholders while it loads", () => {
+    frame({ isLoading: true, itemsPerPage: 4 });
+
+    const list = screen.getByRole("list");
+    expect(list).toHaveAttribute("aria-busy", "true");
+    expect(list.querySelectorAll("li[aria-hidden]")).toHaveLength(4);
+  });
+
   it("puts the search box in the header row, beside the count", () => {
-    frame({ totalCount: 12, rows: [<tr key="t" />] });
+    frame({ totalCount: 12, cards: [<li key="t" />] });
 
     expect(within(header()).getByText("12 total trips")).toBeInTheDocument();
     expect(
@@ -35,7 +56,7 @@ describe("TripsPageFrame", () => {
 
   it("reports what is typed into it", async () => {
     const onSearchChange = vi.fn();
-    frame({ onSearchChange, rows: [<tr key="t" />] });
+    frame({ onSearchChange, cards: [<li key="t" />] });
 
     await userEvent.type(
       screen.getByLabelText("Search trips by name or location"),
@@ -95,9 +116,9 @@ describe("TripsPageFrame", () => {
   });
 
   // Emptying the box is the way out of a search that matched nothing, and for
-  // one commit it leaves the term gone and the search's own (empty) rows still
+  // one commit it leaves the term gone and the search's own (empty) cards still
   // on screen. Dropping the box there would take the diver's cursor with it.
-  it("keeps them through the commit where a cleared term outruns its rows", () => {
+  it("keeps them through the commit where a cleared term outruns its cards", () => {
     const { rerender } = frame({ search: "dahab", isSearching: true });
 
     rerender(
@@ -105,7 +126,7 @@ describe("TripsPageFrame", () => {
         isLoading={false}
         totalCount={0}
         itemsPerPage={10}
-        rows={[]}
+        cards={[]}
         search=""
         isSearching={false}
       />,

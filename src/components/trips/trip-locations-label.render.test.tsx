@@ -35,16 +35,7 @@ describe("TripLocationsLabel", () => {
     expect(screen.getByText("Dahab, Egypt")).toBeInTheDocument();
   });
 
-  it("renders the fallback for a trip with no usable locations", () => {
-    const { container } = render(
-      <TripLocationsLabel locations={[]} fallback="-" />,
-    );
-
-    expect(screen.getByText("-")).toBeInTheDocument();
-    expect(container.querySelector("[title]")).toBeNull();
-  });
-
-  it("renders nothing at all when no fallback is given", () => {
+  it("renders nothing at all for a trip with no usable locations", () => {
     const { container } = render(<TripLocationsLabel locations={null} />);
 
     expect(container).toBeEmptyDOMElement();

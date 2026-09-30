@@ -18,7 +18,12 @@
  */
 export function hasWebGL2(): boolean {
   try {
-    return document.createElement("canvas").getContext("webgl2") != null;
+    const gl = document.createElement("canvas").getContext("webgl2");
+    // Released at once rather than left to the collector: a browser keeps
+    // around sixteen contexts per page and drops the oldest - a live map's -
+    // past that, and every map asks this as it mounts.
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return gl != null;
   } catch {
     return false;
   }

@@ -5,16 +5,10 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
-import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
-import { Button } from "@/components/ui/button";
-import { IconTooltip } from "@/components/ui/tooltip";
 import { TripsPageFrame } from "@/components/trips/trips-page-frame";
-import { TableCell, TableRow } from "@/components/ui/table";
+import { TripCard } from "@/components/trips/trip-card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
-import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
-import { Eye, Edit, Trash2, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
@@ -110,63 +104,14 @@ export function TripsPageContent() {
         onSearchChange={setSearchInput}
         isSearching={search.length > 0}
         onNew={() => setEditingTrip(undefined)}
-        rows={trips.map((trip) => (
-          <TableRow key={trip.uuid}>
-            <TableCell className="font-medium">
-              <Link href={`/trips/${trip.uuid}`} className="hover:underline">
-                {trip.name}
-              </Link>
-            </TableCell>
-            <TableCell>
-              {/* The span of the trip's parts, which is the only date a trip
-                  has: a trip whose parts carry none shows "-" rather than an
-                  error, and the API sorts it after every trip that has one. */}
-              {formatTripSpan(trip.parts) ?? "-"}
-            </TableCell>
-            <TableCell>
-              <TripLocationsLabel
-                locations={tripPartLocations(trip.parts)}
-                fallback="-"
-              />
-            </TableCell>
-            <TableCell className="text-right">
-              {/* Named per row, not per action: ten identical "Edit"s tell a
-                          screen reader's controls list nothing about which trip.
-                          See DECISIONS.md on the export card's Downloads. */}
-              <div className="flex justify-end gap-2">
-                <IconTooltip label={`View ${trip.name}`}>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/trips/${trip.uuid}`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </IconTooltip>
-                <IconTooltip label={`Edit ${trip.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingTrip(trip)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-                <IconTooltip label={`Delete ${trip.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => requestDeleteTrip(trip.uuid)}
-                    disabled={deletingId === trip.uuid}
-                  >
-                    {deletingId === trip.uuid ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </IconTooltip>
-              </div>
-            </TableCell>
-          </TableRow>
+        cards={trips.map((trip) => (
+          <TripCard
+            key={trip.uuid}
+            trip={trip}
+            onEdit={() => setEditingTrip(trip)}
+            onDelete={() => requestDeleteTrip(trip.uuid)}
+            isDeleting={deletingId === trip.uuid}
+          />
         ))}
       />
 

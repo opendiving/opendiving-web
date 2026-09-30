@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useNearViewport } from "@/hooks/useNearViewport";
 import Link from "next/link";
 import { Trip } from "@/lib/api/trips";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -36,22 +37,22 @@ function TripCounts({ trip }: { trip: Trip }) {
   );
 }
 
-interface RecentTripRowProps {
+interface TripCardProps {
   trip: Trip;
   onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
 }
 
-// One trip on the dashboard's recent trips card: its map as the backdrop when
-// it has a place on one, its details over the foot of it, and its actions in
-// the corner.
-export function RecentTripRow({
+// One trip as a card, on /trips and in the dashboard's recent trips: its map as
+// the backdrop when it has a place on one, its details over the foot of it, and
+// its actions in the corner. A list item, so a caller renders it in a list.
+export function TripCard({
   trip,
   onEdit,
   onDelete,
   isDeleting,
-}: RecentTripRowProps) {
+}: TripCardProps) {
   const locations = tripPartLocations(trip.parts);
   const mappedLocations = locations.filter(
     (location) => location.latitude != null && location.longitude != null,
@@ -64,8 +65,9 @@ export function RecentTripRow({
   const placeNames = formatTripLocationNames(locations);
 
   // How much of the map lies under the details, from the trip's name down, so
-  // its places centre between the card's top and the name. Read as the ref attaches and followed after that, as
-  // `useChartWidth` does: a name that wraps grows the block.
+  // its places centre between the credit and the name. Read as the ref
+  // attaches and followed after that, as `useChartWidth` does: a name that
+  // wraps grows the block.
   const [detailsHeight, setDetailsHeight] = useState(0);
   const detailsRef = useCallback((element: HTMLElement | null) => {
     if (!element) return;
@@ -77,6 +79,15 @@ export function RecentTripRow({
     return () => observer.disconnect();
   }, []);
 
+  // The map only while the card is on or near the screen. A browser keeps
+  // around sixteen WebGL contexts per page and silently blanks the oldest past
+  // that, and /trips scrolls through every trip; MapLibre releases its context
+  // when it is removed, so an unmounted map gives its slot back. The margin is
+  // small because two columns of cards on a tall screen already come close.
+  const [nearRef, isNear] = useNearViewport<HTMLLIElement>({
+    rootMargin: "100px",
+  });
+
   return (
     // The trip's link is stretched over the whole row rather than wrapping it:
     // a button inside an anchor is invalid, and so is the map's attribution
@@ -84,8 +95,11 @@ export function RecentTripRow({
     // locations' hover hint - is lifted above it; `isolate` keeps those lifts
     // inside the row.
     <li
+      ref={nearRef}
       className={cn(
-        "relative isolate flex flex-col rounded-lg border hover:bg-muted transition-colors",
+        // `justify-end` for a card stretched taller than its content by a
+        // grid row: the details stay at its foot, under the menu's corner.
+        "relative isolate flex flex-col justify-end rounded-lg border hover:bg-muted transition-colors",
         // The map's fade meets the row's own colour, the hover's included.
         "hover:[--backdrop-fade:hsl(var(--muted))]",
         // A fixed band of map above the trip's name, with the details over its
@@ -95,7 +109,7 @@ export function RecentTripRow({
         hasMap && "pt-27 sm:pt-33",
       )}
     >
-      {hasMap && (
+      {hasMap && isNear && (
         // Out of flow, so the lazy map's placeholder takes no room of its own.
         // The radius is the row's less the border it sits inside, and the map
         // clips to it itself: in Firefox a rounded clip from further up does
@@ -110,7 +124,7 @@ export function RecentTripRow({
           />
         </div>
       )}
-      {/* Named per row, as the trips table's actions are. It sits as far in
+      {/* Named per trip, as every list's row actions are. It sits as far in
           from the corner as the credit does, its icon glows as the details'
           text does - a filter, since `text-shadow` stops at an SVG - and over a
           map its hover takes the credit's chip rather than a colour the map
