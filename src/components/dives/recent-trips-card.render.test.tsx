@@ -133,23 +133,6 @@ describe("RecentTripsCard", () => {
     }
   });
 
-  it("marks a named place with a pin, and a trip without one with nothing", async () => {
-    vi.mocked(tripsAPI.getTrips).mockResolvedValue({
-      data: [TYPED, trip({ uuid: "trip-3", name: "Palau 2024" })],
-      total_count: 2,
-      has_more: false,
-      page: 1,
-      items_per_page: 5,
-    });
-    render(<RecentTripsCard />);
-    await screen.findByRole("link", { name: "Koh Tao 2025" });
-
-    expect(
-      rowOf("Koh Tao 2025").querySelector(".lucide-map-pin"),
-    ).not.toBeNull();
-    expect(rowOf("Palau 2024").querySelector(".lucide-map-pin")).toBeNull();
-  });
-
   it("names each row's menu after its trip", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
