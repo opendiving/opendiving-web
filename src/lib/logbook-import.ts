@@ -1,9 +1,12 @@
 import {
-  importSourceLabel,
+  MAX_IMPORT_ARCHIVE_SIZE,
+  MAX_IMPORT_DOCUMENT_SIZE,
+  MAX_IMPORT_FILES,
   type ConversionNoteGroup,
   type ImportCollectionReport,
+  type ImportDiveReport,
+  type ImportMemberNotKept,
   type ImportNoteCode,
-  type ImportPreview,
   type ImportReport,
 } from "@/lib/api/logbook-import";
 
@@ -45,7 +48,7 @@ export function collectionLabel(collection: string): string {
   );
 }
 
-/** The four disjoint counts, summed across every collection in a report. */
+/** The four disjoint counts, summed across collection rows. */
 export interface ImportTotals {
   created: number;
   linked: number;
@@ -54,14 +57,17 @@ export interface ImportTotals {
 }
 
 /**
- * Adds a report's per-collection counts up.
+ * Adds the collection rows on screen up, so the total is the sum of what is
+ * shown above it.
  *
  * `restored` stays its own figure here exactly as it is on the wire: the API
  * guarantees the four are disjoint, and folding restores into "created" would
  * throw away the one number that says a backup actually came back.
  */
-export function importTotals(report: ImportReport): ImportTotals {
-  return report.collections.reduce<ImportTotals>(
+export function importTotals(
+  rows: readonly ImportCollectionReport[],
+): ImportTotals {
+  return rows.reduce<ImportTotals>(
     (totals, row) => ({
       created: totals.created + row.created,
       linked: totals.linked + row.linked,
@@ -79,6 +85,26 @@ export function collectionRowIsEmpty(row: ImportCollectionReport): boolean {
     row.linked === 0 &&
     row.restored === 0 &&
     row.skipped === 0
+  );
+}
+
+/**
+ * The collection rows the counts table shows.
+ *
+ * Empty rows are left out, and so is the dives row wherever the report has dive
+ * rows: `collections` counts a document's records by what the planner does to
+ * each, so a computer's second export of a dive, or a file adding to a dive the
+ * diver has, counts there as a skipped dive while its dive row says "New" or
+ * "Adds a file". The dive rows are the report on dives; the counts are the
+ * report on everything else.
+ */
+export function reviewCollectionRows(
+  report: ImportReport,
+): ImportCollectionReport[] {
+  return report.collections.filter(
+    (row) =>
+      !collectionRowIsEmpty(row) &&
+      !(row.collection === "dives" && report.dives.length > 0),
   );
 }
 
@@ -234,32 +260,147 @@ export function truncatedConversionSentence(
     : `${groupsTruncated} further findings are not shown. The record counts above are complete.`;
 }
 
+// Why a file that was read is not kept, in the diver's terms.
+const NOT_KEPT_SENTENCES: Record<ImportMemberNotKept, string> = {
+  several_dives: "Not kept: it holds several dives",
+  several_recordings: "Not kept: it holds several computers' records",
+  too_large: "Not kept: too large to keep as a dive's file",
+  already_stored: "Not kept: your account already has this file",
+  not_written: "Not kept: nothing is written for its dive",
+};
+
 /**
- * What this upload was, said before anything about what is inside it.
- *
- * **Reads `conversion` first, and that ordering is the whole point.** A
- * converted upload's `format`, `version` and `generator` describe the document
- * the API ended up reading, not the file the diver picked - so on their `.ssrf`
- * they say "divejson 1.0, written by divejson convert", which is true and
- * useless. The conversion block is the only place their own file is named.
- *
- * The attribution comes from the document's `generator` where it declared one,
- * falling back to `conversion.converter`: on this path they are the same
- * converter saying the same thing, and the generator is the spelling a diver
- * would recognise from the file itself.
+ * Why a file is not kept, tolerating a reason this build does not know - it
+ * reads as the bare fact rather than as a blank.
  */
-export function importSourceSentence(preview: ImportPreview): string {
-  const generator = preview.generator?.name
-    ? `${preview.generator.name}${preview.generator.version ? ` ${preview.generator.version}` : ""}`
-    : null;
+export function importMemberNotKeptSentence(reason: string): string {
+  const sentences: Record<string, string> = NOT_KEPT_SENTENCES;
+  return sentences[reason] ?? "Not kept";
+}
 
-  if (preview.conversion) {
-    const converter =
-      generator ??
-      `${preview.conversion.converter.name} ${preview.conversion.converter.version}`;
-    return `${importSourceLabel(preview.conversion.format)} file, converted to DiveJSON ${preview.version} by ${converter}.`;
+function counted(n: number, one: string, many: string): string {
+  return n === 1 ? one : `${n} ${many}`;
+}
+
+/**
+ * What an import does to one dive, in the diver's words rather than the code.
+ *
+ * An updated dive says what it gains; a skipped one says why.
+ */
+export function importDiveOutcomeSentence(row: ImportDiveReport): string {
+  switch (row.outcome) {
+    case "created":
+      return "New";
+    case "restored":
+      return "Brought back from deletion";
+    case "linked":
+      return "Already in your logbook";
+    case "updated": {
+      const gains = [
+        row.files_added > 0
+          ? counted(row.files_added, "a file", "files")
+          : null,
+        row.recordings_added > 0
+          ? counted(
+              row.recordings_added,
+              "another computer's recording",
+              "other computers' recordings",
+            )
+          : null,
+      ].filter((gain): gain is string => gain !== null);
+      return gains.length > 0
+        ? `Adds ${gains.join(" and ")} to a dive you have`
+        : "Adds to a dive you have";
+    }
+    case "skipped":
+      return row.reason ? `Skipped: ${row.reason}` : "Skipped";
+    default:
+      return String(row.outcome);
   }
+}
 
-  const kind = preview.archive ? "Archive" : "Document";
-  return `${kind} in ${preview.format} ${preview.version}${generator ? `, written by ${generator}` : ""}.`;
+/**
+ * The import button's label, read from the dive rows alone.
+ *
+ * The dives created or restored where there are any; otherwise what the
+ * updated rows add; otherwise just "Import". **It never says an import would
+ * write nothing**: whether an apply changes a stored row is the writer's fact
+ * and the report does not carry it - a fill of a recording's blanks, a
+ * document's tags, a restored trip all write without a dive row saying so - so
+ * the button stays offered and the rows and notes say what happens.
+ */
+export function importButtonLabel(dives: readonly ImportDiveReport[]): string {
+  const brought = dives.filter(
+    (row) => row.outcome === "created" || row.outcome === "restored",
+  ).length;
+  if (brought > 0) return `Import ${counted(brought, "1 dive", "dives")}`;
+
+  const updated = dives.filter((row) => row.outcome === "updated");
+  const files = updated.reduce((sum, row) => sum + row.files_added, 0);
+  const recordings = updated.reduce(
+    (sum, row) => sum + row.recordings_added,
+    0,
+  );
+  const gains = [
+    files > 0 ? counted(files, "1 file", "files") : null,
+    recordings > 0 ? counted(recordings, "1 recording", "recordings") : null,
+  ].filter((gain): gain is string => gain !== null);
+  return gains.length > 0 ? `Import ${gains.join(" and ")}` : "Import";
+}
+
+/**
+ * Whether a picked path is packaging rather than a file: a dot-file, anything
+ * under a dot-folder, or anything under a `__MACOSX/` shadow tree. Dropped
+ * silently, as the API drops them from a zip.
+ */
+export function isHiddenImportPath(path: string): boolean {
+  return path
+    .split("/")
+    .some((segment) => segment.startsWith(".") || segment === "__MACOSX");
+}
+
+/**
+ * Whether a file is a zip, by its name or type - used only to choose the size
+ * bound the API will hold it to. The API decides by the bytes.
+ */
+export function isZipFile(file: Pick<File, "name" | "type">): boolean {
+  return /\.zip$/i.test(file.name) || file.type === "application/zip";
+}
+
+function megabytes(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))} MB`;
+}
+
+/**
+ * Why one picked file certainly cannot be read, or `null`. A file this refuses
+ * is shown refused in its own row and left out of the request, as the API would
+ * make it a refused row; the rest still reads.
+ */
+export function importFileRefusal(
+  file: Pick<File, "name" | "type" | "size">,
+): string | null {
+  if (isZipFile(file)) {
+    return file.size > MAX_IMPORT_ARCHIVE_SIZE
+      ? `A zip may be up to ${megabytes(MAX_IMPORT_ARCHIVE_SIZE)}.`
+      : null;
+  }
+  return file.size > MAX_IMPORT_DOCUMENT_SIZE
+    ? `A file that is not a zip may be up to ${megabytes(MAX_IMPORT_DOCUMENT_SIZE)}. Import the full-export archive if you are restoring a whole account with its files.`
+    : null;
+}
+
+/**
+ * Why the files to be sent cannot go as one import, or `null` - the two bounds
+ * of the whole request the API certainly holds it to.
+ */
+export function importSelectionRefusal(
+  files: readonly Pick<File, "size">[],
+): string | null {
+  if (files.length > MAX_IMPORT_FILES) {
+    return `One import may carry up to ${MAX_IMPORT_FILES} files. Zip them and import the zip instead.`;
+  }
+  const total = files.reduce((sum, file) => sum + file.size, 0);
+  return total > MAX_IMPORT_ARCHIVE_SIZE
+    ? `One import may carry up to ${megabytes(MAX_IMPORT_ARCHIVE_SIZE)}. Import these files in parts.`
+    : null;
 }

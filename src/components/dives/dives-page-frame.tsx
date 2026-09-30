@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode, type Ref } from "react";
 import Link from "next/link";
-import { ChevronDown, Plus, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, Plus, SlidersHorizontal, Upload, X } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -108,12 +108,20 @@ export function DivesPageFrame({
         description="Manage and track your diving activities"
         headingRef={headingRef}
         action={
-          <Button asChild>
-            <Link href="/dives/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Log new dive
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/import">
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/dives/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Log new dive
+              </Link>
+            </Button>
+          </div>
         }
       />
 

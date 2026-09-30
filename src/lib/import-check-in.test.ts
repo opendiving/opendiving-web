@@ -110,6 +110,8 @@ describe("checkInWasWritten", () => {
     })),
     notes_truncated: 0,
     conversion: null,
+    members: [],
+    dives: [],
   });
 
   it("is true only when the apply says a fact was written", () => {
