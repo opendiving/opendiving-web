@@ -3340,21 +3340,24 @@ is what separates two Moalboals. A row reads as one line — the combobox joins 
 " — so `unrepeated` (`lib/locations.ts`) drops a hint part equal to a whole part of the row's name.
 
 The dive site search shows the bare name with `region, country` as the hint, through
-`formatPlaceContext`, the composition `diveSitePlaceContext` uses for a catalog row. The drop stays
-out of `diveSitePlaceContext`, which also writes a catalog pick's Location.
+`geocodeResultLabel` and `formatPlaceContext`, the composition `diveSitePlaceContext` uses for a
+catalog row. The drop stays out of `diveSitePlaceContext`, which also writes a catalog pick's
+Location.
 
-The trip menu keeps `location`, "Ko Tao, Thailand", as the row's `name`, hinted with the region
-alone: `handleSelect` writes `name` into the input and `commitOnEnterOnly` matches Enter on it, so a
-bare name would put "Ko Tao" in the field after a pick and make "moalboal" + Enter pick a place.
+The trip menu reads the same words but puts them all in the row's `name`, "Moalboal, Cebu,
+Philippines", which is also what a pick saves: `handleSelect` writes `name` into the input and
+`commitOnEnterOnly` matches Enter on it, so a bare name would put "Moalboal" in the field after a
+pick and make "moalboal" + Enter pick a place.
 
-## The label a trip location keeps is the API's short form, chosen on the way in
+## The label a place keeps is chosen on the way in
 
 `geocodeResultToLocation` (`lib/locations.ts`) stores `GeocodeResult.location` — a search result's
-own name plus its country, composed by the API — as a place's `name`, on a dive site and a trip part
-alike, rather than `display_name`; a dive log records "Ko Tao, Thailand".
+own name plus its country, composed by the API — as a dive site's place `name`, rather than
+`display_name`; a dive log records "Ko Tao, Thailand". A trip part stores what its menu row read,
+"Ko Tao, Surat Thani Province, Thailand" (`tripPartLocation`).
 
-It is received, not derived: the API composes it from the provider's structured answer, which the
-flat `display_name` cannot be taken apart back into.
+Both are built from the provider's structured answer — the API's `location`, `name`, `region` and
+`country` — never from the flat `display_name`, which cannot be taken apart back into them.
 
 Costs: a place saved before this keeps the provider's label as its name until re-picked, and
 `locationKey` (`geo:{lat}:{lon}:{full_name}`) keys it differently from a fresh pick of the same

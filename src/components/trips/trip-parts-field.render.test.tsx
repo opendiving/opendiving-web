@@ -37,6 +37,8 @@ const DAHAB = {
   location: "Dahab, Egypt",
   display_name: "Dahab, South Sinai, 45214, Egypt",
   name: "Dahab",
+  region: "South Sinai",
+  country: "Egypt",
   attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
 };
 
@@ -253,7 +255,9 @@ describe("TripPartsField", () => {
     });
     await userEvent.click(await screen.findByRole("option", { name: /Dahab/ }));
 
-    await waitFor(() => expect(places()).toEqual(["Sharm", "Dahab, Egypt"]));
+    await waitFor(() =>
+      expect(places()).toEqual(["Sharm", "Dahab, South Sinai, Egypt"]),
+    );
   });
 
   it("adds typed text on Enter, and does nothing at all on leaving the field", async () => {
@@ -615,8 +619,8 @@ describe("TripPartsField", () => {
 
 // A menu row's `name` is more than its text here: the combobox writes a picked
 // row's `name` into the input, and an Enter with nothing highlighted picks any
-// row whose `name` equals what was typed. So the name stays what a pick saves,
-// and the region that tells same-named places apart rides in the hint.
+// row whose `name` equals what was typed. So the name is the whole of what a
+// pick saves - place, region and country - and carries no hint beside it.
 describe("TripPartsField place rows", () => {
   const OSM = "Data © OpenStreetMap contributors, ODbL 1.0.";
   const KO_TAO = {
@@ -658,7 +662,7 @@ describe("TripPartsField place rows", () => {
     });
   };
 
-  it("hints each row with its region, after what a pick saves", async () => {
+  it("names each row by place, region and country", async () => {
     searchPlaces.mockResolvedValue([MOALBOAL_CEBU, MOALBOAL_ZAMBOANGA]);
     render(<Field initial={[{ location: null }]} />);
 
@@ -666,28 +670,31 @@ describe("TripPartsField place rows", () => {
 
     expect(
       await screen.findByRole("option", {
-        name: "Moalboal, Philippines, Cebu",
+        name: "Moalboal, Cebu, Philippines",
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("option", {
-        name: "Moalboal, Philippines, Zamboanga Sibugay",
+        name: "Moalboal, Zamboanga Sibugay, Philippines",
       }),
     ).toBeInTheDocument();
   });
 
-  it("shows what was saved in the field the moment a row is picked", async () => {
+  it("saves what the row said, and shows it in the field", async () => {
     searchPlaces.mockResolvedValue([KO_TAO]);
     render(<Field initial={[{ location: null }]} />);
 
     await searchIn("ko tao");
     await userEvent.click(
       await screen.findByRole("option", {
-        name: "Ko Tao, Thailand, Surat Thani Province",
+        name: "Ko Tao, Surat Thani Province, Thailand",
       }),
     );
 
-    await waitFor(() => expect(places()).toEqual(["Ko Tao, Thailand"]));
+    await waitFor(() =>
+      expect(places()).toEqual(["Ko Tao, Surat Thani Province, Thailand"]),
+    );
+    expect(placeInput()).toHaveValue("Ko Tao, Surat Thani Province, Thailand");
   });
 
   it("adds a bare typed name on Enter rather than picking a same-named place", async () => {
@@ -697,14 +704,14 @@ describe("TripPartsField place rows", () => {
     render(<Field initial={[{ location: null }]} />);
 
     await searchIn("moalboal");
-    await screen.findByRole("option", { name: /Cebu$/ });
+    await screen.findByRole("option", { name: /Cebu/ });
     await userEvent.keyboard("{Enter}");
 
     await waitFor(() => expect(places()).toEqual(["moalboal"]));
     expect(screen.getByText("Not on the map")).toBeInTheDocument();
   });
 
-  it("names a row with no region by what a pick saves alone", async () => {
+  it("names a row with no region by place and country alone", async () => {
     // An older API, or a place OSM holds nothing finer than a country for:
     // never "undefined" and never a stray comma.
     searchPlaces.mockResolvedValue([{ ...KO_TAO, region: null }]);

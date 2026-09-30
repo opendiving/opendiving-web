@@ -21,7 +21,7 @@ import {
   MAX_SITE_QUERY_LENGTH,
   MIN_SITE_QUERY_LENGTH,
 } from "@/lib/api/dive-site-catalog";
-import { formatPlaceContext, unrepeated } from "@/lib/locations";
+import { geocodeResultLabel } from "@/lib/locations";
 import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { useUnits } from "@/hooks/useUnits";
 import type { UnitSystem } from "@/lib/units";
@@ -70,24 +70,6 @@ function catalogKey(site: DiveSiteSuggestion): string {
 // here to collapse.
 function placeKey(result: GeocodeResult): string {
   return `${result.latitude}:${result.longitude}:${result.display_name}`;
-}
-
-// What the row is called. A result that matched an address rather than a named
-// place has no name of its own, so the short composed form stands in.
-function placeName(result: GeocodeResult): string {
-  return result.name ?? result.location;
-}
-
-// Where a geocoded place is, composed exactly as a catalog row's place context
-// is, so the two halves of the menu read alike: "Moalboal, Cebu, Philippines"
-// beside "Moalboal, Zamboanga Sibugay, Philippines". A part the row's name
-// already says is dropped - the country row "Philippines" gets no hint at all -
-// which `diveSitePlaceContext` does not do, because it also writes a catalog
-// pick's Location and that must stay what it is.
-function placeHint(result: GeocodeResult, name: string): string | undefined {
-  const region = unrepeated(result.region, name);
-  const country = unrepeated(result.country, name, region);
-  return formatPlaceContext(region, country) ?? undefined;
 }
 
 // A geocoded row that is the same OSM object as a catalog row in this answer.
@@ -243,13 +225,13 @@ export function PlaceSearch({ onPick, position, disabled }: PlaceSearchProps) {
         : []) {
         if (suggestions?.results.some(sameRecord(result))) continue;
         const id = placeKey(result);
-        const name = placeName(result);
+        const { name, context } = geocodeResultLabel(result);
         // Keyed by content, so two results that key alike would share a React
         // key - both a warning and a row that can't be picked.
         remember(
           id,
           { kind: "geocode", result },
-          { id, name, hint: placeHint(result, name) },
+          { id, name, hint: context ?? undefined },
         );
         credit(result.attribution);
       }

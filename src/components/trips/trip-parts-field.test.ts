@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { GeocodeResult } from "@/lib/api/geocoding";
 import { geocodeResultToLocation } from "@/lib/locations";
+import { MAX_LOCATION_NAME_LENGTH } from "@/lib/validations/location";
 import {
   describeTripPart,
   locationKey,
@@ -79,36 +80,35 @@ describe("locationKey", () => {
 });
 
 describe("mapSearchResults", () => {
-  it("builds menu rows that resolve back to what they set", () => {
+  it("names each row and the place it sets by place, region and country", () => {
     const { items, locations } = mapSearchResults([MOALBOAL, BOHOL]);
 
-    // The name is what a pick saves, and the region rides in the hint - which
-    // is what tells two Moalboals in one country apart.
     expect(items).toEqual([
       {
         id: locationKey(geocodeResultToLocation(MOALBOAL)),
-        name: "Moalboal, Philippines",
-        hint: "Cebu",
+        name: "Moalboal, Cebu, Philippines",
       },
       {
         id: locationKey(geocodeResultToLocation(BOHOL)),
-        name: "Bohol, Philippines",
-        hint: "Central Visayas",
+        name: "Bohol, Central Visayas, Philippines",
       },
     ]);
-    expect(locations.get(items[1].id)).toEqual(geocodeResultToLocation(BOHOL));
+    // Only the name differs from the dive site form's place: the position, the
+    // box and the fuller label are the result's own.
+    expect(locations.get(items[1].id)).toEqual({
+      ...geocodeResultToLocation(BOHOL),
+      name: "Bohol, Central Visayas, Philippines",
+    });
   });
 
-  it("hints nothing for a row with no region, rather than a blank", () => {
+  it("leaves out a region the result does not have", () => {
     // An older API, or a place OSM files under nothing finer than a country.
     const { items } = mapSearchResults([{ ...MOALBOAL, region: undefined }]);
 
-    expect(items[0].hint).toBeUndefined();
+    expect(items[0].name).toBe("Moalboal, Philippines");
   });
 
-  it("hints nothing for a region the row's name already says", () => {
-    // The combobox joins the name and its hint with ", ", so a region equal to
-    // the name would read "Cebu, Philippines, Cebu".
+  it("does not repeat a part the place's own name already says", () => {
     const { items } = mapSearchResults([
       {
         ...MOALBOAL,
@@ -117,17 +117,38 @@ describe("mapSearchResults", () => {
         display_name: "Cebu, Central Visayas, Philippines",
         region: "Cebu",
       },
+      {
+        ...MOALBOAL,
+        latitude: 12.88,
+        longitude: 121.77,
+        name: "Philippines",
+        location: "Philippines",
+        display_name: "Philippines",
+        region: null,
+      },
     ]);
 
-    expect(items[0].hint).toBeUndefined();
+    expect(items.map((item) => item.name)).toEqual([
+      "Cebu, Philippines",
+      "Philippines",
+    ]);
+  });
+
+  it("cuts a composed name to the API's ceiling", () => {
+    const { items, locations } = mapSearchResults([
+      { ...MOALBOAL, region: "R".repeat(300) },
+    ]);
+
+    expect(items[0].name).toHaveLength(MAX_LOCATION_NAME_LENGTH);
+    expect(locations.get(items[0].id)?.name).toBe(items[0].name);
   });
 
   it("keeps the provider's ranking", () => {
     const { items } = mapSearchResults([BOHOL, MOALBOAL]);
 
     expect(items.map((item) => item.name)).toEqual([
-      "Bohol, Philippines",
-      "Moalboal, Philippines",
+      "Bohol, Central Visayas, Philippines",
+      "Moalboal, Cebu, Philippines",
     ]);
   });
 
