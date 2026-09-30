@@ -114,10 +114,26 @@ describe("the account menu's Settings entry", () => {
   });
 });
 
+describe("the account menu's Import and Export entries", () => {
+  it("links Import to its page and Export to the page that kept the old URL", async () => {
+    await openAccountMenu();
+
+    expect(screen.getByRole("menuitem", { name: "Import" })).toHaveAttribute(
+      "href",
+      "/import",
+    );
+    expect(screen.getByRole("menuitem", { name: "Export" })).toHaveAttribute(
+      "href",
+      "/data",
+    );
+  });
+});
+
 describe("the account menu's grouping", () => {
   it("rules off the records from the account itself", async () => {
-    // Species is the last of the records a diver keeps; Import and export is the
-    // first row that is about the account. Exactly one rule between them.
+    // Species is the last of the records a diver keeps; Import is the first row
+    // that is about the account, and Export follows it. Exactly one rule between
+    // the records and them.
     const menu = await openAccountMenu();
 
     const rows = Array.from(
@@ -135,7 +151,8 @@ describe("the account menu's grouping", () => {
     expect(speciesToSettings).toEqual([
       "Species",
       "---",
-      "Import and export",
+      "Import",
+      "Export",
       "Settings",
     ]);
   });

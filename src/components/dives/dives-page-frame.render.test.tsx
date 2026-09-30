@@ -27,6 +27,19 @@ const toggle = () =>
   });
 
 describe("DivesPageFrame", () => {
+  it("offers Import beside Log new dive in its header", () => {
+    frame();
+
+    expect(screen.getByRole("link", { name: "Import" })).toHaveAttribute(
+      "href",
+      "/import",
+    );
+    expect(screen.getByRole("link", { name: "Log new dive" })).toHaveAttribute(
+      "href",
+      "/dives/new",
+    );
+  });
+
   it("keeps the filters shut until the button is pressed", async () => {
     frame();
 

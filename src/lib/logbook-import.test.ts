@@ -6,16 +6,23 @@ import {
   conversionKindTone,
   conversionWhereSentence,
   fileRestoreHint,
-  importSourceSentence,
+  importButtonLabel,
+  importDiveOutcomeSentence,
+  importFileRefusal,
+  importMemberNotKeptSentence,
+  importSelectionRefusal,
   importTotals,
+  isHiddenImportPath,
+  isZipFile,
   noteIsWarning,
+  reviewCollectionRows,
   truncatedConversionSentence,
   truncatedNotesSentence,
 } from "./logbook-import";
 import type {
   ConversionNoteGroup,
   ImportCollectionReport,
-  ImportPreview,
+  ImportDiveReport,
   ImportReport,
 } from "@/lib/api/logbook-import";
 
@@ -39,9 +46,11 @@ function report(overrides: Partial<ImportReport> = {}): ImportReport {
     files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
     notes: [],
     notes_truncated: 0,
-    // Null by default: the ordinary upload is a DiveJSON document the API read
-    // as-is, and the conversion block exists only when something was converted.
+    // Null by default: the conversion block exists only when something was
+    // converted.
     conversion: null,
+    members: [],
+    dives: [],
     ...overrides,
   };
 }
@@ -92,14 +101,10 @@ describe("importTotals", () => {
     // The whole reason the API keeps the four counts disjoint: a diver restoring
     // a backup is entitled to see how much of it actually came back, and a total
     // that absorbed restores into "created" would destroy exactly that.
-    const totals = importTotals(
-      report({
-        collections: [
-          row("dives", { created: 4, restored: 2, skipped: 1 }),
-          row("sites", { created: 1, linked: 3 }),
-        ],
-      }),
-    );
+    const totals = importTotals([
+      row("dives", { created: 4, restored: 2, skipped: 1 }),
+      row("sites", { created: 1, linked: 3 }),
+    ]);
 
     expect(totals).toEqual({
       created: 5,
@@ -109,8 +114,8 @@ describe("importTotals", () => {
     });
   });
 
-  it("is all zeroes for a report carrying no collections", () => {
-    expect(importTotals(report())).toEqual({
+  it("is all zeroes for no rows", () => {
+    expect(importTotals([])).toEqual({
       created: 0,
       linked: 0,
       restored: 0,
@@ -340,80 +345,184 @@ describe("truncatedConversionSentence", () => {
   });
 });
 
-describe("importSourceSentence", () => {
-  function preview(overrides: Partial<ImportPreview> = {}): ImportPreview {
-    return {
-      ...report(),
-      format: "divejson",
-      version: "1.0",
-      generator: { name: "OpenDiving", version: "0.4.0" },
-      archive: false,
-      token: "tok-1",
-      check_in_details: [],
-      portrait: null,
-      ...overrides,
-    };
-  }
+function dive(overrides: Partial<ImportDiveReport> = {}): ImportDiveReport {
+  return {
+    uuid: "11111111-1111-4111-8111-111111111111",
+    outcome: "created",
+    files_added: 0,
+    recordings_added: 0,
+    reason: null,
+    start_time: "2026-09-07T11:04:58+03:00",
+    duration: 4063,
+    max_depth: 21.8,
+    device: null,
+    members: [0],
+    ...overrides,
+  };
+}
 
-  it("names the diver's own file, not the document the API ended up reading", () => {
-    // The load-bearing case. `format`, `version` and `generator` all describe
-    // the converter's output on this path, so a header built from them tells a
-    // diver who uploaded a Subsurface save file that they uploaded DiveJSON.
+describe("reviewCollectionRows", () => {
+  const counts = [
+    row("dives", { created: 23, skipped: 24 }),
+    row("sites", { linked: 1 }),
+    row("trips"),
+  ];
+
+  it("leaves the dives row to the dive rows wherever there are any", () => {
+    // `collections` counts a pair's second file as a skipped dive; its row says
+    // "New". Showing both is "Skipped 24" under 23 new dives.
     expect(
-      importSourceSentence(
-        preview({
-          generator: { name: "divejson convert", version: "0.3.0" },
-          conversion: {
-            format: "ssrf",
-            converter: { name: "divejson", version: "0.3.0" },
-            groups: [],
-            groups_truncated: 0,
-          },
+      reviewCollectionRows(
+        report({ collections: counts, dives: [dive()] }),
+      ).map((r) => r.collection),
+    ).toEqual(["sites"]);
+  });
+
+  it("keeps the dives row where there are no dive rows to report them", () => {
+    expect(
+      reviewCollectionRows(report({ collections: counts })).map(
+        (r) => r.collection,
+      ),
+    ).toEqual(["dives", "sites"]);
+  });
+
+  it("is empty when nothing but dives counts", () => {
+    expect(
+      reviewCollectionRows(
+        report({
+          collections: [row("dives", { created: 2 })],
+          dives: [dive()],
         }),
       ),
-    ).toBe(
-      "Subsurface file, converted to DiveJSON 1.0 by divejson convert 0.3.0.",
+    ).toEqual([]);
+  });
+});
+
+describe("importDiveOutcomeSentence", () => {
+  it("says each outcome in the diver's terms", () => {
+    expect(importDiveOutcomeSentence(dive())).toBe("New");
+    expect(importDiveOutcomeSentence(dive({ outcome: "restored" }))).toBe(
+      "Brought back from deletion",
+    );
+    expect(importDiveOutcomeSentence(dive({ outcome: "linked" }))).toBe(
+      "Already in your logbook",
     );
   });
 
-  it("names an unrecognised format by its id rather than rendering a blank", () => {
-    // A reader the API's converter gained after this build was cut. The
-    // sentence gets terser, never wrong - and never `undefined file`.
-    //
-    // A made-up id rather than a real upcoming one. This case used to name
-    // `suunto_xml`, which then shipped a label and turned a test of the
-    // fallback into a test of the lookup beside it - so the id here is one
-    // nothing will ever claim.
+  it("says what an updated dive gains", () => {
     expect(
-      importSourceSentence(
-        preview({
-          generator: null,
-          conversion: {
-            format: "kraken_binary",
-            converter: { name: "divejson", version: "0.4.0" },
-            groups: [],
-            groups_truncated: 0,
-          },
+      importDiveOutcomeSentence(dive({ outcome: "updated", files_added: 1 })),
+    ).toBe("Adds a file to a dive you have");
+    expect(
+      importDiveOutcomeSentence(
+        dive({ outcome: "updated", files_added: 2, recordings_added: 1 }),
+      ),
+    ).toBe("Adds 2 files and another computer's recording to a dive you have");
+  });
+
+  it("says why a dive is skipped", () => {
+    expect(
+      importDiveOutcomeSentence(
+        dive({
+          outcome: "skipped",
+          uuid: null,
+          reason: "It has no start time.",
         }),
       ),
-    ).toBe("kraken_binary file, converted to DiveJSON 1.0 by divejson 0.4.0.");
+    ).toBe("Skipped: It has no start time.");
+  });
+});
+
+describe("importButtonLabel", () => {
+  it("counts the dives created or restored", () => {
+    expect(
+      importButtonLabel([
+        dive(),
+        dive({ outcome: "restored" }),
+        dive({ outcome: "updated", files_added: 1 }),
+        dive({ outcome: "linked" }),
+      ]),
+    ).toBe("Import 2 dives");
+    expect(importButtonLabel([dive()])).toBe("Import 1 dive");
   });
 
-  it("describes a native document as the document it is", () => {
-    expect(importSourceSentence(preview())).toBe(
-      "Document in divejson 1.0, written by OpenDiving 0.4.0.",
+  it("says what updated rows add where nothing is created", () => {
+    expect(
+      importButtonLabel([
+        dive({ outcome: "updated", files_added: 1 }),
+        dive({ outcome: "updated", files_added: 1, recordings_added: 1 }),
+        dive({ outcome: "linked" }),
+      ]),
+    ).toBe("Import 2 files and 1 recording");
+  });
+
+  it("never claims the negative for linked and skipped rows, or none", () => {
+    // A re-read of the same folder, a document of gear alone, a read whose only
+    // effect is a recording's filled blanks: each may still write, and whether
+    // it does is the writer's fact, which the report does not carry.
+    expect(
+      importButtonLabel([
+        dive({ outcome: "linked" }),
+        dive({ outcome: "skipped", uuid: null }),
+      ]),
+    ).toBe("Import");
+    expect(importButtonLabel([])).toBe("Import");
+  });
+});
+
+describe("importMemberNotKeptSentence", () => {
+  it("says why for each reason, and something for one it does not know", () => {
+    expect(importMemberNotKeptSentence("several_dives")).toMatch(
+      /several dives/,
+    );
+    expect(importMemberNotKeptSentence("already_stored")).toMatch(
+      /already has this file/,
+    );
+    expect(importMemberNotKeptSentence("a_new_reason")).toBe("Not kept");
+  });
+});
+
+describe("isHiddenImportPath", () => {
+  it("drops dot-files, dot-folders and the macOS shadow tree", () => {
+    expect(isHiddenImportPath(".DS_Store")).toBe(true);
+    expect(isHiddenImportPath("Suunto/.DS_Store")).toBe(true);
+    expect(isHiddenImportPath(".git/config")).toBe(true);
+    expect(isHiddenImportPath("__MACOSX/Suunto/._1.fit")).toBe(true);
+    expect(isHiddenImportPath("Suunto/1.fit")).toBe(false);
+  });
+});
+
+describe("the client's refusals", () => {
+  const sized = (name: string, megabytes: number, type = "") => ({
+    name,
+    type,
+    size: megabytes * 1024 * 1024,
+  });
+
+  it("refuses a file that is not a zip past 100 MB, and a zip past 500 MB", () => {
+    expect(importFileRefusal(sized("logbook.divejson", 100))).toBeNull();
+    expect(importFileRefusal(sized("logbook.divejson", 101))).toMatch(
+      /up to 100 MB/,
+    );
+    expect(importFileRefusal(sized("backup.zip", 499))).toBeNull();
+    expect(importFileRefusal(sized("backup", 501, "application/zip"))).toMatch(
+      /zip may be up to 500 MB/,
     );
   });
 
-  it("describes the full archive as an archive", () => {
-    expect(importSourceSentence(preview({ archive: true }))).toBe(
-      "Archive in divejson 1.0, written by OpenDiving 0.4.0.",
+  it("refuses a selection past 1000 files or 500 MB in all", () => {
+    expect(importSelectionRefusal([sized("a", 1)])).toBeNull();
+    expect(
+      importSelectionRefusal(Array.from({ length: 1001 }, () => sized("a", 0))),
+    ).toMatch(/Zip them/);
+    expect(importSelectionRefusal([sized("a", 300), sized("b", 201)])).toMatch(
+      /in parts/,
     );
   });
 
-  it("says nothing about a generator a document did not declare", () => {
-    expect(importSourceSentence(preview({ generator: null }))).toBe(
-      "Document in divejson 1.0.",
-    );
+  it("tells a zip by its name or its type", () => {
+    expect(isZipFile({ name: "Dives.ZIP", type: "" })).toBe(true);
+    expect(isZipFile({ name: "export", type: "application/zip" })).toBe(true);
+    expect(isZipFile({ name: "1.fit", type: "" })).toBe(false);
   });
 });

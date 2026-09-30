@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { RecordingDevice } from "./dives";
 
 /**
  * A format the API's converter reads, as the converter itself names it.
@@ -15,12 +16,12 @@ export type ImportSourceFormat =
   "uddf" | "ssrf" | "fit" | "suunto_json" | "suunto_xml";
 
 /**
- * Which file extensions offer each converted format in the picker.
+ * Which file extensions offer each converted format in the dive form's picker.
  *
  * `Record<ImportSourceFormat, ...>`, so widening the union without offering an
  * extension stops this file compiling rather than silently greying a format out
- * of the file dialog - on both pickers, since the dive form offers the same
- * extensions (`DIVE_COMPUTER_FILE_ACCEPT`).
+ * of the dive form's file dialog (`DIVE_COMPUTER_FILE_ACCEPT`). The Import page
+ * offers every file and filters nothing, so this list is the form's alone.
  *
  * Each entry mirrors that adapter's own `suffixes` in the converter, which is
  * why a UDDF file named `.xml` is not offered and `.json` - the Suunto app's
@@ -58,12 +59,30 @@ const IMPORT_SOURCE_LABELS: Record<ImportSourceFormat, string> = {
 };
 
 /**
+ * The ids an import reports beside the converter's own: what a file of the
+ * import was read as when it was not converted (`divejson`, `archive`, `zip`),
+ * and what `conversion.format` says when the converted files were not all one
+ * format (`mixed`). Kept apart from `IMPORT_SOURCE_LABELS` because the dive
+ * form's accept list is built from that map's key type, and none of these is a
+ * file the form takes.
+ */
+const IMPORT_CONTAINER_LABELS: Record<
+  "divejson" | "archive" | "zip" | "mixed",
+  string
+> = {
+  divejson: "DiveJSON",
+  archive: "OpenDiving archive",
+  zip: "Zip",
+  mixed: "Several formats",
+};
+
+/**
  * A source format's display name, tolerating one this build has never heard of.
  *
  * The fallback is the whole point rather than defensiveness: the API's format
  * list is derived from its pinned converter on every call, that pin moves by
  * dependency bump alone, and a `Record` lookup would render `undefined` in the
- * card header the day a new reader ships. Showing a bare `shearwater_db` is
+ * import report the day a new reader ships. Showing a bare `shearwater_db` is
  * worse than a label and far better than a blank.
  *
  * **It has already happened once, which is the argument for keeping it.** The
@@ -73,15 +92,17 @@ const IMPORT_SOURCE_LABELS: Record<ImportSourceFormat, string> = {
  * for it is now written out above; the fallback is what covers the next one.
  */
 export function importSourceLabel(format: string): string {
-  const labels: Record<string, string> = IMPORT_SOURCE_LABELS;
+  const labels: Record<string, string> = {
+    ...IMPORT_SOURCE_LABELS,
+    ...IMPORT_CONTAINER_LABELS,
+  };
   return labels[format] ?? format;
 }
 
 /**
  * What the dive form's picker offers: every dive-computer format the API
- * converts, and nothing else. The form takes one dive in any format the import
- * reads, so the two pickers share this list - but not the import's own two,
- * `.divejson` and `.zip`, which the parse route refuses.
+ * converts, and nothing else - not DiveJSON or a zip, which the parse route
+ * refuses.
  */
 export const DIVE_COMPUTER_FILE_ACCEPT = Object.values(
   LOGBOOK_IMPORT_SOURCE_EXTENSIONS,
@@ -90,40 +111,20 @@ export const DIVE_COMPUTER_FILE_ACCEPT = Object.values(
   .join(",");
 
 /**
- * What may be offered to the logbook import: the app's own two, and every
- * dive-computer format the API converts.
+ * The client-side ceilings, mirroring the API's own 413s.
  *
- * Computed from `LOGBOOK_IMPORT_SOURCE_EXTENSIONS` rather than written out, so
- * the picker cannot end up offering fewer formats than the union declares. Both
- * spellings of the native pair, because the picker matches on either and a
- * browser that knows neither extension sends `application/octet-stream` for the
- * document. The API re-checks the bytes regardless, and its check is the one
- * that counts - this only keeps the file dialog from showing a diver every file
- * they own.
- */
-export const LOGBOOK_IMPORT_ACCEPT = [
-  ".divejson",
-  ".zip",
-  DIVE_COMPUTER_FILE_ACCEPT,
-  "application/vnd.dive+json",
-  "application/zip",
-].join(",");
-
-/**
- * The client-side size ceilings, mirroring the API's own 413s.
- *
- * Two numbers because the API has two: a bare document is capped well below an
- * archive, which legitimately carries every dive-computer file and certification
- * scan in the account. Checked here so a diver on a slow connection is not made
- * to upload 400 MB before being told no.
- *
- * The document number is the ceiling for a `.fit` or an `.ssrf` too: whatever
- * shape a logbook arrives in, at most a document's worth of source becomes one
- * in-memory logbook, so the API gives a converted upload the same bucket. Only
- * a `.zip` gets the archive one.
+ * Checked here so a diver on a slow connection is not made to upload 400 MB
+ * before being told no; the API re-checks regardless. `MAX_IMPORT_ARCHIVE_SIZE`
+ * bounds one zip and the whole request alike. `MAX_IMPORT_DOCUMENT_SIZE` bounds
+ * any other file, which the API reports as a refused file rather than refusing
+ * the request, and also what one import may plan in all - a bound the client
+ * cannot check, since only the API can tell a full-export archive from a zip of
+ * dive-computer files.
  */
 export const MAX_IMPORT_DOCUMENT_SIZE = 100 * 1024 * 1024; // 100 MB
 export const MAX_IMPORT_ARCHIVE_SIZE = 500 * 1024 * 1024; // 500 MB
+/** How many files one import may carry; past it, the API asks for a zip. */
+export const MAX_IMPORT_FILES = 1000;
 
 /**
  * Why one record or value did not import exactly as the document described it.
@@ -255,12 +256,16 @@ export interface ConversionNoteGroup {
   message: string;
   /** How many places raised this, which may be more than `wheres` lists. */
   count: number;
-  /** Up to three paths into the source document, e.g. `dive/0/tankdata/1`. */
+  /**
+   * Up to three paths into the source files, each under the name of the file it
+   * is in, e.g. `dives.uddf/dive/0/tankdata/1`.
+   */
   wheres: string[];
 }
 
 /**
- * What converting a non-DiveJSON upload could not carry. `null` for a native one.
+ * What converting the import's non-DiveJSON files could not carry. `null` when
+ * every file was DiveJSON already.
  *
  * Grouped by the API rather than here, and by `(kind, message)`: one source habit
  * makes one finding per record - eight dives with no UTC offset are eight
@@ -269,9 +274,10 @@ export interface ConversionNoteGroup {
  */
 export interface ConversionReport {
   /**
-   * The format the upload was read as, **as the converter names it** - so an id
-   * rather than a label, and not necessarily an `ImportSourceFormat` this build
-   * knows. Render it through `importSourceLabel`.
+   * The format the converted files were read as, **as the converter names
+   * it**, or `mixed` when they were not all one format - so an id rather than
+   * a label, and not necessarily an `ImportSourceFormat` this build knows.
+   * Render it through `importSourceLabel`.
    */
   format: string;
   converter: ConversionConverter;
@@ -282,6 +288,78 @@ export interface ConversionReport {
    * list above is a prefix; the per-group counts stay complete either way.
    */
   groups_truncated: number;
+}
+
+/**
+ * Why a file that was read is not kept as a file of the dive it becomes.
+ *
+ * Mirrors the API's `ImportMemberNotKept`; `importMemberNotKeptSentence` falls
+ * back to plain words for a value this build does not know.
+ */
+export type ImportMemberNotKept =
+  | "several_dives"
+  | "several_recordings"
+  | "too_large"
+  | "already_stored"
+  | "not_written";
+
+/** One file of the import: a part of the request, or a file a zip among them held. */
+export interface ImportMemberReport {
+  /** The index of the request's `file` part this came from, from 0. */
+  part: number;
+  /** For a file a zip held, the index in `members` of that zip's own row. */
+  container: number | null;
+  /** The file's name, or its path inside the zip that held it. */
+  name: string;
+  byte_size: number;
+  sha256: string;
+  /**
+   * What the file was read as: a converter format id, `divejson`, `archive` or
+   * `zip`, or `null` for a file nothing here reads. Render through
+   * `importSourceLabel`.
+   */
+  format: string | null;
+  /** On a zip's own row, how many files it opened into. */
+  opened: number | null;
+  /** Whether the file is kept on the dive it becomes, as that dive's file. */
+  kept: boolean;
+  not_kept: ImportMemberNotKept | string | null;
+  /** Why the file was refused, in one sentence; `null` for a file that was read. */
+  refusal: string | null;
+}
+
+/** What the import does to one dive, as the most that happens to it. */
+export type ImportDiveOutcome =
+  "created" | "restored" | "linked" | "updated" | "skipped";
+
+/** One dive the import creates or touches, and the files it came from. */
+export interface ImportDiveReport {
+  /**
+   * The dive's identifier once written - the diver's own for a dive they
+   * already have - or `null` for a dive the import skips. The result's rows are
+   * the selection a later action over "the dives this import brought in" takes.
+   */
+  uuid: string | null;
+  outcome: ImportDiveOutcome;
+  /** On an `updated` dive, how many files it gains. */
+  files_added: number;
+  /** On an `updated` dive, how many computers' recordings it gains. */
+  recordings_added: number;
+  /** On a `skipped` dive, why, in one sentence. */
+  reason: string | null;
+  /**
+   * As the dive read gives it: with the dive's own UTC offset, naive where it
+   * records none, a bare `YYYY-MM-DD` where it states no time.
+   */
+  start_time: string | null;
+  /** Seconds. */
+  duration: number | null;
+  /** Metres. */
+  max_depth: number | null;
+  /** Its first recording's device, whole, for `recordingDeviceLabel`. */
+  device: RecordingDevice | null;
+  /** The indexes in `members` of the files the dive came from. */
+  members: number[];
 }
 
 /** The body of both responses: the same shape whether it is a plan or a result. */
@@ -301,14 +379,27 @@ export interface ImportReport {
    */
   notes_truncated: number;
   /**
-   * What the conversion could not carry, or `null` when the upload was already
-   * DiveJSON.
+   * What the conversion could not carry, or `null` when every file was
+   * DiveJSON already.
    *
    * On the report rather than on the preview alone, so the panel that stays on
    * screen after an import still tells a diver what their computer's export lost
    * on the way in - the same reason preview and result are one shape at all.
    */
   conversion: ConversionReport | null;
+  /**
+   * One row per file, in the order the import reads them: each part of the
+   * request and each file a zip among them held.
+   */
+  members: ImportMemberReport[];
+  /**
+   * One row per dive the import creates or touches. The review and the result
+   * report dives through these alone: `collections` counts a document's records
+   * by what the planner does to each, so a pair's second file and a file adding
+   * to a stored dive count there as a skipped dive while their rows say "New"
+   * and "Adds a file".
+   */
+  dives: ImportDiveReport[];
 }
 
 /** What produced the document, if it said. */
@@ -391,35 +482,34 @@ export interface ImportPortraitChoice {
 /** What `POST /import/logbook/preview` returns. Nothing has been written. */
 export interface ImportPreview extends ImportReport {
   /**
-   * The **imported document's** own `format` marker, e.g. `divejson` - which for
-   * a converted upload is the converter's output rather than the file the diver
-   * picked. What that file was is `conversion.format`, and any header naming the
-   * source has to read that first.
+   * The **first imported document's** own `format` marker, e.g. `divejson` -
+   * which for a converted file is the converter's output rather than the file
+   * the diver picked. What each file was is its `members` row.
    */
   format: string;
-  /** The imported document's declared version, e.g. `1.0`. */
+  /** That document's declared version, e.g. `1.0`. */
   version: string;
   /**
-   * What produced the imported document, if it said. On a converted upload this
-   * is the converter (`divejson convert`), not whatever wrote the diver's file.
+   * What produced that document, if it said. For a converted file this is the
+   * converter (`divejson convert`), not whatever wrote the diver's file.
    */
   generator: ImportGenerator | null;
-  /** Whether this upload was a container carrying the stored files. */
+  /** Whether the import carries a full-export archive, which restores stored files. */
   archive: boolean;
   /**
-   * Hand this back to `apply` with the **same** file. It attests which bytes the
-   * report describes and nothing else - the import re-plans the document from
-   * scratch, so the token is not a stored plan to replay.
+   * Hand this back to `apply` with the **same** files under the same names. It
+   * attests which bytes the report describes and nothing else - the import
+   * re-plans from scratch, so the token is not a stored plan to replay.
    */
   token: string;
   /**
-   * One entry per check-in fact the document carries, in the order date of birth,
-   * phone, emergency contact, insurance. Empty when it carries none.
+   * One entry per check-in fact the documents carry, in the order date of birth,
+   * phone, emergency contact, insurance. Empty when they carry none.
    */
   check_in_details: ImportCheckInDetail[];
   /**
-   * The archive's portrait, or `null` when the upload carries none the API can offer
-   * - `notes` say why - or carries the account's own at the same crop.
+   * The archive's portrait, or `null` when the import carries none the API can
+   * offer - `notes` say why - or carries the account's own at the same crop.
    */
   portrait: ImportPortraitOffer | null;
 }
@@ -427,83 +517,98 @@ export interface ImportPreview extends ImportReport {
 /** What `POST /import/logbook` returns. Everything in it has been committed. */
 export type ImportResult = ImportReport;
 
+/** Bytes of the request sent so far, against the whole request's. */
+export type ImportUploadProgress = (sent: number, total: number) => void;
+
+function importForm(files: readonly File[]): FormData {
+  const formData = new FormData();
+  for (const file of files) formData.append("file", file);
+  return formData;
+}
+
+// The `Content-Type` header is explicitly cleared so the browser sets the
+// `multipart/form-data; boundary=...` it alone can compute - the shared client
+// defaults to `application/json`, which would make the API see no file at all.
+async function postImport<T>(
+  path: string,
+  formData: FormData,
+  onProgress?: ImportUploadProgress,
+): Promise<T> {
+  const response = await apiClient.post<T>(path, formData, {
+    headers: { "Content-Type": undefined },
+    onUploadProgress: onProgress
+      ? ({ loaded, total }) => onProgress(loaded, total ?? loaded)
+      : undefined,
+  });
+  return response.data;
+}
+
 /**
- * Logbook import: reading a logbook into the account that will hold it.
+ * Logbook import: reading any number of files into the account that will hold
+ * them.
  *
- * The API takes a DiveJSON document, this app's full-export archive, or any
- * dive-computer format its converter reads - UDDF, Subsurface `.ssrf`, FIT and
- * Suunto's own two, the app's JSON and DM5's XML, at the release it pins - plus
- * a `.zip` whose files are all one of those, which is how a watch's account export arrives. Anything not
- * DiveJSON already is converted API-side and the report says what that cost;
- * nothing in the browser parses a dive file.
+ * The API takes each file as a `file` part - a DiveJSON document, this app's
+ * full-export archive, any dive-computer or logbook format its converter reads,
+ * or a zip of any of those - and sorts them itself: nothing in the browser
+ * parses a dive file or filters one by its name.
  *
  * **One import is two calls**, and they share a rate limit - the API allows 20 an
  * hour per user across both. Preview writes nothing and hands back a `token`;
- * apply takes that token plus the same file and commits in a single transaction.
- * The two-step exists so a diver approves a plan rather than discovering what an
- * import did afterwards, which is also why both return the same `ImportReport`
- * shape: a plan and a result are only worth comparing if they are comparable.
+ * apply takes that token plus the same files and commits in a single
+ * transaction. The two-step exists so a diver approves a plan rather than
+ * discovering what an import did afterwards, which is also why both return the
+ * same `ImportReport` shape: a plan and a result are only worth comparing if
+ * they are comparable.
  *
  * Neither endpoint takes a user parameter. The bearer token names the only account
  * there is to import into.
  *
- * **Every record-level problem is a note, never a status code.** A 4xx here is
- * about the upload as a whole: it was not a document this app can read at all,
- * or its files would take the account past its storage limit, a 413 that
- * refuses the import whole. Anything about an individual dive, site or file
- * comes back inside a 200 as an `ImportNote`.
+ * **A file the API cannot read is a row, never a status code.** A 4xx is about
+ * the request as a whole: it was too large or carried too many files, no file
+ * in it could be read at all, or its files would take the account past its
+ * storage limit. Anything about an individual file, dive, site or record comes
+ * back inside a 200 - in `members`, `dives` or `notes`.
  */
 export const logbookImportAPI = {
   /**
    * Plan the import and report what it would do. Writes nothing.
    *
-   * Takes the file whatever format it is in - the API sniffs the bytes, converts
-   * what needs converting and reports both halves in one `ImportPreview`.
-   *
-   * The `Content-Type` header is explicitly cleared so the browser sets the
-   * `multipart/form-data; boundary=...` it alone can compute - the shared client
-   * defaults to `application/json`, which would make the API see no file at all.
+   * `onProgress` hears the upload's bytes: every read sends every byte.
    */
-  async preview(file: File): Promise<ImportPreview> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await apiClient.post<ImportPreview>(
+  async preview(
+    files: readonly File[],
+    onProgress?: ImportUploadProgress,
+  ): Promise<ImportPreview> {
+    return postImport<ImportPreview>(
       "/import/logbook/preview",
-      formData,
-      { headers: { "Content-Type": undefined } },
+      importForm(files),
+      onProgress,
     );
-    return response.data;
   },
 
   /**
    * Apply a previewed import, in one transaction.
    *
-   * `token` must be the one from this same file's `preview` call: the API hashes
-   * the body it receives and refuses a token minted for different bytes, which is
-   * what stops a diver approving one document and uploading another.
+   * `files` must be the ones this `token`'s preview was sent, under the same
+   * names: the API hashes the parts again and refuses a token minted for a
+   * different set, which is what stops a diver approving one plan and
+   * uploading another.
    *
    * `checkIn` is the facts to write, as a JSON field; omitted, none is written.
    * `portrait` is the choice for the preview's `portrait`; omitted, the account
    * keeps its own.
    */
   async apply(
-    file: File,
+    files: readonly File[],
     token: string,
     checkIn?: ImportCheckInSubmission,
     portrait?: ImportPortraitChoice,
+    onProgress?: ImportUploadProgress,
   ): Promise<ImportResult> {
-    const formData = new FormData();
-    formData.append("file", file);
+    const formData = importForm(files);
     formData.append("token", token);
     if (checkIn) formData.append("check_in_details", JSON.stringify(checkIn));
     if (portrait) formData.append("portrait", JSON.stringify(portrait));
-
-    const response = await apiClient.post<ImportResult>(
-      "/import/logbook",
-      formData,
-      { headers: { "Content-Type": undefined } },
-    );
-    return response.data;
+    return postImport<ImportResult>("/import/logbook", formData, onProgress);
   },
 };

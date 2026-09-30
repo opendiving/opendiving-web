@@ -3,10 +3,10 @@ import {
   DIVE_COMPUTER_FILE_ACCEPT,
   importSourceLabel,
   logbookImportAPI,
-  LOGBOOK_IMPORT_ACCEPT,
   LOGBOOK_IMPORT_SOURCE_EXTENSIONS,
   MAX_IMPORT_ARCHIVE_SIZE,
   MAX_IMPORT_DOCUMENT_SIZE,
+  MAX_IMPORT_FILES,
   type ImportSourceFormat,
 } from "./logbook-import";
 
@@ -17,16 +17,11 @@ vi.mock("./client", () => ({
 const { apiClient } = await import("./client");
 const post = vi.mocked(apiClient.post);
 
-describe("LOGBOOK_IMPORT_ACCEPT", () => {
-  it("offers a file extension for every format the API converts", () => {
+describe("DIVE_COMPUTER_FILE_ACCEPT", () => {
+  it("is the dive form's list, unchanged by the Import page filtering nothing", () => {
     // An independent literal, `satisfies` against the union, so a format added
-    // to `ImportSourceFormat` and left out of one of the two maps stops this
-    // file compiling rather than quietly disappearing from the file dialog. A
-    // hand-written `Record<string, ...>` on either side would look like it did
-    // this and would not - a sixth format would compile and pass.
-    //
-    // Acceptance itself is decided API-side by sniffing the bytes; this list
-    // only decides what the picker greys out.
+    // to `ImportSourceFormat` and left out of the map stops this file compiling
+    // rather than quietly disappearing from the form's file dialog.
     const extensionsByFormat = {
       uddf: [".uddf"],
       ssrf: [".ssrf"],
@@ -36,41 +31,16 @@ describe("LOGBOOK_IMPORT_ACCEPT", () => {
     } satisfies Record<ImportSourceFormat, readonly string[]>;
 
     expect(LOGBOOK_IMPORT_SOURCE_EXTENSIONS).toEqual(extensionsByFormat);
-
-    const offered = new Set(LOGBOOK_IMPORT_ACCEPT.split(","));
-    for (const extension of Object.values(extensionsByFormat).flat()) {
-      expect(offered).toContain(extension);
-    }
+    expect(DIVE_COMPUTER_FILE_ACCEPT.split(",")).toEqual([
+      ".uddf",
+      ".ssrf",
+      ".fit",
+      ".json",
+      ".xml",
+    ]);
   });
 
-  it("still offers the app's own two, in both spellings", () => {
-    // The native pair is not a converted format and has no entry in the map
-    // above, so nothing but this assertion keeps them in the list. A browser
-    // that knows neither extension sends `application/octet-stream` for the
-    // document, which is why both spellings are there.
-    const offered = new Set(LOGBOOK_IMPORT_ACCEPT.split(","));
-    expect(offered).toContain(".divejson");
-    expect(offered).toContain(".zip");
-    expect(offered).toContain("application/vnd.dive+json");
-    expect(offered).toContain("application/zip");
-  });
-});
-
-describe("DIVE_COMPUTER_FILE_ACCEPT", () => {
-  it("is the import's list of dive-computer extensions, so the form and the import offer one set", () => {
-    // The dive form takes one dive in any format the import reads, so a format
-    // the import gains reaches the form's picker with no change there.
-    expect(new Set(DIVE_COMPUTER_FILE_ACCEPT.split(","))).toEqual(
-      new Set(Object.values(LOGBOOK_IMPORT_SOURCE_EXTENSIONS).flat()),
-    );
-
-    const importOffers = new Set(LOGBOOK_IMPORT_ACCEPT.split(","));
-    for (const extension of DIVE_COMPUTER_FILE_ACCEPT.split(",")) {
-      expect(importOffers).toContain(extension);
-    }
-  });
-
-  it("leaves out the import's own document and archive, which the parse route refuses", () => {
+  it("leaves out DiveJSON and a zip, which the parse route refuses", () => {
     const offered = DIVE_COMPUTER_FILE_ACCEPT.split(",");
     expect(offered).not.toContain(".divejson");
     expect(offered).not.toContain(".zip");
@@ -86,6 +56,15 @@ describe("importSourceLabel", () => {
     expect(importSourceLabel("suunto_json")).toBe("Suunto app JSON");
   });
 
+  it("names what an import reports beside the converter's formats", () => {
+    // Labels without becoming extensions: none of these is a file the dive
+    // form takes, which the list above pins.
+    expect(importSourceLabel("divejson")).toBe("DiveJSON");
+    expect(importSourceLabel("archive")).toBe("OpenDiving archive");
+    expect(importSourceLabel("zip")).toBe("Zip");
+    expect(importSourceLabel("mixed")).toBe("Several formats");
+  });
+
   it("falls back to the id for a format this build has never heard of", () => {
     // Not defensiveness: the API derives its format list from its pinned
     // converter on every call, and that pin moves by dependency bump with no
@@ -99,21 +78,63 @@ describe("importSourceLabel", () => {
   });
 });
 
-describe("the import size ceilings", () => {
-  it("match the API's own two", () => {
-    // Mirrored from the API's `MAX_DOCUMENT_SIZE` and `MAX_ARCHIVE_SIZE`. A
-    // larger value here starts an upload the API will refuse with a 413.
+describe("the import ceilings", () => {
+  it("match the API's own", () => {
+    // Mirrored from the API's `MAX_DOCUMENT_SIZE`, `MAX_ARCHIVE_SIZE` and
+    // `MAX_PARTS`. A larger value here starts an upload the API will refuse.
     expect(MAX_IMPORT_DOCUMENT_SIZE).toBe(100 * 1024 * 1024);
     expect(MAX_IMPORT_ARCHIVE_SIZE).toBe(500 * 1024 * 1024);
+    expect(MAX_IMPORT_FILES).toBe(1000);
   });
 });
 
-describe("logbookImportAPI.apply", () => {
-  const file = new File(["{}"], "logbook.zip");
+describe("the batch requests", () => {
+  const files = [
+    new File(["a"], "1.fit"),
+    new File(["b"], "1.json"),
+    new File(["c"], "logbook.zip"),
+  ];
   const sentForm = () => post.mock.lastCall![1] as FormData;
+  const sentConfig = () =>
+    post.mock.lastCall![2] as {
+      headers: Record<string, unknown>;
+      onUploadProgress?: (event: { loaded: number; total?: number }) => void;
+    };
+
+  it("sends every file as a `file` part, in order, to the preview", async () => {
+    await logbookImportAPI.preview(files);
+
+    expect(post.mock.lastCall![0]).toBe("/import/logbook/preview");
+    expect(
+      (sentForm().getAll("file") as File[]).map((file) => file.name),
+    ).toEqual(["1.fit", "1.json", "logbook.zip"]);
+    // Cleared so the browser writes the multipart boundary itself.
+    expect(sentConfig().headers["Content-Type"]).toBeUndefined();
+  });
+
+  it("sends the same files beside the token to the apply", async () => {
+    await logbookImportAPI.apply(files, "tok");
+
+    expect(post.mock.lastCall![0]).toBe("/import/logbook");
+    expect(sentForm().getAll("file")).toHaveLength(3);
+    expect(sentForm().get("token")).toBe("tok");
+  });
+
+  it("reports the upload's bytes to a progress callback", async () => {
+    const onProgress = vi.fn();
+    await logbookImportAPI.preview(files, onProgress);
+
+    sentConfig().onUploadProgress!({ loaded: 40, total: 100 });
+    expect(onProgress).toHaveBeenCalledWith(40, 100);
+  });
+
+  it("asks for no progress when nobody listens", async () => {
+    await logbookImportAPI.preview(files);
+    expect(sentConfig().onUploadProgress).toBeUndefined();
+  });
 
   it("sends the portrait's choice with the digest the preview showed", async () => {
-    await logbookImportAPI.apply(file, "tok", undefined, {
+    await logbookImportAPI.apply(files, "tok", undefined, {
       choice: "keep",
       account_sha256: null,
     });
@@ -126,7 +147,7 @@ describe("logbookImportAPI.apply", () => {
   });
 
   it("sends no portrait field without a choice, which keeps the account's", async () => {
-    await logbookImportAPI.apply(file, "tok");
+    await logbookImportAPI.apply(files, "tok");
     expect(sentForm().has("portrait")).toBe(false);
   });
 });

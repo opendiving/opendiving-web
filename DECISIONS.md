@@ -5681,14 +5681,14 @@ sent to a dive already in it.
 an offsetless date-time, ending the state; the layout stays for the form's life so the time box is
 not swapped out mid-entry. The create form never takes a bare date.
 
-## The logbook import card renders a plan, not a result, and the two are one shape
+## The Import page renders a plan, not a result, and the two are one shape
 
-Import is `POST /import/logbook/preview` then `POST /import/logbook` with the same file and the
-preview's `token`; `DataImportCard` renders both reports through one `ImportReportView`, so an
-approved plan and its result are comparable. The file stays in state beside the token because the
-API re-hashes the body and refuses a token minted for other bytes.
+Import is `POST /import/logbook/preview` then `POST /import/logbook` with the same files and the
+preview's `token`; `/import` renders both reports through one `ImportDiveTable` and one
+`ImportReportView`, so an approved plan and its result are comparable. The files stay in page state
+beside the token because the API hashes the parts again and refuses a token minted for another set.
 
-"About the Original File" renders `ImportReport.conversion`, omitted when `conversion` is `null`.
+"About the Original Files" renders `ImportReport.conversion`, omitted when `conversion` is `null`.
 `restored` keeps its own column, never folded into `created`: un-deleting is the number a backup
 restore came for. Notes are a persistent list, never a toast; a non-zero `notes_truncated` marks the
 list a prefix and says the counts are not.
@@ -5717,19 +5717,20 @@ a floor:
 git grep -niE "export|portab|species|coordinat|GPS|location reaches" -- src/app/privacy/
 ```
 
-## The import picker mirrors the converter's formats, and everything else about them is tolerant
+## The dive form's picker mirrors the converter's formats, and everything else about them is tolerant
 
-`LOGBOOK_IMPORT_ACCEPT` is computed from `LOGBOOK_IMPORT_SOURCE_EXTENSIONS`, a
+`DIVE_COMPUTER_FILE_ACCEPT` is computed from `LOGBOOK_IMPORT_SOURCE_EXTENSIONS`, a
 `Record<ImportSourceFormat, readonly string[]>`, so a format added to the union without an extension
 fails to compile; `logbook-import.test.ts` restates the map as an independent literal `satisfies`
 the same `Record`.
 
 The only lockstep part: the API's list comes from `divejson.read_formats()`, which a Renovate bump
-moves, so a reader can reach the import card before this repository names it. `conversion.format`
+moves, so a reader can reach the Import page before this repository names it. `conversion.format`
 renders through `importSourceLabel`, falling back to the id until a label exists (`suunto_xml` is
 `"Suunto DM5 XML"`); `conversion.groups[].kind` is an opaque string (`conversionKindTone` reads it
-as information, `conversionKindLabel` de-snakes it); the picker alone does not widen — a new format
-is unpickable until its extension lands.
+as information, `conversionKindLabel` de-snakes it); the form's picker alone does not widen — a new
+format is unpickable there until its extension lands. The Import page filters nothing, so it takes
+the new format at once.
 
 Nothing in the browser parses a dive file; the API groups findings by `(kind, message)` through the
 converter's `grouped()`, and this side owns only presentation, including the "and N more" count
@@ -5738,18 +5739,21 @@ converter's `grouped()`, and this side owns only presentation, including the "an
 ## The dive form and logbook import read one set of formats, labelled from one map
 
 The API reads the dive form's file through the converter logbook import uses, so the form's picker
-offers `DIVE_COMPUTER_FILE_ACCEPT` — the flattened `LOGBOOK_IMPORT_SOURCE_EXTENSIONS`, without the
-import's `.divejson` and `.zip`, which the parse route refuses — and a stored file's `parser_key`
-renders through `importSourceLabel`. A second list beside these would have to move whenever the
-converter pin adds a reader. The form's copy names no formats of its own for the same reason: it
-says "any format logbook import reads", and the lists that name them are the import's.
+offers `DIVE_COMPUTER_FILE_ACCEPT` — the flattened `LOGBOOK_IMPORT_SOURCE_EXTENSIONS`, without
+`.divejson` and `.zip`, which the parse route refuses — and a stored file's `parser_key` renders
+through `importSourceLabel`, as an import's `members` rows do. The ids only an import reports
+(`divejson`, `archive`, `zip`, `mixed`) are labelled in a map of their own, so they never become the
+form's extensions. A second list beside these would have to move whenever the converter pin adds a
+reader. The form's copy names no formats of its own for the same reason: it says "any format logbook
+import reads", and the lists that name them are the import's.
 
-## "The original file is kept" is a claim about an upload to a dive, not about an import
+## "The original file is kept" is a claim about a file that is one dive, not about a logbook
 
-A logbook read through the API's DiveJSON converter is discarded after conversion; only the
-full-export archive path writes a dive-file row. Every sentence promising the original file back is
-scoped to a file uploaded **to a dive** — `README.md`, `privacy/page.tsx` §2.1, the root description
-in `lib/site-description.ts`, the landing page's "Built to Outlive the Vendor" band.
+A file uploaded to a dive is kept, and so is an imported file converted from another format that is
+one dive; a logbook of several dives and a DiveJSON document are read and not kept, and the
+full-export archive restores the files it carries. Every sentence promising the original file back
+is scoped to a file of one dive — `README.md`, `privacy/page.tsx` §2.1, the root description in
+`lib/site-description.ts`, the landing page's "Built to Outlive the Vendor" band.
 
 The tagline drops the promise rather than qualifying it, taking the front door's "vendor exports in,
 open formats out, everything in one click"; punctuation is per file, only the claim travels.
@@ -5761,7 +5765,7 @@ git grep -niE "(original|dive-computer|source) files?" -- src README.md
 ```
 
 Hits that stay: the README's _Dive-computer import_ bullet, the landing page's **Computer Import**
-card, the import card's _About the Original File_ heading. A cardinality claim beside the promise
+card, the Import page's _About the Original Files_ heading. A cardinality claim beside the promise
 (§2.1's "one per dive"; a dive holds one recording per export) shares no vocabulary with it; sweep
 for the count separately.
 
@@ -6084,16 +6088,17 @@ depends on.
 
 ## A recording with no files says so, and which kind of nothing it is
 
-A recording can carry samples and no downloadable file: what logbook import builds from a converted
-document, and what a merge of two such recordings leaves. `noFileKeptSentence` gives it a row of its
-own; a device silently missing from the file list looks like data loss. Which kind it is comes from
-`DiveProfileInfo.provenance` (`file`, `divejson_import`, `merge`), because the recording's shape
-cannot say: `files` is empty either way. It is the profile's fact, not the recording's; the API
-publishes a closed enum rather than the open-ended `dive_profile.parser_key`; and the sentence has a
-fallback with no provenance, for an import that carried a device but neither profile nor files.
-`DiveProfile`, the recording profile route's shape and `DiveProfileChart`'s prop type, deliberately
-omits the member: a chart has no business requiring provenance. In `DiveRecordingsCard`, a file-less
-recording is the only one offered a whole-recording delete, since the per-file route needs a file.
+A recording can carry samples and no downloadable file: what an import builds from a logbook of
+several dives, and what a merge of two such recordings leaves. `noFileKeptSentence` gives it a row
+of its own; a device silently missing from the file list looks like data loss. Which kind it is
+comes from `DiveProfileInfo.provenance` (`file`, `divejson_import`, `merge`), because the
+recording's shape cannot say: `files` is empty either way. It is the profile's fact, not the
+recording's; the API publishes a closed enum rather than the open-ended `dive_profile.parser_key`;
+and the sentence has a fallback with no provenance, for an import that carried a device but neither
+profile nor files. `DiveProfile`, the recording profile route's shape and `DiveProfileChart`'s prop
+type, deliberately omits the member: a chart has no business requiring provenance. In
+`DiveRecordingsCard`, a file-less recording is the only one offered a whole-recording delete, since
+the per-file route needs a file.
 
 ## `step` is a claim about the column, and a wrong one cancels the save in silence
 
@@ -6867,3 +6872,9 @@ displayed.
 The sheet keeps every section's heading and edit control on screen however little is under it, and
 drops an empty section from the print — a heading with nothing beneath it is the labelled blank this
 page refuses, in another form.
+
+## Import is a page of its own, and `/data` is the export page
+
+`/import` is the one door for every file the app reads; `/data` keeps its URL and is the export
+page. The picker filters nothing: the API decides by the bytes, and a file it cannot read is a row,
+not a refusal.

@@ -31,7 +31,7 @@ import {
   type UserFieldValues,
 } from "@/lib/validations/user-fields";
 
-/** What the apply sends beside the file and the token; each part omitted when empty. */
+/** What the apply sends beside the files and the token; each part omitted when empty. */
 export interface ImportCheckInChoices {
   details?: ImportCheckInSubmission;
   portrait?: ImportPortraitChoice;
@@ -163,26 +163,26 @@ function ImportPortraitRow({
             {/* eslint-disable-next-line @next/next/no-img-element -- an inline data URL */}
             <img
               src={offer.proposed}
-              alt="Portrait from this file"
+              alt="Portrait from the import"
               className="h-full w-full object-cover"
             />
           </PortraitFrame>
           <figcaption className="text-xs text-muted-foreground">
-            {"This file's"}
+            {"The import's"}
           </figcaption>
         </figure>
       </div>
       <p className="text-sm">
         {kept
           ? mine
-            ? "Keeping yours; nothing from this file is saved."
-            : "Left unset; nothing from this file is saved."
+            ? "Keeping yours; nothing from the import is saved."
+            : "Left unset; nothing from the import is saved."
           : mine
-            ? "This file's replaces yours when you import."
-            : "This file's is saved when you import."}
+            ? "The import's replaces yours when you import."
+            : "The import's is saved when you import."}
       </p>
       <Button type="button" variant="outline" size="sm" onClick={onToggle}>
-        {kept ? "Use this file's" : mine ? "Keep mine" : "Leave unset"}
+        {kept ? "Use the import's" : mine ? "Keep mine" : "Leave unset"}
       </Button>
     </fieldset>
   );
@@ -201,7 +201,7 @@ export function ImportCheckInDetails({ checkIn }: { checkIn: ImportCheckIn }) {
       <div>
         <h3 className="text-sm font-medium">Check-in Details</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          This file carries what a dive shop asks for at check-in. What is
+          The import carries what a dive shop asks for at check-in. What is
           chosen below is saved to your account when you import
           {details.length > 0
             ? "; change or clear any detail, or keep yours."
@@ -233,8 +233,8 @@ export function ImportCheckInDetails({ checkIn }: { checkIn: ImportCheckIn }) {
                 {isKept ? (
                   <p className="text-sm">
                     {mine
-                      ? "Keeping yours; nothing from this file is saved."
-                      : "Left unset; nothing from this file is saved."}
+                      ? "Keeping yours; nothing from the import is saved."
+                      : "Left unset; nothing from the import is saved."}
                   </p>
                 ) : (
                   fields.map((field) => (
@@ -253,7 +253,7 @@ export function ImportCheckInDetails({ checkIn }: { checkIn: ImportCheckIn }) {
                   onClick={() => toggleKept(entry.detail)}
                 >
                   {isKept
-                    ? "Use this file's"
+                    ? "Use the import's"
                     : mine
                       ? "Keep mine"
                       : "Leave unset"}

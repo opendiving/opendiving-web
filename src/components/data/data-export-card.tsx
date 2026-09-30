@@ -44,8 +44,8 @@ interface ExportRow {
 // DiveJSON leads because it is the complete one and the app's own format; the two lossy
 // rows below it are for handing to something else.
 //
-// Three of the four also come *back* - DiveJSON, UDDF and the archive, through the import
-// card below this one, which reads every format the API's converter reads. The CSV row
+// Three of the four also come *back* - DiveJSON, UDDF and the archive, through the Import
+// page, which reads every format the API's converter reads. The CSV row
 // deliberately stays silent, and that asymmetry is the point: a sentence about what one
 // format can do is read as a claim about the ones beside it, so "brings it back" on every
 // row would promise a CSV import that does not exist.
@@ -67,7 +67,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileCode,
     title: "UDDF",
     description:
-      "Every dive with its sites, trips, gases, cylinders, gear and sample profile, plus your contacts — as dive bases, shops and the places you stayed — the people you dive with, as buddies, and your date of birth, phone and dive insurance, in the open format Subsurface, MacDive and divelogs.de import. A dive recorded by two computers writes one profile here — the recording shown by default — because a UDDF dive carries one set of samples; the DiveJSON and the archive carry them all. This is the file to hand another program, and the import card below reads it back too — gear sets, service history, your courses, your c-cards, who came on a trip, the roles on a dive beyond buddy and guide, a dive's tags, waves, weather and boat name, your emergency contact and your insurance policy number have no slot in it, and ride in the DiveJSON and the archive instead.",
+      "Every dive with its sites, trips, gases, cylinders, gear and sample profile, plus your contacts — as dive bases, shops and the places you stayed — the people you dive with, as buddies, and your date of birth, phone and dive insurance, in the open format Subsurface, MacDive and divelogs.de import. A dive recorded by two computers writes one profile here — the recording shown by default — because a UDDF dive carries one set of samples; the DiveJSON and the archive carry them all. This is the file to hand another program, and the Import page reads it back too — gear sets, service history, your courses, your c-cards, who came on a trip, the roles on a dive beyond buddy and guide, a dive's tags, waves, weather and boat name, your emergency contact and your insurance policy number have no slot in it, and ride in the DiveJSON and the archive instead.",
   },
   {
     format: "csv",
@@ -81,7 +81,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileArchive,
     title: "Full archive",
     description:
-      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you uploaded — each under the recording it belongs to — and every certification card image you uploaded. This is the one to keep as a backup — it is also the only download that can put those files back, since the import card below can restore bytes it actually carries. Your portrait is in it too, and importing the archive offers it back beside yours. The card scans and the portrait are personal documents, so treat the file as one.",
+      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you uploaded — each under the recording it belongs to — and every certification card image you uploaded. This is the one to keep as a backup — it is also the only download that can put those files back, since an import can restore only the bytes it actually carries. Your portrait is in it too, and importing the archive offers it back beside yours. The card scans and the portrait are personal documents, so treat the file as one.",
   },
 ];
 
@@ -93,8 +93,8 @@ interface DataExportCardProps {
 
 // "Your data" on `/data`: four buttons, each handing back the whole logbook.
 // The product's promise is that nothing in an account is reachable only through this
-// app, and this card is the half that can be checked by pressing a button. `DataImportCard`
-// below it is the other half - a copy nothing can read back is a copy in name only - and
+// app, and this card is the half that can be checked by pressing a button. The Import
+// page is the other half - a copy nothing can read back is a copy in name only - and
 // the two together are what make the round trip a claim rather than an intention.
 //
 // Downloads go through the API client and a synthetic click rather than a plain

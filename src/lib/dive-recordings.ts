@@ -248,9 +248,10 @@ export function recordingLabel(recording: Recording): string {
  * Why a recording holds no downloadable file, or `null` when it holds one.
  *
  * A recording with samples and no files is first-class rather than degenerate —
- * it is what logbook import builds from a converted document, and what a merge
- * of two such recordings leaves — so the list says so in words instead of
- * rendering an empty row that reads as a loss.
+ * it is what an import builds from a logbook of several dives, whose file
+ * belongs to no one dive, and what a merge of two such recordings leaves — so
+ * the list says so in words instead of rendering an empty row that reads as
+ * a loss.
  *
  * **Which of the two it was comes from the profile's `provenance`**, the closed
  * `file` / `divejson_import` / `merge` vocabulary the dive read publishes on
