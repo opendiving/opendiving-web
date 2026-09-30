@@ -83,6 +83,8 @@ export function RecentTripRow({
     <li
       className={cn(
         "relative isolate flex flex-col rounded-lg border hover:bg-muted transition-colors",
+        // The map's fade meets the row's own colour, the hover's included.
+        "hover:[--backdrop-fade:hsl(var(--muted))]",
         // A fixed band of map above the trip's name, with the details over its
         // faded foot: however tall they grow, the map shows as much of itself.
         // The details' own top padding is part of the band, so what they

@@ -146,10 +146,10 @@ export interface LocationsMapProps {
    */
   className?: string;
   /**
-   * Draw the map as the backdrop of whatever the caller lays over it: fading
-   * from clear at its bottom edge to solid at its top, with no background of
-   * its own, so the fade meets the card's - hover colour included. The credit
-   * moves to the top-left, where the map it credits can be seen.
+   * Draw the map as the backdrop of whatever the caller lays over it: solid at
+   * its top edge, fading into `--backdrop-fade` at its bottom - the card's
+   * colour unless the caller sets another, as a card does for its hover. The
+   * credit moves to the top-left, where the map it credits can be seen.
    */
   backdrop?: boolean;
   /**
@@ -393,18 +393,11 @@ export function LocationsMap({
           inside `role="img"` is dropped from the accessibility tree, and a
           licence credit nobody can follow is not much of a credit. */}
       {/* `rounded-[inherit]` hands the frame's corners down to `MapCanvas`,
-          which is what clips the map to them. A backdrop's fade masks this
-          element rather than the frame, so the attribution beside it stays
-          solid and outside the stacking context a mask makes. */}
+          which is what clips the map to them. */}
       <div
         role="img"
         aria-label={label}
         className="absolute inset-0 rounded-[inherit]"
-        style={
-          backdrop
-            ? { maskImage: "linear-gradient(to top, transparent, #000)" }
-            : undefined
-        }
       >
         <MapCanvas
           basemap={basemap}
@@ -417,6 +410,24 @@ export function LocationsMap({
           }
         />
       </div>
+
+      {/* A backdrop's fade, laid over the map rather than masking it: a
+          gradient mask over the WebGL canvas - or a dithered image in its place
+          - draws in visible light and dark strips in Chrome and Firefox alike,
+          where a plain gradient on top of it is smooth. Fading into a colour
+          rather than into transparency is the price, which is why the colour
+          is the caller's to change. */}
+      {backdrop && (
+        <div
+          aria-hidden
+          data-backdrop-fade
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to bottom, transparent, var(--backdrop-fade, hsl(var(--card))))",
+          }}
+        />
+      )}
 
       {/* A licence condition of the basemap, so it is rendered over it.
           `target="_blank"` is not decoration: this map appears inside dialogs

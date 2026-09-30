@@ -658,7 +658,7 @@ describe("LocationsMap", () => {
     }
   });
 
-  it("fades a backdrop out towards its bottom edge", async () => {
+  it("fades a backdrop into a colour laid over it, not through a mask", async () => {
     render(
       withConfig(
         <LocationsMap
@@ -670,9 +670,9 @@ describe("LocationsMap", () => {
     );
     await canvasReady();
 
-    expect(getComputedStyle(screen.getByRole("img")).maskImage).not.toBe(
-      "none",
-    );
+    const fade = document.querySelector<HTMLElement>("[data-backdrop-fade]")!;
+    expect(getComputedStyle(fade).backgroundImage).toContain("linear-gradient");
+    expect(getComputedStyle(screen.getByRole("img")).maskImage).toBe("none");
   });
 
   // **MapLibre does not refit on its own.** Its `trackResize` calls `resize()`,
