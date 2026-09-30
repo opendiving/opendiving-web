@@ -133,6 +133,24 @@ describe("RecentTripsCard", () => {
     ]);
   });
 
+  it("joins the dates and the place with a dot, and drops it when one is missing", async () => {
+    vi.mocked(tripsAPI.getTrips).mockResolvedValue({
+      data: [MAPPED, TYPED],
+      total_count: 2,
+      has_more: false,
+      page: 1,
+      items_per_page: 5,
+    });
+    render(<RecentTripsCard />);
+    await screen.findByRole("link", { name: "Dahab 2026" });
+
+    expect(rowOf("Dahab 2026")).toHaveTextContent(
+      /Apr 2 - Apr 17, 2026 · Dahab, Egypt/,
+    );
+    expect(rowOf("Koh Tao 2025")).toHaveTextContent("Koh Tao");
+    expect(rowOf("Koh Tao 2025")).not.toHaveTextContent("·");
+  });
+
   it("names each row's menu after its trip", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });

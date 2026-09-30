@@ -11,6 +11,7 @@ import {
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
+import { formatTripLocationNames } from "@/lib/trip-locations";
 import { Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +60,8 @@ export function RecentTripRow({
   // Only when some part of the trip carries a date; deliberately no fall back
   // to the trip's creation date.
   const dates = formatTripSpan(trip.parts);
+  // Whether there is a place to name, which is what decides the separator.
+  const placeNames = formatTripLocationNames(locations);
 
   // How much of the map lies under the details, from the trip's name down, so
   // its places centre between the card's top and the name. Read as the ref attaches and followed after that, as
@@ -156,13 +159,19 @@ export function RecentTripRow({
             {trip.name}
           </Link>
         </div>
-        {dates && <div className="text-xs">{dates}</div>}
-        {/* `w-fit`, so the place's hover hint is lifted over the link only
-            where the text is. */}
-        <TripLocationsLabel
-          locations={locations}
-          className="relative z-10 block w-fit max-w-full text-xs"
-        />
+        {/* One line, as the trip page's subtitle joins the same two. The
+            place is lifted over the link for its hover hint, and only as far
+            as its own text reaches. */}
+        {(dates || placeNames) && (
+          <div className="text-xs">
+            {dates}
+            {dates && placeNames ? " · " : null}
+            <TripLocationsLabel
+              locations={locations}
+              className="relative z-10"
+            />
+          </div>
+        )}
         <TripCounts trip={trip} />
       </div>
     </li>
