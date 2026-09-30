@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useNearViewport } from "@/hooks/useNearViewport";
@@ -58,6 +58,38 @@ export function GearPageContent() {
     enabled: !!user,
     errorMessage: "Failed to load gear. Please try again.",
   });
+
+  // Whether any gear is archived, asked only when the active list comes back empty -
+  // the one case it decides. "No gear at all" drops the card's header like any empty
+  // list; "no *active* gear" keeps it, since the Show archived switch in it is the
+  // way to the rest. Keyed to the rows it was asked about, so a list that has moved
+  // on since is never read with an answer that was about another one.
+  const [archivedProbe, setArchivedProbe] = useState<{
+    of: GearItem[];
+    hasArchived: boolean;
+  } | null>(null);
+  const activeListIsEmpty =
+    !showArchived && !isLoadingItems && !itemsFailed && gearItems.length === 0;
+
+  useEffect(() => {
+    if (!activeListIsEmpty) return;
+    let cancelled = false;
+    gearAPI
+      .getGearItems(1, 1, true)
+      .then((response) => response.total_count > 0)
+      // Unknown reads as "has some": a header left up for nothing costs less than
+      // a switch the diver can no longer reach.
+      .catch(() => true)
+      .then((hasArchived) => {
+        if (!cancelled) setArchivedProbe({ of: gearItems, hasArchived });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeListIsEmpty, gearItems]);
+
+  const probed = archivedProbe?.of === gearItems ? archivedProbe : null;
+  const isProbingArchived = activeListIsEmpty && probed === null;
 
   // The sets card sits below the gear list and reads as its continuation, so it
   // waits until the diver is close to it before asking for anything. For most
@@ -193,7 +225,7 @@ export function GearPageContent() {
         setsCardRef={setsCardRef}
         items={{
           items: gearItems,
-          isLoading: isLoadingItems,
+          isLoading: isLoadingItems || isProbingArchived,
           isLoadingMore: isLoadingMoreItems,
           hasFailed: itemsFailed,
           totalCount: itemsTotal,
@@ -201,6 +233,7 @@ export function GearPageContent() {
           hasMore: itemsHaveMore,
           onLoadMore: loadMoreItems,
           showArchived,
+          hasArchived: probed?.hasArchived ?? false,
           onShowArchivedChange: setShowArchived,
           onCreate: () => openCreate("gear"),
           onEdit: setEditingItem,

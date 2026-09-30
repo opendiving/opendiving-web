@@ -244,6 +244,63 @@ describe("gear row actions name their row", () => {
   });
 });
 
+// An empty card drops its header, as a one-list page's does: a count of nothing and a
+// "New set" beside the empty state's own button are furniture around the one sentence
+// worth reading. The gear list's header also holds the Show archived switch, so a list
+// that is only *active*-empty keeps it - there, the switch is the way to the rest.
+describe("an empty gear card keeps only its hidden heading", () => {
+  // By prefix: a header that is showing carries its switch, count and button
+  // inside the heading, and they are part of its name.
+  const headingOf = (name: string) =>
+    screen.getByRole("heading", { level: 2, name: new RegExp(`^${name}`) });
+
+  it("drops the gear list's header when there is no gear at all", async () => {
+    getGearItems.mockImplementation(async () => page([]));
+
+    render(<GearPage />);
+    await screen.findByText("No gear yet");
+
+    const heading = headingOf("Your Gear");
+    expect(heading).toHaveClass("sr-only");
+    expect([...heading.parentElement!.children]).toEqual([heading]);
+    expect(screen.queryByLabelText("Show archived")).not.toBeInTheDocument();
+  });
+
+  it("keeps it, switch and all, when the only gear is archived", async () => {
+    getGearItems.mockImplementation(async (_page, _perPage, includeArchived) =>
+      page(includeArchived ? [gearItem({ is_archived: true })] : []),
+    );
+
+    render(<GearPage />);
+    await screen.findByText("No active gear");
+
+    expect(headingOf("Your Gear")).not.toHaveClass("sr-only");
+    expect(screen.getByLabelText("Show archived")).toBeInTheDocument();
+  });
+
+  it("drops the sets card's header when there are no sets", async () => {
+    render(<GearPage />);
+    await act(async () => reveal());
+    await screen.findByText("No gear sets yet");
+
+    const heading = headingOf("Gear Sets");
+    expect(heading).toHaveClass("sr-only");
+    expect([...heading.parentElement!.children]).toEqual([heading]);
+    expect(
+      screen.queryByRole("button", { name: "New set" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps both headers while the lists are still loading", () => {
+    getGearItems.mockReturnValue(new Promise(() => {}));
+
+    render(<GearPage />);
+
+    expect(headingOf("Your Gear")).not.toHaveClass("sr-only");
+    expect(headingOf("Gear Sets")).not.toHaveClass("sr-only");
+  });
+});
+
 // The page's fetch callbacks close over `user`, and `useInfiniteResource` fetches
 // from an effect keyed on the callback - so anything that gives `user` a new identity
 // per render puts the effect in a loop with the fetch it started.

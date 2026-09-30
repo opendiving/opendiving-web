@@ -25,6 +25,7 @@ import {
 import { Copy, Edit, Layers, Loader2, Plus, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useUnits } from "@/hooks/useUnits";
+import { cn } from "@/lib/utils";
 import { formatWeight } from "@/lib/units";
 
 export interface GearSetsCardProps {
@@ -50,6 +51,10 @@ export interface GearSetsCardProps {
  *
  * A set with no items is shown as "Empty" rather than hidden — an empty set is a real
  * thing a diver made and is about to fill, not a broken row.
+ *
+ * No sets at all drops the header down to its hidden heading, as `ListCardHeader`
+ * does for a one-list page: the empty state below already says what the card is for,
+ * and carries the one button the header would.
  */
 export function GearSetsCard({
   sets,
@@ -67,26 +72,37 @@ export function GearSetsCard({
   onDelete,
 }: GearSetsCardProps) {
   const units = useUnits();
+  const isEmpty = !isLoading && sets.length === 0;
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle as="h2" className={CARD_TITLE_ROW}>
-          <span className="flex items-center gap-2">
-            <Layers className="h-5 w-5" />
+      <CardHeader className={cn(isEmpty && "p-0")}>
+        {isEmpty ? (
+          <CardTitle as="h2" className="sr-only">
             Gear Sets
-          </span>
-          <div className={`flex items-center gap-3 ${CARD_TITLE_ACTION}`}>
-            <CountBadge count={totalCount} isLoading={isLoading} label="set" />
-            <Button variant="outline" size="sm" onClick={onCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              New set
-            </Button>
-          </div>
-        </CardTitle>
+          </CardTitle>
+        ) : (
+          <CardTitle as="h2" className={CARD_TITLE_ROW}>
+            <span className="flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              Gear Sets
+            </span>
+            <div className={`flex items-center gap-3 ${CARD_TITLE_ACTION}`}>
+              <CountBadge
+                count={totalCount}
+                isLoading={isLoading}
+                label="set"
+              />
+              <Button variant="outline" size="sm" onClick={onCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                New set
+              </Button>
+            </div>
+          </CardTitle>
+        )}
       </CardHeader>
       <CardContent>
-        {!isLoading && sets.length === 0 ? (
+        {isEmpty ? (
           <EmptyState
             icon={Layers}
             title="No gear sets yet"
