@@ -196,12 +196,13 @@ export function useInfiniteResource<T>(
    * Re-read the rows already on screen, keeping their number, without the
    * spinners or the jump back to page one that `reload` brings.
    *
-   * For the way back to a route that was kept mounted. Keeping what the diver
-   * had is the point of not reloading there, but what they had can be wrong by
-   * then: a dive logged from `/dives/new` or deleted from a detail page never
-   * reaches this list, and a diver who returned to find their new dive missing
-   * would reasonably think it had not saved. So the rows are re-read in place -
-   * same count, same scroll, contents caught up.
+   * For the way back to a route that was kept mounted, and for a save made from
+   * over the page, such as the header bell's. Keeping what the diver had is the
+   * point of not reloading there, but what they had can be wrong by then: a dive
+   * logged from `/dives/new` or deleted from a detail page never reaches this
+   * list, and a diver who returned to find their new dive missing would
+   * reasonably think it had not saved. So the rows are re-read in place - same
+   * count, same scroll, contents caught up.
    *
    * Asked for in one request wherever it fits - the span on screen, up to
    * `REVALIDATE_PAGE_SIZE` - so a list six pages deep costs one round trip and the
@@ -417,6 +418,7 @@ export function useInfiniteResource<T>(
     loadFailed,
     loadMore,
     reload,
+    revalidate,
     removeItem,
     applySaved,
   };

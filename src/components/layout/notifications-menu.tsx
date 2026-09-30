@@ -35,7 +35,7 @@ import { RenewalsList } from "@/components/certifications/renewals-list";
 import { GearServiceRecordDialog } from "@/components/gear/gear-service-record-dialog";
 import {
   ServiceDueList,
-  gearItemLabel,
+  dueItemLabel,
 } from "@/components/gear/service-due-list";
 import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
 import { CHECK_IN_GROUP_HEADINGS } from "@/components/user/user-fields-form";
@@ -269,7 +269,7 @@ export function NotificationsMenu() {
       {editing?.kind === "service" && (
         <GearServiceRecordDialog
           gearItemUuid={editing.entry.gear_item_uuid}
-          gearItemLabel={gearItemLabel(editing.entry)}
+          gearItemLabel={dueItemLabel(editing.entry)}
           open
           onOpenChange={stopEditing}
           schedule={loggingSchedule}

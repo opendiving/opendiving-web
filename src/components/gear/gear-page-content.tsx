@@ -53,6 +53,7 @@ export function GearPageContent() {
     loadFailed: itemsFailed,
     loadMore: loadMoreItems,
     reload: reloadItems,
+    revalidate: revalidateItems,
     removeItem: dropItem,
   } = useInfiniteResource<GearItem>(fetchGearItems, {
     keyOf: (item) => item.uuid,
@@ -99,8 +100,8 @@ export function GearPageContent() {
   }, [reloadItems, reloadSets]);
 
   // A service logged from the header's bell moves an item's due date, which is what
-  // its row's badge is drawn from.
-  useSavedElsewhere("gear-service", reloadItems);
+  // its row's badge is drawn from. Re-read in place: nothing moves or leaves the list.
+  useSavedElsewhere("gear-service", () => void revalidateItems());
 
   const {
     deletingId: deletingItemId,

@@ -792,8 +792,8 @@ no meaningful convention (a mask, a knife) or no type gets `[]`, not a made-up d
 
 `NotificationsMenu` sits left of the avatar on every page, its count chip `bg-destructive-solid`. It
 is a `Popover`, not a `DropdownMenu`: a row holds a link and a button, and a menu item cannot
-contain a second control. Each section heads itself in the panel's header style, with no panel title
-above them. A failed read is said in the panel, since an empty panel answers "nothing is due".
+contain a second control. A failed read is said in the panel, since an empty panel answers "nothing
+is due".
 
 `useNotifications` reads `GET /gear-service-due` and `GET /certifications-expiring` on every
 pathname change: `Header` outlives the pages where services are logged and expiry dates move, and
@@ -1192,13 +1192,6 @@ cannot back. Each stat tile renders a figure the API derives from the diver's di
 worth promoting, logging a dive, is a single primary button in the page header. `SetupChecklistCard`
 is driven by real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched
 with `items_per_page: 1` for `total_count` alone) and removes itself once all three are done.
-
-The bell's "Renewals" list is the twin of its service-due list. Certification rows link to
-`/certifications`, where certifications are edited in dialogs and have no URL of their own; the
-dive-insurance row links to `/settings/checkin`, where the policy is entered, and sorts among them
-rather than after them, a lapsed policy stopping a dive at the desk as a lapsed card does. Filtering
-and ordering live in `certificationRenewals()` in `lib/certification.ts`, not the component, so
-"expired sorts above expiring soon" is tested without rendering.
 
 ## The layout is a flat stack, so the cards that can vanish leave no hole
 
@@ -2958,9 +2951,6 @@ a screenshot does not show a `h-5` bar against a 24px line box or a legend nobod
 and trip cards load into `BackdropCardSkeleton`, one box at the card's measured 214px (238px from
 `sm`), `RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
 `/dives` and `/trips`.
-
-One shift is accepted: the dashboard moves ~134px when a gear-service reminder is due, which is not
-a placeholder problem, since whether that card exists is one of the things the request answers.
 
 ## The project instructions live in AGENTS.md, and CLAUDE.md is an import
 

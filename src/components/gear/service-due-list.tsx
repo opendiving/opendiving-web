@@ -1,5 +1,6 @@
 "use client";
 
+import { gearItemLabel } from "@/lib/api/gear";
 import {
   scheduleFromDueEntry,
   serviceKindAndLabel,
@@ -11,13 +12,14 @@ import { TruncatedNote } from "@/components/ui/truncated-note";
 import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
 import { NotificationRow } from "@/components/layout/notification-row";
 
-// How a row names its gear item: brand and model where there is a brand. Unlike the gear
-// detail card, this list spans every item a diver owns, so the item is what tells one row
-// from the next - and the kind is only what separates two rows of the same item.
-export function gearItemLabel(entry: GearServiceDueEntry): string {
-  return entry.gear_item_brand
-    ? `${entry.gear_item_brand} ${entry.gear_item_name}`
-    : entry.gear_item_name;
+// How a row names its gear item. Unlike the gear detail card, this list spans every item
+// a diver owns, so the item is what tells one row from the next - and the kind is only
+// what separates two rows of the same item.
+export function dueItemLabel(entry: GearServiceDueEntry): string {
+  return gearItemLabel({
+    name: entry.gear_item_name,
+    brand: entry.gear_item_brand,
+  });
 }
 
 interface ServiceDueListProps {
@@ -43,7 +45,7 @@ export function ServiceDueList({
     <div className="space-y-1">
       {entries.map((entry) => {
         const schedule = scheduleFromDueEntry(entry);
-        const itemLabel = gearItemLabel(entry);
+        const itemLabel = dueItemLabel(entry);
 
         return (
           <NotificationRow
