@@ -16,18 +16,14 @@ import { DiveIcon } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 // What the trip's dives add up to, beside its name, with the dashboard's own
-// icons for dives and species. Nothing for a trip with no dives yet - three
-// zeros say less than no line at all - or from an API that sends no counts.
+// icons for dives and species. On every trip, zeros included, and zeros too
+// from an API that sends no counts yet.
 function TripCounts({ trip }: { trip: Trip }) {
-  if (!trip.dive_count) return null;
+  const dives = trip.dive_count ?? 0;
   const sites = trip.dive_site_count ?? 0;
   const species = trip.species_count ?? 0;
   const counts = [
-    {
-      icon: DiveIcon,
-      value: trip.dive_count,
-      label: trip.dive_count === 1 ? "dive" : "dives",
-    },
+    { icon: DiveIcon, value: dives, label: dives === 1 ? "dive" : "dives" },
     {
       icon: MapPin,
       value: sites,
