@@ -140,17 +140,17 @@ export function TripCard({
       {/* Named per trip, as every list's row actions are. It sits as far in
           from the corner as the credit does, and its hover takes the credit's
           chip rather than a colour the map would swallow. Its icon is lifted
-          off the map by a disc of the card's colour drawn as a gradient:
-          `drop-shadow`s strong enough to do it have to be chained, each
-          blurring the last one's 8-bit output, and the halo they make comes
-          out in visible rings. A gradient is drawn in one pass and is
-          smooth. */}
+          off the map by an upright oval of the card's colour, the icon's own
+          shape, drawn as a gradient: `drop-shadow`s strong enough to do it
+          have to be chained, each blurring the last one's 8-bit output, and
+          the halo they make comes out in visible rings. A gradient is drawn
+          in one pass and is smooth. */}
       <div className="absolute right-1 top-1 z-10">
         <ItemActionsMenu
           label={`Actions for ${trip.name}`}
           variant="ghost"
           size="sm"
-          className="relative isolate hover:bg-background/80 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:rounded-full before:bg-[radial-gradient(closest-side,var(--trip-card),transparent)] hover:before:opacity-0"
+          className="relative isolate hover:bg-background/80 before:pointer-events-none before:absolute before:inset-y-0 before:inset-x-2 before:-z-10 before:bg-[radial-gradient(closest-side,var(--trip-card),transparent)] hover:before:opacity-0"
         >
           <DropdownMenuItem onSelect={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
