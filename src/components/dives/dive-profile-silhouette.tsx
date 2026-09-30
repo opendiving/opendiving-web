@@ -55,7 +55,7 @@ export function DiveProfileSilhouette({
         d={curve}
         fill="none"
         stroke="currentColor"
-        strokeWidth={1.5}
+        strokeWidth={1}
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
       />
