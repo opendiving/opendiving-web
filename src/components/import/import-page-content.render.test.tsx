@@ -225,6 +225,36 @@ describe("choosing files", () => {
   });
 });
 
+describe("a folder still being walked", () => {
+  it("holds the read back until its last file has landed", async () => {
+    let land: (file: File) => void = () => {};
+    const slow = {
+      isFile: true,
+      isDirectory: false,
+      name: "2.fit",
+      fullPath: "/2.fit",
+      file: (resolve: (file: File) => void) => (land = resolve),
+    };
+    render(<ImportPageContent />);
+    await choose(fit());
+    fireEvent.drop(
+      screen.getByRole("button", { name: /drop files or a folder here/i }),
+      {
+        dataTransfer: {
+          items: [{ kind: "file", webkitGetAsEntry: () => slow }],
+          files: [],
+        },
+      },
+    );
+
+    await waitFor(() => expect(readButton()).toBeDisabled());
+    land(new File(["y"], "2.fit"));
+
+    expect(await screen.findByText("2.fit")).toBeVisible();
+    await waitFor(() => expect(readButton()).toBeEnabled());
+  });
+});
+
 describe("a drop the browser could not read all of", () => {
   it("says which entries were left out", async () => {
     const moved = {

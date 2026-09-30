@@ -14,12 +14,21 @@ import { cn } from "@/lib/utils";
 interface ImportDropZoneProps {
   disabled: boolean;
   onFiles: (files: WalkedDrop) => void;
+  /**
+   * Whether a dropped folder is still being walked. The page holds its read
+   * and its import back meanwhile, so no file lands after the set they send.
+   */
+  onWalking: (walking: boolean) => void;
 }
 
 // One target for every file the app reads: dropped on, or pressed to open the
 // file dialog. The input takes several files and filters none - the API decides
 // what the bytes are, and a file it cannot read comes back as a row saying so.
-export function ImportDropZone({ disabled, onFiles }: ImportDropZoneProps) {
+export function ImportDropZone({
+  disabled,
+  onFiles,
+  onWalking,
+}: ImportDropZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isOver, setIsOver] = useState(false);
 
@@ -29,7 +38,10 @@ export function ImportDropZone({ disabled, onFiles }: ImportDropZoneProps) {
     if (disabled) return;
     // Taken before anything awaits: the drop's items are gone once it returns.
     const taken = takeDrop(event.dataTransfer);
-    void walkDrop(taken).then(onFiles);
+    onWalking(true);
+    void walkDrop(taken)
+      .then(onFiles)
+      .finally(() => onWalking(false));
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {

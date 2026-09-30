@@ -15,16 +15,19 @@ import { importButtonLabel } from "@/lib/logbook-import";
 interface ImportReviewProps {
   preview: ImportPreview;
   isImporting: boolean;
+  /** Held back while an import or a drop is in flight. */
+  disabled: boolean;
   onImport: (choices: ImportCheckInChoices) => void;
 }
 
 // The plan waiting for the diver's word. Mounted per preview, keyed on its token,
 // so the check-in form inside it is seeded from this preview's proposal and no
-// other. The button is held back only while an import is in flight - see
+// other. The button is held back only while something is in flight - see
 // `importButtonLabel`.
 export function ImportReview({
   preview,
   isImporting,
+  disabled,
   onImport,
 }: ImportReviewProps) {
   const checkIn = useImportCheckIn(preview.check_in_details, preview.portrait);
@@ -64,7 +67,7 @@ export function ImportReview({
 
       <ImportCheckInDetails checkIn={checkIn} />
 
-      <Button type="button" onClick={handleImport} disabled={isImporting}>
+      <Button type="button" onClick={handleImport} disabled={disabled}>
         {isImporting ? (
           <span className="flex items-center gap-2">
             <ButtonSpinner />

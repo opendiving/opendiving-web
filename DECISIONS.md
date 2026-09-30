@@ -5749,11 +5749,11 @@ import reads", and the lists that name them are the import's.
 
 ## "The original file is kept" is a claim about a file that is one dive, not about a logbook
 
-A file uploaded to a dive is kept, and so is an imported file that is one dive; a logbook of several
-dives is read and not kept, and the full-export archive restores the files it carries. Every
-sentence promising the original file back is scoped to a file of one dive — `README.md`,
-`privacy/page.tsx` §2.1, the root description in `lib/site-description.ts`, the landing page's
-"Built to Outlive the Vendor" band.
+A file uploaded to a dive is kept, and so is an imported file converted from another format that is
+one dive; a logbook of several dives and a DiveJSON document are read and not kept, and the
+full-export archive restores the files it carries. Every sentence promising the original file back
+is scoped to a file of one dive — `README.md`, `privacy/page.tsx` §2.1, the root description in
+`lib/site-description.ts`, the landing page's "Built to Outlive the Vendor" band.
 
 The tagline drops the promise rather than qualifying it, taking the front door's "vendor exports in,
 open formats out, everything in one click"; punctuation is per file, only the claim travels.

@@ -104,17 +104,17 @@ one.
   [DiveJSON converter](https://github.com/divejson/divejson-py) — **UDDF**, a **Subsurface** `.ssrf`
   save file, **FIT**, a **Suunto app** export and a **Suunto DM5** `.xml`, or a `.zip` of any of
   them, which is how a watch's account export arrives. Drop a folder and the app sorts it: a
-  computer's two exports of one dive become one dive with both files, and a file that is one dive is
-  kept on the dive it becomes, as it is when uploaded to a dive; a logbook of several dives arrives
-  without its file. Move a logbook between instances, restore one from a backup, or bring years of
-  history out of something else. You see what each file was read as and a row for every dive it
-  becomes — new, already present, brought back from deletion, gaining a file, or skipped and why —
-  before a single row is written, beside anything it could not represent and what converting a file
-  could not carry. Records you already have are matched rather than duplicated, and a dive you
-  deleted returns under its own identity. The archive additionally restores the dive-computer files
-  and c-card scans, which the bare document names by digest but does not carry. The check-in details
-  a logbook carries, and an archive's portrait, are shown beside yours in the preview, and only what
-  you choose there is saved.
+  computer's two exports of one dive become one dive with both files, and a converted file that is
+  one dive is kept on the dive it becomes, as it is when uploaded to a dive; a logbook of several
+  dives, or a DiveJSON document, arrives without its file. Move a logbook between instances, restore
+  one from a backup, or bring years of history out of something else. You see what each file was
+  read as and a row for every dive it becomes — new, already present, brought back from deletion,
+  gaining a file, or skipped and why — before a single row is written, beside anything it could not
+  represent and what converting a file could not carry. Records you already have are matched rather
+  than duplicated, and a dive you deleted returns under its own identity. The archive additionally
+  restores the dive-computer files and c-card scans, which the bare document names by digest but
+  does not carry. The check-in details a logbook carries, and an archive's portrait, are shown
+  beside yours in the preview, and only what you choose there is saved.
 - **Year in review** — each January, an email with the year before in figures: dives and time
   underwater, the deepest and longest, dive sites, and species with the ones you saw for the first
   time.

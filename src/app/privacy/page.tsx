@@ -240,11 +240,12 @@ export default async function PrivacyPage() {
                   from a dive-computer file, that file itself is kept alongside
                   the dive &mdash; on the recording it came from, under the
                   filename it arrived with, and a dive keeps every one you
-                  upload. A file you import is kept the same way when it is one
-                  dive, whatever program wrote it: on the dive it becomes, under
-                  the filename it arrived with. A logbook of several dives
-                  leaves no file here, and importing a full archive puts back
-                  the files it carries
+                  upload. A dive-computer or logbook file you import in another
+                  format than DiveJSON is kept the same way when it is one dive:
+                  on the dive it becomes, under the filename it arrived with. A
+                  logbook of several dives, and a DiveJSON document, leave no
+                  file here, and importing a full archive puts back the files it
+                  carries
                 </li>
                 <li>
                   <strong>Equipment Data:</strong> Diving equipment details and

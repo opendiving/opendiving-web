@@ -94,7 +94,8 @@ function ImportFlow() {
   // the selection and so has no row to say so.
   const [unreadable, setUnreadable] = useState<string[]>([]);
 
-  const busy = phase !== "idle";
+  const [walking, setWalking] = useState(false);
+  const busy = phase !== "idle" || walking;
   const sendable = files.filter((item) => item.refusal === null);
   const selectionRefusal = importSelectionRefusal(
     sendable.map((item) => item.file),
@@ -253,7 +254,11 @@ function ImportFlow() {
         <h2 id="import-files-heading" className="sr-only">
           Files
         </h2>
-        <ImportDropZone disabled={busy} onFiles={addFiles} />
+        <ImportDropZone
+          disabled={busy}
+          onFiles={addFiles}
+          onWalking={setWalking}
+        />
         {unreadable.length > 0 && (
           <p role="status" className="text-sm text-muted-foreground">
             {`The browser could not read ${unreadable.length === 1 ? "this from the drop" : `these ${unreadable.length} from the drop`}, so ${unreadable.length === 1 ? "it was" : "they were"} left out: ${unreadable.join(", ")}.`}
@@ -335,6 +340,7 @@ function ImportFlow() {
           key={plan.preview.token}
           preview={plan.preview}
           isImporting={phase === "importing"}
+          disabled={busy}
           onImport={apply}
         />
       )}
