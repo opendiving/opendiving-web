@@ -247,9 +247,7 @@ export function Header() {
           </div>
 
           {/* Actions */}
-          {/* Tighter gaps on the narrowest phones, where the wordmark and the
-              three controls would otherwise be squeezed against each other. */}
-          <div className="flex flex-shrink-0 items-center space-x-1 sm:space-x-3">
+          <div className="flex flex-shrink-0 items-center space-x-3">
             {isAuthenticated && user && (
               <DropdownMenu>
                 {/* The hint wraps the *menu* trigger rather than sitting
