@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { smoothPath, type Point } from "@/lib/chart-path";
 import { cn } from "@/lib/utils";
 
@@ -7,10 +8,11 @@ const WIDTH = 100;
 const HEIGHT = 100;
 
 // A dive's depth curve as a filled shape, water from the surface down to the
-// curve as the profile chart fills it. Each depth is the deepest in an even
-// slice of the dive, so the shape reaches the dive's maximum; the surface is
-// pinned at both ends, where every dive starts and finishes. Draws nothing
-// for a series that never leaves the surface.
+// curve as the profile chart fills it, darkening with depth so the surface
+// edge fades into whatever the shape is drawn over. Each depth is the deepest
+// in an even slice of the dive, so the shape reaches the dive's maximum; the
+// surface is pinned at both ends, where every dive starts and finishes. Draws
+// nothing for a series that never leaves the surface.
 export function DiveProfileSilhouette({
   depths,
   className,
@@ -18,6 +20,7 @@ export function DiveProfileSilhouette({
   depths: number[];
   className?: string;
 }) {
+  const gradientId = useId();
   const deepest = Math.max(0, ...depths);
   if (deepest === 0) return null;
 
@@ -39,7 +42,13 @@ export function DiveProfileSilhouette({
       overflow="visible"
       className={cn("text-teal", className)}
     >
-      <path d={`${curve} Z`} fill="currentColor" className="opacity-25" />
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="currentColor" stopOpacity="0" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0.4" />
+        </linearGradient>
+      </defs>
+      <path d={`${curve} Z`} fill={`url(#${gradientId})`} />
       <path
         d={curve}
         fill="none"
