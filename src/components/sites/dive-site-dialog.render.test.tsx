@@ -148,7 +148,6 @@ describe("DiveSiteDialog coordinate paste", () => {
         latitude: 27.85,
         longitude: 34.31,
         location: "Sharm El-Sheikh, Egypt",
-        display_name: "Sharm El-Sheikh, South Sinai, Egypt",
         name: "Sharm El-Sheikh",
         attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
       },
@@ -407,19 +406,21 @@ describe("DiveSiteDialog API refusal", () => {
 // there is no way back from one: the migration that made the member an object
 // does not run twice.
 describe("DiveSiteDialog location writes", () => {
+  const PLACE = {
+    name: "Dahab, Egypt",
+    latitude: 28.4949,
+    longitude: 34.5136,
+    bbox_south: 28.45,
+    bbox_north: 28.54,
+    bbox_west: 34.47,
+    bbox_east: 34.55,
+  };
   const PICKED = {
     uuid: "site-1",
     name: "Blue Hole",
-    location: {
-      name: "Dahab, Egypt",
-      full_name: "Dahab, South Sinai, 45214, Egypt",
-      latitude: 28.4949,
-      longitude: 34.5136,
-      bbox_south: 28.45,
-      bbox_north: 28.54,
-      bbox_west: 34.47,
-      bbox_east: 34.55,
-    },
+    // Read the way an API that still returns `full_name` sends it. The API
+    // refuses a member it does not know on write, so a save must not echo it.
+    location: { ...PLACE, full_name: "Dahab, South Sinai, 45214, Egypt" },
     latitude: 28.5717,
     longitude: 34.5372,
     notes: "",
@@ -448,8 +449,10 @@ describe("DiveSiteDialog location writes", () => {
   it("sends the whole place back when only the site's name changed", async () => {
     // The field shows "Dahab, Egypt" and nothing else, so a control bound to
     // that string alone would post a place carrying only a name - silently
-    // dropping the full name, the locality's centre and its extent on every
-    // edit of every site anyone has ever picked a place for.
+    // dropping the locality's centre and its extent on every edit of every
+    // site anyone has ever picked a place for. The place goes back as the form
+    // declares it, so a member the read carried and the form does not know
+    // stays behind.
     renderEdit();
     const name = screen.getByLabelText("Name *") as HTMLInputElement;
     await userEvent.clear(name);
@@ -459,8 +462,8 @@ describe("DiveSiteDialog location writes", () => {
     await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
     expect(updateDiveSite.mock.calls[0][1]).toMatchObject({
       name: "Blue Hole (north entry)",
-      location: PICKED.location,
     });
+    expect(updateDiveSite.mock.calls[0][1].location).toEqual(PLACE);
   });
 
   it("clears the place with an explicit null, not an empty name", async () => {
@@ -494,7 +497,7 @@ describe("DiveSiteDialog location writes", () => {
   });
 
   it("replaces the place outright when a new name is typed over it", async () => {
-    // A full name, a centre and an extent resolved for Dahab say nothing true
+    // A centre and an extent resolved for Dahab say nothing true
     // about Moalboal, so they go with the name they belonged to rather than
     // being carried over onto it.
     renderEdit();

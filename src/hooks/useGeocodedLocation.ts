@@ -194,8 +194,6 @@ export function useGeocodedLocation({
         // centre would claim the town sits exactly on the wreck. The two are
         // different facts, and this is the one path where they are guaranteed
         // to be the same point, so nothing on screen would show the mistake.
-        // The provider's full label is left behind for the same reason: this
-        // answered "what is here", not "where is that place".
         const place: AdoptedPlace | null = result
           ? {
               location: { name: result.location },

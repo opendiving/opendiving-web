@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatPlaceContext,
+  geocodeResultLabel,
   geocodeResultToLocation,
   unrepeated,
 } from "./locations";
@@ -56,9 +57,10 @@ describe("geocodeResultToLocation", () => {
   const DAHAB: GeocodeResult = {
     latitude: 28.4949,
     longitude: 34.5136,
-    location: "Dahab, Egypt",
-    display_name: "Dahab, South Sinai Governorate, Egypt",
+    location: "Dahab, South Sinai Governorate, Egypt",
     name: "Dahab",
+    region: "South Sinai Governorate",
+    country: "Egypt",
     attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
     bbox_south: 28.45,
     bbox_north: 28.54,
@@ -66,30 +68,29 @@ describe("geocodeResultToLocation", () => {
     bbox_east: 34.55,
   };
 
-  it("names the place the way a person writes it", () => {
-    // The API's composed place-plus-country, which is what every surface
-    // renders - never the fuller label, which nothing does.
-    expect(geocodeResultToLocation(DAHAB).name).toBe("Dahab, Egypt");
-  });
-
-  it("keeps the whole label as the fuller form", () => {
-    // Stored so an export carries what the source held. It is not derivable
-    // from the short form, which is the whole reason it is kept at all.
-    expect(geocodeResultToLocation(DAHAB).full_name).toBe(
+  it("saves the API's composed name unchanged", () => {
+    // The place, its region and its country, composed once by the API for a
+    // search and a pin alike - so nothing here joins it from the parts.
+    expect(geocodeResultToLocation(DAHAB).name).toBe(
       "Dahab, South Sinai Governorate, Egypt",
     );
+    expect(
+      geocodeResultToLocation({
+        ...DAHAB,
+        region: "Somewhere Else",
+        country: "Nowhere",
+      }).name,
+    ).toBe("Dahab, South Sinai Governorate, Egypt");
   });
 
   it("ignores the result's own bare name, which is not what a log records", () => {
     // "Dahab" alone says nothing about which Dahab. It still has a job in the
-    // menu, where it is the row's title - but not in the field.
+    // site search, where it is the row's title - but not in the field.
     expect(geocodeResultToLocation({ ...DAHAB, name: "Dahab" }).name).toBe(
-      "Dahab, Egypt",
+      "Dahab, South Sinai Governorate, Egypt",
     );
-    // And an address-only result has no name at all, which used to be why the
-    // mapping needed a fallback.
     expect(geocodeResultToLocation({ ...DAHAB, name: null }).name).toBe(
-      "Dahab, Egypt",
+      "Dahab, South Sinai Governorate, Egypt",
     );
   });
 
@@ -98,8 +99,7 @@ describe("geocodeResultToLocation", () => {
     // reverse geocode does not come through here, because its coordinates are
     // the host's own pin.
     expect(geocodeResultToLocation(DAHAB)).toEqual({
-      name: "Dahab, Egypt",
-      full_name: "Dahab, South Sinai Governorate, Egypt",
+      name: "Dahab, South Sinai Governorate, Egypt",
       latitude: 28.4949,
       longitude: 34.5136,
       bbox_south: 28.45,
@@ -126,5 +126,51 @@ describe("geocodeResultToLocation", () => {
       bbox_west: null,
       bbox_east: null,
     });
+  });
+});
+
+describe("geocodeResultLabel", () => {
+  const MOALBOAL: GeocodeResult = {
+    latitude: 9.94,
+    longitude: 123.39,
+    location: "Moalboal, Cebu, Philippines",
+    name: "Moalboal",
+    region: "Cebu",
+    country: "Philippines",
+    attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
+  };
+
+  it("reads, as one line, what picking the row saves", () => {
+    const { name, context } = geocodeResultLabel(MOALBOAL);
+    expect({ name, context }).toEqual({
+      name: "Moalboal",
+      context: "Cebu, Philippines",
+    });
+    expect([name, context].join(", ")).toBe(
+      geocodeResultToLocation(MOALBOAL).name,
+    );
+  });
+
+  it("drops a hint part the name already says", () => {
+    expect(
+      geocodeResultLabel({
+        ...MOALBOAL,
+        location: "Philippines",
+        name: "Philippines",
+        region: null,
+      }),
+    ).toEqual({ name: "Philippines", context: null });
+  });
+
+  it("reads a result with no name of its own as its location alone", () => {
+    // An address-only row: the API put its finest address part in the name's
+    // place, so every part a hint could add is already in `location`.
+    expect(
+      geocodeResultLabel({
+        ...MOALBOAL,
+        location: "Panagsama Road, Cebu, Philippines",
+        name: null,
+      }),
+    ).toEqual({ name: "Panagsama Road, Cebu, Philippines", context: null });
   });
 });

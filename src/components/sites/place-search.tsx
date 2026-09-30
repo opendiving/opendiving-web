@@ -58,18 +58,13 @@ function catalogKey(site: DiveSiteSuggestion): string {
 }
 
 // A stable id for a result, since a geocoded place has none of its own. The
-// position plus the full label is specific enough that two genuinely different
-// places never collide - the same reasoning as `locationKey` in the trip picker,
-// which this deliberately does not import: a dive site is not a trip location,
-// and the two features share `lib/`, not each other's components.
-//
-// The full label rather than the short one the row shows. Nothing renders from
-// this, it only has to be unique for the length of one menu, and the longer
-// string is the stricter of the two - a place returned twice under different
-// labels is two rows a diver can tell apart, which is not the duplicate this is
-// here to collapse.
+// position plus the composed name is specific enough that two genuinely
+// different places never collide - the same reasoning as `locationKey` in the
+// trip picker, which this deliberately does not import: a dive site is not a
+// trip location, and the two features share `lib/`, not each other's components.
+// Two results at one position under one name are one place, and one row.
 function placeKey(result: GeocodeResult): string {
-  return `${result.latitude}:${result.longitude}:${result.display_name}`;
+  return `${result.latitude}:${result.longitude}:${result.location}`;
 }
 
 // A geocoded row that is the same OSM object as a catalog row in this answer.
@@ -272,10 +267,10 @@ export function PlaceSearch({ onPick, position, disabled }: PlaceSearchProps) {
           if (pick) onPick(pick);
         }}
         disabled={disabled}
-        // Not the Location field's own "e.g. Dahab, Egypt", which sits four
-        // fields above this one: the same example twice on one form reads as a
-        // copy-paste slip, and this one is answering a different question - a
-        // bare name is what both sources want.
+        // Not the Location field's own "e.g. Dahab, South Sinai, Egypt", which
+        // sits four fields above this one: the same example twice on one form
+        // reads as a copy-paste slip, and this one is answering a different
+        // question - a bare name is what both sources want.
         placeholder="e.g. Thistlegorm"
         noItemsLabel="Type to search dive sites and places."
         // The narrowest bounds outside which *neither* source is asked anything,

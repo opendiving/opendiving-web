@@ -16,7 +16,6 @@ const nullableNumber = (limit: number) =>
 // `parts.0.location.name`, is the word "undefined" in red. The diver would be
 // told nothing, by a form that had also stopped saving.
 export const MAX_LOCATION_NAME_LENGTH = 255;
-export const MAX_LOCATION_FULL_NAME_LENGTH = 512;
 
 /**
  * One place as either form holds it - a dive site's locality and a trip part's
@@ -24,8 +23,6 @@ export const MAX_LOCATION_FULL_NAME_LENGTH = 512;
  *
  * `name` is the only member that is always there: a place typed in by hand,
  * because the geocoder had nothing for it, has a name and nothing else.
- * `full_name` is the fullest form a lookup returned, stored for the export and
- * rendered nowhere.
  */
 export const locationSchema = z.object({
   name: z
@@ -35,13 +32,6 @@ export const locationSchema = z.object({
       MAX_LOCATION_NAME_LENGTH,
       `Location name cannot exceed ${MAX_LOCATION_NAME_LENGTH} characters`,
     ),
-  full_name: z
-    .string()
-    .max(
-      MAX_LOCATION_FULL_NAME_LENGTH,
-      `Location description cannot exceed ${MAX_LOCATION_FULL_NAME_LENGTH} characters`,
-    )
-    .nullish(),
   latitude: nullableNumber(90),
   longitude: nullableNumber(180),
   bbox_south: nullableNumber(90),

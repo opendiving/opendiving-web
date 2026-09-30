@@ -13,13 +13,10 @@ export const MAX_PLACE_QUERY_LENGTH = 200;
 /**
  * One place, normalized by the API away from whichever provider answered.
  *
- * `location` and `display_name` answer different questions. `location` is the
- * short, composed form that becomes a dive site's place `name` - divers write
- * "Ko Tao, Thailand", not a five-part address; a trip part's is composed from
- * `name`, `region` and `country` instead. `display_name` is the fuller label the
- * API composes - the name and every address part above it for a search result,
- * the provider's own label for a pin - which becomes the place's `full_name`,
- * stored for the export and rendered nowhere.
+ * `location` is what a pick saves as a place's `name`, in the site dialog and
+ * the trip form, for a search result and a pin alike: the place, its region and
+ * its country, "Ko Tao, Surat Thani Province, Thailand" - as a person writes
+ * it, not a postal address. The API composes it; nothing here rebuilds it.
  *
  * `attribution` rides on each result rather than in an envelope because it is a
  * licence condition of the data itself, and it must be rendered wherever the
@@ -29,13 +26,13 @@ export interface GeocodeResult {
   latitude: number;
   longitude: number;
   location: string;
-  display_name: string;
   // The place's own name, where it has one. Absent for an address-only result.
   name?: string | null;
-  // Where a search result sits, which is what pulls two same-named places apart
-  // in a menu: the same role as `DiveSiteSuggestion`'s fields of these names,
-  // though not the same vocabulary. `region` is the finer of the two. Absent on
-  // a reverse geocode, and from an API that predates them.
+  // Where a result sits, which is what pulls two same-named places apart in a
+  // menu: the same role as `DiveSiteSuggestion`'s fields of these names, though
+  // not the same vocabulary. `region` is the finer of the two. A pin's answer
+  // carries them as a search result does; each is absent where the map records
+  // none, and on the offshore answer, which names only the water.
   country?: string | null;
   region?: string | null;
   // The OSM object a search result is, spelled as the dive site catalog spells

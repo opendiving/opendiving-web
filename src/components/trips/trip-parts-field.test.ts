@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { GeocodeResult } from "@/lib/api/geocoding";
 import { geocodeResultToLocation } from "@/lib/locations";
-import { MAX_LOCATION_NAME_LENGTH } from "@/lib/validations/location";
 import {
   describeTripPart,
   locationKey,
@@ -12,8 +11,7 @@ import {
 const MOALBOAL: GeocodeResult = {
   latitude: 9.9366,
   longitude: 123.3986,
-  location: "Moalboal, Philippines",
-  display_name: "Moalboal, Cebu, Central Visayas, Philippines",
+  location: "Moalboal, Cebu, Philippines",
   name: "Moalboal",
   region: "Cebu",
   country: "Philippines",
@@ -23,8 +21,7 @@ const MOALBOAL: GeocodeResult = {
 const BOHOL: GeocodeResult = {
   latitude: 9.85,
   longitude: 124.14,
-  location: "Bohol, Philippines",
-  display_name: "Bohol, Central Visayas, Philippines",
+  location: "Bohol, Central Visayas, Philippines",
   name: "Bohol",
   region: "Central Visayas",
   country: "Philippines",
@@ -36,27 +33,38 @@ const BOHOL: GeocodeResult = {
 };
 
 describe("locationKey", () => {
-  it("identifies a picked place by position and fuller name", () => {
+  it("identifies a picked place by position and name", () => {
     // Places are value objects with no id of their own, so a menu row's id has
     // to come from the content.
     expect(locationKey(geocodeResultToLocation(MOALBOAL))).toBe(
-      "geo:9.9366:123.3986:Moalboal, Cebu, Central Visayas, Philippines",
+      "geo:9.9366:123.3986:Moalboal, Cebu, Philippines",
     );
   });
 
   it("separates two places of the same name", () => {
-    // Both compose to "Moalboal, Philippines" now the short form is what a
-    // place is called, so the position and the fuller label are what separate
-    // them.
     const negros = geocodeResultToLocation({
       ...MOALBOAL,
       latitude: 9.33,
       longitude: 122.86,
-      display_name: "Moalboal, Negros Oriental, Philippines",
+      location: "Moalboal, Negros Oriental, Philippines",
+      region: "Negros Oriental",
     });
 
     expect(locationKey(geocodeResultToLocation(MOALBOAL))).not.toBe(
       locationKey(negros),
+    );
+  });
+
+  it("keys a place read back with a member the form does not know alike", () => {
+    // A read from an API that still returns `full_name` is the same place as a
+    // fresh pick of it, so the part's row recognises it in the menu.
+    const read = {
+      ...geocodeResultToLocation(MOALBOAL),
+      full_name: "Moalboal, Cebu, Central Visayas, Philippines",
+    };
+
+    expect(locationKey(read)).toBe(
+      locationKey(geocodeResultToLocation(MOALBOAL)),
     );
   });
 
@@ -80,7 +88,7 @@ describe("locationKey", () => {
 });
 
 describe("mapSearchResults", () => {
-  it("names each row and the place it sets by place, region and country", () => {
+  it("names each row, and the place it sets, by the result's location", () => {
     const { items, locations } = mapSearchResults([MOALBOAL, BOHOL]);
 
     expect(items).toEqual([
@@ -93,53 +101,29 @@ describe("mapSearchResults", () => {
         name: "Bohol, Central Visayas, Philippines",
       },
     ]);
-    // Only the name differs from the dive site form's place: the position, the
-    // box and the fuller label are the result's own.
-    expect(locations.get(items[1].id)).toEqual({
-      ...geocodeResultToLocation(BOHOL),
-      name: "Bohol, Central Visayas, Philippines",
-    });
+    // The same place the dive site form saves for the same result.
+    expect(locations.get(items[1].id)).toEqual(geocodeResultToLocation(BOHOL));
   });
 
-  it("leaves out a region the result does not have", () => {
-    // An older API, or a place OSM files under nothing finer than a country.
-    const { items } = mapSearchResults([{ ...MOALBOAL, region: undefined }]);
-
-    expect(items[0].name).toBe("Moalboal, Philippines");
-  });
-
-  it("does not repeat a part the place's own name already says", () => {
-    const { items } = mapSearchResults([
-      {
-        ...MOALBOAL,
-        name: "Cebu",
-        location: "Cebu, Philippines",
-        display_name: "Cebu, Central Visayas, Philippines",
-        region: "Cebu",
-      },
+  it("joins nothing from the result's parts", () => {
+    // The API composed `location` once; a region or country beside it that
+    // reads differently is a hint for another picker, not a second name.
+    const { items, locations } = mapSearchResults([
+      { ...MOALBOAL, region: undefined },
       {
         ...MOALBOAL,
         latitude: 12.88,
         longitude: 121.77,
         name: "Philippines",
         location: "Philippines",
-        display_name: "Philippines",
-        region: null,
+        region: "Philippines",
       },
     ]);
 
     expect(items.map((item) => item.name)).toEqual([
-      "Cebu, Philippines",
+      "Moalboal, Cebu, Philippines",
       "Philippines",
     ]);
-  });
-
-  it("cuts a composed name to the API's ceiling", () => {
-    const { items, locations } = mapSearchResults([
-      { ...MOALBOAL, region: "R".repeat(300) },
-    ]);
-
-    expect(items[0].name).toHaveLength(MAX_LOCATION_NAME_LENGTH);
     expect(locations.get(items[0].id)?.name).toBe(items[0].name);
   });
 
@@ -154,8 +138,12 @@ describe("mapSearchResults", () => {
 
   it("collapses results that key identically", () => {
     // Two rows sharing an id is a React key warning and an id that resolves
-    // back to whichever of them was written last.
-    const { items } = mapSearchResults([MOALBOAL, { ...MOALBOAL }]);
+    // back to whichever of them was written last. Two results at one position
+    // under one name are one place.
+    const { items } = mapSearchResults([
+      MOALBOAL,
+      { ...MOALBOAL, source_id: "node/2" },
+    ]);
 
     expect(items).toHaveLength(1);
   });
@@ -169,8 +157,7 @@ describe("mapSearchResults", () => {
       {
         ...MOALBOAL,
         latitude: 9.9,
-        location: "Panagsama, Philippines",
-        display_name: "Panagsama Beach, Cebu, Philippines",
+        location: "Panagsama Beach, Cebu, Philippines",
         attribution: "Natural Earth",
       },
     ]);

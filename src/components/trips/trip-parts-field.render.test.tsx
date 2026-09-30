@@ -34,8 +34,7 @@ const searchPlaces = vi.mocked(geocodingAPI.searchPlaces);
 const DAHAB = {
   latitude: 28.4954,
   longitude: 34.5197,
-  location: "Dahab, Egypt",
-  display_name: "Dahab, South Sinai, 45214, Egypt",
+  location: "Dahab, South Sinai, Egypt",
   name: "Dahab",
   region: "South Sinai",
   country: "Egypt",
@@ -66,9 +65,23 @@ beforeEach(() => {
 
 // The field is controlled, and every one of these asserts on what it does to
 // its own value - so the test holds the state the form would.
-function Field({ initial = [] }: { initial?: TripPartFormValue[] }) {
+function Field({
+  initial = [],
+  onChange,
+}: {
+  initial?: TripPartFormValue[];
+  onChange?: (parts: TripPartFormValue[]) => void;
+}) {
   const [value, setValue] = useState<TripPartFormValue[]>(initial);
-  return <TripPartsField value={value} onChange={setValue} />;
+  return (
+    <TripPartsField
+      value={value}
+      onChange={(parts) => {
+        setValue(parts);
+        onChange?.(parts);
+      }}
+    />
+  );
 }
 
 // Each row carries two pickers, the place and the accommodation beneath it; these
@@ -112,10 +125,7 @@ describe("TripPartsField", () => {
       <Field
         initial={[
           {
-            location: {
-              name: "Dahab, Egypt",
-              full_name: "Dahab, South Sinai, Egypt",
-            },
+            location: { name: "Dahab, Egypt" },
             start_date: "2026-04-18",
             end_date: "2026-04-22",
           },
@@ -270,8 +280,7 @@ describe("TripPartsField", () => {
       {
         latitude: 37.1,
         longitude: -85.2,
-        location: "Phil, United States",
-        display_name: "Phil, Casey County, Kentucky, United States",
+        location: "Phil, Kentucky, United States",
         name: "phil",
         attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
       },
@@ -329,7 +338,6 @@ describe("TripPartsField", () => {
           {
             location: {
               name: "Dahab, Egypt",
-              full_name: "Dahab, South Sinai, Egypt",
               latitude: 28.4954,
               longitude: 34.5197,
             },
@@ -620,15 +628,14 @@ describe("TripPartsField", () => {
 // A menu row's `name` is more than its text here: the combobox writes a picked
 // row's `name` into the input, and an Enter with nothing highlighted picks any
 // row whose `name` equals what was typed. So the name is the whole of what a
-// pick saves - place, region and country - and carries no hint beside it.
+// pick saves - the result's `location`, as the API composed it - and carries no
+// hint beside it.
 describe("TripPartsField place rows", () => {
   const OSM = "Data © OpenStreetMap contributors, ODbL 1.0.";
   const KO_TAO = {
     latitude: 10.0921822,
     longitude: 99.8395362,
-    location: "Ko Tao, Thailand",
-    display_name:
-      "Ko Tao, Ko Tao Subdistrict, Ko Pha-ngan, Surat Thani Province, Thailand",
+    location: "Ko Tao, Surat Thani Province, Thailand",
     name: "Ko Tao",
     country: "Thailand",
     region: "Surat Thani Province",
@@ -639,8 +646,7 @@ describe("TripPartsField place rows", () => {
   const MOALBOAL_CEBU = {
     latitude: 9.9366,
     longitude: 123.3986,
-    location: "Moalboal, Philippines",
-    display_name: "Moalboal, Cebu, Central Visayas, Philippines",
+    location: "Moalboal, Cebu, Philippines",
     name: "Moalboal",
     country: "Philippines",
     region: "Cebu",
@@ -650,7 +656,7 @@ describe("TripPartsField place rows", () => {
     ...MOALBOAL_CEBU,
     latitude: 7.62,
     longitude: 122.52,
-    display_name: "Moalboal, Zamboanga Sibugay, Philippines",
+    location: "Moalboal, Zamboanga Sibugay, Philippines",
     region: "Zamboanga Sibugay",
   };
 
@@ -682,7 +688,8 @@ describe("TripPartsField place rows", () => {
 
   it("saves what the row said, and shows it in the field", async () => {
     searchPlaces.mockResolvedValue([KO_TAO]);
-    render(<Field initial={[{ location: null }]} />);
+    const onChange = vi.fn();
+    render(<Field initial={[{ location: null }]} onChange={onChange} />);
 
     await searchIn("ko tao");
     await userEvent.click(
@@ -695,6 +702,16 @@ describe("TripPartsField place rows", () => {
       expect(places()).toEqual(["Ko Tao, Surat Thani Province, Thailand"]),
     );
     expect(placeInput()).toHaveValue("Ko Tao, Surat Thani Province, Thailand");
+    // The API's `location`, unchanged, with the place's own position.
+    expect(onChange.mock.lastCall?.[0][0].location).toEqual({
+      name: KO_TAO.location,
+      latitude: KO_TAO.latitude,
+      longitude: KO_TAO.longitude,
+      bbox_south: undefined,
+      bbox_north: undefined,
+      bbox_west: undefined,
+      bbox_east: undefined,
+    });
   });
 
   it("adds a bare typed name on Enter rather than picking a same-named place", async () => {
@@ -711,16 +728,18 @@ describe("TripPartsField place rows", () => {
     expect(screen.getByText("Not on the map")).toBeInTheDocument();
   });
 
-  it("names a row with no region by place and country alone", async () => {
-    // An older API, or a place OSM holds nothing finer than a country for:
-    // never "undefined" and never a stray comma.
+  it("reads a row as its location, whatever its region says", async () => {
+    // The API composed the name once; the parts beside it are a hint for the
+    // dive site search, and nothing here joins them again.
     searchPlaces.mockResolvedValue([{ ...KO_TAO, region: null }]);
     render(<Field initial={[{ location: null }]} />);
 
     await searchIn("ko tao");
 
     expect(
-      await screen.findByRole("option", { name: "Ko Tao, Thailand" }),
+      await screen.findByRole("option", {
+        name: "Ko Tao, Surat Thani Province, Thailand",
+      }),
     ).toBeInTheDocument();
   });
 });

@@ -89,29 +89,41 @@ describe("tripFormSchema", () => {
   });
 
   it("accepts a geocoded place whole", () => {
+    const place = {
+      name: "Moalboal, Cebu, Philippines",
+      latitude: 9.9366,
+      longitude: 123.396,
+      bbox_south: 9.87,
+      bbox_north: 10.0,
+      bbox_west: 123.3,
+      bbox_east: 123.45,
+    };
+    const result = tripFormSchema.safeParse({
+      ...validTrip,
+      parts: [{ location: place }],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.parts?.[0].location).toEqual(place);
+  });
+
+  it("leaves behind a member a read carried and the form does not know", () => {
+    // An API that still returns `full_name` on a read refuses it on write, and
+    // a saved part is the place as this schema declares it - so the member is
+    // stripped, not echoed back.
+    const place = { name: "Moalboal, Cebu, Philippines", latitude: 9.9366 };
     const result = tripFormSchema.safeParse({
       ...validTrip,
       parts: [
         {
           location: {
-            name: "Moalboal, Philippines",
+            ...place,
             full_name: "Moalboal, Cebu, Central Visayas, Philippines",
-            latitude: 9.9366,
-            longitude: 123.396,
-            bbox_south: 9.87,
-            bbox_north: 10.0,
-            bbox_west: 123.3,
-            bbox_east: 123.45,
           },
         },
       ],
     });
     expect(result.success).toBe(true);
-    // Named, because an unknown member is stripped rather than refused: a
-    // fixture spelling this wrong would pass while covering nothing.
-    expect(result.data?.parts?.[0].location?.full_name).toBe(
-      "Moalboal, Cebu, Central Visayas, Philippines",
-    );
+    expect(result.data?.parts?.[0].location).toEqual(place);
   });
 
   it("accepts the nulls the API sends for an unknown position", () => {
@@ -123,7 +135,6 @@ describe("tripFormSchema", () => {
         {
           location: {
             name: "Somewhere",
-            full_name: null,
             latitude: null,
             longitude: null,
             bbox_south: null,
@@ -137,12 +148,10 @@ describe("tripFormSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects a fuller name past the API's ceiling", () => {
+  it("rejects a name past the API's ceiling", () => {
     const result = tripFormSchema.safeParse({
       ...validTrip,
-      parts: [
-        { location: { name: "Dahab, Egypt", full_name: "a".repeat(513) } },
-      ],
+      parts: [{ location: { name: "a".repeat(256) } }],
     });
     expect(result.success).toBe(false);
   });
@@ -237,8 +246,9 @@ describe("normalizeTripParts", () => {
 
   it("carries a place through untouched", () => {
     const location = {
-      name: "Dahab, Egypt",
-      full_name: "Dahab, South Sinai, Egypt",
+      name: "Dahab, South Sinai, Egypt",
+      latitude: 28.4954,
+      longitude: 34.5197,
     };
     expect(normalizeTripParts([{ location }])[0].location).toEqual(location);
   });
