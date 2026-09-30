@@ -9,6 +9,7 @@ import { TripsPageFrame } from "@/components/trips/trips-page-frame";
 import { TripCard } from "@/components/trips/trip-card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
+import { useQuickCreate } from "@/components/layout/quick-create";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
@@ -22,8 +23,8 @@ const SEARCH_DEBOUNCE_MS = 250;
 
 export function TripsPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  // `null` = the dialog is closed; a trip = editing it; `undefined` = creating.
-  const [editingTrip, setEditingTrip] = useState<Trip | null | undefined>(null);
+  const openCreate = useQuickCreate();
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   // What the box holds, and what has actually been asked for. Splitting them is
   // what keeps the debounce off the input's own responsiveness.
   const [searchInput, setSearchInput] = useState("");
@@ -106,7 +107,7 @@ export function TripsPageContent() {
         search={searchInput}
         onSearchChange={setSearchInput}
         isSearching={search.length > 0}
-        onNew={() => setEditingTrip(undefined)}
+        onNew={() => openCreate("trip")}
         cards={trips.map((trip) => (
           <TripCard
             key={trip.uuid}

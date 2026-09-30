@@ -11,6 +11,7 @@ import { SitesPageFrame } from "@/components/sites/sites-page-frame";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
+import { useQuickCreate } from "@/components/layout/quick-create";
 import { Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -26,10 +27,8 @@ const SEARCH_DEBOUNCE_MS = 250;
 
 export function SitesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  // `null` = the dialog is closed; a site = editing it; `undefined` = creating.
-  const [editingSite, setEditingSite] = useState<DiveSite | null | undefined>(
-    null,
-  );
+  const openCreate = useQuickCreate();
+  const [editingSite, setEditingSite] = useState<DiveSite | null>(null);
 
   // What the box holds, and what has actually been asked for. Splitting them is
   // what keeps the debounce off the input's own responsiveness.
@@ -109,7 +108,7 @@ export function SitesPageContent() {
         search={searchInput}
         onSearchChange={setSearchInput}
         isSearching={search.length > 0}
-        onNew={() => setEditingSite(undefined)}
+        onNew={() => openCreate("site")}
         rows={diveSites.map((diveSite) => (
           <TableRow key={diveSite.uuid}>
             <TableCell className="font-medium">

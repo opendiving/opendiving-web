@@ -8,19 +8,21 @@ import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
 import { CourseDialog } from "@/components/courses/course-dialog";
+import { PersonDialog } from "@/components/people/person-dialog";
 
 // Everything that can be created from anywhere in the app. A dive is missing on
 // purpose: it's the one form too big for a dialog, so it stays a page
 // (`/dives/new`) and is linked to rather than opened from here.
 export type QuickCreateKind =
-  "trip" | "site" | "gear" | "certification" | "course";
+  "trip" | "site" | "gear" | "certification" | "course" | "person";
 
 const QuickCreateContext = createContext<
   ((kind: QuickCreateKind) => void) | null
 >(null);
 
 // Opens the create dialog for `kind` from anywhere under the app shell - the
-// header's "+" menu, an empty-state button on the dashboard, and so on.
+// header's "+" menu, a list page's "New" button, an empty-state button on the
+// dashboard, and so on.
 export function useQuickCreate() {
   const openCreate = useContext(QuickCreateContext);
   if (!openCreate) {
@@ -47,8 +49,9 @@ export function QuickCreateProvider({
 
   const openCreate = useCallback((next: QuickCreateKind) => setKind(next), []);
 
-  // Creating from here is a deliberate detour, so take the diver to what they
-  // just made - its own page where there is one, otherwise the section list.
+  // Take the diver to what they just made - its own page where there is one,
+  // otherwise the section list - even from that section's own list, where the
+  // new row would land wherever the sort puts it, often out of sight.
   const goTo = (href: string) => {
     setKind(null);
     router.push(href);
@@ -88,6 +91,11 @@ export function QuickCreateProvider({
             open={kind === "course"}
             onOpenChange={close}
             onSaved={(course) => goTo(`/courses/${course.uuid}`)}
+          />
+          <PersonDialog
+            open={kind === "person"}
+            onOpenChange={close}
+            onSaved={(person) => goTo(`/people/${person.uuid}`)}
           />
         </>
       )}

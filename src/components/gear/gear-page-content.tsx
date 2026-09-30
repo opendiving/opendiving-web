@@ -11,18 +11,17 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
+import { useQuickCreate } from "@/components/layout/quick-create";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
 import { GearPageFrame } from "@/components/gear/gear-page-frame";
 
 export function GearPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const { toast } = useToast();
+  const openCreate = useQuickCreate();
 
   const [showArchived, setShowArchived] = useState(false);
-  // `null` = the dialog is closed; an item = editing it; `undefined` = creating.
-  const [editingItem, setEditingItem] = useState<GearItem | null | undefined>(
-    null,
-  );
+  const [editingItem, setEditingItem] = useState<GearItem | null>(null);
   // `null` = the set dialog is closed; otherwise the props it opens with, so
   // `{}` creates, `{ gearSet }` edits and `{ duplicateOf }` creates a copy.
   const [setDialog, setSetDialog] = useState<{
@@ -88,8 +87,8 @@ export function GearPageContent() {
   });
 
   // For the two paths that change an item without removing it - archiving, which
-  // moves the row in or out of the filtered list, and a save, which can create a
-  // row that belongs anywhere in it. Neither can be applied in place, and both
+  // moves the row in or out of the filtered list, and an edit, which can move
+  // the row anywhere in it. Neither can be applied in place, and both
   // can change what a set names, so both lists are read again. The delete path
   // does *not* come through here; it drops its own row and re-reads only the
   // sets.
@@ -190,7 +189,7 @@ export function GearPageContent() {
   return (
     <>
       <GearPageFrame
-        onNew={() => setEditingItem(undefined)}
+        onNew={() => openCreate("gear")}
         setsCardRef={setsCardRef}
         items={{
           items: gearItems,
@@ -203,7 +202,7 @@ export function GearPageContent() {
           onLoadMore: loadMoreItems,
           showArchived,
           onShowArchivedChange: setShowArchived,
-          onCreate: () => setEditingItem(undefined),
+          onCreate: () => openCreate("gear"),
           onEdit: setEditingItem,
           onArchiveToggle: handleArchiveToggle,
           isArchiving,
