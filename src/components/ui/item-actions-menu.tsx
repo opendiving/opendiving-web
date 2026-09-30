@@ -11,10 +11,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IconTooltip } from "@/components/ui/tooltip";
 
-// Secondary actions, behind one icon button beside Edit - on a detail page, or
-// on a row that repeats down a list. An item that opens a dialog renders that
-// dialog outside `children`: the menu's content unmounts the moment it closes,
-// and takes anything inside it along.
+// A record's actions behind one icon button - the secondary ones beside Edit on
+// a detail page, or all of them on a row that repeats down a list. An item that
+// opens a dialog renders that dialog outside `children`: the menu's content
+// unmounts the moment it closes, and takes anything inside it along.
 export function ItemActionsMenu({
   children,
   label = "More actions",
@@ -22,11 +22,11 @@ export function ItemActionsMenu({
   size = "icon",
 }: {
   children: ReactNode;
-  // A row's menu names its row, as the row's Edit does: a list of identical
-  // "More actions" tells a screen reader's controls list nothing about which.
+  // A row's menu names its row: a list of identical "More actions" tells a
+  // screen reader's controls list nothing about which.
   label?: string;
-  // Matched to the Edit button beside it, which is an outline button with text
-  // on a detail page and a ghost icon in a row.
+  // Outline beside a detail page's outlined Edit; a row passes ghost, as a
+  // table's row actions are.
   variant?: ButtonProps["variant"];
   size?: ButtonProps["size"];
 }) {

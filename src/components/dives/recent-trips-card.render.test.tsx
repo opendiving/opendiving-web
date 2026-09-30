@@ -29,6 +29,13 @@ vi.mock("@/components/map/locations-map-lazy", () => ({
   ),
 }));
 
+// The form is covered where it lives, and its pickers would make requests of
+// their own here; what matters is which trip it was opened for.
+vi.mock("@/components/trips/trip-dialog", () => ({
+  TripDialog: ({ open, trip }: { open: boolean; trip?: Trip | null }) =>
+    open ? <div role="dialog">Editing {trip?.name}</div> : null,
+}));
+
 const { tripsAPI } = await import("@/lib/api/trips");
 
 const trip = (overrides: Partial<Trip>): Trip => ({
@@ -90,18 +97,31 @@ describe("RecentTripsCard", () => {
     expect(within(rowOf("Koh Tao 2025")).getByText("Koh Tao")).toBeVisible();
   });
 
-  it("names each row's edit and menu buttons after its trip", async () => {
+  it("names each row's menu after its trip", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
 
     for (const name of ["Dahab 2026", "Koh Tao 2025"]) {
       expect(
-        screen.getByRole("button", { name: `Edit ${name}` }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: `More actions for ${name}` }),
+        screen.getByRole("button", { name: `Actions for ${name}` }),
       ).toBeInTheDocument();
     }
+  });
+
+  it("edits the trip whose menu it was chosen from", async () => {
+    render(<RecentTripsCard />);
+    await screen.findByRole("link", { name: "Dahab 2026" });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for Koh Tao 2025" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit" }),
+    );
+
+    expect(await screen.findByRole("dialog")).toHaveTextContent(
+      "Editing Koh Tao 2025",
+    );
   });
 
   it("deletes a trip from its menu and drops only that row", async () => {
@@ -109,7 +129,7 @@ describe("RecentTripsCard", () => {
     await screen.findByRole("link", { name: "Dahab 2026" });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "More actions for Koh Tao 2025" }),
+      screen.getByRole("button", { name: "Actions for Koh Tao 2025" }),
     );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Delete" }),

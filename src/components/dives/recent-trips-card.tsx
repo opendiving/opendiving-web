@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   DeleteMenuItem,
   ItemActionsMenu,
@@ -144,22 +144,19 @@ export function RecentTripsCard() {
                       >
                         {trip.name}
                       </Link>
-                      {/* Named per row, as the trips table's are. */}
-                      <div className="relative z-10 flex shrink-0 gap-1">
-                        <IconTooltip label={`Edit ${trip.name}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingTrip(trip)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </IconTooltip>
+                      {/* Named per row, as the trips table's actions are. */}
+                      <div className="relative z-10 shrink-0">
                         <ItemActionsMenu
-                          label={`More actions for ${trip.name}`}
+                          label={`Actions for ${trip.name}`}
                           variant="ghost"
                           size="sm"
                         >
+                          <DropdownMenuItem
+                            onSelect={() => setEditingTrip(trip)}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
                           <DeleteMenuItem
                             onSelect={() => requestDelete(trip.uuid)}
                             disabled={deletingId === trip.uuid}
