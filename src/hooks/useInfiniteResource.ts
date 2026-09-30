@@ -35,6 +35,11 @@ interface UseInfiniteResourceOptions<T> {
    * the fetch on every render.
    */
   keyOf: (item: T) => string;
+  /**
+   * Whether `fetchFn`'s query - a search term, a filter - selects part of the
+   * list. Read back as `isCountNarrowed`.
+   */
+  isNarrowed?: boolean;
 }
 
 /**
@@ -53,18 +58,25 @@ export function useInfiniteResource<T>(
     errorMessage = "Failed to load data. Please try again.",
     enabled = true,
     keyOf,
+    isNarrowed = false,
   }: UseInfiniteResourceOptions<T>,
 ) {
   const { toast } = useToast();
   const keyOfRef = useRef(keyOf);
+  const isNarrowedRef = useRef(isNarrowed);
   useEffect(() => {
     keyOfRef.current = keyOf;
+    isNarrowedRef.current = isNarrowed;
   });
 
   const [items, setItems] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  // `isNarrowed` as it stood when the request answering `totalCount` was sent,
+  // committed with it. The caller's own `isNarrowed` moves a round trip earlier,
+  // so a count labelled by it says "72 found" of a list that holds 72 in total.
+  const [isCountNarrowed, setIsCountNarrowed] = useState(isNarrowed);
   const [hasMore, setHasMore] = useState(false);
 
   // Whether the last attempt failed, and the reason it is state the *trigger*
@@ -116,6 +128,7 @@ export function useInfiniteResource<T>(
       const requestId = latestRequest.current + 1;
       latestRequest.current = requestId;
       isFetching.current = true;
+      const narrowed = isNarrowedRef.current;
 
       try {
         setLoadFailed(false);
@@ -147,6 +160,7 @@ export function useInfiniteResource<T>(
         }
 
         setTotalCount(response.total_count);
+        setIsCountNarrowed(narrowed);
         setHasMore(response.has_more);
         nextPage.current = page + 1;
       } catch (error) {
@@ -199,6 +213,7 @@ export function useInfiniteResource<T>(
 
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
+    const narrowed = isNarrowedRef.current;
     // Deliberately not `isFetching`. That flag makes `loadMore` return without
     // starting anything and without moving any state, and the load-more trigger only
     // re-fires on a state change - so a diver who reached the foot of the list during
@@ -234,6 +249,7 @@ export function useInfiniteResource<T>(
       const kept = rows.slice(0, loaded);
       commitItems(kept);
       setTotalCount(response.total_count);
+      setIsCountNarrowed(narrowed);
       // Derived from what is held now, not from what was fetched: `loadMore` has to
       // ask for the page containing the boundary, which a shrunk list moved nearer.
       nextPage.current = Math.floor(kept.length / itemsPerPage) + 1;
@@ -395,6 +411,7 @@ export function useInfiniteResource<T>(
     isLoading,
     isLoadingMore,
     totalCount,
+    isCountNarrowed,
     itemsPerPage,
     hasMore,
     loadFailed,

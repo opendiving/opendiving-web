@@ -109,6 +109,7 @@ export function SpeciesPageContent() {
     isLoading: isLoadingSpecies,
     isLoadingMore,
     totalCount,
+    isCountNarrowed,
     itemsPerPage,
     hasMore,
     loadFailed,
@@ -116,6 +117,7 @@ export function SpeciesPageContent() {
   } = useInfiniteResource<SpeciesLifeListEntry>(fetchSpecies, {
     keyOf: (entry) => entry.uuid,
     enabled: !!user,
+    isNarrowed: search.length > 0,
     itemsPerPage: SPECIES_PER_PAGE,
     errorMessage: "Failed to load your species. Please try again.",
   });
@@ -134,6 +136,7 @@ export function SpeciesPageContent() {
     <SpeciesPageFrame
       isLoading={isLoadingSpecies}
       totalCount={totalCount}
+      isCountNarrowed={isCountNarrowed}
       itemsPerPage={itemsPerPage}
       search={searchInput}
       onSearchChange={setSearchInput}

@@ -148,16 +148,25 @@ describe("CoursesPageFrame", () => {
   });
 
   it("keeps them for filters that matched nothing", () => {
-    frame({ rows: [], filters: { ...NO_COURSE_FILTERS, agency: "padi" } });
+    frame({
+      rows: [],
+      filters: { ...NO_COURSE_FILTERS, agency: "padi" },
+      isCountNarrowed: true,
+    });
 
-    expect(screen.getByText("0 total courses")).toBeInTheDocument();
+    expect(screen.getByText("0 courses found")).toBeInTheDocument();
     expect(toggle()).toBeInTheDocument();
   });
 
   it("keeps them for a search that matched nothing", () => {
-    frame({ rows: [], search: "nitrox", isSearching: true });
+    frame({
+      rows: [],
+      search: "nitrox",
+      isSearching: true,
+      isCountNarrowed: true,
+    });
 
-    expect(screen.getByText("0 total courses")).toBeInTheDocument();
+    expect(screen.getByText("0 courses found")).toBeInTheDocument();
     expect(toggle()).toBeInTheDocument();
   });
 

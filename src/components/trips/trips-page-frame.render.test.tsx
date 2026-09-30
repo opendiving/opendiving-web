@@ -96,9 +96,9 @@ describe("TripsPageFrame", () => {
   });
 
   it("keeps them for a search that matched nothing", () => {
-    frame({ search: "dahab", isSearching: true });
+    frame({ search: "dahab", isSearching: true, isCountNarrowed: true });
 
-    expect(within(header()).getByText("0 total trips")).toBeInTheDocument();
+    expect(within(header()).getByText("0 trips found")).toBeInTheDocument();
     expect(
       within(header()).getByLabelText("Search trips by name or location"),
     ).toBeInTheDocument();

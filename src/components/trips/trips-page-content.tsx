@@ -56,6 +56,7 @@ export function TripsPageContent() {
     isLoading: isLoadingTrips,
     isLoadingMore,
     totalCount,
+    isCountNarrowed,
     itemsPerPage,
     hasMore,
     loadFailed,
@@ -66,6 +67,7 @@ export function TripsPageContent() {
   } = useInfiniteResource<Trip>(fetchTrips, {
     keyOf: (trip) => trip.uuid,
     enabled: !!user,
+    isNarrowed: search.length > 0,
     errorMessage: "Failed to load trips. Please try again.",
   });
 
@@ -99,6 +101,7 @@ export function TripsPageContent() {
       <TripsPageFrame
         isLoading={isLoadingTrips}
         totalCount={totalCount}
+        isCountNarrowed={isCountNarrowed}
         itemsPerPage={itemsPerPage}
         isLoadingMore={isLoadingMore}
         loadFailed={loadFailed}

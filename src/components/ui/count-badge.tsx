@@ -5,13 +5,20 @@ interface CountBadgeProps {
   count: number;
   /** True while the count is still being fetched. */
   isLoading: boolean;
-  /** Singular noun for the thing counted, e.g. "total dive", "certification". */
+  /** Singular noun for the thing counted, e.g. "dive", "certification". */
   label: string;
   /**
    * The plural, where adding an "s" does not produce it. "species" is its own
    * plural, and the default would render "24 speciess".
    */
   plural?: string;
+  /** Whether the whole list reads "N total dives" rather than "N dives". */
+  total?: boolean;
+  /**
+   * Whether a search term or a filter selects what is counted. The count is then
+   * of matches, not of the list, and reads "N dives found".
+   */
+  isNarrowed?: boolean;
 }
 
 /**
@@ -30,18 +37,23 @@ export function CountBadge({
   isLoading,
   label,
   plural = `${label}s`,
+  total = false,
+  isNarrowed = false,
 }: CountBadgeProps) {
   // `count === 0` as well as `isLoading`, so paging through a loaded list keeps
   // showing the total it already knows instead of blinking it away and back.
   // A genuinely empty list is never loading by the time it renders as empty.
   const isUnknown = isLoading && count === 0;
+  const noun = count === 1 ? label : plural;
 
   return (
     <Badge variant="secondary">
       {isUnknown ? (
         <Skeleton className="h-4 w-16" />
+      ) : isNarrowed ? (
+        `${count} ${noun} found`
       ) : (
-        `${count} ${count === 1 ? label : plural}`
+        `${count}${total ? " total" : ""} ${noun}`
       )}
     </Badge>
   );

@@ -77,10 +77,10 @@ describe("SitesPageFrame", () => {
   });
 
   it("keeps them for a search that matched nothing", () => {
-    frame({ search: "dahab", isSearching: true });
+    frame({ search: "dahab", isSearching: true, isCountNarrowed: true });
 
     expect(
-      within(header()).getByText("0 total dive sites"),
+      within(header()).getByText("0 dive sites found"),
     ).toBeInTheDocument();
     expect(
       within(header()).getByLabelText("Search dive sites by name or location"),

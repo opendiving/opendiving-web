@@ -64,9 +64,9 @@ describe("SpeciesPageFrame", () => {
   });
 
   it("keeps them for a search that matched nothing", () => {
-    frame({ search: "nudi", isSearching: true });
+    frame({ search: "nudi", isSearching: true, isCountNarrowed: true });
 
-    expect(within(header()).getByText("0 species")).toBeInTheDocument();
+    expect(within(header()).getByText("0 species found")).toBeInTheDocument();
     expect(
       within(header()).getByLabelText("Search your species by name"),
     ).toBeInTheDocument();

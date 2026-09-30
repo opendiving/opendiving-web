@@ -19,6 +19,8 @@ import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 export interface TripsPageFrameProps {
   isLoading: boolean;
   totalCount: number;
+  /** Whether the query that answered `totalCount` narrowed the list. */
+  isCountNarrowed?: boolean;
   itemsPerPage: number;
   /** One `TripCard` per trip - list items, for the list this frame draws. */
   cards?: ReactNode[];
@@ -43,6 +45,7 @@ const noop = () => {};
 export function TripsPageFrame({
   isLoading,
   totalCount,
+  isCountNarrowed = false,
   itemsPerPage,
   cards = [],
   search = "",
@@ -86,7 +89,9 @@ export function TripsPageFrame({
           <CountBadge
             count={totalCount}
             isLoading={isLoading}
-            label="total trip"
+            label="trip"
+            total
+            isNarrowed={isCountNarrowed}
           />
           <ListSearch
             id="trip-search"

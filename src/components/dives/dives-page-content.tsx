@@ -11,6 +11,7 @@ import { DiveCard } from "@/components/dives/dive-card";
 import { DiveNumberingCard } from "@/components/dives/dive-numbering-card";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import {
+  hasDiveFilters,
   NO_DIVE_FILTERS,
   type DiveListFilters,
 } from "@/components/dives/dives-filters";
@@ -54,6 +55,7 @@ export function DivesPageContent() {
     isLoading: isLoadingDives,
     isLoadingMore,
     totalCount,
+    isCountNarrowed,
     itemsPerPage,
     hasMore,
     loadFailed,
@@ -62,6 +64,7 @@ export function DivesPageContent() {
     removeItem,
   } = useInfiniteResource<Dive>(fetchDives, {
     enabled: !!user,
+    isNarrowed: hasDiveFilters(filters),
     errorMessage: "Failed to load dives. Please try again.",
     keyOf: (dive) => dive.uuid,
   });
@@ -100,6 +103,7 @@ export function DivesPageContent() {
       <DivesPageFrame
         isLoading={isLoadingDives}
         totalCount={totalCount}
+        isCountNarrowed={isCountNarrowed}
         itemsPerPage={itemsPerPage}
         isLoadingMore={isLoadingMore}
         loadFailed={loadFailed}
