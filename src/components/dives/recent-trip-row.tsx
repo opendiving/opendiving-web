@@ -11,7 +11,8 @@ import {
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
-import { Calendar, Edit } from "lucide-react";
+import { formatTripLocationNames } from "@/lib/trip-locations";
+import { Calendar, Edit, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // What the trip's dives add up to, laid out as the dive page lays out its
@@ -147,10 +148,17 @@ export function RecentTripRow({
           </Link>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          <TripLocationsLabel
-            locations={locations}
-            className="relative z-10 min-w-0"
-          />
+          {/* The pin only beside a place it can name, as the dates' calendar
+              only beside dates. */}
+          {formatTripLocationNames(locations) && (
+            <div className="flex min-w-0 items-center gap-1">
+              <MapPin className="h-4 w-4 shrink-0" />
+              <TripLocationsLabel
+                locations={locations}
+                className="relative z-10 min-w-0"
+              />
+            </div>
+          )}
           {/* `ml-auto` keeps the dates on the right when there is no place to
               push them there, and when they wrap. */}
           {dates && (

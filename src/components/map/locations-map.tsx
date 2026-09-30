@@ -426,8 +426,9 @@ export function LocationsMap({
         ref={creditRef}
         className={cn(
           "absolute z-10 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground",
-          // Inset from a backdrop's corner, which is rounded and would clip it.
-          backdrop ? "left-1 top-1 rounded-sm" : "bottom-0 right-0",
+          // Inset from a backdrop's corner, which is rounded and would clip it,
+          // and quieter, as it sits over the part of the map that shows.
+          backdrop ? "left-1 top-1 rounded-sm opacity-75" : "bottom-0 right-0",
         )}
       >
         <Attribution value={basemap.attribution} />
