@@ -60,12 +60,6 @@ vi.mock("@/components/dives/dive-activity-card", () => ({
   DiveActivityCard: () => null,
 }));
 vi.mock("@/components/dives/gas-use-card", () => ({ GasUseCard: () => null }));
-vi.mock("@/components/gear/service-due-card", () => ({
-  ServiceDueCard: () => null,
-}));
-vi.mock("@/components/certifications/certification-expiry-card", () => ({
-  CertificationExpiryCard: () => null,
-}));
 vi.mock("@/components/dashboard/setup-checklist-card", () => ({
   SetupChecklistCard: () => null,
 }));

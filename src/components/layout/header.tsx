@@ -42,6 +42,7 @@ import {
   useQuickCreate,
   type QuickCreateKind,
 } from "@/components/layout/quick-create";
+import { NotificationsMenu } from "@/components/layout/notifications-menu";
 
 // Everything the "+" menu can start. It's the single way to create from the
 // chrome at every width - the mobile menu deliberately doesn't repeat these, so
@@ -156,8 +157,9 @@ export function Header() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          {/* Logo and Navigation */}
-          <div className="flex items-center space-x-8">
+          {/* Logo and Navigation. The gap is the nav's, so it goes with the nav
+              below `md` - at 320px those 32px are what the four controls need. */}
+          <div className="flex items-center md:space-x-8">
             <Link
               href="/"
               className="flex flex-shrink-0 items-center space-x-2"
@@ -255,7 +257,7 @@ export function Header() {
                     button, and this order is the one Radix documents. */}
                 <IconTooltip label="Create new">
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="px-2 sm:px-3">
                       <Plus className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -294,6 +296,7 @@ export function Header() {
               <div className="animate-pulse bg-muted rounded-md h-9 w-20"></div>
             ) : isAuthenticated && user ? (
               <>
+                <NotificationsMenu />
                 {/* User dropdown */}
                 <DropdownMenu>
                   <IconTooltip label="Account menu">

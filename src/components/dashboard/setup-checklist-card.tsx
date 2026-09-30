@@ -59,8 +59,8 @@ export function SetupChecklistCard({ totalDives }: SetupChecklistCardProps) {
         setGearCount(gear.total_count);
         setCertificationCount(certifications.total_count);
       })
-      // Same reasoning as `ServiceDueCard`: this is a supplementary card, and a failed
-      // fetch leaves it unrendered rather than turning the dashboard into an error page.
+      // A supplementary card, and a failed fetch leaves it unrendered rather than
+      // turning the dashboard into an error page.
       .catch((error) =>
         console.error("Failed to load setup checklist counts:", error),
       );

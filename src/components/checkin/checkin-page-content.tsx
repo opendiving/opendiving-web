@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useCheckinLink } from "@/hooks/useCheckinLink";
 import { useUnits } from "@/hooks/useUnits";
+import { useSavedElsewhere } from "@/hooks/useSavedElsewhere";
 import { CheckInPageFrame } from "@/components/checkin/checkin-page-frame";
 import {
   fetchAllCertifications,
@@ -124,6 +125,9 @@ export function CheckInPageContent() {
       setLoadFailed(true);
     }
   }, []);
+
+  // The header's bell edits certifications too, from over this page.
+  useSavedElsewhere("certification", () => void refreshCertifications());
 
   if (isLoading) {
     return <PageSpinner />;

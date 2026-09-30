@@ -46,9 +46,9 @@ export function serviceKindLabel(
  * schedule matching (item, kind, label)" - and it is what every service list leads with
  * on screen, so it is what a diver would use to say which row they mean.
  *
- * Shared rather than repeated: it names the icon-only row controls on both the gear
- * detail card and the dashboard's service-due card, and two copies of the phrasing is
- * how the same button ends up announced two different ways.
+ * Shared rather than repeated: it names the wordless row controls on both the gear
+ * detail card and the notifications bell's service-due list, and two copies of the
+ * phrasing is how the same button ends up announced two different ways.
  */
 export function serviceKindAndLabel(entry: {
   kind: string;
@@ -153,7 +153,7 @@ export interface GearServiceRecordUpdate {
   notes?: string;
 }
 
-// One row of the dashboard's "service due" card.
+// One row of the notifications bell's "Service Due" list.
 export interface GearServiceDueEntry {
   schedule_uuid: string;
   kind: ServiceKind;
@@ -176,9 +176,9 @@ export interface GearServiceDueResponse {
 }
 
 /**
- * Views a dashboard entry as the schedule summary the status helpers take, so
- * `serviceStatus`/`formatServiceDue` work identically on the dashboard, the gear list
- * and the item detail card. Always `is_active: true` - the API only ever returns active
+ * Views a due entry as the schedule summary the status helpers take, so
+ * `serviceStatus`/`formatServiceDue` work identically in the notifications bell, the
+ * gear list and the item detail card. Always `is_active: true` - the API only ever returns active
  * schedules from `/gear-service-due`.
  */
 export function scheduleFromDueEntry(

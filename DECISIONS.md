@@ -788,33 +788,37 @@ stays editable, nothing is filled in silently on save, and the dialog says so. T
 dive-safety-adjacent UI and must not read as advice; keep that framing if the list grows. Gear with
 no meaningful convention (a mask, a knife) or no type gets `[]`, not a made-up default.
 
-## The dashboard's "Service Due" card renders nothing when nothing is due
+## Gear due a service and renewals live behind the header's bell
 
-`ServiceDueCard` returns `null` when no schedule needs attention and when its fetch fails (logged,
-not surfaced): a permanent "all your gear is fine" tile trains people to stop reading the dashboard,
-and a supplementary card erroring out should not make the page look broken.
+`NotificationsMenu` sits left of the avatar on every page, its count chip `bg-destructive-solid`. It
+is a `Popover`, not a `DropdownMenu`: a row holds a link and a button, and a menu item cannot
+contain a second control. A failed read is said in the panel, since an empty panel answers "nothing
+is due".
 
-It calls `GET /gear-service-due`, which takes no date horizon — a server-side "due within N days"
-would bake today's date into a cached response and go wrong at midnight — and buckets client-side
-through the same `serviceStatus()` every other surface uses. The gear list needs no extra request:
-`GET /gear-items` embeds each item's schedules as `item.service`, and the badge derives from those.
+`useNotifications` reads `GET /gear-service-due` and `GET /certifications-expiring` on every
+pathname change: `Header` outlives the pages where services are logged and expiry dates move, and
+both reads are cached by the API. Neither takes a date horizon — a server-side "due within N days"
+would bake today's date into a cached response and go wrong at midnight — so bucketing is
+client-side, through the same `serviceStatus()` and `certificationRenewals()` every surface uses.
+The gear list needs no extra request: `GET /gear-items` embeds each item's schedules as
+`item.service`.
 
-## The dashboard's "Service Due" card: each row logs its service without leaving the dashboard
+## A bell row opens the form that deals with it, and its title goes to the item
 
-Each row carries the gear detail card's icon-only `ClipboardCheck` button, opening the same
-`GearServiceRecordDialog`. The row is a flex container with link and button as siblings, not one
-`Link`: a `<button>` inside an `<a>` is invalid HTML and would also navigate.
+A certification row reads the card with `getCertification` before opening `CertificationDialog`,
+which edits every field; the renewals read carries five. The insurance row opens the check-in page's
+`UserFieldsDialog` on `INSURANCE_FIELDS`.
 
-The button names item and schedule, since the list spans a diver's every item;
-`service-due-card.render.test.tsx` renders the four-row case. `serviceKindAndLabel` sits in
-`lib/api/gear-service.ts` beside `serviceKindLabel` so both surfaces phrase a schedule one way.
+A save from the bell is announced through `lib/saved-elsewhere.ts`, and what shows that data reads
+again — the gear card and list, `/certifications`, `/checkin`, a course's certifications card —
+since none shares a cache with the bell. Rejected: remounting the page, which drops its scroll and
+the state of the routes kept hidden behind it.
 
-`GearServiceRecordDialog` takes `gearItemUuid`, not a `GearItem`, an optional `gearItemLabel` as
-description, and a `schedule` typed `GearServiceScheduleSummary`. The entry is `useMemo`d: the
-dialog resets its form in an effect keyed on `schedule`, and a `scheduleFromDueEntry(...)` built
-during render wipes half-typed notes. It mounts only while a row is being logged. The fetch is a
-`.then()` chain in a `useCallback`, not `async`, because `react-hooks/set-state-in-effect` reads an
-awaited call in an effect body as a synchronous `setState`.
+`GearServiceRecordDialog` takes `gearItemUuid` rather than a `GearItem`, and its `schedule` is
+`useMemo`d: the dialog resets its form on that prop's identity, so one built during render wipes
+half-typed notes. `useNotifications` reads through a `.then()` chain, because
+`react-hooks/set-state-in-effect` reads an awaited call in an effect body as a synchronous
+`setState`.
 
 ## The email toggles live in their own settings card, and save on change
 
@@ -994,8 +998,8 @@ The y axis is not zero-based: `niceDomain()` rounds outward from the data, with 
 progression so a 5-to-26 spread does not step by 10.
 
 Each dot is a plain SVG `<a>`, not `next/link`. Below 560px the chart narrows its viewBox rather
-than scrolling (`fittedChartWidth`). The card renders when empty, unlike `ServiceDueCard`: missing
-pressures or an average depth are something the diver can fix.
+than scrolling (`fittedChartWidth`). The card renders when empty, unlike the bell's service-due
+list: missing pressures or an average depth are something the diver can fix.
 
 ## The chart windows to All/Year/Month, but scales itself from the whole series
 
@@ -1189,26 +1193,16 @@ worth promoting, logging a dive, is a single primary button in the page header. 
 is driven by real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched
 with `items_per_page: 1` for `total_count` alone) and removes itself once all three are done.
 
-`CertificationExpiryCard` is the twin of `ServiceDueCard`: headed "Renewals", it renders `null` when
-nothing needs renewing and when its fetch fails. Certification rows link to `/certifications`, where
-certifications are edited in dialogs and have no URL of their own; the dive-insurance row links to
-`/settings/checkin`, where the policy is entered, and sorts among them rather than after them, a
-lapsed policy stopping a dive at the desk as a lapsed card does. Filtering and ordering live in
-`certificationRenewals()` in `lib/certification.ts`, not the component, so "expired sorts above
-expiring soon" is tested without rendering.
-
 ## The layout is a flat stack, so the cards that can vanish leave no hole
 
-The dashboard is one `space-y-6` column with `ServiceDueCard`, `CertificationExpiryCard` and
-`SetupChecklistCard` as direct children: `space-y-*` spaces rendered siblings, so a card returning
-`null` costs nothing, whereas a wrapping "needs attention" `<div>` would leave its own gap on every
-day nothing is due. The same reasoning rules out a two-column grid whose sidebar sits empty for a
-diver with nothing due.
+The dashboard is one `space-y-6` column with `SetupChecklistCard` and `PasskeyNudgeCard` as direct
+children: `space-y-*` spaces rendered siblings, so a card returning `null` costs nothing, whereas a
+wrapping `<div>` would leave its own gap on every day neither renders. The same reasoning rules out
+a two-column grid whose sidebar sits empty for an established logbook.
 
-Alerts sit above the stats: an overdue regulator matters more than a dive count, and the checklist
-is the first thing a new account should see. The stat tiles and the air-consumption chart hide at
-zero dives, but not while the stats request is in flight — `hasDives` stays true until the answer is
-in.
+The checklist sits above the stats, being the first thing a new account should see. The stat tiles
+and the air-consumption chart hide at zero dives, but not while the stats request is in flight —
+`hasDives` stays true until the answer is in.
 
 ## The heading greets by time of day, and reads the clock during render
 
@@ -1243,10 +1237,10 @@ a username parameter, must not render `email`, and shares no fetch with the dash
 `/profile`, so they are removed rather than left exported; both are recoverable from git when
 `/divers/[username]` wants them.
 
-The dashboard deliberately does not get the card in exchange. It already carries
-`CertificationExpiryCard`, the half of the subject that needs the diver to act; "every c-card you
-hold, newest first" is not an alert, and `/certifications` is one nav click away with images, dates
-and dialogs. A read-only echo of a page in the nav is the duplication that took `/profile` down.
+The dashboard deliberately does not get the card in exchange. The header's bell already carries the
+renewals, the half of the subject that needs the diver to act; "every c-card you hold, newest first"
+is not an alert, and `/certifications` is one nav click away with images, dates and dialogs. A
+read-only echo of a page in the nav is the duplication that took `/profile` down.
 
 Before writing that ordering again: `GET /certifications` sorts by `certified_on` descending with
 nulls last, tie-broken by uuid — not by when the row was entered, so a card with no date on it sits
@@ -1341,7 +1335,7 @@ column. A diver at UTC+13 can see "Overdue" up to a day before the email agrees.
 time that is cosmetic, and the API-side fix (run hourly, gate on the offset of the most recent dive)
 is not worth it. Documented, not fixed.
 
-## One paging helper, and neither dashboard card pages
+## One paging helper, and neither notifications list pages
 
 `fetchAllPages` in `lib/api/client.ts` is the one `while (hasMore)` loop: page cap, abort signal,
 dedup. Runaway is not the hazard (the API clamps `items_per_page` to 100); snapshots are. List pages
@@ -1353,8 +1347,8 @@ Truncation is `console.warn`ed, not thrown: a short list that looks complete is 
 The abort signal stops the loop between pages, not the request in flight (`lib/api/*` takes no axios
 config); `isAbortError` tells unmount from failure.
 
-Neither dashboard card pages: `ServiceDueCard` uses `/gear-service-due`, `CertificationExpiryCard`
-uses `/certifications-expiring` (no `within_days`; see the API's `DECISIONS.md`), and both honour
+Neither notifications list pages: `useNotifications` reads `/gear-service-due` and
+`/certifications-expiring` (no `within_days`; see the API's `DECISIONS.md`), and both lists honour
 the `truncated` flag via `TruncatedNote`, since a safety-adjacent list must not under-report
 silently. `fetchAllCertifications` survives for callers needing whole records.
 
@@ -1809,11 +1803,11 @@ The script commits nothing over there.
 ## "Due soon" is a `warning` badge, because `secondary` is invisible on a card
 
 `serviceStatusBadgeVariant` never maps `due_soon` onto `secondary`. Every place the chip renders
-(gear list, gear detail card, dashboard service-due card) sits on a card, and dark `--secondary`
-against `--card` is a near-neutral grey a few lightness points off its surface: 1.2:1, with no
-border. The label passes every text-contrast scan, so a text-node walker never flags it; non-text
-contrast is the check that fails. It also made "Due soon" identical to "Rented", a fact about an
-item rather than a status.
+(gear list, gear detail card, the bell's service-due list) sits on `--card` or `--popover`, one
+value in both themes, and dark `--secondary` against it is a near-neutral grey a few lightness
+points off its surface: 1.2:1, with no border. The label passes every text-contrast scan, so a
+text-node walker never flags it; non-text contrast is the check that fails. It also made "Due soon"
+identical to "Rented", a fact about an item rather than a status.
 
 `--warning` is dark and slightly brown in light mode (`32 92% 27%`) because it carries white text
 and a mid-amber only reaches 3.9:1 under white; in dark mode it is `38 95% 62%` with near-black
@@ -1864,23 +1858,20 @@ colour. Coral pays 2.50:1 on the label, under AA; the fix if wanted is near-blac
 misses are accepted: a saturated fill separates by hue. Watch the coral fill if light `--card` stops
 being white.
 
-## And the dashboard puts the chip last, where the rows align
+## A bell row's chip sits on the title's line, and its qualifier under it
 
-`ServiceStatusBadge` renders badge then detail, right where it is a column. The dashboard's
-service-due card rows are `flex justify-between`, so badge-first strands the chip mid-row;
-`detailFirst` (prop, default off) swaps the order there, a prop so the three render sites cannot
-drift.
+`NotificationRow` is a grid: title and chip on one line, subtitle and qualifier on the next, the
+qualifier centred under a right-aligned chip. The qualifier drops the chip's own word — "by 40
+days", "on Oct 23, 2026" — through `formatServiceDueQualifier`, which shares `formatServiceDue`'s
+arm selection so the two cannot disagree about which arm is urgent.
 
-`CertificationExpiryCard` is the same row and composes its own `Badge`, so its swap is inline.
 `certificationExpiryBadgeVariant` returns `destructive` / `coral`, never `secondary`: grey beside
-coral reads as not a status. No `teal`, since `certificationExpiryStatus` returns `null` for a
-healthy certification and no chip renders.
+coral reads as not a status. A healthy certification has no status and no chip.
 
-Widths are per-card: service chips `min-w-24`, certification chips `min-w-28`. The courses Status
-column takes `min-w-24` only; `courseStatusBadgeVariant` keeps its own vocabulary because courses
-share no screen with gear or certification chips (`courseStatusLabel` falls back to the raw wire
-value). All three carry `whitespace-nowrap` so a fallback font or longer label overflows the pill
-visibly rather than growing a second line.
+Chip widths: service `min-w-24`, certification `min-w-28`, the courses Status column `min-w-24`;
+`courseStatusBadgeVariant` keeps its own vocabulary, courses sharing no screen with gear or
+certification chips. All carry `whitespace-nowrap`, so a longer label overflows the pill visibly
+rather than growing a second line.
 
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
@@ -2960,9 +2951,6 @@ a screenshot does not show a `h-5` bar against a 24px line box or a legend nobod
 and trip cards load into `BackdropCardSkeleton`, one box at the card's measured 214px (238px from
 `sm`), `RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
 `/dives` and `/trips`.
-
-One shift is accepted: the dashboard moves ~134px when a gear-service reminder is due, which is not
-a placeholder problem, since whether that card exists is one of the things the request answers.
 
 ## The project instructions live in AGENTS.md, and CLAUDE.md is an import
 

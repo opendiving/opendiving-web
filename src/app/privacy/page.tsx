@@ -1287,10 +1287,10 @@ export default async function PrivacyPage() {
                 {CERTIFICATION_EXPIRING_SOON_DAYS} days away or closer, and once
                 more when it has passed. Everything that reaches either point at
                 the same time goes in one email. There is no reminder after
-                that: a card or policy left expired stays on your dashboard, but
-                is not emailed about again. Entering a new expiry date starts
-                the cycle over. A card or policy with no expiry date is never
-                mentioned.
+                that: a card or policy left expired stays in your notifications,
+                but is not emailed about again. Entering a new expiry date
+                starts the cycle over. A card or policy with no expiry date is
+                never mentioned.
               </p>
               <p className="text-foreground mb-4">
                 <em>Your year in review.</em> During January, this copy will

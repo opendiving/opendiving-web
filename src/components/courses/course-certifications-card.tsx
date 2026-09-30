@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
 import { CertificationViewDialog } from "@/components/certifications/certification-view-dialog";
+import { useSavedElsewhere } from "@/hooks/useSavedElsewhere";
 
 // How many of a course's cards to show. A course issues one or two in practice
 // (TDI's Advanced Nitrox + Decompression Procedures is the archetype); this is a
@@ -102,6 +103,8 @@ export function CourseCertificationsCard({
     const data = await fetchCertifications();
     if (data) setCertifications(data);
   }, [fetchCertifications]);
+
+  useSavedElsewhere("certification", () => void refresh());
 
   return (
     <>

@@ -42,6 +42,7 @@ import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
 import { GearServiceScheduleDialog } from "@/components/gear/gear-service-schedule-dialog";
 import { GearServiceRecordDialog } from "@/components/gear/gear-service-record-dialog";
 import { useContactsByUuid } from "@/hooks/useContactsByUuid";
+import { useSavedElsewhere } from "@/hooks/useSavedElsewhere";
 
 interface GearServiceCardProps {
   gearItem: GearItem;
@@ -138,6 +139,10 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
     load().catch((error) => console.error("Failed to reload service:", error));
     onChanged();
   }, [load, onChanged]);
+
+  useSavedElsewhere("gear-service", ({ gearItemUuid }) => {
+    if (gearItemUuid === gearItem.uuid) refresh();
+  });
 
   const withBusy = async (
     uuid: string,
