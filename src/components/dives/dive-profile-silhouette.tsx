@@ -51,10 +51,12 @@ export function DiveProfileSilhouette({
         d={`${curve} L${WIDTH},${HEIGHT} L0,${HEIGHT} Z`}
         fill={`url(#${gradientId})`}
       />
+      {/* In the colour of the card's text, over a fill a shade quieter. */}
       <path
         d={curve}
         fill="none"
         stroke="currentColor"
+        className="text-foreground"
         strokeWidth={1.5}
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
