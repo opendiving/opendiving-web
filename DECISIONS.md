@@ -5650,9 +5650,8 @@ nothing forces (a mis-wired row type-checks), so `export.test.ts` asserts every 
 and the render test pairs each row with its segment. DiveJSON sits first, being the project's own
 format. Each row's copy states its difference from the others, a sentence about what one format
 lacks being a claim about every other row. Prose drops counts that are not load-bearing —
-`sites-page-content.tsx` and `trips-page-content.tsx` say "the export card's Downloads" — and
-load-bearing ones (`export.ts`'s "the four shapes `/export/*` serves") sit beside their list.
-Probes: `git grep -w three` in `src/`,
+`sites-page-content.tsx` says "the export card's Downloads" — and load-bearing ones (`export.ts`'s
+"the four shapes `/export/*` serves") sit beside their list. Probes: `git grep -w three` in `src/`,
 `grep -nE "three (Download|button|export|row|format)|all three" DECISIONS.md`, and
 `git grep -niE "export|portab" -- src/app/privacy/`, whose copy names no format.
 `lib/api-proxy.test.ts` and `lib/download.test.ts` use `.uddf` as a generic `Content-Disposition`

@@ -57,8 +57,9 @@ interface TripCardProps {
 }
 
 // One trip as a card, on /trips and in the dashboard's recent trips: its map as
-// the backdrop when it has a place on one, its details over the foot of it, and
-// its actions in the corner. A list item, so a caller renders it in a list.
+// the backdrop - the whole world for a trip with no place on one yet - its
+// details over the foot of it, and its actions in the corner. A list item, so a
+// caller renders it in a list.
 export function TripCard({
   trip,
   onEdit,

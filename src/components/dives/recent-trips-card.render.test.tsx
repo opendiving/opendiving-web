@@ -75,8 +75,8 @@ const MAPPED = trip({
   ],
 });
 
-// A place typed in by hand has a name and no position, so there is nothing to
-// draw - and a placeholder that then vanishes would make the list jump.
+// A place typed in by hand has a name and no position, so its card's map shows
+// the whole world rather than the place.
 const TYPED = trip({
   uuid: "trip-2",
   name: "Koh Tao 2025",
