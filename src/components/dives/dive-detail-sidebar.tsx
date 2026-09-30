@@ -17,7 +17,7 @@ import { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
 import { formatWebsite } from "@/lib/contact";
 import { formatDateTime } from "@/lib/date-time";
-import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
+import { formatDistance, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
@@ -28,7 +28,11 @@ import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { PeopleList } from "@/components/people/people-list";
 import { RatingStars } from "@/components/dives/rating-input";
 import { Badge } from "@/components/ui/badge";
-import type { MappableLocation } from "@/components/map/locations-map";
+import {
+  diveMapLocations,
+  fixPoint,
+  hasMapPosition,
+} from "@/components/dives/dive-map-locations";
 import {
   Building2,
   CloudSun,
@@ -120,18 +124,6 @@ function labelOf<T extends string>(
   return labels[value] ?? value;
 }
 
-// A recorded pair as a point, or null when the dive has no fix on that side.
-//
-// `== null`, not falsiness: a dive off West Africa exits at longitude 0 and one
-// in the Galápagos at latitude 0, and both are positions rather than absences.
-function fixPoint(
-  latitude?: number | null,
-  longitude?: number | null,
-): GeoPoint | null {
-  if (latitude == null || longitude == null) return null;
-  return { latitude, longitude };
-}
-
 /**
  * The dive detail page's sidebar: where the dive was, what the water was like, what
  * recorded it, and when it was logged.
@@ -165,10 +157,6 @@ export function DiveDetailSidebar({
     dive.boat_name != null;
   const tags = dive.tags ?? [];
 
-  // Where the dive computer put the diver, which is a different claim from where
-  // the site is pinned - so both are drawn, and the ring/dot pair is what tells
-  // them apart. Exit-only is the ordinary case, not half a reading: every
-  // GPS-carrying export in the API's corpus takes its first fix after surfacing.
   const entry = fixPoint(dive.entry_latitude, dive.entry_longitude);
   const exit = fixPoint(dive.exit_latitude, dive.exit_longitude);
   const entryCoordinates =
@@ -181,22 +169,12 @@ export function DiveDetailSidebar({
   const drift =
     entry && exit ? formatDistance(haversineMeters(entry, exit), units) : null;
 
-  const mapLocations: MappableLocation[] = [
-    ...dive.dive_sites.map((site) => ({
-      name: site.name,
-      latitude: site.latitude,
-      longitude: site.longitude,
-    })),
-    ...(entry ? [{ name: "Entry", ...entry, variant: "fix" as const }] : []),
-    ...(exit ? [{ name: "Exit", ...exit, variant: "fix" as const }] : []),
-  ];
+  const mapLocations = diveMapLocations(dive);
   // The map draws nothing without a position anyway; this gate is what keeps a
   // dive with no positions at all from fetching its chunk (same as the site
   // page). Linked sites are the reason it is not simply `entry || exit`: a dive
   // may have a pinned site and no fixes of its own.
-  const hasMappableLocation = mapLocations.some(
-    (location) => location.latitude != null && location.longitude != null,
-  );
+  const hasMappableLocation = hasMapPosition(mapLocations);
 
   return (
     <div className="space-y-6">

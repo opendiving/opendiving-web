@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { TripCardSkeleton } from "@/components/trips/trip-card";
+import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 
 export interface TripsPageFrameProps {
   isLoading: boolean;
@@ -130,7 +130,7 @@ export function TripsPageFrame({
       {(isLoading || cards.length > 0) && (
         // One trip to a row below `lg`, two above: every card on screen holds
         // a map, and a browser keeps only so many of those per page - see
-        // `TripCard`.
+        // `BackdropCard`.
         <ul
           className="mt-6 grid gap-4 lg:grid-cols-2"
           // Busy on the outside, hidden on each placeholder within - the split
@@ -140,7 +140,7 @@ export function TripsPageFrame({
         >
           {cards.length === 0 &&
             Array.from({ length: itemsPerPage }, (_, index) => (
-              <TripCardSkeleton key={index} />
+              <BackdropCardSkeleton key={index} />
             ))}
           {cards}
         </ul>

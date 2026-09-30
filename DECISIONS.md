@@ -1208,9 +1208,7 @@ diver with nothing due.
 Alerts sit above the stats: an overdue regulator matters more than a dive count, and the checklist
 is the first thing a new account should see. The stat tiles and the air-consumption chart hide at
 zero dives, but not while the stats request is in flight — `hasDives` stays true until the answer is
-in. Recent dives and trips sit side by side at `lg`, so `RecentDivesCard`'s rows carry `min-w-0` on
-the left block and `flex-shrink-0` on the metrics, or a long site name squeezes the duration/depth
-column.
+in.
 
 ## The heading greets by time of day, and reads the clock during render
 
@@ -1744,7 +1742,7 @@ grid's `rowGap`).
 
 A card may be cut through; a row may not, since a line just above its border reads as clipped, so
 the cut moves down past any row it lands inside to the next row's top. Rows are bordered boxes with
-a bordered ancestor (`RecentDivesCard`'s `<a class="rounded-lg border">`); cards have none.
+a bordered ancestor (`RecentDivesCard`'s `<li class="rounded-lg border">`); cards have none.
 
 The subject is the placed site with the most dives; a position is required, since `LocationsMap`
 renders nothing without coordinates. Dive count costs a scoped `/dives` request per placed site
@@ -2957,11 +2955,10 @@ Placeholder heights come from `getBoundingClientRect()` on the real page with th
 patched `XMLHttpRequest.prototype.send`, comparing loading and loaded geometry of the same element;
 a screenshot does not show a `h-5` bar against a 24px line box or a legend nobody accounted for.
 
-`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`, and its
-count comes from the card's own `RECENT_DIVES_COUNT` rather than a default, so the dashboard card
-measures the same in both states. Trips load into `TripCardSkeleton`, one box at the card's measured
-214px (238px from `sm`), `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
-`/trips`.
+`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive
+and trip cards load into `BackdropCardSkeleton`, one box at the card's measured 214px (238px from
+`sm`), `RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
+`/dives` and `/trips`.
 
 One shift is accepted: the dashboard moves ~134px when a gear-service reminder is due, which is not
 a placeholder problem, since whether that card exists is one of the things the request answers.

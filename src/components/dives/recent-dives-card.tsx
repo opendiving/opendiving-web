@@ -4,11 +4,6 @@ import { useCallback } from "react";
 import Link from "next/link";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
-import { DiveTitle } from "@/components/dives/dive-title";
-import {
-  formatDiveDateTime,
-  formatDurationHoursMinutes,
-} from "@/lib/date-time";
 import {
   CARD_TITLE_ACTION,
   CARD_TITLE_ROW,
@@ -20,12 +15,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { Plus, Clock, ArrowDownToLine } from "lucide-react";
+import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { DiveCard } from "@/components/dives/dive-card";
+import { Plus } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
-import { useUnits } from "@/hooks/useUnits";
-import { formatDepth } from "@/lib/units";
 
 const RECENT_DIVES_COUNT = 5;
 
@@ -76,7 +70,7 @@ export interface RecentDivesCardProps {
   newDiveLabel?: string;
 }
 
-// Shows a list of dives for a user (dive number, date, duration, max depth).
+// Shows a list of dives for a user, each as a `DiveCard`.
 // Used on the dashboard (the most recent few) and on the detail pages that
 // scope dives to one record - a trip, a dive site, a gear item, a course, a
 // species, a person - so they all stay in sync.
@@ -98,8 +92,6 @@ export function RecentDivesCard({
   newDiveHref = "/dives/new",
   newDiveLabel = "Log your first dive",
 }: RecentDivesCardProps) {
-  const units = useUnits();
-
   const fetchDives = useCallback(
     (page: number, perPage: number) =>
       divesAPI.getDives(page, perPage, {
@@ -159,8 +151,13 @@ export function RecentDivesCard({
           // `RECENT_DIVES_COUNT` either way: on the dashboard it is exactly
           // the preview's size, and on a detail page the real count isn't
           // knowable up front, where a few rows is a better guess than a
-          // screen of them.
-          <ListRowsSkeleton rows={RECENT_DIVES_COUNT} />
+          // screen of them. Busy on the list, hidden on each placeholder, as
+          // the trip lists are.
+          <ul className="space-y-3" aria-busy>
+            {Array.from({ length: RECENT_DIVES_COUNT }, (_, index) => (
+              <BackdropCardSkeleton key={index} />
+            ))}
+          </ul>
         ) : recentDives.length === 0 ? (
           <EmptyState
             icon={DiveIcon}
@@ -176,59 +173,11 @@ export function RecentDivesCard({
             }
           />
         ) : (
-          <div className="space-y-3">
+          <ul className="space-y-3">
             {recentDives.map((dive) => (
-              <Link
-                key={dive.uuid}
-                href={`/dives/${dive.uuid}`}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 p-3 rounded-lg border hover:bg-muted transition-colors"
-              >
-                {/* `min-w-0` so a long site name wraps inside this block rather
-                    than squeezing the duration/depth column - the card is half a
-                    row wide on the dashboard. */}
-                <div className="min-w-0">
-                  <div className="font-medium text-foreground">
-                    <DiveTitle
-                      diveNumber={dive.dive_number}
-                      sites={dive.dive_sites}
-                    />
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    <span className="block sm:inline">
-                      {formatDiveDateTime(dive.start_time, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
-                    {/* The title names the site; this line says where it
-                        is. */}
-                    {dive.dive_sites[0]?.location?.name && (
-                      <span className="block sm:inline">
-                        <span className="hidden sm:inline">{" \u00b7 "}</span>
-                        {dive.dive_sites[0].location.name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-shrink-0 items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {formatDurationHoursMinutes(dive.duration)}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <ArrowDownToLine className="h-4 w-4" />
-                    {/* Whole units in this row, unlike the detail page's two
-                        decimals: it is a scanning list, and the second decimal
-                        of a depth is not what anyone is scanning for. */}
-                    {dive.max_depth
-                      ? formatDepth(dive.max_depth, units, { decimals: 0 })
-                      : "-"}
-                  </div>
-                </div>
-              </Link>
+              <DiveCard key={dive.uuid} dive={dive} />
             ))}
-          </div>
+          </ul>
         )}
 
         <LoadMoreTrigger
