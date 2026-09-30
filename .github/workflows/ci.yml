@@ -64,8 +64,14 @@ jobs:
       # 1.30 and 1.40), so this step is what puts one there; without it the
       # browser project fails to start rather than skipping, which is the right
       # way round.
+      #
+      # No `--with-deps`. The runner image ships Google Chrome, so Chromium's
+      # shared libraries are already there, and what the flag adds is an apt
+      # run for fallback fonts - one that stalls for minutes whenever a runner
+      # draws a slow Ubuntu mirror, while the browser itself comes off
+      # Playwright's CDN in seconds.
       - name: Install Chromium for the browser tests
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run tests with coverage
         id: tests
@@ -126,8 +132,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # No `--with-deps`, for the reason given in `lint-and-build`.
       - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run the instant-navigation tests
         run: npm run test:e2e
