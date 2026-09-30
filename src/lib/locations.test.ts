@@ -1,101 +1,54 @@
 import { describe, expect, it } from "vitest";
-import { formatLocationContext, geocodeResultToLocation } from "./locations";
+import {
+  formatPlaceContext,
+  geocodeResultToLocation,
+  unrepeated,
+} from "./locations";
 import type { GeocodeResult } from "@/lib/api/geocoding";
 
-describe("formatLocationContext", () => {
-  it("drops the name the label repeats at the front", () => {
-    // The whole point: the row shows the name and then this, and Nominatim's
-    // label opens with the name it was matched by.
-    expect(
-      formatLocationContext({
-        name: "Dahab",
-        full_name: "Dahab, South Sinai, 45214, Egypt",
-      }),
-    ).toBe("South Sinai, 45214, Egypt");
-    expect(
-      formatLocationContext({
-        name: "Ko Tao",
-        full_name:
-          "Ko Tao, Ko Pha-ngan District, Surat Thani Province, Thailand",
-      }),
-    ).toBe("Ko Pha-ngan District, Surat Thani Province, Thailand");
+describe("formatPlaceContext", () => {
+  it("puts the region before the country", () => {
+    expect(formatPlaceContext("Cebu", "Philippines")).toBe("Cebu, Philippines");
   });
 
-  it("keeps a repeat that is not at the front", () => {
-    // "Dahab" is context for a site called Blue Hole, not a duplicate of it -
-    // and it is the context that tells two Blue Holes apart.
-    expect(
-      formatLocationContext({
-        name: "Blue Hole",
-        full_name: "Blue Hole, Dahab, South Sinai, Egypt",
-      }),
-    ).toBe("Dahab, South Sinai, Egypt");
+  it("says whichever one it has where it has only one", () => {
+    expect(formatPlaceContext(null, "Philippines")).toBe("Philippines");
+    expect(formatPlaceContext("Cebu", undefined)).toBe("Cebu");
   });
 
-  it("keeps a part the name only prefixes", () => {
-    // Matching on the whole part, not on the characters: "Ko Tao" must not eat
-    // the front of "Ko Tao Island".
-    expect(
-      formatLocationContext({
-        name: "Ko Tao",
-        full_name: "Ko Tao Island, Surat Thani Province, Thailand",
-      }),
-    ).toBe("Ko Tao Island, Surat Thani Province, Thailand");
+  it("answers null for neither, blanks included", () => {
+    // Null rather than "" so a caller can tell "nowhere was named" from a name.
+    expect(formatPlaceContext(null, null)).toBeNull();
+    expect(formatPlaceContext(" ", "")).toBeNull();
+  });
+});
+
+describe("unrepeated", () => {
+  it("keeps a part the labels do not hold", () => {
+    expect(unrepeated("Surat Thani Province", "Ko Tao")).toBe(
+      "Surat Thani Province",
+    );
   });
 
-  it("answers undefined when the label says no more than the name", () => {
-    // So the caller drops the element rather than rendering an empty one.
-    expect(
-      formatLocationContext({ name: "Bohol", full_name: "Bohol" }),
-    ).toBeUndefined();
-    expect(
-      formatLocationContext({ name: "Bohol", full_name: " bohol " }),
-    ).toBeUndefined();
+  it("drops a part equal to a part of a label, whatever its case", () => {
+    expect(unrepeated("Philippines", "Philippines")).toBeNull();
+    expect(unrepeated("thailand", "Ko Tao, Thailand")).toBeNull();
+    expect(unrepeated("Cebu", "Moalboal", " cebu ")).toBeNull();
   });
 
-  it("has nothing to say about a place with no label", () => {
-    // Nothing to trim and nothing left over, so the caller drops the hint.
-    expect(formatLocationContext({ name: "The Boat" })).toBeUndefined();
-    expect(
-      formatLocationContext({ name: "The Boat", full_name: null }),
-    ).toBeUndefined();
-    expect(
-      formatLocationContext({ name: "The Boat", full_name: "  " }),
-    ).toBeUndefined();
+  it("compares whole parts, never substrings", () => {
+    // "Cebu" is context for a place called Cebu City, not a repeat of it.
+    expect(unrepeated("Cebu", "Cebu City, Philippines")).toBe("Cebu");
   });
 
-  it("gives the whole label to a place with no name to trim off it", () => {
-    expect(
-      formatLocationContext({ full_name: "Dahab, South Sinai, Egypt" }),
-    ).toBe("Dahab, South Sinai, Egypt");
-    expect(
-      formatLocationContext({
-        name: " ",
-        full_name: "Dahab, South Sinai, Egypt",
-      }),
-    ).toBe("Dahab, South Sinai, Egypt");
+  it("has nothing to say for a blank or missing part", () => {
+    expect(unrepeated(null, "Ko Tao")).toBeNull();
+    expect(unrepeated(undefined, "Ko Tao")).toBeNull();
+    expect(unrepeated("  ", "Ko Tao")).toBeNull();
   });
 
-  it("trims each part of the label it keeps", () => {
-    // The label is the provider's, and its spacing is not this app's to
-    // reproduce faithfully.
-    expect(
-      formatLocationContext({
-        name: "Dahab",
-        full_name: "Dahab,South Sinai ,  Egypt",
-      }),
-    ).toBe("South Sinai, Egypt");
-  });
-
-  it("trims a multi-part name the label opens with", () => {
-    // An address-only result has no name of its own and falls back to the
-    // composed "Dahab, Egypt", which the label can repeat whole.
-    expect(
-      formatLocationContext({
-        name: "Dahab, Egypt",
-        full_name: "Dahab, Egypt, South Sinai",
-      }),
-    ).toBe("South Sinai");
+  it("ignores a missing label", () => {
+    expect(unrepeated("Cebu", null, undefined)).toBe("Cebu");
   });
 });
 
@@ -104,7 +57,7 @@ describe("geocodeResultToLocation", () => {
     latitude: 28.4949,
     longitude: 34.5136,
     location: "Dahab, Egypt",
-    display_name: "Dahab, South Sinai, 45214, Egypt",
+    display_name: "Dahab, South Sinai Governorate, Egypt",
     name: "Dahab",
     attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
     bbox_south: 28.45,
@@ -113,17 +66,17 @@ describe("geocodeResultToLocation", () => {
     bbox_east: 34.55,
   };
 
-  it("names the place the way a person writes it, not the way a provider does", () => {
+  it("names the place the way a person writes it", () => {
     // The API's composed place-plus-country, which is what every surface
-    // renders - never the provider's postal chain, which nothing does.
+    // renders - never the fuller label, which nothing does.
     expect(geocodeResultToLocation(DAHAB).name).toBe("Dahab, Egypt");
   });
 
-  it("keeps the provider's whole label as the fuller form", () => {
+  it("keeps the whole label as the fuller form", () => {
     // Stored so an export carries what the source held. It is not derivable
     // from the short form, which is the whole reason it is kept at all.
     expect(geocodeResultToLocation(DAHAB).full_name).toBe(
-      "Dahab, South Sinai, 45214, Egypt",
+      "Dahab, South Sinai Governorate, Egypt",
     );
   });
 
@@ -146,7 +99,7 @@ describe("geocodeResultToLocation", () => {
     // the host's own pin.
     expect(geocodeResultToLocation(DAHAB)).toEqual({
       name: "Dahab, Egypt",
-      full_name: "Dahab, South Sinai, 45214, Egypt",
+      full_name: "Dahab, South Sinai Governorate, Egypt",
       latitude: 28.4949,
       longitude: 34.5136,
       bbox_south: 28.45,

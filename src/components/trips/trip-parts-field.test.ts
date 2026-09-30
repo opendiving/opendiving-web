@@ -14,6 +14,8 @@ const MOALBOAL: GeocodeResult = {
   location: "Moalboal, Philippines",
   display_name: "Moalboal, Cebu, Central Visayas, Philippines",
   name: "Moalboal",
+  region: "Cebu",
+  country: "Philippines",
   attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
 };
 
@@ -23,6 +25,8 @@ const BOHOL: GeocodeResult = {
   location: "Bohol, Philippines",
   display_name: "Bohol, Central Visayas, Philippines",
   name: "Bohol",
+  region: "Central Visayas",
+  country: "Philippines",
   attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
   bbox_south: 9.48,
   bbox_north: 10.29,
@@ -41,8 +45,8 @@ describe("locationKey", () => {
 
   it("separates two places of the same name", () => {
     // Both compose to "Moalboal, Philippines" now the short form is what a
-    // place is called, so the position and the provider's own fuller label are
-    // what separate them.
+    // place is called, so the position and the fuller label are what separate
+    // them.
     const negros = geocodeResultToLocation({
       ...MOALBOAL,
       latitude: 9.33,
@@ -78,20 +82,44 @@ describe("mapSearchResults", () => {
   it("builds menu rows that resolve back to what they set", () => {
     const { items, locations } = mapSearchResults([MOALBOAL, BOHOL]);
 
-    // No hint: a place's name carries its country now, so the row says what a
-    // second line would have said, and the only string left to put there is the
-    // provider's own chain - which nothing in this app renders.
+    // The name is what a pick saves, and the region rides in the hint - which
+    // is what tells two Moalboals in one country apart.
     expect(items).toEqual([
       {
         id: locationKey(geocodeResultToLocation(MOALBOAL)),
         name: "Moalboal, Philippines",
+        hint: "Cebu",
       },
       {
         id: locationKey(geocodeResultToLocation(BOHOL)),
         name: "Bohol, Philippines",
+        hint: "Central Visayas",
       },
     ]);
     expect(locations.get(items[1].id)).toEqual(geocodeResultToLocation(BOHOL));
+  });
+
+  it("hints nothing for a row with no region, rather than a blank", () => {
+    // An older API, or a place OSM files under nothing finer than a country.
+    const { items } = mapSearchResults([{ ...MOALBOAL, region: undefined }]);
+
+    expect(items[0].hint).toBeUndefined();
+  });
+
+  it("hints nothing for a region the row's name already says", () => {
+    // The combobox joins the name and its hint with ", ", so a region equal to
+    // the name would read "Cebu, Philippines, Cebu".
+    const { items } = mapSearchResults([
+      {
+        ...MOALBOAL,
+        name: "Cebu",
+        location: "Cebu, Philippines",
+        display_name: "Cebu, Central Visayas, Philippines",
+        region: "Cebu",
+      },
+    ]);
+
+    expect(items[0].hint).toBeUndefined();
   });
 
   it("keeps the provider's ranking", () => {
@@ -104,9 +132,8 @@ describe("mapSearchResults", () => {
   });
 
   it("collapses results that key identically", () => {
-    // Nominatim occasionally returns the same place twice. Two rows sharing an
-    // id is a React key warning and an id that resolves back to whichever of
-    // them was written last.
+    // Two rows sharing an id is a React key warning and an id that resolves
+    // back to whichever of them was written last.
     const { items } = mapSearchResults([MOALBOAL, { ...MOALBOAL }]);
 
     expect(items).toHaveLength(1);

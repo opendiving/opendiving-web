@@ -612,3 +612,108 @@ describe("TripPartsField", () => {
     expect(screen.getByRole("button", { name: "Add a part" })).toBeEnabled();
   });
 });
+
+// A menu row's `name` is more than its text here: the combobox writes a picked
+// row's `name` into the input, and an Enter with nothing highlighted picks any
+// row whose `name` equals what was typed. So the name stays what a pick saves,
+// and the region that tells same-named places apart rides in the hint.
+describe("TripPartsField place rows", () => {
+  const OSM = "Data © OpenStreetMap contributors, ODbL 1.0.";
+  const KO_TAO = {
+    latitude: 10.0921822,
+    longitude: 99.8395362,
+    location: "Ko Tao, Thailand",
+    display_name:
+      "Ko Tao, Ko Tao Subdistrict, Ko Pha-ngan, Surat Thani Province, Thailand",
+    name: "Ko Tao",
+    country: "Thailand",
+    region: "Surat Thani Province",
+    source: "osm" as const,
+    source_id: "way/23897168",
+    attribution: OSM,
+  };
+  const MOALBOAL_CEBU = {
+    latitude: 9.9366,
+    longitude: 123.3986,
+    location: "Moalboal, Philippines",
+    display_name: "Moalboal, Cebu, Central Visayas, Philippines",
+    name: "Moalboal",
+    country: "Philippines",
+    region: "Cebu",
+    attribution: OSM,
+  };
+  const MOALBOAL_ZAMBOANGA = {
+    ...MOALBOAL_CEBU,
+    latitude: 7.62,
+    longitude: 122.52,
+    display_name: "Moalboal, Zamboanga Sibugay, Philippines",
+    region: "Zamboanga Sibugay",
+  };
+
+  const searchIn = async (query: string) => {
+    await userEvent.click(placeInput());
+    await userEvent.paste(query);
+    await waitFor(() => expect(searchPlaces).toHaveBeenCalledWith(query), {
+      timeout: 2000,
+    });
+  };
+
+  it("hints each row with its region, after what a pick saves", async () => {
+    searchPlaces.mockResolvedValue([MOALBOAL_CEBU, MOALBOAL_ZAMBOANGA]);
+    render(<Field initial={[{ location: null }]} />);
+
+    await searchIn("moalboal");
+
+    expect(
+      await screen.findByRole("option", {
+        name: "Moalboal, Philippines, Cebu",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", {
+        name: "Moalboal, Philippines, Zamboanga Sibugay",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows what was saved in the field the moment a row is picked", async () => {
+    searchPlaces.mockResolvedValue([KO_TAO]);
+    render(<Field initial={[{ location: null }]} />);
+
+    await searchIn("ko tao");
+    await userEvent.click(
+      await screen.findByRole("option", {
+        name: "Ko Tao, Thailand, Surat Thani Province",
+      }),
+    );
+
+    await waitFor(() => expect(places()).toEqual(["Ko Tao, Thailand"]));
+  });
+
+  it("adds a bare typed name on Enter rather than picking a same-named place", async () => {
+    // Were the row's name the bare place, "moalboal" would equal it and Enter
+    // would silently pick the first of the two.
+    searchPlaces.mockResolvedValue([MOALBOAL_CEBU, MOALBOAL_ZAMBOANGA]);
+    render(<Field initial={[{ location: null }]} />);
+
+    await searchIn("moalboal");
+    await screen.findByRole("option", { name: /Cebu$/ });
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => expect(places()).toEqual(["moalboal"]));
+    expect(screen.getByText("Not on the map")).toBeInTheDocument();
+  });
+
+  it("names a row with no region by what a pick saves alone", async () => {
+    // An older API, or a place OSM holds nothing finer than a country for:
+    // never "undefined" and never a stray comma.
+    searchPlaces.mockResolvedValue([{ ...KO_TAO, region: null }]);
+    render(<Field initial={[{ location: null }]} />);
+
+    await searchIn("ko tao");
+
+    expect(
+      await screen.findByRole("option", { name: "Ko Tao, Thailand" }),
+    ).toBeInTheDocument();
+  });
+});

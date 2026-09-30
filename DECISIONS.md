@@ -2642,19 +2642,18 @@ follows `NEXT_PUBLIC_MAP_TILE_URL` to a self-hosted server.
 
 `TripPartsField` is built on the same `CreatableCombobox` as `DiveSiteMultiSelect` but holds
 `{name, full_name, latitude, longitude, bbox_*}` objects, the snapshot the API stores, rather than
-uuids, so a row renders from its own content with nothing to fetch and no loading state. A row shows
-the name alone: `name` carries the place's country, and the only string a second line could add is
-the provider's postal chain, which nothing renders.
+uuids, so a row renders from its own content with nothing to fetch and no loading state. See "A
+geocoder row's hint is its region, composed once" for what a menu row shows.
 
 Places therefore have no id. `locationKey` derives one from content: `geo:{lat}:{lon}:{full_name}`
 for a geocoded place, `txt:{name}` lowercased and trimmed for a typed one. `mapSearchResults`
-collapses results sharing a key, since Nominatim can return the same place twice, and the row's
-`value`/`selectedItem` pair is keyed by it. Nothing compares keys across parts: two parts may name
-the same place — Dahab, then Sharm, then back to Dahab — so there is no `excludeIds` and no "already
-in the list" refusal. Rows are keyed and removed by position, or a repeat would go as a pair.
-Position-keyed rows swap content under a focused drag handle, so `useDragSort` moves focus to the
-destination handle (`data-drag-handle`) a frame after a keyboard reorder; for id-keyed lists that is
-a no-op.
+collapses results sharing a key, since two rows sharing a React key cannot both be picked, and the
+row's `value`/`selectedItem` pair is keyed by it. Nothing compares keys across parts: two parts may
+name the same place — Dahab, then Sharm, then back to Dahab — so there is no `excludeIds` and no
+"already in the list" refusal. Rows are keyed and removed by position, or a repeat would go as a
+pair. Position-keyed rows swap content under a focused drag handle, so `useDragSort` moves focus to
+the destination handle (`data-drag-handle`) a frame after a keyboard reorder; for id-keyed lists
+that is a no-op.
 
 ## An unmatched query is addable as text, and that is an outage hatch as much as a long tail
 
@@ -2679,9 +2678,10 @@ error at `locations.0.name` makes `errors.locations` an array and `FormMessage` 
 
 `searchDelayMs` takes an optional override and `CreatableCombobox` a `searchDebounceMs` prop so the
 trip picker waits 450 ms where every other remote combobox waits 250. Our list endpoints tolerate
-four requests a second; Nominatim sits behind a proxy enforcing one request a second across the
-instance and answers `[]` rather than queueing, so a fast debounce turns keystrokes into empty
-menus. The empty query fired on menu-open skips the debounce, there being no keystroke to coalesce.
+four requests a second; the geocoder sits behind a proxy enforcing one request a second to each
+provider across the instance and answers `[]` rather than queueing, so a fast debounce turns
+keystrokes into empty menus. The empty query fired on menu-open skips the debounce, there being no
+keystroke to coalesce.
 
 `searchPlaces` answers `[]` locally for a query outside the endpoint's `2..200` instead of calling
 the API: either end is a 422, which arrives as a rejection, while a local `[]` keeps
@@ -3326,45 +3326,38 @@ A per-row single-select wants the append-only field's Enter-only rule without it
 open menu, so `CreatableCombobox` takes `commitOnEnterOnly` — `keepOpenOnSelect` implies it. Without
 it, typing "phil" and clicking Save files a place called "phil".
 
-## A location's full label is trimmed of the name it sits beside, at render time
+## A geocoder row's hint is its region, composed once
 
-Nominatim's label opens with the name it matched, and the surface shows the name first.
-`formatLocationContext` in `lib/locations.ts` drops the leading parts of the label the name repeats,
-returning `undefined` when nothing is left so callers drop the element with `&&`.
+`GeocodeResult` carries `region` and `country`, and every geocoder row shows its region, since that
+is what separates two Moalboals. A row reads as one line — the combobox joins name and hint with ",
+" — so `unrepeated` (`lib/locations.ts`) drops a hint part equal to a whole part of the row's name.
 
-It aligns whole comma-separated parts, never substrings: "Dahab" is a duplicate in "Dahab, South
-Sinai" and context in "Blue Hole, Dahab, South Sinai", and whole parts stop "Ko Tao" eating "Ko Tao
-Island".
+The dive site search shows the bare name with `region, country` as the hint, through
+`formatPlaceContext`, the composition `diveSitePlaceContext` uses for a catalog row. The drop stays
+out of `diveSitePlaceContext`, which also writes a catalog pick's Location.
 
-Its one caller is the dive site place search, and both arguments come from a `GeocodeResult`: the
-row's own bare name against the API's composed form, so a row reading "Dahab" carries "Egypt" beside
-it and two same-named results come apart. Nothing renders a _stored_ place's `full_name`, so there
-is no saved shape left to trim — a place's `name` carries its country, and a line under it would be
-the provider's postal chain. See "The label a trip location keeps is the API's short form, chosen on
-the way in".
+The trip menu keeps `location`, "Ko Tao, Thailand", as the row's `name`, hinted with the region
+alone: `handleSelect` writes `name` into the input and `commitOnEnterOnly` matches Enter on it, so a
+bare name would put "Ko Tao" in the field after a pick and make "moalboal" + Enter pick a place.
 
 ## The label a trip location keeps is the API's short form, chosen on the way in
 
-`geocodeResultToLocation` (`lib/locations.ts`) stores `GeocodeResult.location` — the API's
-`_short_location`, place plus country from the provider's structured address — as a place's `name`,
-on a dive site and a trip part alike, rather than Nominatim's `display_name`; a dive log records
-"Dahab, Egypt".
+`geocodeResultToLocation` (`lib/locations.ts`) stores `GeocodeResult.location` — a search result's
+own name plus its country, composed by the API — as a place's `name`, on a dive site and a trip part
+alike, rather than `display_name`; a dive log records "Ko Tao, Thailand".
 
-It is received, not derived: the flat string cannot say whether the name is the settlement ("Dahab"
-→ "Dahab, Egypt") or sits inside one ("Blue Hole" → "Blue Hole, Dahab, Egypt"); the structured
-address can.
+It is received, not derived: the API composes it from the provider's structured answer, which the
+flat `display_name` cannot be taken apart back into.
 
 Costs: a place saved before this keeps the provider's label as its name until re-picked, and
 `locationKey` (`geo:{lat}:{lon}:{full_name}`) keys it differently from a fresh pick of the same
 place.
 
-The provider's whole label is stored beside it as `full_name`, because the format asks for the
-fullest form the source held. It is written on every geocoded pick and read by `locationKey`, and no
-surface renders it, so the choice above decides everything a diver sees. It also carries the region
-`_short_location` omits, which is what the API matches a search term against alongside the name.
-
-The dive site place search's menu hint shows the short form too; `ComboboxItem` has only `id`,
-`name`, `hint`. `placeKey` in `place-search.tsx` keys on the provider's label.
+The fuller label is stored beside it as `full_name` — the name and every address part above it,
+country last — because the format asks for the fullest form the source held. It is written on every
+geocoded pick and read by `locationKey`, and no surface renders it, so the choice above decides
+everything a diver sees. It also carries the region the short form omits, which is what the API
+matches a search term against alongside the name. `placeKey` in `place-search.tsx` keys on it too.
 
 ## The geocoder's attribution is a wire format, not display copy
 
@@ -3394,7 +3387,7 @@ The credit must not materialise: it would shove the map and Notes down the dialo
 is held open with `min-h-4`, costing a blank 16px when a saved trip opens without a search. It
 matches the tile credit's size and has no `Place search:` label, which only made it wrap. The two
 credits stay separate: tiles come from `NEXT_PUBLIC_MAP_TILE_URL`/`_ATTRIBUTION`, place names from
-the API's `GEOCODER_URL`, and a self-hoster may run two providers.
+the API's geocoders, and a self-hoster configures the two apart.
 
 ## Three roads to a position, so the geocoding lives in a hook above the map
 
@@ -5285,7 +5278,9 @@ Where neither resolved, the field stays as it was, so `adopt` takes `AdoptedPlac
 `suggestDiveSites` guards its own query length because the combobox calls `onSearch` with `""` on
 open. Distance is computed here (`haversineMeters`, `formatDistance`) so the unit preference holds.
 Catalog `attribution` joins the search credit, never the map's. `DiveSiteMapField` passes the form's
-position whole or not at all; the endpoint answers 422 to half.
+position whole or not at all; the endpoint answers 422 to half. A geocoder row whose `source` and
+`source_id` both equal a catalog row's in the same answer is dropped: the same OSM object, and the
+catalog's row names the dive site. A Wikidata row never matches.
 
 ## A refused save has to be announced, and `role="alert"` alone does not do it
 
