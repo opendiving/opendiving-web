@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { Marker, type Map as MapLibreMap } from "maplibre-gl";
+import {
+  Marker,
+  MercatorCoordinate,
+  type LngLatBoundsLike,
+  type Map as MapLibreMap,
+} from "maplibre-gl";
 
 import {
   MAX_FIT_ZOOM,
@@ -20,6 +25,11 @@ import { cn } from "@/lib/utils";
 // Breathing room between the outermost place and the edge of the frame, so a
 // pin never sits on the border where half of its context is cropped away.
 const FIT_PADDING = 24;
+
+const corners = (bounds: LatLonBounds): LngLatBoundsLike => [
+  [bounds.west, bounds.south],
+  [bounds.east, bounds.north],
+];
 
 /**
  * As much of a place as this map needs, which is the position and the name.
@@ -224,36 +234,71 @@ export function LocationsMap({
         });
         return;
       }
-      // A backdrop's credit sits over its top edge, so the places centre
-      // between the credit and whatever covers the foot, rather than between
-      // the frame's own edges. Measured, since the credit is whatever the
-      // basemap says and wraps where it is long.
+      // Where the places have to land: clear of whatever the caller covers
+      // the foot with, and of a backdrop's credit over the top edge - measured,
+      // since the credit is whatever the basemap says and wraps where it is
+      // long. Never so small that nothing fits: MapLibre then refuses the fit
+      // and leaves the camera wherever it was.
       const credit = backdrop ? creditRef.current : null;
       const top =
         FIT_PADDING + (credit ? credit.offsetTop + credit.offsetHeight : 0);
-      map.fitBounds(
-        [
-          [bounds.west, bounds.south],
-          [bounds.east, bounds.north],
-        ],
-        {
-          padding: {
-            top,
-            right: FIT_PADDING,
-            // Never so much that no room is left to fit into: MapLibre then
-            // refuses the fit and leaves the camera wherever it was.
-            bottom: Math.min(
-              FIT_PADDING + coveredBottom,
-              map.getContainer().clientHeight - top - FIT_PADDING,
-            ),
-            left: FIT_PADDING,
-          },
+      const padding = {
+        top,
+        right: FIT_PADDING,
+        bottom: Math.min(
+          FIT_PADDING + coveredBottom,
+          map.getContainer().clientHeight - top - FIT_PADDING,
+        ),
+        left: FIT_PADDING,
+      };
+
+      if (!backdrop) {
+        map.fitBounds(corners(bounds), {
+          padding,
           maxZoom: MAX_FIT_ZOOM,
-          // This map is drawn once and not touched again; an animation on first
-          // paint is a map that arrives already moving.
+          // This map is drawn once and not touched again; an animation on
+          // first paint is a map that arrives already moving.
           animate: false,
-        },
+        });
+        return;
+      }
+
+      // A backdrop is map under the whole card, so the places are sized
+      // against the whole frame - fitted into the band alone, a town's outline
+      // opens at a zoom its own label does not appear at - and only their pins
+      // are kept to the band, and centred in it. The pins rather than the
+      // outlines, because a region's pin is rarely the middle of its outline
+      // and the pin is what a reader looks at.
+      const pins = unionBounds(
+        placed.map(({ latitude, longitude }) => ({
+          south: latitude,
+          north: latitude,
+          west: longitude,
+          east: longitude,
+        })),
+      )!;
+      const zoom = Math.min(
+        map.cameraForBounds(corners(bounds), {
+          padding: FIT_PADDING,
+          maxZoom: MAX_FIT_ZOOM,
+        })?.zoom ?? MAX_FIT_ZOOM,
+        map.cameraForBounds(corners(pins), { padding, maxZoom: MAX_FIT_ZOOM })
+          ?.zoom ?? MAX_FIT_ZOOM,
       );
+      // The middle of the pins as the screen has it, which in latitude is not
+      // the average of two degrees.
+      const southWest = MercatorCoordinate.fromLngLat([pins.west, pins.south]);
+      const northEast = MercatorCoordinate.fromLngLat([pins.east, pins.north]);
+      map.easeTo({
+        center: new MercatorCoordinate(
+          (southWest.x + northEast.x) / 2,
+          (southWest.y + northEast.y) / 2,
+        ).toLngLat(),
+        zoom,
+        // From the frame's middle to the band's.
+        offset: [0, (padding.top - padding.bottom) / 2],
+        animate: false,
+      });
     };
 
     fit();

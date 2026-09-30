@@ -592,6 +592,72 @@ describe("LocationsMap", () => {
     expect(centre).toBeCloseTo((credit.bottom + frame.bottom - 40) / 2, 0);
   });
 
+  // A region's pin is rarely the middle of its outline, and on a backdrop the
+  // pin is what is centred - the outline only sizes the view.
+  it("centres a backdrop's pin rather than its region's outline", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          coveredBottom={40}
+          locations={[
+            {
+              name: "Red Sea",
+              // Near the south of its outline, as a region's pin can be.
+              latitude: 14,
+              longitude: 38,
+              bbox_south: 12,
+              bbox_north: 30,
+              bbox_west: 32,
+              bbox_east: 44,
+            },
+          ]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const credit = screen
+      .getByRole("link", { name: /OpenStreetMap/ })
+      .parentElement!.getBoundingClientRect();
+    const marker = (markers()[0] as HTMLElement).getBoundingClientRect();
+    expect(marker.top + marker.height / 2).toBeCloseTo(
+      (credit.bottom + frame.bottom - 40) / 2,
+      0,
+    );
+  });
+
+  it("keeps every pin of a backdrop between its credit and a covered bottom", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          coveredBottom={40}
+          locations={[
+            { name: "Aqaba", latitude: 29.53, longitude: 35.01 },
+            { name: "Marsa Alam", latitude: 25.07, longitude: 34.89 },
+          ]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const credit = screen
+      .getByRole("link", { name: /OpenStreetMap/ })
+      .parentElement!.getBoundingClientRect();
+    for (const marker of Array.from(markers()) as HTMLElement[]) {
+      const centre =
+        marker.getBoundingClientRect().top +
+        marker.getBoundingClientRect().height / 2;
+      expect(centre).toBeGreaterThanOrEqual(credit.bottom);
+      expect(centre).toBeLessThanOrEqual(frame.bottom - 40);
+    }
+  });
+
   it("fades a backdrop out towards its bottom edge", async () => {
     render(
       withConfig(
