@@ -4,6 +4,7 @@ import { reveal } from "@/test/intersection";
 import userEvent from "@testing-library/user-event";
 import GearPage from "./page";
 import { gearAPI, type GearItem, type GearSet } from "@/lib/api/gear";
+import { announceSavedElsewhere } from "@/lib/saved-elsewhere";
 
 // Returned by identity rather than rebuilt per call, and for `user` that is
 // load-bearing rather than tidiness: the real `AuthContext` holds it in state, so it
@@ -320,5 +321,37 @@ describe("the gear list is read once, not once per render", () => {
     await screen.findByText("MK25 EVO");
 
     expect(getGearItems).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("a service logged from the header's bell", () => {
+  it("re-reads the gear list in place, keeping the rows past page one", async () => {
+    // The bell opens the service log over this page, and the diver may be a page or
+    // more down the list. Reading from page one again would drop them back to ten rows.
+    const all = Array.from({ length: 11 }, (_, index) =>
+      gearItem({ uuid: `item-${index}`, name: `Item ${index}` }),
+    );
+    getGearItems.mockImplementation(async (pageNo = 1, perPage = 10) => ({
+      data: all.slice((pageNo - 1) * perPage, pageNo * perPage),
+      total_count: all.length,
+      has_more: pageNo * perPage < all.length,
+      page: pageNo,
+      items_per_page: perPage,
+    }));
+
+    render(<GearPage />);
+    await screen.findByText("Item 0");
+    await act(async () => reveal());
+    await screen.findByText("Item 10");
+    getGearItems.mockClear();
+
+    act(() =>
+      announceSavedElsewhere("gear-service", { gearItemUuid: "item-3" }),
+    );
+
+    await waitFor(() =>
+      expect(getGearItems).toHaveBeenCalledWith(1, 11, false),
+    );
+    expect(screen.getByText("Item 10")).toBeInTheDocument();
   });
 });

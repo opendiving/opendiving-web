@@ -14,8 +14,6 @@ import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { RecentTripsCard } from "@/components/dives/recent-trips-card";
 import { DiveActivityCard } from "@/components/dives/dive-activity-card";
 import { GasUseCard } from "@/components/dives/gas-use-card";
-import { ServiceDueCard } from "@/components/gear/service-due-card";
-import { CertificationExpiryCard } from "@/components/certifications/certification-expiry-card";
 import { PasskeyNudgeCard } from "@/components/dashboard/passkey-nudge-card";
 import { SetupChecklistCard } from "@/components/dashboard/setup-checklist-card";
 import { useAuth } from "@/contexts/AuthContext";
@@ -149,11 +147,8 @@ export function DashboardPageFrame({
         }
       />
 
-      {/* Anything needing action comes first - a regulator that is out of service or a
-          rescue card that has lapsed matters more than how many dives are in the log.
-          Both render nothing on a normal day. */}
-      <ServiceDueCard />
-      <CertificationExpiryCard />
+      {/* Gear due a service and renewals are the header's bell, on every page;
+          what stays here is what only a dashboard visit should offer. */}
       <SetupChecklistCard totalDives={stats?.total_dives ?? null} />
       {/* Below the checklist rather than above it: a diver with an empty logbook
           has something better to do first, and this one keeps until they come

@@ -61,8 +61,8 @@ import { displayNumber, unitLabel, type UnitSystem } from "@/lib/units";
 
 // The dashboard's gas-consumption trend.
 //
-// Unlike `ServiceDueCard`, this renders even with nothing to plot: an empty
-// service list means nothing needs attention, which is genuinely nothing to say,
+// This renders even with nothing to plot. An empty service-due list means nothing
+// needs attention, which is genuinely nothing to say,
 // whereas an empty series here means the dives are missing pressures or an
 // average depth - something the diver can act on, and won't discover otherwise.
 // `GasUseChart` owns that message, since it's the component that knows two

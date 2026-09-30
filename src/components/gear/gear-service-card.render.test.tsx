@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { GearServiceCard } from "./gear-service-card";
+import { announceSavedElsewhere } from "@/lib/saved-elsewhere";
 import { fetchAllContacts } from "@/lib/api/contacts";
 import type { GearItem } from "@/lib/api/gear";
 import {
@@ -116,6 +117,26 @@ beforeEach(() => {
       created_at: "2026-01-01T00:00:00+00:00",
     },
   ]);
+});
+
+describe("GearServiceCard and the header's bell", () => {
+  it("reads its service again when the bell logs one for this item, and only then", async () => {
+    // The bell opens the service log over any page, this item's included, and shares
+    // no cache with the card.
+    await renderCard([schedule()], []);
+    expect(getSchedules).toHaveBeenCalledTimes(1);
+
+    act(() =>
+      announceSavedElsewhere("gear-service", { gearItemUuid: "item-2" }),
+    );
+    expect(getSchedules).toHaveBeenCalledTimes(1);
+
+    act(() =>
+      announceSavedElsewhere("gear-service", { gearItemUuid: gearItem.uuid }),
+    );
+    await vi.waitFor(() => expect(getSchedules).toHaveBeenCalledTimes(2));
+    expect(getRecords).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("GearServiceCard history", () => {

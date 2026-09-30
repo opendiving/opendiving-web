@@ -58,11 +58,11 @@ const SHOP: readonly ContactRole[] = ["shop"];
 
 interface GearServiceRecordDialogProps {
   // The item the service belongs to. Its uuid is all this dialog needs of it, and taking
-  // only that is what lets the dashboard's service-due card open it from a row that
-  // carries an item's identity without ever having fetched the item.
+  // only that is what lets the notifications bell's service-due list open it from a row
+  // that carries an item's identity without ever having fetched the item.
   gearItemUuid: string;
   // How to name that item, when the surface that opened this can't. The gear detail page
-  // is titled with the item already, so it passes nothing; the dashboard's card spans
+  // is titled with the item already, so it passes nothing; the service-due list spans
   // every item a diver owns, and a bare "Log Service" there would not say which one.
   gearItemLabel?: string;
   open: boolean;
@@ -70,7 +70,7 @@ interface GearServiceRecordDialogProps {
   // The rule this service satisfies, when the dialog was opened from one. Prefills the
   // type and label; the API infers the same link server-side when it isn't sent. The
   // summary rather than the full schedule, because the three fields read here - uuid,
-  // kind, label - are all the dashboard's due entry can offer.
+  // kind, label - are all a due entry can offer.
   schedule?: GearServiceScheduleSummary | null;
   // Pass an existing record to edit it; omit to log a new one.
   record?: GearServiceRecord | null;

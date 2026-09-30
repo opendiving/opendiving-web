@@ -1,4 +1,9 @@
-import type { CertificationFileInfo } from "@/lib/api/certifications";
+import type { User } from "@/lib/api/auth";
+import {
+  certificationAgencyLabel,
+  type CertificationExpiringEntry,
+  type CertificationFileInfo,
+} from "@/lib/api/certifications";
 import { daysBetweenIsoDates, todayIsoDate } from "@/lib/gear-service";
 
 // A token identifying the *current contents* of a stored card file, or `null` when
@@ -80,7 +85,7 @@ export function certificationExpiryLabel(
   return status === "expired" ? "Expired" : "Expiring soon";
 }
 
-// One row of the dashboard's renewals card: a certification worth chasing, its status,
+// One row of the renewals list: a certification worth chasing, its status,
 // and its expiry date already narrowed to a plain string - a flagged certification
 // always has one, since a missing date can't produce a status.
 export interface CertificationRenewal<T> {
@@ -115,16 +120,71 @@ export function certificationRenewals<T extends { expires_on?: string | null }>(
     .sort((a, b) => a.expiresOn.localeCompare(b.expiresOn));
 }
 
+// One line of the renewals list, whatever it is a renewal of: what runs out, what kind
+// of thing it is, where it is kept, and the date it runs out on.
+export interface Renewable {
+  // A certification's uuid, or "dive-insurance".
+  key: string;
+  // Which form renews it: the certification's own dialog, or the check-in details'
+  // insurance group.
+  kind: "certification" | "insurance";
+  title: string;
+  detail: string | null;
+  href: string;
+  expires_on: string;
+}
+
+// Everything with an expiry date a diver might have to renew: the dated certifications,
+// and the dive insurance beside them, since a lapsed policy stops a dive at the desk
+// exactly as a lapsed rescue card does. Unfiltered - `certificationRenewals` picks the
+// ones worth flagging, and sorts them into one list so the soonest leads whichever kind
+// it is.
+//
+// Certification rows link to `/certifications`: certifications are edited in dialogs on
+// that one page, so there is no per-certification URL. The insurance row links to
+// `/settings/checkin`, where the policy is kept.
+export function renewables(
+  certifications: CertificationExpiringEntry[],
+  user: Pick<User, "insurance_provider" | "insurance_expires_on"> | null,
+): Renewable[] {
+  const rows: Renewable[] = certifications.map((certification) => ({
+    key: certification.uuid,
+    kind: "certification",
+    title: certification.name,
+    detail: certificationAgencyLabel(
+      certification.agency,
+      certification.agency_other,
+    ),
+    href: "/certifications",
+    expires_on: certification.expires_on,
+  }));
+
+  // A policy with a date on it and no provider named is still a policy running out,
+  // so the row falls back to saying what it is.
+  const provider = user?.insurance_provider?.trim();
+  if (user?.insurance_expires_on) {
+    rows.push({
+      key: "dive-insurance",
+      kind: "insurance",
+      title: provider || "Dive insurance",
+      detail: provider ? "Dive insurance" : null,
+      href: "/settings/checkin",
+      expires_on: user.insurance_expires_on,
+    });
+  }
+
+  return rows;
+}
+
 // Maps onto the `Badge` variants already in the design system, on the same filled
 // brand scale as `serviceStatusBadgeVariant`: `destructive` for the state that has
 // already gone wrong, the brand `coral` for the one that is about to. There is no
 // `teal` counterpart here because there is no settled state to paint - a
 // certification with plenty of time left produces no status at all and never
-// reaches this function, which is why the card exists only when something is
-// flagged.
+// reaches this function, which is why a row exists only when something is flagged.
 //
-// `expiring_soon` was `secondary` until the service scale moved, and grey beside a
-// coral "Due soon" on the same dashboard read as "not really a status".
+// Never `secondary`: grey beside a coral "Due soon" in the same notifications list
+// reads as "not really a status".
 export function certificationExpiryBadgeVariant(
   status: CertificationExpiryStatus,
 ): "destructive" | "coral" {
