@@ -143,8 +143,8 @@ describe("certificationRenewals", () => {
   });
 
   it("is empty when nothing needs renewing", () => {
-    // The normal case for a recreational diver, and what keeps the dashboard card
-    // off the page entirely.
+    // The normal case for a recreational diver, and what keeps the notifications
+    // bell's renewals section out of it entirely.
     expect(
       certificationRenewals(
         [card("OW", null), card("AOW", "2030-01-01")],

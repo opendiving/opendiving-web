@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   serviceStatusBadgeVariant,
   serviceStatusLabel,
@@ -14,16 +15,16 @@ interface ServiceStatusBadgeProps {
   status: ServiceStatus | null;
   // Optional extra context shown beside the badge, e.g. "Due in 10 days".
   detail?: string;
-  // Puts the detail first and the badge after it. For the dashboard's service-due
-  // card, whose rows are `justify-between`: badge-first leaves the chip stranded in
-  // the middle of the row, and the eye-catching thing wants to be at the edge the
-  // rows align on. Everywhere else the badge leads, because it is the column header's
+  // Puts the detail first and the badge after it. For the notifications bell's
+  // service-due list, whose rows are `justify-between`: badge-first leaves the chip
+  // stranded in the middle of the row, and the eye-catching thing wants to be at the
+  // edge the rows align on - which is also where it goes when the pair wraps. Everywhere else the badge leads, because it is the column header's
   // subject and nothing right of it lines up.
   detailFirst?: boolean;
 }
 
 // The one place service status turns into pixels, shared by the gear list, the gear
-// detail card and the dashboard so the three can't drift apart.
+// detail card and the notifications bell so the three can't drift apart.
 export function ServiceStatusBadge({
   status,
   detail,
@@ -57,7 +58,12 @@ export function ServiceStatusBadge({
   ) : null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2",
+        detailFirst && "justify-end",
+      )}
+    >
       {detailFirst ? (
         <>
           {detailText}

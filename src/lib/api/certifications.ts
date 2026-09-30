@@ -247,7 +247,7 @@ export type CertificationUpdate = Partial<CertificationCreate>;
 
 export type PaginatedCertificationsResponse = PaginatedResponse<Certification>;
 
-// One row of `GET /certifications-expiring`: just enough to render a dashboard line.
+// One row of `GET /certifications-expiring`: just enough to render a renewals line.
 // Deliberately not a trimmed `Certification` - it carries no `files`, and `expires_on`
 // is required here because the endpoint only returns cards that have one.
 export interface CertificationExpiringEntry {
@@ -399,11 +399,9 @@ export const certificationsAPI = {
 /**
  * Fetches every page of a user's certifications.
  *
- * The dashboard's renewal card used to be the reason this existed; it now asks
- * `getExpiring` instead, which is one request rather than a page walk. For a caller
- * that genuinely needs whole `Certification` records rather than the four fields the
- * renewals card renders - the check-in summary, which prints every card a diver
- * holds, files included.
+ * For a caller that genuinely needs whole `Certification` records rather than the
+ * four fields the renewals list renders from `getExpiring` - the check-in summary,
+ * which prints every card a diver holds, files included.
  */
 export async function fetchAllCertifications(
   signal?: AbortSignal,

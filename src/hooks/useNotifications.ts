@@ -1,0 +1,138 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  certificationsAPI,
+  type CertificationExpiringEntry,
+} from "@/lib/api/certifications";
+import {
+  gearServiceAPI,
+  scheduleFromDueEntry,
+  type GearServiceDueEntry,
+} from "@/lib/api/gear-service";
+import {
+  certificationRenewals,
+  renewables,
+  type CertificationRenewal,
+  type Renewable,
+} from "@/lib/certification";
+import { serviceStatus } from "@/lib/gear-service";
+
+/** One source of notifications, as its last read left it. */
+export interface NotificationFeed<T> {
+  rows: T[];
+  /** The API's row cap was hit, so `rows` may not be all of them. */
+  truncated: boolean;
+  /** The last read failed, and `rows` is empty rather than stale. */
+  failed: boolean;
+}
+
+export interface NotificationsState {
+  /** False until the first read of both sources has settled. */
+  isLoaded: boolean;
+  /** Gear schedules due soon or overdue, in the API's order. */
+  serviceDue: NotificationFeed<GearServiceDueEntry>;
+  /** Certifications and the dive insurance running out or run out, soonest first. */
+  renewals: NotificationFeed<CertificationRenewal<Renewable>>;
+  /** How many rows the two hold between them. */
+  count: number;
+  /** Reads both again, after something here changed one of them. */
+  reload: () => void;
+}
+
+interface Reads {
+  serviceDue: NotificationFeed<GearServiceDueEntry>;
+  certifications: NotificationFeed<CertificationExpiringEntry>;
+}
+
+const EMPTY: NotificationFeed<never> = {
+  rows: [],
+  truncated: false,
+  failed: false,
+};
+
+function feedFrom<T>(
+  result: PromiseSettledResult<{ data: T[]; truncated?: boolean }>,
+  what: string,
+): NotificationFeed<T> {
+  if (result.status === "fulfilled") {
+    return {
+      rows: result.value.data,
+      truncated: result.value.truncated === true,
+      failed: false,
+    };
+  }
+  console.error(`Failed to load ${what}:`, result.reason);
+  return { rows: [], truncated: false, failed: true };
+}
+
+/**
+ * What the diver has to act on: gear due a service, and certifications or dive
+ * insurance about to run out. Both endpoints return every dated row with no
+ * horizon, so the bucketing into "worth saying" happens here.
+ *
+ * Read again on every navigation. The header that asks for this outlives the
+ * pages, and those pages are where a service gets logged or an expiry date
+ * moves; both reads are cached by the API, so the repeat is cheap. The
+ * insurance row is derived from the signed-in user during render, so an edit to
+ * the policy shows without a read at all.
+ */
+export function useNotifications(): NotificationsState {
+  const { user } = useAuth();
+  const pathname = usePathname();
+  const [reads, setReads] = useState<Reads | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // `allSettled`, so one failed source still lets the other say its piece.
+    void Promise.allSettled([
+      gearServiceAPI.getDue(),
+      certificationsAPI.getExpiring(),
+    ]).then(([service, certifications]) => {
+      if (cancelled) return;
+      const due = feedFrom(service, "service due");
+      setReads({
+        serviceDue: {
+          ...due,
+          rows: due.rows.filter(
+            (entry) =>
+              serviceStatus(
+                scheduleFromDueEntry(entry),
+                entry.gear_item_dive_count,
+              ) !== "ok",
+          ),
+        },
+        certifications: feedFrom(certifications, "certifications"),
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, reloadKey]);
+
+  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
+
+  const serviceDue = reads?.serviceDue ?? EMPTY;
+  const renewals = reads
+    ? {
+        ...reads.certifications,
+        rows: certificationRenewals(
+          renewables(reads.certifications.rows, user),
+        ),
+      }
+    : EMPTY;
+
+  return {
+    isLoaded: reads !== null,
+    serviceDue,
+    renewals,
+    count: serviceDue.rows.length + renewals.rows.length,
+    reload,
+  };
+}

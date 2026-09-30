@@ -31,6 +31,18 @@ vi.mock("@/components/layout/quick-create", () => ({
   useQuickCreate: () => vi.fn(),
 }));
 
+// The bell's own reads are `notifications-menu.render.test.tsx`'s subject; here it
+// only has to be in its place.
+vi.mock("@/hooks/useNotifications", () => ({
+  useNotifications: () => ({
+    isLoaded: true,
+    serviceDue: { rows: [], truncated: false, failed: false },
+    renewals: { rows: [], truncated: false, failed: false },
+    count: 0,
+    reload: vi.fn(),
+  }),
+}));
+
 const diver = (overrides: Partial<User> = {}): User => ({
   uuid: "user-1",
   name: "Sam Reef",
@@ -49,7 +61,32 @@ const openAccountMenu = async () => {
 };
 
 beforeEach(() => {
+  stable.auth.isAuthenticated = true;
   stable.auth.user = diver();
+});
+
+describe("the notifications bell", () => {
+  it("sits directly left of the account avatar", () => {
+    render(<Header />);
+
+    const names = screen
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label"));
+    expect(names.indexOf("Account menu")).toBe(
+      names.indexOf("Notifications") + 1,
+    );
+  });
+
+  it("is not offered to a signed-out visitor", () => {
+    stable.auth.isAuthenticated = false;
+    stable.auth.user = null;
+
+    render(<Header />);
+
+    expect(
+      screen.queryByRole("button", { name: /^Notifications/ }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("the account menu's Admin entry", () => {
