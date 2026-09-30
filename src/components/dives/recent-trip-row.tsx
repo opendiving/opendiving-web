@@ -61,8 +61,8 @@ export function RecentTripRow({
   // to the trip's creation date.
   const dates = formatTripSpan(trip.parts);
 
-  // How much of the map the details cover, so its places are centred in what
-  // is left above them. Read as the ref attaches and followed after that, as
+  // How much of the map lies under the details, from the trip's name down, so
+  // its places centre between the card's top and the name. Read as the ref attaches and followed after that, as
   // `useChartWidth` does: a name that wraps grows the block.
   const [detailsHeight, setDetailsHeight] = useState(0);
   const detailsRef = useCallback((element: HTMLElement | null) => {
@@ -84,9 +84,11 @@ export function RecentTripRow({
     <li
       className={cn(
         "relative isolate flex flex-col rounded-lg border hover:bg-muted transition-colors",
-        // A fixed band of map above the details, which sit over its faded
-        // foot: however tall they grow, the map shows as much of itself.
-        hasMap && "pt-24 sm:pt-30",
+        // A fixed band of map above the trip's name, with the details over its
+        // faded foot: however tall they grow, the map shows as much of itself.
+        // The details' own top padding is part of the band, so what they
+        // measure starts at the name.
+        hasMap && "pt-27 sm:pt-33",
       )}
     >
       {hasMap && (
@@ -125,7 +127,10 @@ export function RecentTripRow({
           which would make this the box the link's overlay stretches over and
           leave the map outside it. Under the menu and the credit, which are
           lifted higher. */}
-      <div ref={detailsRef} className="z-[1] p-3">
+      <div
+        ref={detailsRef}
+        className={cn("z-[1] px-3 pb-3", !hasMap && "pt-3")}
+      >
         {/* Without a map the menu shares this line, so it leaves the menu
             room. */}
         <div
