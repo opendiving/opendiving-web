@@ -38,16 +38,16 @@ import {
 } from "@/lib/validations/trip";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
-import { geocodeResultToLocation } from "@/lib/locations";
+import { geocodeResultToLocation, unrepeated } from "@/lib/locations";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Attribution } from "@/components/attribution";
 import { cn } from "@/lib/utils";
 
 // Slower than the combobox's own 250 ms on purpose. Every keystroke that gets
-// past this reaches Nominatim through the API's proxy, which enforces one
-// request a second across the whole instance and answers `[]` rather than
-// queueing once that is exceeded - so a fast debounce doesn't just waste
-// requests, it turns them into empty menus.
+// past this reaches the geocoder through the API's proxy, which enforces one
+// request a second to each provider across the whole instance and answers `[]`
+// rather than queueing once that is exceeded - so a fast debounce doesn't just
+// waste requests, it turns them into empty menus.
 const PLACE_SEARCH_DEBOUNCE_MS = 450;
 
 /**
@@ -90,9 +90,8 @@ export interface MappedPlaces {
  *
  * Pure, and separate from the component, because this is the whole of the
  * mapping: everything else here is list plumbing. Results that key identically
- * are collapsed - Nominatim occasionally returns the same place twice, and two
- * menu rows sharing a React key is both a warning and an id that resolves back
- * to whichever of them was written last.
+ * are collapsed, because two menu rows sharing a React key is both a warning and
+ * an id that resolves back to whichever of them was written last.
  */
 export function mapSearchResults(results: GeocodeResult[]): MappedPlaces {
   const items: ComboboxItem[] = [];
@@ -104,10 +103,17 @@ export function mapSearchResults(results: GeocodeResult[]): MappedPlaces {
     const id = locationKey(location);
     if (!locations.has(id)) {
       locations.set(id, location);
-      // No hint: a place's name carries its country now, so the row already
-      // says what a second line would have, and the only string left to put
-      // there is the provider's postal chain - which nothing renders.
-      items.push({ id, name: location.name });
+      // The row's `name` is what a pick saves, "Ko Tao, Thailand", and not the
+      // bare place: the combobox writes a picked row's `name` into the input,
+      // and an Enter with nothing highlighted picks a row whose `name` equals
+      // the typed text - so "moalboal" + Enter would otherwise pick the first of
+      // two Moalboals instead of adding what was typed. The region goes in the
+      // hint instead, which is what tells those two apart.
+      items.push({
+        id,
+        name: location.name,
+        hint: unrepeated(result.region, location.name) ?? undefined,
+      });
     }
     if (result.attribution && !attributions.includes(result.attribution)) {
       attributions.push(result.attribution);
@@ -394,7 +400,7 @@ export function TripPartsField({
           its URL spelled out needed 341px against the 295px the dialog has.
 
           One line, joined, rather than a paragraph each: what the credit must
-          do is name where the data came from, and a second provider is
+          do is name where the data came from, and a second credit is
           hypothetical while a growing stack of fine print is not. No "Place
           search:" label either - each credit names its own provider, and the
           label was most of what made this wrap. */}

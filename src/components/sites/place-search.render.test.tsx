@@ -43,8 +43,12 @@ const DAHAB: GeocodeResult = {
   latitude: 28.4954,
   longitude: 34.5197,
   location: "Dahab, Egypt",
-  display_name: "Dahab, South Sinai, 45214, Egypt",
+  display_name: "Dahab, South Sinai Governorate, Egypt",
   name: "Dahab",
+  country: "Egypt",
+  region: "South Sinai Governorate",
+  source: "osm",
+  source_id: "node/27043265",
   attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
 };
 
@@ -180,8 +184,8 @@ describe("PlaceSearch results", () => {
   });
 
   it("collapses a place the geocoder returned twice", async () => {
-    // Nominatim occasionally does. Two menu rows sharing a React key is both a
-    // warning and a row that can't be picked.
+    // Rows are keyed by content, and two menu rows sharing a React key is both
+    // a warning and a row that can't be picked.
     searchPlaces.mockResolvedValue([DAHAB, DAHAB]);
     render(<PlaceSearch onPick={vi.fn()} />);
 
@@ -190,19 +194,16 @@ describe("PlaceSearch results", () => {
     await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(1));
   });
 
-  it("names a place the short way, and only once", async () => {
-    // Two things at once, because one row shows both. The label the row carries
-    // is the API's composed "Dahab, Egypt" rather than the provider's "Dahab,
-    // South Sinai, 45214, Egypt" - which is also what picking the row writes
-    // into the Location field. And that label opens with the name the row is
-    // already showing, so a row printing both would read "Dahab, Dahab, Egypt".
+  it("names a place, then its region, then its country", async () => {
     searchPlaces.mockResolvedValue([DAHAB]);
     render(<PlaceSearch onPick={vi.fn()} />);
 
     await searchFor("Dahab");
 
     expect(
-      await screen.findByRole("option", { name: "Dahab, Egypt" }),
+      await screen.findByRole("option", {
+        name: "Dahab, South Sinai Governorate, Egypt",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -352,6 +353,194 @@ describe("PlaceSearch hints", () => {
     expect(
       await screen.findByRole("option", { name: "SS Thistlegorm, Egypt" }),
     ).toBeInTheDocument();
+  });
+});
+
+// A geocoder row reads as one comma-separated line - the combobox joins a name
+// and its hint with ", " - so it is composed the way a catalog row's place
+// context is, and never says the same part twice.
+describe("PlaceSearch geocoder rows", () => {
+  const MOALBOAL_CEBU: GeocodeResult = {
+    latitude: 9.9366,
+    longitude: 123.3986,
+    location: "Moalboal, Philippines",
+    display_name: "Moalboal, Cebu, Central Visayas, Philippines",
+    name: "Moalboal",
+    country: "Philippines",
+    region: "Cebu",
+    source: "osm",
+    source_id: "relation/1",
+    attribution: OSM_CREDIT,
+  };
+  const MOALBOAL_ZAMBOANGA: GeocodeResult = {
+    ...MOALBOAL_CEBU,
+    latitude: 7.62,
+    longitude: 122.52,
+    display_name: "Moalboal, Zamboanga Sibugay, Philippines",
+    region: "Zamboanga Sibugay",
+    source_id: "node/2",
+  };
+
+  it("tells two same-named places apart by their region", async () => {
+    searchPlaces.mockResolvedValue([MOALBOAL_CEBU, MOALBOAL_ZAMBOANGA]);
+    render(<PlaceSearch onPick={vi.fn()} />);
+
+    await searchFor("moalboal");
+
+    expect(
+      await screen.findByRole("option", {
+        name: "Moalboal, Cebu, Philippines",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", {
+        name: "Moalboal, Zamboanga Sibugay, Philippines",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not repeat a part the name already says", async () => {
+    // A country row is its own country, and "Philippines, Philippines" is a
+    // stammer rather than a hint.
+    searchPlaces.mockResolvedValue([
+      {
+        ...MOALBOAL_CEBU,
+        name: "Philippines",
+        location: "Philippines",
+        display_name: "Philippines",
+        region: null,
+      },
+    ]);
+    render(<PlaceSearch onPick={vi.fn()} />);
+
+    await searchFor("philippines");
+
+    expect(
+      await screen.findByRole("option", { name: "Philippines" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the name alone where nothing is known above it", async () => {
+    // An older API sends neither field, and Photon holds nothing above some
+    // places: never "undefined" and never a stray comma.
+    searchPlaces.mockResolvedValue([
+      { ...MOALBOAL_CEBU, region: undefined, country: undefined },
+    ]);
+    render(<PlaceSearch onPick={vi.fn()} />);
+
+    await searchFor("moalboal");
+
+    expect(
+      await screen.findByRole("option", { name: "Moalboal" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reads a region and country in the same words as a catalog row", async () => {
+    suggest([THISTLEGORM]);
+    searchPlaces.mockResolvedValue([
+      {
+        ...DAHAB,
+        name: "Sharm El Sheikh",
+        location: "Sharm El Sheikh, Egypt",
+        display_name: "Sharm El Sheikh, South Sinai, Egypt",
+        region: "South Sinai",
+        source_id: "node/3",
+      },
+    ]);
+    render(<PlaceSearch onPick={vi.fn()} />);
+
+    await searchFor("sharm");
+
+    expect(
+      await screen.findByRole("option", {
+        name: "SS Thistlegorm, South Sinai, Egypt",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", {
+        name: "Sharm El Sheikh, South Sinai, Egypt",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  describe("that repeat a catalog row", () => {
+    const MONAD_SHOAL: DiveSiteSuggestion = {
+      ...THISTLEGORM,
+      name: "Monad Shoal",
+      latitude: 11.3,
+      longitude: 124.19,
+      country: "Philippines",
+      region: "Cebu",
+      source: "osm",
+      source_id: "node/6215139685",
+    };
+    const MONAD_SHOAL_PLACE: GeocodeResult = {
+      ...MOALBOAL_CEBU,
+      latitude: 11.3,
+      longitude: 124.19,
+      name: "Monad Shoal",
+      location: "Monad Shoal, Philippines",
+      display_name: "Monad Shoal, Cebu, Philippines",
+      source: "osm",
+      source_id: "node/6215139685",
+    };
+
+    it("drops the geocoder's copy of the same OSM object", async () => {
+      // The catalog row names the dive site, which is the better answer.
+      suggest([MONAD_SHOAL]);
+      searchPlaces.mockResolvedValue([MONAD_SHOAL_PLACE]);
+      const onPick = vi.fn();
+      render(<PlaceSearch onPick={onPick} />);
+
+      await searchFor("monad shoal");
+      await waitFor(() => expect(searchPlaces).toHaveResolved());
+
+      await waitFor(() =>
+        expect(screen.getAllByRole("option")).toHaveLength(1),
+      );
+      await userEvent.click(screen.getByRole("option"));
+      // The one row left is the catalog's, and the credit is still there.
+      expect(onPick).toHaveBeenCalledWith({
+        kind: "catalog",
+        site: MONAD_SHOAL,
+      });
+      expect(
+        screen.getByRole("link", {
+          name: "Data © OpenStreetMap contributors, ODbL 1.0.",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps both where the catalog row is Wikidata's", async () => {
+      // A Wikidata record whose id happens to spell the same is a different
+      // database's record, not the same object.
+      suggest([
+        { ...MONAD_SHOAL, source: "wikidata", attribution: WIKIDATA_CREDIT },
+      ]);
+      searchPlaces.mockResolvedValue([MONAD_SHOAL_PLACE]);
+      render(<PlaceSearch onPick={vi.fn()} />);
+
+      await searchFor("monad shoal");
+
+      await waitFor(() =>
+        expect(screen.getAllByRole("option")).toHaveLength(2),
+      );
+    });
+
+    it("keeps a geocoder row that carries no identity", async () => {
+      // An older API sends neither field, and "absent" must not match "absent".
+      suggest([MONAD_SHOAL]);
+      searchPlaces.mockResolvedValue([
+        { ...MONAD_SHOAL_PLACE, source: undefined, source_id: undefined },
+      ]);
+      render(<PlaceSearch onPick={vi.fn()} />);
+
+      await searchFor("monad shoal");
+
+      await waitFor(() =>
+        expect(screen.getAllByRole("option")).toHaveLength(2),
+      );
+    });
   });
 });
 

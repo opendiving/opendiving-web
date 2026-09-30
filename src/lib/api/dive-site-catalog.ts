@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import type { GeoPoint } from "@/lib/geo-distance";
+import { formatPlaceContext } from "@/lib/locations";
 
 // The bounds `GET /dive-sites/suggest` declares on its own `q`. Mirrored rather
 // than discovered, for the same reason `MIN_PLACE_QUERY_LENGTH` is: a query
@@ -125,8 +126,5 @@ export const diveSiteCatalogAPI = {
  * placeholder reads "e.g. Dahab, Egypt".
  */
 export function diveSitePlaceContext(site: DiveSiteSuggestion): string | null {
-  const parts = [site.region, site.country].filter(
-    (part): part is string => !!part?.trim(),
-  );
-  return parts.length > 0 ? parts.join(", ") : null;
+  return formatPlaceContext(site.region, site.country);
 }

@@ -14,10 +14,11 @@ export const MAX_PLACE_QUERY_LENGTH = 200;
  * One place, normalized by the API away from whichever provider answered.
  *
  * `location` and `display_name` answer different questions. `location` is the
- * short, composed form that becomes a place's `name` - divers write "Dahab,
- * Egypt", not a seven-part postal address. `display_name` is the provider's
- * full label, which is what tells two similar results apart in a menu and what
- * becomes the place's `full_name`, stored for the export and rendered nowhere.
+ * short, composed form that becomes a place's `name` - divers write "Ko Tao,
+ * Thailand", not a five-part address. `display_name` is the fuller label the API
+ * composes - the name and every address part above it for a search result, the
+ * provider's own label for a pin - which becomes the place's `full_name`, stored
+ * for the export and rendered nowhere.
  *
  * `attribution` rides on each result rather than in an envelope because it is a
  * licence condition of the data itself, and it must be rendered wherever the
@@ -30,6 +31,17 @@ export interface GeocodeResult {
   display_name: string;
   // The place's own name, where it has one. Absent for an address-only result.
   name?: string | null;
+  // Where a search result sits, which is what pulls two same-named places apart
+  // in a menu: the same role as `DiveSiteSuggestion`'s fields of these names,
+  // though not the same vocabulary. `region` is the finer of the two. Absent on
+  // a reverse geocode, and from an API that predates them.
+  country?: string | null;
+  region?: string | null;
+  // The OSM object a search result is, spelled as the dive site catalog spells
+  // it (`node/6215139685`), so a geocoder row repeating a catalog row can be
+  // recognised by comparing both. Absent on a reverse geocode.
+  source?: "osm" | null;
+  source_id?: string | null;
   attribution: string;
   // The place's extent, when the provider gives one. All four or none: a box is
   // only meaningful whole. West may be greater than east - a box straddling the

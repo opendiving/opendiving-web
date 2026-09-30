@@ -748,7 +748,7 @@ describe("the Google half of the page", () => {
 // a page this size is 60 kB of committed HTML that every copy edit churns, which is a
 // diff nobody reads and therefore a guard nobody keeps; this list fails with the name of
 // the leaked string instead. Each entry is a word only the block can put on the page -
-// the providers §4.3 leaves unnamed, the basemap and geocoder §4.4 and §4.5 leave
+// the providers §4.3 leaves unnamed, the basemap and geocoders §4.4 and §4.5 leave
 // unnamed, the operator's own three facts, and the block's heading.
 const OPERATOR_ONLY = [
   "Who Runs This Copy",
@@ -761,6 +761,8 @@ const OPERATOR_ONLY = [
   "Resend",
   "OpenFreeMap",
   "Nominatim",
+  "Photon",
+  "komoot",
   "AES-256",
   "Article 8",
 ];
@@ -853,7 +855,8 @@ describe("the operator block", () => {
     // The one thing about Resend that is a transfer rather than a region.
     expect(block).toHaveTextContent(/stored in the United States regardless/);
     expect(block).toHaveTextContent(/OpenFreeMap/);
-    expect(block).toHaveTextContent(/Nominatim/);
+    expect(block).toHaveTextContent(/Nominatim names a spot/);
+    expect(block).toHaveTextContent(/Photon, run by komoot GmbH in Germany/);
     // Reported as the providers' statements, not promised by this page.
     expect(block).toHaveTextContent(
       /their statement reported rather than a promise/,

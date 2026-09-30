@@ -9,12 +9,12 @@ import type { LocationFormValue } from "@/lib/validations/location";
 /**
  * A geocoder result as a place.
  *
- * `name` is the API's composed short form - the place and its country, "Dahab,
- * Egypt" - because that is the place as a person writes it, and it is what
- * every surface renders. `full_name` is the provider's own label, "Dahab, South
- * Sinai, 45214, Egypt": a postcode and an administrative level nobody writes in
- * a dive log, kept because an export should carry the fullest form the source
- * held, and shown nowhere.
+ * `name` is the API's composed short form - the place and its country, "Ko Tao,
+ * Thailand" - because that is the place as a person writes it, and it is what
+ * every surface renders. `full_name` is the API's fuller label, "Ko Tao, Ko Tao
+ * Subdistrict, Ko Pha-ngan, Surat Thani Province, Thailand": administrative
+ * levels nobody writes in a dive log, kept because an export should carry the
+ * fullest form the source held, and shown nowhere.
  *
  * The centre and the box are the *place's*, which is what a forward search
  * answers with. A reverse geocode must not go through here: the coordinates it
@@ -36,58 +36,40 @@ export function geocodeResultToLocation(
   };
 }
 
-interface LabelledPlace {
-  name?: string | null;
-  full_name?: string | null;
+/**
+ * Where a place sits, as one string: `region, country` where both are known,
+ * whichever one is where only one is, and `null` where neither is.
+ *
+ * The one composition behind both halves of the dive site search, so a catalog
+ * row and a geocoder row with the same region and country read the same words.
+ */
+export function formatPlaceContext(
+  region?: string | null,
+  country?: string | null,
+): string | null {
+  const parts = [region, country].filter(
+    (part): part is string => !!part?.trim(),
+  );
+  return parts.length > 0 ? parts.join(", ") : null;
 }
 
 /**
- * A place's fuller label with the leading repeat of its own name taken off, or
- * `undefined` when that leaves nothing.
+ * `part`, unless it only repeats a comma-separated part of one of `labels` -
+ * compared whole and case-insensitively, so "Cebu" repeats "Moalboal, Cebu" but
+ * not "Cebu City". `null` for a repeat and for a blank.
  *
- * For a surface that shows a name and a label beside it, where the label starts
- * with the name: "Dahab" and "Dahab, Egypt" read together as "Dahab, Dahab,
- * Egypt". Only the leading parts the name itself repeats are dropped, so a site
- * named "Blue Hole" keeps every word of "Dahab, Egypt" - what goes is a
- * duplicate, not context, and the context is the whole reason the label is on
- * screen.
- *
- * Nothing renders a stored place's `full_name`, so the one caller left is the
- * dive site place search, which composes both arguments from a `GeocodeResult`:
- * the row's own bare name against the API's composed form, which is what
- * separates two same-named results in the menu.
- *
- * `undefined` rather than "" so a caller can drop the element entirely with
- * `&&` - a place whose label says no more than its name gets no second line
- * rather than an empty one.
+ * A menu row joins its name and hint with ", ", so a hint part the name already
+ * holds reads twice: the country row "Philippines" would otherwise say
+ * "Philippines, Philippines".
  */
-export function formatLocationContext(
-  place: LabelledPlace,
-): string | undefined {
-  const label = labelParts(place.full_name);
-  const name = labelParts(place.name);
-
-  // Aligned part by part, not "does the label contain the name": "Dahab" is a
-  // repeat at the front of "Dahab, South Sinai" and a genuine part of "Blue
-  // Hole, Dahab, South Sinai".
-  let repeated = 0;
-  while (
-    repeated < name.length &&
-    repeated < label.length &&
-    label[repeated].toLowerCase() === name[repeated].toLowerCase()
-  ) {
-    repeated++;
-  }
-
-  const rest = label.slice(repeated);
-  return rest.length > 0 ? rest.join(", ") : undefined;
-}
-
-// A comma-separated label as its parts, blanks dropped - which is also what
-// makes a missing label an empty list rather than [""].
-function labelParts(label?: string | null): string[] {
-  return (label ?? "")
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
+export function unrepeated(
+  part: string | null | undefined,
+  ...labels: (string | null | undefined)[]
+): string | null {
+  const trimmed = part?.trim();
+  if (!trimmed) return null;
+  const said = labels.flatMap((label) =>
+    (label ?? "").split(",").map((each) => each.trim().toLowerCase()),
+  );
+  return said.includes(trimmed.toLowerCase()) ? null : trimmed;
 }

@@ -96,8 +96,10 @@ export default async function PrivacyPage() {
                 </code>
                 , which is the third-party provider §4.4 is about and the one
                 §10.4 says the map lettering comes from. Place names come from
-                OpenStreetMap&rsquo;s Nominatim, asked by this server rather
-                than by your browser, exactly as §4.5 describes.
+                two geocoders, both asked by this server rather than by your
+                browser, exactly as §4.5 describes: OpenStreetMap&rsquo;s
+                Nominatim names a spot you place on the map, and Photon, run by
+                komoot GmbH in Germany, answers a place you search for by name.
               </OperatorAnswer>
               <OperatorAnswer question="Whether traffic is encrypted in transit — §5">
                 Yes. TLS terminates at Render&rsquo;s edge and a plain HTTP
@@ -670,7 +672,8 @@ export default async function PrivacyPage() {
                 The dive site and trip forms also let you search for a place by
                 name. There, what you type is what is sent &mdash; again by our
                 servers, not your browser &mdash; a short moment after you stop
-                typing. Nothing else about the form goes with it.
+                typing, and it may go to a different provider from the one that
+                names a spot. Nothing else about the form goes with it.
               </p>
               <p className="text-foreground mb-4">
                 All of this happens only as you fill a form in, never when you

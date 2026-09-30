@@ -21,16 +21,17 @@ import {
   MAX_SITE_QUERY_LENGTH,
   MIN_SITE_QUERY_LENGTH,
 } from "@/lib/api/dive-site-catalog";
-import { formatLocationContext } from "@/lib/locations";
+import { formatPlaceContext, unrepeated } from "@/lib/locations";
 import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { useUnits } from "@/hooks/useUnits";
 import type { UnitSystem } from "@/lib/units";
 
 // Slower than the combobox's own 250 ms, exactly as the trip picker is and for
 // the same reason: every keystroke that gets past this reaches the geocoder
-// through the API's proxy, which enforces one request a second across the whole
-// instance and answers `[]` rather than queueing once that is exceeded - so a
-// fast debounce doesn't just waste requests, it turns them into empty menus.
+// through the API's proxy, which enforces one request a second to each provider
+// across the whole instance and answers `[]` rather than queueing once that is
+// exceeded - so a fast debounce doesn't just waste requests, it turns them into
+// empty menus.
 //
 // The catalog half would prefer the 250 ms default - it is a scan over a file
 // already in memory - but one box means one debounce, and it is not made worse
@@ -57,16 +58,16 @@ function catalogKey(site: DiveSiteSuggestion): string {
 }
 
 // A stable id for a result, since a geocoded place has none of its own. The
-// position plus the provider's full label is specific enough that two genuinely
-// different places never collide - the same reasoning as `locationKey` in the
-// trip picker, which this deliberately does not import: a dive site is not a
-// trip location, and the two features share `lib/`, not each other's components.
+// position plus the full label is specific enough that two genuinely different
+// places never collide - the same reasoning as `locationKey` in the trip picker,
+// which this deliberately does not import: a dive site is not a trip location,
+// and the two features share `lib/`, not each other's components.
 //
-// Still the provider's label rather than the short one the row now shows.
-// Nothing renders from this, it only has to be unique for the length of one
-// menu, and the longer string is the stricter of the two - a place returned
-// twice under different labels is two rows a diver can tell apart, which is not
-// the duplicate this is here to collapse.
+// The full label rather than the short one the row shows. Nothing renders from
+// this, it only has to be unique for the length of one menu, and the longer
+// string is the stricter of the two - a place returned twice under different
+// labels is two rows a diver can tell apart, which is not the duplicate this is
+// here to collapse.
 function placeKey(result: GeocodeResult): string {
   return `${result.latitude}:${result.longitude}:${result.display_name}`;
 }
@@ -75,6 +76,29 @@ function placeKey(result: GeocodeResult): string {
 // place has no name of its own, so the short composed form stands in.
 function placeName(result: GeocodeResult): string {
   return result.name ?? result.location;
+}
+
+// Where a geocoded place is, composed exactly as a catalog row's place context
+// is, so the two halves of the menu read alike: "Moalboal, Cebu, Philippines"
+// beside "Moalboal, Zamboanga Sibugay, Philippines". A part the row's name
+// already says is dropped - the country row "Philippines" gets no hint at all -
+// which `diveSitePlaceContext` does not do, because it also writes a catalog
+// pick's Location and that must stay what it is.
+function placeHint(result: GeocodeResult, name: string): string | undefined {
+  const region = unrepeated(result.region, name);
+  const country = unrepeated(result.country, name, region);
+  return formatPlaceContext(region, country) ?? undefined;
+}
+
+// A geocoded row that is the same OSM object as a catalog row in this answer.
+// The catalog's names the dive site, which is the better of the two, and a
+// Wikidata row never matches - its `source` is not `osm`.
+function sameRecord(result: GeocodeResult) {
+  return (site: DiveSiteSuggestion) =>
+    !!result.source &&
+    !!result.source_id &&
+    result.source === site.source &&
+    result.source_id === site.source_id;
 }
 
 /**
@@ -217,26 +241,15 @@ export function PlaceSearch({ onPick, position, disabled }: PlaceSearchProps) {
       for (const result of geocoded.status === "fulfilled"
         ? geocoded.value
         : []) {
+        if (suggestions?.results.some(sameRecord(result))) continue;
         const id = placeKey(result);
         const name = placeName(result);
-        // Nominatim occasionally returns the same place twice, and two menu rows
-        // sharing a React key is both a warning and a row that can't be picked.
+        // Keyed by content, so two results that key alike would share a React
+        // key - both a warning and a row that can't be picked.
         remember(
           id,
           { kind: "geocode", result },
-          {
-            id,
-            name,
-            // The short place-plus-country the API composes ("Dahab, Egypt"),
-            // not the provider's "Dahab, South Sinai, 45214, Egypt" - and minus
-            // the part of it the row's own name already shows. It is also what
-            // picking the row writes into the Location field below, so the menu
-            // and the form say the same thing.
-            hint: formatLocationContext({
-              name,
-              full_name: result.location,
-            }),
-          },
+          { id, name, hint: placeHint(result, name) },
         );
         credit(result.attribution);
       }
