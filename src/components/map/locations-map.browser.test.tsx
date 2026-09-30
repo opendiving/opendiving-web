@@ -518,6 +518,35 @@ describe("LocationsMap", () => {
     expect(document.querySelector(".maplibregl-map")!.contains(hit)).toBe(true);
   });
 
+  // Firefox draws the canvas square through any rounded clip that is not on a
+  // masked element, so the frame's corners have to reach `MapCanvas`'s own
+  // element and be clipped to there. Chromium rounds the map either way, so what
+  // this lane can hold is the chain, not the pixels.
+  it("clips the map to its frame's corners, under a mask", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          locations={[
+            { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
+          ]}
+        />,
+      ),
+    );
+    await canvasReady();
+
+    const frame = screen.getByRole("img").parentElement!;
+    const radius = getComputedStyle(frame).borderRadius;
+    expect(radius).not.toBe("0px");
+
+    const clip = getComputedStyle(
+      document.querySelector(".maplibregl-map")!.parentElement!,
+    );
+    expect(clip.borderRadius).toBe(radius);
+    expect(clip.overflow).toBe("hidden");
+    expect(clip.getPropertyValue("mask-image")).not.toBe("none");
+  });
+
   // **MapLibre does not refit on its own.** Its `trackResize` calls `resize()`,
   // which recomputes the projection for the new box and leaves centre and zoom
   // where they were - so without an explicit refit a frame that narrows keeps a

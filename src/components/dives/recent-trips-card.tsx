@@ -127,9 +127,9 @@ export function RecentTripsCard() {
                 >
                   {mappedLocations.length > 0 && (
                     // Flush with the row's top and sides, so its corners are
-                    // the row's own, less the border it sits inside. On the
-                    // frame rather than clipped by the row: an ancestor's
-                    // rounded clip does not reliably reach a WebGL canvas.
+                    // the row's own, less the border it sits inside. Set on the
+                    // frame rather than clipped by the row: the map clips to its
+                    // frame's corners, and in Firefox to nothing further up.
                     <LocationsMap
                       locations={mappedLocations}
                       subject={`the places of ${trip.name}`}

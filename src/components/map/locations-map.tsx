@@ -312,7 +312,13 @@ export function LocationsMap({
           attribution's links stay outside the image and reachable: a link
           inside `role="img"` is dropped from the accessibility tree, and a
           licence credit nobody can follow is not much of a credit. */}
-      <div role="img" aria-label={label} className="absolute inset-0">
+      {/* `rounded-[inherit]` hands the frame's corners down to `MapCanvas`,
+          which is what clips the map to them. */}
+      <div
+        role="img"
+        aria-label={label}
+        className="absolute inset-0 rounded-[inherit]"
+      >
         <MapCanvas
           basemap={basemap}
           theme={resolvedTheme === "dark" ? "dark" : "light"}

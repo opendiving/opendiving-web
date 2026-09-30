@@ -491,7 +491,9 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
             setShowCrosshair(event.currentTarget.matches(":focus-visible"))
           }
           onBlur={() => setShowCrosshair(false)}
-          className="relative h-40 w-full select-none bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-48"
+          // `rounded-[inherit]` hands the frame's corners down to `MapCanvas`,
+          // which is what clips the map to them.
+          className="relative h-40 w-full select-none rounded-[inherit] bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-48"
         >
           <MapCanvas
             basemap={basemap}

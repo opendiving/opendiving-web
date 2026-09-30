@@ -308,8 +308,19 @@ export function MapCanvas({
 
           `className` lands here too, on the element the app owns: passed to
           the container it would have been subject to the same silent override
-          for anything MapLibre sets. */}
-      <div className={cn("absolute inset-0 grid", className)}>
+          for anything MapLibre sets.
+
+          It also clips to its parent's corners, under a mask that hides
+          nothing. Firefox draws the WebGL canvas square through any rounded
+          clip that is not on a masked element - the frame's own included - so
+          the caller's frame hands its radius down with `rounded-[inherit]` on
+          every element between it and this one. */}
+      <div
+        className={cn(
+          "absolute inset-0 grid overflow-hidden rounded-[inherit] [mask-image:linear-gradient(#000,#000)]",
+          className,
+        )}
+      >
         <div ref={attachMap} />
       </div>
       {children}
