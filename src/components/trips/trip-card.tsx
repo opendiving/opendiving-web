@@ -57,7 +57,6 @@ export function TripCard({
   const mappedLocations = locations.filter(
     (location) => location.latitude != null && location.longitude != null,
   );
-  const hasMap = mappedLocations.length > 0;
   // Only when some part of the trip carries a date; deliberately no fall back
   // to the trip's creation date.
   const dates = formatTripSpan(trip.parts);
@@ -108,17 +107,21 @@ export function TripCard({
         // faded foot: however tall they grow, the map shows as much of itself.
         // The details' own top padding is part of the band, so what they
         // measure starts at the name.
-        hasMap && "pt-27 sm:pt-33",
+        "pt-27 sm:pt-33",
       )}
     >
-      {hasMap && isNear && (
+      {isNear && (
         // Out of flow, so the lazy map's placeholder takes no room of its own.
         // The radius is the row's less the border it sits inside, and the map
         // clips to it itself: in Firefox a rounded clip from further up does
         // not reach it.
         <div className="absolute inset-0 rounded-[calc(var(--radius)-1px)]">
+          {/* The whole world for a trip with no place on the map yet, so
+              every card in a list has a map and no two layouts sit side by
+              side. */}
           <LocationsMap
             locations={mappedLocations}
+            showWhenEmpty
             subject={`the places of ${trip.name}`}
             className="h-full rounded-[inherit] border-0 sm:h-full"
             backdrop
@@ -129,18 +132,15 @@ export function TripCard({
       )}
       {/* Named per trip, as every list's row actions are. It sits as far in
           from the corner as the credit does, its icon glows as the details'
-          text does - a filter, since `text-shadow` stops at an SVG - and over a
-          map its hover takes the credit's chip rather than a colour the map
-          would swallow. */}
+          text does - a filter, since `text-shadow` stops at an SVG - and its
+          hover takes the credit's chip rather than a colour the map would
+          swallow. */}
       <div className="absolute right-1 top-1 z-10">
         <ItemActionsMenu
           label={`Actions for ${trip.name}`}
           variant="ghost"
           size="sm"
-          className={cn(
-            "[&_svg]:[filter:drop-shadow(0_0_3px_hsl(var(--card)))_drop-shadow(0_0_8px_hsl(var(--card)))]",
-            hasMap && "hover:bg-background/80",
-          )}
+          className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_3px_hsl(var(--card)))_drop-shadow(0_0_8px_hsl(var(--card)))]"
         >
           <DropdownMenuItem onSelect={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
@@ -156,26 +156,14 @@ export function TripCard({
           whatever the map still shows beneath it. */}
       <div
         ref={detailsRef}
-        className={cn(
-          "z-[1] px-3 pb-3 [text-shadow:0_0_3px_hsl(var(--card)),0_0_8px_hsl(var(--card))]",
-          !hasMap && "pt-3",
-        )}
+        className="z-[1] px-3 pb-3 [text-shadow:0_0_3px_hsl(var(--card)),0_0_8px_hsl(var(--card))]"
       >
-        {/* Without a map the menu shares this line, so it leaves the menu
-            room. */}
-        <div
-          className={cn(
-            "flex flex-wrap items-center justify-between gap-x-4 gap-y-1",
-            !hasMap && "pr-10",
-          )}
+        <Link
+          href={`/trips/${trip.uuid}`}
+          className="block font-medium text-foreground after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
         >
-          <Link
-            href={`/trips/${trip.uuid}`}
-            className="min-w-0 font-medium text-foreground after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
-          >
-            {trip.name}
-          </Link>
-        </div>
+          {trip.name}
+        </Link>
         {/* One line, as the trip page's subtitle joins the same two. The
             place is lifted over the link for its hover hint, and only as far
             as its own text reaches. */}

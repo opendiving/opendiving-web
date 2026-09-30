@@ -5,8 +5,8 @@ import { RecentTripsCard } from "./recent-trips-card";
 import type { Trip } from "@/lib/api/trips";
 import { reveal } from "@/test/intersection";
 
-// Each row names its own controls, draws a map only for a trip with a place on
-// one, and deletes where it stands. Two trips on purpose: a control named from a
+// Each row names its own controls, draws a map for every trip - the world for
+// one with no place on it - and deletes where it stands. Two trips on purpose: a control named from a
 // constant passes a one-row test exactly as well as one named from the trip.
 
 vi.mock("@/lib/api/trips", async (importOriginal) => ({
@@ -25,8 +25,18 @@ vi.mock("@/components/ui/use-toast", () => {
 
 // The map needs WebGL; what matters here is which rows get one.
 vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: ({ subject }: { subject: string }) => (
-    <div data-testid="map">{subject}</div>
+  LocationsMap: ({
+    locations,
+    showWhenEmpty,
+  }: {
+    locations: { name: string }[];
+    showWhenEmpty?: boolean;
+  }) => (
+    <div data-testid="map">
+      {locations.length > 0
+        ? locations.map((location) => location.name).join("; ")
+        : showWhenEmpty && "the world"}
+    </div>
   ),
 }));
 
@@ -91,15 +101,17 @@ beforeEach(() => {
 });
 
 describe("RecentTripsCard", () => {
-  it("draws a map only for a trip with a place on one", async () => {
+  it("draws a map for every trip, the world for one with no place on it", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
     await act(async () => reveal());
 
-    expect(screen.getAllByTestId("map")).toHaveLength(1);
-    expect(within(rowOf("Dahab 2026")).getByTestId("map")).toBeInTheDocument();
-    expect(within(rowOf("Koh Tao 2025")).queryByTestId("map")).toBeNull();
-    expect(within(rowOf("Koh Tao 2025")).getByText("Koh Tao")).toBeVisible();
+    expect(within(rowOf("Dahab 2026")).getByTestId("map")).toHaveTextContent(
+      "Dahab, Egypt",
+    );
+    expect(within(rowOf("Koh Tao 2025")).getByTestId("map")).toHaveTextContent(
+      "the world",
+    );
   });
 
   it("counts a trip's dives, dive sites and species", async () => {
@@ -161,7 +173,7 @@ describe("RecentTripsCard", () => {
 
     expect(screen.queryByTestId("map")).toBeNull();
     await act(async () => reveal());
-    expect(screen.getByTestId("map")).toBeInTheDocument();
+    expect(screen.getAllByTestId("map")).toHaveLength(2);
   });
 
   it("names each row's menu after its trip", async () => {

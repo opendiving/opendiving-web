@@ -3304,10 +3304,11 @@ whole world until the first place is picked. A frame appearing with the first pl
 fields down mid-edit, and an empty map says the field above wants a place, not free text — as
 `DiveSiteMapField` does with `MapPicker`.
 
-`showWhenEmpty` stays opt-in: the trips list, a trip's page and a dive's sidebar answer "where is
-this?", where an empty world is worse than no map, and gating keeps the chunk unfetched. The empty
-frame's aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a definite noun
-phrase.
+`showWhenEmpty` stays opt-in: a trip's page and a dive's sidebar answer "where is this?", where an
+empty world is worse than no map, and gating keeps the chunk unfetched. The trip card opts in: there
+the map is the card's backdrop, and a list mixing cards with and without one reads as two layouts.
+The empty frame's aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a
+definite noun phrase.
 
 The empty view is `WORLD_CENTER` at `MIN_ZOOM` (0) from `lib/basemap.ts`, read by both maps.
 

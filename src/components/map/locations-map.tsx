@@ -172,9 +172,10 @@ export interface LocationsMapProps {
    *
    * For a form that shows this map beside the field that fills it, where a
    * frame appearing only once the first place is picked shoves everything below
-   * it down the dialog mid-edit. Off by default, because everywhere else the
-   * map answers "where is this?", and an empty world is a worse answer than no
-   * map at all.
+   * it down the dialog mid-edit, and for a trip card, whose map is the card's
+   * backdrop and whose list would otherwise mix two layouts. Off by default,
+   * because elsewhere the map answers "where is this?", and an empty world is a
+   * worse answer than no map at all.
    */
   showWhenEmpty?: boolean;
   /**
