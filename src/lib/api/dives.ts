@@ -484,13 +484,16 @@ export interface Dive {
   depth_outline?: DepthOutline | null;
 }
 
-// A recording's depth curve at a dive card's resolution.
+/** A recording's depth curve at a dive card's resolution. */
 export interface DepthOutline {
-  // Milliseconds from the recording's first depth reading to its last.
+  /** Milliseconds from the recording's first depth reading to its last. */
   span: number;
-  // Centimetres: value `i` is the deepest reading in the `i`th of
-  // `values.length` equal slices of `span`, so the deepest value is the
-  // recording's maximum depth.
+  /**
+   * Centimetres: value `i` is the deepest reading in the `i`th of
+   * `values.length` equal slices of `span`, or the straight line between its
+   * neighbours for a slice no reading falls in - so the deepest value is the
+   * recording's maximum depth.
+   */
   values: number[];
 }
 
