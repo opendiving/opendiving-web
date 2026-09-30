@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { Marker, type Map as MapLibreMap } from "maplibre-gl";
 
@@ -174,6 +174,7 @@ export function LocationsMap({
   const { basemap } = useConfig();
 
   const [map, setMap] = useState<MapLibreMap | null>(null);
+  const creditRef = useRef<HTMLDivElement>(null);
 
   // What the places actually are, held stable across renders that did not change
   // them. Every effect below either moves the camera or rebuilds the markers, and
@@ -223,6 +224,13 @@ export function LocationsMap({
         });
         return;
       }
+      // A backdrop's credit sits over its top edge, so the places centre
+      // between the credit and whatever covers the foot, rather than between
+      // the frame's own edges. Measured, since the credit is whatever the
+      // basemap says and wraps where it is long.
+      const credit = backdrop ? creditRef.current : null;
+      const top =
+        FIT_PADDING + (credit ? credit.offsetTop + credit.offsetHeight : 0);
       map.fitBounds(
         [
           [bounds.west, bounds.south],
@@ -230,13 +238,13 @@ export function LocationsMap({
         ],
         {
           padding: {
-            top: FIT_PADDING,
+            top,
             right: FIT_PADDING,
             // Never so much that no room is left to fit into: MapLibre then
             // refuses the fit and leaves the camera wherever it was.
             bottom: Math.min(
               FIT_PADDING + coveredBottom,
-              map.getContainer().clientHeight - 2 * FIT_PADDING,
+              map.getContainer().clientHeight - top - FIT_PADDING,
             ),
             left: FIT_PADDING,
           },
@@ -263,7 +271,7 @@ export function LocationsMap({
     return () => {
       map.off("resize", fit);
     };
-  }, [map, placed, coveredBottom]);
+  }, [map, placed, coveredBottom, backdrop]);
 
   // Markers are MapLibre's rather than absolutely positioned children, which is
   // what hands it the job of drawing a place at 178E in the copy of the world
@@ -370,6 +378,7 @@ export function LocationsMap({
           holding a half-filled form, and navigating away in the same tab would
           throw it away. */}
       <div
+        ref={creditRef}
         className={cn(
           "absolute z-10 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground",
           // Inset from a backdrop's corner, which is rounded and would clip it.

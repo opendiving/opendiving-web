@@ -567,6 +567,31 @@ describe("LocationsMap", () => {
     expect(centre - frame.top).toBeCloseTo((frame.height - 80) / 2, 0);
   });
 
+  // A backdrop's credit covers its top edge the way the caller's content covers
+  // its foot, so the place centres between the two.
+  it("centres a backdrop's place between its credit and a covered bottom", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          coveredBottom={40}
+          locations={[{ name: "Dahab", latitude: 28.49, longitude: 34.51 }]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const credit = screen
+      .getByRole("link", { name: /OpenStreetMap/ })
+      .parentElement!.getBoundingClientRect();
+    const marker = (markers()[0] as HTMLElement).getBoundingClientRect();
+    const centre = marker.top + marker.height / 2;
+    expect(credit.bottom).toBeGreaterThan(frame.top);
+    expect(centre).toBeCloseTo((credit.bottom + frame.bottom - 40) / 2, 0);
+  });
+
   it("fades a backdrop out towards its bottom edge", async () => {
     render(
       withConfig(
