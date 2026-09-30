@@ -17,6 +17,7 @@ import {
   hasMapPosition,
 } from "@/components/dives/dive-map-locations";
 import { DiveIcon } from "@/components/logo";
+import { DiveProfileSilhouette } from "@/components/dives/dive-profile-silhouette";
 import {
   formatDiveDateTime,
   formatDurationHoursMinutes,
@@ -54,6 +55,12 @@ function UnplacedBackdrop({ coveredBottom }: { coveredBottom: number }) {
   );
 }
 
+// The profile's band at the foot of the backdrop, just clear of the name: the
+// `sm:h-14` below, and shorter on a phone, whose backdrop band is already too
+// short for the map to fit its places any higher than it would above this.
+const SILHOUETTE_HEIGHT = 56;
+const SILHOUETTE_GAP = 4;
+
 interface DiveCardProps {
   dive: Dive;
   // Offers Delete beside Edit. Left out where the list has no delete of its own
@@ -63,13 +70,15 @@ interface DiveCardProps {
 }
 
 // One dive as a card, in every list of dives: its sites and fixes on a map as
-// the backdrop, and its duration and depths as the dive page shows them.
+// the backdrop with its depth curve across the foot of it, and its duration and
+// depths as the dive page shows them.
 export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   const units = useUnits();
   // The edit page returns to wherever the card was opened from.
   const pathname = usePathname();
   const locations = diveMapLocations(dive);
   const isPlaced = hasMapPosition(locations);
+  const outline = dive.depth_outline;
   // The title names the site; this says where it is.
   const placeName = dive.dive_sites[0]?.location?.name;
   // Whole units, unlike the dive page's two decimals: it is a list to scan,
@@ -95,20 +104,41 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
           )}
         </>
       }
-      backdrop={(coveredBottom) =>
-        isPlaced ? (
-          <LocationsMap
-            locations={locations}
-            subject={`the location of dive #${dive.dive_number}`}
-            className="h-full rounded-[inherit] border-0 sm:h-full"
-            backdrop
-            coveredBottom={coveredBottom}
-            snapshot
-          />
-        ) : (
-          <UnplacedBackdrop coveredBottom={coveredBottom} />
-        )
-      }
+      backdrop={(coveredBottom) => {
+        // The map's places and the water's bubbles centre above the profile
+        // rather than behind it.
+        const aboveProfile = outline
+          ? coveredBottom + SILHOUETTE_GAP + SILHOUETTE_HEIGHT
+          : coveredBottom;
+        return (
+          <>
+            {isPlaced ? (
+              <LocationsMap
+                locations={locations}
+                subject={`the location of dive #${dive.dive_number}`}
+                className="h-full rounded-[inherit] border-0 sm:h-full"
+                backdrop
+                coveredBottom={aboveProfile}
+                snapshot
+              />
+            ) : (
+              <UnplacedBackdrop coveredBottom={aboveProfile} />
+            )}
+            {/* Lifted off the map by the glow the details' text has. */}
+            {outline && (
+              <div
+                className="absolute inset-x-3 h-9 sm:h-14 [filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
+                style={{ bottom: coveredBottom + SILHOUETTE_GAP }}
+              >
+                <DiveProfileSilhouette
+                  depths={outline.values}
+                  className="size-full"
+                />
+              </div>
+            )}
+          </>
+        );
+      }}
     >
       <Link href={`/dives/${dive.uuid}`} className={BACKDROP_CARD_LINK}>
         <DiveTitle diveNumber={dive.dive_number} sites={dive.dive_sites} />

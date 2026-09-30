@@ -5,9 +5,9 @@ import { DiveCard } from "./dive-card";
 import type { Dive } from "@/lib/api/dives";
 import { reveal } from "@/test/intersection";
 
-// A card draws a map for a dive with a position and open water for one without, lays
-// out its duration and depths under their titles, and offers Delete only where
-// its list can run one.
+// A card draws a map for a dive with a position and open water for one without,
+// the dive's depth outline across the foot of either, lays out its duration and
+// depths under their titles, and offers Delete only where its list can run one.
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
@@ -23,6 +23,12 @@ vi.mock("@/components/map/locations-map-lazy", () => ({
     <div data-testid="map">
       {locations.map((location) => location.name).join("; ")}
     </div>
+  ),
+}));
+
+vi.mock("@/components/dives/dive-profile-silhouette", () => ({
+  DiveProfileSilhouette: ({ depths }: { depths: number[] }) => (
+    <div data-testid="outline">{depths.join(" ")}</div>
   ),
 }));
 
@@ -81,6 +87,24 @@ describe("DiveCard", () => {
     expect(
       item.querySelector(".bg-\\[var\\(--map-water\\)\\] svg"),
     ).toBeInTheDocument();
+  });
+
+  it("draws the dive's depth outline over its backdrop", () => {
+    const item = card({
+      dive: dive({
+        depth_outline: { span: 2_700_000, values: [300, 3052, 500] },
+      }),
+    });
+
+    expect(within(item).getByTestId("outline")).toHaveTextContent(
+      "300 3052 500",
+    );
+  });
+
+  it("draws no outline for a dive without one", () => {
+    const item = card({ dive: dive({ depth_outline: null }) });
+
+    expect(within(item).queryByTestId("outline")).not.toBeInTheDocument();
   });
 
   it("titles its figures", () => {
