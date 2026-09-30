@@ -1586,8 +1586,8 @@ statement; shared spies come from `vi.hoisted`.
 Coverage scopes `lib/`, `hooks/`, `contexts/`, `components/` and `app/`, excluding vendored
 `components/ui/**`. Global thresholds sit just under current values as a ratchet; per-directory
 floors on `lib/`, `hooks/` and `contexts/` hold the tested layers. Raise them as coverage grows;
-never lower one. CI runs the suite without coverage, which costs minutes per PR, so the floors hold
-only when `npm run test:coverage` runs.
+never lower one. CI runs the suite without coverage, so the floors hold only when
+`npm run test:coverage` runs.
 
 ## The instant-navigation tests run against fixtures, not the API
 

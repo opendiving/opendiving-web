@@ -73,8 +73,8 @@ jobs:
       - name: Install Chromium for the browser tests
         run: npx playwright install chromium
 
-      # Without coverage: instrumenting every file costs minutes on each PR,
-      # and `npm run test:coverage` gives the report to whoever wants it.
+      # Without coverage: `npm run test:coverage` prints the report and checks
+      # the floors in `vitest.config.mts`.
       - name: Run tests
         run: npm test
 
