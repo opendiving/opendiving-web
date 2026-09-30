@@ -11,41 +11,28 @@ import {
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
-import { Calendar, Edit, Fish, MapPin } from "lucide-react";
-import { DiveIcon } from "@/components/logo";
+import { Calendar, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// What the trip's dives add up to, beside its name, with the dashboard's own
-// icons for dives and species. On every trip, zeros included, and zeros too
-// from an API that sends no counts yet.
+// What the trip's dives add up to, laid out as the dive page lays out its
+// duration and depths, a size down. On every trip, zeros included, and zeros
+// too from an API that sends no counts yet.
 function TripCounts({ trip }: { trip: Trip }) {
-  const dives = trip.dive_count ?? 0;
-  const sites = trip.dive_site_count ?? 0;
-  const species = trip.species_count ?? 0;
   const counts = [
-    { icon: DiveIcon, value: dives, label: dives === 1 ? "dive" : "dives" },
-    {
-      icon: MapPin,
-      value: sites,
-      label: sites === 1 ? "dive site" : "dive sites",
-    },
-    { icon: Fish, value: species, label: "species" },
+    { label: "Dives", value: trip.dive_count ?? 0 },
+    { label: "Dive Sites", value: trip.dive_site_count ?? 0 },
+    { label: "Species Seen", value: trip.species_count ?? 0 },
   ];
 
-  // One sentence for a screen reader, which would otherwise run the three
-  // together as "12 dives1 dive site".
   return (
-    <div className="ml-auto flex shrink-0 items-center gap-3 text-sm text-muted-foreground">
-      <span className="sr-only">
-        {counts.map(({ value, label }) => `${value} ${label}`).join(", ")}
-      </span>
-      {counts.map(({ icon: Icon, value, label }) => (
-        <span key={label} aria-hidden className="flex items-center gap-1">
-          <Icon className="h-4 w-4" />
-          {value}
-        </span>
+    <dl className="mt-3 grid grid-cols-3 gap-4">
+      {counts.map(({ label, value }) => (
+        <div key={label}>
+          <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+          <dd className="text-lg font-bold">{value}</dd>
+        </div>
       ))}
-    </div>
+    </dl>
   );
 }
 
@@ -97,9 +84,9 @@ export function RecentTripRow({
     <li
       className={cn(
         "relative isolate flex flex-col rounded-lg border hover:bg-muted transition-colors",
-        // The map's own height, with the trip's details at the foot of it,
-        // where the map has faded out beneath them.
-        hasMap && "min-h-40 justify-end sm:min-h-48",
+        // A fixed band of map above the details, which sit over its faded
+        // foot: however tall they grow, the map shows as much of itself.
+        hasMap && "pt-24 sm:pt-30",
       )}
     >
       {hasMap && (
@@ -117,17 +104,15 @@ export function RecentTripRow({
           />
         </div>
       )}
-      {/* Named per row, as the trips table's actions are. Over a map it wears
-          the credit's chip and sits as far in from the corner, so the two read
-          as a pair. */}
+      {/* Named per row, as the trips table's actions are. It sits as far in
+          from the corner as the credit does, and over a map its hover takes the
+          credit's chip rather than a colour the map would swallow. */}
       <div className="absolute right-1 top-1 z-10">
         <ItemActionsMenu
           label={`Actions for ${trip.name}`}
           variant="ghost"
           size="sm"
-          className={
-            hasMap ? "bg-background/80 hover:bg-background" : undefined
-          }
+          className={hasMap ? "hover:bg-background/80" : undefined}
         >
           <DropdownMenuItem onSelect={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
@@ -155,7 +140,6 @@ export function RecentTripRow({
           >
             {trip.name}
           </Link>
-          <TripCounts trip={trip} />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <TripLocationsLabel
@@ -171,6 +155,7 @@ export function RecentTripRow({
             </div>
           )}
         </div>
+        <TripCounts trip={trip} />
       </div>
     </li>
   );

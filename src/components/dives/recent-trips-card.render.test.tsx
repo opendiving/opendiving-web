@@ -97,7 +97,7 @@ describe("RecentTripsCard", () => {
     expect(within(rowOf("Koh Tao 2025")).getByText("Koh Tao")).toBeVisible();
   });
 
-  it("counts a trip's dives, dive sites and species beside its name", async () => {
+  it("counts a trip's dives, dive sites and species", async () => {
     vi.mocked(tripsAPI.getTrips).mockResolvedValue({
       data: [
         { ...MAPPED, dive_count: 12, dive_site_count: 1, species_count: 23 },
@@ -113,15 +113,23 @@ describe("RecentTripsCard", () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
 
-    expect(
-      within(rowOf("Dahab 2026")).getByText(
-        "12 dives, 1 dive site, 23 species",
-      ),
-    ).toBeInTheDocument();
+    // Each figure under its own title, as a definition list pairs them.
+    const countsOf = (name: string) =>
+      Array.from(rowOf(name).querySelectorAll("dt"), (term) => [
+        term.textContent,
+        term.nextElementSibling?.textContent,
+      ]);
+    expect(countsOf("Dahab 2026")).toEqual([
+      ["Dives", "12"],
+      ["Dive Sites", "1"],
+      ["Species Seen", "23"],
+    ]);
     for (const name of ["Koh Tao 2025", "Palau 2024"]) {
-      expect(
-        within(rowOf(name)).getByText("0 dives, 0 dive sites, 0 species"),
-      ).toBeInTheDocument();
+      expect(countsOf(name)).toEqual([
+        ["Dives", "0"],
+        ["Dive Sites", "0"],
+        ["Species Seen", "0"],
+      ]);
     }
   });
 
