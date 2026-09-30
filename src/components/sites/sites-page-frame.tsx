@@ -26,6 +26,8 @@ import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 export interface SitesPageFrameProps {
   isLoading: boolean;
   totalCount: number;
+  /** Whether the query that answered `totalCount` narrowed the list. */
+  isCountNarrowed?: boolean;
   itemsPerPage: number;
   rows?: ReactNode[];
   /** What the search box holds. Empty on arrival. */
@@ -49,6 +51,7 @@ const noop = () => {};
 export function SitesPageFrame({
   isLoading,
   totalCount,
+  isCountNarrowed = false,
   itemsPerPage,
   rows = [],
   search = "",
@@ -94,7 +97,7 @@ export function SitesPageFrame({
             isLoading={isLoading}
             label="dive site"
             total
-            isNarrowed={isSearching}
+            isNarrowed={isCountNarrowed}
           />
           <ListSearch
             id="dive-site-search"

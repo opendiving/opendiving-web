@@ -60,6 +60,7 @@ export function SitesPageContent() {
     isLoading: isLoadingDiveSites,
     isLoadingMore,
     totalCount,
+    isCountNarrowed,
     itemsPerPage,
     hasMore,
     loadFailed,
@@ -69,6 +70,7 @@ export function SitesPageContent() {
   } = useInfiniteResource<DiveSite>(fetchDiveSites, {
     keyOf: (site) => site.uuid,
     enabled: !!user,
+    isNarrowed: search.length > 0,
     errorMessage: "Failed to load dive sites. Please try again.",
   });
 
@@ -100,6 +102,7 @@ export function SitesPageContent() {
       <SitesPageFrame
         isLoading={isLoadingDiveSites}
         totalCount={totalCount}
+        isCountNarrowed={isCountNarrowed}
         itemsPerPage={itemsPerPage}
         isLoadingMore={isLoadingMore}
         loadFailed={loadFailed}

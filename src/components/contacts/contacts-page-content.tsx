@@ -60,6 +60,7 @@ export function ContactsPageContent() {
     isLoading: isLoadingContacts,
     isLoadingMore,
     totalCount,
+    isCountNarrowed,
     itemsPerPage,
     hasMore,
     loadFailed,
@@ -69,6 +70,7 @@ export function ContactsPageContent() {
   } = useInfiniteResource<Contact>(fetchContacts, {
     keyOf: (contact) => contact.uuid,
     enabled: !!user,
+    isNarrowed: search.length > 0,
     errorMessage: "Failed to load contacts. Please try again.",
   });
 
@@ -102,6 +104,7 @@ export function ContactsPageContent() {
       <ContactsPageFrame
         isLoading={isLoadingContacts}
         totalCount={totalCount}
+        isCountNarrowed={isCountNarrowed}
         itemsPerPage={itemsPerPage}
         isLoadingMore={isLoadingMore}
         loadFailed={loadFailed}

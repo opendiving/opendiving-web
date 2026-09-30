@@ -115,7 +115,11 @@ describe("DivesPageFrame", () => {
   });
 
   it("answers a filter that matched nothing in one line, keeping the count and the button", () => {
-    frame({ cards: [], filters: { ...NO_DIVE_FILTERS, type: "snorkel" } });
+    frame({
+      cards: [],
+      filters: { ...NO_DIVE_FILTERS, type: "snorkel" },
+      isCountNarrowed: true,
+    });
 
     expect(
       screen.getByText("No dives match those filters."),

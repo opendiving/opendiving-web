@@ -35,6 +35,8 @@ import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 export interface CoursesPageFrameProps {
   isLoading: boolean;
   totalCount: number;
+  /** Whether the query that answered `totalCount` narrowed the list. */
+  isCountNarrowed?: boolean;
   itemsPerPage: number;
   rows?: ReactNode[];
   /** What the search box holds. Empty on arrival. */
@@ -70,6 +72,7 @@ const noop = () => {};
 export function CoursesPageFrame({
   isLoading,
   totalCount,
+  isCountNarrowed = false,
   itemsPerPage,
   rows = [],
   search = "",
@@ -132,7 +135,7 @@ export function CoursesPageFrame({
             isLoading={isLoading}
             label="course"
             total
-            isNarrowed={isSearching || hasCourseFilters(filters)}
+            isNarrowed={isCountNarrowed}
           />
           {/* Shutting the panel takes the search and the filters with it, so
               the button says so once it is open - a collapsed row that

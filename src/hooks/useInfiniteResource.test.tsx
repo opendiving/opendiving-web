@@ -385,6 +385,30 @@ describe("useInfiniteResource", () => {
     expect(result.current.isLoading).toBe(false);
   });
 
+  // The page's own `isNarrowed` moves the moment a term is set, a round trip
+  // before the count it describes: "72 trips found" of 72 trips in total.
+  it("reports whether the query answering the count was narrowed, not the current one", async () => {
+    const { fetchFn, pending } = deferredFetcher();
+    const all = (p: number) => fetchFn(p);
+    const searched = (p: number) => fetchFn(p);
+    const { result, rerender } = renderHook(
+      ({ fn, isNarrowed }) => useInfiniteResource(fn, { keyOf, isNarrowed }),
+      { initialProps: { fn: all, isNarrowed: false } },
+    );
+
+    await waitFor(() => expect(pending).toHaveLength(1));
+    await act(async () => pending[0].resolve(page(1, { total: 72 })));
+
+    rerender({ fn: searched, isNarrowed: true });
+    await waitFor(() => expect(pending).toHaveLength(2));
+    expect(result.current.totalCount).toBe(72);
+    expect(result.current.isCountNarrowed).toBe(false);
+
+    await act(async () => pending[1].resolve(page(1, { total: 3 })));
+    expect(result.current.totalCount).toBe(3);
+    expect(result.current.isCountNarrowed).toBe(true);
+  });
+
   it("does not toast for a superseded request that fails", async () => {
     const { fetchFn, pending } = deferredFetcher();
     const { result } = renderHook(() =>

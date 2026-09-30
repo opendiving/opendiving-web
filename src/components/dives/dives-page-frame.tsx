@@ -29,6 +29,8 @@ import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 export interface DivesPageFrameProps {
   isLoading: boolean;
   totalCount: number;
+  /** Whether the query that answered `totalCount` narrowed the list. */
+  isCountNarrowed?: boolean;
   itemsPerPage: number;
   /** One `DiveCard` per dive - list items, for the list this frame draws. */
   cards?: ReactNode[];
@@ -68,6 +70,7 @@ const noop = () => {};
 export function DivesPageFrame({
   isLoading,
   totalCount,
+  isCountNarrowed = false,
   itemsPerPage,
   cards = [],
   numbering,
@@ -127,7 +130,7 @@ export function DivesPageFrame({
             isLoading={isLoading}
             label="dive"
             total
-            isNarrowed={isNarrowed}
+            isNarrowed={isCountNarrowed}
           />
           {/* The courses list's panel, and for its reason: shutting it takes the
               filters with it, so a folded row never narrows the list unseen, and

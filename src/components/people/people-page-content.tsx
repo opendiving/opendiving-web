@@ -58,6 +58,7 @@ export function PeoplePageContent() {
     isLoading: isLoadingPeople,
     isLoadingMore,
     totalCount,
+    isCountNarrowed,
     itemsPerPage,
     hasMore,
     loadFailed,
@@ -67,6 +68,7 @@ export function PeoplePageContent() {
   } = useInfiniteResource<Person>(fetchPeople, {
     keyOf: (person) => person.uuid,
     enabled: !!user,
+    isNarrowed: search.length > 0,
     errorMessage: "Failed to load people. Please try again.",
   });
 
@@ -100,6 +102,7 @@ export function PeoplePageContent() {
       <PeoplePageFrame
         isLoading={isLoadingPeople}
         totalCount={totalCount}
+        isCountNarrowed={isCountNarrowed}
         itemsPerPage={itemsPerPage}
         isLoadingMore={isLoadingMore}
         loadFailed={loadFailed}

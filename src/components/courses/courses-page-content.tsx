@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { CoursesPageFrame } from "@/components/courses/courses-page-frame";
 import {
+  hasCourseFilters,
   NO_COURSE_FILTERS,
   type CourseListFilters,
 } from "@/components/courses/courses-filters";
@@ -76,6 +77,7 @@ export function CoursesPageContent() {
     isLoading: isLoadingCourses,
     isLoadingMore,
     totalCount,
+    isCountNarrowed,
     itemsPerPage,
     hasMore,
     loadFailed,
@@ -85,6 +87,7 @@ export function CoursesPageContent() {
   } = useInfiniteResource<Course>(fetchCourses, {
     keyOf: (course) => course.uuid,
     enabled: !!user,
+    isNarrowed: search.length > 0 || hasCourseFilters(filters),
     errorMessage: "Failed to load courses. Please try again.",
   });
 
@@ -127,6 +130,7 @@ export function CoursesPageContent() {
       <CoursesPageFrame
         isLoading={isLoadingCourses}
         totalCount={totalCount}
+        isCountNarrowed={isCountNarrowed}
         itemsPerPage={itemsPerPage}
         search={searchInput}
         onSearchChange={setSearchInput}

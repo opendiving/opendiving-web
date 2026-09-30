@@ -19,6 +19,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 export interface SpeciesPageFrameProps {
   isLoading: boolean;
   totalCount: number;
+  /** Whether the query that answered `totalCount` narrowed the list. */
+  isCountNarrowed?: boolean;
   itemsPerPage: number;
   /** The life list's cards. Empty while the first page is in flight. */
   cards?: ReactNode[];
@@ -73,6 +75,7 @@ function LifeListCardSkeleton() {
 export function SpeciesPageFrame({
   isLoading,
   totalCount,
+  isCountNarrowed = false,
   itemsPerPage,
   cards = [],
   search = "",
@@ -112,7 +115,7 @@ export function SpeciesPageFrame({
             isLoading={isLoading}
             label="species"
             plural="species"
-            isNarrowed={isSearching}
+            isNarrowed={isCountNarrowed}
           />
           <ListSearch
             id="species-search"

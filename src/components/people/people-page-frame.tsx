@@ -26,6 +26,8 @@ import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 export interface PeoplePageFrameProps {
   isLoading: boolean;
   totalCount: number;
+  /** Whether the query that answered `totalCount` narrowed the list. */
+  isCountNarrowed?: boolean;
   itemsPerPage: number;
   rows?: ReactNode[];
   /** What the search box holds. Empty on arrival. */
@@ -52,6 +54,7 @@ const COLUMNS = 6;
 export function PeoplePageFrame({
   isLoading,
   totalCount,
+  isCountNarrowed = false,
   itemsPerPage,
   rows = [],
   search = "",
@@ -91,7 +94,7 @@ export function PeoplePageFrame({
             label="person"
             plural="people"
             total
-            isNarrowed={isSearching}
+            isNarrowed={isCountNarrowed}
           />
           <ListSearch
             id="person-search"
