@@ -25,7 +25,6 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "coverage:summary": "node scripts/coverage-summary.mjs",
     "screenshots": "node scripts/screenshots.mjs",
     "measure-navigations": "node scripts/measure-navigations.mjs",
     "clean": "rm -rf .next out",

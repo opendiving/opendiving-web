@@ -1586,7 +1586,8 @@ statement; shared spies come from `vi.hoisted`.
 Coverage scopes `lib/`, `hooks/`, `contexts/`, `components/` and `app/`, excluding vendored
 `components/ui/**`. Global thresholds sit just under current values as a ratchet; per-directory
 floors on `lib/`, `hooks/` and `contexts/` hold the tested layers. Raise them as coverage grows;
-never lower one.
+never lower one. CI runs the suite without coverage, so the floors hold only when
+`npm run test:coverage` runs.
 
 ## The instant-navigation tests run against fixtures, not the API
 
@@ -5058,7 +5059,7 @@ script runs after every re-vendor.
 `fetchAsBlobUrl`/`importAsBlobUrl` only when true. `scripts/copy-maplibre-worker.mjs` copies both
 files, since the worker imports `./maplibre-gl-shared.mjs`, and a worker that never starts fires no
 error; the map never reaches `load`. `predev`, `prebuild`, `pretest`, `pretest:watch` and
-`pretest:coverage` all run it; npm matches pre-hooks by exact name and CI runs `test:coverage`.
+`pretest:coverage` all run it, because npm matches pre-hooks by exact name.
 
 `worker-src 'self'` is load-bearing: without it a worker falls to `script-src`, whose
 `'strict-dynamic'` skips the source-list check for non-parser-inserted scripts, so a `blob:` worker
