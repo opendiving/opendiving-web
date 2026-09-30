@@ -7,11 +7,11 @@ import { cn } from "@/lib/utils";
 const WIDTH = 100;
 const HEIGHT = 100;
 
-// A dive's depth curve over a fill that fades down from it into whatever the
-// shape is drawn over. Each depth is the deepest in an even slice of the dive,
-// so the shape reaches the dive's maximum; the surface is pinned at both ends,
-// where every dive starts and finishes. Draws nothing for a series that never
-// leaves the surface.
+// A dive's depth curve, in the colour of the card's text, over a fill that
+// fades down from it into whatever the shape is drawn over. Each depth is the
+// deepest in an even slice of the dive, so the shape reaches the dive's
+// maximum; the surface is pinned at both ends, where every dive starts and
+// finishes. Draws nothing for a series that never leaves the surface.
 export function DiveProfileSilhouette({
   depths,
   className,
@@ -39,7 +39,7 @@ export function DiveProfileSilhouette({
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       preserveAspectRatio="none"
       overflow="visible"
-      className={cn("text-muted-foreground", className)}
+      className={cn("text-foreground", className)}
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -51,12 +51,10 @@ export function DiveProfileSilhouette({
         d={`${curve} L${WIDTH},${HEIGHT} L0,${HEIGHT} Z`}
         fill={`url(#${gradientId})`}
       />
-      {/* In the colour of the card's text, over a fill a shade quieter. */}
       <path
         d={curve}
         fill="none"
         stroke="currentColor"
-        className="text-foreground"
         strokeWidth={1.5}
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
