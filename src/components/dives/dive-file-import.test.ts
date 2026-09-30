@@ -616,3 +616,21 @@ describe("a later file's cylinders on a form that has some", () => {
     expect(filled?.[0].gas_number).toBeUndefined();
   });
 });
+
+describe("a later file's fill that would re-pair the rows it fills", () => {
+  it("fills none where a mix it writes makes a row another cylinder's match", () => {
+    // Two air tanks. The form's second row records nothing, so it could take
+    // the file's second cylinder's 21 %; but then the API, pairing the saved
+    // rows by mix, gives it the file's first cylinder and that tank's
+    // pressures, beside the first row's own.
+    expect(
+      fillOnto(
+        [blankRow({ start_pressure: 200, end_pressure: 50 }), blankRow()],
+        [
+          parsed({ oxygen: 21, start_pressure: 198, end_pressure: 52 }),
+          parsed({ oxygen: 21 }),
+        ],
+      ),
+    ).toBeUndefined();
+  });
+});

@@ -259,26 +259,19 @@ export function fillMixture(
  * The form fills only where the API would pair the same rows when the file is
  * attached: whatever the form writes is saved first, and the API's fill then
  * finds it set. The API pairs by mix, then by order, so position is taken as
- * the pairing only where the counts are equal, no position pair records two
- * different fractions, and no cylinder's mix is another row's. Past that, a
+ * the pairing only where it lines up with that (`linesUp`). Past that, a
  * pair made by position is a guess a later file naming the mixes could undo,
  * so it fills only where the row records nothing the cylinder does not, or
- * where it is the one row left meeting the one cylinder left. What this
- * declines, the API's fill takes at the attach.
+ * where it is the one row left meeting the one cylinder left. The API pairs
+ * the rows as saved, so the filled rows have to line up too: a mix written
+ * into one row can make it another cylinder's match. What this declines, the
+ * API's fill takes at the attach.
  */
 export function fillMixtures(
   parsed: ParsedDiveMixture[],
   existing: DiveMixtureInput[],
 ): DiveMixtureInput[] | null {
-  if (existing.length !== parsed.length) return null;
-  const linesUp = parsed.every(
-    (cylinder, index) =>
-      !mixesDisagree(existing[index], cylinder) &&
-      existing.every(
-        (row, other) => other === index || !sameMix(row, cylinder),
-      ),
-  );
-  if (!linesUp) return null;
+  if (!linesUp(parsed, existing)) return null;
 
   const byMix = parsed.map((cylinder, index) =>
     sameMix(existing[index], cylinder),
@@ -289,8 +282,26 @@ export function fillMixtures(
       byMix[index] || lastLeft || recordsNothingElse(existing[index], cylinder),
   );
   if (!fills.some(Boolean)) return null;
-  return parsed.map((cylinder, index) =>
+  const filled = parsed.map((cylinder, index) =>
     fills[index] ? fillMixture(cylinder, existing[index]) : existing[index],
+  );
+  return linesUp(parsed, filled) ? filled : null;
+}
+
+// Whether the API's mix-then-order pairing gives each cylinder the row at its
+// own position: equal counts, no position pair recording two different
+// fractions, and no cylinder's mix another row's.
+function linesUp(
+  parsed: ParsedDiveMixture[],
+  rows: DiveMixtureInput[],
+): boolean {
+  return (
+    rows.length === parsed.length &&
+    parsed.every(
+      (cylinder, index) =>
+        !mixesDisagree(rows[index], cylinder) &&
+        rows.every((row, other) => other === index || !sameMix(row, cylinder)),
+    )
   );
 }
 
