@@ -26,7 +26,7 @@ function TripCounts({ trip }: { trip: Trip }) {
   ];
 
   return (
-    <dl className="mt-3 grid grid-cols-3 gap-4">
+    <dl className="mt-3 flex gap-6">
       {counts.map(({ label, value }) => (
         <div key={label}>
           <dt className="text-xs">{label}</dt>
