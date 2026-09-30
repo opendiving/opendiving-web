@@ -78,7 +78,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   const pathname = usePathname();
   const locations = diveMapLocations(dive);
   const isPlaced = hasMapPosition(locations);
-  const profile = dive.depth_preview;
+  const outline = dive.depth_outline;
   // The title names the site; this says where it is.
   const placeName = dive.dive_sites[0]?.location?.name;
   // Whole units, unlike the dive page's two decimals: it is a list to scan,
@@ -107,7 +107,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
       backdrop={(coveredBottom) => {
         // The map's places and the water's bubbles centre above the profile
         // rather than behind it.
-        const aboveProfile = profile
+        const aboveProfile = outline
           ? coveredBottom + SILHOUETTE_GAP + SILHOUETTE_HEIGHT
           : coveredBottom;
         return (
@@ -125,12 +125,15 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
               <UnplacedBackdrop coveredBottom={aboveProfile} />
             )}
             {/* Lifted off the map by the glow the details' text has. */}
-            {profile && (
+            {outline && (
               <div
                 className="absolute inset-x-3 h-9 sm:h-14 [filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
                 style={{ bottom: coveredBottom + SILHOUETTE_GAP }}
               >
-                <DiveProfileSilhouette depths={profile} className="size-full" />
+                <DiveProfileSilhouette
+                  depths={outline.values}
+                  className="size-full"
+                />
               </div>
             )}
           </>

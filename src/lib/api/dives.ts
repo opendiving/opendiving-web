@@ -478,10 +478,20 @@ export interface Dive {
   // diver's dive caches on a rename or a delete. A detail-response field like
   // `sightings`, absent on a list row.
   tags?: string[];
-  // The depth curve a dive card draws, on the list response: the deepest
-  // reading in each of a few dozen even slices of the charted recording's
-  // profile, in centimetres. Null on a dive with no profile.
-  depth_preview?: number[] | null;
+  // The depth curve a dive card draws, from the recording the dive page charts.
+  // A list-response field: absent on the detail response, and null on a row
+  // with no curve to draw.
+  depth_outline?: DepthOutline | null;
+}
+
+// A recording's depth curve at a dive card's resolution.
+export interface DepthOutline {
+  // Milliseconds from the recording's first depth reading to its last.
+  span: number;
+  // Centimetres: value `i` is the deepest reading in the `i`th of
+  // `values.length` equal slices of `span`, so the deepest value is the
+  // recording's maximum depth.
+  values: number[];
 }
 
 // What recorded a dive, as that device's own export named it.
