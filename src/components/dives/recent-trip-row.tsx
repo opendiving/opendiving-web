@@ -11,8 +11,7 @@ import {
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
-import { formatTripLocationNames } from "@/lib/trip-locations";
-import { Calendar, Edit, MapPin } from "lucide-react";
+import { Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // What the trip's dives add up to, laid out as the dive page lays out its
@@ -127,10 +126,14 @@ export function RecentTripRow({
       {/* Above the map by a flex item's z-index rather than by `relative`,
           which would make this the box the link's overlay stretches over and
           leave the map outside it. Under the menu and the credit, which are
-          lifted higher. */}
+          lifted higher. The glow in the card's own colour lifts every line off
+          whatever the map still shows beneath it. */}
       <div
         ref={detailsRef}
-        className={cn("z-[1] px-3 pb-3", !hasMap && "pt-3")}
+        className={cn(
+          "z-[1] px-3 pb-3 [text-shadow:0_0_3px_hsl(var(--card)),0_0_8px_hsl(var(--card))]",
+          !hasMap && "pt-3",
+        )}
       >
         {/* Without a map the menu shares this line, so it leaves the menu
             room. */}
@@ -147,23 +150,13 @@ export function RecentTripRow({
             {trip.name}
           </Link>
         </div>
-        {/* Each icon only beside something it can name: a trip with no place
-            or no dates leaves that line out rather than drawing a bare icon. */}
-        {formatTripLocationNames(locations) && (
-          <div className="flex items-center gap-1 text-sm">
-            <MapPin className="h-4 w-4 shrink-0" />
-            <TripLocationsLabel
-              locations={locations}
-              className="relative z-10 min-w-0"
-            />
-          </div>
-        )}
-        {dates && (
-          <div className="flex items-center gap-1 text-sm">
-            <Calendar className="h-4 w-4 shrink-0" />
-            {dates}
-          </div>
-        )}
+        {/* `w-fit`, so the place's hover hint is lifted over the link only
+            where the text is. */}
+        <TripLocationsLabel
+          locations={locations}
+          className="relative z-10 block w-fit max-w-full text-xs"
+        />
+        {dates && <div className="text-xs">{dates}</div>}
         <TripCounts trip={trip} />
       </div>
     </li>
