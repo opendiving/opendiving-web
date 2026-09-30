@@ -5,7 +5,7 @@ import { DiveCard } from "./dive-card";
 import type { Dive } from "@/lib/api/dives";
 import { reveal } from "@/test/intersection";
 
-// A card draws a map for a dive with a position and teal for one without, lays
+// A card draws a map for a dive with a position and open water for one without, lays
 // out its duration and depths under their titles, and offers Delete only where
 // its list can run one.
 
@@ -72,13 +72,15 @@ describe("DiveCard", () => {
     );
   });
 
-  it("draws teal and the bubbles for a dive with no position at all", () => {
+  it("draws water and the bubbles for a dive with no position at all", () => {
     const item = card({
       dive: dive({ dive_sites: [{ uuid: "site-1", name: "Unpinned reef" }] }),
     });
 
     expect(within(item).queryByTestId("map")).not.toBeInTheDocument();
-    expect(item.querySelector(".bg-teal svg")).toBeInTheDocument();
+    expect(
+      item.querySelector(".bg-\\[var\\(--map-water\\)\\] svg"),
+    ).toBeInTheDocument();
   });
 
   it("titles its figures", () => {

@@ -355,6 +355,29 @@ describe("the bundled styles", () => {
     );
   });
 
+  // `--map-water` stands in for the map where there is no place to draw, so it
+  // has to be the colour the map draws its water in, in each theme.
+  it("share their water with the theme's --map-water tokens", () => {
+    const channels = (color: string) => color.match(/\d+/g)?.join(",");
+    const css = readFileSync("src/app/globals.css", "utf8");
+    const tokens = (name: string) =>
+      [...css.matchAll(new RegExp(`--${name}: ([^;]+);`, "g"))].map(([, v]) =>
+        channels(v),
+      );
+    const paint = (file: string, id: string, key: string) =>
+      channels(
+        shipped(file).layers.find((layer: { id: string }) => layer.id === id)
+          .paint[key],
+      );
+    const files = ["liberty.json", "dark.json"];
+    expect(tokens("map-water")).toEqual(
+      files.map((file) => paint(file, "water", "fill-color")),
+    );
+    expect(tokens("map-water-foreground")).toEqual(
+      files.map((file) => paint(file, "water_name_point_label", "text-color")),
+    );
+  });
+
   // A re-vendored Liberty that skipped the script fails here whatever upstream
   // changed, paint included: its water is Liberty's own again.
   it("are what scripts/generate-basemaps.mjs makes of them", () => {

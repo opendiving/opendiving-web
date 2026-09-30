@@ -25,12 +25,17 @@ import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
 import { Edit } from "lucide-react";
 
-// A dive with nowhere on a map yet: teal where a trip would show the whole
-// world, since a dive is at one spot and the world says nothing about which.
-// Faded as a map is, and the bubbles centred in what the details leave of it.
+// A dive with nowhere on a map yet: the map's open water where a trip would
+// show the whole world, since a dive is at one spot and the world says nothing
+// about which. Faded as a map is, and the bubbles centred in what the details
+// leave of it: the colour the map names a sea in, muted as the map's own
+// colours are so they sit in the water rather than on it.
 function UnplacedBackdrop({ coveredBottom }: { coveredBottom: number }) {
   return (
-    <div aria-hidden className="absolute inset-0 rounded-[inherit] bg-teal">
+    <div
+      aria-hidden
+      className="absolute inset-0 rounded-[inherit] bg-[var(--map-water)]"
+    >
       {/* The map's own fade, in the same colour space as its. */}
       <div
         className="absolute inset-0 rounded-[inherit]"
@@ -43,7 +48,7 @@ function UnplacedBackdrop({ coveredBottom }: { coveredBottom: number }) {
         className="absolute inset-x-0 top-0 flex items-center justify-center"
         style={{ bottom: coveredBottom }}
       >
-        <DiveIcon className="h-10 w-10 text-teal-foreground" />
+        <DiveIcon className="h-10 w-10 text-[var(--map-water-foreground)] opacity-60 saturate-50" />
       </div>
     </div>
   );

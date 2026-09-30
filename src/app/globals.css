@@ -231,6 +231,14 @@
     --gradient-factor: 95 55% 35%;
     --surface-gradient-factor: 230 70% 62%;
 
+    /* The shipped basemaps' water and the colour of the sea names drawn on it,
+       for anything standing in for a map of open water - a dive card with no
+       place yet. Whole colours rather than HSL triplets so they are exactly
+       what `scripts/generate-basemaps.mjs` writes; `basemap.test.ts` fails when
+       the two part. */
+    --map-water: rgb(163 206 205);
+    --map-water-foreground: rgb(37 96 96);
+
     --radius: 0.5rem;
 
     /* The part of the page the browser is actually showing, for overlays that
@@ -328,6 +336,9 @@
     --border: 240 4% 18%;
     --input: 240 4% 18%;
     --ring: 240 2% 55%;
+
+    --map-water: rgb(68 108 107);
+    --map-water-foreground: rgb(178 226 226);
   }
 }
 
