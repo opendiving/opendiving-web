@@ -38,7 +38,7 @@ import {
 } from "@/lib/validations/trip";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
-import { geocodeResultToLocation, unrepeated } from "@/lib/locations";
+import { geocodeResultLabel, geocodeResultToLocation } from "@/lib/locations";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Attribution } from "@/components/attribution";
 import { cn } from "@/lib/utils";
@@ -85,6 +85,20 @@ export interface MappedPlaces {
   attributions: string[];
 }
 
+// A search result as a trip part's place, named as its menu row reads in the
+// dive site search too: "Moalboal, Cebu, Philippines". Cut to the API's ceiling
+// here because it is composed here - the API bounds each part, not the join.
+function tripPartLocation(result: GeocodeResult): LocationFormValue {
+  const { name, context } = geocodeResultLabel(result);
+  return {
+    ...geocodeResultToLocation(result),
+    name: [name, context]
+      .filter(Boolean)
+      .join(", ")
+      .slice(0, MAX_LOCATION_NAME_LENGTH),
+  };
+}
+
 /**
  * Turns a page of geocoder results into what the menu and the row need.
  *
@@ -99,21 +113,17 @@ export function mapSearchResults(results: GeocodeResult[]): MappedPlaces {
   const attributions: string[] = [];
 
   for (const result of results) {
-    const location = geocodeResultToLocation(result);
+    const location = tripPartLocation(result);
     const id = locationKey(location);
     if (!locations.has(id)) {
       locations.set(id, location);
-      // The row's `name` is what a pick saves, "Ko Tao, Thailand", and not the
-      // bare place: the combobox writes a picked row's `name` into the input,
-      // and an Enter with nothing highlighted picks a row whose `name` equals
-      // the typed text - so "moalboal" + Enter would otherwise pick the first of
-      // two Moalboals instead of adding what was typed. The region goes in the
-      // hint instead, which is what tells those two apart.
-      items.push({
-        id,
-        name: location.name,
-        hint: unrepeated(result.region, location.name) ?? undefined,
-      });
+      // The row's `name` is exactly what a pick saves, with no hint beside it:
+      // the combobox writes a picked row's `name` into the input, and an Enter
+      // with nothing highlighted picks a row whose `name` equals the typed text.
+      // A bare "Moalboal" would put that in the field after a pick, and make
+      // "moalboal" + Enter pick the first of two Moalboals instead of adding
+      // what was typed.
+      items.push({ id, name: location.name });
     }
     if (result.attribution && !attributions.includes(result.attribution)) {
       attributions.push(result.attribution);
@@ -512,8 +522,7 @@ function TripPartRow({
   // half typed doesn't file a place called "phil".
   const setTypedPlace = async (typed: string): Promise<ComboboxItem> => {
     // Truncated rather than rejected: a name this long is a paste, not a place,
-    // and the alternative is a row the form then refuses to save. Geocoded picks
-    // need no such guard - the API truncates those before they get here.
+    // and the alternative is a row the form then refuses to save.
     const trimmed = typed.trim();
     const place = { name: trimmed.slice(0, MAX_LOCATION_NAME_LENGTH) };
     const id = locationKey(place);
