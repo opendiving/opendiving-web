@@ -128,6 +128,12 @@ export interface LocationsMapProps {
    * map at all.
    */
   showWhenEmpty?: boolean;
+  /**
+   * Classes for the frame, merged over its own - for a caller that sets the map
+   * flush into its own edges rather than as a bordered box inside them. Not for
+   * the height, which the lazy wrapper's placeholder is drawn at too.
+   */
+  className?: string;
 }
 
 /**
@@ -144,6 +150,7 @@ export function LocationsMap({
   locations,
   subject,
   showWhenEmpty,
+  className,
 }: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
   // From the instance's runtime configuration, so a published image can be
@@ -295,7 +302,12 @@ export function LocationsMap({
       : `Map of the world, awaiting ${subject}`;
 
   return (
-    <div className="relative h-40 w-full overflow-hidden rounded-md border bg-muted sm:h-48">
+    <div
+      className={cn(
+        "relative h-40 w-full overflow-hidden rounded-md border bg-muted sm:h-48",
+        className,
+      )}
+    >
       {/* The label sits on the map rather than on the frame around it, so the
           attribution's links stay outside the image and reachable: a link
           inside `role="img"` is dropped from the accessibility tree, and a
