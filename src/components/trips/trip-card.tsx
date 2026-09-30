@@ -150,7 +150,7 @@ export function TripCard({
           label={`Actions for ${trip.name}`}
           variant="ghost"
           size="sm"
-          className="relative isolate hover:bg-background/80 before:pointer-events-none before:absolute before:inset-y-0 before:inset-x-2 before:-z-10 before:bg-[radial-gradient(closest-side,var(--trip-card),transparent)] hover:before:opacity-0"
+          className="relative isolate hover:bg-background/80 before:pointer-events-none before:absolute before:inset-y-0 before:inset-x-2 before:-z-10 before:bg-[radial-gradient(closest-side,var(--trip-card),transparent)] before:opacity-50 hover:before:opacity-0"
         >
           <DropdownMenuItem onSelect={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
