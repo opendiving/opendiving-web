@@ -97,13 +97,16 @@ export function TripsPageFrame({
             onChange={onSearchChange}
           />
         </ListCardHeader>
-        <CardContent>
-          {!isLoading && cards.length === 0 ? (
-            // A searched list with nothing in it is a different statement from
-            // an empty one, so it keeps its one line: no icon, no heading, and
-            // pointedly no "add your first trip", which would be answering a
-            // question nobody asked.
-            isSearching ? (
+        {/* The card is the list's header - its count and its search - and
+            what it says when there is nothing to list. The trips themselves
+            are cards of their own, so they sit below it rather than in it. */}
+        {!isLoading && cards.length === 0 && (
+          <CardContent>
+            {/* A searched list with nothing in it is a different statement
+                from an empty one, so it keeps its one line: no icon, no
+                heading, and pointedly no "add your first trip", which would
+                be answering a question nobody asked. */}
+            {isSearching ? (
               <div className="text-center py-12 text-muted-foreground">
                 No trips match that name or location.
               </div>
@@ -119,39 +122,42 @@ export function TripsPageFrame({
                   </Button>
                 }
               />
-            )
-          ) : (
-            // Two columns at most: every card on screen holds a live map, and a
-            // browser keeps only so many of those per page - see `TripCard`.
-            <ul
-              className="grid gap-4 sm:grid-cols-2"
-              // Busy on the outside, hidden on each placeholder within - the
-              // split `ListRowsSkeleton` documents, so a reader meets a list
-              // that is loading rather than one that is silently empty.
-              aria-busy={cards.length === 0 || undefined}
-            >
-              {cards.length === 0 &&
-                Array.from({ length: itemsPerPage }, (_, index) => (
-                  <li key={index} aria-hidden>
-                    <Skeleton className="h-60 rounded-lg sm:h-64" />
-                  </li>
-                ))}
-              {cards}
-            </ul>
-          )}
-
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={cards.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="trips"
-            onLoadMore={onLoadMore}
-          />
-        </CardContent>
+            )}
+          </CardContent>
+        )}
       </Card>
+
+      {(isLoading || cards.length > 0) && (
+        // One trip to a row below `lg`, two above: every card on screen holds
+        // a map, and a browser keeps only so many of those per page - see
+        // `TripCard`.
+        <ul
+          className="mt-6 grid gap-4 lg:grid-cols-2"
+          // Busy on the outside, hidden on each placeholder within - the split
+          // `ListRowsSkeleton` documents, so a reader meets a list that is
+          // loading rather than one that is silently empty.
+          aria-busy={cards.length === 0 || undefined}
+        >
+          {cards.length === 0 &&
+            Array.from({ length: itemsPerPage }, (_, index) => (
+              <li key={index} aria-hidden>
+                <Skeleton className="h-60 rounded-lg sm:h-64" />
+              </li>
+            ))}
+          {cards}
+        </ul>
+      )}
+
+      <LoadMoreTrigger
+        hasMore={hasMore}
+        isLoading={isLoadingMore}
+        hasFailed={loadFailed}
+        loadedCount={cards.length}
+        totalCount={totalCount}
+        itemsPerPage={itemsPerPage}
+        itemLabel="trips"
+        onLoadMore={onLoadMore}
+      />
     </div>
   );
 }

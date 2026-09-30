@@ -3,9 +3,9 @@
 // shown again rather than drawn again.
 
 // The size every picture is drawn at, in CSS pixels: wider and taller than any
-// frame a trip card gives the map - the widest is the dashboard's single column
-// just below `lg`, a little over 900 - so a frame only ever shows a part of it,
-// and a resize moves the picture rather than asking for a new one.
+// frame a trip card gives the map - the widest is /trips' single column just
+// below `lg`, a little under 980 - so a frame only ever shows a part of it, and
+// a resize moves the picture rather than asking for a new one.
 export const SNAPSHOT_WIDTH = 1024;
 export const SNAPSHOT_HEIGHT = 512;
 
