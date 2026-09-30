@@ -68,9 +68,9 @@ export function CardSkeleton({
 }
 
 /**
- * Placeholder rows for the bordered-row lists (recent dives, recent trips) -
- * a label and a sub-label on the left, one figure on the right, inside the
- * same `p-3 rounded-lg border` box the real rows use.
+ * Placeholder rows for the bordered-row lists (recent dives, a course's
+ * certifications) - a label and a sub-label on the left, one figure on the
+ * right, inside the same `p-3 rounded-lg border` box the real rows use.
  *
  * The two bars are `h-5` and `h-4` because the real row stacks a `text-base`
  * line on a `text-sm` one: 20 + 8 + 16 against 24 + 20, which with `p-3` and

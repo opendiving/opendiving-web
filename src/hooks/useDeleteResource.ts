@@ -14,9 +14,11 @@ interface UseDeleteResourceOptions {
   successMessage: string;
   errorMessage: string;
   // Handed the id that was deleted, so a list can drop that one row instead of
-  // re-reading the pages around it. Callers with nothing to do with it - the
-  // detail pages, which navigate away - simply take no argument.
-  onDeleted: (id: string) => void | Promise<void>;
+  // re-reading the pages around it, and the option the delete was made with -
+  // where a trip's dives went - for a list whose other rows that changes.
+  // Callers with nothing to do with either - the detail pages, which navigate
+  // away - simply take no argument.
+  onDeleted: (id: string, option?: string) => void | Promise<void>;
 }
 
 /**
@@ -68,7 +70,7 @@ export function useDeleteResource(
         description: successOverride ?? successMessage,
       });
 
-      await onDeleted(id);
+      await onDeleted(id, option);
     } catch (error) {
       console.error(errorMessage, error);
       toast({

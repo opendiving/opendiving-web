@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { cn } from "@/lib/utils";
 
 export interface AttributionPart {
   text: string;
@@ -63,6 +64,13 @@ interface AttributionProps {
    * part that should link written as `[label](href)`.
    */
   value: string;
+  /**
+   * Whether the links are underlined, which in-copy links are here: they share
+   * the text's colour, and nothing else marks them. `false` only for a credit
+   * chip over a map, by the owner's call - the links there are underlined on
+   * hover alone (DECISIONS.md, "in-copy links").
+   */
+  underline?: boolean;
 }
 
 /**
@@ -85,7 +93,7 @@ interface AttributionProps {
  * `react/no-danger` is an error in this repo, and a credit line is exactly the
  * sort of "it's only markup" HTML that gets waved through.
  */
-export function Attribution({ value }: AttributionProps) {
+export function Attribution({ value, underline = true }: AttributionProps) {
   const parts = useMemo(() => parseAttribution(value), [value]);
 
   return (
@@ -99,7 +107,10 @@ export function Attribution({ value }: AttributionProps) {
             // form, and navigating away in the same tab would throw it away.
             target="_blank"
             rel="noreferrer noopener"
-            className="underline underline-offset-2 hover:text-foreground"
+            className={cn(
+              "underline-offset-2 hover:text-foreground",
+              underline ? "underline" : "hover:underline",
+            )}
           >
             {part.text}
           </a>

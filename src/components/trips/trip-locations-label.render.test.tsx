@@ -26,7 +26,8 @@ describe("TripLocationsLabel", () => {
   it("leaves a fully shown label untitled", () => {
     // A tooltip repeating the text under the cursor is worse than no tooltip.
     // One place is the whole of a fully shown label now: a place's own name
-    // carries its country, so two of them do not fit a table cell.
+    // carries its country, so two of them do not fit a trip card's line beside
+    // its dates.
     const { container } = render(
       <TripLocationsLabel locations={[at("Dahab, Egypt")]} />,
     );
@@ -35,16 +36,7 @@ describe("TripLocationsLabel", () => {
     expect(screen.getByText("Dahab, Egypt")).toBeInTheDocument();
   });
 
-  it("renders the fallback for a trip with no usable locations", () => {
-    const { container } = render(
-      <TripLocationsLabel locations={[]} fallback="-" />,
-    );
-
-    expect(screen.getByText("-")).toBeInTheDocument();
-    expect(container.querySelector("[title]")).toBeNull();
-  });
-
-  it("renders nothing at all when no fallback is given", () => {
+  it("renders nothing at all for a trip with no usable locations", () => {
     const { container } = render(<TripLocationsLabel locations={null} />);
 
     expect(container).toBeEmptyDOMElement();

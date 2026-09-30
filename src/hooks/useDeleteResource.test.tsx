@@ -59,6 +59,21 @@ describe("useDeleteResource", () => {
     await waitFor(() => expect(result.current.deletingId).toBeNull());
   });
 
+  // A trip deleted with its dives moved changes the trip they moved to, so a
+  // list showing that trip needs to know where they went, not just what went.
+  it("tells the caller where the resource's dives went", async () => {
+    const deleteFn = vi.fn().mockResolvedValue(undefined);
+    const onDeleted = vi.fn();
+    const { result } = renderHook(() =>
+      useDeleteResource(deleteFn, { ...OPTIONS, onDeleted }),
+    );
+
+    act(() => result.current.requestDelete("trip-1"));
+    await act(() => result.current.confirmDelete("trip-2"));
+
+    expect(onDeleted).toHaveBeenCalledWith("trip-1", "trip-2");
+  });
+
   it("lets the call site write the toast when only it knows the sentence", async () => {
     // The trip and dive-site deletes can name where the dives went, and that name
     // is in the dialog's picker rather than in anything the API answers with - so

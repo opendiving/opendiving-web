@@ -1,7 +1,6 @@
-// Where a trip went, as text. Every compact surface - the trips table, the
-// dashboard's recent-trips card, a detail page subtitle - shows the same joined
-// line, so it is composed once here rather than slightly differently in each of
-// them.
+// Where a trip went, as text. Every compact surface - the trip card on /trips
+// and on the dashboard, a detail page subtitle - shows the same joined line, so
+// it is composed once here rather than slightly differently in each of them.
 
 interface NamedLocation {
   name: string;
@@ -23,9 +22,8 @@ export interface FormatTripLocationNamesOptions {
  * The trip's locations as "Dahab, Egypt +2", or `undefined` when there are
  * none.
  *
- * `undefined` rather than "" so callers can pick their own placeholder - the
- * table wants "-", a subtitle wants to disappear - with `??`/`||` instead of a
- * length check.
+ * Callers test it for a place to name - the trip card and the trip page decide
+ * their " · " separator by it - rather than checking a length.
  */
 export function formatTripLocationNames(
   locations?: NamedLocation[] | null,

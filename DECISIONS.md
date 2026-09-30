@@ -1541,7 +1541,9 @@ page's safety notice, deliberately not a `bg-muted` callout. `--muted-foreground
 shadcn's 46.9%, so it passes on `--muted` as well as `--background`.
 
 In-copy links are underlined, not coloured: `text-primary` is 3.67:1 as link text in dark mode, and
-colour alone trips axe's `link-in-text-block`.
+colour alone trips axe's `link-in-text-block`. The one exception is the owner's: a map's credit chip
+underlines its links on hover only (`Attribution`'s `underline={false}`); the same credit under a
+form field keeps the underline.
 
 ## Outcomes go in toasts; `StatusMessage` is the documented exception
 
@@ -2729,8 +2731,10 @@ joined by `formatTripLocationNames`. It is required despite an obvious default b
 path has no visual tell: an omitted value gives a wrong label on a screen-reader-only path no
 screenshot exercises, so omission is a type error.
 
-The frame's height is not a prop; it lives in the component, duplicated once in the `next/dynamic`
-skeleton beside it, so a caller cannot make the page jump when the chunk lands.
+The frame's height lives in the component, duplicated once in the `next/dynamic` skeleton beside it,
+so a caller keeping it cannot make the page jump when the chunk lands. A caller setting its own
+through `className` - the trip card - owns the room the skeleton lands in; the trip card's map is
+out of flow, so it has none.
 
 The site page gates the map on the same `formatCoordinates` result the Coordinates line uses,
 keeping a site with no position from fetching the chunk; a half-set position, which only raw SQL
@@ -2788,12 +2792,12 @@ splits the answer in two.
 A hint that repeats the label is worse than none, so `formatTripLocationNamesHint` sits beside
 `formatTripLocationNames`, answers `undefined` when nothing is hidden, and decides that under the
 same blank-dropping rule: `["Moalboal", " "]` under `max: 1` shows no "+N" and gets no tooltip.
-`TripLocationsLabel` calls both, as `DiveSitesLabel` does for dives; the trips table and the
-dashboard card pass locations and a fallback only.
+`TripLocationsLabel` calls both, as `DiveSitesLabel` does for dives; the trip card passes locations
+only.
 
 `SHOWN_LOCATIONS` is **one**: a place's name carries its country, so two of "Dahab, Egypt" do not
-fit a table cell. It stays private because every surface that joins a trip's places for a reader —
-the trips table, the dashboard card, the dive sidebar and the trip page's own subtitle — renders
+fit a trip card's line beside its dates. It stays private because every surface that joins a trip's
+places for a reader — the trip card, the dive sidebar and the trip page's own subtitle — renders
 this component, so there is one number and nothing for a second one to disagree with. Every such
 list separates with `; `, a comma being indistinguishable from the commas inside each name.
 `LocationsMap`'s accessible label takes the separator and not the cap: a cap withholds names from
@@ -2954,8 +2958,10 @@ patched `XMLHttpRequest.prototype.send`, comparing loading and loaded geometry o
 a screenshot does not show a `h-5` bar against a 24px line box or a legend nobody accounted for.
 
 `ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`, and its
-count comes from the card's own `RECENT_DIVES_COUNT`/`RECENT_TRIPS_COUNT` rather than a default, so
-the dashboard cards measure the same in both states.
+count comes from the card's own `RECENT_DIVES_COUNT` rather than a default, so the dashboard card
+measures the same in both states. Trips load into `TripCardSkeleton`, one box at the card's measured
+214px (238px from `sm`), `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
+`/trips`.
 
 One shift is accepted: the dashboard moves ~134px when a gear-service reminder is due, which is not
 a placeholder problem, since whether that card exists is one of the things the request answers.
@@ -3304,10 +3310,11 @@ whole world until the first place is picked. A frame appearing with the first pl
 fields down mid-edit, and an empty map says the field above wants a place, not free text — as
 `DiveSiteMapField` does with `MapPicker`.
 
-`showWhenEmpty` stays opt-in: the trips list, a trip's page and a dive's sidebar answer "where is
-this?", where an empty world is worse than no map, and gating keeps the chunk unfetched. The empty
-frame's aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a definite noun
-phrase.
+`showWhenEmpty` stays opt-in: a trip's page and a dive's sidebar answer "where is this?", where an
+empty world is worse than no map, and gating keeps the chunk unfetched. The trip card opts in: there
+the map is the card's backdrop, and a list mixing cards with and without one reads as two layouts.
+The empty frame's aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a
+definite noun phrase.
 
 The empty view is `WORLD_CENTER` at `MIN_ZOOM` (0) from `lib/basemap.ts`, read by both maps.
 
@@ -4523,17 +4530,18 @@ the dashboard under three route names and never renders the landing page or sign
 
 ## Ten rows of "Edit" name nothing
 
-Row-action controls in all seven tables (dives, trips, dive sites, certifications, gear items, gear
-sets, courses) name their row: `View dive #412`, `Edit Palau 2025`, `Delete Pescador Island`.
-Uniqueness among the page's controls is the point: axe's `button-name` and `link-name` pass
-`aria-label="Edit"` ten times over, so only reading the controls list catches a bare label. Dive
-rows key off `dive.dive_number`, what the row leads with and what a diver says out loud.
-Certification rows carry agency and level through `certificationLabel` in
-`lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no unique-name constraint
-by design, and level alone gives two `Edit Advanced Nitrox` buttons. Gear rows use `gearItemLabel`'s
-brand-then-name shape. A qualifier belongs in the name where the diver says it and the collision is
-structural; otherwise it is a second sentence. `app/certifications/page.render.test.tsx` and
-`app/gear/page.render.test.tsx` render two rows, because a constant name passes a one-row test.
+Row-action controls in all six tables (dives, dive sites, certifications, gear items, gear sets,
+courses) and the trip cards' actions menu name their row: `View dive #412`,
+`Actions for Palau 2025`, `Delete Pescador Island`. Uniqueness among the page's controls is the
+point: axe's `button-name` and `link-name` pass `aria-label="Edit"` ten times over, so only reading
+the controls list catches a bare label. Dive rows key off `dive.dive_number`, what the row leads
+with and what a diver says out loud. Certification rows carry agency and level through
+`certificationLabel` in `lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no
+unique-name constraint by design, and level alone gives two `Edit Advanced Nitrox` buttons. Gear
+rows use `gearItemLabel`'s brand-then-name shape. A qualifier belongs in the name where the diver
+says it and the collision is structural; otherwise it is a second sentence.
+`app/certifications/page.render.test.tsx` and `app/gear/page.render.test.tsx` render two rows,
+because a constant name passes a one-row test.
 
 ## The gear detail page's service card, where the row is not the unit
 
@@ -5642,9 +5650,8 @@ nothing forces (a mis-wired row type-checks), so `export.test.ts` asserts every 
 and the render test pairs each row with its segment. DiveJSON sits first, being the project's own
 format. Each row's copy states its difference from the others, a sentence about what one format
 lacks being a claim about every other row. Prose drops counts that are not load-bearing —
-`sites-page-content.tsx` and `trips-page-content.tsx` say "the export card's Downloads" — and
-load-bearing ones (`export.ts`'s "the four shapes `/export/*` serves") sit beside their list.
-Probes: `git grep -w three` in `src/`,
+`sites-page-content.tsx` says "the export card's Downloads" — and load-bearing ones (`export.ts`'s
+"the four shapes `/export/*` serves") sit beside their list. Probes: `git grep -w three` in `src/`,
 `grep -nE "three (Download|button|export|row|format)|all three" DECISIONS.md`, and
 `git grep -niE "export|portab" -- src/app/privacy/`, whose copy names no format.
 `lib/api-proxy.test.ts` and `lib/download.test.ts` use `.uddf` as a generic `Content-Disposition`

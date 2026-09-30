@@ -38,7 +38,7 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // Cebu 2026" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Trip deleted successfully.";
 
-// This page has room for the month spelled out, unlike the trips table.
+// This page has room for the month spelled out, unlike a trip card.
 const LONG_DATE: Intl.DateTimeFormatOptions = {
   year: "numeric",
   month: "long",
@@ -130,8 +130,8 @@ export function TripDetailPageContent() {
   const tripLocations = tripPartLocations(tripParts);
   // Only whether there is a place to name, which is what decides the separator
   // below. The subtitle's own text and hover hint come from rendering
-  // `TripLocationsLabel`, so the cap lives there with the trips table's and the
-  // dashboard card's rather than being passed a second time from here.
+  // `TripLocationsLabel`, so the cap lives there with the trip card's rather
+  // than being passed a second time from here.
   const tripLocationNames = formatTripLocationNames(tripLocations);
   // Only places the geocoder gave a position to can be drawn; the parts below
   // list all of them either way, so a typed-in place isn't silently dropped.
@@ -247,8 +247,8 @@ export function TripDetailPageContent() {
                     {tripParts.length > 1 ? "Parts" : "Part"}
                   </div>
                   {/* One row per part, in the order the diver arranged them,
-                      rather than the capped joined line the header and the trips
-                      table show: this is the one surface with room to name every
+                      rather than the capped joined line the header and the trip
+                      cards show: this is the one surface with room to name every
                       place and put the part's own dates beneath each. A part
                       with no place is still a row - it is a stretch of the trip,
                       and dropping it would renumber the rest. */}

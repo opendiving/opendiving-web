@@ -130,8 +130,8 @@ export const DEFAULT_BASEMAP_ORIGIN = "https://tiles.openfreemap.org";
  */
 export const DEFAULT_BASEMAP_ATTRIBUTION =
   "[OpenFreeMap](https://openfreemap.org/) " +
-  "[© OpenMapTiles](https://openmaptiles.org/) " +
-  "Data from [OpenStreetMap](https://www.openstreetmap.org/copyright)";
+  "© [OpenMapTiles](https://openmaptiles.org/) " +
+  "/ [OpenStreetMap](https://www.openstreetmap.org/copyright)";
 
 /**
  * Zoom, in MapLibre's units.

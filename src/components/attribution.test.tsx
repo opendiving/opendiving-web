@@ -78,4 +78,18 @@ describe("Attribution", () => {
     expect(container.querySelector("b")).toBeNull();
     expect(container).toHaveTextContent("© <b>Someone</b> x");
   });
+
+  // Links in copy are underlined here - they share the text's colour, so
+  // nothing else marks them. A map's credit chip is the owner's exception.
+  it("underlines its links unless it is a map's credit chip", () => {
+    const value =
+      "Data [OpenStreetMap](https://www.openstreetmap.org/copyright)";
+    const { unmount } = render(<Attribution value={value} />);
+    expect(screen.getByRole("link")).toHaveClass("underline");
+    unmount();
+
+    render(<Attribution value={value} underline={false} />);
+    expect(screen.getByRole("link")).not.toHaveClass("underline");
+    expect(screen.getByRole("link")).toHaveClass("hover:underline");
+  });
 });

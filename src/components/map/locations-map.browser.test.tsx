@@ -518,6 +518,292 @@ describe("LocationsMap", () => {
     expect(document.querySelector(".maplibregl-map")!.contains(hit)).toBe(true);
   });
 
+  // Firefox draws the canvas square through any rounded clip that is not on a
+  // masked element, so the frame's corners have to reach `MapCanvas`'s own
+  // element and be clipped to there. Chromium rounds the map either way, so what
+  // this lane can hold is the chain, not the pixels.
+  it("clips the map to its frame's corners, under a mask", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          locations={[
+            { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
+          ]}
+        />,
+      ),
+    );
+    await canvasReady();
+
+    const frame = screen.getByRole("img").parentElement!;
+    const radius = getComputedStyle(frame).borderRadius;
+    expect(radius).not.toBe("0px");
+
+    const clip = getComputedStyle(
+      document.querySelector(".maplibregl-map")!.parentElement!,
+    );
+    expect(clip.borderRadius).toBe(radius);
+    expect(clip.overflow).toBe("hidden");
+    expect(clip.getPropertyValue("mask-image")).not.toBe("none");
+  });
+
+  // What the caller lays over the map's foot is not map, so a lone place is
+  // centred in what is left above it rather than in the whole frame.
+  it("centres a place between the top edge and a covered bottom", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          coveredBottom={80}
+          locations={[{ name: "Dahab", latitude: 28.49, longitude: 34.51 }]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const marker = (markers()[0] as HTMLElement).getBoundingClientRect();
+    const centre = marker.top + marker.height / 2;
+    expect(centre - frame.top).toBeCloseTo((frame.height - 80) / 2, 0);
+  });
+
+  // A backdrop's credit covers its top edge the way the caller's content covers
+  // its foot, so the place centres between the two.
+  it("centres a backdrop's place between its credit and a covered bottom", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          coveredBottom={40}
+          locations={[{ name: "Dahab", latitude: 28.49, longitude: 34.51 }]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const credit = screen
+      .getByRole("link", { name: /OpenStreetMap/ })
+      .parentElement!.getBoundingClientRect();
+    const marker = (markers()[0] as HTMLElement).getBoundingClientRect();
+    const centre = marker.top + marker.height / 2;
+    expect(credit.bottom).toBeGreaterThan(frame.top);
+    expect(centre).toBeCloseTo((credit.bottom + frame.bottom - 40) / 2, 0);
+  });
+
+  // A region's pin is rarely the middle of its outline, and on a backdrop the
+  // pin is what is centred - the outline only sizes the view.
+  it("centres a backdrop's pin rather than its region's outline", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          coveredBottom={40}
+          locations={[
+            {
+              name: "Red Sea",
+              // Near the south of its outline, as a region's pin can be.
+              latitude: 14,
+              longitude: 38,
+              bbox_south: 12,
+              bbox_north: 30,
+              bbox_west: 32,
+              bbox_east: 44,
+            },
+          ]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const credit = screen
+      .getByRole("link", { name: /OpenStreetMap/ })
+      .parentElement!.getBoundingClientRect();
+    const marker = (markers()[0] as HTMLElement).getBoundingClientRect();
+    expect(marker.top + marker.height / 2).toBeCloseTo(
+      (credit.bottom + frame.bottom - 40) / 2,
+      0,
+    );
+  });
+
+  it("keeps every pin of a backdrop between its credit and a covered bottom", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          coveredBottom={40}
+          locations={[
+            { name: "Aqaba", latitude: 29.53, longitude: 35.01 },
+            { name: "Marsa Alam", latitude: 25.07, longitude: 34.89 },
+          ]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const credit = screen
+      .getByRole("link", { name: /OpenStreetMap/ })
+      .parentElement!.getBoundingClientRect();
+    for (const marker of Array.from(markers()) as HTMLElement[]) {
+      const centre =
+        marker.getBoundingClientRect().top +
+        marker.getBoundingClientRect().height / 2;
+      expect(centre).toBeGreaterThanOrEqual(credit.bottom);
+      expect(centre).toBeLessThanOrEqual(frame.bottom - 40);
+    }
+  });
+
+  it("fades a backdrop into a colour laid over it, not through a mask", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          locations={[{ name: "Dahab", latitude: 28.49, longitude: 34.51 }]}
+        />,
+      ),
+    );
+    await canvasReady();
+
+    const fade = document.querySelector<HTMLElement>("[data-backdrop-fade]")!;
+    expect(getComputedStyle(fade).backgroundImage).toContain("linear-gradient");
+    expect(getComputedStyle(screen.getByRole("img")).maskImage).toBe("none");
+  });
+
+  // A list lets its off-screen maps go, so each keeps a picture of itself to
+  // come back as. The picture has to hold real pixels, which is the part that
+  // can fail silently: the canvas keeps no drawing buffer, and a read at any
+  // other moment than the frame's own comes back empty.
+  describe("with snapshot", () => {
+    const TEAL = { r: 74, g: 110, b: 110 };
+    const SOLID: BasemapConfig = {
+      ...OFFLINE,
+      styleUrl: `data:application/json,${encodeURIComponent(
+        JSON.stringify({
+          version: 8,
+          sources: {},
+          layers: [
+            {
+              id: "bg",
+              type: "background",
+              paint: {
+                "background-color": `rgb(${TEAL.r}, ${TEAL.g}, ${TEAL.b})`,
+              },
+            },
+          ],
+        }),
+      )}`,
+    };
+
+    const picture = () =>
+      waitFor(
+        () => {
+          const image = document.querySelector("img");
+          expect(image).not.toBeNull();
+          return image!;
+        },
+        { timeout: 10000 },
+      );
+
+    it("swaps a drawn map for a picture of it, pins and all", async () => {
+      render(
+        withConfig(
+          <LocationsMap
+            subject="the trip's locations"
+            snapshot
+            locations={[
+              { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
+              { name: "Bohol", latitude: 9.85, longitude: 124.14 },
+            ]}
+          />,
+          SOLID,
+        ),
+      );
+
+      const image = await picture();
+      await waitFor(() => expect(image.complete).toBe(true));
+      expect(image.src.startsWith("blob:")).toBe(true);
+      expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull();
+      expect(markers()).toHaveLength(2);
+
+      const probe = document.createElement("canvas");
+      probe.width = image.naturalWidth;
+      probe.height = image.naturalHeight;
+      const context = probe.getContext("2d")!;
+      context.drawImage(image, 0, 0);
+      const [r, g, b, a] = context.getImageData(
+        Math.floor(probe.width / 2),
+        Math.floor(probe.height / 4),
+        1,
+        1,
+      ).data;
+      // Within a level or two, not exact: the picture is lossy WebP.
+      expect(a).toBe(255);
+      expect(Math.abs(r - TEAL.r)).toBeLessThanOrEqual(2);
+      expect(Math.abs(g - TEAL.g)).toBeLessThanOrEqual(2);
+      expect(Math.abs(b - TEAL.b)).toBeLessThanOrEqual(2);
+    });
+
+    // A resize moves the picture rather than drawing it again: the pin keeps
+    // to the middle of the frame, and no map is built for it.
+    it("keeps its picture through a resize, moving it with the frame", async () => {
+      const Resizable = ({ width }: { width: number }) =>
+        withConfig(
+          <div style={{ width }}>
+            <LocationsMap
+              subject="the trip's locations"
+              snapshot
+              locations={[
+                { name: "Tulamben", latitude: -8.27, longitude: 115.59 },
+              ]}
+            />
+          </div>,
+          SOLID,
+        );
+      const { rerender } = render(<Resizable width={300} />);
+      await picture();
+      await waitFor(() =>
+        expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull(),
+      );
+      const middle = () => {
+        const frame = screen.getByRole("img").getBoundingClientRect();
+        const pin = (markers()[0] as HTMLElement).getBoundingClientRect();
+        return pin.left + pin.width / 2 - (frame.left + frame.width / 2);
+      };
+      expect(middle()).toBeCloseTo(0, 0);
+
+      rerender(<Resizable width={360} />);
+      await waitFor(() => expect(middle()).toBeCloseTo(0, 0));
+      expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull();
+      expect(document.querySelector("img")).not.toBeNull();
+    });
+
+    it("comes back as its picture, without building a map again", async () => {
+      const map = () =>
+        withConfig(
+          <LocationsMap
+            subject="the trip's locations"
+            snapshot
+            locations={[{ name: "Anilao", latitude: 13.76, longitude: 120.92 }]}
+          />,
+          SOLID,
+        );
+      const first = render(map());
+      await picture();
+      first.unmount();
+
+      render(map());
+      expect(document.querySelector("img")).not.toBeNull();
+      expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull();
+      expect(markers()).toHaveLength(1);
+    });
+  });
+
   // **MapLibre does not refit on its own.** Its `trackResize` calls `resize()`,
   // which recomputes the projection for the new box and leaves centre and zoom
   // where they were - so without an explicit refit a frame that narrows keeps a

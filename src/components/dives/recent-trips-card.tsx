@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { tripsAPI, Trip } from "@/lib/api/trips";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
 import {
   CARD_TITLE_ACTION,
   CARD_TITLE_ROW,
@@ -14,45 +16,53 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { useQuickCreate } from "@/components/layout/quick-create";
-import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
-import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
-import { Luggage, Plus, Calendar } from "lucide-react";
+import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
+import { TripCard, TripCardSkeleton } from "@/components/trips/trip-card";
+import { TripDialog } from "@/components/trips/trip-dialog";
+import { Luggage, Plus } from "lucide-react";
 
 const RECENT_TRIPS_COUNT = 5;
 
-// Only show a date when some part of the trip carries one; we deliberately
-// don't fall back to the trip's creation date here.
-function formatTripDisplayDate(trip: Trip) {
-  return formatTripSpan(trip.parts);
-}
+// The plain-delete toast, and the first half of the one a move gets - "moved to
+// Cebu 2026" is an addition to what happened, not a replacement for it.
+const DELETED_MESSAGE = "Trip deleted successfully.";
 
-// Shows the user's most recent trips by trip date (up to 5). Used on the
-// dashboard so divers can quickly jump back into a trip they're logging dives for.
+// Shows the user's most recent trips by trip date (up to 5), each editable and
+// deletable where it stands. Used on the dashboard so divers can quickly jump
+// back into a trip they're logging dives for.
 export function RecentTripsCard() {
-  const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
-  const [isLoadingTrips, setIsLoadingTrips] = useState(true);
   const openCreate = useQuickCreate();
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
 
-  useEffect(() => {
-    const fetchRecentTrips = async () => {
-      try {
-        setIsLoadingTrips(true);
-        // The trips list endpoint already sorts by each trip's earliest part
-        // start, descending, so the first page is exactly the most recent trips
-        // - no client-side sorting (which would disagree with /trips).
-        const response = await tripsAPI.getTrips(1, RECENT_TRIPS_COUNT);
-        setRecentTrips(response.data);
-      } catch (error) {
-        console.error("Failed to fetch recent trips:", error);
-      } finally {
-        setIsLoadingTrips(false);
-      }
-    };
+  // The trips list endpoint already sorts by each trip's earliest part start,
+  // descending, so the first page is exactly the most recent trips - no
+  // client-side sorting (which would disagree with /trips).
+  const fetchTrips = useCallback(
+    (page: number, perPage: number) => tripsAPI.getTrips(page, perPage),
+    [],
+  );
 
-    fetchRecentTrips();
-  }, []);
+  const {
+    items: recentTrips,
+    isLoading: isLoadingTrips,
+    reload,
+    applySaved,
+  } = useInfiniteResource<Trip>(fetchTrips, {
+    keyOf: (trip) => trip.uuid,
+    itemsPerPage: RECENT_TRIPS_COUNT,
+    errorMessage: "Failed to load trips. Please try again.",
+  });
+
+  const { deletingId, pendingId, requestDelete, cancelDelete, confirmDelete } =
+    useDeleteResource(tripsAPI.deleteTrip, {
+      successMessage: DELETED_MESSAGE,
+      errorMessage: "Failed to delete trip. Please try again.",
+      // Read again rather than dropping the row: the card shows the latest
+      // five, so a delete owes it the sixth, and one that moved its dives
+      // changes another trip's counts.
+      onDeleted: () => reload(),
+    });
 
   return (
     <Card>
@@ -75,7 +85,12 @@ export function RecentTripsCard() {
       </CardHeader>
       <CardContent>
         {isLoadingTrips ? (
-          <ListRowsSkeleton rows={RECENT_TRIPS_COUNT} />
+          // Busy on the list, hidden on each placeholder, as `/trips` does.
+          <ul className="space-y-3" aria-busy>
+            {Array.from({ length: RECENT_TRIPS_COUNT }, (_, index) => (
+              <TripCardSkeleton key={index} />
+            ))}
+          </ul>
         ) : recentTrips.length === 0 ? (
           <EmptyState
             icon={Luggage}
@@ -89,31 +104,39 @@ export function RecentTripsCard() {
             }
           />
         ) : (
-          <div className="space-y-3">
+          <ul className="space-y-3">
             {recentTrips.map((trip) => (
-              <Link
+              <TripCard
                 key={trip.uuid}
-                href={`/trips/${trip.uuid}`}
-                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 p-3 rounded-lg border hover:bg-muted transition-colors"
-              >
-                <div className="min-w-0">
-                  <div className="font-medium text-foreground">{trip.name}</div>
-                  <TripLocationsLabel
-                    locations={tripPartLocations(trip.parts)}
-                    className="block text-sm text-muted-foreground"
-                  />
-                </div>
-                {formatTripDisplayDate(trip) && (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    {formatTripDisplayDate(trip)}
-                  </div>
-                )}
-              </Link>
+                trip={trip}
+                onEdit={() => setEditingTrip(trip)}
+                onDelete={() => requestDelete(trip.uuid)}
+                isDeleting={deletingId === trip.uuid}
+              />
             ))}
-          </div>
+          </ul>
         )}
       </CardContent>
+
+      <TripDialog
+        open={editingTrip !== null}
+        onOpenChange={(open) => !open && setEditingTrip(null)}
+        trip={editingTrip}
+        onSaved={applySaved}
+      />
+
+      <DeleteWithReassignDialog
+        kind="trip"
+        targetId={pendingId}
+        isDeleting={deletingId === pendingId}
+        onCancel={cancelDelete}
+        onConfirm={(moveDivesTo, name) =>
+          confirmDelete(
+            moveDivesTo,
+            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+          )
+        }
+      />
     </Card>
   );
 }
