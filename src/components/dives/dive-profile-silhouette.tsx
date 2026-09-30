@@ -43,7 +43,7 @@ export function DiveProfileSilhouette({
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="currentColor" stopOpacity="0.3" />
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.45" />
           <stop offset="1" stopColor="currentColor" stopOpacity="0" />
         </linearGradient>
       </defs>
