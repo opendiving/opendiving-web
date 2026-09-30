@@ -5,6 +5,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useNearViewport } from "@/hooks/useNearViewport";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useSavedElsewhere } from "@/hooks/useSavedElsewhere";
 import { gearAPI, gearItemLabel, GearItem, GearSet } from "@/lib/api/gear";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -96,6 +97,10 @@ export function GearPageContent() {
     reloadItems();
     reloadSets();
   }, [reloadItems, reloadSets]);
+
+  // A service logged from the header's bell moves an item's due date, which is what
+  // its row's badge is drawn from.
+  useSavedElsewhere("gear-service", reloadItems);
 
   const {
     deletingId: deletingItemId,

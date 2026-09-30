@@ -5,6 +5,7 @@ import { Edit, Loader2, Trash2 } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useSavedElsewhere } from "@/hooks/useSavedElsewhere";
 import {
   certificationsAPI,
   certificationAgencyLabel,
@@ -60,6 +61,10 @@ export function CertificationsPageContent() {
     enabled: !!user,
     errorMessage: "Failed to load certifications. Please try again.",
   });
+
+  useSavedElsewhere("certification", ({ certification }) =>
+    applySaved(certification),
+  );
 
   const {
     deletingId,

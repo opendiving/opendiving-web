@@ -805,25 +805,18 @@ The gear list needs no extra request: `GET /gear-items` embeds each item's sched
 
 ## A bell row opens the form that deals with it, and its title goes to the item
 
-`NotificationRow` stretches a `<button>` over the row (`absolute inset-0`) and lifts the title's
-`Link` above it (`relative z-10`): a link inside a button is invalid, so the two are siblings and
-the button is the rest of the row. It is named by `sr-only` text, not `aria-label`: the row is its
-sighted label, and a hint would sit over the row above. A service row opens
-`GearServiceRecordDialog`; a certification row reads the card with `getCertification` and opens
-`CertificationDialog`, since the renewals read carries five of its fields; the insurance row opens
-the check-in page's `UserFieldsDialog` on `INSURANCE_FIELDS`, whose save refreshes the user the row
-derives from.
+A certification row reads the card with `getCertification` before opening `CertificationDialog`,
+which edits every field; the renewals read carries five. The insurance row opens the check-in page's
+`UserFieldsDialog` on `INSURANCE_FIELDS`.
 
-The service button names item and schedule, since the list spans a diver's every item;
-`notifications-menu.render.test.tsx` renders the four-row case. `serviceKindAndLabel` sits in
-`lib/api/gear-service.ts` beside `serviceKindLabel` so both surfaces phrase a schedule one way.
+A save from the bell is announced through `lib/saved-elsewhere.ts`, and what shows that data reads
+again — the gear card and list, `/certifications`, `/checkin`, a course's certifications card —
+since none shares a cache with the bell. Rejected: remounting the page, which drops its scroll and
+the state of the routes kept hidden behind it.
 
-`GearServiceRecordDialog` takes `gearItemUuid`, not a `GearItem`, an optional `gearItemLabel` as
-description, and a `schedule` typed `GearServiceScheduleSummary`. The entry is `useMemo`d: the
-dialog resets its form in an effect keyed on `schedule`, and a `scheduleFromDueEntry(...)` built
-during render wipes half-typed notes. `NotificationsMenu` mounts each form outside the popover,
-which closes as it opens, and focuses the bell first so the dialog hands focus back there.
-`useNotifications` reads through a `.then()` chain, not `async`, because
+`GearServiceRecordDialog` takes `gearItemUuid` rather than a `GearItem`, and its `schedule` is
+`useMemo`d: the dialog resets its form on that prop's identity, so one built during render wipes
+half-typed notes. `useNotifications` reads through a `.then()` chain, because
 `react-hooks/set-state-in-effect` reads an awaited call in an effect body as a synchronous
 `setState`.
 
@@ -1817,11 +1810,11 @@ The script commits nothing over there.
 ## "Due soon" is a `warning` badge, because `secondary` is invisible on a card
 
 `serviceStatusBadgeVariant` never maps `due_soon` onto `secondary`. Every place the chip renders
-(gear list, gear detail card, dashboard service-due card) sits on a card, and dark `--secondary`
-against `--card` is a near-neutral grey a few lightness points off its surface: 1.2:1, with no
-border. The label passes every text-contrast scan, so a text-node walker never flags it; non-text
-contrast is the check that fails. It also made "Due soon" identical to "Rented", a fact about an
-item rather than a status.
+(gear list, gear detail card, the bell's service-due list) sits on `--card` or `--popover`, one
+value in both themes, and dark `--secondary` against it is a near-neutral grey a few lightness
+points off its surface: 1.2:1, with no border. The label passes every text-contrast scan, so a
+text-node walker never flags it; non-text contrast is the check that fails. It also made "Due soon"
+identical to "Rented", a fact about an item rather than a status.
 
 `--warning` is dark and slightly brown in light mode (`32 92% 27%`) because it carries white text
 and a mid-amber only reaches 3.9:1 under white; in dark mode it is `38 95% 62%` with near-black
@@ -1875,20 +1868,17 @@ being white.
 ## A bell row's chip sits on the title's line, and its qualifier under it
 
 `NotificationRow` is a grid: title and chip on one line, subtitle and qualifier on the next, the
-chip column as wide as its chip, so the chips end on one line down both sections, and the qualifier
-centred under the chip. The qualifier is the phrase less the chip's own word — "by 40 days", "in 2
+qualifier centred under a right-aligned chip. The qualifier drops the chip's own word — "by 40
 days", "on Oct 23, 2026" — through `formatServiceDueQualifier`, which shares `formatServiceDue`'s
 arm selection so the two cannot disagree about which arm is urgent.
 
 `certificationExpiryBadgeVariant` returns `destructive` / `coral`, never `secondary`: grey beside
-coral reads as not a status. No `teal`, since `certificationExpiryStatus` returns `null` for a
-healthy certification and no chip renders.
+coral reads as not a status. A healthy certification has no status and no chip.
 
-Chip widths: service `min-w-24`, certification `min-w-28`. The courses Status column takes
-`min-w-24` only; `courseStatusBadgeVariant` keeps its own vocabulary because courses share no screen
-with gear or certification chips (`courseStatusLabel` falls back to the raw wire value). All three
-carry `whitespace-nowrap` so a fallback font or longer label overflows the pill visibly rather than
-growing a second line.
+Chip widths: service `min-w-24`, certification `min-w-28`, the courses Status column `min-w-24`;
+`courseStatusBadgeVariant` keeps its own vocabulary, courses sharing no screen with gear or
+certification chips. All carry `whitespace-nowrap`, so a longer label overflows the pill visibly
+rather than growing a second line.
 
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 

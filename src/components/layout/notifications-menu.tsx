@@ -19,6 +19,7 @@ import {
   type GearServiceDueEntry,
 } from "@/lib/api/gear-service";
 import type { Renewable } from "@/lib/certification";
+import { announceSavedElsewhere } from "@/lib/saved-elsewhere";
 import { INSURANCE_FIELDS } from "@/lib/validations/user-fields";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
@@ -160,8 +161,10 @@ export function NotificationsMenu() {
               ref={triggerRef}
               variant="ghost"
               size="sm"
-              // The hamburger's narrow padding, for the same 320px header row.
-              className="relative px-2 sm:px-3"
+              // The hamburger's narrow padding, for the same 320px header row. The
+              // wider gap after it is the chip's: it hangs off the bell's right edge,
+              // and the avatar beside it has no padding of its own to keep it off.
+              className="relative me-2 px-2 sm:me-5 sm:px-3"
             >
               <Bell className="h-4 w-4" />
               {/* The count is in the trigger's name already, so the chip is the
@@ -271,8 +274,14 @@ export function NotificationsMenu() {
           onOpenChange={stopEditing}
           schedule={loggingSchedule}
           // A logged service resets the schedule's due date, so the row this was opened
-          // from usually leaves the list, and the count drops with it.
-          onSaved={reload}
+          // from usually leaves the list, and the count drops with it. The page under
+          // the bell may be that item's, or the gear list.
+          onSaved={() => {
+            reload();
+            announceSavedElsewhere("gear-service", {
+              gearItemUuid: editing.entry.gear_item_uuid,
+            });
+          }}
         />
       )}
       {editing?.kind === "certification" && (
@@ -280,7 +289,10 @@ export function NotificationsMenu() {
           open
           onOpenChange={stopEditing}
           certification={editing.certification}
-          onSaved={() => reload()}
+          onSaved={(certification) => {
+            reload();
+            announceSavedElsewhere("certification", { certification });
+          }}
         />
       )}
       {/* The check-in page's insurance form. Saving refreshes the signed-in user, which

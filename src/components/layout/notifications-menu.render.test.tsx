@@ -11,6 +11,7 @@ import {
   gearServiceAPI,
   type GearServiceDueEntry,
 } from "@/lib/api/gear-service";
+import { onSavedElsewhere } from "@/lib/saved-elsewhere";
 import { isoDaysFromNow } from "@/test/local-day";
 
 // The bell holds two lists behind one count: gear due a service, and anything about to
@@ -48,7 +49,11 @@ vi.mock("@/lib/api/gear-service", async (importOriginal) => {
     await importOriginal<typeof import("@/lib/api/gear-service")>();
   return {
     ...actual,
-    gearServiceAPI: { ...actual.gearServiceAPI, getDue: vi.fn() },
+    gearServiceAPI: {
+      ...actual.gearServiceAPI,
+      getDue: vi.fn(),
+      createRecord: vi.fn(),
+    },
   };
 });
 
@@ -59,15 +64,20 @@ vi.mock("@/lib/api/certifications", async (importOriginal) => ({
 
 // The certification dialog is `certification-dialog.render.test.tsx`'s subject, and
 // brings its course, contact and people pickers with it. What this file owns is which
-// card the row hands it.
+// card the row hands it, and what happens once it is saved.
 vi.mock("@/components/certifications/certification-dialog", () => ({
   CertificationDialog: ({
     certification,
+    onSaved,
   }: {
     certification: { name: string; expires_on: string };
+    onSaved: (saved: unknown) => void;
   }) => (
     <div role="dialog" aria-label="Edit Certification">
       {certification.name} expires {certification.expires_on}
+      <button type="button" onClick={() => onSaved(certification)}>
+        Save
+      </button>
     </div>
   ),
 }));
@@ -295,6 +305,33 @@ describe("the service-due rows", () => {
       ).not.toBeInTheDocument(),
     );
   });
+
+  it("tells the page under it which item a logged service was for", async () => {
+    // The page may be that item's, showing the schedule this service just moved.
+    getDue.mockResolvedValue({ data: [due()] });
+    vi.mocked(gearServiceAPI.createRecord).mockResolvedValue(
+      {} as Awaited<ReturnType<typeof gearServiceAPI.createRecord>>,
+    );
+    const heard = vi.fn();
+    const stop = onSavedElsewhere("gear-service", heard);
+
+    const panel = await openPanel();
+    await userEvent.click(
+      within(panel).getByRole("button", {
+        name: "Log service for Service on Scubapro MK25 EVO",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: /Log Service/ });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Log service/ }),
+    );
+
+    await vi.waitFor(() =>
+      expect(heard).toHaveBeenCalledWith({ gearItemUuid: "item-1" }),
+    );
+    expect(getDue).toHaveBeenCalledTimes(2);
+    stop();
+  });
 });
 
 describe("the renewals rows", () => {
@@ -381,6 +418,32 @@ describe("the renewals rows", () => {
     });
     expect(getCertification).toHaveBeenCalledWith("cert-7");
     expect(dialog).toHaveTextContent(`Rescue Diver expires ${expiresOn}`);
+  });
+
+  it("tells the page under it about the saved card, and reads itself again", async () => {
+    // The page may be `/certifications` or `/checkin`, showing the card as it was.
+    const saved = { uuid: "cert-7", name: "Rescue Diver", expires_on: later() };
+    getExpiring.mockResolvedValue({
+      data: [certification({ uuid: "cert-7" })],
+    });
+    getCertification.mockResolvedValue(
+      saved as Awaited<ReturnType<typeof certificationsAPI.getCertification>>,
+    );
+    const heard = vi.fn();
+    const stop = onSavedElsewhere("certification", heard);
+
+    const panel = await openPanel();
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Edit Rescue Diver" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Edit Certification",
+    });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(heard).toHaveBeenCalledWith({ certification: saved });
+    await vi.waitFor(() => expect(getExpiring).toHaveBeenCalledTimes(2));
+    stop();
   });
 
   it("opens the check-in page's insurance form for the policy", async () => {

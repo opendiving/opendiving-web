@@ -60,7 +60,7 @@ one.
 - **Dive sites** — your personal site list, with every dive you've logged at each site.
 - **Gear tracking** — your equipment with per-item dive counts, groupable into gear sets you can
   attach to a dive in one click, plus **service schedules** (annual service, visual inspection,
-  hydro test…) with due-soon reminders on the dashboard and by email.
+  hydro test…) with due-soon reminders under the notifications bell and by email.
 - **Marine life** — record what you saw against a real species catalog, resolved live against the
   World Register of Marine Species and Wikidata so a name you half-remember still finds the animal,
   with how many you counted and a note on each. Your **life list** collects every species you have

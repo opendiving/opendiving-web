@@ -12,7 +12,8 @@ interface NotificationRowProps {
   // What the badge leaves unsaid: "by 40 days", "on Oct 23, 2026".
   qualifier: string;
   // Names the row's button, which is the rest of the row and opens the form that deals
-  // with the item. Read out, not shown: the row it covers is its sighted label.
+  // with the item. Read out, not shown: the row it covers is its sighted label, and a
+  // hover hint would sit over the row above.
   actionLabel: string;
   onAction: () => void;
   // Called as the title's link is followed, so whatever holds the row can close.
