@@ -549,7 +549,7 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
               a guard: MapLibre's handlers are on its own canvas container, which
               this is a sibling of rather than a child. */}
           <div className="absolute bottom-0 right-0 z-10 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground">
-            <Attribution value={basemap.attribution} />
+            <Attribution value={basemap.attribution} underline={false} />
           </div>
         </div>
 

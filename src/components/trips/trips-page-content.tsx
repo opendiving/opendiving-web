@@ -59,6 +59,7 @@ export function TripsPageContent() {
     hasMore,
     loadFailed,
     loadMore,
+    reload,
     removeItem,
     applySaved,
   } = useInfiniteResource<Trip>(fetchTrips, {
@@ -78,8 +79,10 @@ export function TripsPageContent() {
     errorMessage: "Failed to delete trip. Please try again.",
     // The row goes locally rather than by re-reading the pages around it: a
     // diver who has scrolled several pages in should not have the list
-    // collapse back to the first one under them.
-    onDeleted: removeItem,
+    // collapse back to the first one under them. Unless its dives moved to
+    // another trip, whose card then counts them - that is a delete that
+    // changes another row, and only a re-read shows it.
+    onDeleted: (id, movedDivesTo) => (movedDivesTo ? reload() : removeItem(id)),
   });
 
   if (isAuthLoading) {

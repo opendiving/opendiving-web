@@ -16,10 +16,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
-import { TripCard } from "@/components/trips/trip-card";
+import { TripCard, TripCardSkeleton } from "@/components/trips/trip-card";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { Luggage, Plus } from "lucide-react";
 
@@ -47,7 +46,7 @@ export function RecentTripsCard() {
   const {
     items: recentTrips,
     isLoading: isLoadingTrips,
-    removeItem,
+    reload,
     applySaved,
   } = useInfiniteResource<Trip>(fetchTrips, {
     keyOf: (trip) => trip.uuid,
@@ -59,7 +58,10 @@ export function RecentTripsCard() {
     useDeleteResource(tripsAPI.deleteTrip, {
       successMessage: DELETED_MESSAGE,
       errorMessage: "Failed to delete trip. Please try again.",
-      onDeleted: removeItem,
+      // Read again rather than dropping the row: the card shows the latest
+      // five, so a delete owes it the sixth, and one that moved its dives
+      // changes another trip's counts.
+      onDeleted: () => reload(),
     });
 
   return (
@@ -83,7 +85,12 @@ export function RecentTripsCard() {
       </CardHeader>
       <CardContent>
         {isLoadingTrips ? (
-          <ListRowsSkeleton rows={RECENT_TRIPS_COUNT} />
+          // Busy on the list, hidden on each placeholder, as `/trips` does.
+          <ul className="space-y-3" aria-busy>
+            {Array.from({ length: RECENT_TRIPS_COUNT }, (_, index) => (
+              <TripCardSkeleton key={index} />
+            ))}
+          </ul>
         ) : recentTrips.length === 0 ? (
           <EmptyState
             icon={Luggage}

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TripCardSkeleton } from "@/components/trips/trip-card";
 
 export interface TripsPageFrameProps {
   isLoading: boolean;
@@ -140,9 +140,7 @@ export function TripsPageFrame({
         >
           {cards.length === 0 &&
             Array.from({ length: itemsPerPage }, (_, index) => (
-              <li key={index} aria-hidden>
-                <Skeleton className="h-60 rounded-lg sm:h-64" />
-              </li>
+              <TripCardSkeleton key={index} />
             ))}
           {cards}
         </ul>

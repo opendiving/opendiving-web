@@ -1541,7 +1541,9 @@ page's safety notice, deliberately not a `bg-muted` callout. `--muted-foreground
 shadcn's 46.9%, so it passes on `--muted` as well as `--background`.
 
 In-copy links are underlined, not coloured: `text-primary` is 3.67:1 as link text in dark mode, and
-colour alone trips axe's `link-in-text-block`.
+colour alone trips axe's `link-in-text-block`. The one exception is the owner's: a map's credit chip
+underlines its links on hover only (`Attribution`'s `underline={false}`); the same credit under a
+form field keeps the underline.
 
 ## Outcomes go in toasts; `StatusMessage` is the documented exception
 
@@ -2729,8 +2731,10 @@ joined by `formatTripLocationNames`. It is required despite an obvious default b
 path has no visual tell: an omitted value gives a wrong label on a screen-reader-only path no
 screenshot exercises, so omission is a type error.
 
-The frame's height is not a prop; it lives in the component, duplicated once in the `next/dynamic`
-skeleton beside it, so a caller cannot make the page jump when the chunk lands.
+The frame's height lives in the component, duplicated once in the `next/dynamic` skeleton beside it,
+so a caller keeping it cannot make the page jump when the chunk lands. A caller setting its own
+through `className` - the trip card - owns the room the skeleton lands in; the trip card's map is
+out of flow, so it has none.
 
 The site page gates the map on the same `formatCoordinates` result the Coordinates line uses,
 keeping a site with no position from fetching the chunk; a half-set position, which only raw SQL
@@ -2954,8 +2958,10 @@ patched `XMLHttpRequest.prototype.send`, comparing loading and loaded geometry o
 a screenshot does not show a `h-5` bar against a 24px line box or a legend nobody accounted for.
 
 `ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`, and its
-count comes from the card's own `RECENT_DIVES_COUNT`/`RECENT_TRIPS_COUNT` rather than a default, so
-the dashboard cards measure the same in both states.
+count comes from the card's own `RECENT_DIVES_COUNT` rather than a default, so the dashboard card
+measures the same in both states. Trips load into `TripCardSkeleton`, one box at the card's measured
+214px (238px from `sm`), `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
+`/trips`.
 
 One shift is accepted: the dashboard moves ~134px when a gear-service reminder is due, which is not
 a placeholder problem, since whether that card exists is one of the things the request answers.

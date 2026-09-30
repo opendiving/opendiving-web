@@ -698,7 +698,7 @@ export function LocationsMap({
           backdrop ? "left-1 top-1 rounded-sm opacity-75" : "bottom-0 right-0",
         )}
       >
-        <Attribution value={basemap.attribution} />
+        <Attribution value={basemap.attribution} underline={false} />
       </div>
     </div>
   );

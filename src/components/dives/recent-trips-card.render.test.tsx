@@ -203,9 +203,20 @@ describe("RecentTripsCard", () => {
     );
   });
 
-  it("deletes a trip from its menu and drops only that row", async () => {
+  // The card is the latest five, so a delete reads it again: the sixth trip
+  // takes the freed place, and a delete that moved its dives shows the new
+  // counts on the trip they went to.
+  it("reads the list again after a delete", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
+    const palau = trip({ uuid: "trip-3", name: "Palau 2024" });
+    vi.mocked(tripsAPI.getTrips).mockResolvedValue({
+      data: [MAPPED, palau],
+      total_count: 2,
+      has_more: false,
+      page: 1,
+      items_per_page: 5,
+    });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Actions for Koh Tao 2025" }),
@@ -220,8 +231,17 @@ describe("RecentTripsCard", () => {
 
     expect(tripsAPI.deleteTrip).toHaveBeenCalledWith("trip-2", undefined);
     expect(
-      await screen.findByRole("link", { name: "Dahab 2026" }),
+      await screen.findByRole("link", { name: "Palau 2024" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Koh Tao 2025" })).toBeNull();
+  });
+
+  it("holds the cards' place with placeholders while it loads", () => {
+    vi.mocked(tripsAPI.getTrips).mockReturnValue(new Promise(() => {}));
+    render(<RecentTripsCard />);
+
+    const list = screen.getByRole("list");
+    expect(list).toHaveAttribute("aria-busy", "true");
+    expect(list.querySelectorAll("li[aria-hidden]")).toHaveLength(5);
   });
 });

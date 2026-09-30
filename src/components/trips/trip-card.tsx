@@ -14,6 +14,7 @@ import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { Edit } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 // What the trip's dives add up to, laid out as the dive page lays out its
@@ -34,6 +35,17 @@ function TripCounts({ trip }: { trip: Trip }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+// A trip card's place while its list loads, at the card's measured height - its
+// map band and a dated, placed trip's details, 214px and 238px from `sm` - so
+// the cards land without moving anything. A list item, like the card.
+export function TripCardSkeleton() {
+  return (
+    <li aria-hidden>
+      <Skeleton className="h-53.5 rounded-lg sm:h-59.5" />
+    </li>
   );
 }
 
