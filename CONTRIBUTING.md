@@ -94,7 +94,8 @@ writing a test in either project — it has the worked examples, and the negativ
 against your own.
 
 Coverage is measured over `src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/components/**` and
-`src/app/**`, with floors per directory in `vitest.config.mts`. New helpers in `src/lib/` should
+`src/app/**`, with floors per directory in `vitest.config.mts`. CI does not collect it;
+`npm run test:coverage` prints the report and checks the floors. New helpers in `src/lib/` should
 come with tests; bug fixes should come with a test that fails without the fix.
 
 ## Two things that will bite you

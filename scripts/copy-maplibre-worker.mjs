@@ -22,7 +22,7 @@
 // Wired to every script that can reach a test or a build - `predev`, `prebuild`,
 // `pretest`, `pretest:watch` and `pretest:coverage` - because npm resolves a
 // pre-hook against the exact script name: `pretest` does not run for
-// `npm run test:coverage`, which is what CI runs. A browser test executing
+// `npm run test:coverage`. A browser test executing
 // against a missing worker is the silent failure above, so the copy has to
 // precede every entry point rather than the obvious two. `package.json` is the
 // list; this comment deliberately does not restate a count of it.
