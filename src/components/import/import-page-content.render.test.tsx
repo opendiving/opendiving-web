@@ -225,6 +225,44 @@ describe("choosing files", () => {
   });
 });
 
+describe("a drop the browser could not read all of", () => {
+  it("says which entries were left out", async () => {
+    const moved = {
+      isFile: true,
+      isDirectory: false,
+      name: "moved.fit",
+      fullPath: "/moved.fit",
+      file: (_: unknown, reject: (error: unknown) => void) =>
+        reject(new Error("NotFoundError")),
+    };
+    const kept = {
+      isFile: true,
+      isDirectory: false,
+      name: "1.fit",
+      fullPath: "/1.fit",
+      file: (resolve: (file: File) => void) => resolve(fit()),
+    };
+    render(<ImportPageContent />);
+    fireEvent.drop(
+      screen.getByRole("button", { name: /drop files or a folder here/i }),
+      {
+        dataTransfer: {
+          items: [moved, kept].map((entry) => ({
+            kind: "file",
+            webkitGetAsEntry: () => entry,
+          })),
+          files: [],
+        },
+      },
+    );
+
+    expect(await screen.findByText("1.fit")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "The browser could not read this from the drop, so it was left out: moved.fit.",
+    );
+  });
+});
+
 describe("what the client refuses before sending", () => {
   it("refuses a zip over 500 MB in its row, sending nothing", async () => {
     render(<ImportPageContent />);

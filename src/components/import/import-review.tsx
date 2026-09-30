@@ -20,12 +20,8 @@ interface ImportReviewProps {
 
 // The plan waiting for the diver's word. Mounted per preview, keyed on its token,
 // so the check-in form inside it is seeded from this preview's proposal and no
-// other.
-//
-// The button is offered for every plan and held back only while an import is in
-// flight: whether an apply changes a row is the writer's fact, which the report
-// does not carry, so the page never claims one would write nothing - the rows,
-// the counts and the notes say what happens to each thing.
+// other. The button is held back only while an import is in flight - see
+// `importButtonLabel`.
 export function ImportReview({
   preview,
   isImporting,

@@ -3,12 +3,17 @@
 import { useRef, useState } from "react";
 import { Upload } from "lucide-react";
 
-import { takeDrop, walkDrop, type PickedFile } from "@/lib/dropped-files";
+import {
+  takeDrop,
+  walkDrop,
+  type PickedFile,
+  type WalkedDrop,
+} from "@/lib/dropped-files";
 import { cn } from "@/lib/utils";
 
 interface ImportDropZoneProps {
   disabled: boolean;
-  onFiles: (files: PickedFile[]) => void;
+  onFiles: (files: WalkedDrop) => void;
 }
 
 // One target for every file the app reads: dropped on, or pressed to open the
@@ -31,7 +36,10 @@ export function ImportDropZone({ disabled, onFiles }: ImportDropZoneProps) {
     const files = Array.from(event.target.files ?? []);
     // Reset so picking the same files again still fires `change`.
     event.target.value = "";
-    onFiles(files.map((file) => ({ file, path: file.name })));
+    onFiles({
+      picked: files.map((file): PickedFile => ({ file, path: file.name })),
+      unreadable: [],
+    });
   };
 
   return (

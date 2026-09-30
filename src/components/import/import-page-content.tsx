@@ -28,7 +28,7 @@ import {
   type ImportPreview,
   type ImportResult,
 } from "@/lib/api/logbook-import";
-import type { PickedFile } from "@/lib/dropped-files";
+import type { WalkedDrop } from "@/lib/dropped-files";
 import { formatFileSize } from "@/lib/format";
 import { checkInWasWritten } from "@/lib/import-check-in";
 import {
@@ -90,6 +90,9 @@ function ImportFlow() {
   const [phase, setPhase] = useState<"idle" | "reading" | "importing">("idle");
   const [transfer, setTransfer] = useState<Transfer | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // What the browser could not read out of the last drop, which never reached
+  // the selection and so has no row to say so.
+  const [unreadable, setUnreadable] = useState<string[]>([]);
 
   const busy = phase !== "idle";
   const sendable = files.filter((item) => item.refusal === null);
@@ -108,7 +111,8 @@ function ImportFlow() {
     setError(null);
   };
 
-  const addFiles = (picked: PickedFile[]) => {
+  const addFiles = ({ picked, unreadable }: WalkedDrop) => {
+    setUnreadable(unreadable);
     // Packaging and empty files are dropped without a row: the API reads nothing
     // from either, and a `.DS_Store` among 46 dives is noise.
     const known = new Set(files.map(selectionKey));
@@ -250,6 +254,11 @@ function ImportFlow() {
           Files
         </h2>
         <ImportDropZone disabled={busy} onFiles={addFiles} />
+        {unreadable.length > 0 && (
+          <p role="status" className="text-sm text-muted-foreground">
+            {`The browser could not read ${unreadable.length === 1 ? "this from the drop" : `these ${unreadable.length} from the drop`}, so ${unreadable.length === 1 ? "it was" : "they were"} left out: ${unreadable.join(", ")}.`}
+          </p>
+        )}
 
         {files.length > 0 && (
           <>

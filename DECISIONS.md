@@ -6873,16 +6873,8 @@ The sheet keeps every section's heading and edit control on screen however littl
 drops an empty section from the print — a heading with nothing beneath it is the labelled blank this
 page refuses, in another form.
 
-## Import is a page of its own, and its result is a list of dives
+## Import is a page of its own, and `/data` is the export page
 
 `/import` is the one door for every file the app reads; `/data` keeps its URL and is the export
 page. The picker filters nothing: the API decides by the bytes, and a file it cannot read is a row,
 not a refusal.
-
-The review and the result report dives through `ImportReport.dives` alone, so the counts table drops
-its dives row wherever dive rows exist: `collections` counts a document's records by the planner's
-action, so a pair's second file counts as a skipped dive while its row says "New".
-
-The import button never says an import would write nothing. Whether an apply changes a row is the
-writer's fact, which the report does not carry — a filled recording, a document's tags — so it is
-offered for every plan, labelled from the dive rows.

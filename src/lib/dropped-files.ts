@@ -48,16 +48,32 @@ async function childrenOf(
   }
 }
 
-async function walk(entry: FileSystemEntry, into: PickedFile[]): Promise<void> {
-  if (entry.isFile) {
-    into.push({
-      file: await fileOf(entry as FileSystemFileEntry),
-      path: entry.fullPath.replace(/^\//, "") || entry.name,
-    });
-  } else if (entry.isDirectory) {
-    for (const child of await childrenOf(entry as FileSystemDirectoryEntry)) {
-      await walk(child, into);
+/** What a drop carried, and the paths the browser could not read out of it. */
+export interface WalkedDrop {
+  picked: PickedFile[];
+  unreadable: string[];
+}
+
+const pathOf = (entry: FileSystemEntry) =>
+  entry.fullPath.replace(/^\//, "") || entry.name;
+
+// An entry the browser refuses - a file moved since the drop, a folder it may not
+// list - is noted and passed over, so one bad entry costs its own files and not
+// the rest of the drop.
+async function walk(entry: FileSystemEntry, into: WalkedDrop): Promise<void> {
+  try {
+    if (entry.isFile) {
+      into.picked.push({
+        file: await fileOf(entry as FileSystemFileEntry),
+        path: pathOf(entry),
+      });
+    } else if (entry.isDirectory) {
+      for (const child of await childrenOf(entry as FileSystemDirectoryEntry)) {
+        await walk(child, into);
+      }
     }
+  } catch {
+    into.unreadable.push(pathOf(entry));
   }
 }
 
@@ -68,11 +84,14 @@ async function walk(entry: FileSystemEntry, into: PickedFile[]): Promise<void> {
 export async function walkDrop({
   entries,
   files,
-}: ReturnType<typeof takeDrop>): Promise<PickedFile[]> {
+}: ReturnType<typeof takeDrop>): Promise<WalkedDrop> {
   if (entries.length === 0) {
-    return files.map((file) => ({ file, path: file.name }));
+    return {
+      picked: files.map((file) => ({ file, path: file.name })),
+      unreadable: [],
+    };
   }
-  const picked: PickedFile[] = [];
-  for (const entry of entries) await walk(entry, picked);
-  return picked;
+  const walked: WalkedDrop = { picked: [], unreadable: [] };
+  for (const entry of entries) await walk(entry, walked);
+  return walked;
 }

@@ -57,8 +57,9 @@ describe("a dropped folder", () => {
       fileEntry("/logbook.uddf"),
     ]);
 
-    const picked = await walkDrop(takeDrop(drop));
+    const { picked, unreadable } = await walkDrop(takeDrop(drop));
 
+    expect(unreadable).toEqual([]);
     expect(picked.map(({ path }) => path)).toEqual([
       "Suunto/1.fit",
       "Suunto/1.json",
@@ -70,6 +71,31 @@ describe("a dropped folder", () => {
   });
 });
 
+describe("an entry the browser cannot read", () => {
+  it("is noted and passed over, and the rest of the drop still arrives", async () => {
+    const moved = {
+      ...fileEntry("/Suunto/moved.fit"),
+      file: (_: unknown, reject: (error: unknown) => void) =>
+        reject(new Error("NotFoundError")),
+    };
+    const locked = {
+      ...folderEntry("/Suunto/Locked", []),
+      createReader: () => ({
+        readEntries: (_: unknown, reject: (error: unknown) => void) =>
+          reject(new Error("SecurityError")),
+      }),
+    };
+    const drop = transfer([
+      folderEntry("/Suunto", [moved, locked, fileEntry("/Suunto/1.fit")], 5),
+    ]);
+
+    const { picked, unreadable } = await walkDrop(takeDrop(drop));
+
+    expect(picked.map(({ path }) => path)).toEqual(["Suunto/1.fit"]);
+    expect(unreadable).toEqual(["Suunto/moved.fit", "Suunto/Locked"]);
+  });
+});
+
 describe("a drop from a browser without entries", () => {
   it("falls back to the drop's own file list", async () => {
     const files = [new File(["x"], "1.fit"), new File(["y"], "1.json")];
@@ -78,7 +104,7 @@ describe("a drop from a browser without entries", () => {
       files,
     } as unknown as DataTransfer;
 
-    const picked = await walkDrop(takeDrop(drop));
+    const { picked } = await walkDrop(takeDrop(drop));
 
     expect(picked.map(({ path }) => path)).toEqual(["1.fit", "1.json"]);
   });
