@@ -642,15 +642,23 @@ export default async function PrivacyPage() {
                 This happens whenever a map is on screen, whether or not you
                 interact with it: the form to add or edit a dive site, a dive
                 site&rsquo;s own page, the form to add or edit a trip, a trip
-                with places on it, and the page of a dive that has a position —
+                with places on it, every trip in the list of your trips and in
+                the dashboard&rsquo;s recent trips, and a dive that has a
+                position — on its own page, and wherever a list of dives shows
+                it: the list of your dives, the dashboard&rsquo;s recent dives,
+                and the dives listed on the page of a dive site, a trip, a piece
+                of gear, a species, a course or a person. A dive has a position
                 from the site it was logged at, from the GPS reading in the
                 dive-computer file it was imported from, or from a logbook file
                 that carried the position itself. Where the map shows a recorded
                 position, that is where you actually were rather than only which
-                site you picked. Apart from those two forms, which load a map as
-                soon as they open — one to place a pin on, one to show you the
-                places you pick — a page with nothing to show loads no map and
-                contacts nobody.
+                site you picked. A list draws each map as its card comes near
+                the screen, so scrolling it fetches the tiles for each card you
+                reach. Apart from those two forms, which load a map as soon as
+                they open — one to place a pin on, one to show you the places
+                you pick — and a trip in a list, whose card shows the whole
+                world until the trip has a place on it, a page with nothing to
+                show loads no map and contacts nobody.
               </p>
               <p className="text-foreground mb-4">
                 If you run your own copy of OpenDiving you can point it at a
