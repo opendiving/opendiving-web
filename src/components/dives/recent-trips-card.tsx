@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
-import { TripCard, TripCardSkeleton } from "@/components/trips/trip-card";
+import { TripCard } from "@/components/trips/trip-card";
+import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { Luggage, Plus } from "lucide-react";
 
@@ -88,7 +89,7 @@ export function RecentTripsCard() {
           // Busy on the list, hidden on each placeholder, as `/trips` does.
           <ul className="space-y-3" aria-busy>
             {Array.from({ length: RECENT_TRIPS_COUNT }, (_, index) => (
-              <TripCardSkeleton key={index} />
+              <BackdropCardSkeleton key={index} />
             ))}
           </ul>
         ) : recentTrips.length === 0 ? (

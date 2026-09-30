@@ -1208,9 +1208,7 @@ diver with nothing due.
 Alerts sit above the stats: an overdue regulator matters more than a dive count, and the checklist
 is the first thing a new account should see. The stat tiles and the air-consumption chart hide at
 zero dives, but not while the stats request is in flight — `hasDives` stays true until the answer is
-in. Recent dives and trips sit side by side at `lg`, so `RecentDivesCard`'s rows carry `min-w-0` on
-the left block and `flex-shrink-0` on the metrics, or a long site name squeezes the duration/depth
-column.
+in.
 
 ## The heading greets by time of day, and reads the clock during render
 
@@ -1744,7 +1742,7 @@ grid's `rowGap`).
 
 A card may be cut through; a row may not, since a line just above its border reads as clipped, so
 the cut moves down past any row it lands inside to the next row's top. Rows are bordered boxes with
-a bordered ancestor (`RecentDivesCard`'s `<a class="rounded-lg border">`); cards have none.
+a bordered ancestor (`RecentDivesCard`'s `<li class="rounded-lg border">`); cards have none.
 
 The subject is the placed site with the most dives; a position is required, since `LocationsMap`
 renders nothing without coordinates. Dive count costs a scoped `/dives` request per placed site
@@ -2957,11 +2955,10 @@ Placeholder heights come from `getBoundingClientRect()` on the real page with th
 patched `XMLHttpRequest.prototype.send`, comparing loading and loaded geometry of the same element;
 a screenshot does not show a `h-5` bar against a 24px line box or a legend nobody accounted for.
 
-`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`, and its
-count comes from the card's own `RECENT_DIVES_COUNT` rather than a default, so the dashboard card
-measures the same in both states. Trips load into `TripCardSkeleton`, one box at the card's measured
-214px (238px from `sm`), `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
-`/trips`.
+`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive
+and trip cards load into `BackdropCardSkeleton`, one box at the card's measured 214px (238px from
+`sm`), `RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
+`/dives` and `/trips`.
 
 One shift is accepted: the dashboard moves ~134px when a gear-service reminder is due, which is not
 a placeholder problem, since whether that card exists is one of the things the request answers.
@@ -4533,11 +4530,11 @@ the dashboard under three route names and never renders the landing page or sign
 
 ## Ten rows of "Edit" name nothing
 
-Row-action controls in all six tables (dives, dive sites, certifications, gear items, gear sets,
-courses) and the trip cards' actions menu name their row: `View dive #412`,
+Row-action controls in all five tables (dive sites, certifications, gear items, gear sets, courses)
+and the dive and trip cards' actions menus name their row: `Actions for dive #412`,
 `Actions for Palau 2025`, `Delete Pescador Island`. Uniqueness among the page's controls is the
 point: axe's `button-name` and `link-name` pass `aria-label="Edit"` ten times over, so only reading
-the controls list catches a bare label. Dive rows key off `dive.dive_number`, what the row leads
+the controls list catches a bare label. Dive cards key off `dive.dive_number`, what the card leads
 with and what a diver says out loud. Certification rows carry agency and level through
 `certificationLabel` in `lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no
 unique-name constraint by design, and level alone gives two `Edit Advanced Nitrox` buttons. Gear

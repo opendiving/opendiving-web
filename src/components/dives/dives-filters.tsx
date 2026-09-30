@@ -68,7 +68,7 @@ export function DivesFilters({
 
   return (
     // Three across from `sm`, one per line on a phone.
-    <div className="mb-4 grid grid-cols-1 items-end gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-3">
       <div className="space-y-2">
         <Label htmlFor="dive-tag">Tag</Label>
         {/* A plain `<select>`, for the courses row's reason: "Any tag" *is* `""`,

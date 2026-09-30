@@ -322,9 +322,9 @@ async function magicLink() {
 }
 
 // --------------------------------------------------------------- what to press
-// The first dive on whatever page is open, by its own href rather than by its position in
-// a table: the dives list draws two links per row and the dashboard draws its recent ones
-// in a card, and a uuid-shaped path is the one thing both have in common - and the one
+// The first dive on whatever page is open, by its own href rather than by its position on
+// the page: the dives list and the dashboard's recent dives lay their cards out
+// differently, and a uuid-shaped path is the one thing both have in common - and the one
 // thing that tells a dive apart from `/dives/new`.
 //
 // Anchors inside an `<svg>` are excluded, which is not tidiness: the dashboard's activity
@@ -364,7 +364,7 @@ async function pagerStep(page) {
 // short log is not a failure: the run says how far it got and the figure it reports is
 // about the list it actually measured.
 async function loadRows(page, target) {
-  const rows = () => page.locator("main table tbody tr").count();
+  const rows = () => page.locator("main li:has(> div > a[href^='/dives/'])").count();
   const button = page.getByRole("button", { name: /^Load more/ });
   for (let press = 0; (await rows()) < target; press++) {
     if (press > target || (await button.count()) === 0) break;

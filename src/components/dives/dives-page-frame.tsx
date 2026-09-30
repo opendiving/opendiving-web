@@ -24,21 +24,14 @@ import {
   type DiveListFilters,
 } from "@/components/dives/dives-filters";
 import type { Tag } from "@/lib/api/tags";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 
 export interface DivesPageFrameProps {
   isLoading: boolean;
   totalCount: number;
   itemsPerPage: number;
-  /** The log's rows. Empty while the first page is in flight. */
-  rows?: ReactNode[];
+  /** One `DiveCard` per dive - list items, for the list this frame draws. */
+  cards?: ReactNode[];
   /**
    * The numbering card above the list card. It draws nothing until its own
    * request lands, and nothing at all for a log already numbered consecutively
@@ -69,14 +62,14 @@ export interface DivesPageFrameProps {
 
 const noop = () => {};
 
-// Everything /dives draws before its rows exist, kept apart from the data render so
+// Everything /dives draws before its cards exist, kept apart from the data render so
 // the page's first render is this frame. Every data-varying prop is optional,
 // and the defaults are that first render.
 export function DivesPageFrame({
   isLoading,
   totalCount,
   itemsPerPage,
-  rows = [],
+  cards = [],
   numbering,
   headingRef,
   isLoadingMore = false,
@@ -94,7 +87,7 @@ export function DivesPageFrame({
   // `useIsEmptyList`.
   const isEmptyList = useIsEmptyList({
     isLoading,
-    count: rows.length,
+    count: cards.length,
     isNarrowed,
   });
 
@@ -171,81 +164,79 @@ export function DivesPageFrame({
             </Button>
           </IconTooltip>
         </ListCardHeader>
-        <CardContent>
-          {/* Hidden rather than unmounted, so `aria-controls` points at
-              something, and gone with the button that opens it for a list with
-              nothing in it to narrow. */}
-          {!isEmptyList && (
-            <div id="dive-filters" hidden={!isPanelOpen}>
-              <DivesFilters
-                filters={filters}
-                onFiltersChange={onFiltersChange}
-                tags={tags}
-              />
-            </div>
-          )}
-
-          {!isLoading && rows.length === 0 && isNarrowed ? (
-            // A list filtered to nothing is not an empty logbook, so it keeps one
-            // line and no "log your first dive" - see "One `EmptyState`, and the
-            // filtered list is not one" in DECISIONS.md.
-            <div className="text-center py-12 text-muted-foreground">
-              No dives match those filters.
-            </div>
-          ) : !isLoading && rows.length === 0 ? (
-            <EmptyState
-              icon={DiveIcon}
-              title="No dives logged yet"
-              description="Start by adding your first dive!"
-              action={
-                <Button asChild>
-                  <Link href="/dives/new">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Log your first dive
-                  </Link>
-                </Button>
-              }
+        {/* Hidden rather than unmounted, so `aria-controls` points at
+            something, and gone with the button that opens it for a list with
+            nothing in it to narrow. */}
+        {!isEmptyList && (
+          <CardContent id="dive-filters" hidden={!isPanelOpen}>
+            <DivesFilters
+              filters={filters}
+              onFiltersChange={onFiltersChange}
+              tags={tags}
             />
-          ) : (
-            <Table
-              // Busy on the outside, hidden on each placeholder row within - the
-              // split `ListRowsSkeleton` documents, applied here because the rows
-              // themselves are `aria-hidden` and would otherwise leave a reader
-              // with a table that is silently empty rather than one that is
-              // loading.
-              aria-busy={rows.length === 0 || undefined}
-            >
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Dive</TableHead>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Max Depth</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRowsSkeleton columns={6} rows={itemsPerPage} />
-                )}
-                {rows}
-              </TableBody>
-            </Table>
-          )}
-
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={rows.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="dives"
-            onLoadMore={onLoadMore}
-          />
-        </CardContent>
+          </CardContent>
+        )}
+        {/* The card is the list's header - its count and its filters - and
+            what it says when there is nothing to list. The dives themselves
+            are cards of their own, so they sit below it rather than in it. */}
+        {!isLoading && cards.length === 0 && (
+          <CardContent>
+            {isNarrowed ? (
+              // A list filtered to nothing is not an empty logbook, so it
+              // keeps one line and no "log your first dive" - see "One
+              // `EmptyState`, and the filtered list is not one" in
+              // DECISIONS.md.
+              <div className="text-center py-12 text-muted-foreground">
+                No dives match those filters.
+              </div>
+            ) : (
+              <EmptyState
+                icon={DiveIcon}
+                title="No dives logged yet"
+                description="Start by adding your first dive!"
+                action={
+                  <Button asChild>
+                    <Link href="/dives/new">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Log your first dive
+                    </Link>
+                  </Button>
+                }
+              />
+            )}
+          </CardContent>
+        )}
       </Card>
+
+      {(isLoading || cards.length > 0) && (
+        // One dive to a row below `lg`, two above, as /trips: a card may hold
+        // a map, and a browser keeps only so many of those per page - see
+        // `BackdropCard`.
+        <ul
+          className="grid gap-4 lg:grid-cols-2"
+          // Busy on the outside, hidden on each placeholder within - the split
+          // `ListRowsSkeleton` documents, so a reader meets a list that is
+          // loading rather than one that is silently empty.
+          aria-busy={cards.length === 0 || undefined}
+        >
+          {cards.length === 0 &&
+            Array.from({ length: itemsPerPage }, (_, index) => (
+              <BackdropCardSkeleton key={index} />
+            ))}
+          {cards}
+        </ul>
+      )}
+
+      <LoadMoreTrigger
+        hasMore={hasMore}
+        isLoading={isLoadingMore}
+        hasFailed={loadFailed}
+        loadedCount={cards.length}
+        totalCount={totalCount}
+        itemsPerPage={itemsPerPage}
+        itemLabel="dives"
+        onLoadMore={onLoadMore}
+      />
     </div>
   );
 }

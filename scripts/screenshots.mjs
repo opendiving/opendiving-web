@@ -476,7 +476,7 @@ async function cutBelow(page, label) {
 // is fully drawn and the next row contributes no sliver.
 //
 // Rows are bordered boxes like cards are, and nesting is what tells them apart - the dive
-// list's rows are `<a class="rounded-lg border">` inside the card, so a row has a bordered
+// list's rows are `<li class="rounded-lg border">` inside the card, so a row has a bordered
 // ancestor and a card does not. Looping rather than sweeping once because a pass that
 // moves the cut can land it inside a row of some other list; each pass clears one row's
 // bottom, so it is bounded by the rows on the page and cannot spin.

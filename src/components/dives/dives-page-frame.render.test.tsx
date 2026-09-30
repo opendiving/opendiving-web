@@ -16,7 +16,7 @@ const frame = (props: Partial<Parameters<typeof DivesPageFrame>[0]> = {}) =>
       isLoading={false}
       totalCount={0}
       itemsPerPage={10}
-      rows={[<tr key="d" />]}
+      cards={[<li key="d" />]}
       {...props}
     />,
   );
@@ -115,7 +115,7 @@ describe("DivesPageFrame", () => {
   });
 
   it("answers a filter that matched nothing in one line, keeping the count and the button", () => {
-    frame({ rows: [], filters: { ...NO_DIVE_FILTERS, type: "snorkel" } });
+    frame({ cards: [], filters: { ...NO_DIVE_FILTERS, type: "snorkel" } });
 
     expect(
       screen.getByText("No dives match those filters."),
@@ -128,7 +128,7 @@ describe("DivesPageFrame", () => {
   });
 
   it("shows an empty logbook as one, with no button to filter nothing", () => {
-    frame({ rows: [] });
+    frame({ cards: [] });
 
     expect(screen.getByText("No dives logged yet")).toBeInTheDocument();
     expect(
@@ -140,7 +140,7 @@ describe("DivesPageFrame", () => {
   // Sorting orders every dive, so an empty list sorted by rating is still an
   // empty logbook.
   it("reads an empty list sorted by rating as an empty logbook", () => {
-    frame({ rows: [], filters: { ...NO_DIVE_FILTERS, sort: "rating" } });
+    frame({ cards: [], filters: { ...NO_DIVE_FILTERS, sort: "rating" } });
 
     expect(screen.getByText("No dives logged yet")).toBeInTheDocument();
   });

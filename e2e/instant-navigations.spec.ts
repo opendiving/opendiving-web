@@ -118,7 +118,7 @@ test.describe("instant navigations", () => {
   }) => {
     await page.goto("/dives");
     await expect(
-      page.getByRole("link", { name: `View dive #${DIVE_A.dive_number}` }),
+      page.getByRole("link", { name: diveTitle(DIVE_A), exact: true }),
     ).toBeVisible();
     await prefetched(api, DIVE_ROUTE);
 
@@ -126,7 +126,7 @@ test.describe("instant navigations", () => {
 
     await instant(page, async () => {
       await page
-        .getByRole("link", { name: `View dive #${DIVE_A.dive_number}` })
+        .getByRole("link", { name: diveTitle(DIVE_A), exact: true })
         .click();
       await page.waitForURL((url) => url.pathname === `/dives/${DIVE_A.uuid}`);
 
@@ -159,7 +159,7 @@ test.describe("instant navigations", () => {
     await page.goto("/dives");
     await prefetched(api, DIVE_ROUTE);
     await page
-      .getByRole("link", { name: `View dive #${DIVE_A.dive_number}` })
+      .getByRole("link", { name: diveTitle(DIVE_A), exact: true })
       .click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       diveTitle(DIVE_A),
