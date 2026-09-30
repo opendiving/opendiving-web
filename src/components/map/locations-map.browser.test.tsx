@@ -675,6 +675,98 @@ describe("LocationsMap", () => {
     expect(getComputedStyle(screen.getByRole("img")).maskImage).toBe("none");
   });
 
+  // A list lets its off-screen maps go, so each keeps a picture of itself to
+  // come back as. The picture has to hold real pixels, which is the part that
+  // can fail silently: the canvas keeps no drawing buffer, and a read at any
+  // other moment than the frame's own comes back empty.
+  describe("with snapshot", () => {
+    const TEAL = { r: 74, g: 110, b: 110 };
+    const SOLID: BasemapConfig = {
+      ...OFFLINE,
+      styleUrl: `data:application/json,${encodeURIComponent(
+        JSON.stringify({
+          version: 8,
+          sources: {},
+          layers: [
+            {
+              id: "bg",
+              type: "background",
+              paint: {
+                "background-color": `rgb(${TEAL.r}, ${TEAL.g}, ${TEAL.b})`,
+              },
+            },
+          ],
+        }),
+      )}`,
+    };
+
+    const picture = () =>
+      waitFor(
+        () => {
+          const image = document.querySelector("img");
+          expect(image).not.toBeNull();
+          return image!;
+        },
+        { timeout: 10000 },
+      );
+
+    it("swaps a drawn map for a picture of it, pins and all", async () => {
+      render(
+        withConfig(
+          <LocationsMap
+            subject="the trip's locations"
+            snapshot
+            locations={[
+              { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
+              { name: "Bohol", latitude: 9.85, longitude: 124.14 },
+            ]}
+          />,
+          SOLID,
+        ),
+      );
+
+      const image = await picture();
+      await waitFor(() => expect(image.complete).toBe(true));
+      expect(image.src.startsWith("blob:")).toBe(true);
+      expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull();
+      expect(markers()).toHaveLength(2);
+
+      const probe = document.createElement("canvas");
+      probe.width = image.naturalWidth;
+      probe.height = image.naturalHeight;
+      const context = probe.getContext("2d")!;
+      context.drawImage(image, 0, 0);
+      const [r, g, b, a] = context.getImageData(
+        Math.floor(probe.width / 2),
+        Math.floor(probe.height / 4),
+        1,
+        1,
+      ).data;
+      expect(a).toBe(255);
+      expect([r, g, b]).toEqual([TEAL.r, TEAL.g, TEAL.b]);
+    });
+
+    it("comes back as its picture, without building a map again", async () => {
+      const map = () =>
+        withConfig(
+          <LocationsMap
+            subject="the trip's locations"
+            snapshot
+            locations={[{ name: "Anilao", latitude: 13.76, longitude: 120.92 }]}
+          />,
+          SOLID,
+        );
+      const first = render(map());
+      await picture();
+      first.unmount();
+
+      render(map());
+      expect(document.querySelector("img")).not.toBeNull();
+      expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull();
+      expect(markers()).toHaveLength(1);
+    });
+  });
+
   // **MapLibre does not refit on its own.** Its `trackResize` calls `resize()`,
   // which recomputes the projection for the new box and leaves centre and zoom
   // where they were - so without an explicit refit a frame that narrows keeps a

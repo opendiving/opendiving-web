@@ -84,6 +84,8 @@ export function TripCard({
   // that, and /trips scrolls through every trip; MapLibre releases its context
   // when it is removed, so an unmounted map gives its slot back. The margin is
   // small because two columns of cards on a tall screen already come close.
+  // Coming back costs nothing once a map has drawn: `snapshot` keeps a picture
+  // of it.
   const [nearRef, isNear] = useNearViewport<HTMLLIElement>({
     rootMargin: "100px",
   });
@@ -121,6 +123,7 @@ export function TripCard({
             className="h-full rounded-[inherit] border-0 sm:h-full"
             backdrop
             coveredBottom={detailsHeight}
+            snapshot
           />
         </div>
       )}

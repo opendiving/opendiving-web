@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import {
   Marker,
@@ -30,6 +30,42 @@ const corners = (bounds: LatLonBounds): LngLatBoundsLike => [
   [bounds.west, bounds.south],
   [bounds.east, bounds.north],
 ];
+
+// `bg-coral`, not `bg-primary`: primary is near-black in light and mid-grey in
+// dark, which is invisible against a dark basemap. Coral is the one accent held
+// constant across both themes.
+//
+// A fix inverts the same two colours rather than changing size or hue: same
+// coral, same 12px, so the pair reads as one legend where a second colour would
+// read as a second meaning. The tinted rather than transparent centre is what
+// keeps the ring a ring over a busy coastline in either theme.
+const markerClassName = (variant: "pin" | "fix") =>
+  cn(
+    "h-3 w-3 rounded-full border-2 shadow",
+    variant === "fix"
+      ? "border-coral bg-background/80"
+      : "border-background bg-coral",
+  );
+
+interface Snapshot {
+  url: string;
+  // Where each marker stood, in CSS pixels from the frame's top-left.
+  pins: { x: number; y: number; variant: "pin" | "fix"; name: string }[];
+}
+
+// Pictures of maps that have finished drawing, for the page's lifetime. Keyed
+// by everything that decides what the picture shows, so a changed place, theme
+// or size is a miss rather than a stale picture. Bounded, oldest first out.
+const snapshots = new Map<string, Snapshot>();
+const MAX_SNAPSHOTS = 100;
+
+function rememberSnapshot(key: string, snapshot: Snapshot) {
+  snapshots.set(key, snapshot);
+  if (snapshots.size <= MAX_SNAPSHOTS) return;
+  const [oldestKey, oldest] = snapshots.entries().next().value!;
+  snapshots.delete(oldestKey);
+  URL.revokeObjectURL(oldest.url);
+}
 
 /**
  * As much of a place as this map needs, which is the position and the name.
@@ -158,6 +194,14 @@ export interface LocationsMapProps {
    * midway between the top edge and that content.
    */
   coveredBottom?: number;
+  /**
+   * Once the map has finished drawing, keep a picture of it and let the live
+   * map go - for a list of maps. A browser holds only so many live WebGL maps
+   * per page, so a list has to let the off-screen ones go, and without a
+   * picture every one coming back on screen is drawn again from nothing. A
+   * picture is enough because this map is never interacted with.
+   */
+  snapshot?: boolean;
 }
 
 /**
@@ -177,6 +221,7 @@ export function LocationsMap({
   className,
   backdrop,
   coveredBottom = 0,
+  snapshot,
 }: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
   // From the instance's runtime configuration, so a published image can be
@@ -185,6 +230,7 @@ export function LocationsMap({
 
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const creditRef = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<{ marker: Marker; location: PlacedLocation }[]>([]);
 
   // What the places actually are, held stable across renders that did not change
   // them. Every effect below either moves the camera or rebuilds the markers, and
@@ -326,21 +372,7 @@ export function LocationsMap({
     if (!map) return;
     const markers = placed.map((location) => {
       const element = document.createElement("div");
-      // `bg-coral`, not `bg-primary`: primary is near-black in light and
-      // mid-grey in dark, which is invisible against a dark basemap. Coral is
-      // the one accent held constant across both themes.
-      //
-      // A fix inverts the same two colours rather than changing size or hue:
-      // same coral, same 12px, so the pair reads as one legend where a second
-      // colour would read as a second meaning. The tinted rather than
-      // transparent centre is what keeps the ring a ring over a busy coastline
-      // in either theme.
-      element.className = cn(
-        "h-3 w-3 rounded-full border-2 shadow",
-        location.variant === "fix"
-          ? "border-coral bg-background/80"
-          : "border-background bg-coral",
-      );
+      element.className = markerClassName(location.variant);
       // Which marker is which, on hover. Two same-shaped rings a few hundred
       // metres apart are one blob at this zoom, so "Entry" or "Exit" is worth an
       // attribute even though the names are also in the surface's own
@@ -349,12 +381,87 @@ export function LocationsMap({
       // How the tests count and tell them apart, now that the placement is a
       // transform MapLibre writes rather than one this component does.
       element.dataset.marker = location.variant;
-      return new Marker({ element })
+      const marker = new Marker({ element })
         .setLngLat([location.longitude, location.latitude])
         .addTo(map);
+      return { marker, location };
     });
-    return () => markers.forEach((marker) => marker.remove());
+    markersRef.current = markers;
+    return () => {
+      markers.forEach(({ marker }) => marker.remove());
+      markersRef.current = [];
+    };
   }, [map, placed]);
+
+  // The frame's size, which the picture is only good for.
+  const [size, setSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
+  const frameRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      if (!element || !snapshot) return;
+      const measure = () =>
+        setSize((current) =>
+          current?.width === element.clientWidth &&
+          current?.height === element.clientHeight
+            ? current
+            : { width: element.clientWidth, height: element.clientHeight },
+        );
+      measure();
+      const observer = new ResizeObserver(measure);
+      observer.observe(element);
+      return () => observer.disconnect();
+    },
+    [snapshot],
+  );
+  const theme = resolvedTheme === "dark" ? "dark" : "light";
+  const snapshotKey =
+    snapshot && size
+      ? JSON.stringify([
+          signature,
+          theme,
+          size.width,
+          size.height,
+          window.devicePixelRatio,
+          coveredBottom,
+          backdrop,
+        ])
+      : null;
+  const [, setCaptured] = useState(0);
+  const picture = snapshotKey ? snapshots.get(snapshotKey) : undefined;
+
+  // Taken in `idle`, which MapLibre fires in the same task as the frame it
+  // follows: the canvas is built without `preserveDrawingBuffer`, so this is
+  // the one moment its pixels can still be read. The pins are read off the
+  // live markers rather than projected again, which keeps a trip across the
+  // antimeridian on the copy of the world MapLibre chose to show.
+  useEffect(() => {
+    if (!map || !snapshotKey || snapshots.has(snapshotKey)) return;
+    const capture = () => {
+      const frame = map.getContainer().getBoundingClientRect();
+      const pins = markersRef.current.map(({ marker, location }) => {
+        const box = marker.getElement().getBoundingClientRect();
+        return {
+          x: box.left + box.width / 2 - frame.left,
+          y: box.top + box.height / 2 - frame.top,
+          variant: location.variant,
+          name: location.name,
+        };
+      });
+      map.getCanvas().toBlob((blob) => {
+        if (!blob) return;
+        rememberSnapshot(snapshotKey, {
+          url: URL.createObjectURL(blob),
+          pins,
+        });
+        setCaptured((count) => count + 1);
+      });
+    };
+    map.once("idle", capture);
+    return () => {
+      map.off("idle", capture);
+    };
+  }, [map, snapshotKey]);
 
   // Nothing with a position is nothing to draw, and an empty grey box is worse
   // than no map at all - unless the caller asked for one anyway. Callers may
@@ -382,6 +489,7 @@ export function LocationsMap({
 
   return (
     <div
+      ref={frameRef}
       className={cn(
         "relative h-40 w-full overflow-hidden rounded-md border sm:h-48",
         backdrop ? "bg-transparent" : "bg-muted",
@@ -399,16 +507,45 @@ export function LocationsMap({
         aria-label={label}
         className="absolute inset-0 rounded-[inherit]"
       >
-        <MapCanvas
-          basemap={basemap}
-          theme={resolvedTheme === "dark" ? "dark" : "light"}
-          onMap={setMap}
-          unsupported={
-            <p className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
-              This browser cannot display the map.
-            </p>
-          }
-        />
+        {/* Nothing until the frame has a size to look a picture up by, which
+            is one synchronous re-render: a live map built there only to be
+            swapped straight out would spend a WebGL context on nothing. */}
+        {snapshot && !size ? null : picture ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- a blob
+                URL of this page's own drawing, which `next/image` has nothing
+                to optimise. */}
+            <img
+              src={picture.url}
+              alt=""
+              draggable={false}
+              className="absolute inset-0 h-full w-full"
+            />
+            {picture.pins.map((pin, index) => (
+              <div
+                key={index}
+                data-marker={pin.variant}
+                title={pin.name.trim() || undefined}
+                className={cn(
+                  markerClassName(pin.variant),
+                  "absolute -translate-x-1/2 -translate-y-1/2",
+                )}
+                style={{ left: pin.x, top: pin.y }}
+              />
+            ))}
+          </>
+        ) : (
+          <MapCanvas
+            basemap={basemap}
+            theme={theme}
+            onMap={setMap}
+            unsupported={
+              <p className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+                This browser cannot display the map.
+              </p>
+            }
+          />
+        )}
       </div>
 
       {/* A backdrop's fade, laid over the map rather than masking it: a
