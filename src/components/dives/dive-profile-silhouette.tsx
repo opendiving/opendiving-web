@@ -8,10 +8,10 @@ const WIDTH = 100;
 const HEIGHT = 100;
 
 // A dive's depth curve over a fill that fades down from it into whatever the
-// shape is drawn over, in the colour the map draws its sea. Each depth is the
-// deepest in an even slice of the dive, so the shape reaches the dive's
-// maximum; the surface is pinned at both ends, where every dive starts and
-// finishes. Draws nothing for a series that never leaves the surface.
+// shape is drawn over. Each depth is the deepest in an even slice of the dive,
+// so the shape reaches the dive's maximum; the surface is pinned at both ends,
+// where every dive starts and finishes. Draws nothing for a series that never
+// leaves the surface.
 export function DiveProfileSilhouette({
   depths,
   className,
@@ -43,11 +43,8 @@ export function DiveProfileSilhouette({
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" style={{ stopColor: "var(--map-water)" }} />
-          <stop
-            offset="1"
-            style={{ stopColor: "var(--map-water)", stopOpacity: 0 }}
-          />
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.3" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path
