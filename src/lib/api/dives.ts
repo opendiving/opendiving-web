@@ -478,6 +478,10 @@ export interface Dive {
   // diver's dive caches on a rename or a delete. A detail-response field like
   // `sightings`, absent on a list row.
   tags?: string[];
+  // The depth curve a dive card draws, on the list response: the deepest
+  // reading in each of a few dozen even slices of the charted recording's
+  // profile, in centimetres. Null on a dive with no profile.
+  depth_preview?: number[] | null;
 }
 
 // What recorded a dive, as that device's own export named it.
