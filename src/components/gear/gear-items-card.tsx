@@ -7,6 +7,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
@@ -42,6 +43,8 @@ export interface GearItemsCardProps {
   hasMore: boolean;
   onLoadMore: () => void;
   showArchived: boolean;
+  /** Whether archived gear exists that the list, with `showArchived` off, leaves out. */
+  hasArchived: boolean;
   onShowArchivedChange: (value: boolean) => void;
   onCreate: () => void;
   onEdit: (item: GearItem) => void;
@@ -58,7 +61,8 @@ export interface GearItemsCardProps {
  *
  * The empty state differs by filter — "no gear at all" and "no *active* gear" need
  * different advice, since the second is fixed by ticking Show archived rather than by
- * adding anything.
+ * adding anything. No gear at all also drops the header down to its hidden heading, as
+ * `ListCardHeader` does for a one-list page; no active gear keeps it for the switch.
  */
 export function GearItemsCard({
   items,
@@ -70,6 +74,7 @@ export function GearItemsCard({
   hasMore,
   onLoadMore,
   showArchived,
+  hasArchived,
   onShowArchivedChange,
   onCreate,
   onEdit,
@@ -78,42 +83,55 @@ export function GearItemsCard({
   deletingId,
   onDelete,
 }: GearItemsCardProps) {
+  const isEmpty = !isLoading && items.length === 0;
+  const hasNoGear = isEmpty && !hasArchived;
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle
-          as="h2"
-          className="flex flex-wrap items-center justify-between gap-3"
-        >
-          <span className="flex items-center gap-2">
-            <Backpack className="h-5 w-5" />
+      <CardHeader className={cn(hasNoGear && "p-0")}>
+        {hasNoGear ? (
+          <CardTitle as="h2" className="sr-only">
             Your Gear
-          </span>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="show-archived"
-                checked={showArchived}
-                onCheckedChange={onShowArchivedChange}
+          </CardTitle>
+        ) : (
+          <CardTitle
+            as="h2"
+            className="flex flex-wrap items-center justify-between gap-3"
+          >
+            <span className="flex items-center gap-2">
+              <Backpack className="h-5 w-5" />
+              Your Gear
+            </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="show-archived"
+                  checked={showArchived}
+                  onCheckedChange={onShowArchivedChange}
+                />
+                <Label
+                  htmlFor="show-archived"
+                  className="cursor-pointer text-sm font-normal text-muted-foreground"
+                >
+                  Show archived
+                </Label>
+              </div>
+              <CountBadge
+                count={totalCount}
+                isLoading={isLoading}
+                label="item"
               />
-              <Label
-                htmlFor="show-archived"
-                className="cursor-pointer text-sm font-normal text-muted-foreground"
-              >
-                Show archived
-              </Label>
             </div>
-            <CountBadge count={totalCount} isLoading={isLoading} label="item" />
-          </div>
-        </CardTitle>
+          </CardTitle>
+        )}
       </CardHeader>
       <CardContent>
-        {!isLoading && items.length === 0 ? (
+        {isEmpty ? (
           <EmptyState
             icon={Backpack}
-            title={showArchived ? "No gear yet" : "No active gear"}
+            title={hasNoGear ? "No gear yet" : "No active gear"}
             description={
-              showArchived
+              hasNoGear
                 ? "Add your first piece of kit to start tracking what you dive with!"
                 : "Add a piece of kit, or turn on “Show archived” to see gear you've retired."
             }

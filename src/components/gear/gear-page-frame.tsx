@@ -29,6 +29,7 @@ const PENDING_ITEMS: GearItemsCardProps = {
   hasMore: false,
   onLoadMore: noop,
   showArchived: false,
+  hasArchived: false,
   onShowArchivedChange: noop,
   onCreate: noop,
   onEdit: noop,

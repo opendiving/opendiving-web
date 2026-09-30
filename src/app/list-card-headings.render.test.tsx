@@ -41,7 +41,8 @@ const COMPONENTS = path.resolve(
 
 // Derived rather than listed: a one-list frame is one that draws a `CountBadge`, so a
 // new one fails here rather than going unchecked. The gear cards are not frames and hold
-// two lists between them, which is why their titles stay on screen.
+// two lists between them, which is why their titles stay on screen while there is
+// anything under them (`app/gear/page.render.test.tsx`).
 const countingFrames = () =>
   readdirSync(COMPONENTS, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
