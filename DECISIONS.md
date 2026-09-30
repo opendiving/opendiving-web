@@ -4527,11 +4527,11 @@ the dashboard under three route names and never renders the landing page or sign
 
 ## Ten rows of "Edit" name nothing
 
-Row-action controls in all six tables (dives, dive sites, certifications, gear items, gear sets,
-courses) and the trip cards' actions menu name their row: `View dive #412`,
+Row-action controls in all five tables (dive sites, certifications, gear items, gear sets, courses)
+and the dive and trip cards' actions menus name their row: `Actions for dive #412`,
 `Actions for Palau 2025`, `Delete Pescador Island`. Uniqueness among the page's controls is the
 point: axe's `button-name` and `link-name` pass `aria-label="Edit"` ten times over, so only reading
-the controls list catches a bare label. Dive rows key off `dive.dive_number`, what the row leads
+the controls list catches a bare label. Dive cards key off `dive.dive_number`, what the card leads
 with and what a diver says out loud. Certification rows carry agency and level through
 `certificationLabel` in `lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no
 unique-name constraint by design, and level alone gives two `Edit Advanced Nitrox` buttons. Gear
