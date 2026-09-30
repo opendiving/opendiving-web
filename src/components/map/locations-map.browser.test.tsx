@@ -547,12 +547,14 @@ describe("LocationsMap", () => {
     expect(clip.getPropertyValue("mask-image")).not.toBe("none");
   });
 
-  it("keeps every pin clear of a faded bottom edge", async () => {
+  // A backdrop fades out towards its bottom edge, where the caller lays its
+  // own content, so the fit keeps every place in the top half.
+  it("keeps every pin in the top half of a backdrop", async () => {
     render(
       withConfig(
         <LocationsMap
           subject="the trip's locations"
-          fadeBottom
+          backdrop
           locations={[
             { name: "Dahab", latitude: 28.49, longitude: 34.51 },
             { name: "Sharm", latitude: 27.91, longitude: 34.33 },
@@ -563,17 +565,18 @@ describe("LocationsMap", () => {
     await spanOnScreen();
 
     const image = screen.getByRole("img");
-    expect(getComputedStyle(image).maskImage).toContain("48px");
+    expect(getComputedStyle(image).maskImage).not.toBe("none");
 
-    // The southern place is the one the fit puts nearest the bottom edge.
-    const frameBottom = image.getBoundingClientRect().bottom;
+    // The southern place is the one the fit puts lowest. A marker is centred on
+    // its place, so its centre is where the place is.
+    const frame = image.getBoundingClientRect();
     const lowest = Math.max(
-      ...Array.from(
-        markers(),
-        (marker) => marker.getBoundingClientRect().bottom,
-      ),
+      ...Array.from(markers(), (marker) => {
+        const box = marker.getBoundingClientRect();
+        return box.top + box.height / 2;
+      }),
     );
-    expect(frameBottom - lowest).toBeGreaterThanOrEqual(48);
+    expect(lowest).toBeLessThanOrEqual(frame.top + frame.height / 2 + 1);
   });
 
   // **MapLibre does not refit on its own.** Its `trackResize` calls `resize()`,

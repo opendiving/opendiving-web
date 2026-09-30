@@ -29,6 +29,7 @@ import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { Luggage, Plus, Calendar, Edit } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const RECENT_TRIPS_COUNT = 5;
 
@@ -115,6 +116,8 @@ export function RecentTripsCard() {
               // no fall back to the trip's creation date.
               const dates = formatTripSpan(trip.parts);
 
+              const hasMap = mappedLocations.length > 0;
+
               return (
                 // The trip's link is stretched over the whole row rather than
                 // wrapping it: a button inside an anchor is invalid, and so is
@@ -123,62 +126,76 @@ export function RecentTripsCard() {
                 // lifted above it; `isolate` keeps those lifts inside the row.
                 <li
                   key={trip.uuid}
-                  className="relative isolate rounded-lg border hover:bg-muted transition-colors"
-                >
-                  {mappedLocations.length > 0 && (
-                    // Flush with the row's top and sides, so its corners are
-                    // the row's own, less the border it sits inside. Set on the
-                    // frame rather than clipped by the row: the map clips to its
-                    // frame's corners, and in Firefox to nothing further up.
-                    <LocationsMap
-                      locations={mappedLocations}
-                      subject={`the places of ${trip.name}`}
-                      className="rounded-b-none rounded-t-[calc(var(--radius)-1px)] border-0"
-                      fadeBottom
-                    />
+                  className={cn(
+                    "relative isolate flex flex-col rounded-lg border hover:bg-muted transition-colors",
+                    // The map's own height, with the trip's details at the foot
+                    // of it, where the map has faded out beneath them.
+                    hasMap && "min-h-40 justify-end sm:min-h-48",
                   )}
-                  <div className="p-3">
-                    <div className="flex items-center justify-between gap-2">
+                >
+                  {hasMap && (
+                    // Out of flow, so the lazy map's placeholder takes no room
+                    // of its own. The radius is the row's less the border it
+                    // sits inside, and the map clips to it itself: in Firefox a
+                    // rounded clip from further up does not reach it.
+                    <div className="absolute inset-0 rounded-[calc(var(--radius)-1px)]">
+                      <LocationsMap
+                        locations={mappedLocations}
+                        subject={`the places of ${trip.name}`}
+                        className="h-full rounded-[inherit] border-0 sm:h-full"
+                        backdrop
+                      />
+                    </div>
+                  )}
+                  {/* Named per row, as the trips table's actions are. */}
+                  <div className="absolute right-2 top-2 z-10">
+                    <ItemActionsMenu
+                      label={`Actions for ${trip.name}`}
+                      variant={hasMap ? "secondary" : "ghost"}
+                      size="sm"
+                    >
+                      <DropdownMenuItem onSelect={() => setEditingTrip(trip)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DeleteMenuItem
+                        onSelect={() => requestDelete(trip.uuid)}
+                        disabled={deletingId === trip.uuid}
+                      />
+                    </ItemActionsMenu>
+                  </div>
+                  {/* Above the map by a flex item's z-index rather than by
+                      `relative`, which would make this the box the link's
+                      overlay stretches over and leave the map outside it. Under
+                      the menu and the credit, which are lifted higher. */}
+                  <div className="z-[1] p-3">
+                    {/* Without a map the menu shares this line, so it leaves
+                        the menu room. */}
+                    <div
+                      className={cn(
+                        "flex flex-wrap items-center justify-between gap-x-4 gap-y-1",
+                        !hasMap && "pr-10",
+                      )}
+                    >
                       <Link
                         href={`/trips/${trip.uuid}`}
                         className="min-w-0 font-medium text-foreground after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
                       >
                         {trip.name}
                       </Link>
-                      {/* Named per row, as the trips table's actions are. */}
-                      <div className="relative z-10 shrink-0">
-                        <ItemActionsMenu
-                          label={`Actions for ${trip.name}`}
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <DropdownMenuItem
-                            onSelect={() => setEditingTrip(trip)}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DeleteMenuItem
-                            onSelect={() => requestDelete(trip.uuid)}
-                            disabled={deletingId === trip.uuid}
-                          />
-                        </ItemActionsMenu>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      <TripLocationsLabel
-                        locations={locations}
-                        className="relative z-10 min-w-0"
-                      />
-                      {/* `ml-auto` keeps the dates on the right when there is no
-                        place to push them there, and when they wrap. */}
+                      {/* `ml-auto` keeps the dates on the right when they wrap
+                          below the name. */}
                       {dates && (
-                        <div className="ml-auto flex items-center gap-1">
+                        <div className="ml-auto flex items-center gap-1 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
                           {dates}
                         </div>
                       )}
                     </div>
+                    <TripLocationsLabel
+                      locations={locations}
+                      className="relative z-10 block w-fit max-w-full text-sm text-muted-foreground"
+                    />
                   </div>
                 </li>
               );

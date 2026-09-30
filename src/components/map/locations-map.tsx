@@ -21,10 +21,6 @@ import { cn } from "@/lib/utils";
 // pin never sits on the border where half of its context is cropped away.
 const FIT_PADDING = 24;
 
-// How tall the fade along the bottom of a `fadeBottom` map is. The fit pads its
-// bottom by the same amount, so no pin lands in the part that is fading out.
-const FADE_HEIGHT = 48;
-
 /**
  * As much of a place as this map needs, which is the position and the name.
  * Loose enough to take a trip location - both what the API returns and what the
@@ -134,17 +130,20 @@ export interface LocationsMapProps {
   showWhenEmpty?: boolean;
   /**
    * Classes for the frame, merged over its own - for a caller that sets the map
-   * flush into its own edges rather than as a bordered box inside them. Not for
-   * the height, which the lazy wrapper's placeholder is drawn at too.
+   * into its own edges rather than as a bordered box inside them. The height
+   * only where the caller also sizes the space the lazy wrapper's placeholder
+   * is drawn in, which is `h-40 sm:h-48`.
    */
   className?: string;
   /**
-   * Fade the map out along its bottom edge into whatever is behind it, for a
-   * map that heads a card rather than sitting boxed inside one. The frame
-   * draws no background of its own then, so the fade meets the card's -
-   * hover colour included.
+   * Draw the map as the backdrop of whatever the caller lays over it: fading
+   * from clear at its bottom edge to solid at its top, with no background of
+   * its own, so the fade meets the card's - hover colour included. The fit
+   * keeps to the top half, where every pin is more than half opaque and clear
+   * of the caller's content, and the credit moves to the top-left, where the
+   * map it credits can be seen.
    */
-  fadeBottom?: boolean;
+  backdrop?: boolean;
 }
 
 /**
@@ -162,7 +161,7 @@ export function LocationsMap({
   subject,
   showWhenEmpty,
   className,
-  fadeBottom,
+  backdrop,
 }: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
   // From the instance's runtime configuration, so a published image can be
@@ -225,11 +224,11 @@ export function LocationsMap({
           [bounds.east, bounds.north],
         ],
         {
-          padding: fadeBottom
+          padding: backdrop
             ? {
                 top: FIT_PADDING,
                 right: FIT_PADDING,
-                bottom: FIT_PADDING + FADE_HEIGHT,
+                bottom: map.getContainer().clientHeight / 2,
                 left: FIT_PADDING,
               }
             : FIT_PADDING,
@@ -256,7 +255,7 @@ export function LocationsMap({
     return () => {
       map.off("resize", fit);
     };
-  }, [map, placed, fadeBottom]);
+  }, [map, placed, backdrop]);
 
   // Markers are MapLibre's rather than absolutely positioned children, which is
   // what hands it the job of drawing a place at 178E in the copy of the world
@@ -324,7 +323,7 @@ export function LocationsMap({
     <div
       className={cn(
         "relative h-40 w-full overflow-hidden rounded-md border sm:h-48",
-        fadeBottom ? "bg-transparent" : "bg-muted",
+        backdrop ? "bg-transparent" : "bg-muted",
         className,
       )}
     >
@@ -333,18 +332,16 @@ export function LocationsMap({
           inside `role="img"` is dropped from the accessibility tree, and a
           licence credit nobody can follow is not much of a credit. */}
       {/* `rounded-[inherit]` hands the frame's corners down to `MapCanvas`,
-          which is what clips the map to them. The fade masks this element
-          rather than the frame, so the attribution beside it stays solid and
-          outside the stacking context a mask makes. */}
+          which is what clips the map to them. A backdrop's fade masks this
+          element rather than the frame, so the attribution beside it stays
+          solid and outside the stacking context a mask makes. */}
       <div
         role="img"
         aria-label={label}
         className="absolute inset-0 rounded-[inherit]"
         style={
-          fadeBottom
-            ? {
-                maskImage: `linear-gradient(to bottom, #000 calc(100% - ${FADE_HEIGHT}px), transparent)`,
-              }
+          backdrop
+            ? { maskImage: "linear-gradient(to top, transparent, #000)" }
             : undefined
         }
       >
@@ -364,7 +361,13 @@ export function LocationsMap({
           `target="_blank"` is not decoration: this map appears inside dialogs
           holding a half-filled form, and navigating away in the same tab would
           throw it away. */}
-      <div className="absolute bottom-0 right-0 z-10 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground">
+      <div
+        className={cn(
+          "absolute z-10 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground",
+          // Inset from a backdrop's corner, which is rounded and would clip it.
+          backdrop ? "left-1 top-1 rounded-sm" : "bottom-0 right-0",
+        )}
+      >
         <Attribution value={basemap.attribution} />
       </div>
     </div>
