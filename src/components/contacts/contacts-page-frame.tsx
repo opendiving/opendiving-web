@@ -88,7 +88,9 @@ export function ContactsPageFrame({
           <CountBadge
             count={totalCount}
             isLoading={isLoading}
-            label="total contact"
+            label="contact"
+            total
+            isNarrowed={isSearching}
           />
           <ListSearch
             id="contact-search"

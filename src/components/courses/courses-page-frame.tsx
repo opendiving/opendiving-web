@@ -130,7 +130,9 @@ export function CoursesPageFrame({
           <CountBadge
             count={totalCount}
             isLoading={isLoading}
-            label="total course"
+            label="course"
+            total
+            isNarrowed={isSearching || hasCourseFilters(filters)}
           />
           {/* Shutting the panel takes the search and the filters with it, so
               the button says so once it is open - a collapsed row that

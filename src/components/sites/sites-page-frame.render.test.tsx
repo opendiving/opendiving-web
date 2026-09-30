@@ -80,7 +80,7 @@ describe("SitesPageFrame", () => {
     frame({ search: "dahab", isSearching: true });
 
     expect(
-      within(header()).getByText("0 total dive sites"),
+      within(header()).getByText("0 dive sites found"),
     ).toBeInTheDocument();
     expect(
       within(header()).getByLabelText("Search dive sites by name or location"),

@@ -88,8 +88,10 @@ export function PeoplePageFrame({
           <CountBadge
             count={totalCount}
             isLoading={isLoading}
-            label="total person"
-            plural="total people"
+            label="person"
+            plural="people"
+            total
+            isNarrowed={isSearching}
           />
           <ListSearch
             id="person-search"

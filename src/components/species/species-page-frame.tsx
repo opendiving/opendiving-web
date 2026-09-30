@@ -112,6 +112,7 @@ export function SpeciesPageFrame({
             isLoading={isLoading}
             label="species"
             plural="species"
+            isNarrowed={isSearching}
           />
           <ListSearch
             id="species-search"

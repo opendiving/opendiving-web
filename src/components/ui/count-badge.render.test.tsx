@@ -9,7 +9,7 @@ import { CountBadge } from "./count-badge";
 describe("CountBadge", () => {
   it("shows a placeholder instead of a count it doesn't have yet", () => {
     const { container } = render(
-      <CountBadge count={0} isLoading label="total dive" />,
+      <CountBadge count={0} isLoading label="dive" total />,
     );
 
     expect(container.querySelector(".animate-skeleton")).toBeInTheDocument();
@@ -21,7 +21,7 @@ describe("CountBadge", () => {
     // the number away and back for each page turn is what keying on `isLoading`
     // alone would do.
     const { container } = render(
-      <CountBadge count={42} isLoading label="total dive" />,
+      <CountBadge count={42} isLoading label="dive" total />,
     );
 
     expect(screen.getByText("42 total dives")).toBeInTheDocument();
@@ -29,9 +29,17 @@ describe("CountBadge", () => {
   });
 
   it("says zero out loud once zero is the answer", () => {
-    render(<CountBadge count={0} isLoading={false} label="total dive" />);
+    render(<CountBadge count={0} isLoading={false} label="dive" total />);
 
     expect(screen.getByText("0 total dives")).toBeInTheDocument();
+  });
+
+  it("counts matches, not the list, once a search or filter narrows it", () => {
+    render(
+      <CountBadge count={3} isLoading={false} label="dive" total isNarrowed />,
+    );
+
+    expect(screen.getByText("3 dives found")).toBeInTheDocument();
   });
 
   it("drops the plural for exactly one", () => {

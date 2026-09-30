@@ -125,7 +125,9 @@ export function DivesPageFrame({
           <CountBadge
             count={totalCount}
             isLoading={isLoading}
-            label="total dive"
+            label="dive"
+            total
+            isNarrowed={isNarrowed}
           />
           {/* The courses list's panel, and for its reason: shutting it takes the
               filters with it, so a folded row never narrows the list unseen, and

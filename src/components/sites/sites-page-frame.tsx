@@ -92,7 +92,9 @@ export function SitesPageFrame({
           <CountBadge
             count={totalCount}
             isLoading={isLoading}
-            label="total dive site"
+            label="dive site"
+            total
+            isNarrowed={isSearching}
           />
           <ListSearch
             id="dive-site-search"

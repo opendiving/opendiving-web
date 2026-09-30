@@ -86,7 +86,9 @@ export function TripsPageFrame({
           <CountBadge
             count={totalCount}
             isLoading={isLoading}
-            label="total trip"
+            label="trip"
+            total
+            isNarrowed={isSearching}
           />
           <ListSearch
             id="trip-search"
