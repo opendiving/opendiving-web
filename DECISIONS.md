@@ -6033,18 +6033,19 @@ same-recording match on the dive being edited. Only here can the rule hold for `
 `duration`: every other field is filled server-side at attach under the API's NULL-only rule, but
 those two are the form's and no attach path writes them. Emptiness is `isDiveFormFieldEmpty`: a
 cleared number input reads back `NaN`, and `0` is a reading (a freedive's `max_depth`), so falsiness
-is wrong. Cylinders go through `fillMixture` (`lib/dive-import.ts`), form first, file into the
-blanks; pressures move as a pair, and a file with a different cylinder count replaces nothing, since
-position is the only pairing signal. A fill returns no `MixtureImportNotes`, having guessed nothing.
+is wrong. Cylinders go through `fillMixtures` (`lib/dive-import.ts`), form first. What it writes is
+saved before the attach, so it fills only rows the API would pair the file with and fill, and leaves
+the rest, and every `gas_number`, to the attach.
 
 ## A blank cylinder member survives an attach, and the card must not assume otherwise
 
-A second file of one recording fills the dive's blank mixture columns, but the join is
-all-or-nothing: the files must describe the same number of cylinders and agree on every fraction
-both record, or nothing is filled. So `oxygen` can legitimately stay NULL after a FIT is attached
-beside a JSON. `DiveMixturesCard` handles that — `mixture.oxygen != null` through `RecordedCell`,
-and `gasName` returns null on the same input so the badge stays empty — and must keep doing so; an
-empty cell after an attach is the join declining, not the UI failing.
+An attached file fills the blank mixture columns of the dive's cylinder it pairs with, and the pair
+declines where its fractions disagree, where the file records no such member, where the row already
+carries a pressure, where the fill would break a constraint, or where a second computer's pair is
+made by position and could be wrong. So `oxygen` can legitimately stay NULL after an attach.
+`DiveMixturesCard` handles that — `mixture.oxygen != null` through `RecordedCell`, and `gasName`
+returns null on the same input so the badge stays empty — and must keep doing so; an empty cell
+after an attach is the pair declining, not the UI failing.
 
 ## One chart and a switcher, never two curves on one axis
 
