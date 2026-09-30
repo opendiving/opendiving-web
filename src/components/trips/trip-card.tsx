@@ -100,9 +100,16 @@ export function TripCard({
       className={cn(
         // `justify-end` for a card stretched taller than its content by a
         // grid row: the details stay at its foot, under the menu's corner.
-        "relative isolate flex flex-col justify-end rounded-lg border hover:bg-muted transition-colors",
-        // The map's fade meets the row's own colour, the hover's included.
-        "hover:[--backdrop-fade:hsl(var(--muted))]",
+        "relative isolate flex flex-col justify-end rounded-lg border transition-colors",
+        // The card's own colour, set a step off the page's so the card reads
+        // as one: in dark the theme's card colour is that step, and in light
+        // this grey is the same contrast against white - about 1.11:1 - where
+        // the card colour would be none. Hover steps the other way from the
+        // page in each theme. The map's fade meets it, and the text's and the
+        // menu's glows are drawn in it.
+        "bg-[var(--trip-card)] [--backdrop-fade:var(--trip-card)]",
+        "[--trip-card:hsl(240_4%_95.5%)] hover:[--trip-card:hsl(240_4%_92.5%)]",
+        "dark:[--trip-card:hsl(var(--card))] dark:hover:[--trip-card:hsl(var(--muted))]",
         // A fixed band of map above the trip's name, with the details over its
         // faded foot: however tall they grow, the map shows as much of itself.
         // The details' own top padding is part of the band, so what they
@@ -140,7 +147,7 @@ export function TripCard({
           label={`Actions for ${trip.name}`}
           variant="ghost"
           size="sm"
-          className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_3px_hsl(var(--card)))_drop-shadow(0_0_8px_hsl(var(--card)))]"
+          className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_3px_var(--trip-card))_drop-shadow(0_0_8px_var(--trip-card))]"
         >
           <DropdownMenuItem onSelect={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
@@ -156,7 +163,7 @@ export function TripCard({
           whatever the map still shows beneath it. */}
       <div
         ref={detailsRef}
-        className="z-[1] px-3 pb-3 [text-shadow:0_0_3px_hsl(var(--card)),0_0_8px_hsl(var(--card))]"
+        className="z-[1] px-3 pb-3 [text-shadow:0_0_3px_var(--trip-card),0_0_8px_var(--trip-card)]"
       >
         <Link
           href={`/trips/${trip.uuid}`}
