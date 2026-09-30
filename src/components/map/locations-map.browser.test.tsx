@@ -742,8 +742,45 @@ describe("LocationsMap", () => {
         1,
         1,
       ).data;
+      // Within a level or two, not exact: the picture is lossy WebP.
       expect(a).toBe(255);
-      expect([r, g, b]).toEqual([TEAL.r, TEAL.g, TEAL.b]);
+      expect(Math.abs(r - TEAL.r)).toBeLessThanOrEqual(2);
+      expect(Math.abs(g - TEAL.g)).toBeLessThanOrEqual(2);
+      expect(Math.abs(b - TEAL.b)).toBeLessThanOrEqual(2);
+    });
+
+    // A resize moves the picture rather than drawing it again: the pin keeps
+    // to the middle of the frame, and no map is built for it.
+    it("keeps its picture through a resize, moving it with the frame", async () => {
+      const Resizable = ({ width }: { width: number }) =>
+        withConfig(
+          <div style={{ width }}>
+            <LocationsMap
+              subject="the trip's locations"
+              snapshot
+              locations={[
+                { name: "Tulamben", latitude: -8.27, longitude: 115.59 },
+              ]}
+            />
+          </div>,
+          SOLID,
+        );
+      const { rerender } = render(<Resizable width={300} />);
+      await picture();
+      await waitFor(() =>
+        expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull(),
+      );
+      const middle = () => {
+        const frame = screen.getByRole("img").getBoundingClientRect();
+        const pin = (markers()[0] as HTMLElement).getBoundingClientRect();
+        return pin.left + pin.width / 2 - (frame.left + frame.width / 2);
+      };
+      expect(middle()).toBeCloseTo(0, 0);
+
+      rerender(<Resizable width={360} />);
+      await waitFor(() => expect(middle()).toBeCloseTo(0, 0));
+      expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull();
+      expect(document.querySelector("img")).not.toBeNull();
     });
 
     it("comes back as its picture, without building a map again", async () => {
