@@ -26,12 +26,13 @@ permissions:
 
 jobs:
   # Deliberately no `strategy.matrix`, though this job carried a one-value one for a
-  # while. A matrix job's check run has the matrix value appended to its name, so this
-  # job reported as `lint-and-build (<version>)` and never as `lint-and-build` - and a
-  # branch ruleset requiring the bare name would match nothing, leaving every PR waiting
-  # on a status that is never going to arrive. One Node version is all this repo
-  # supports anyway (`.nvmrc`, `engines.node` and the `Dockerfile` agree on the major),
-  # so the matrix was expressing a variation that does not exist.
+  # while. A matrix job whose `name` leaves the matrix out has the matrix value appended
+  # to its check run's name, so this job reported as `lint-and-build (<version>)` and
+  # never as `lint-and-build` - and a branch ruleset requiring the bare name would match
+  # nothing, leaving every PR waiting on a status that is never going to arrive. One
+  # Node version is all this repo supports anyway (`.nvmrc`, `engines.node` and the
+  # `Dockerfile` agree on the major), so the matrix was expressing a variation that does
+  # not exist.
   lint-and-build:
     runs-on: ubuntu-latest
 
@@ -56,6 +57,47 @@ jobs:
       - name: Run type checking
         run: npm run type-check
 
+      - name: Build application
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-files
+          path: |
+            .next/
+            !.next/cache/
+          retention-days: 5
+
+  # The Vitest suite, split by file across two runners. `name` interpolates the
+  # matrix, so GitHub appends nothing and each shard reports under a name a
+  # ruleset can require: `unit-tests (1/2)` and `unit-tests (2/2)`. The total is
+  # in the name so that changing the shard count leaves the old required names
+  # waiting, visibly, rather than dropping a shard from the gate unnoticed.
+  unit-tests:
+    name: unit-tests (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    strategy:
+      # A failing shard would otherwise cancel the other and hide its failures.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
       # Some tests run in real Chromium, through Vitest's browser project.
       # jsdom has no WebGL2 context - and no maintained mock supplies one - and
       # it performs no layout at all, so a question about a real renderer or
@@ -63,7 +105,7 @@ jobs:
       # (`playwright` has published no install script since somewhere between
       # 1.30 and 1.40), so this step is what puts one there; without it the
       # browser project fails to start rather than skipping, which is the right
-      # way round.
+      # way round. Every shard needs it: `--shard` splits files, not projects.
       #
       # No `--with-deps`. The runner image ships Google Chrome, so Chromium's
       # shared libraries are already there, and what the flag adds is an apt
@@ -76,19 +118,7 @@ jobs:
       # Without coverage: `npm run test:coverage` prints the report and checks
       # the floors in `vitest.config.mts`.
       - name: Run tests
-        run: npm test
-
-      - name: Build application
-        run: npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-files
-          path: |
-            .next/
-            !.next/cache/
-          retention-days: 5
+        run: npm test -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
   # The instant-navigation assertions in `e2e/`: what a diver sees at the click,
   # on the three navigations that carry the app.
@@ -126,7 +156,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # No `--with-deps`, for the reason given in `lint-and-build`.
+      # No `--with-deps`, for the reason given in `unit-tests`.
       - name: Install Chromium for Playwright
         run: npx playwright install chromium
 
