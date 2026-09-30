@@ -214,6 +214,10 @@ export function mergeMixture(
  * No `MixtureImportNotes` come back, and the absence is deliberate: those
  * sentences exist to flag a value the import *guessed* and the diver should
  * check, and a fill that writes only into blanks has guessed nothing.
+ *
+ * Never a `gas_number`: the label is the API's to write when the file is
+ * attached, and a second computer's own numbering can repeat one the first file
+ * gave another row.
  */
 export function fillMixture(
   mixture: ParsedDiveMixture,
@@ -245,20 +249,113 @@ export function fillMixture(
       ? existing.end_pressure
       : (mixture.end_pressure ?? ""),
     po2_limit: keep(existing.po2_limit, mixture.po2_limit),
-    gas_number:
-      typeof existing.gas_number === "number"
-        ? existing.gas_number
-        : (mixture.gas_number ?? undefined),
     role: existing.role ? existing.role : (mixture.role ?? ""),
   };
 }
 
 /**
+ * A later file's cylinders filled onto the form's, or `null` where none is.
+ *
+ * The form fills only where the API would pair the same rows when the file is
+ * attached: whatever the form writes is saved first, and the API's fill then
+ * finds it set. The API pairs by mix, then by order, so position is taken as
+ * the pairing only where the counts are equal, no position pair records two
+ * different fractions, and no cylinder's mix is another row's. Past that, a
+ * pair made by position is a guess a later file naming the mixes could undo,
+ * so it fills only where the row records nothing the cylinder does not, or
+ * where it is the one row left meeting the one cylinder left. What this
+ * declines, the API's fill takes at the attach.
+ */
+export function fillMixtures(
+  parsed: ParsedDiveMixture[],
+  existing: DiveMixtureInput[],
+): DiveMixtureInput[] | null {
+  if (existing.length !== parsed.length) return null;
+  const linesUp = parsed.every(
+    (cylinder, index) =>
+      !mixesDisagree(existing[index], cylinder) &&
+      existing.every(
+        (row, other) => other === index || !sameMix(row, cylinder),
+      ),
+  );
+  if (!linesUp) return null;
+
+  const byMix = parsed.map((cylinder, index) =>
+    sameMix(existing[index], cylinder),
+  );
+  const lastLeft = byMix.filter((paired) => !paired).length === 1;
+  const fills = parsed.map(
+    (cylinder, index) =>
+      byMix[index] || lastLeft || recordsNothingElse(existing[index], cylinder),
+  );
+  if (!fills.some(Boolean)) return null;
+  return parsed.map((cylinder, index) =>
+    fills[index] ? fillMixture(cylinder, existing[index]) : existing[index],
+  );
+}
+
+// A form member as the API would read it: `""`, `undefined` and a cleared
+// number input's `NaN` are all nothing recorded.
+function recorded<TValue>(
+  value: TValue | "" | null | undefined,
+): TValue | null {
+  if (value == null || value === "") return null;
+  if (typeof value === "number" && Number.isNaN(value)) return null;
+  return value as TValue;
+}
+
+// The API's mix match: a recorded oxygen on both sides, and the same oxygen and
+// helium, an unrecorded helium matching an unrecorded one.
+function sameMix(row: DiveMixtureInput, cylinder: ParsedDiveMixture): boolean {
+  const oxygen = recorded(row.oxygen);
+  return (
+    oxygen != null &&
+    cylinder.oxygen != null &&
+    oxygen === cylinder.oxygen &&
+    recorded(row.helium) === cylinder.helium
+  );
+}
+
+function mixesDisagree(
+  row: DiveMixtureInput,
+  cylinder: ParsedDiveMixture,
+): boolean {
+  return (["oxygen", "helium"] as const).some((member) => {
+    const onForm = recorded(row[member]);
+    return (
+      onForm != null && cylinder[member] != null && onForm !== cylinder[member]
+    );
+  });
+}
+
+// Every member the row records, the label aside, recorded by the cylinder with
+// the same value. `usage` is among them, and no file records it.
+function recordsNothingElse(
+  row: DiveMixtureInput,
+  cylinder: ParsedDiveMixture,
+): boolean {
+  const members = [
+    "oxygen",
+    "helium",
+    "volume",
+    "start_pressure",
+    "end_pressure",
+    "po2_limit",
+    "role",
+  ] as const;
+  return (
+    members.every((member) => {
+      const onForm = recorded(row[member]);
+      return onForm == null || onForm === cylinder[member];
+    }) && recorded(row.usage) == null
+  );
+}
+
+/**
  * Pairs incoming cylinders with the ones already on the form, but only when the
- * counts match exactly - the same conservative rule the API uses to pair tank
- * telemetry to gases. Position is the only signal available, and carrying a
- * stage bottle's pressures onto a back gas would produce a confidently wrong
- * SAC/RMV, which is worse than an empty field the diver fills in.
+ * counts match exactly. Carrying a stage bottle's pressures onto a back gas
+ * would produce a confidently wrong SAC/RMV, which is worse than an empty field
+ * the diver fills in.
  */
 export function existingMixtureFor(
   existing: DiveMixtureInput[],

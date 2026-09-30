@@ -30,7 +30,7 @@ import { DiveMixtureInput } from "@/lib/validations/dive";
 import {
   describeMixtureImport,
   existingMixtureFor,
-  fillMixture,
+  fillMixtures,
   mergeMixture,
   mixtureImportNotes,
   type MixtureImportNotes,
@@ -177,23 +177,22 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   const existing = getDiveFormMixtures(form);
 
   if (mode === "fill-only") {
-    // A second file may fill a cylinder the form already has; it may not
-    // reshape the list. Position is the only pairing signal there is, so a file
-    // describing a different number of cylinders has nothing to say about which
-    // of the form's rows its readings belong to - `existingMixtureFor`'s rule,
-    // applied to the whole list rather than per row, because here the list on
-    // screen is the one to preserve. A form with no cylinders at all takes the
-    // file's, which fills rather than overwrites by definition.
+    // A later file may fill a cylinder the form already has; it may not
+    // reshape the list, and it fills only the rows the API would pair it with
+    // at the attach (`fillMixtures`), since what the form writes is saved
+    // first. A form with no cylinders at all takes the file's, which fills
+    // rather than overwrites by definition - without the file's labels, which
+    // the attach writes.
     if (existing.length === 0) {
       replaceMixtures(
-        parsed.mixtures.map((mixture) => mergeMixture(mixture).value),
+        parsed.mixtures.map((mixture) => ({
+          ...mergeMixture(mixture).value,
+          gas_number: undefined,
+        })),
       );
-    } else if (existing.length === parsed.mixtures.length) {
-      replaceMixtures(
-        parsed.mixtures.map((mixture, index) =>
-          fillMixture(mixture, existing[index]),
-        ),
-      );
+    } else {
+      const filled = fillMixtures(parsed.mixtures, existing);
+      if (filled) replaceMixtures(filled);
     }
     return { guessed: {}, keptPressures: false, discardedPressures: false };
   }

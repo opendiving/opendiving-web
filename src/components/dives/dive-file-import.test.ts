@@ -398,10 +398,10 @@ describe("applyParsedDiveToForm in fill-only mode", () => {
   });
 
   it("will not reshape a cylinder list it cannot line up", () => {
-    // Position is the only pairing signal there is, so a file describing a
-    // different number of cylinders has nothing to say about which of the
-    // form's rows its readings belong to. Carrying a stage bottle's readings
-    // onto a back gas is worse than leaving a blank.
+    // A file describing a different number of cylinders cannot be lined up
+    // with the form's rows by position, and the API pairs it at the attach.
+    // Carrying a stage bottle's readings onto a back gas is worse than leaving
+    // a blank.
     const replaced: DiveMixtureInput[][] = [];
     const { form } = formHoldingValues({}, [onForm({ oxygen: 32 })]);
 
@@ -447,5 +447,172 @@ describe("applyParsedDiveToForm in fill-only mode", () => {
 
     expect(notes.guessed).toEqual({});
     expect(describeMixtureImport(notes)).toBeNull();
+  });
+});
+
+// A form row recording only what the overrides say - `onForm` starts from
+// `DEFAULT_MIXTURE`'s air, which would be a recorded mix in every case below.
+function blankRow(overrides: Partial<DiveMixtureInput> = {}): DiveMixtureInput {
+  return {
+    volume: "",
+    start_pressure: "",
+    end_pressure: "",
+    oxygen: "",
+    helium: "",
+    po2_limit: "",
+    role: "",
+    usage: "",
+    ...overrides,
+  };
+}
+
+// Applies a later file's cylinders onto a form holding `rows`, and returns the
+// list the form was given, or `undefined` where it was left alone.
+function fillOnto(rows: DiveMixtureInput[], cylinders: ParsedDiveMixture[]) {
+  const replaced: DiveMixtureInput[][] = [];
+  const { form } = formHoldingValues({}, rows);
+  applyParsedDiveToForm(
+    form,
+    parsedDive(cylinders),
+    (mixtures) => replaced.push(mixtures),
+    "fill-only",
+  );
+  return replaced[0];
+}
+
+describe("a later file's cylinders on a form that has some", () => {
+  it("fills no cylinder from a file listing the form's in another order", () => {
+    expect(
+      fillOnto(
+        [
+          blankRow({ oxygen: 21, helium: 0 }),
+          blankRow({ oxygen: 50, helium: 0 }),
+        ],
+        [
+          parsed({ oxygen: 50, helium: 0, start_pressure: 200 }),
+          parsed({ oxygen: 21, helium: 0, start_pressure: 210 }),
+        ],
+      ),
+    ).toBeUndefined();
+  });
+
+  it("fills none where a cylinder's mix is another row's", () => {
+    // The API pairs the file's 21 % with the form's second row by mix, and the
+    // file's other cylinder with the first row by position - not the pairs a
+    // positional fill would make.
+    expect(
+      fillOnto(
+        [blankRow(), blankRow({ oxygen: 21, helium: 0 })],
+        [
+          parsed({ oxygen: 21, helium: 0, volume: 12 }),
+          parsed({ start_pressure: 200, end_pressure: 60 }),
+        ],
+      ),
+    ).toBeUndefined();
+  });
+
+  it("fills none where a position pair records two different fractions", () => {
+    expect(
+      fillOnto([blankRow({ oxygen: 32 })], [parsed({ oxygen: 33 })]),
+    ).toBeUndefined();
+  });
+
+  it("fills none from pressures with no mix over rows of 21 % and 50 %", () => {
+    // Which tank drained to 60 bar is a guess the file's mixes would settle.
+    expect(
+      fillOnto(
+        [
+          blankRow({ oxygen: 21, helium: 0 }),
+          blankRow({ oxygen: 50, helium: 0 }),
+        ],
+        [
+          parsed({ start_pressure: 200, end_pressure: 60 }),
+          parsed({ start_pressure: 210, end_pressure: 150 }),
+        ],
+      ),
+    ).toBeUndefined();
+  });
+
+  it("fills none from a second computer's mixes over rows carrying pressures and no mix", () => {
+    expect(
+      fillOnto(
+        [
+          blankRow({ start_pressure: 200, end_pressure: 60 }),
+          blankRow({ start_pressure: 210, end_pressure: 150 }),
+        ],
+        [parsed({ oxygen: 21, helium: 0 }), parsed({ oxygen: 50, helium: 0 })],
+      ),
+    ).toBeUndefined();
+  });
+
+  it("fills a row that records nothing, and leaves the one that records a mix", () => {
+    const rows = [blankRow({ oxygen: 21, helium: 0 }), blankRow()];
+    const filled = fillOnto(rows, [
+      parsed({ start_pressure: 200, end_pressure: 60 }),
+      parsed({ start_pressure: 210, end_pressure: 150 }),
+    ]);
+
+    expect(filled?.[0]).toEqual(rows[0]);
+    expect(filled?.[1].start_pressure).toBe(210);
+    expect(filled?.[1].end_pressure).toBe(150);
+  });
+
+  it("fills every row a cylinder pairs with by mix", () => {
+    const filled = fillOnto(
+      [
+        blankRow({ oxygen: 21, helium: 0 }),
+        blankRow({ oxygen: 50, helium: 0 }),
+      ],
+      [
+        parsed({ oxygen: 21, helium: 0, start_pressure: 200 }),
+        parsed({ oxygen: 50, helium: 0, start_pressure: 210 }),
+      ],
+    );
+
+    expect(filled?.map((row) => row.start_pressure)).toEqual([200, 210]);
+  });
+
+  it("fills the one-cylinder pair's row whichever file came first", () => {
+    // The Suunto Ocean's JSON carries the pressures and no mix, its FIT the mix
+    // and no pressures. One row meeting one cylinder is a pair no later file can
+    // re-pair, so it fills even though each side records what the other lacks.
+    const fitThenJson = fillOnto(
+      [blankRow({ oxygen: 21, helium: 0 })],
+      [parsed({ start_pressure: 212.81, end_pressure: 83.59, gas_number: 0 })],
+    );
+    const jsonThenFit = fillOnto(
+      [blankRow({ start_pressure: 212.81, end_pressure: 83.59 })],
+      [parsed({ oxygen: 21, helium: 0 })],
+    );
+
+    for (const filled of [fitThenJson, jsonThenFit]) {
+      expect(filled?.[0]).toMatchObject({
+        oxygen: 21,
+        helium: 0,
+        start_pressure: 212.81,
+        end_pressure: 83.59,
+      });
+    }
+  });
+
+  it("writes no label, leaving the one a row has", () => {
+    const filled = fillOnto(
+      [blankRow(), blankRow({ gas_number: 1 })],
+      [
+        parsed({ start_pressure: 200, gas_number: 0 }),
+        parsed({ start_pressure: 210, gas_number: 3 }),
+      ],
+    );
+
+    expect(filled?.[0].start_pressure).toBe(200);
+    expect(filled?.[0].gas_number).toBeUndefined();
+    expect(filled?.[1].gas_number).toBe(1);
+  });
+
+  it("writes no label onto a form that had no cylinders", () => {
+    const filled = fillOnto([], [parsed({ oxygen: 21, gas_number: 0 })]);
+
+    expect(filled?.[0].oxygen).toBe(21);
+    expect(filled?.[0].gas_number).toBeUndefined();
   });
 });
