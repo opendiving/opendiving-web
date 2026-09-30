@@ -4167,10 +4167,12 @@ repository a stranger meets first — and security reports where [SECURITY.md](S
 A ruleset binds a required check by name and by the events it runs on; a passing run displays
 neither.
 
-`lint-and-build` in `ci.yml` uses no matrix: GitHub appends matrix values to the check-run name, so
-a one-value `strategy.matrix.node-version: [24.x]` reports as `lint-and-build (24.x)` and a ruleset
-requiring the bare name matches nothing — and sits at "Expected — waiting for status" forever rather
-than failing.
+`lint-and-build` in `ci.yml` uses no matrix: GitHub appends matrix values to the check-run name
+unless the job's `name` interpolates them, so a one-value `strategy.matrix.node-version: [24.x]`
+reports as `lint-and-build (24.x)` and a ruleset requiring the bare name matches nothing — and sits
+at "Expected — waiting for status" forever rather than failing. `unit-tests` does shard through a
+matrix, with the shard and total in its `name`, so its checks are `unit-tests (1/2)` and
+`unit-tests (2/2)`.
 
 `pr-title.yml` runs on `synchronize`, not only `opened` and `edited`. A push cannot change a title,
 but a required check must have passed on the head SHA, so without it a second commit leaves the
