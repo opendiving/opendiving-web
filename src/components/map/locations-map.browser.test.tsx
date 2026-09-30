@@ -547,36 +547,41 @@ describe("LocationsMap", () => {
     expect(clip.getPropertyValue("mask-image")).not.toBe("none");
   });
 
-  // A backdrop fades out towards its bottom edge, where the caller lays its
-  // own content, so the fit keeps every place in the top half.
-  it("keeps every pin in the top half of a backdrop", async () => {
+  // What the caller lays over the map's foot is not map, so a lone place is
+  // centred in what is left above it rather than in the whole frame.
+  it("centres a place between the top edge and a covered bottom", async () => {
     render(
       withConfig(
         <LocationsMap
           subject="the trip's locations"
-          backdrop
-          locations={[
-            { name: "Dahab", latitude: 28.49, longitude: 34.51 },
-            { name: "Sharm", latitude: 27.91, longitude: 34.33 },
-          ]}
+          coveredBottom={80}
+          locations={[{ name: "Dahab", latitude: 28.49, longitude: 34.51 }]}
         />,
       ),
     );
     await spanOnScreen();
 
-    const image = screen.getByRole("img");
-    expect(getComputedStyle(image).maskImage).not.toBe("none");
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const marker = (markers()[0] as HTMLElement).getBoundingClientRect();
+    const centre = marker.top + marker.height / 2;
+    expect(centre - frame.top).toBeCloseTo((frame.height - 80) / 2, 0);
+  });
 
-    // The southern place is the one the fit puts lowest. A marker is centred on
-    // its place, so its centre is where the place is.
-    const frame = image.getBoundingClientRect();
-    const lowest = Math.max(
-      ...Array.from(markers(), (marker) => {
-        const box = marker.getBoundingClientRect();
-        return box.top + box.height / 2;
-      }),
+  it("fades a backdrop out towards its bottom edge", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          locations={[{ name: "Dahab", latitude: 28.49, longitude: 34.51 }]}
+        />,
+      ),
     );
-    expect(lowest).toBeLessThanOrEqual(frame.top + frame.height / 2 + 1);
+    await canvasReady();
+
+    expect(getComputedStyle(screen.getByRole("img")).maskImage).not.toBe(
+      "none",
+    );
   });
 
   // **MapLibre does not refit on its own.** Its `trackResize` calls `resize()`,

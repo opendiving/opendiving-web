@@ -97,6 +97,31 @@ describe("RecentTripsCard", () => {
     expect(within(rowOf("Koh Tao 2025")).getByText("Koh Tao")).toBeVisible();
   });
 
+  it("counts a trip's dives, dive sites and species beside its name", async () => {
+    vi.mocked(tripsAPI.getTrips).mockResolvedValue({
+      data: [
+        { ...MAPPED, dive_count: 12, dive_site_count: 1, species_count: 23 },
+        // No dives yet, and an API that sends no counts: neither shows a line.
+        { ...TYPED, dive_count: 0, dive_site_count: 0, species_count: 0 },
+        trip({ uuid: "trip-3", name: "Palau 2024" }),
+      ],
+      total_count: 3,
+      has_more: false,
+      page: 1,
+      items_per_page: 5,
+    });
+    render(<RecentTripsCard />);
+    await screen.findByRole("link", { name: "Dahab 2026" });
+
+    expect(
+      within(rowOf("Dahab 2026")).getByText(
+        "12 dives, 1 dive site, 23 species",
+      ),
+    ).toBeInTheDocument();
+    expect(rowOf("Koh Tao 2025")).not.toHaveTextContent("dives");
+    expect(rowOf("Palau 2024")).not.toHaveTextContent("dives");
+  });
+
   it("names each row's menu after its trip", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });

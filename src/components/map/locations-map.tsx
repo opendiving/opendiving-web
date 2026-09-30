@@ -138,12 +138,16 @@ export interface LocationsMapProps {
   /**
    * Draw the map as the backdrop of whatever the caller lays over it: fading
    * from clear at its bottom edge to solid at its top, with no background of
-   * its own, so the fade meets the card's - hover colour included. The fit
-   * keeps to the top half, where every pin is more than half opaque and clear
-   * of the caller's content, and the credit moves to the top-left, where the
-   * map it credits can be seen.
+   * its own, so the fade meets the card's - hover colour included. The credit
+   * moves to the top-left, where the map it credits can be seen.
    */
   backdrop?: boolean;
+  /**
+   * How many pixels along the bottom the caller covers with content of its
+   * own. The places are fitted into what is left above it, so a lone one sits
+   * midway between the top edge and that content.
+   */
+  coveredBottom?: number;
 }
 
 /**
@@ -162,6 +166,7 @@ export function LocationsMap({
   showWhenEmpty,
   className,
   backdrop,
+  coveredBottom = 0,
 }: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
   // From the instance's runtime configuration, so a published image can be
@@ -224,14 +229,17 @@ export function LocationsMap({
           [bounds.east, bounds.north],
         ],
         {
-          padding: backdrop
-            ? {
-                top: FIT_PADDING,
-                right: FIT_PADDING,
-                bottom: map.getContainer().clientHeight / 2,
-                left: FIT_PADDING,
-              }
-            : FIT_PADDING,
+          padding: {
+            top: FIT_PADDING,
+            right: FIT_PADDING,
+            // Never so much that no room is left to fit into: MapLibre then
+            // refuses the fit and leaves the camera wherever it was.
+            bottom: Math.min(
+              FIT_PADDING + coveredBottom,
+              map.getContainer().clientHeight - 2 * FIT_PADDING,
+            ),
+            left: FIT_PADDING,
+          },
           maxZoom: MAX_FIT_ZOOM,
           // This map is drawn once and not touched again; an animation on first
           // paint is a map that arrives already moving.
@@ -255,7 +263,7 @@ export function LocationsMap({
     return () => {
       map.off("resize", fit);
     };
-  }, [map, placed, backdrop]);
+  }, [map, placed, coveredBottom]);
 
   // Markers are MapLibre's rather than absolutely positioned children, which is
   // what hands it the job of drawing a place at 178E in the copy of the world

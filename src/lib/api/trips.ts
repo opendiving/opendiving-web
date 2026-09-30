@@ -39,6 +39,12 @@ export interface Trip {
   notes?: string;
   user_uuid: string;
   created_at: string;
+  // Read off the trip's dives: how many there are, and the distinct dive sites
+  // and species they record between them. Optional because an API that
+  // predates them sends none.
+  dive_count?: number;
+  dive_site_count?: number;
+  species_count?: number;
 }
 
 // A trip stores no dates of its own. Its span is derived from its parts -
