@@ -249,7 +249,9 @@ export function Header() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-shrink-0 items-center space-x-3">
+          {/* The four controls and the wordmark need ~360px at the full gaps, so
+              only phones narrower than 370px get the tighter ones. */}
+          <div className="flex flex-shrink-0 items-center space-x-3 max-[370px]:space-x-1">
             {isAuthenticated && user && (
               <DropdownMenu>
                 {/* The hint wraps the *menu* trigger rather than sitting
@@ -257,7 +259,11 @@ export function Header() {
                     button, and this order is the one Radix documents. */}
                 <IconTooltip label="Create new">
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="px-2 sm:px-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="px-3 max-[370px]:px-2"
+                    >
                       <Plus className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -303,7 +309,7 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="relative h-9 w-9 rounded-full p-0"
+                        className="relative me-5 h-9 w-9 rounded-full p-0 max-[370px]:me-2 md:me-0"
                       >
                         <UserAvatar
                           name={user.name}
@@ -448,7 +454,7 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="md:hidden px-2 sm:px-3"
+                className="md:hidden px-3 max-[370px]:px-2"
                 aria-expanded={isMobileMenuOpen}
                 aria-controls="mobile-menu"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
