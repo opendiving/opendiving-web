@@ -147,12 +147,19 @@ export function RecentTripsCard() {
                       />
                     </div>
                   )}
-                  {/* Named per row, as the trips table's actions are. */}
-                  <div className="absolute right-2 top-2 z-10">
+                  {/* Named per row, as the trips table's actions are. Over a
+                      map it wears the credit's chip and sits as far in from the
+                      corner, so the two read as a pair. */}
+                  <div className="absolute right-1 top-1 z-10">
                     <ItemActionsMenu
                       label={`Actions for ${trip.name}`}
-                      variant={hasMap ? "secondary" : "ghost"}
+                      variant="ghost"
                       size="sm"
+                      className={
+                        hasMap
+                          ? "bg-background/80 hover:bg-background"
+                          : undefined
+                      }
                     >
                       <DropdownMenuItem onSelect={() => setEditingTrip(trip)}>
                         <Edit className="h-4 w-4 mr-2" />
@@ -183,19 +190,21 @@ export function RecentTripsCard() {
                       >
                         {trip.name}
                       </Link>
-                      {/* `ml-auto` keeps the dates on the right when they wrap
-                          below the name. */}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <TripLocationsLabel
+                        locations={locations}
+                        className="relative z-10 min-w-0"
+                      />
+                      {/* `ml-auto` keeps the dates on the right when there is no
+                          place to push them there, and when they wrap. */}
                       {dates && (
-                        <div className="ml-auto flex items-center gap-1 text-sm text-muted-foreground">
+                        <div className="ml-auto flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {dates}
                         </div>
                       )}
                     </div>
-                    <TripLocationsLabel
-                      locations={locations}
-                      className="relative z-10 block w-fit max-w-full text-sm text-muted-foreground"
-                    />
                   </div>
                 </li>
               );

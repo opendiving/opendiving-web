@@ -99,7 +99,7 @@ export function Attribution({ value }: AttributionProps) {
             // form, and navigating away in the same tab would throw it away.
             target="_blank"
             rel="noreferrer noopener"
-            className="underline underline-offset-2 hover:text-foreground"
+            className="underline-offset-2 hover:text-foreground hover:underline"
           >
             {part.text}
           </a>

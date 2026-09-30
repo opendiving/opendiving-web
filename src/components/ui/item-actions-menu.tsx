@@ -20,6 +20,7 @@ export function ItemActionsMenu({
   label = "More actions",
   variant = "outline",
   size = "icon",
+  className,
 }: {
   children: ReactNode;
   // A row's menu names its row: a list of identical "More actions" tells a
@@ -29,12 +30,13 @@ export function ItemActionsMenu({
   // table's row actions are.
   variant?: ButtonProps["variant"];
   size?: ButtonProps["size"];
+  className?: string;
 }) {
   return (
     <DropdownMenu>
       <IconTooltip label={label}>
         <DropdownMenuTrigger asChild>
-          <Button variant={variant} size={size}>
+          <Button variant={variant} size={size} className={className}>
             <EllipsisVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
