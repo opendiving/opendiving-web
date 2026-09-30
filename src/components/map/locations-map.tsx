@@ -672,7 +672,9 @@ export function LocationsMap({
           - draws in visible light and dark strips in Chrome and Firefox alike,
           where a plain gradient on top of it is smooth. Fading into a colour
           rather than into transparency is the price, which is why the colour
-          is the caller's to change. */}
+          is the caller's to change. Clear across the top fifth, where the
+          credit and the places are, and solid across the bottom sixth, where
+          the caller's content is densest. */}
       {backdrop && (
         <div
           aria-hidden
@@ -680,7 +682,7 @@ export function LocationsMap({
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "linear-gradient(to bottom, transparent, var(--backdrop-fade, hsl(var(--card))))",
+              "linear-gradient(to bottom, transparent 20%, var(--backdrop-fade, hsl(var(--card))) 85%)",
           }}
         />
       )}
