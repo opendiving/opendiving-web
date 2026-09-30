@@ -107,8 +107,9 @@ describe("tripFormSchema", () => {
   });
 
   it("leaves behind a member a read carried and the form does not know", () => {
-    // An API that still returns `full_name` on a read refuses it on write, and
-    // a saved part is the place as this schema declares it - so the member is
+    // A read from an API that still returns `full_name` carries it into the
+    // form. The API that stops returning it also refuses it on write, and a
+    // form opened before that deploy may save after it - so the member is
     // stripped, not echoed back.
     const place = { name: "Moalboal, Cebu, Philippines", latitude: 9.9366 };
     const result = tripFormSchema.safeParse({

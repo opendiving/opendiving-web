@@ -236,7 +236,7 @@ describe("DiveSiteDialog catalog picks", () => {
 
   it("fills the name, the location and the coordinate pair", async () => {
     // `region, country`, in English, and never an ISO code: this field is an
-    // ordinary text input whose own example reads "Dahab, Egypt".
+    // ordinary text input whose own example reads "Dahab, South Sinai, Egypt".
     suggestDiveSites.mockResolvedValue({
       results: [THISTLEGORM],
       has_more: false,
@@ -419,7 +419,8 @@ describe("DiveSiteDialog location writes", () => {
     uuid: "site-1",
     name: "Blue Hole",
     // Read the way an API that still returns `full_name` sends it. The API
-    // refuses a member it does not know on write, so a save must not echo it.
+    // that stops returning it also refuses it on write, and a dialog opened
+    // before that deploy may save after it - so a save must not echo it.
     location: { ...PLACE, full_name: "Dahab, South Sinai, 45214, Egypt" },
     latitude: 28.5717,
     longitude: 34.5372,
