@@ -161,10 +161,10 @@ export function NotificationsMenu() {
               ref={triggerRef}
               variant="ghost"
               size="sm"
-              // The hamburger's narrow padding, for the same 320px header row. The
-              // wider gap after it is the chip's: it hangs off the bell's right edge,
-              // and the avatar beside it has no padding of its own to keep it off.
-              className="relative me-2 px-2 sm:me-5 sm:px-3"
+              // The narrow padding and gap are for the 320px header row. The wider gap
+              // after it is the chip's: it hangs off the bell's right edge, and the
+              // avatar beside it has no padding of its own to keep it off.
+              className="relative me-5 px-3 max-[370px]:me-2 max-[370px]:px-2"
             >
               <Bell className="h-4 w-4" />
               {/* The count is in the trigger's name already, so the chip is the
