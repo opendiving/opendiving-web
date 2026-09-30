@@ -138,16 +138,19 @@ export function TripCard({
         </div>
       )}
       {/* Named per trip, as every list's row actions are. It sits as far in
-          from the corner as the credit does, its icon glows as the details'
-          text does - a filter, since `text-shadow` stops at an SVG - and its
-          hover takes the credit's chip rather than a colour the map would
-          swallow. */}
+          from the corner as the credit does, and its hover takes the credit's
+          chip rather than a colour the map would swallow. Its icon is lifted
+          off the map by a disc of the card's colour drawn as a gradient:
+          `drop-shadow`s strong enough to do it have to be chained, each
+          blurring the last one's 8-bit output, and the halo they make comes
+          out in visible rings. A gradient is drawn in one pass and is
+          smooth. */}
       <div className="absolute right-1 top-1 z-10">
         <ItemActionsMenu
           label={`Actions for ${trip.name}`}
           variant="ghost"
           size="sm"
-          className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_1px_var(--trip-card))_drop-shadow(0_0_2px_var(--trip-card))_drop-shadow(0_0_4px_var(--trip-card))_drop-shadow(0_0_8px_var(--trip-card))_drop-shadow(0_0_14px_var(--trip-card))]"
+          className="relative isolate hover:bg-background/80 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:rounded-full before:bg-[radial-gradient(closest-side,var(--trip-card)_40%,transparent)] hover:before:opacity-0"
         >
           <DropdownMenuItem onSelect={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
@@ -159,11 +162,14 @@ export function TripCard({
       {/* Above the map by a flex item's z-index rather than by `relative`,
           which would make this the box the link's overlay stretches over and
           leave the map outside it. Under the menu and the credit, which are
-          lifted higher. The glow in the card's own colour lifts every line off
-          whatever the map still shows beneath it. */}
+          lifted higher. Every line is lifted off whatever the map still shows
+          beneath it by a 1px outline in the card's own colour - four unblurred
+          shadows, which have no soft edge to round into steps - and one soft
+          layer beyond it. Stacked soft layers made the same halo stronger but
+          drew each layer's edge as a visible ring. */}
       <div
         ref={detailsRef}
-        className="z-[1] px-3 pb-3 [text-shadow:0_0_1px_var(--trip-card),0_0_2px_var(--trip-card),0_0_4px_var(--trip-card),0_0_8px_var(--trip-card),0_0_14px_var(--trip-card)]"
+        className="z-[1] px-3 pb-3 [text-shadow:-1px_-1px_0_var(--trip-card),1px_-1px_0_var(--trip-card),-1px_1px_0_var(--trip-card),1px_1px_0_var(--trip-card),0_0_6px_var(--trip-card)]"
       >
         <Link
           href={`/trips/${trip.uuid}`}
