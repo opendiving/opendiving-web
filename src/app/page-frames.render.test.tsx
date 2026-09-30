@@ -3,6 +3,7 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { NO_CHROME_ROUTES } from "@/components/layout/app-shell";
+import { isFormPath, labelForPath } from "@/lib/return-to";
 import {
   drawFrame,
   frameMocks as stable,
@@ -311,6 +312,12 @@ describe("/dives/new", () => {
       "Back to dashboard",
     ],
     [
+      "?from=/people",
+      new URLSearchParams("from=/people"),
+      "/people",
+      "Back to people",
+    ],
+    [
       "?trip_uuid=",
       new URLSearchParams("trip_uuid=trip-1"),
       "/trips/trip-1",
@@ -323,6 +330,29 @@ describe("/dives/new", () => {
       () => import("./dives/new/page"),
     );
     expect(backLink(container)).toEqual({ href, label });
+  });
+
+  // The header's create menu hands the form whichever page it was opened from, so every
+  // page inside the chrome is a possible `?from=` - including the public ones a signed-in
+  // diver can read, but not the landing pages, which redirect a signed-in visitor away.
+  it("names every page it can be opened from", () => {
+    const SIGNED_OUT_ONLY = ["/", "/join"];
+    const openedFrom = files
+      .filter((file) => file.endsWith("/page.tsx"))
+      .map(routeOf)
+      .filter(
+        (route) =>
+          !SIGNED_OUT_ONLY.includes(route) &&
+          !isFormPath(route) &&
+          !NO_CHROME_ROUTES.some(
+            (free) => route === free || route.startsWith(`${free}/`),
+          ),
+      );
+
+    expect(
+      openedFrom.filter((route) => labelForPath(route) === "Back"),
+    ).toEqual([]);
+    expect(openedFrom.length).toBeGreaterThan(20);
   });
 
   it("draws its form rather than a spinner", async () => {

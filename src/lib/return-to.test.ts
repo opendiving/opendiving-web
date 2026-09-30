@@ -9,6 +9,8 @@ describe("labelForPath", () => {
     expect(labelForPath("/sites")).toBe("Back to dive sites");
     expect(labelForPath("/dashboard")).toBe("Back to dashboard");
     expect(labelForPath("/courses")).toBe("Back to courses");
+    expect(labelForPath("/people")).toBe("Back to people");
+    expect(labelForPath("/data")).toBe("Back to export");
   });
 
   it("switches to the singular for a single record", () => {
@@ -16,6 +18,8 @@ describe("labelForPath", () => {
     expect(labelForPath("/sites/abc")).toBe("Back to dive site");
     expect(labelForPath("/dives/abc")).toBe("Back to dive");
     expect(labelForPath("/courses/abc")).toBe("Back to course");
+    expect(labelForPath("/people/abc")).toBe("Back to person");
+    expect(labelForPath("/settings/account")).toBe("Back to settings");
   });
 
   it("ignores a query string or hash", () => {
@@ -24,7 +28,7 @@ describe("labelForPath", () => {
   });
 
   it("falls back to a bare label for anything unrecognised", () => {
-    expect(labelForPath("/settings")).toBe("Back");
+    expect(labelForPath("/nowhere")).toBe("Back");
     expect(labelForPath("/")).toBe("Back");
   });
 });
