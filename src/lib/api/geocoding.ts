@@ -14,11 +14,12 @@ export const MAX_PLACE_QUERY_LENGTH = 200;
  * One place, normalized by the API away from whichever provider answered.
  *
  * `location` and `display_name` answer different questions. `location` is the
- * short, composed form that becomes a place's `name` - divers write "Ko Tao,
- * Thailand", not a five-part address. `display_name` is the fuller label the API
- * composes - the name and every address part above it for a search result, the
- * provider's own label for a pin - which becomes the place's `full_name`, stored
- * for the export and rendered nowhere.
+ * short, composed form that becomes a dive site's place `name` - divers write
+ * "Ko Tao, Thailand", not a five-part address; a trip part's is composed from
+ * `name`, `region` and `country` instead. `display_name` is the fuller label the
+ * API composes - the name and every address part above it for a search result,
+ * the provider's own label for a pin - which becomes the place's `full_name`,
+ * stored for the export and rendered nowhere.
  *
  * `attribution` rides on each result rather than in an envelope because it is a
  * licence condition of the data itself, and it must be rendered wherever the
