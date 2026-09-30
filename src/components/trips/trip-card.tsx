@@ -147,7 +147,7 @@ export function TripCard({
           label={`Actions for ${trip.name}`}
           variant="ghost"
           size="sm"
-          className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_2px_var(--trip-card))_drop-shadow(0_0_4px_var(--trip-card))_drop-shadow(0_0_10px_var(--trip-card))]"
+          className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_1px_var(--trip-card))_drop-shadow(0_0_2px_var(--trip-card))_drop-shadow(0_0_4px_var(--trip-card))_drop-shadow(0_0_8px_var(--trip-card))_drop-shadow(0_0_14px_var(--trip-card))]"
         >
           <DropdownMenuItem onSelect={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
@@ -163,7 +163,7 @@ export function TripCard({
           whatever the map still shows beneath it. */}
       <div
         ref={detailsRef}
-        className="z-[1] px-3 pb-3 [text-shadow:0_0_2px_var(--trip-card),0_0_4px_var(--trip-card),0_0_10px_var(--trip-card)]"
+        className="z-[1] px-3 pb-3 [text-shadow:0_0_1px_var(--trip-card),0_0_2px_var(--trip-card),0_0_4px_var(--trip-card),0_0_8px_var(--trip-card),0_0_14px_var(--trip-card)]"
       >
         <Link
           href={`/trips/${trip.uuid}`}
