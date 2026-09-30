@@ -10,9 +10,16 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
+  certificationsAPI,
+  type Certification,
+} from "@/lib/api/certifications";
+import { getApiErrorMessage } from "@/lib/api/error";
+import {
   scheduleFromDueEntry,
   type GearServiceDueEntry,
 } from "@/lib/api/gear-service";
+import type { Renewable } from "@/lib/certification";
+import { INSURANCE_FIELDS } from "@/lib/validations/user-fields";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,16 +28,20 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { useToast } from "@/components/ui/use-toast";
+import { CertificationDialog } from "@/components/certifications/certification-dialog";
+import { RenewalsList } from "@/components/certifications/renewals-list";
 import { GearServiceRecordDialog } from "@/components/gear/gear-service-record-dialog";
 import {
   ServiceDueList,
   gearItemLabel,
 } from "@/components/gear/service-due-list";
-import { RenewalsList } from "@/components/certifications/renewals-list";
+import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
+import { CHECK_IN_GROUP_HEADINGS } from "@/components/user/user-fields-form";
 
-// A heading, its rows, and a line under them when the read behind them failed. The
-// failure is said out loud because the panel is opened to ask "is anything due?", and
-// a silently empty one answers "no".
+// A section's header bar, its rows, and a line under them when the read behind them
+// failed. The failure is said out loud because the panel is opened to ask "is anything
+// due?", and a silently empty one answers "no".
 function Section({
   title,
   icon: Icon,
@@ -45,61 +56,92 @@ function Section({
 }) {
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className="space-y-3">
-      <h3
+    <section aria-labelledby={headingId} className="border-t first:border-t-0">
+      {/* Sticky, so a long list scrolls under the name of what it is. `z-20` clears
+          the rows' title links, which are lifted over their row's button. */}
+      <h2
         id={headingId}
-        className="flex items-center gap-2 text-sm font-semibold"
+        className="sticky top-0 z-20 flex items-center gap-2 border-b bg-popover px-4 py-3 font-semibold"
       >
         <Icon className="h-4 w-4" />
         {title}
-      </h3>
-      {children}
-      {failedMessage && (
-        <p className="flex items-start gap-2 text-xs text-muted-foreground">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          {failedMessage}
-        </p>
-      )}
+      </h2>
+      <div className="space-y-3 p-4">
+        {children}
+        {failedMessage && (
+          <p className="flex items-start gap-2 text-xs text-muted-foreground">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {failedMessage}
+          </p>
+        )}
+      </div>
     </section>
   );
 }
 
+// The form a row opened, or `null` for none. Each is mounted only while it is open
+// and outside the popover, which has closed by then.
+type Editing =
+  | { kind: "service"; entry: GearServiceDueEntry }
+  | { kind: "certification"; certification: Certification }
+  | { kind: "insurance" };
+
 /**
  * The header's bell: what the diver has to act on, from any page, with a count
- * of it on the bell itself.
- *
- * A popover rather than a menu, because a service row holds two controls - the
- * link to the item and the button that logs its service - and a menu item
- * cannot contain a second interactive element.
+ * of it on the bell itself. A row opens the form that deals with it - the
+ * service log, or whichever form holds the date that is running out - and its
+ * title goes to the item's page.
  */
 export function NotificationsMenu() {
   const { isLoaded, serviceDue, renewals, count, reload } = useNotifications();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  // The row whose service is being logged, or `null` for "no dialog". Lives here rather
-  // than in the list, which unmounts with the popover as the dialog opens.
-  const [loggingFor, setLoggingFor] = useState<GearServiceDueEntry | null>(
-    null,
-  );
+  const [editing, setEditing] = useState<Editing | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const headingId = useId();
 
   // Memoised because the dialog resets its form whenever this prop's identity changes:
   // a fresh view built during render would wipe half-typed notes on the next render.
   const loggingSchedule = useMemo(
-    () => (loggingFor ? scheduleFromDueEntry(loggingFor) : null),
-    [loggingFor],
+    () =>
+      editing?.kind === "service" ? scheduleFromDueEntry(editing.entry) : null,
+    [editing],
   );
 
   const close = () => setOpen(false);
+  const stopEditing = (isOpen: boolean) => !isOpen && setEditing(null);
 
-  const logService = (entry: GearServiceDueEntry) => {
-    // Focus moves to the bell before the dialog opens, because the dialog hands focus
-    // back to whatever held it at opening - and the row's own button is gone with the
-    // popover by the time the dialog closes.
+  // Focus moves to the bell before a form opens, because a dialog hands focus back to
+  // whatever held it at opening - and the row that opened it is gone with the popover
+  // by the time the dialog closes.
+  const handOff = () => {
     triggerRef.current?.focus();
     setOpen(false);
-    setLoggingFor(entry);
+  };
+
+  const logService = (entry: GearServiceDueEntry) => {
+    handOff();
+    setEditing({ kind: "service", entry });
+  };
+
+  const renew = (row: Renewable) => {
+    handOff();
+    if (row.kind === "insurance") {
+      setEditing({ kind: "insurance" });
+      return;
+    }
+    // The renewals read carries five fields of a card, and the dialog edits all of it.
+    certificationsAPI.getCertification(row.key).then(
+      (certification) => setEditing({ kind: "certification", certification }),
+      (error) => {
+        console.error("Failed to load the certification:", error);
+        toast({
+          title: "Couldn't open that certification",
+          description: getApiErrorMessage(error, "Try again in a moment."),
+          variant: "destructive",
+        });
+      },
+    );
   };
 
   const hasService = serviceDue.rows.length > 0 || serviceDue.failed;
@@ -140,105 +182,115 @@ export function NotificationsMenu() {
           ref={panelRef}
           align="end"
           collisionPadding={16}
-          aria-labelledby={headingId}
+          aria-label="Notifications"
           // Radix focuses the first tabbable descendant, which here is the first
-          // row's log-service button, ringed and hinted as though it had been asked
-          // for. The panel itself holds focus instead; Tab reaches the rows.
+          // row's title link, ringed as though it had been asked for. The panel
+          // itself holds focus instead; Tab reaches the rows.
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             panelRef.current?.focus();
           }}
-          // The dialog a service row opens takes focus from here; returning it to the
-          // bell as the popover closes would pull it straight back out of the dialog.
+          // A row's form takes focus from here; returning it to the bell as the
+          // popover closes would pull it straight back out of the dialog.
           onCloseAutoFocus={(event) => {
-            if (loggingFor) event.preventDefault();
+            if (editing) event.preventDefault();
           }}
-          className="flex max-h-[var(--radix-popover-content-available-height)] w-96 max-w-[calc(100vw-2rem)] flex-col p-0"
+          className="max-h-[var(--radix-popover-content-available-height)] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
         >
-          <h2 id={headingId} className="border-b px-4 py-3 font-semibold">
-            Notifications
-          </h2>
-          <div className="space-y-5 overflow-y-auto p-4">
-            {!isLoaded ? (
-              <div
-                role="status"
-                aria-label="Loading notifications"
-                className="flex justify-center py-4"
-              >
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : !hasService && !hasRenewals ? (
-              <div className="space-y-1 py-2 text-center">
-                <p className="text-sm font-medium">
-                  Nothing needs your attention
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Gear due a service and anything about to expire show up here.
-                </p>
-              </div>
-            ) : (
-              <>
-                {hasService && (
-                  <Section
-                    title="Service Due"
-                    icon={Wrench}
-                    failedMessage={
-                      serviceDue.failed
-                        ? "Couldn't check your gear's service. Try again in a moment."
-                        : null
-                    }
-                  >
-                    {serviceDue.rows.length > 0 && (
-                      <ServiceDueList
-                        entries={serviceDue.rows}
-                        truncated={serviceDue.truncated}
-                        onNavigate={close}
-                        onLogService={logService}
-                      />
-                    )}
-                  </Section>
-                )}
-                {/* A failed certifications read can still leave the insurance row,
-                    which comes from the account rather than from that request. */}
-                {hasRenewals && (
-                  <Section
-                    title="Renewals"
-                    icon={BadgeCheck}
-                    failedMessage={
-                      renewals.failed
-                        ? "Couldn't check your certifications. Try again in a moment."
-                        : null
-                    }
-                  >
-                    {renewals.rows.length > 0 && (
-                      <RenewalsList
-                        renewals={renewals.rows}
-                        truncated={renewals.truncated}
-                        onNavigate={close}
-                      />
-                    )}
-                  </Section>
-                )}
-              </>
-            )}
-          </div>
+          {!isLoaded ? (
+            <div
+              role="status"
+              aria-label="Loading notifications"
+              className="flex justify-center p-6"
+            >
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : !hasService && !hasRenewals ? (
+            <div className="space-y-1 p-6 text-center">
+              <p className="text-sm font-medium">
+                Nothing needs your attention
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Gear due a service and anything about to expire show up here.
+              </p>
+            </div>
+          ) : (
+            <>
+              {hasService && (
+                <Section
+                  title="Service Due"
+                  icon={Wrench}
+                  failedMessage={
+                    serviceDue.failed
+                      ? "Couldn't check your gear's service. Try again in a moment."
+                      : null
+                  }
+                >
+                  {serviceDue.rows.length > 0 && (
+                    <ServiceDueList
+                      entries={serviceDue.rows}
+                      truncated={serviceDue.truncated}
+                      onNavigate={close}
+                      onLogService={logService}
+                    />
+                  )}
+                </Section>
+              )}
+              {/* A failed certifications read can still leave the insurance row,
+                  which comes from the account rather than from that request. */}
+              {hasRenewals && (
+                <Section
+                  title="Renewals"
+                  icon={BadgeCheck}
+                  failedMessage={
+                    renewals.failed
+                      ? "Couldn't check your certifications. Try again in a moment."
+                      : null
+                  }
+                >
+                  {renewals.rows.length > 0 && (
+                    <RenewalsList
+                      renewals={renewals.rows}
+                      truncated={renewals.truncated}
+                      onNavigate={close}
+                      onRenew={renew}
+                    />
+                  )}
+                </Section>
+              )}
+            </>
+          )}
         </PopoverContent>
       </Popover>
 
-      {/* Mounted only while a row is being logged: there is no subject for it until a
-          row is picked. Outside the popover, which has closed by then. */}
-      {loggingFor && (
+      {editing?.kind === "service" && (
         <GearServiceRecordDialog
-          gearItemUuid={loggingFor.gear_item_uuid}
-          gearItemLabel={gearItemLabel(loggingFor)}
+          gearItemUuid={editing.entry.gear_item_uuid}
+          gearItemLabel={gearItemLabel(editing.entry)}
           open
-          onOpenChange={(isOpen) => !isOpen && setLoggingFor(null)}
+          onOpenChange={stopEditing}
           schedule={loggingSchedule}
           // A logged service resets the schedule's due date, so the row this was opened
           // from usually leaves the list, and the count drops with it.
           onSaved={reload}
         />
       )}
+      {editing?.kind === "certification" && (
+        <CertificationDialog
+          open
+          onOpenChange={stopEditing}
+          certification={editing.certification}
+          onSaved={() => reload()}
+        />
+      )}
+      {/* The check-in page's insurance form. Saving refreshes the signed-in user, which
+          the insurance row is derived from, so nothing needs reading again. */}
+      <UserFieldsDialog
+        open={editing?.kind === "insurance"}
+        onOpenChange={stopEditing}
+        {...CHECK_IN_GROUP_HEADINGS.insurance}
+        groups={[{ fields: [...INSURANCE_FIELDS] }]}
+      />
     </>
   );
 }

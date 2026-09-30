@@ -791,9 +791,9 @@ no meaningful convention (a mask, a knife) or no type gets `[]`, not a made-up d
 ## Gear due a service and renewals live behind the header's bell
 
 `NotificationsMenu` sits left of the avatar on every page, its count chip `bg-destructive-solid`. It
-is a `Popover`, not a `DropdownMenu`: a service row holds a link and a button, and a menu item
-cannot contain a second control. A failed read is said in the panel, since an empty panel answers
-"nothing is due".
+is a `Popover`, not a `DropdownMenu`: a row holds a link and a button, and a menu item cannot
+contain a second control. Each section heads itself in the panel's header style, with no panel title
+above them. A failed read is said in the panel, since an empty panel answers "nothing is due".
 
 `useNotifications` reads `GET /gear-service-due` and `GET /certifications-expiring` on every
 pathname change: `Header` outlives the pages where services are logged and expiry dates move, and
@@ -803,22 +803,27 @@ client-side, through the same `serviceStatus()` and `certificationRenewals()` ev
 The gear list needs no extra request: `GET /gear-items` embeds each item's schedules as
 `item.service`.
 
-## Each service-due row logs its service in place
+## A bell row opens the form that deals with it, and its title goes to the item
 
-Each row carries the gear detail card's icon-only `ClipboardCheck` button, opening the same
-`GearServiceRecordDialog`. The row is a flex container with link and button as siblings, not one
-`Link`: a `<button>` inside an `<a>` is invalid HTML and would also navigate.
+`NotificationRow` stretches a `<button>` over the row (`absolute inset-0`) and lifts the title's
+`Link` above it (`relative z-10`): a link inside a button is invalid, so the two are siblings and
+the button is the rest of the row. It is named by `sr-only` text, not `aria-label`: the row is its
+sighted label, and a hint would sit over the row above. A service row opens
+`GearServiceRecordDialog`; a certification row reads the card with `getCertification` and opens
+`CertificationDialog`, since the renewals read carries five of its fields; the insurance row opens
+the check-in page's `UserFieldsDialog` on `INSURANCE_FIELDS`, whose save refreshes the user the row
+derives from.
 
-The button names item and schedule, since the list spans a diver's every item;
+The service button names item and schedule, since the list spans a diver's every item;
 `notifications-menu.render.test.tsx` renders the four-row case. `serviceKindAndLabel` sits in
 `lib/api/gear-service.ts` beside `serviceKindLabel` so both surfaces phrase a schedule one way.
 
 `GearServiceRecordDialog` takes `gearItemUuid`, not a `GearItem`, an optional `gearItemLabel` as
 description, and a `schedule` typed `GearServiceScheduleSummary`. The entry is `useMemo`d: the
 dialog resets its form in an effect keyed on `schedule`, and a `scheduleFromDueEntry(...)` built
-during render wipes half-typed notes. `NotificationsMenu` mounts it only while a row is being
-logged, outside the popover that closes as it opens, and focuses the bell first so the dialog hands
-focus back there. `useNotifications` reads through a `.then()` chain, not `async`, because
+during render wipes half-typed notes. `NotificationsMenu` mounts each form outside the popover,
+which closes as it opens, and focuses the bell first so the dialog hands focus back there.
+`useNotifications` reads through a `.then()` chain, not `async`, because
 `react-hooks/set-state-in-effect` reads an awaited call in an effect body as a synchronous
 `setState`.
 
@@ -1867,22 +1872,23 @@ colour. Coral pays 2.50:1 on the label, under AA; the fix if wanted is near-blac
 misses are accepted: a saturated fill separates by hue. Watch the coral fill if light `--card` stops
 being white.
 
-## And the notifications lists put the chip last, where the rows align
+## A bell row's chip sits on the title's line, and its qualifier under it
 
-`ServiceStatusBadge` renders badge then detail, right where it is a column. The bell's service-due
-rows are `flex justify-between`, so badge-first strands the chip mid-row; `detailFirst` (prop,
-default off) swaps the order there, a prop so the three render sites cannot drift.
+`NotificationRow` is a grid: title and chip on one line, subtitle and qualifier on the next, the
+chip column as wide as its chip, so the chips end on one line down both sections, and the qualifier
+centred under the chip. The qualifier is the phrase less the chip's own word — "by 40 days", "in 2
+days", "on Oct 23, 2026" — through `formatServiceDueQualifier`, which shares `formatServiceDue`'s
+arm selection so the two cannot disagree about which arm is urgent.
 
-`RenewalsList` is the same row and composes its own `Badge`, so its swap is inline.
 `certificationExpiryBadgeVariant` returns `destructive` / `coral`, never `secondary`: grey beside
 coral reads as not a status. No `teal`, since `certificationExpiryStatus` returns `null` for a
 healthy certification and no chip renders.
 
-Widths are per-list: service chips `min-w-24`, certification chips `min-w-28`. The courses Status
-column takes `min-w-24` only; `courseStatusBadgeVariant` keeps its own vocabulary because courses
-share no screen with gear or certification chips (`courseStatusLabel` falls back to the raw wire
-value). All three carry `whitespace-nowrap` so a fallback font or longer label overflows the pill
-visibly rather than growing a second line.
+Chip widths: service `min-w-24`, certification `min-w-28`. The courses Status column takes
+`min-w-24` only; `courseStatusBadgeVariant` keeps its own vocabulary because courses share no screen
+with gear or certification chips (`courseStatusLabel` falls back to the raw wire value). All three
+carry `whitespace-nowrap` so a fallback font or longer label overflows the pill visibly rather than
+growing a second line.
 
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 

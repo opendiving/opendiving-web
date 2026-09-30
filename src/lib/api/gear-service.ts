@@ -46,7 +46,7 @@ export function serviceKindLabel(
  * schedule matching (item, kind, label)" - and it is what every service list leads with
  * on screen, so it is what a diver would use to say which row they mean.
  *
- * Shared rather than repeated: it names the icon-only row controls on both the gear
+ * Shared rather than repeated: it names the wordless row controls on both the gear
  * detail card and the notifications bell's service-due list, and two copies of the
  * phrasing is how the same button ends up announced two different ways.
  */

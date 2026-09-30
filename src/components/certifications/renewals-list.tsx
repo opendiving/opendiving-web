@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   certificationExpiryBadgeVariant,
   certificationExpiryLabel,
@@ -10,13 +9,16 @@ import {
 import { formatDateOnly } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
 import { TruncatedNote } from "@/components/ui/truncated-note";
+import { NotificationRow } from "@/components/layout/notification-row";
 
 interface RenewalsListProps {
   // Already flagged and sorted, soonest first - see `certificationRenewals`.
   renewals: CertificationRenewal<Renewable>[];
   truncated: boolean;
-  // Called as a row's link is followed, so whatever holds the list can close.
+  // Called as a row's title link is followed, so whatever holds the list can close.
   onNavigate: () => void;
+  // A click on the row: open the form whose "Expires on" this is.
+  onRenew: (row: Renewable) => void;
 }
 
 // What a diver has to renew - certifications that have run out or are about to, and
@@ -25,43 +27,36 @@ export function RenewalsList({
   renewals,
   truncated,
   onNavigate,
+  onRenew,
 }: RenewalsListProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {renewals.map(({ certification: row, status, expiresOn }) => (
-        <Link
+        <NotificationRow
           key={row.key}
+          title={row.title}
           href={row.href}
-          onClick={onNavigate}
-          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 hover:underline"
-        >
-          <div className="min-w-0">
-            <div className="text-sm font-medium">{row.title}</div>
-            {row.detail && (
-              <div className="text-xs text-muted-foreground">{row.detail}</div>
-            )}
-          </div>
-          {/* Detail first, then the chip, and one width for both chips - the same
-              treatment as the service-due rows beside these, for the same reason.
-              These rows are `justify-between`, so a leading badge would park the
-              coloured chip mid-row and leave the grey date on the edge the rows
-              align on. `ml-auto` holds that edge once a long name wraps the pair
-              onto a second line. "Expiring soon" is the wider of the two labels;
-              `min-w-28` clears it with room for a fallback font, and
-              `whitespace-nowrap` keeps a chip that outgrows it one line tall. */}
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-            <span className="text-xs text-muted-foreground">
-              {status === "expired" ? "Expired" : "Expires"}{" "}
-              {formatDateOnly(expiresOn)}
-            </span>
+          subtitle={row.detail}
+          // "Expiring soon" is the wider of the two labels; `min-w-28` clears it with
+          // room for a fallback font, and `whitespace-nowrap` keeps a chip that
+          // outgrows it one line tall.
+          badge={
             <Badge
               variant={certificationExpiryBadgeVariant(status)}
               className="min-w-28 justify-center whitespace-nowrap"
             >
               {certificationExpiryLabel(status)}
             </Badge>
-          </div>
-        </Link>
+          }
+          qualifier={`on ${formatDateOnly(expiresOn)}`}
+          actionLabel={
+            row.kind === "insurance"
+              ? "Edit your dive insurance"
+              : `Edit ${row.title}`
+          }
+          onAction={() => onRenew(row)}
+          onNavigate={onNavigate}
+        />
       ))}
       {truncated && <TruncatedNote where="your certifications" />}
     </div>

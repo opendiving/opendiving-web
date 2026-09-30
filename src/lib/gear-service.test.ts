@@ -7,6 +7,7 @@ import {
   defaultSchedulesForGearType,
   divesSince,
   formatServiceDue,
+  formatServiceDueQualifier,
   serviceStatus,
   serviceStatusBadgeVariant,
   serviceStatusLabel,
@@ -253,6 +254,32 @@ describe("formatServiceDue", () => {
 
   it("handles a schedule with no thresholds at all", () => {
     expect(formatServiceDue(schedule(), 0, TODAY)).toBe("No due date");
+  });
+});
+
+// The bell stacks this under the badge, which already says "Overdue" or "Due soon" -
+// so each case is the full phrase with that word taken off, and nothing else.
+describe("formatServiceDueQualifier", () => {
+  it("drops the word the badge says, in each case the full phrase has", () => {
+    const cases: [Partial<GearServiceScheduleSummary>, number, string][] = [
+      [{ next_due_on: "2026-08-20" }, 0, "in 10 days"],
+      [{ next_due_on: "2026-08-11" }, 0, "in 1 day"],
+      [{ next_due_on: TODAY }, 0, "today"],
+      [{ next_due_on: "2026-07-11" }, 0, "by 30 days"],
+      [{ next_due_at_dive_count: 140 }, 135, "in 5 dives"],
+      [{ next_due_at_dive_count: 140 }, 143, "by 3 dives"],
+      [
+        { next_due_on: "2027-03-01", next_due_at_dive_count: 140 },
+        143,
+        "by 3 dives",
+      ],
+    ];
+
+    for (const [overrides, diveCount, expected] of cases) {
+      expect(
+        formatServiceDueQualifier(schedule(overrides), diveCount, TODAY),
+      ).toBe(expected);
+    }
   });
 });
 

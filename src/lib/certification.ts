@@ -121,9 +121,13 @@ export function certificationRenewals<T extends { expires_on?: string | null }>(
 }
 
 // One line of the renewals list, whatever it is a renewal of: what runs out, what kind
-// of thing it is, where the diver goes to deal with it, and the date it runs out on.
+// of thing it is, where it is kept, and the date it runs out on.
 export interface Renewable {
+  // A certification's uuid, or "dive-insurance".
   key: string;
+  // Which form renews it: the certification's own dialog, or the check-in details'
+  // insurance group.
+  kind: "certification" | "insurance";
   title: string;
   detail: string | null;
   href: string;
@@ -138,13 +142,14 @@ export interface Renewable {
 //
 // Certification rows link to `/certifications`: certifications are edited in dialogs on
 // that one page, so there is no per-certification URL. The insurance row links to
-// `/settings/checkin`, where the policy is entered.
+// `/settings/checkin`, where the policy is kept.
 export function renewables(
   certifications: CertificationExpiringEntry[],
   user: Pick<User, "insurance_provider" | "insurance_expires_on"> | null,
 ): Renewable[] {
   const rows: Renewable[] = certifications.map((certification) => ({
     key: certification.uuid,
+    kind: "certification",
     title: certification.name,
     detail: certificationAgencyLabel(
       certification.agency,
@@ -160,6 +165,7 @@ export function renewables(
   if (user?.insurance_expires_on) {
     rows.push({
       key: "dive-insurance",
+      kind: "insurance",
       title: provider || "Dive insurance",
       detail: provider ? "Dive insurance" : null,
       href: "/settings/checkin",

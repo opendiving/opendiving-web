@@ -131,14 +131,14 @@ export function divesSince(
   return Math.max(0, diveCount - baselineDiveCount);
 }
 
-// A short human phrase for when a schedule is next due, naming whichever arm is the
-// urgent one. A regulator that has run out of dives shouldn't be described by a date
-// that's still months away.
-export function formatServiceDue(
+// When a schedule is next due, by whichever arm is the urgent one: a regulator that
+// has run out of dives shouldn't be described by a date that's still months away.
+// `count` is how far past due, or how far off; `null` for a schedule with neither arm.
+function nextServiceDue(
   schedule: GearServiceScheduleSummary,
   diveCount: number,
-  today: string = todayIsoDate(),
-): string {
+  today: string,
+): { overdue: boolean; count: number; unit: "day" | "dive" } | null {
   const days = schedule.next_due_on
     ? daysBetweenIsoDates(today, schedule.next_due_on)
     : null;
@@ -151,27 +151,56 @@ export function formatServiceDue(
   const divesOverdue = remaining != null && remaining <= 0;
 
   if (divesOverdue && !dateOverdue) {
-    const over = -remaining!;
-    return `Overdue by ${over} dive${over === 1 ? "" : "s"}`;
+    return { overdue: true, count: -remaining!, unit: "dive" };
   }
-  if (dateOverdue) {
-    const over = -days!;
+  if (dateOverdue) return { overdue: true, count: -days!, unit: "day" };
+  if (days != null) return { overdue: false, count: days, unit: "day" };
+  if (remaining != null) {
+    return { overdue: false, count: remaining, unit: "dive" };
+  }
+  return null;
+}
+
+function countOf(count: number, unit: "day" | "dive"): string {
+  return `${count} ${unit}${count === 1 ? "" : "s"}`;
+}
+
+// A short human phrase for when a schedule is next due: "Overdue by 3 dives",
+// "Due in 10 days".
+export function formatServiceDue(
+  schedule: GearServiceScheduleSummary,
+  diveCount: number,
+  today: string = todayIsoDate(),
+): string {
+  const due = nextServiceDue(schedule, diveCount, today);
+  if (!due) return "No due date";
+  if (due.overdue) {
     // Due *today* is already overdue, not "nearly due" - `serviceStatus` above badges
     // it destructive, and the API agrees on both counts: `service_status` uses
     // `today >= next_due_on`, and the reminder digest emails "overdue since 11 Aug
     // 2026" for a schedule due that morning. A bare "Due today" here read as
     // reassurance directly under a red Overdue badge, so it names the state first and
     // keeps the useful "and it's today" as the qualifier.
-    if (over === 0) return "Overdue (due today)";
-    return `Overdue by ${over} day${over === 1 ? "" : "s"}`;
+    if (due.unit === "day" && due.count === 0) return "Overdue (due today)";
+    return `Overdue by ${countOf(due.count, due.unit)}`;
   }
-  if (days != null) {
-    return `Due in ${days} day${days === 1 ? "" : "s"}`;
+  return `Due in ${countOf(due.count, due.unit)}`;
+}
+
+// The same phrase less the word the badge above it already says - "by 3 dives",
+// "in 10 days", "today" - for the notifications bell, which stacks the two.
+export function formatServiceDueQualifier(
+  schedule: GearServiceScheduleSummary,
+  diveCount: number,
+  today: string = todayIsoDate(),
+): string {
+  const due = nextServiceDue(schedule, diveCount, today);
+  if (!due) return "no due date";
+  if (due.overdue) {
+    if (due.unit === "day" && due.count === 0) return "today";
+    return `by ${countOf(due.count, due.unit)}`;
   }
-  if (remaining != null) {
-    return `Due in ${remaining} dive${remaining === 1 ? "" : "s"}`;
-  }
-  return "No due date";
+  return `in ${countOf(due.count, due.unit)}`;
 }
 
 // A schedule the "add service schedule" dialog can prefill, keyed off the gear type.

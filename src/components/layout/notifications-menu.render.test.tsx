@@ -54,11 +54,27 @@ vi.mock("@/lib/api/gear-service", async (importOriginal) => {
 
 vi.mock("@/lib/api/certifications", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  certificationsAPI: { getExpiring: vi.fn() },
+  certificationsAPI: { getExpiring: vi.fn(), getCertification: vi.fn() },
+}));
+
+// The certification dialog is `certification-dialog.render.test.tsx`'s subject, and
+// brings its course, contact and people pickers with it. What this file owns is which
+// card the row hands it.
+vi.mock("@/components/certifications/certification-dialog", () => ({
+  CertificationDialog: ({
+    certification,
+  }: {
+    certification: { name: string; expires_on: string };
+  }) => (
+    <div role="dialog" aria-label="Edit Certification">
+      {certification.name} expires {certification.expires_on}
+    </div>
+  ),
 }));
 
 const getDue = vi.mocked(gearServiceAPI.getDue);
 const getExpiring = vi.mocked(certificationsAPI.getExpiring);
+const getCertification = vi.mocked(certificationsAPI.getCertification);
 
 // Long past, so every row is overdue whenever this suite runs. Only the schedules
 // `serviceStatus` calls something other than "ok" are listed, and a due date relative
@@ -202,10 +218,11 @@ describe("a failed read", () => {
   });
 });
 
-// The log-service button on each row is icon-only, and this list spans every item a
-// diver owns - so its name has to say which item as well as which schedule. The
-// fixtures hold several rows on purpose: a name built from a constant passes a one-row
-// test exactly as well as one built from the entry.
+// The row's log-service button has no words of its own - it is the row, stretched under
+// the title's link - and this list spans every item a diver owns, so its name has to say
+// which item as well as which schedule. The fixtures hold several rows on purpose: a
+// name built from a constant passes a one-row test exactly as well as one built from
+// the entry.
 describe("the service-due rows", () => {
   it("names each row's button after its schedule and its gear item", async () => {
     // A cylinder carries its visual inspection and its hydro on different clocks, so one
@@ -235,7 +252,7 @@ describe("the service-due rows", () => {
 
     const names = within(panel)
       .getAllByRole("button")
-      .map((button) => button.getAttribute("aria-label"));
+      .map((button) => button.textContent);
     expect(names).toEqual([
       "Log service for Visual inspection on Scubapro MK25 EVO",
       "Log service for Hydrostatic test on Scubapro MK25 EVO",
@@ -246,6 +263,16 @@ describe("the service-due rows", () => {
       "href",
       "/gear/item-2",
     );
+  });
+
+  it("says how far past due without repeating the chip", async () => {
+    getDue.mockResolvedValue({ data: [due()] });
+
+    const panel = await openPanel();
+
+    expect(within(panel).getByText("Overdue")).toBeInTheDocument();
+    expect(within(panel).getByText(/^by \d+ days$/)).toBeInTheDocument();
+    expect(within(panel).queryByText(/Overdue by/)).toBeNull();
   });
 
   it("names the item in the dialog the button opens, and closes the panel", async () => {
@@ -325,5 +352,53 @@ describe("the renewals rows", () => {
       within(panel).getByRole("link", { name: /Rescue Diver/ }),
     ).toHaveAttribute("href", "/certifications");
     expect(within(panel).queryByText("Dive insurance")).toBeNull();
+    // The chip says "Expiring soon"; the line under it says only when.
+    expect(within(panel).getByText(/^on /)).toBeInTheDocument();
+    expect(within(panel).queryByText(/Expires/)).toBeNull();
+  });
+
+  it("opens a certification's own dialog on the whole card, read by its uuid", async () => {
+    // The renewals read carries five fields of a card; the dialog edits all of them,
+    // so the row reads the rest before it opens.
+    const expiresOn = soon();
+    getExpiring.mockResolvedValue({
+      data: [certification({ uuid: "cert-7", expires_on: expiresOn })],
+    });
+    getCertification.mockResolvedValue({
+      uuid: "cert-7",
+      agency: "padi",
+      name: "Rescue Diver",
+      expires_on: expiresOn,
+    } as Awaited<ReturnType<typeof certificationsAPI.getCertification>>);
+
+    const panel = await openPanel();
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Edit Rescue Diver" }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Edit Certification",
+    });
+    expect(getCertification).toHaveBeenCalledWith("cert-7");
+    expect(dialog).toHaveTextContent(`Rescue Diver expires ${expiresOn}`);
+  });
+
+  it("opens the check-in page's insurance form for the policy", async () => {
+    const expiresOn = soon();
+    Object.assign(stable.auth.user, {
+      insurance_provider: "DAN Europe",
+      insurance_expires_on: expiresOn,
+    });
+
+    const panel = await openPanel();
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Edit your dive insurance" }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Dive Insurance",
+    });
+    expect(within(dialog).getByDisplayValue("DAN Europe")).toBeInTheDocument();
+    expect(within(dialog).getByDisplayValue(expiresOn)).toBeInTheDocument();
   });
 });
