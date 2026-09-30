@@ -106,14 +106,19 @@ export function RecentTripRow({
         </div>
       )}
       {/* Named per row, as the trips table's actions are. It sits as far in
-          from the corner as the credit does, and over a map its hover takes the
-          credit's chip rather than a colour the map would swallow. */}
+          from the corner as the credit does, its icon glows as the details'
+          text does - a filter, since `text-shadow` stops at an SVG - and over a
+          map its hover takes the credit's chip rather than a colour the map
+          would swallow. */}
       <div className="absolute right-1 top-1 z-10">
         <ItemActionsMenu
           label={`Actions for ${trip.name}`}
           variant="ghost"
           size="sm"
-          className={hasMap ? "hover:bg-background/80" : undefined}
+          className={cn(
+            "[&_svg]:[filter:drop-shadow(0_0_3px_hsl(var(--card)))_drop-shadow(0_0_8px_hsl(var(--card)))]",
+            hasMap && "hover:bg-background/80",
+          )}
         >
           <DropdownMenuItem onSelect={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
