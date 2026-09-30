@@ -16,9 +16,10 @@ const get = vi.mocked(apiClient.get);
 const RESULT: GeocodeResult = {
   latitude: 28.5011,
   longitude: 34.5136,
-  location: "Dahab, Egypt",
-  display_name: "Blue Hole, Dahab, South Sinai, Egypt",
+  location: "Dahab, South Sinai, Egypt",
   name: "Blue Hole",
+  country: "Egypt",
+  region: "South Sinai",
   attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
 };
 

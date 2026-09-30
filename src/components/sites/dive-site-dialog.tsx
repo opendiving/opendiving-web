@@ -98,7 +98,7 @@ export function DiveSiteDialog({
     reset({
       name: diveSite?.name ?? "",
       // The whole place, so that saving an edit that never touched this field
-      // sends back the full name, the centre and the box it was seeded with.
+      // sends back the name, the centre and the box it was seeded with.
       location: diveSite?.location ?? null,
       latitude: formatCoordinateForForm(diveSite?.latitude),
       longitude: formatCoordinateForForm(diveSite?.longitude),
@@ -138,8 +138,8 @@ export function DiveSiteDialog({
   });
 
   // What the diver types is a place's name and nothing more, so it replaces
-  // whatever was there rather than renaming it: a full name, a centre and a box
-  // picked for "Dahab, Egypt" say nothing true about the "Moalboal" now in the
+  // whatever was there rather than renaming it: a centre and a box picked for
+  // "Dahab, South Sinai, Egypt" say nothing true about the "Moalboal" now in the
   // box. Emptying the field clears the place outright, which is how a site
   // entered with the wrong locality is corrected back to "not recorded".
   const typeLocationName = (text: string) =>
@@ -331,10 +331,10 @@ export function DiveSiteDialog({
             />
 
             {/* The field holds the whole place; the input is a view of its
-                name. What a pick brought with it - the fuller form the lookup
-                returned, the locality's own centre, its extent - rides along
-                unseen and is sent back on every save, so editing a site's name
-                does not quietly strip the place off it. */}
+                name. What a pick brought with it - the locality's own centre
+                and its extent - rides along unseen and is sent back on every
+                save, so editing a site's name does not quietly strip the place
+                off it. */}
             <FormField
               control={form.control}
               name="location"
@@ -343,7 +343,7 @@ export function DiveSiteDialog({
                   <FormLabel>Location</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g. Dahab, Egypt"
+                      placeholder="e.g. Dahab, South Sinai, Egypt"
                       // The cap is enforced by the control, not left to the
                       // resolver: an over-long name fails at `location.name`,
                       // and `FormMessage` reads `errors.location`, which for a
@@ -352,8 +352,8 @@ export function DiveSiteDialog({
                       // red and a save that stopped. The trip row's place field
                       // closes the same hole by truncating what it commits.
                       // Nothing else can overrun it: every place written here
-                      // programmatically comes from the API, which bounds both
-                      // names to these widths and truncates rather than raising.
+                      // programmatically comes from the API, which bounds the
+                      // name to this width and truncates rather than raising.
                       maxLength={MAX_LOCATION_NAME_LENGTH}
                       name={field.name}
                       ref={field.ref}

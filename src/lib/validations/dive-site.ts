@@ -35,8 +35,8 @@ export const diveSiteFormSchema = z
       .max(255, "Dive site name cannot exceed 255 characters"),
     // The whole place, not a text box over its name. The dialog seeds this from
     // the site it was handed and PATCHes it back, so a field holding only the
-    // name would drop a picked locality's full name, its centre and its box on
-    // every edit of an existing site. `null` is a site with no locality
+    // name would drop a picked locality's centre and its box on every edit of an
+    // existing site. `null` is a site with no locality
     // recorded, and sending it explicitly is how a wrong one is corrected.
     location: locationSchema.nullish(),
     latitude: coordinateField(90, "Latitude", "27.8506"),

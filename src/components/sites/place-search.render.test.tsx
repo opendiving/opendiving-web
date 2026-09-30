@@ -42,8 +42,7 @@ const WIKIDATA_CREDIT =
 const DAHAB: GeocodeResult = {
   latitude: 28.4954,
   longitude: 34.5197,
-  location: "Dahab, Egypt",
-  display_name: "Dahab, South Sinai Governorate, Egypt",
+  location: "Dahab, South Sinai Governorate, Egypt",
   name: "Dahab",
   country: "Egypt",
   region: "South Sinai Governorate",
@@ -195,31 +194,34 @@ describe("PlaceSearch results", () => {
   });
 
   it("names a place, then its region, then its country", async () => {
+    // Read as one line, the row says what picking it saves: the API's
+    // `location`, which the Location field takes unchanged.
     searchPlaces.mockResolvedValue([DAHAB]);
     render(<PlaceSearch onPick={vi.fn()} />);
 
     await searchFor("Dahab");
 
     expect(
-      await screen.findByRole("option", {
-        name: "Dahab, South Sinai Governorate, Egypt",
-      }),
+      await screen.findByRole("option", { name: DAHAB.location }),
     ).toBeInTheDocument();
   });
 
   it("names an address-only result by its composed location", async () => {
     // A result that matched an address rather than a named place has no name of
-    // its own, and a row has to say something.
-    searchPlaces.mockResolvedValue([
-      { ...DAHAB, name: null, location: "Dahab, Egypt" },
-    ]);
+    // its own, and its `location` already holds the region and country a hint
+    // would add - so it reads as that alone, saying nothing twice.
+    const address = {
+      ...DAHAB,
+      name: null,
+      location: "Assalah Street, South Sinai Governorate, Egypt",
+    };
+    searchPlaces.mockResolvedValue([address]);
     render(<PlaceSearch onPick={vi.fn()} />);
 
     await searchFor("Dahab");
 
-    expect(
-      await screen.findByRole("option", { name: /^Dahab, Egypt/ }),
-    ).toBeInTheDocument();
+    const row = await screen.findByRole("option", { name: address.location });
+    expect(row.textContent).toBe(address.location);
   });
 });
 
@@ -363,8 +365,7 @@ describe("PlaceSearch geocoder rows", () => {
   const MOALBOAL_CEBU: GeocodeResult = {
     latitude: 9.9366,
     longitude: 123.3986,
-    location: "Moalboal, Philippines",
-    display_name: "Moalboal, Cebu, Central Visayas, Philippines",
+    location: "Moalboal, Cebu, Philippines",
     name: "Moalboal",
     country: "Philippines",
     region: "Cebu",
@@ -376,7 +377,7 @@ describe("PlaceSearch geocoder rows", () => {
     ...MOALBOAL_CEBU,
     latitude: 7.62,
     longitude: 122.52,
-    display_name: "Moalboal, Zamboanga Sibugay, Philippines",
+    location: "Moalboal, Zamboanga Sibugay, Philippines",
     region: "Zamboanga Sibugay",
     source_id: "node/2",
   };
@@ -407,7 +408,6 @@ describe("PlaceSearch geocoder rows", () => {
         ...MOALBOAL_CEBU,
         name: "Philippines",
         location: "Philippines",
-        display_name: "Philippines",
         region: null,
       },
     ]);
@@ -424,7 +424,12 @@ describe("PlaceSearch geocoder rows", () => {
     // An older API sends neither field, and Photon holds nothing above some
     // places: never "undefined" and never a stray comma.
     searchPlaces.mockResolvedValue([
-      { ...MOALBOAL_CEBU, region: undefined, country: undefined },
+      {
+        ...MOALBOAL_CEBU,
+        location: "Moalboal",
+        region: undefined,
+        country: undefined,
+      },
     ]);
     render(<PlaceSearch onPick={vi.fn()} />);
 
@@ -441,8 +446,7 @@ describe("PlaceSearch geocoder rows", () => {
       {
         ...DAHAB,
         name: "Sharm El Sheikh",
-        location: "Sharm El Sheikh, Egypt",
-        display_name: "Sharm El Sheikh, South Sinai, Egypt",
+        location: "Sharm El Sheikh, South Sinai, Egypt",
         region: "South Sinai",
         source_id: "node/3",
       },
@@ -479,8 +483,7 @@ describe("PlaceSearch geocoder rows", () => {
       latitude: 11.3,
       longitude: 124.19,
       name: "Monad Shoal",
-      location: "Monad Shoal, Philippines",
-      display_name: "Monad Shoal, Cebu, Philippines",
+      location: "Monad Shoal, Cebu, Philippines",
       source: "osm",
       source_id: "node/6215139685",
     };

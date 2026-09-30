@@ -36,8 +36,8 @@ export type DiveSiteSuggestionSource = "osm" | "wikidata";
  * A caller that assumes otherwise writes "undefined" into the Location field.
  *
  * There is no country code and no distance here, both deliberately: an ISO code
- * has no business in a Location field whose own example is "Koh Tao, Thailand",
- * and the distance is computed here from `haversineMeters` so it can be
+ * has no business in a Location field whose own example is "Dahab, South Sinai,
+ * Egypt", and the distance is computed here from `haversineMeters` so it can be
  * formatted in the diver's own units.
  */
 export interface DiveSiteSuggestion {
@@ -123,7 +123,7 @@ export const diveSiteCatalogAPI = {
  * it rather than emptying it.
  *
  * Never an ISO code: this string is written into an ordinary text input whose
- * placeholder reads "e.g. Dahab, Egypt".
+ * placeholder reads "e.g. Dahab, South Sinai, Egypt".
  */
 export function diveSitePlaceContext(site: DiveSiteSuggestion): string | null {
   return formatPlaceContext(site.region, site.country);

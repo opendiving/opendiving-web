@@ -673,11 +673,11 @@ export default async function PrivacyPage() {
                 After you place a dive site &mdash; on the map, or by pasting a
                 pair of coordinates into the form &mdash; we ask a geocoding
                 provider what that spot is called, so we can offer you a
-                location like &ldquo;Dahab, Egypt&rdquo; to save with the site.
-                Only the coordinates are sent, and they are sent by our servers
-                rather than by your browser, so the provider never sees your IP
-                address or anything else about you. The answer is cached, so the
-                same spot is not looked up twice.
+                location like &ldquo;Dahab, South Sinai, Egypt&rdquo; to save
+                with the site. Only the coordinates are sent, and they are sent
+                by our servers rather than by your browser, so the provider
+                never sees your IP address or anything else about you. The
+                answer is cached, so the same spot is not looked up twice.
               </p>
               <p className="text-foreground mb-4">
                 The dive site and trip forms also let you search for a place by

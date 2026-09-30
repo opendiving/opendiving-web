@@ -38,7 +38,7 @@ import {
 } from "@/lib/validations/trip";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
-import { geocodeResultLabel, geocodeResultToLocation } from "@/lib/locations";
+import { geocodeResultToLocation } from "@/lib/locations";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Attribution } from "@/components/attribution";
 import { cn } from "@/lib/utils";
@@ -55,10 +55,11 @@ const PLACE_SEARCH_DEBOUNCE_MS = 450;
  *
  * Places are value objects - the API stores what the geocoder said rather than
  * pointing at a shared gazetteer entry - so a menu row's id has to come from the
- * content. The position plus the label is specific enough that two genuinely
+ * content. The position plus the name is specific enough that two genuinely
  * different places never collide, which is what keeps one search's results from
  * sharing a React key and what lets a row picked earlier be recognised as the
- * one a part already holds.
+ * one a part already holds. Two results at one position that the geocoder names
+ * alike are one place, which is what the key exists to say.
  *
  * A place typed in by hand has no position at all, so those are keyed by name.
  * Case- and whitespace-insensitively: "moalboal" and "Moalboal " are the same
@@ -73,7 +74,7 @@ export function locationKey(location: LocationFormValue): string {
   if (latitude == null || longitude == null) {
     return `txt:${location.name.trim().toLowerCase()}`;
   }
-  return `geo:${latitude}:${longitude}:${location.full_name ?? location.name}`;
+  return `geo:${latitude}:${longitude}:${location.name}`;
 }
 
 export interface MappedPlaces {
@@ -83,20 +84,6 @@ export interface MappedPlaces {
   locations: Map<string, LocationFormValue>;
   // The licence notices carried by these results, deduplicated.
   attributions: string[];
-}
-
-// A search result as a trip part's place, named as its menu row reads in the
-// dive site search too: "Moalboal, Cebu, Philippines". Cut to the API's ceiling
-// here because it is composed here - the API bounds each part, not the join.
-function tripPartLocation(result: GeocodeResult): LocationFormValue {
-  const { name, context } = geocodeResultLabel(result);
-  return {
-    ...geocodeResultToLocation(result),
-    name: [name, context]
-      .filter(Boolean)
-      .join(", ")
-      .slice(0, MAX_LOCATION_NAME_LENGTH),
-  };
 }
 
 /**
@@ -113,7 +100,7 @@ export function mapSearchResults(results: GeocodeResult[]): MappedPlaces {
   const attributions: string[] = [];
 
   for (const result of results) {
-    const location = tripPartLocation(result);
+    const location = geocodeResultToLocation(result);
     const id = locationKey(location);
     if (!locations.has(id)) {
       locations.set(id, location);

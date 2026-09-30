@@ -2633,19 +2633,19 @@ follows `NEXT_PUBLIC_MAP_TILE_URL` to a self-hosted server.
 ## A trip part's place is self-describing, so nothing has to be resolved
 
 `TripPartsField` is built on the same `CreatableCombobox` as `DiveSiteMultiSelect` but holds
-`{name, full_name, latitude, longitude, bbox_*}` objects, the snapshot the API stores, rather than
-uuids, so a row renders from its own content with nothing to fetch and no loading state. See "A
-geocoder row's hint is its region, composed once" for what a menu row shows.
+`{name, latitude, longitude, bbox_*}` objects, the snapshot the API stores, rather than uuids, so a
+row renders from its own content with nothing to fetch and no loading state. See "A geocoder row's
+hint is its region, composed once" for what a menu row shows.
 
-Places therefore have no id. `locationKey` derives one from content: `geo:{lat}:{lon}:{full_name}`
-for a geocoded place, `txt:{name}` lowercased and trimmed for a typed one. `mapSearchResults`
-collapses results sharing a key, since two rows sharing a React key cannot both be picked, and the
-row's `value`/`selectedItem` pair is keyed by it. Nothing compares keys across parts: two parts may
-name the same place — Dahab, then Sharm, then back to Dahab — so there is no `excludeIds` and no
-"already in the list" refusal. Rows are keyed and removed by position, or a repeat would go as a
-pair. Position-keyed rows swap content under a focused drag handle, so `useDragSort` moves focus to
-the destination handle (`data-drag-handle`) a frame after a keyboard reorder; for id-keyed lists
-that is a no-op.
+Places therefore have no id. `locationKey` derives one from content: `geo:{lat}:{lon}:{name}` for a
+geocoded place, `txt:{name}` lowercased and trimmed for a typed one. `mapSearchResults` collapses
+results sharing a key, since two rows sharing a React key cannot both be picked, and the row's
+`value`/`selectedItem` pair is keyed by it. Nothing compares keys across parts: two parts may name
+the same place — Dahab, then Sharm, then back to Dahab — so there is no `excludeIds` and no "already
+in the list" refusal. Rows are keyed and removed by position, or a repeat would go as a pair.
+Position-keyed rows swap content under a focused drag handle, so `useDragSort` moves focus to the
+destination handle (`data-drag-handle`) a frame after a keyboard reorder; for id-keyed lists that is
+a no-op.
 
 ## An unmatched query is addable as text, and that is an outage hatch as much as a long tail
 
@@ -3330,30 +3330,27 @@ The dive site search shows the bare name with `region, country` as the hint, thr
 catalog row. The drop stays out of `diveSitePlaceContext`, which also writes a catalog pick's
 Location.
 
-The trip menu reads the same words but puts them all in the row's `name`, "Moalboal, Cebu,
-Philippines", which is also what a pick saves: `handleSelect` writes `name` into the input and
-`commitOnEnterOnly` matches Enter on it, so a bare name would put "Moalboal" in the field after a
-pick and make "moalboal" + Enter pick a place.
+A row with no name of its own reads as its `location` alone, which already holds every part a hint
+would add. Read as one line, a row says what picking it saves.
+
+The trip menu puts the API's `location` whole in the row's `name`, "Moalboal, Cebu, Philippines",
+which is also what a pick saves: `handleSelect` writes `name` into the input and `commitOnEnterOnly`
+matches Enter on it, so a bare name would put "Moalboal" in the field after a pick and make
+"moalboal" + Enter pick a place.
 
 ## The label a place keeps is chosen on the way in
 
-`geocodeResultToLocation` (`lib/locations.ts`) stores `GeocodeResult.location` — a search result's
-own name plus its country, composed by the API — as a dive site's place `name`, rather than
-`display_name`; a dive log records "Ko Tao, Thailand". A trip part stores what its menu row read,
-"Ko Tao, Surat Thani Province, Thailand" (`tripPartLocation`).
+`geocodeResultToLocation` (`lib/locations.ts`) stores `GeocodeResult.location` unchanged as the
+place's `name`, for a dive site and a trip part alike: the place, its region and its country, "Ko
+Tao, Surat Thani Province, Thailand". A pin's answer has the same shape.
 
-Both are built from the provider's structured answer — the API's `location`, `name`, `region` and
-`country` — never from the flat `display_name`, which cannot be taken apart back into them.
+The API composes it, once, for both providers. A pin's answer holds no town to compose from, so a
+join on the web would build the search path's name here and leave the pin's on the API's — one
+string built in two places. The region stays because a name cut to the place and its country is
+often ambiguous, and prefilled it costs the diver nothing.
 
-Costs: a place saved before this keeps the provider's label as its name until re-picked, and
-`locationKey` (`geo:{lat}:{lon}:{full_name}`) keys it differently from a fresh pick of the same
-place.
-
-The fuller label is stored beside it as `full_name` — the name and every address part above it,
-country last — because the format asks for the fullest form the source held. It is written on every
-geocoded pick and read by `locationKey`, and no surface renders it, so the choice above decides
-everything a diver sees. It also carries the region the short form omits, which is what the API
-matches a search term against alongside the name. `placeKey` in `place-search.tsx` keys on it too.
+A place carries no second, fuller name: where it has coordinates, its town, region and country can
+be looked up again. One saved before keeps the name it was saved with until re-picked.
 
 ## The geocoder's attribution is a wire format, not display copy
 
@@ -3395,9 +3392,9 @@ A position arrives three ways — pin, place search, pasted latitude/longitude p
 place. The coordinates that come back are the _site's_ — it is the pin the diver just dropped that
 was looked up — so taking them would file the wreck as the centre of the town around it, on the one
 path where the two points are identical and nothing on screen could show it. The Location field
-holds the whole object and shows its name, so a save sends back the fuller name, the centre and the
-extent a pick brought with it; typing a name replaces the place outright, and clearing the box sends
-an explicit `null`.
+holds the whole object and shows its name, so a save sends back the centre and the extent a pick
+brought with it; typing a name replaces the place outright, and clearing the box sends an explicit
+`null`.
 
 The guards — newest request wins, the reply checked against the fields as they stand on arrival,
 `unknown` never clearing a field while `nameless` does, a nameless answer silent with nothing to

@@ -2,8 +2,8 @@
  * A place, as the geocoder described it when the diver picked it - or as they
  * typed it.
  *
- * One object with one pair of names, carried by a dive site and by a part of a
- * trip alike. It lives in its own module because both hosts reference it and
+ * One object with one name, carried by a dive site and by a part of a trip
+ * alike. It lives in its own module because both hosts reference it and
  * neither owns it: putting it in either one would make the other import a
  * sibling resource's type for a shape that is not about that resource at all.
  *
@@ -12,14 +12,11 @@
  * a row in a shared gazetteer. So a write replaces the stored one wholesale,
  * and clearing it is an explicit `null`.
  *
- * **Two names, and only the short one is ever rendered.** `name` is the place
- * as a person writes it - the name alone ("Moalboal"), or the name with its
- * country ("Dahab, Egypt"). `full_name` is the fullest written form the lookup
- * returned ("Dahab, South Sinai Governorate, Egypt"); it is stored so an export
- * carries what the source held, and no surface in this app shows it. Nothing
- * binds the two: a lookup asked about a local name often answers with the
- * district around it, so "Sipadan Island Park" may carry "Sabah, Malaysia" -
- * shorter, and not containing it.
+ * **One name.** `name` is the place as a person writes it - the name alone
+ * ("Moalboal"), or extended outward through its region to its country ("Dahab,
+ * South Sinai, Egypt"), which is what a geocoded pick saves. A place is not an
+ * address: where it has coordinates, its town, region and country can be looked
+ * up again.
  *
  * **A locality's position is not its host's.** A dive site carries its own pin
  * as well, and the two are different facts - the entry point against the town
@@ -27,7 +24,6 @@
  */
 export interface Location {
   name: string;
-  full_name?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   // The place's extent, when the provider gave one. All four or none: a box is

@@ -10,7 +10,6 @@ const RESULT: GeocodeResult = {
   latitude: 28.4954,
   longitude: 34.5197,
   location: "Dahab, Egypt",
-  display_name: "Dahab, South Sinai, 45214, Egypt",
   name: "Dahab",
   attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
 };
