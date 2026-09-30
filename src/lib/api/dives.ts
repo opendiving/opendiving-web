@@ -509,8 +509,9 @@ export interface RecordingDevice {
 // `files` may hold more than one legitimately - the same computer exported as
 // JSON and again as FIT is one record of one dive in two spellings, each
 // filling what the other left blank - and `profile` may be present with `files`
-// empty, which is what logbook import creates from a converted document. That
-// is first-class rather than degenerate, and the file list says so in words.
+// empty, which is what an import creates from a logbook of several dives, whose
+// file belongs to no one dive. That is first-class rather than degenerate, and
+// the file list says so in words.
 // The decompression model one device ran on one dive, and the settings it ran it
 // with. Null for the whole object where the source recorded none, rather than
 // five nulls - so a caller tests the object, not its members, exactly as it does
@@ -823,8 +824,8 @@ export interface DiveProfile {
 /**
  * The API's size cap on a dive-computer file, mirrored so an obviously-oversized
  * file is rejected before it is uploaded. The API re-checks regardless - this is
- * convenience, not validation. The picker's filter is the import's
- * (`DIVE_COMPUTER_FILE_ACCEPT` in `logbook-import.ts`).
+ * convenience, not validation. The picker's filter is
+ * `DIVE_COMPUTER_FILE_ACCEPT` in `logbook-import.ts`.
  */
 export const MAX_DIVE_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 

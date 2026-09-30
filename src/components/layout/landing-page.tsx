@@ -245,11 +245,11 @@ export function LandingPage({ channel }: LandingPageProps = {}) {
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   {/* The import's own list, since the form reads through the
-                      same converter: one dive per file here, a whole logbook
-                      there. */}
+                      same converter; the import takes any number of these at
+                      once and pairs a computer's two exports of one dive. */}
                   <li>
                     • FIT, Suunto&apos;s app and DM5 exports, UDDF and
-                    Subsurface, one dive per file
+                    Subsurface, as many files at once as you have
                   </li>
                   <li>
                     • Full depth, temperature and pressure profile, with the

@@ -240,9 +240,11 @@ export default async function PrivacyPage() {
                   from a dive-computer file, that file itself is kept alongside
                   the dive &mdash; on the recording it came from, under the
                   filename it arrived with, and a dive keeps every one you
-                  upload. Importing a full archive puts those same files back,
-                  since it carries them; a logbook imported in any other format
-                  leaves no file here, whatever it was written by
+                  upload. A file you import is kept the same way when it is one
+                  dive, whatever program wrote it: on the dive it becomes, under
+                  the filename it arrived with. A logbook of several dives
+                  leaves no file here, and importing a full archive puts back
+                  the files it carries
                 </li>
                 <li>
                   <strong>Equipment Data:</strong> Diving equipment details and
@@ -1107,7 +1109,7 @@ export default async function PrivacyPage() {
                 6.1 Account Control
               </h3>
               <p className="text-foreground mb-4">
-                From Settings and the Import and Export page, without asking
+                From Settings and the Import and Export pages, without asking
                 anyone, you can:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
@@ -1125,8 +1127,9 @@ export default async function PrivacyPage() {
                 <li>Export everything you have entered</li>
                 <li>
                   Bring a logbook back in &mdash; a file this app exported, or
-                  one from a dive computer or another program, seeing what it
-                  would do before anything is written
+                  files from a dive computer or another program, as many at once
+                  as you have, seeing what they would do before anything is
+                  written
                 </li>
                 <li>Delete your account and everything attached to it</li>
               </ul>
@@ -1172,17 +1175,17 @@ export default async function PrivacyPage() {
               </ul>
               <p className="text-foreground mb-4">
                 The first four need no request: access, correction, deletion and
-                portability are all buttons in Settings or on the Import and
-                export page, and they act immediately rather than being
-                forwarded to somebody. Two things sit outside those buttons, and
-                naming them is better than letting that sentence read wider than
-                it is. The list of signed-in devices is in Settings but is not
-                part of the export. And the record of account security events in
-                section 2.2 is in neither: nothing in the app shows it to you
-                and no button copies it, so a copy of that one has to be asked
-                for like the rights below. The last two, that request, and
-                anything else go to whoever runs this copy &mdash; section 13
-                says how to reach them.
+                portability are all buttons in Settings or on the Export page,
+                and they act immediately rather than being forwarded to
+                somebody. Two things sit outside those buttons, and naming them
+                is better than letting that sentence read wider than it is. The
+                list of signed-in devices is in Settings but is not part of the
+                export. And the record of account security events in section 2.2
+                is in neither: nothing in the app shows it to you and no button
+                copies it, so a copy of that one has to be asked for like the
+                rights below. The last two, that request, and anything else go
+                to whoever runs this copy &mdash; section 13 says how to reach
+                them.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1777,8 +1780,8 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 Most of what people write to a privacy address to ask for, you
                 can simply do. Exporting everything you have entered and
-                bringing a logbook back in are buttons on the Import and Export
-                page, and deleting your account is one in Settings; they work
+                bringing a logbook back in are buttons on the Export and Import
+                pages, and deleting your account is one in Settings; they work
                 immediately, they need nobody&rsquo;s approval, and no request
                 has to be sent to anyone.
               </p>
