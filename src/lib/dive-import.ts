@@ -259,7 +259,7 @@ export function fillMixture(
  * The form fills only where the API would pair the same rows when the file is
  * attached: whatever the form writes is saved first, and the API's fill then
  * finds it set. The API pairs by mix, then by order, so position is taken as
- * the pairing only where it lines up with that (`linesUp`). Past that, a
+ * the pairing only where it gives the same pairs (`pairedByMix`). Past that, a
  * pair made by position is a guess a later file naming the mixes could undo,
  * so it fills only where the row records nothing the cylinder does not, or
  * where it is the one row left meeting the one cylinder left. The API pairs
@@ -271,11 +271,9 @@ export function fillMixtures(
   parsed: ParsedDiveMixture[],
   existing: DiveMixtureInput[],
 ): DiveMixtureInput[] | null {
-  if (!linesUp(parsed, existing)) return null;
+  const byMix = pairedByMix(parsed, existing);
+  if (!byMix) return null;
 
-  const byMix = parsed.map((cylinder, index) =>
-    sameMix(existing[index], cylinder),
-  );
   const lastLeft = byMix.filter((paired) => !paired).length === 1;
   const fills = parsed.map(
     (cylinder, index) =>
@@ -285,24 +283,29 @@ export function fillMixtures(
   const filled = parsed.map((cylinder, index) =>
     fills[index] ? fillMixture(cylinder, existing[index]) : existing[index],
   );
-  return linesUp(parsed, filled) ? filled : null;
+  return pairedByMix(parsed, filled) ? filled : null;
 }
 
-// Whether the API's mix-then-order pairing gives each cylinder the row at its
-// own position: equal counts, no position pair recording two different
-// fractions, and no cylinder's mix another row's.
-function linesUp(
+// The API's pairing run over the form's rows - each cylinder takes the first
+// row left with its mix, and the rest pair in order - answering which
+// positions it pairs by mix, or `null` where it pairs any cylinder off its own
+// position, or pairs two that record different fractions.
+function pairedByMix(
   parsed: ParsedDiveMixture[],
   rows: DiveMixtureInput[],
-): boolean {
-  return (
-    rows.length === parsed.length &&
-    parsed.every(
-      (cylinder, index) =>
-        !mixesDisagree(rows[index], cylinder) &&
-        rows.every((row, other) => other === index || !sameMix(row, cylinder)),
-    )
-  );
+): boolean[] | null {
+  if (rows.length !== parsed.length) return null;
+  if (parsed.some((cylinder, index) => mixesDisagree(rows[index], cylinder)))
+    return null;
+  const remaining = rows.map((_, index) => index);
+  const byMix: boolean[] = [];
+  for (const [index, cylinder] of parsed.entries()) {
+    const match = remaining.find((row) => sameMix(rows[row], cylinder));
+    if (match !== undefined && match !== index) return null;
+    if (match !== undefined) remaining.splice(remaining.indexOf(match), 1);
+    byMix.push(match !== undefined);
+  }
+  return byMix;
 }
 
 // A form member as the API would read it: `""`, `undefined` and a cleared

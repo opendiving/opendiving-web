@@ -634,3 +634,34 @@ describe("a later file's fill that would re-pair the rows it fills", () => {
     ).toBeUndefined();
   });
 });
+
+describe("a later file's cylinders sharing one mix", () => {
+  it("fills two blank rows from two air cylinders, which the API pairs in order", () => {
+    const filled = fillOnto(
+      [blankRow(), blankRow()],
+      [
+        parsed({ oxygen: 21, helium: 0, start_pressure: 200 }),
+        parsed({ oxygen: 21, helium: 0, start_pressure: 190 }),
+      ],
+    );
+
+    expect(filled?.map((row) => [row.oxygen, row.start_pressure])).toEqual([
+      [21, 200],
+      [21, 190],
+    ]);
+  });
+
+  it("fills none where the API would give a shared mix's first row to a later cylinder", () => {
+    // The first cylinder records no mix, so the API gives the second the first
+    // row recording 21 % - the form's first, not its second.
+    expect(
+      fillOnto(
+        [
+          blankRow({ oxygen: 21, helium: 0 }),
+          blankRow({ oxygen: 21, helium: 0 }),
+        ],
+        [parsed({ start_pressure: 200 }), parsed({ oxygen: 21, helium: 0 })],
+      ),
+    ).toBeUndefined();
+  });
+});
