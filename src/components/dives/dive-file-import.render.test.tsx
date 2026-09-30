@@ -139,7 +139,7 @@ describe("DiveFileImport", () => {
     expect(fileInput()).toHaveAttribute("multiple");
   });
 
-  it("offers the dive-computer formats logbook import offers, and not its archive or document", () => {
+  it("offers the dive-computer formats the converter reads, and not a zip or a DiveJSON document", () => {
     render(<Harness />);
 
     // One dive in any format the import reads - but the parse route refuses a
