@@ -138,19 +138,18 @@ export function TripCard({
         </div>
       )}
       {/* Named per trip, as every list's row actions are. It sits as far in
-          from the corner as the credit does, and its hover takes the credit's
-          chip rather than a colour the map would swallow. Its icon is lifted
-          off the map by an upright oval of the card's colour, the icon's own
-          shape, drawn as a gradient: `drop-shadow`s strong enough to do it
-          have to be chained, each blurring the last one's 8-bit output, and
-          the halo they make comes out in visible rings. A gradient is drawn
-          in one pass and is smooth. */}
+          from the corner as the credit does, its hover takes the credit's chip
+          rather than a colour the map would swallow, and its icon glows as the
+          details' text does - through a filter, since `text-shadow` stops at
+          an SVG. Two close layers, as the text's: `drop-shadow`s chain, each
+          blurring the last one's 8-bit output, and more of them drew the halo
+          in visible rings. */}
       <div className="absolute right-1 top-1 z-10">
         <ItemActionsMenu
           label={`Actions for ${trip.name}`}
           variant="ghost"
           size="sm"
-          className="relative isolate hover:bg-background/80 before:pointer-events-none before:absolute before:inset-y-0 before:inset-x-2 before:-z-10 before:bg-[radial-gradient(closest-side,var(--trip-card),transparent)] before:opacity-50 hover:before:opacity-0"
+          className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_2px_var(--trip-card))_drop-shadow(0_0_5px_var(--trip-card))]"
         >
           <DropdownMenuItem onSelect={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
