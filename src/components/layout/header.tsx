@@ -33,8 +33,8 @@ import {
   BookUser,
   Users,
   Fish,
-  Upload,
-  Download,
+  CloudUpload,
+  CloudDownload,
   Shield,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -387,13 +387,13 @@ export function Header() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href="/import" className="flex items-center">
-                        <Upload className="mr-2 h-4 w-4" />
+                        <CloudUpload className="mr-2 h-4 w-4" />
                         Import
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/data" className="flex items-center">
-                        <Download className="mr-2 h-4 w-4" />
+                        <CloudDownload className="mr-2 h-4 w-4" />
                         Export
                       </Link>
                     </DropdownMenuItem>
