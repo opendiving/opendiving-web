@@ -43,25 +43,19 @@ interface PictureSlotProps {
   onChange: (edit: PictureEdit | null) => void;
 }
 
-// How wide each picture is drawn. The portrait is twice the avatar: it is the one a
-// desk compares with a face, and 80px is too small to judge a crop by.
-const PICTURE_WIDTH: Record<PictureKind, string> = {
-  avatar: "w-20",
-  portrait: "w-40",
-};
+// How wide either picture is drawn - one width, so the two settings cards line up. 80px
+// is too small to judge a crop by, and the portrait is the one a desk compares with a
+// face.
+const PICTURE_WIDTH = "w-40";
+const AVATAR_SIZE = 160;
 
 // Where the bin sits. On a phone, on the picture's top-right corner: beside the
 // picture, Replace, Adjust and the bin need more than a 375px screen leaves. From
-// `sm`, back in the button row. The `left-*` is the picture's width less the 28px
-// badge and a 4px inset - 80px for the avatar, 160px for the portrait. One element
-// rather than a copy in each place, because `hidden` is only CSS and a test would
-// find both.
-const BIN_ON_PICTURE: Record<PictureKind, string> = {
-  avatar: "left-12",
-  portrait: "left-32",
-};
+// `sm`, back in the button row. `left-32` is the picture's 160px less the 28px badge
+// and a 4px inset. One element rather than a copy in each place, because `hidden` is
+// only CSS and a test would find both.
 const BIN =
-  "absolute top-1 z-10 h-7 w-7 rounded-full border bg-background/80 p-0 shadow-sm sm:static sm:h-9 sm:w-auto sm:rounded-md sm:border-0 sm:bg-transparent sm:px-3 sm:shadow-none";
+  "absolute left-32 top-1 z-10 h-7 w-7 rounded-full border bg-background/80 p-0 shadow-sm sm:static sm:h-9 sm:w-auto sm:rounded-md sm:border-0 sm:bg-transparent sm:px-3 sm:shadow-none";
 
 /**
  * One picture as its form shows it: what it holds, what saving will do to it, and the
@@ -97,7 +91,7 @@ export function PictureSlot({
       <p className="text-sm font-medium">{HEADING[picture]}</p>
 
       {/* `relative` is what the bin is placed against on a phone - see
-          `BIN_ON_PICTURE`. */}
+          `BIN`. */}
       <div className="relative flex items-start gap-4">
         {pending ? (
           <PendingPreview picture={picture} edit={pending} />
@@ -105,19 +99,19 @@ export function PictureSlot({
           <UserAvatar
             name={name}
             avatarSha={shown}
-            size={80}
-            className="h-20 w-20"
+            size={AVATAR_SIZE}
+            className="shrink-0"
           />
         ) : shown ? (
           <PortraitImage
             name={name}
             portraitSha={shown}
-            className={cn(PICTURE_WIDTH.portrait, "shrink-0")}
+            className={cn(PICTURE_WIDTH, "shrink-0")}
           />
         ) : (
           <PortraitFrame
             empty
-            className={cn(PICTURE_WIDTH.portrait, "shrink-0")}
+            className={cn(PICTURE_WIDTH, "shrink-0")}
             role="img"
             aria-label="No portrait"
           >
@@ -188,7 +182,7 @@ export function PictureSlot({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className={cn(BIN, BIN_ON_PICTURE[picture])}
+                  className={BIN}
                   disabled={disabled}
                   onClick={() => onChange(null)}
                 >
@@ -208,7 +202,7 @@ export function PictureSlot({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className={cn(BIN, BIN_ON_PICTURE[picture])}
+                    className={BIN}
                     disabled={disabled}
                     // A pending edit is dropped rather than marked: the stored
                     // picture it would have replaced comes back into view.
@@ -299,11 +293,16 @@ function PendingPreview({
   );
 
   return picture === "avatar" ? (
-    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-muted">
+    <div
+      className={cn(
+        PICTURE_WIDTH,
+        "relative aspect-square shrink-0 overflow-hidden rounded-full bg-muted",
+      )}
+    >
       {image}
     </div>
   ) : (
-    <PortraitFrame className={cn(PICTURE_WIDTH.portrait, "shrink-0")}>
+    <PortraitFrame className={cn(PICTURE_WIDTH, "shrink-0")}>
       {image}
     </PortraitFrame>
   );
