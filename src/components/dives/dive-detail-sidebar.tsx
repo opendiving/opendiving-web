@@ -47,7 +47,6 @@ import {
   Thermometer,
   ThermometerSun,
   Waves,
-  WavesArrowDown,
   WavesArrowUp,
   Wind,
   type LucideIcon,
@@ -275,11 +274,8 @@ export function DiveDetailSidebar({
                 <div className="text-sm font-medium text-muted-foreground mb-1">
                   Entry Type
                 </div>
-                <div className="flex items-start gap-2 text-sm">
-                  <WavesArrowDown className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                  <span className="min-w-0 font-medium">
-                    {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
-                  </span>
+                <div className="text-sm">
+                  {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
                 </div>
               </div>
             )}
