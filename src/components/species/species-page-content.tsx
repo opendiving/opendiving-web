@@ -96,7 +96,9 @@ export function SpeciesPageContent() {
 
   const fetchSpecies = useCallback(
     (page: number, perPage: number) =>
-      speciesAPI.getLifeList(page, perPage, search || undefined),
+      speciesAPI.getLifeList(page, perPage, {
+        search: search || undefined,
+      }),
     [search],
   );
 

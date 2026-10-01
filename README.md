@@ -31,10 +31,10 @@ one.
 - **Dive logging** — times, depths, duration, the kind of dive, water and air temperature,
   visibility, water type, altitude, current, waves, weather, how you got in and the boat you dived
   from, weight, notes, your own rating out of five, and any number of gas mixtures (O₂/He, start/end
-  pressures) per dive. File dives under tags of your own words, then filter the log by a tag or by
-  the kind of dive, or read it best-rated first. A dive can span multiple dive sites (drift dives
-  happen), in order. Switch off the fields you never fill in and save the arrangement as a named set
-  — the choice follows your account, not the device.
+  pressures) per dive. File dives and dive sites under tags of your own words, then filter the log
+  by a tag or by the kind of dive, or read it best-rated first. A dive can span multiple dive sites
+  (drift dives happen), in order. Switch off the fields you never fill in and save the arrangement
+  as a named set — the choice follows your account, not the device.
 - **Technical diving** — trimix and nitrox mixes get derived gas names and per-mix **MOD** at your
   ppO₂ limit, plus END/EAD; the profile chart shades the **deco ceiling**, plots the computer's own
   **NDL, TTS, ppO₂, CNS and gradient factors** and marks dive events; each recording says the mode
@@ -57,7 +57,12 @@ one.
   across recorded gas switches on multi-tank dives, with a consumption trend chart on the dashboard.
 - **Trips** — group dives into a liveaboard or a holiday week, a part at a time: each part carries
   its own place and its own dates, and the trip spans them all.
-- **Dive sites** — your personal site list, with every dive you've logged at each site.
+- **Dive sites** — your personal site list: the other names a site goes by, the depths it is dived
+  at, its water, its altitude and how you get in, your own tags, and its OpenStreetMap or Wikidata
+  entry when you pick it from the built-in catalogue of named sites. A site's page sums up your
+  dives there — how many, the last and the deepest, the species you saw and your average rating —
+  beside every dive you've logged at it, and a dive logged there starts from its water, altitude and
+  entry. Sort the list by name, by dives or by the last dive, and filter it by a tag.
 - **Gear tracking** — your equipment with per-item dive counts, groupable into gear sets you can
   attach to a dive in one click, plus **service schedules** (annual service, visual inspection,
   hydro test…) with due-soon reminders under the notifications bell and by email.

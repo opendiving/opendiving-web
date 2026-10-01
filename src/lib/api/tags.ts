@@ -8,18 +8,20 @@ import type { PaginatedResponse } from "./client";
 export const TAG_NAME_MAX = 64;
 
 /**
- * One of the diver's tags - a word they file dives under, and the vocabulary the
- * dive form's picker completes from.
+ * One of the diver's tags - a word they file dives and dive sites under, and the
+ * one vocabulary the dive form's and the site form's pickers complete from.
  *
- * A record rather than a string on each dive, so a rename reaches every dive
- * carrying it and the list can filter by one. It stays when its last dive drops
- * it: `dive_count` may be zero, and only a delete removes it.
+ * A record rather than a string on each dive or site, so a rename reaches every
+ * one carrying it and either list can filter by one. It stays when the last of
+ * them drops it: both counts may be zero, and only a delete removes it.
  */
 export interface Tag {
   uuid: string;
   name: string;
   /** Live dives carrying it. */
   dive_count: number;
+  /** Dive sites carrying it. */
+  site_count: number;
   created_at: string;
   updated_at?: string | null;
 }
@@ -27,8 +29,8 @@ export interface Tag {
 export type PaginatedTagsResponse = PaginatedResponse<Tag>;
 
 /**
- * Tag reads, renames and deletes. There is no create: a dive write names its
- * tags and creates the ones the diver lacks. Every call is scoped to the
+ * Tag reads, renames and deletes. There is no create: a dive or site write names
+ * its tags and creates the ones the diver lacks. Every call is scoped to the
  * signed-in user by the API.
  */
 export const tagsAPI = {
@@ -52,9 +54,10 @@ export const tagsAPI = {
   },
 
   /**
-   * Rename a tag; every dive carrying it carries the new name. The API trims the
-   * name, and one another of the diver's tags has once both are case-folded is a
-   * 422 naming the clash. A change of case alone is a rename like any other.
+   * Rename a tag; every dive and site carrying it carries the new name. The API
+   * trims the name, and one another of the diver's tags has once both are
+   * case-folded is a 422 naming the clash. A change of case alone is a rename like
+   * any other.
    */
   async renameTag(tagUuid: string, name: string): Promise<{ message: string }> {
     const response = await apiClient.patch(`/tag/${tagUuid}`, { name });
@@ -62,8 +65,8 @@ export const tagsAPI = {
   },
 
   /**
-   * Delete a tag. It leaves every dive that carried it, and nothing else about
-   * those dives changes. A second delete on the same uuid is a 404.
+   * Delete a tag. It leaves every dive and site that carried it, and nothing else
+   * about them changes. A second delete on the same uuid is a 404.
    */
   async deleteTag(tagUuid: string): Promise<{ message: string }> {
     const response = await apiClient.delete(`/tag/${tagUuid}`);
@@ -72,8 +75,8 @@ export const tagsAPI = {
 };
 
 /**
- * Every tag the diver has, for the surfaces that offer them whole - the dive
- * form's picker, the dive list's filter and the Tags card. A diver keeps a
+ * Every tag the diver has, for the surfaces that offer them whole - the dive and
+ * site forms' picker, the dive and site lists' filters and the Tags card. A diver keeps a
  * handful, so this is one request for anyone realistic, and it stops at
  * `fetchAllPages`' ceiling with a warning as the people read does.
  */

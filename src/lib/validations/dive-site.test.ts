@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { NOTES_MAX_LENGTH } from "./notes";
 import {
   diveSiteFormSchema,
+  diveSiteFormValues,
+  diveSiteMembersFromForm,
   formatCoordinateForForm,
   formatCoordinates,
   parseCoordinatePair,
@@ -275,6 +277,152 @@ describe("parseCoordinatePair", () => {
     expect(parseCoordinatePair("27.8506,34.3136")).toEqual({
       latitude: "27.8506",
       longitude: "34.3136",
+    });
+  });
+});
+
+describe("diveSiteFormSchema members", () => {
+  const site = (fields: Record<string, unknown>) => ({
+    name: "Blue Hole",
+    ...fields,
+  });
+
+  it("accepts a depth range with its shallow end first, or either end alone", () => {
+    for (const range of [
+      { depth_from: 5, depth_to: 30 },
+      { depth_from: 12, depth_to: 12 },
+      { depth_from: 5, depth_to: null },
+      { depth_from: null, depth_to: 30 },
+    ]) {
+      expect(diveSiteFormSchema.safeParse(site(range)).success).toBe(true);
+    }
+  });
+
+  it("refuses a range whose deep end is shallower, on the deep end", () => {
+    const result = diveSiteFormSchema.safeParse(
+      site({ depth_from: 30, depth_to: 5 }),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toEqual(["depth_to"]);
+  });
+
+  it("refuses a depth below the surface", () => {
+    expect(diveSiteFormSchema.safeParse(site({ depth_from: -1 })).success).toBe(
+      false,
+    );
+  });
+
+  it("holds the altitude to the dive's band, in whole metres", () => {
+    expect(diveSiteFormSchema.safeParse(site({ altitude: -430 })).success).toBe(
+      true,
+    );
+    expect(diveSiteFormSchema.safeParse(site({ altitude: 6501 })).success).toBe(
+      false,
+    );
+    expect(
+      diveSiteFormSchema.safeParse(site({ altitude: 372.5 })).success,
+    ).toBe(false);
+  });
+
+  it("takes the dive's vocabularies for the water and the entry", () => {
+    expect(
+      diveSiteFormSchema.safeParse(
+        site({ water_type: "fresh", entry_types: ["shore", "boat"] }),
+      ).success,
+    ).toBe(true);
+    expect(
+      diveSiteFormSchema.safeParse(site({ entry_types: ["jetty"] })).success,
+    ).toBe(false);
+  });
+});
+
+describe("diveSiteFormValues", () => {
+  const STORED = {
+    uuid: "site-1",
+    name: "Sunabe Seawall",
+    other_names: ["砂辺"],
+    external_ids: [{ registry: "openstreetmap", identifier: "node/1" }],
+    depth_from: 3,
+    depth_to: 18,
+    water_type: "salt",
+    altitude: 2,
+    entry_types: ["shore"],
+    tags: ["shore dive"],
+    notes: "Ladders every 100 m",
+    user_uuid: "user-1",
+    created_at: "2026-01-01T00:00:00Z",
+  };
+
+  it("opens on what the site holds", () => {
+    expect(diveSiteFormValues(STORED)).toMatchObject({
+      name: "Sunabe Seawall",
+      other_names: ["砂辺"],
+      external_ids: STORED.external_ids,
+      depth_from: 3,
+      depth_to: 18,
+      water_type: "salt",
+      altitude: 2,
+      entry_types: ["shore"],
+      tags: ["shore dive"],
+      notes: "Ladders every 100 m",
+    });
+  });
+
+  it("opens on a clean slate with no site", () => {
+    expect(diveSiteFormValues(null)).toMatchObject({
+      name: "",
+      other_names: [],
+      external_ids: [],
+      depth_from: null,
+      depth_to: null,
+      water_type: "",
+      altitude: null,
+      entry_types: [],
+      tags: [],
+    });
+  });
+
+  // A stored vocabulary this build does not know is read as absent.
+  it("reads a water type or an entry type it does not know as absent", () => {
+    expect(
+      diveSiteFormValues({
+        ...STORED,
+        water_type: "hypersaline",
+        entry_types: ["shore", "hovercraft"],
+      }),
+    ).toMatchObject({ water_type: "", entry_types: ["shore"] });
+  });
+});
+
+describe("diveSiteMembersFromForm", () => {
+  it("drops a blank name box and trims the rest", () => {
+    expect(
+      diveSiteMembersFromForm({
+        name: "Blue Hole",
+        other_names: [" El Bells ", "", "   "],
+      }).other_names,
+    ).toEqual(["El Bells"]);
+  });
+
+  // An edit sends every member, so a cleared one has to say so.
+  it("sends a cleared scalar as an explicit null and an empty list as []", () => {
+    expect(
+      diveSiteMembersFromForm({
+        name: "Blue Hole",
+        water_type: "",
+        depth_from: null,
+        altitude: null,
+      }),
+    ).toEqual({
+      other_names: [],
+      external_ids: [],
+      depth_from: null,
+      depth_to: null,
+      water_type: null,
+      altitude: null,
+      entry_types: [],
+      tags: [],
     });
   });
 });

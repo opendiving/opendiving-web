@@ -15,10 +15,10 @@ export interface TagsState {
 }
 
 /**
- * Every tag the diver has, read whole - the picker, the list's filter and the
+ * Every tag the diver has, read whole - the picker, the lists' filters and the
  * Tags card each offer the lot, and a diver keeps a handful.
  *
- * `enabled` is whether anything on screen wants them yet: the list's filter is
+ * `enabled` is whether anything on screen wants them yet: a list's filter is
  * behind a button, so most visits to it never need this request. It is read once
  * and kept; `reload` reads it again after a rename or a delete.
  */

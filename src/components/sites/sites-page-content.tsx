@@ -4,7 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useTags } from "@/hooks/useTags";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { formatDateOnly } from "@/lib/date-time";
+import {
+  NO_SITE_FILTERS,
+  type DiveSiteListFilters,
+} from "@/components/sites/sites-filters";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { SitesPageFrame } from "@/components/sites/sites-page-frame";
@@ -34,6 +40,10 @@ export function SitesPageContent() {
   // what keeps the debounce off the input's own responsiveness.
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<DiveSiteListFilters>(NO_SITE_FILTERS);
+  // The tags are read the first time the filter panel opens, not on arrival.
+  const [wantsTags, setWantsTags] = useState(false);
+  const { tags } = useTags(!!user && wantsTags);
 
   useEffect(() => {
     const timer = setTimeout(
@@ -43,18 +53,23 @@ export function SitesPageContent() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // One term against both columns: the API matches it on the site's name and on
-  // its location, which is the same query the dive form's site picker runs.
+  // One term against the name, the other names and the location, which is the
+  // same query the dive form's site picker runs, narrowed by the tag and put in
+  // the panel's order.
   const fetchDiveSites = useCallback(
     (page: number, perPage: number) =>
-      diveSitesAPI.getDiveSites(page, perPage, search || undefined),
-    [search],
+      diveSitesAPI.getDiveSites(page, perPage, {
+        search: search || undefined,
+        tagUuid: filters.tagUuid || undefined,
+        sort: filters.sort,
+      }),
+    [search, filters],
   );
 
-  // Changing the search term changes this callback's identity, which is what
-  // makes `useInfiniteResource` throw away every page it has loaded and read the
-  // new query from the first - rows of the unsearched list are not rows of the
-  // searched one, however many of them are already on screen.
+  // Changing the search term, the tag or the order changes this callback's
+  // identity, which is what makes `useInfiniteResource` throw away every page it
+  // has loaded and read the new query from the first - rows of one query are not
+  // rows of another, however many of them are already on screen.
   const {
     items: diveSites,
     isLoading: isLoadingDiveSites,
@@ -70,7 +85,7 @@ export function SitesPageContent() {
   } = useInfiniteResource<DiveSite>(fetchDiveSites, {
     keyOf: (site) => site.uuid,
     enabled: !!user,
-    isNarrowed: search.length > 0,
+    isNarrowed: search.length > 0 || Boolean(filters.tagUuid),
     errorMessage: "Failed to load dive sites. Please try again.",
   });
 
@@ -112,6 +127,10 @@ export function SitesPageContent() {
         onSearchChange={setSearchInput}
         isSearching={search.length > 0}
         onNew={() => openCreate("site")}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onFiltersOpened={() => setWantsTags(true)}
+        tags={tags ?? undefined}
         rows={diveSites.map((diveSite) => (
           <TableRow key={diveSite.uuid}>
             <TableCell className="font-medium">
@@ -123,6 +142,14 @@ export function SitesPageContent() {
               </Link>
             </TableCell>
             <TableCell>{diveSite.location?.name || "-"}</TableCell>
+            <TableCell className="text-right tabular-nums">
+              {diveSite.dive_count ?? 0}
+            </TableCell>
+            <TableCell className="whitespace-nowrap">
+              {diveSite.last_dived_on
+                ? formatDateOnly(diveSite.last_dived_on)
+                : "-"}
+            </TableCell>
             <TableCell className="text-right">
               {/* Named per row, not per action: ten identical "Edit"s tell a
                           screen reader's controls list nothing about which site.

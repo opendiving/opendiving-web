@@ -24,6 +24,7 @@ import {
   type Dive,
 } from "@/lib/api/dives";
 import type { Tag } from "@/lib/api/tags";
+import type { DiveSite } from "@/lib/api/dive-sites";
 import type { Species } from "@/lib/api/species";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
@@ -118,7 +119,7 @@ vi.mock("@/lib/api/trips", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/trips")>();
   return {
     ...actual,
-    tripsAPI: { ...actual.tripsAPI, getTrips: vi.fn() },
+    tripsAPI: { ...actual.tripsAPI, getTrips: vi.fn(), getTrip: vi.fn() },
   };
 });
 
@@ -126,7 +127,11 @@ vi.mock("@/lib/api/dive-sites", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/dive-sites")>();
   return {
     ...actual,
-    diveSitesAPI: { ...actual.diveSitesAPI, getDiveSites: vi.fn() },
+    diveSitesAPI: {
+      ...actual.diveSitesAPI,
+      getDiveSites: vi.fn(),
+      getDiveSite: vi.fn(),
+    },
   };
 });
 
@@ -311,6 +316,7 @@ const tagNamed = (uuid: string, name: string, dive_count = 1): Tag => ({
   uuid,
   name,
   dive_count,
+  site_count: 0,
   created_at: "2026-01-01T00:00:00Z",
 });
 
@@ -335,6 +341,12 @@ beforeEach(() => {
   });
   vi.mocked(divesAPI.createDive).mockResolvedValue(storedDive());
   vi.mocked(tripsAPI.getTrips).mockResolvedValue(emptyPage());
+  vi.mocked(tripsAPI.getTrip).mockImplementation(
+    async (uuid) =>
+      ({ uuid, name: "Red Sea Week" }) as Awaited<
+        ReturnType<typeof tripsAPI.getTrip>
+      >,
+  );
   vi.mocked(diveSitesAPI.getDiveSites).mockResolvedValue(emptyPage());
   vi.mocked(gear.fetchAllGearSets).mockResolvedValue([]);
   vi.mocked(gear.gearAPI.getGearItems).mockResolvedValue(emptyPage());
@@ -2537,4 +2549,240 @@ describe("hiding the species picker while it is still resolving a pick", () => {
       expect(screen.getByRole("button", { name: /log dive/i })).toBeEnabled(),
     );
   });
+});
+
+// ---------------------------------------------------------------------------
+//
+// A picked site's water, altitude and entry. The page's seam again: what the form
+// holds after the last dive's prefill and the primary site's values have both had
+// their say, in whichever order they land.
+
+describe("the primary site's water, altitude and entry", () => {
+  const site = (
+    uuid: string,
+    name: string,
+    overrides: Partial<DiveSite> = {},
+  ): DiveSite => ({
+    uuid,
+    name,
+    user_uuid: "user-1",
+    created_at: "2026-01-01T00:00:00Z",
+    ...overrides,
+  });
+  const LAKE = site("site-lake", "Blue Lake", {
+    water_type: "fresh",
+    altitude: 1800,
+    entry_types: ["shore"],
+  });
+  const PLAIN = site("site-plain", "Plain Reef");
+  const EITHER = site("site-either", "Either Way", {
+    entry_types: ["shore", "boat"],
+  });
+  const TARN = site("site-tarn", "High Tarn", { altitude: 2400 });
+  const SITES = [LAKE, PLAIN, EITHER, TARN];
+
+  // Salt water near sea level, off a named boat, on a trip.
+  const boatDive = () =>
+    lastDiveWith({
+      water_type: "salt",
+      altitude: 10,
+      entry_type: "boat",
+      boat_name: "Legend",
+      trip_uuid: "trip-1",
+    });
+
+  const waterType = () => screen.queryByLabelText(/^water type$/i);
+  const altitude = () => screen.getByRole("spinbutton", { name: /^altitude/i });
+  const entryType = () => screen.getByLabelText(/^entry type$/i);
+  const boatName = () => screen.queryByLabelText(/^boat name$/i);
+
+  const pickSite = async (name: string) => {
+    await userEvent.click(
+      screen.getByRole("combobox", { name: /^dive site/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: new RegExp(name) }),
+    );
+  };
+  const removeSite = (name: string) =>
+    userEvent.click(screen.getByRole("button", { name: `Remove ${name}` }));
+
+  // The prefill has landed once the last dive's boat is on screen.
+  const prefilled = () =>
+    waitFor(() => expect(boatName()).toHaveValue("Legend"));
+
+  const body = async () => {
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    return vi.mocked(divesAPI.createDive).mock.calls[0][0];
+  };
+
+  beforeEach(() => {
+    vi.mocked(diveSitesAPI.getDiveSites).mockResolvedValue({
+      ...emptyPage<DiveSite>(),
+      data: SITES,
+      total_count: SITES.length,
+    });
+    vi.mocked(diveSitesAPI.getDiveSite).mockImplementation(async (uuid) => {
+      const found = SITES.find((candidate) => candidate.uuid === uuid);
+      if (!found) throw new Error("not found");
+      return found;
+    });
+  });
+
+  it("takes the site's values, and the boat name goes with the boat", async () => {
+    boatDive();
+    render(<NewDivePage />);
+    await prefilled();
+
+    await pickSite("Blue Lake");
+
+    await waitFor(() => expect(waterType()).toHaveValue("fresh"));
+    expect(altitude()).toHaveValue(1800);
+    expect(entryType()).toHaveValue("shore");
+    expect(boatName()).not.toBeInTheDocument();
+
+    const sent = await body();
+    expect(sent.water_type).toBe("fresh");
+    expect(sent.altitude).toBe(1800);
+    expect(sent.entry_type).toBe("shore");
+    expect(sent.boat_name).toBeUndefined();
+  });
+
+  it("goes back to the last dive's when the site goes, or one that records none takes its place", async () => {
+    boatDive();
+    render(<NewDivePage />);
+    await prefilled();
+    await pickSite("Blue Lake");
+    await waitFor(() => expect(waterType()).toHaveValue("fresh"));
+
+    await removeSite("Blue Lake");
+
+    await waitFor(() => expect(waterType()).toHaveValue("salt"));
+    expect(altitude()).toHaveValue(10);
+    expect(entryType()).toHaveValue("boat");
+    expect(boatName()).toHaveValue("Legend");
+
+    await pickSite("Plain Reef");
+    await waitFor(() =>
+      expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-plain"),
+    );
+    expect(waterType()).toHaveValue("salt");
+    expect(boatName()).toHaveValue("Legend");
+  });
+
+  it("leaves a value the diver typed, whatever site follows", async () => {
+    boatDive();
+    render(<NewDivePage />);
+    await prefilled();
+    await pickSite("Blue Lake");
+    await waitFor(() => expect(altitude()).toHaveValue(1800));
+
+    fireEvent.change(altitude(), { target: { value: "1700" } });
+    await removeSite("Blue Lake");
+    await pickSite("High Tarn");
+    await waitFor(() =>
+      expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-tarn"),
+    );
+
+    expect(altitude()).toHaveValue(1700);
+  });
+
+  it("takes no entry from a site that names several", async () => {
+    boatDive();
+    render(<NewDivePage />);
+    await prefilled();
+
+    await pickSite("Either Way");
+    await waitFor(() =>
+      expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-either"),
+    );
+
+    expect(entryType()).toHaveValue("boat");
+    expect(boatName()).toHaveValue("Legend");
+  });
+
+  it("puts a hidden field back on screen with the site's value, and saves it", async () => {
+    boatDive();
+    stable.auth.user.dive_form_hidden_fields = ["water_type"];
+    render(<NewDivePage />);
+    await prefilled();
+    expect(waterType()).not.toBeInTheDocument();
+
+    await pickSite("Blue Lake");
+
+    await waitFor(() => expect(waterType()).toHaveValue("fresh"));
+    expect((await body()).water_type).toBe("fresh");
+    // This form's, never the account's.
+    expect(authAPI.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("keeps a hidden field hidden and empty for a site that gives it nothing", async () => {
+    boatDive();
+    stable.auth.user.dive_form_hidden_fields = ["water_type"];
+    render(<NewDivePage />);
+    await prefilled();
+
+    await pickSite("Plain Reef");
+    await waitFor(() =>
+      expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-plain"),
+    );
+
+    expect(waterType()).not.toBeInTheDocument();
+    expect((await body()).water_type).toBeUndefined();
+  });
+
+  // A site in the URL is a uuid at mount, so its read races the last dive's - and
+  // that prefill gives up on a dirty form, which a site written first would make it.
+  it.each([
+    ["the site's read lands first", true],
+    ["the last dive lands first", false],
+  ])(
+    "ends with a URL site's values and the last dive's trip when %s",
+    async (_, siteFirst) => {
+      stable.searchParams = new URLSearchParams("dive_site_uuid=site-lake");
+      boatDive();
+      // Each read waits on a gate, and every read made before or after its gate
+      // opens answers once it has.
+      const gate = () => {
+        let open = () => {};
+        const opened = new Promise<void>((resolve) => (open = resolve));
+        return { opened, open: () => act(async () => open()) };
+      };
+      const dive = gate();
+      const siteRead = gate();
+      vi.mocked(divesAPI.getDive).mockImplementation(async () => {
+        await dive.opened;
+        return storedDive({
+          water_type: "salt",
+          altitude: 10,
+          entry_type: "boat",
+          boat_name: "Legend",
+          trip_uuid: "trip-1",
+        });
+      });
+      vi.mocked(diveSitesAPI.getDiveSite).mockImplementation(async () => {
+        await siteRead.opened;
+        return LAKE;
+      });
+
+      render(<NewDivePage />);
+      await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
+      if (siteFirst) {
+        await siteRead.open();
+        await dive.open();
+      } else {
+        await dive.open();
+        await siteRead.open();
+      }
+
+      await waitFor(() => expect(waterType()).toHaveValue("fresh"));
+      expect(altitude()).toHaveValue(1800);
+      expect(entryType()).toHaveValue("shore");
+      const sent = await body();
+      expect(sent.trip_uuid).toBe("trip-1");
+      expect(sent.dive_site_uuids).toEqual(["site-lake"]);
+    },
+  );
 });

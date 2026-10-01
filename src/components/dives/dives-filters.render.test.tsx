@@ -23,12 +23,14 @@ const TAGS: Tag[] = [
     uuid: "tag-night",
     name: "night",
     dive_count: 3,
+    site_count: 0,
     created_at: "2026-01-01T00:00:00Z",
   },
   {
     uuid: "tag-wreck",
     name: "wreck",
     dive_count: 0,
+    site_count: 0,
     created_at: "2026-01-01T00:00:00Z",
   },
 ];

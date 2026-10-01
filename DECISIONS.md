@@ -1730,22 +1730,21 @@ single-line answer; 3px is a sliver of the next card.
 
 ## The dive-site shot cuts at the foot of one column, not at a seam
 
-Its two cards, one per column, finish together only at the page's bottom, and `cutBelow()` refuses
-both anchors with _"that card has no neighbour to measure the gap from"_. The image exists for the
-map in the sidebar card, so `CUT_AFTER_CARD` names it and the frame ends at its foot (gutter: the
-grid's `rowGap`).
+Its two columns finish together only at the page's bottom, so a seam frames most of the page. The
+image exists for the map in the sidebar's first card, so `CUT_AFTER_CARD` names it and the frame
+ends at its foot (gutter: the grid's `rowGap`).
 
 A card may be cut through; a row may not, since a line just above its border reads as clipped, so
 the cut moves down past any row it lands inside to the next row's top. Rows are bordered boxes with
 a bordered ancestor (`RecentDivesCard`'s `<li class="rounded-lg border">`); cards have none.
 
 The subject is the placed site with the most dives; a position is required, since `LocationsMap`
-renders nothing without coordinates. Dive count costs a scoped `/dives` request per placed site
-after paging `/dive-sites` (capped at 100).
+renders nothing without coordinates. `/dive-sites?sort=dive_count` is paged (capped at 100) to the
+first placed site.
 
 ## The gear frame's `HEIGHT` is the lever under the README row, written down rather than measured
 
-`gear-item`'s `HEIGHT` is 911, the one figure written down rather than measured: the README row sets
+`gear-item`'s `HEIGHT` is 718, the one figure written down rather than measured: the README row sets
 it, not the page, because `gear-item.png` stacks over `dive-site.png` beside `dive-detail.png` and
 the pair must come level.
 
@@ -1753,14 +1752,14 @@ Measured, not reasoned: the row's markdown through GitHub's `/markdown` API, sty
 `github-markdown-css`, with the committed PNGs in a doctype document (quirks mode collapses the line
 box). A `<br>` between stacked images adds 6px of unscaled descent.
 
-Every gutter-respecting stop overshoots (`cutBelow()` and `cutAfterCard()` both return 935), so 911,
-the foot of the _Service_ card, has none; the pair sums 2px short of the dive shot.
+718 is the foot of the sidebar's _Gear Information_ card, with no gutter. The exact balance, about
+700, falls between two lines of the _Service_ card's history; at 718 the pair ends 7px below the
+dive shot at every container width from 680 to 1012px, and every gutter-respecting stop overshoots
+further.
 
 `HEIGHT` stays a number and goes stale when `dive-detail` or `dive-site` is re-framed.
 `refuseSlicedRow()` throws before the shutter if the height lands inside a row; snapping to a gap
 would silently move the balanced height.
-
-Cutting the _Service_ card 12px short reaches the target but slices its border.
 
 ## The map is photographed to find out whether it drew
 
@@ -5267,10 +5266,11 @@ measures the container against the surface.
 come first; the `hint` slot, not a new `CreatableCombobox` prop, marks which is a site.
 
 A pick is `{ kind: "catalog", site }` or `{ kind: "geocode", result }`, and `DiveSiteDialog` forks
-on the tag, not on the namespaced row id. A catalog pick always fills Name; a geocoded one does not.
-Location is a place named `region, country`, never an ISO code, and nothing else — the record's
-coordinates are the site's, and the catalog resolved no centre or extent for the region it names.
-Where neither resolved, the field stays as it was, so `adopt` takes `AdoptedPlace | null`.
+on the tag, not on the namespaced row id. A catalog pick fills Name and adds the row's registry
+entry (`pickExternalId`), once any site the diver already holds for it has been offered; a geocoded
+one does neither. Location is a place named `region, country`, never an ISO code, and nothing else —
+the record's coordinates are the site's, and the catalog resolved no centre or extent for the region
+it names. Where neither resolved, the field stays as it was, so `adopt` takes `AdoptedPlace | null`.
 `suggestDiveSites` guards its own query length because the combobox calls `onSearch` with `""` on
 open. Distance is computed here (`haversineMeters`, `formatDistance`) so the unit preference holds.
 Catalog `attribution` joins the search credit, never the map's. `DiveSiteMapField` passes the form's
@@ -5850,10 +5850,11 @@ A value from outside the diver's typing reveals its field for that form only, ne
 set: the edit form's load, a parsed dive file (`DiveFileImport`'s `onValuesApplied`), a gear set
 with a weight (`DiveGearField`'s `onSetApplied`), the new form's mount for a URL trip, site or
 course. Each ends in `revealNonEmpty` or `reveal`, making the key the diver's, so hiding keeps its
-value — except a course's contact, which `autofill` reveals as the layer's own write.
+value — except a course's contact and a picked site's water type, altitude and entry type, which
+`autofill` reveals as the layer's own write.
 
-Non-empty means not `undefined`, `null`, `""` or `[]`; `0` is a value. The last-dive prefill touches
-only visible keys.
+Non-empty means not `undefined`, `null`, `""` or `[]`; `0` is a value. The last-dive prefill, and
+`restore` putting it back after a site, touch only visible keys.
 
 A failed submit reveals too: the resolver validates hidden fields, so `handleSubmit`'s invalid
 branch reveals every erroring key and focuses the first hidden one, else the save blocks with no

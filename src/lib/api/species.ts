@@ -283,11 +283,16 @@ export const speciesAPI = {
    * Counts live dives only, so `total_count` equals the `species_seen` on
    * `getDiveStats()` for the same account, and soft-deleting the only dive that
    * recorded a species drops it from both.
+   *
+   * `diveSiteUuid` keeps the species sighted on dives naming that site at any
+   * position - as the site's summary counts them, so the list is as long as its
+   * `species_count` - with each row's figures over those dives alone. A site not
+   * the caller's answers an empty page.
    */
   async getLifeList(
     page: number = 1,
     items_per_page: number = 10,
-    search?: string,
+    { search, diveSiteUuid }: { search?: string; diveSiteUuid?: string } = {},
   ): Promise<PaginatedResponse<SpeciesLifeListEntry>> {
     const response = await apiClient.get<
       PaginatedResponse<SpeciesLifeListEntry>
@@ -296,6 +301,7 @@ export const speciesAPI = {
         page,
         items_per_page,
         ...(search ? { search } : {}),
+        ...(diveSiteUuid ? { dive_site_uuid: diveSiteUuid } : {}),
       },
     });
     return response.data;

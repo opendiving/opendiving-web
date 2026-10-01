@@ -23,6 +23,8 @@ const THISTLEGORM: DiveSiteSuggestion = {
   region: "South Sinai",
   source: "osm",
   source_id: "node/255316037",
+  external_id: { registry: "openstreetmap", identifier: "node/255316037" },
+  held_site: null,
   attribution:
     "[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)",
 };

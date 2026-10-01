@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { SitesPageFrame } from "./sites-page-frame";
+import { NO_SITE_FILTERS } from "./sites-filters";
 
 // Three things the search costs the frame: the box shares the card's header row
 // with the count, a list searched down to nothing is not an empty one, and a
@@ -117,6 +118,88 @@ describe("SitesPageFrame", () => {
 
     expect(
       within(header()).getByLabelText("Search dive sites by name or location"),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("SitesPageFrame filters", () => {
+  const TAGS = [
+    {
+      uuid: "tag-wreck",
+      name: "wreck",
+      dive_count: 4,
+      site_count: 2,
+      created_at: "2026-01-01T00:00:00Z",
+    },
+  ];
+  const openPanel = () =>
+    userEvent.click(
+      screen.getByRole("button", { name: "Filter and sort dive sites" }),
+    );
+
+  it("reads the tags the first time the panel opens, and reports a tag and an order", async () => {
+    const onFiltersOpened = vi.fn();
+    const onFiltersChange = vi.fn();
+    frame({
+      rows: [<tr key="t" />],
+      tags: TAGS,
+      onFiltersOpened,
+      onFiltersChange,
+    });
+
+    await openPanel();
+    expect(onFiltersOpened).toHaveBeenCalled();
+    await userEvent.selectOptions(screen.getByLabelText("Tag"), "tag-wreck");
+    expect(onFiltersChange).toHaveBeenLastCalledWith({
+      ...NO_SITE_FILTERS,
+      tagUuid: "tag-wreck",
+    });
+    await userEvent.selectOptions(
+      screen.getByLabelText("Sort"),
+      "Most recently dived first",
+    );
+    expect(onFiltersChange).toHaveBeenLastCalledWith({
+      ...NO_SITE_FILTERS,
+      sort: "last_dived_on",
+    });
+  });
+
+  // A folded row must never narrow or reorder the list unseen.
+  it("clears the tag and the order when the panel is shut", async () => {
+    const onFiltersChange = vi.fn();
+    frame({
+      rows: [<tr key="t" />],
+      filters: { tagUuid: "tag-wreck", sort: "dive_count" },
+      onFiltersChange,
+    });
+
+    await openPanel();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close filters, clearing them" }),
+    );
+
+    expect(onFiltersChange).toHaveBeenLastCalledWith(NO_SITE_FILTERS);
+  });
+
+  it("says a list filtered by a tag matched nothing, and offers nothing to add", () => {
+    frame({ filters: { tagUuid: "tag-wreck", sort: "name" } });
+
+    expect(
+      screen.getByText("No dive sites match those filters."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Add your first dive site/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("heads a column for each site's dives and its last dive", () => {
+    frame({ totalCount: 1, rows: [<tr key="t" />] });
+
+    expect(
+      screen.getByRole("columnheader", { name: "Dives" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Last dive" }),
     ).toBeInTheDocument();
   });
 });

@@ -37,6 +37,7 @@ const tag = (uuid: string, name: string, dive_count: number): Tag => ({
   uuid,
   name,
   dive_count,
+  site_count: 0,
   created_at: "2026-01-01T00:00:00Z",
 });
 
@@ -58,6 +59,18 @@ describe("TagsCard", () => {
     expect(
       screen.getAllByRole("listitem").map((item) => item.textContent),
     ).toEqual(["drift · 0 dives", "night · 1 dive"]);
+  });
+
+  // A tag on sites alone is in use, not a leftover.
+  it("counts the sites carrying a tag beside its dives", async () => {
+    vi.mocked(fetchAllTags).mockResolvedValue([
+      { ...tag("tag-wreck", "wreck", 0), site_count: 2 },
+      NIGHT,
+    ]);
+    render(<TagsCard />);
+
+    expect(await screen.findByText("· 0 dives, 2 sites")).toBeInTheDocument();
+    expect(screen.getByText("· 1 dive")).toBeInTheDocument();
   });
 
   it("says so when there are none", async () => {

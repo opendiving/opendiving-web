@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { LatLon } from "@/lib/basemap";
 import {
@@ -47,6 +48,9 @@ interface DiveSiteMapFieldProps {
   credit?: string;
   // What to say out loud about the Location field having written itself.
   announcement: string;
+  // Under the search, about the row just picked from it - which is where the
+  // diver's eyes are when it appears.
+  pickNotice?: ReactNode;
 }
 
 /**
@@ -66,6 +70,7 @@ export function DiveSiteMapField({
   onPickPlace,
   credit,
   announcement,
+  pickNotice,
 }: DiveSiteMapFieldProps) {
   const position = parseFormPosition(latitude, longitude);
 
@@ -86,6 +91,7 @@ export function DiveSiteMapField({
           separates a same-name cluster. Already parsed here for the map, so this
           costs nothing and there is one parse rather than two. */}
       <PlaceSearch onPick={onPickPlace} position={position} />
+      {pickNotice}
 
       <MapPicker
         latitude={position?.latitude ?? null}

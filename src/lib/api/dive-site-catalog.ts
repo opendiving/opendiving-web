@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { ExternalId } from "./dive-sites";
 import type { GeoPoint } from "@/lib/geo-distance";
 import { formatPlaceContext } from "@/lib/locations";
 
@@ -23,8 +24,9 @@ export type DiveSiteSuggestionSource = "osm" | "wikidata";
 /**
  * One named dive site from the catalog vendored in the API image.
  *
- * Not a resource: it has no uuid, no owner and nothing downstream can reference
- * it. Picking one copies its values into an ordinary per-user dive site.
+ * Not a resource: it has no uuid and no owner. Picking one makes an ordinary
+ * per-user dive site from its values, and that site keeps `external_id` - the
+ * record's registry entry - which is how a later search names it in `held_site`.
  *
  * `name` is what the site is called where it is, and is what the Name field is
  * filled from; `name_en` exists so a Latin keyboard reaches 砂辺 by typing
@@ -50,8 +52,15 @@ export interface DiveSiteSuggestion {
   country?: string | null;
   region?: string | null;
   source: DiveSiteSuggestionSource;
-  // The stable identifier upstream, e.g. `node/255316037`.
+  // The stable identifier upstream, e.g. `node/255316037`. The catalogue's own
+  // spelling of the same pair `external_id` carries, which a menu row is keyed on.
   source_id: string;
+  // The record's registry entry in DiveJSON's spelling - `openstreetmap`, not
+  // `osm` - which is what a pick sends back in the new site's `external_ids`.
+  external_id: ExternalId;
+  // The diver's own site already carrying that entry, the first by name where
+  // several do, or `null`.
+  held_site: { uuid: string; name: string } | null;
   // A licence condition of the data itself, so it travels with the row it
   // describes and survives a change of source. A wire format, `[label](href)`,
   // not display copy - render it through `Attribution`.
@@ -74,8 +83,9 @@ export interface DiveSiteSuggestResponse {
  * The read-only dive site catalog, which the place geocoder is not: a geocoder
  * knows where Dahab is, not where the Blue Hole's north entry is.
  *
- * Nothing here is owned by anybody and nothing is stored - a pick prefills the
- * ordinary create form, and the dive site that results is the diver's own.
+ * Nothing here is owned by anybody. A pick prefills the ordinary site form, and
+ * the dive site that results is the diver's own, carrying the record's registry
+ * entry and nothing else of it.
  */
 export const diveSiteCatalogAPI = {
   /**

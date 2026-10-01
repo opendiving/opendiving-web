@@ -79,9 +79,10 @@ function sameRecord(result: GeocodeResult) {
 }
 
 /**
- * What a catalog row says about itself besides its name: the English name where
- * that is what the diver typed, the finest place context the record has, and how
- * far away it is when the form already has a position.
+ * What a catalog row says about itself besides its name: which of the diver's own
+ * sites already carries its registry entry, the English name where that is what
+ * the diver typed, the finest place context the record has, and how far away it
+ * is when the form already has a position.
  *
  * The place context is what pulls a duplicate name apart - five `Shark Point`s
  * resolve to four countries, and the two Malaysian ones only come apart on their
@@ -97,6 +98,9 @@ function catalogHint(
   units: UnitSystem,
 ): string | undefined {
   const parts: string[] = [];
+  // First, because it is what decides the pick: a site the diver already has is
+  // offered rather than made twice.
+  if (site.held_site) parts.push(`In your sites as ${site.held_site.name}`);
   // Only when it says something the row's own name does not. A search for
   // "Sunabe" otherwise returns a row reading 砂辺 with nothing on screen
   // explaining why it matched.

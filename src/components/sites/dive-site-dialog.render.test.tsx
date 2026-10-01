@@ -5,12 +5,23 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveSiteDialog } from "./dive-site-dialog";
 
 vi.mock("@/lib/api/dive-sites", () => ({
-  diveSitesAPI: { createDiveSite: vi.fn(), updateDiveSite: vi.fn() },
+  diveSitesAPI: {
+    createDiveSite: vi.fn(),
+    updateDiveSite: vi.fn(),
+    getDiveSite: vi.fn(),
+  },
+}));
+
+// The tags picker reads the diver's vocabulary on mount.
+vi.mock("@/lib/api/tags", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/tags")>()),
+  fetchAllTags: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("@/lib/api/geocoding", () => ({
@@ -30,10 +41,13 @@ vi.mock("@/lib/api/dive-site-catalog", async (importOriginal) => ({
   diveSiteCatalogAPI: { suggestDiveSites: vi.fn() },
 }));
 
-// The search puts a distance on its rows, and that is read off the diver's
-// account.
+// The search puts a distance on its rows, and the depths and the altitude are
+// typed, in the units read off the diver's account.
+const account = vi.hoisted(() => ({
+  user: { uuid: "user-1", units: "metric" as "metric" | "imperial" },
+}));
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+  useAuth: () => account,
 }));
 
 const { geocodingAPI } = await import("@/lib/api/geocoding");
@@ -53,11 +67,15 @@ const THISTLEGORM = {
   region: "South Sinai",
   source: "osm" as const,
   source_id: "node/255316037",
+  external_id: { registry: "openstreetmap", identifier: "node/255316037" },
+  held_site: null,
   attribution:
     "[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)",
 };
 
 beforeEach(() => {
+  account.user.units = "metric";
+  localStorage.clear();
   reverseGeocode.mockReset();
   reverseGeocode.mockResolvedValue({ status: "unknown" });
   suggestDiveSites.mockReset();
@@ -221,7 +239,7 @@ describe("DiveSiteDialog coordinate accessibility", () => {
 describe("DiveSiteDialog catalog picks", () => {
   const pickFirstSuggestion = async () => {
     const user = userEvent.setup();
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByLabelText("Search for a dive site or place"));
     await user.paste("thistlegorm");
     await user.click(
       await screen.findByRole(
@@ -510,6 +528,325 @@ describe("DiveSiteDialog location writes", () => {
     await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
     expect(updateDiveSite.mock.calls[0][1].location).toEqual({
       name: "Moalboal, Philippines",
+    });
+  });
+});
+
+// What a save sends of the members beside the name and the place: every one, in
+// metres whatever the diver typed in.
+describe("DiveSiteDialog members", () => {
+  beforeEach(() => {
+    createDiveSite.mockResolvedValue({
+      uuid: "site-new",
+      name: "Sunabe Seawall",
+      user_uuid: "user-1",
+      created_at: "2026-01-01T00:00:00Z",
+    });
+  });
+
+  const create = () =>
+    userEvent.click(screen.getByRole("button", { name: /Create dive site/ }));
+
+  it("sends each member a new site was given", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    fireEvent.change(screen.getByLabelText("Name *"), {
+      target: { value: "Sunabe Seawall" },
+    });
+    await user.click(screen.getByRole("button", { name: "Add a name" }));
+    await user.type(screen.getByLabelText("Other name 1"), "砂辺");
+    await user.type(screen.getByLabelText(/^Depth from/), "3");
+    await user.type(screen.getByLabelText(/^Depth to/), "18");
+    await user.selectOptions(screen.getByLabelText("Water type"), "salt");
+    await user.type(screen.getByLabelText(/^Altitude/), "2");
+    await user.click(screen.getByRole("checkbox", { name: "Shore" }));
+    await user.click(screen.getByRole("checkbox", { name: "Pier" }));
+    await user.type(screen.getByLabelText("Tags"), "shore dive{Enter}");
+
+    await create();
+
+    await waitFor(() => expect(createDiveSite).toHaveBeenCalled());
+    expect(createDiveSite.mock.calls[0][0]).toMatchObject({
+      name: "Sunabe Seawall",
+      other_names: ["砂辺"],
+      external_ids: [],
+      depth_from: 3,
+      depth_to: 18,
+      water_type: "salt",
+      altitude: 2,
+      entry_types: ["shore", "pier"],
+      tags: ["shore dive"],
+    });
+  });
+
+  it("sends feet and an altitude in feet as metres", async () => {
+    account.user.units = "imperial";
+    const user = userEvent.setup();
+    renderDialog();
+    fireEvent.change(screen.getByLabelText("Name *"), {
+      target: { value: "Spiegel Grove" },
+    });
+    await user.type(screen.getByLabelText(/^Depth from \(ft\)/), "15");
+    await user.type(screen.getByLabelText(/^Depth to \(ft\)/), "100");
+    await user.type(screen.getByLabelText(/^Altitude \(ft\)/), "6000");
+
+    await create();
+
+    await waitFor(() => expect(createDiveSite).toHaveBeenCalled());
+    expect(createDiveSite.mock.calls[0][0]).toMatchObject({
+      depth_from: 4.57,
+      depth_to: 30.48,
+      altitude: 1829,
+    });
+  });
+
+  it("refuses a range whose deep end is shallower than its shallow one", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    fireEvent.change(screen.getByLabelText("Name *"), {
+      target: { value: "Blue Hole" },
+    });
+    await user.type(screen.getByLabelText(/^Depth from/), "30");
+    await user.type(screen.getByLabelText(/^Depth to/), "5");
+
+    await create();
+
+    expect(
+      await screen.findByText("Depth to cannot be shallower than depth from"),
+    ).toBeInTheDocument();
+    expect(createDiveSite).not.toHaveBeenCalled();
+  });
+});
+
+// A catalogue pick keeps the row's registry entry, and a row the diver already
+// holds a site for is offered before anything is made.
+describe("DiveSiteDialog registry entries", () => {
+  const DUNRAVEN = {
+    ...THISTLEGORM,
+    name: "SS Dunraven",
+    latitude: 27.705,
+    longitude: 34.121,
+    source: "wikidata" as const,
+    source_id: "Q7393932",
+    external_id: { registry: "wikidata", identifier: "Q7393932" },
+    attribution:
+      "[Data from Wikidata, CC0 1.0.](https://www.wikidata.org/wiki/Wikidata:Licensing)",
+  };
+  const THISTLEGORM_ENTRY = THISTLEGORM.external_id;
+  const HELD = {
+    uuid: "site-held",
+    name: "Thistlegorm wreck",
+    user_uuid: "user-1",
+    created_at: "2026-01-01T00:00:00Z",
+  };
+
+  const pick = async (query: string, name: RegExp) => {
+    const user = userEvent.setup();
+    const search = screen.getByLabelText("Search for a dive site or place");
+    await user.clear(search);
+    await user.click(search);
+    await user.paste(query);
+    await user.click(
+      await screen.findByRole("option", { name }, { timeout: 2000 }),
+    );
+  };
+
+  const registries = () =>
+    within(screen.getByRole("group", { name: "In other registries" }));
+
+  beforeEach(() => {
+    suggestDiveSites.mockImplementation(async (query: string) => ({
+      results: /dunraven/i.test(query) ? [DUNRAVEN] : [THISTLEGORM],
+      has_more: false,
+    }));
+    createDiveSite.mockResolvedValue({ ...HELD, uuid: "site-new" });
+    updateDiveSite.mockReset();
+    updateDiveSite.mockResolvedValue({ message: "ok" });
+  });
+
+  it("keeps the picked row's entry, and links it", async () => {
+    renderDialog();
+
+    await pick("thistlegorm", /SS Thistlegorm/);
+
+    expect(
+      registries().getByRole("link", { name: /OpenStreetMap node\/255316037/ }),
+    ).toHaveAttribute("href", "https://www.openstreetmap.org/node/255316037");
+    await userEvent.click(
+      screen.getByRole("button", { name: /Create dive site/ }),
+    );
+    await waitFor(() => expect(createDiveSite).toHaveBeenCalled());
+    expect(createDiveSite.mock.calls[0][0].external_ids).toEqual([
+      THISTLEGORM_ENTRY,
+    ]);
+  });
+
+  it("replaces an earlier pick's entry rather than adding beside it", async () => {
+    renderDialog();
+
+    await pick("thistlegorm", /SS Thistlegorm/);
+    await pick("dunraven", /SS Dunraven/);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Create dive site/ }),
+    );
+
+    await waitFor(() => expect(createDiveSite).toHaveBeenCalled());
+    expect(createDiveSite.mock.calls[0][0]).toMatchObject({
+      name: "SS Dunraven",
+      external_ids: [DUNRAVEN.external_id],
+    });
+  });
+
+  it("keeps the entries a site carried, and adds a re-picked one once", async () => {
+    const carried = { registry: "wrecksite", identifier: "10021" };
+    render(
+      <DiveSiteDialog
+        open
+        onOpenChange={() => {}}
+        onSaved={() => {}}
+        diveSite={{
+          ...HELD,
+          external_ids: [carried, THISTLEGORM_ENTRY],
+        }}
+      />,
+    );
+
+    // Not a link: the format names no form for this registry's identifiers.
+    expect(
+      registries()
+        .getByText(/wrecksite/)
+        .closest("a"),
+    ).toBeNull();
+    await pick("dunraven", /SS Dunraven/);
+    await pick("thistlegorm", /SS Thistlegorm/);
+    await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
+
+    await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
+    expect(updateDiveSite.mock.calls[0][1]).toMatchObject({
+      name: "SS Thistlegorm",
+      external_ids: [carried, THISTLEGORM_ENTRY],
+    });
+  });
+
+  it("removes an entry the diver takes off", async () => {
+    render(
+      <DiveSiteDialog
+        open
+        onOpenChange={() => {}}
+        onSaved={() => {}}
+        diveSite={{ ...HELD, external_ids: [THISTLEGORM_ENTRY] }}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Remove OpenStreetMap node/255316037",
+      }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
+
+    await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
+    expect(updateDiveSite.mock.calls[0][1].external_ids).toEqual([]);
+  });
+
+  it("hands back the saved site as the API reads it", async () => {
+    const onSaved = vi.fn();
+    const saved = { ...HELD, tags: ["Wreck"], dive_count: 3 };
+    vi.mocked(diveSitesAPI.getDiveSite).mockResolvedValue(saved);
+    render(
+      <DiveSiteDialog
+        open
+        onOpenChange={() => {}}
+        onSaved={onSaved}
+        diveSite={HELD}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved));
+  });
+
+  describe("a row the diver already holds", () => {
+    beforeEach(() => {
+      suggestDiveSites.mockResolvedValue({
+        results: [
+          { ...THISTLEGORM, held_site: { uuid: HELD.uuid, name: HELD.name } },
+        ],
+        has_more: false,
+      });
+    });
+
+    it("offers the held site and fills nothing until answered", async () => {
+      renderDialog();
+
+      await pick("thistlegorm", /SS Thistlegorm/);
+
+      // In a live region that was already there, so it is announced.
+      const offer = (await screen.findByText(/You already have/)).closest(
+        "[role=status]",
+      );
+      expect(offer).toHaveTextContent("Thistlegorm wreck");
+      expect(screen.getByLabelText("Name *")).toHaveValue("");
+      expect(
+        screen.queryByRole("group", { name: "In other registries" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("hands the held site back, and creates nothing, when the offer is taken", async () => {
+      const onSaved = vi.fn();
+      const onOpenChange = vi.fn();
+      vi.mocked(diveSitesAPI.getDiveSite).mockResolvedValue(HELD);
+      render(
+        <DiveSiteDialog open onOpenChange={onOpenChange} onSaved={onSaved} />,
+      );
+
+      await pick("thistlegorm", /SS Thistlegorm/);
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Use Thistlegorm wreck" }),
+      );
+
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(HELD));
+      expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-held");
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+      expect(createDiveSite).not.toHaveBeenCalled();
+    });
+
+    it("fills the form from the row, entry and all, when it is declined", async () => {
+      renderDialog();
+
+      await pick("thistlegorm", /SS Thistlegorm/);
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Make a new site" }),
+      );
+
+      expect(screen.getByLabelText("Name *")).toHaveValue("SS Thistlegorm");
+      expect(screen.queryByText(/You already have/)).not.toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("button", { name: /Create dive site/ }),
+      );
+      await waitFor(() => expect(createDiveSite).toHaveBeenCalled());
+      expect(createDiveSite.mock.calls[0][0].external_ids).toEqual([
+        THISTLEGORM_ENTRY,
+      ]);
+    });
+
+    // An edit fills the site being edited, which may be the very site the row
+    // names; there is nothing to offer in its place.
+    it("offers nothing while editing, and fills as any pick does", async () => {
+      render(
+        <DiveSiteDialog
+          open
+          onOpenChange={() => {}}
+          onSaved={() => {}}
+          diveSite={HELD}
+        />,
+      );
+
+      await pick("thistlegorm", /SS Thistlegorm/);
+
+      expect(screen.queryByText(/You already have/)).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Name *")).toHaveValue("SS Thistlegorm");
     });
   });
 });
