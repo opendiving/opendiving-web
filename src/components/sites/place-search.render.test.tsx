@@ -348,6 +348,25 @@ describe("PlaceSearch hints", () => {
     ).toBeInTheDocument();
   });
 
+  // Before it is picked, so the diver knows a pick would make a second one.
+  it("names the diver's own site that already carries the row's entry", async () => {
+    suggest([
+      {
+        ...THISTLEGORM,
+        held_site: { uuid: "site-1", name: "Thistlegorm wreck" },
+      },
+    ]);
+    render(<PlaceSearch onPick={vi.fn()} />);
+
+    await searchFor("thistlegorm");
+
+    expect(
+      await screen.findByRole("option", {
+        name: "SS Thistlegorm, In your sites as Thistlegorm wreck · South Sinai, Egypt",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("does not repeat a name the row already shows", async () => {
     suggest([{ ...THISTLEGORM, name_en: "SS Thistlegorm", region: null }]);
     render(<PlaceSearch onPick={vi.fn()} />);
