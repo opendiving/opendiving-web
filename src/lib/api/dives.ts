@@ -386,11 +386,11 @@ export interface Dive {
   bottom_temperature?: number;
   visibility?: number;
   // What the water was and where it was, both hand-enterable and both settable on the
-  // form. `water_type` is the diver's answer and nothing seeds it from a file: the
-  // density a computer was set to is its recording's `salinity`, a setting rather than
-  // a kind of water. `altitude` is metres above sea level of the water surface, the fact
-  // a diver can actually type where a recording's `surface_pressure_bar` is the
-  // barometer's reading of it.
+  // form. `water_type` is the diver's answer, or a logbook file's statement of it, and
+  // never the density a computer was set to: that is its recording's `salinity`, a
+  // setting rather than a kind of water. `altitude` is metres above sea level of the
+  // water surface, the fact a diver can actually type where a recording's
+  // `surface_pressure_bar` is the barometer's reading of it.
   //
   // `| null` because the API declares them `X | None` on `DiveBase` with no
   // `exclude_none`, so an unrecorded field arrives as an explicit `null` rather than an
@@ -398,8 +398,8 @@ export interface Dive {
   water_type?: WaterType | null;
   altitude?: number | null;
   // The diver's classification of the dive and the conditions on the day, on the
-  // same terms as the two above: hand-entered, never seeded from a file on the
-  // form, and an explicit `null` when unrecorded. `rating` is 1 to 5;
+  // same terms as the two above: hand-entered or prefilled from a logbook file that
+  // states them, and an explicit `null` when unrecorded. `rating` is 1 to 5;
   // `air_temperature` is °C.
   type?: DiveType | null;
   rating?: number | null;
