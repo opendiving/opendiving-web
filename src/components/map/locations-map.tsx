@@ -53,13 +53,6 @@ const pictureSide = (frameWidth: number, sideFade: boolean | undefined) =>
     sideFade ? SIDE_FADE_WIDTH : FIT_PADDING,
   );
 
-// A backdrop's credit is inset this far from the frame's top-left corner, or
-// from under the controls covering its top. Without one, the places fit under
-// those controls alone.
-const CREDIT_INSET = 4;
-const creditBottom = (credit: HTMLElement | null, coveredTop: number) =>
-  credit ? CREDIT_INSET + coveredTop + credit.offsetHeight : coveredTop;
-
 // `bg-coral`, not `bg-primary`: primary is near-black in light and mid-grey in
 // dark, which is invisible against a dark basemap. Coral is the one accent held
 // constant across both themes.
@@ -125,7 +118,7 @@ export interface LocationsMapProps {
   coveredBottom?: number;
   /**
    * How many pixels along the top the caller covers with controls of its own.
-   * A backdrop's credit goes under them, and the places under the credit.
+   * A backdrop's places fit below them, as they do below its credit.
    */
   coveredTop?: number;
   /**
@@ -229,7 +222,7 @@ export function LocationsMap({
         const next = {
           width: element.clientWidth,
           height: element.clientHeight,
-          creditBottom: creditBottom(credit, coveredTop),
+          creditBottom: credit ? credit.offsetTop + credit.offsetHeight : 0,
         };
         setFrame((current) =>
           current &&
@@ -245,14 +238,18 @@ export function LocationsMap({
       observer.observe(element);
       return () => observer.disconnect();
     },
-    [snapshot, coveredTop],
+    [snapshot],
   );
 
   const band = useMemo(
     () =>
       frame &&
-      bandIn(frame.height, backdrop ? frame.creditBottom : 0, coveredBottom),
-    [frame, backdrop, coveredBottom],
+      bandIn(
+        frame.height,
+        backdrop ? Math.max(frame.creditBottom, coveredTop) : 0,
+        coveredBottom,
+      ),
+    [frame, backdrop, coveredTop, coveredBottom],
   );
   const side = frame ? pictureSide(frame.width, sideFade) : FIT_PADDING;
   // The frame a picture is drawn for, which is what a resize has to change
@@ -331,12 +328,12 @@ export function LocationsMap({
         : {
             width: container.clientWidth,
             height: container.clientHeight,
-            creditBottom: creditBottom(credit, coveredTop),
+            creditBottom: credit ? credit.offsetTop + credit.offsetHeight : 0,
           };
       if (!shownIn) return;
       const shownBand = bandIn(
         shownIn.height,
-        backdrop ? shownIn.creditBottom : 0,
+        backdrop ? Math.max(shownIn.creditBottom, coveredTop) : 0,
         coveredBottom,
       );
 
@@ -673,13 +670,10 @@ export function LocationsMap({
             "absolute z-10",
             // Inset from a backdrop's corner, which is rounded and would clip
             // it, and quieter, as it sits over the part of the map that shows.
-            backdrop ? "rounded-sm opacity-75" : "bottom-0 right-0",
-          )}
-          style={
             backdrop
-              ? { left: CREDIT_INSET, top: CREDIT_INSET + coveredTop }
-              : undefined
-          }
+              ? "left-1 top-1 rounded-sm opacity-75"
+              : "bottom-0 right-0",
+          )}
         />
       )}
     </div>

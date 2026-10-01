@@ -27,7 +27,7 @@ export interface PageHeaderProps {
 }
 
 // The way back from a detail or form page, on its own for a page whose heading
-// is drawn elsewhere - the trip page's, over its hero.
+// is drawn elsewhere - a detail page's, over its hero.
 export function BackLink({
   href,
   label,

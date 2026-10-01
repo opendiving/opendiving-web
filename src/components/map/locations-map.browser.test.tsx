@@ -664,9 +664,9 @@ describe("LocationsMap", () => {
     }
   });
 
-  // The caller's controls along the top cover the corner the credit would
-  // take, so it goes under them, and the place under it.
-  it("puts a backdrop's credit under a covered top, and its place under that", async () => {
+  // The caller's controls along the top reach lower than the credit in its
+  // corner, so the place fits under them.
+  it("fits a backdrop's place under a covered top lower than its credit", async () => {
     render(
       withConfig(
         <LocationsMap
@@ -687,9 +687,9 @@ describe("LocationsMap", () => {
       .getByRole("link", { name: /OpenStreetMap/ })
       .parentElement!.getBoundingClientRect();
     const marker = (markers()[0] as HTMLElement).getBoundingClientRect();
-    expect(credit.top).toBeGreaterThanOrEqual(frame.top + 44);
+    expect(credit.bottom).toBeLessThan(frame.top + 44);
     expect(marker.top + marker.height / 2).toBeCloseTo(
-      (credit.bottom + frame.bottom - 40) / 2,
+      (frame.top + 44 + frame.bottom - 40) / 2,
       0,
     );
   });
@@ -868,13 +868,9 @@ describe("LocationsMap", () => {
       rerender(<Covered coveredTop={60} />);
       await waitFor(() => {
         const frame = screen.getByRole("img").getBoundingClientRect();
-        const credit = screen
-          .getByRole("link", { name: /OpenStreetMap/ })
-          .parentElement!.getBoundingClientRect();
         const pin = (markers()[0] as HTMLElement).getBoundingClientRect();
-        expect(credit.top).toBeGreaterThanOrEqual(frame.top + 60);
         expect(pin.top + pin.height / 2).toBeCloseTo(
-          (credit.bottom + frame.bottom) / 2,
+          (frame.top + 60 + frame.bottom) / 2,
           0,
         );
       });

@@ -16,7 +16,7 @@ export const SNAPSHOT_WIDTH = 1024;
 export const SNAPSHOT_HEIGHT = 512;
 
 // How far in from each side a picture dissolves into the page where a frame is
-// wider than it - a trip page's hero on a desktop window. A quarter of the
+// wider than it - a detail page's hero on a desktop window. A quarter of the
 // picture: wide enough that the eye finds no edge, and leaves the middle half
 // for the pins.
 export const SIDE_FADE_WIDTH = SNAPSHOT_WIDTH / 4;

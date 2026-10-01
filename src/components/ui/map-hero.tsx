@@ -6,9 +6,10 @@ import {
   type ComponentType,
   type ReactNode,
 } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { BackLink } from "@/components/ui/page-header";
 import { MapCredit } from "@/components/map/map-credit";
+import type { LocationsMapProps } from "@/components/map/locations-map";
 import { cn } from "@/lib/utils";
 
 // The band's frame, shared with its skeleton so the page lands without moving:
@@ -96,15 +97,34 @@ function HeroBackLink({
   );
 }
 
+// What every hero's map is, beside its places: a picture across the whole band,
+// faded at its foot and, where the window is wider than the picture, at its
+// sides, fitted between the top row and the details, and leaving its credit to
+// the hero's details.
+type HeroMap = Pick<
+  LocationsMapProps,
+  | "className"
+  | "backdrop"
+  | "snapshot"
+  | "sideFade"
+  | "creditElsewhere"
+  | "coveredTop"
+  | "coveredBottom"
+>;
+
 export interface MapHeroFigure {
   label: string;
   value: ReactNode;
 }
 
 interface MapHeroProps extends Known {
-  // What fills the band behind the details, handed how many pixels of its top
-  // the top row covers and of its foot the details do.
-  backdrop: (covered: { top: number; bottom: number }) => ReactNode;
+  // What fills the band behind the details: a `LocationsMap` spreading `map`,
+  // or for a record with no place on one, something told how many pixels of
+  // its top the top row covers and of its foot the details do.
+  backdrop: (frame: {
+    map: HeroMap;
+    covered: { top: number; bottom: number };
+  }) => ReactNode;
   // Edit and the menu, in the band's top-right corner as a card's menu is,
   // opposite the way back.
   actions?: ReactNode;
@@ -113,8 +133,8 @@ interface MapHeroProps extends Known {
   // One line under the title, as the record's card has under its name.
   subtitle?: ReactNode;
   figures: MapHeroFigure[];
-  // The backdrop is a map that leaves its credit to the hero
-  // (`creditElsewhere`), which carries it in its details' corner.
+  // Whether the backdrop is the map, whose credit `map` leaves to the hero's
+  // details' corner - unset for a record drawn without one.
   mapCredit?: boolean;
 }
 
@@ -171,7 +191,18 @@ export function MapHero({
     >
       {/* Out of flow, so the lazy map's placeholder takes no room of its own. */}
       <div className="absolute inset-0">
-        {backdrop({ top: topRowBottom, bottom: detailsHeight })}
+        {backdrop({
+          map: {
+            className: "h-full rounded-none border-0 sm:h-full",
+            backdrop: true,
+            snapshot: true,
+            sideFade: true,
+            creditElsewhere: true,
+            coveredTop: topRowBottom,
+            coveredBottom: detailsHeight,
+          },
+          covered: { top: topRowBottom, bottom: detailsHeight },
+        })}
       </div>
       <div ref={topRowRef} className={TOP_ROW}>
         <div className={cn(COLUMN, "flex items-center justify-between gap-4")}>
@@ -225,7 +256,7 @@ export function MapHero({
 // is the same height before and after the record lands. The bars are a step
 // lighter than the box they lie on, which is the one place a bar is drawn on
 // a bar.
-export function MapHeroSkeleton({ backHref, backLabel, icon: Icon }: Known) {
+function MapHeroSkeleton({ backHref, backLabel, icon: Icon }: Known) {
   const bar = "bg-background/60";
   return (
     <div className={FRAME}>
@@ -254,6 +285,26 @@ export function MapHeroSkeleton({ backHref, backLabel, icon: Icon }: Known) {
               <Skeleton className={cn("h-6 w-12 md:h-8", bar)} />
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// A hero page's place while its record loads: the hero's skeleton at the hero's
+// height, and the body's at the body's, so nothing moves when the record lands.
+export function MapHeroPageSkeleton(known: Known) {
+  return (
+    <div aria-busy>
+      <MapHeroSkeleton {...known} />
+      <div className={HERO_BODY}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <CardSkeleton lines={7} />
+          </div>
+          <div className="space-y-6">
+            <CardSkeleton lines={4} />
+          </div>
         </div>
       </div>
     </div>

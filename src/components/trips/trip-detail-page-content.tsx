@@ -21,14 +21,13 @@ import {
   ItemActionsMenu,
 } from "@/components/ui/item-actions-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CardSkeleton } from "@/components/ui/skeleton";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripHero } from "@/components/trips/trip-hero";
 import {
   HERO_BODY,
   HERO_CONTROL,
-  MapHeroSkeleton,
+  MapHeroPageSkeleton,
 } from "@/components/ui/map-hero";
 import { PeopleList } from "@/components/people/people-list";
 import { NotFoundState } from "@/components/ui/not-found-state";
@@ -128,28 +127,13 @@ export function TripDetailPageContent() {
   if (!isAuthenticated) {
     return null; // Will redirect to signin
   }
-
-  // The hero's skeleton at the hero's height, and the body's at the body's, so
-  // nothing moves when the trip lands.
   if (isLoadingTrip) {
     return (
-      <div aria-busy>
-        <MapHeroSkeleton
-          backHref="/trips"
-          backLabel="Back to trips"
-          icon={Luggage}
-        />
-        <div className={HERO_BODY}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <CardSkeleton lines={7} />
-            </div>
-            <div className="space-y-6">
-              <CardSkeleton lines={4} />
-            </div>
-          </div>
-        </div>
-      </div>
+      <MapHeroPageSkeleton
+        backHref="/trips"
+        backLabel="Back to trips"
+        icon={Luggage}
+      />
     );
   }
 

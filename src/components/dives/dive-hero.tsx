@@ -86,18 +86,12 @@ export function DiveHero({
       figures={figures}
       mapCredit={isPlaced}
       // The map's water for a dive with no position, as its card draws one.
-      backdrop={(covered) =>
+      backdrop={({ map, covered }) =>
         isPlaced ? (
           <LocationsMap
             locations={locations}
             subject={`the location of dive #${dive.dive_number}`}
-            className="h-full rounded-none border-0 sm:h-full"
-            backdrop
-            coveredBottom={covered.bottom}
-            coveredTop={covered.top}
-            creditElsewhere
-            snapshot
-            sideFade
+            {...map}
           />
         ) : (
           <UnplacedBackdrop

@@ -58,18 +58,12 @@ export function TripHero({
       mapCredit
       // The whole world for a trip with no place on the map yet, as its card
       // shows.
-      backdrop={(covered) => (
+      backdrop={({ map }) => (
         <LocationsMap
           locations={mappedLocations}
           showWhenEmpty
           subject={`the places of ${trip.name}`}
-          className="h-full rounded-none border-0 sm:h-full"
-          backdrop
-          coveredBottom={covered.bottom}
-          coveredTop={covered.top}
-          creditElsewhere
-          snapshot
-          sideFade
+          {...map}
         />
       )}
     />

@@ -81,7 +81,7 @@ export function DiveSiteHero({
       figures={figures}
       mapCredit={isPlaced}
       // The map's water for a site with no position, as its card draws one.
-      backdrop={(covered) =>
+      backdrop={({ map, covered }) =>
         isPlaced ? (
           <LocationsMap
             locations={[
@@ -92,13 +92,7 @@ export function DiveSiteHero({
               },
             ]}
             subject={`the location of ${site.name}`}
-            className="h-full rounded-none border-0 sm:h-full"
-            backdrop
-            coveredBottom={covered.bottom}
-            coveredTop={covered.top}
-            creditElsewhere
-            snapshot
-            sideFade
+            {...map}
           />
         ) : (
           <UnplacedBackdrop
