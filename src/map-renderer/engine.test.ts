@@ -19,8 +19,10 @@ const HEIGHT = SNAPSHOT_HEIGHT * PIXEL_RATIO;
 type Answer = "draw" | "fail" | "hang";
 
 interface FakeMap {
-  loaded: object[];
-  sources: Map<string, object>;
+  loaded: {
+    sources: Record<string, unknown>;
+    layers: { id: string }[];
+  }[];
   renders: { zoom: number; center: [number, number] }[];
   cancelled: number;
   released: boolean;
@@ -33,7 +35,6 @@ function fakeNative(answers: Answer[] = []) {
     Map: class {
       private state: FakeMap = {
         loaded: [],
-        sources: new Map(),
         renders: [],
         cancelled: 0,
         released: false,
@@ -42,17 +43,9 @@ function fakeNative(answers: Answer[] = []) {
       constructor() {
         maps.push(this.state);
       }
-      load(style: object) {
+      load(style: FakeMap["loaded"][number]) {
         this.state.loaded.push(style);
       }
-      addSource(id: string, source: object) {
-        this.state.sources.set(id, source);
-      }
-      removeSource(id: string) {
-        this.state.sources.delete(id);
-      }
-      addLayer() {}
-      removeLayer() {}
       render(
         options: { zoom: number; center: [number, number] },
         callback: (error: Error | null, pixels?: Uint8Array) => void,
@@ -77,6 +70,9 @@ function fakeNative(answers: Answer[] = []) {
         pending(new Error("Canceled"));
       }
       release() {
+        if (this.state.released) {
+          throw new Error("Map resources have already been released");
+        }
         this.state.released = true;
       }
     } as unknown as NativeModule["Map"],
@@ -103,35 +99,31 @@ const DIVE = parsePayload({
 let close: (() => void) | undefined;
 afterEach(() => close?.());
 
-async function engineWith(
-  answers?: Answer[],
-  options: { deadlineMs?: number; maxPicturesPerMap?: number } = {},
-) {
+async function engineWith(answers?: Answer[], deadlineMs?: number) {
   const { native, maps } = fakeNative(answers);
   const engine = createEngine({
     native,
     config,
     resources,
     log: () => {},
-    ...options,
+    deadlineMs,
   });
   close = () => engine.close();
   await vi.waitFor(() => expect(engine.isReady()).toBe(true));
-  return { engine, maps };
+  // The two the engine parsed both themes' styles with, to become ready.
+  expect(maps).toHaveLength(2);
+  return { engine, maps, drawn: () => maps.slice(2) };
 }
 
 describe("the engine", () => {
-  it("builds one map per theme from the vendored styles, pins layered on top", async () => {
+  it("is ready once a map has loaded both themes' styles", async () => {
     const { maps } = await engineWith();
-    expect(maps).toHaveLength(2);
-    for (const map of maps) {
-      const [style] = map.loaded as { layers: { id: string }[] }[];
-      expect(style.layers[style.layers.length - 1].id).toBe("opendiving-pins");
-    }
+    expect(maps.every((map) => map.loaded.length === 1)).toBe(true);
+    expect(maps.every((map) => map.released)).toBe(true);
   });
 
-  it("draws a 2048x1024 WebP of the payload's places", async () => {
-    const { engine, maps } = await engineWith();
+  it("draws a 2048x1024 WebP of the payload's places, pins on top", async () => {
+    const { engine, drawn } = await engineWith();
     const picture = await engine.draw(DIVE);
 
     const { format, width, height } = await sharp(picture).metadata();
@@ -140,9 +132,12 @@ describe("the engine", () => {
       width: WIDTH,
       height: HEIGHT,
     });
-    const light = maps.find((map) => map.renders.length > 0)!;
-    expect(light.renders[0].zoom).toBe(9);
-    const pins = light.sources.get(PINS_SOURCE) as {
+
+    const [map] = drawn();
+    expect(map.renders[0].zoom).toBe(9);
+    const [style] = map.loaded;
+    expect(style.layers[style.layers.length - 1].id).toBe("opendiving-pins");
+    const pins = style.sources[PINS_SOURCE] as {
       data: { features: { properties: { variant: string } }[] };
     };
     expect(pins.data.features.map((pin) => pin.properties.variant)).toEqual([
@@ -151,37 +146,31 @@ describe("the engine", () => {
     ]);
   });
 
-  // A map whose glyph request once failed hangs on its next render
-  // (maplibre-native#3169), so it is never asked again.
-  it("gives up a map whose render failed, and draws the next on a new one", async () => {
-    const { engine, maps } = await engineWith(["fail"]);
-    await expect(engine.draw(DIVE)).rejects.toThrow(/glyphs/);
-    const failed = maps.find((map) => map.renders.length === 1)!;
-    expect(failed.released).toBe(true);
-
+  // MapLibre Native keeps every tile a map has drawn, so a map is never kept
+  // past its picture.
+  it("draws every picture on a map of its own, and lets it go", async () => {
+    const { engine, drawn } = await engineWith();
     await engine.draw(DIVE);
-    expect(maps).toHaveLength(3);
-    expect(maps[2].renders).toHaveLength(1);
+    await engine.draw(DIVE);
+    expect(drawn()).toHaveLength(2);
+    expect(drawn().every((map) => map.released)).toBe(true);
   });
 
-  it("cancels and gives up a render that passes its deadline", async () => {
-    const { engine, maps } = await engineWith(["hang"], { deadlineMs: 50 });
+  it("answers a failed render with an error, and lets its map go", async () => {
+    const { engine, drawn } = await engineWith(["fail"]);
+    await expect(engine.draw(DIVE)).rejects.toThrow(/glyphs/);
+    expect(drawn()[0].released).toBe(true);
+    expect((await engine.draw(DIVE)).length).toBeGreaterThan(0);
+  });
+
+  it("cancels and lets go a render that passes its deadline", async () => {
+    const { engine, drawn } = await engineWith(["hang"], 50);
     await expect(engine.draw(DIVE)).rejects.toThrow(/deadline/);
-    const hung = maps.find((map) => map.renders.length === 1)!;
+    const [hung] = drawn();
     expect(hung.cancelled).toBe(1);
     expect(hung.released).toBe(true);
 
     expect((await engine.draw(DIVE)).length).toBeGreaterThan(0);
-  });
-
-  it("retires a map after so many pictures", async () => {
-    const { engine, maps } = await engineWith([], { maxPicturesPerMap: 3 });
-    for (let picture = 0; picture < 4; picture += 1) {
-      await engine.draw(DIVE);
-    }
-    const light = maps.filter((map) => map.renders.length > 0);
-    expect(light.map((map) => map.renders.length)).toEqual([3, 1]);
-    expect(light[0].released).toBe(true);
   });
 
   it("is not ready while its basemap cannot load", async () => {

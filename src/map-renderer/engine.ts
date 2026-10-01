@@ -1,5 +1,5 @@
-// The drawing itself: one MapLibre Native map per theme, a picture at a time on
-// each, and the WebP the API stores.
+// The drawing itself: a MapLibre Native map per picture, and the WebP the API
+// stores.
 
 import sharp from "sharp";
 
@@ -11,7 +11,7 @@ import {
   type RenderPayload,
   type Theme,
 } from "./payload";
-import { PIN_LAYER_IDS, PINS_SOURCE, pinLayers, pinsSource } from "./pins";
+import { PINS_SOURCE, pinLayers, pinsSource } from "./pins";
 import type { Resources } from "./resources";
 import { loadStyle, type RendererConfig } from "./style";
 
@@ -22,15 +22,10 @@ export const PIXEL_RATIO = 2;
 // cold render; a map still drawing by then is a map that is not going to finish.
 export const RENDER_DEADLINE_MS = 30_000;
 
-// A map is retired after this many pictures or this long, whichever comes
-// first, and the next picture builds a fresh one. That is what keeps MapLibre's
-// own caches from growing with every place drawn, and what makes a map re-read
-// its source's TileJSON - OpenFreeMap names each week's tiles by date, and a map
-// holding last month's names would draw empty tiles as if the sea had risen.
-export const MAX_PICTURES_PER_MAP = 100;
-const MAX_MAP_AGE_MS = 60 * 60 * 1000;
-// A style and a TileJSON are re-read on the same clock as a map.
-const DESCRIPTOR_MAX_AGE_MS = MAX_MAP_AGE_MS;
+// A style, and a source's TileJSON, are read again after an hour. OpenFreeMap
+// names each week's tiles by date in its TileJSON, and a renderer holding last
+// month's names would draw empty tiles as if the sea had risen.
+const DESCRIPTOR_MAX_AGE_MS = 60 * 60 * 1000;
 const RETRY_MS = 30_000;
 
 // MapLibre Native's `Resource::Kind` for a source's TileJSON.
@@ -56,10 +51,6 @@ interface NativeMap {
   ): void;
   cancel(): void;
   release(): void;
-  addSource(id: string, source: object): void;
-  removeSource(id: string): void;
-  addLayer(layer: object): void;
-  removeLayer(id: string): void;
 }
 export interface NativeModule {
   Map: new (options: {
@@ -83,17 +74,11 @@ export interface NativeModule {
 export class RenderError extends Error {}
 
 export interface Engine {
-  /** Whether both themes' maps can be built: their styles have loaded. */
+  /** Whether a picture can be drawn: both themes' styles load into a map. */
   isReady(): boolean;
   /** One picture, as WebP - or a thrown error, and never a partial image. */
   draw(payload: RenderPayload): Promise<Buffer>;
   close(): void;
-}
-
-interface Slot {
-  map: NativeMap;
-  pictures: number;
-  createdAt: number;
 }
 
 export interface EngineOptions {
@@ -102,8 +87,9 @@ export interface EngineOptions {
   resources: Resources;
   log: (message: string) => void;
   deadlineMs?: number;
-  maxPicturesPerMap?: number;
 }
+
+type StyleDocument = Awaited<ReturnType<typeof loadStyle>>;
 
 export function createEngine({
   native,
@@ -111,7 +97,6 @@ export function createEngine({
   resources,
   log,
   deadlineMs = RENDER_DEADLINE_MS,
-  maxPicturesPerMap = MAX_PICTURES_PER_MAP,
 }: EngineOptions): Engine {
   // Encoding one picture at a time is all a render at a time leaves room for,
   // and libvips' operation cache would only hold pictures nobody asks for twice.
@@ -130,10 +115,11 @@ export function createEngine({
     }
   });
 
-  const styles = new Map<Theme, object>();
-  const slots = new Map<Theme, Slot>();
+  const styles = new Map<Theme, StyleDocument>();
+  let ready = false;
   let retry: NodeJS.Timeout | undefined;
   let closed = false;
+  const drawing = new Set<NativeMap>();
 
   function request(
     { url, kind }: NativeRequest,
@@ -154,72 +140,57 @@ export function createEngine({
 
   // A style that loaded once and fails to load again is kept: a remote style
   // host having a bad minute is no reason to stop drawing.
-  async function styleFor(theme: Theme): Promise<object> {
-    let style;
+  async function styleFor(theme: Theme): Promise<StyleDocument> {
     try {
-      style = await loadStyle(config, theme, resources, {
+      const style = await loadStyle(config, theme, resources, {
         maxAgeMs: DESCRIPTOR_MAX_AGE_MS,
       });
+      styles.set(theme, style);
+      return style;
     } catch (error) {
       const kept = styles.get(theme);
       if (!kept) throw error;
       log(`Drawing on the last ${theme} style: ${(error as Error).message}`);
       return kept;
     }
-    // The pins' source and layers exist from the start, empty, so each picture
-    // replaces them rather than first asking whether they are there.
-    const document = {
-      ...style,
-      sources: { ...style.sources, [PINS_SOURCE]: pinsSource([]) },
-      layers: [...style.layers, ...pinLayers(theme)],
-    };
-    styles.set(theme, document);
-    return document;
   }
 
-  const building = new Map<Theme, Promise<Slot>>();
-  function slotFor(theme: Theme): Promise<Slot> {
-    const kept = slots.get(theme);
-    if (kept) return Promise.resolve(kept);
-    let pending = building.get(theme);
-    if (!pending) {
-      pending = styleFor(theme)
-        .then((style) => {
-          const map = new native.Map({
-            request,
-            ratio: PIXEL_RATIO,
-            mode: "static",
-          });
-          map.load(style);
-          const slot = { map, pictures: 0, createdAt: Date.now() };
-          slots.set(theme, slot);
-          return slot;
-        })
-        .finally(() => building.delete(theme));
-      building.set(theme, pending);
-    }
-    return pending;
+  // **A map per picture, released as soon as it is drawn.** MapLibre Native
+  // keeps the tiles of every place a map has drawn, up to a cache sized for a
+  // map that pans, and offers no way to bound it: a map kept for a list of
+  // distinct places grows past a gigabyte. A fresh one costs little once Mesa
+  // has compiled its shaders, which `main.ts` lets it keep on disk, and the
+  // bytes of every tile are in `Resources` anyway.
+  //
+  // It also means a map whose glyph request once failed - which hangs on its
+  // next render (maplibre-native#3169) - is never asked again.
+  function newMap(style: object): NativeMap {
+    const map = new native.Map({ request, ratio: PIXEL_RATIO, mode: "static" });
+    map.load(style);
+    return map;
   }
 
-  // Never reused once it has failed or been given up on: a map whose glyph
-  // request once failed hangs on its next render (maplibre-native#3169).
-  function retire(theme: Theme, slot: Slot) {
-    if (slots.get(theme) === slot) slots.delete(theme);
+  function release(map: NativeMap) {
+    drawing.delete(map);
     try {
-      slot.map.cancel();
+      map.cancel();
     } catch {
       // Nothing was rendering, which is the ordinary case.
     }
     try {
-      slot.map.release();
+      map.release();
     } catch {
       // Already released.
     }
   }
 
+  // Ready once both themes' styles have loaded and been parsed by a map.
   async function warm() {
     try {
-      await Promise.all((["light", "dark"] as const).map(slotFor));
+      for (const theme of ["light", "dark"] as const) {
+        release(newMap(await styleFor(theme)));
+      }
+      ready = true;
     } catch (error) {
       log(`Could not load the basemap: ${(error as Error).message}`);
       if (!closed) retry = setTimeout(warm, RETRY_MS);
@@ -228,58 +199,52 @@ export function createEngine({
   void warm();
 
   async function render(payload: RenderPayload): Promise<Uint8Array> {
-    const slot = await slotFor(payload.theme);
+    const style = await styleFor(payload.theme);
     const placed = payloadPlaces(payload);
     const { center, zoom } = pictureCamera(placed, payloadFrame(payload));
-
-    for (const id of [...PIN_LAYER_IDS].reverse()) slot.map.removeLayer(id);
-    slot.map.removeSource(PINS_SOURCE);
-    slot.map.addSource(PINS_SOURCE, pinsSource(placed));
-    for (const layer of pinLayers(payload.theme)) slot.map.addLayer(layer);
-
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const deadline = setTimeout(() => {
-        settled = true;
-        retire(payload.theme, slot);
-        reject(
-          new RenderError(
-            `The render passed its ${deadlineMs / 1000} s deadline`,
-          ),
-        );
-      }, deadlineMs);
-
-      slot.map.render(
-        {
-          zoom,
-          center: [center.longitude, center.latitude],
-          width: SNAPSHOT_WIDTH,
-          height: SNAPSHOT_HEIGHT,
-        },
-        (error, pixels) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(deadline);
-          if (error || !pixels) {
-            retire(payload.theme, slot);
-            reject(new RenderError(error?.message ?? "No image was drawn"));
-            return;
-          }
-          slot.pictures += 1;
-          if (
-            slot.pictures >= maxPicturesPerMap ||
-            Date.now() - slot.createdAt >= MAX_MAP_AGE_MS
-          ) {
-            retire(payload.theme, slot);
-          }
-          resolve(pixels);
-        },
-      );
+    const map = newMap({
+      ...style,
+      sources: { ...style.sources, [PINS_SOURCE]: pinsSource(placed) },
+      layers: [...style.layers, ...pinLayers(payload.theme)],
     });
+    drawing.add(map);
+
+    try {
+      return await new Promise<Uint8Array>((resolve, reject) => {
+        const deadline = setTimeout(() => {
+          reject(
+            new RenderError(
+              `The render passed its ${deadlineMs / 1000} s deadline`,
+            ),
+          );
+          // Cancelling answers the render's callback, after the rejection.
+          release(map);
+        }, deadlineMs);
+
+        map.render(
+          {
+            zoom,
+            center: [center.longitude, center.latitude],
+            width: SNAPSHOT_WIDTH,
+            height: SNAPSHOT_HEIGHT,
+          },
+          (error, pixels) => {
+            clearTimeout(deadline);
+            if (error || !pixels) {
+              reject(new RenderError(error?.message ?? "No image was drawn"));
+            } else {
+              resolve(pixels);
+            }
+          },
+        );
+      });
+    } finally {
+      release(map);
+    }
   }
 
   return {
-    isReady: () => styles.has("light") && styles.has("dark"),
+    isReady: () => ready,
 
     async draw(payload) {
       const pixels = await render(payload);
@@ -303,7 +268,7 @@ export function createEngine({
     close() {
       closed = true;
       clearTimeout(retry);
-      for (const [theme, slot] of slots) retire(theme, slot);
+      for (const map of drawing) release(map);
     },
   };
 }

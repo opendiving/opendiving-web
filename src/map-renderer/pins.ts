@@ -23,7 +23,6 @@ export const PIN_COLOURS: Record<Theme, { coral: string; background: string }> =
 export const PINS_SOURCE = "opendiving-pins";
 const SHADOW_LAYER = "opendiving-pin-shadows";
 const PINS_LAYER = "opendiving-pins";
-export const PIN_LAYER_IDS = [SHADOW_LAYER, PINS_LAYER] as const;
 
 /** The pins of `placed` as a GeoJSON source, in the order the browser adds them. */
 export function pinsSource(placed: readonly PlacedLocation[]) {

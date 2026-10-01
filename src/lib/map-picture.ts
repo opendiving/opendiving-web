@@ -137,21 +137,26 @@ export interface CardFrame {
 // The smallest frame each kind of card gives its map, at a 320 px viewport,
 // which is what a picture is fitted for: one picture per record and theme has to
 // keep every pin inside the band of every card that shows it, and a wider card
-// only shows more of the map around the same middle. Measured, not derived -
-// `card-frames.browser.test.tsx` renders each card where every list puts it and
-// fails when one is narrower, or its band shorter, than these.
+// only shows more of the map around the same middle. The narrowest is a list
+// inside a card - the dashboard's, a detail page's - and its width and band are
+// measured, not derived: `card-frames.browser.test.tsx` renders each card where
+// every list puts it and fails when one is narrower, or its band shorter, than
+// these. The height is a card whose lines do not wrap, the 214 px
+// `BackdropCardSkeleton` holds less its border, and it decides only how far out
+// a place's footprint opens.
 //
-// A dive is fitted for the band an outlined dive card leaves, which its depth
+// The band sits under the credit, 24 px below its 20, and above the details. A
+// dive is fitted for the band an outlined dive card leaves, which its depth
 // outline clamps to the `FIT_PADDING` floor: fitting every dive for it keeps one
 // picture per dive, and a dive's places nearly always open at `MAX_FIT_ZOOM` in
 // any band anyway. A trip card carries no outline.
 export const DIVE_CARD_FRAME: CardFrame = {
   width: 252,
   height: 212,
-  band: { top: 40, bottom: 148 },
+  band: { top: 44, bottom: 144 },
 };
 export const TRIP_CARD_FRAME: CardFrame = {
   width: 252,
   height: 212,
-  band: { top: 40, bottom: 128 },
+  band: { top: 44, bottom: 128 },
 };

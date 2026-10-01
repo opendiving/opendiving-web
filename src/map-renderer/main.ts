@@ -7,6 +7,7 @@
 // `PORT`, which is 3000 in the image and 3001 beside a dev server.
 
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { startDisplay, type Display } from "./display";
@@ -32,6 +33,14 @@ async function main() {
   if (process.platform === "linux") {
     display = await startDisplay();
     process.env.DISPLAY = display.name;
+    // Each picture is drawn on a new map, and Mesa compiles a new map's
+    // shaders from nothing unless it may keep them - which, for a user with no
+    // home directory, it may only where it is told to. Kept, they make a
+    // fresh map nearly as quick as a warm one.
+    process.env.MESA_SHADER_CACHE_DIR ??= path.join(
+      tmpdir(),
+      "map-renderer-shaders",
+    );
     display.onExit((reason) => {
       // Every map drew through it, so there is nothing left to recover:
       // exiting is what has the container restarted with a display again.
