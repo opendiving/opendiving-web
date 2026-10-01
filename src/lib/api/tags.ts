@@ -54,9 +54,10 @@ export const tagsAPI = {
   },
 
   /**
-   * Rename a tag; every dive and site carrying it carries the new name. The API trims the
-   * name, and one another of the diver's tags has once both are case-folded is a
-   * 422 naming the clash. A change of case alone is a rename like any other.
+   * Rename a tag; every dive and site carrying it carries the new name. The API
+   * trims the name, and one another of the diver's tags has once both are
+   * case-folded is a 422 naming the clash. A change of case alone is a rename like
+   * any other.
    */
   async renameTag(tagUuid: string, name: string): Promise<{ message: string }> {
     const response = await apiClient.patch(`/tag/${tagUuid}`, { name });
