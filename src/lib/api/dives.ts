@@ -1146,6 +1146,24 @@ export interface ParsedDive {
   avg_depth: number | null;
   bottom_temperature: number | null;
   mixtures: ParsedDiveMixture[];
+  // The rest of the dive as the file states it - what a logbook format such as
+  // UDDF, Subsurface's or DM5's records beside the readings - under the form's
+  // own names, so a file read here prefills what logbook import would store.
+  // Optional, since an API that does not read them leaves them out.
+  notes?: string | null;
+  visibility?: number | null;
+  weight?: number | null;
+  water_type?: WaterType | null;
+  altitude?: number | null;
+  type?: DiveType | null;
+  rating?: number | null;
+  air_temperature?: number | null;
+  current?: DiveCurrent | null;
+  waves?: DiveWaves | null;
+  weather?: DiveWeather | null;
+  entry_type?: EntryType | null;
+  boat_name?: string | null;
+  tags?: string[];
   // The density the computer was set to - a FIT file's `dive_settings.water_type` -
   // and **never a prefill of the dive's `water_type`**: a calibration is not a kind of
   // water. A setting of the device, stored on the recording when the file is attached.
