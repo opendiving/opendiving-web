@@ -4,14 +4,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { MapPin, Plus } from "lucide-react";
 import type { DiveSite } from "@/lib/api/dive-sites";
-import {
-  ENTRY_TYPE_LABELS,
-  vocabularyLabel,
-  WATER_TYPE_LABELS,
-} from "@/lib/api/dives";
 import { useUnits } from "@/hooks/useUnits";
-import { formatDateTime } from "@/lib/date-time";
-import { formatAltitude, formatDepth, type UnitSystem } from "@/lib/units";
+import { formatDepth, type UnitSystem } from "@/lib/units";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { ExternalIdLink } from "@/components/sites/external-id-link";
 import { Badge } from "@/components/ui/badge";
@@ -43,8 +37,8 @@ function depthRange(site: DiveSite, units: UnitSystem): string | null {
 }
 
 /**
- * Everything the site records about itself, in the sidebar of its page: where it
- * is, what else it is called, the place's own depths, water, altitude and entry,
+ * What the site records about itself beyond the line in its page's hero, in the
+ * sidebar: what else it is called, where exactly it is, the place's own depths,
  * the diver's tags, and its entries in other registries. A member the site lacks
  * draws nothing.
  */
@@ -53,7 +47,6 @@ export function DiveSiteInfoCard({ site }: { site: DiveSite }) {
   const coordinates = formatCoordinates(site.latitude, site.longitude);
   const depths = depthRange(site, units);
   const otherNames = site.other_names ?? [];
-  const entryTypes = site.entry_types ?? [];
   const tags = site.tags ?? [];
   const externalIds = site.external_ids ?? [];
 
@@ -66,9 +59,6 @@ export function DiveSiteInfoCard({ site }: { site: DiveSite }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {site.location?.name && (
-          <InfoRow label="Location">{site.location.name}</InfoRow>
-        )}
         {otherNames.length > 0 && (
           <InfoRow label="Also known as">{otherNames.join(", ")}</InfoRow>
         )}
@@ -77,25 +67,7 @@ export function DiveSiteInfoCard({ site }: { site: DiveSite }) {
             <span className="tabular-nums">{coordinates}</span>
           </InfoRow>
         )}
-
         {depths && <InfoRow label="Depth">{depths}</InfoRow>}
-        {site.water_type && (
-          <InfoRow label="Water type">
-            {vocabularyLabel(WATER_TYPE_LABELS, site.water_type)}
-          </InfoRow>
-        )}
-        {site.altitude != null && (
-          <InfoRow label="Altitude">
-            {formatAltitude(site.altitude, units)}
-          </InfoRow>
-        )}
-        {entryTypes.length > 0 && (
-          <InfoRow label={entryTypes.length > 1 ? "Entry types" : "Entry type"}>
-            {entryTypes
-              .map((entry) => vocabularyLabel(ENTRY_TYPE_LABELS, entry))
-              .join(", ")}
-          </InfoRow>
-        )}
         {tags.length > 0 && (
           <InfoRow label="Tags">
             <ul className="flex flex-wrap gap-1.5">
@@ -121,13 +93,6 @@ export function DiveSiteInfoCard({ site }: { site: DiveSite }) {
           </InfoRow>
         )}
 
-        <InfoRow label="Added on">
-          {formatDateTime(site.created_at, {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </InfoRow>
         <Button className="w-full" asChild>
           <Link href={`/dives/new?dive_site_uuid=${site.uuid}`}>
             <Plus className="h-4 w-4 mr-2" />

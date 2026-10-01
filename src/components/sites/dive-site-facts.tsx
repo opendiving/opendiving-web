@@ -1,7 +1,11 @@
 import { Fragment, type ReactNode } from "react";
-import { Mountain, WavesArrowDown, type LucideIcon } from "lucide-react";
+import { Mountain, Waves, WavesArrowDown, type LucideIcon } from "lucide-react";
 import type { DiveSite } from "@/lib/api/dive-sites";
-import { ENTRY_TYPE_LABELS, vocabularyLabel } from "@/lib/api/dives";
+import {
+  ENTRY_TYPE_LABELS,
+  vocabularyLabel,
+  WATER_TYPE_LABELS,
+} from "@/lib/api/dives";
 import { formatAltitude, type UnitSystem } from "@/lib/units";
 
 // A fact marked by an icon, which a screen reader hears as its label. The icon
@@ -30,18 +34,23 @@ function IconFact({
 
 /**
  * The line under a site's name, on its card and its page's hero alike: where it
- * is, how high, and how divers get in - each only where the site records it.
+ * is, in what water, how high, and how divers get in - each only where the site
+ * records it. The icons are the forms' for the same fields.
  */
 export function diveSiteFacts(site: DiveSite, units: UnitSystem): ReactNode[] {
   const entryTypes = site.entry_types ?? [];
   return [
     site.location?.name,
+    site.water_type && (
+      <IconFact icon={Waves} label="Water type">
+        {vocabularyLabel(WATER_TYPE_LABELS, site.water_type)}
+      </IconFact>
+    ),
     site.altitude != null && (
       <IconFact icon={Mountain} label="Altitude">
         {formatAltitude(site.altitude, units)}
       </IconFact>
     ),
-    // The dive form's icon for its entry type.
     entryTypes.length > 0 && (
       <IconFact
         icon={WavesArrowDown}

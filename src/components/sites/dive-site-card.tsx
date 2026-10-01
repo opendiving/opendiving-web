@@ -28,8 +28,8 @@ interface DiveSiteCardProps {
 }
 
 // One dive site as a card, on /sites: its pin on a map as the backdrop - the
-// map's water for a site with none, as a dive card draws one - where it is, how
-// high and how divers get in, and what the diver's own dives there add up to.
+// map's water for a site with none, as a dive card draws one - its line of facts,
+// and what the diver's own dives there add up to.
 export function DiveSiteCard({
   site,
   onEdit,

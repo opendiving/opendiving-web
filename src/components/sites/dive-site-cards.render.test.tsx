@@ -58,9 +58,6 @@ describe("DiveSiteInfoCard", () => {
           other_names: ["砂辺", "Sunabe"],
           depth_from: 3,
           depth_to: 18,
-          water_type: "salt",
-          altitude: 2,
-          entry_types: ["shore", "pier"],
           tags: ["shore dive", "macro"],
           external_ids: [
             { registry: "openstreetmap", identifier: "node/313862678" },
@@ -73,9 +70,6 @@ describe("DiveSiteInfoCard", () => {
 
     expect(row("Also known as")).toHaveTextContent("砂辺, Sunabe");
     expect(row("Depth")).toHaveTextContent("3 m – 18 m");
-    expect(row("Water type")).toHaveTextContent("Salt water");
-    expect(row("Altitude")).toHaveTextContent("2 m");
-    expect(row("Entry types")).toHaveTextContent("Shore, Pier");
     expect(
       within(row("Tags") as HTMLElement)
         .getAllByRole("listitem")
@@ -98,10 +92,8 @@ describe("DiveSiteInfoCard", () => {
 
     for (const label of [
       "Also known as",
+      "Coordinates",
       "Depth",
-      "Water type",
-      "Altitude",
-      "Entry type",
       "Tags",
       "In other registries",
     ]) {
@@ -117,16 +109,42 @@ describe("DiveSiteInfoCard", () => {
     expect(row("Depth")).toHaveTextContent("To 40 m");
   });
 
-  it("reads depths and the altitude in the diver's units", () => {
+  it("reads depths in the diver's units", () => {
     account.user.units = "imperial";
     render(
       <DiveSiteInfoCard
-        site={{ ...SITE, depth_from: 4.57, depth_to: 30.48, altitude: 1829 }}
+        site={{ ...SITE, depth_from: 4.57, depth_to: 30.48 }}
       />,
     );
 
     expect(row("Depth")).toHaveTextContent("15 ft – 100 ft");
-    expect(row("Altitude")).toHaveTextContent("6001 ft");
+  });
+
+  // Each is on the line in the hero above it.
+  it("leaves the place, its water, its altitude and its entry to the hero", () => {
+    render(
+      <DiveSiteInfoCard
+        site={{
+          ...SITE,
+          location: { name: "Chatan, Okinawa, Japan" },
+          water_type: "salt",
+          altitude: 2,
+          entry_types: ["shore"],
+        }}
+      />,
+    );
+
+    for (const label of [
+      "Location",
+      "Water type",
+      "Altitude",
+      "Entry type",
+      "Added on",
+    ]) {
+      expect(
+        screen.queryByText(label, { selector: "div" }),
+      ).not.toBeInTheDocument();
+    }
   });
 });
 
@@ -140,6 +158,7 @@ describe("DiveSiteHero", () => {
         site={{
           ...SITE,
           location: { name: "Chatan, Okinawa, Japan" },
+          water_type: "salt",
           altitude: 2,
           entry_types: ["shore", "pier"],
           dive_count: 12,
@@ -156,7 +175,7 @@ describe("DiveSiteHero", () => {
       name: "Sunabe Seawall",
     });
     expect(heading.nextElementSibling).toHaveTextContent(
-      "Chatan, Okinawa, Japan · Altitude 2 m · Entry types Shore, Pier",
+      "Chatan, Okinawa, Japan · Water type Salt water · Altitude 2 m · Entry types Shore, Pier",
     );
     expect(figure("Dives")).toHaveTextContent("12");
     expect(figure("Last dive")).toHaveTextContent("Sep 14, 2026");
