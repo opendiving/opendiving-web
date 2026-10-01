@@ -2948,9 +2948,9 @@ patched `XMLHttpRequest.prototype.send`, comparing loading and loaded geometry o
 a screenshot does not show a `h-5` bar against a 24px line box or a legend nobody accounted for.
 
 `ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive
-and trip cards load into `BackdropCardSkeleton`, one box at the card's measured 214px (238px from
-`sm`), `RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
-`/dives` and `/trips`.
+and trip cards load into `BackdropCardSkeleton`, one box at the card's measured 238px,
+`RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on `/dives`
+and `/trips`.
 
 ## The project instructions live in AGENTS.md, and CLAUDE.md is an import
 

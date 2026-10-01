@@ -57,8 +57,7 @@ function UnplacedBackdrop({ coveredBottom }: { coveredBottom: number }) {
 }
 
 // The profile's band at the foot of the backdrop, just clear of the name: the
-// `sm:h-14` below, and shorter on a phone, whose backdrop band is already too
-// short for the map to fit its places any higher than it would above this.
+// `h-14` below.
 const SILHOUETTE_HEIGHT = 56;
 const SILHOUETTE_GAP = 4;
 
@@ -146,7 +145,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
                 the fill's gradient draws it in bands. */}
             {outline && (
               <div
-                className="absolute inset-x-3 h-9 sm:h-14"
+                className="absolute inset-x-3 h-14"
                 style={{ bottom: coveredBottom + SILHOUETTE_GAP }}
               >
                 <DiveProfileSilhouette
