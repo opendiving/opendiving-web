@@ -16,10 +16,12 @@ const FRAME =
 // The page's column, so the details line up with the body under them.
 const COLUMN = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
 
-// The figures' row: every figure the same width, the widest a date, as many to a
-// line as fit - two on a phone.
-const FIGURES =
-  "mt-4 grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-x-4 gap-y-3";
+// The figures' row, as many to a line as fit - three on a phone.
+const FIGURES = "mt-4 flex flex-wrap gap-x-3 gap-y-3";
+
+// Every figure at least as wide as the widest short one, "Average rating", so
+// they line up. A date is wider, and its record lists it last.
+const FIGURE = "min-w-26";
 
 // The band's top row, at the column's edges rather than the window's, where a
 // wide screen would put it far from everything else. Above the details and the
@@ -144,7 +146,7 @@ export function MapHero({
               never breaks, so "30 m" is one figure. */}
           <dl className={FIGURES}>
             {figures.map(({ label, value }) => (
-              <div key={label}>
+              <div key={label} className={FIGURE}>
                 <dt className="mb-1 text-sm font-medium text-muted-foreground">
                   {label}
                 </dt>
@@ -184,7 +186,7 @@ export function MapHeroSkeleton({ backHref, backLabel }: Back) {
         </p>
         <div className={FIGURES}>
           {[0, 1, 2].map((figure) => (
-            <div key={figure}>
+            <div key={figure} className={FIGURE}>
               <Skeleton className={cn("mb-1 h-5 w-16", bar)} />
               <Skeleton className={cn("h-8 w-12", bar)} />
             </div>

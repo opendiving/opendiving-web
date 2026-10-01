@@ -161,6 +161,16 @@ describe("DiveSiteHero", () => {
     expect(figure("Deepest")).toHaveTextContent("21 m");
     expect(figure("Species seen")).toHaveTextContent("7");
     expect(figure("Average rating")).toHaveTextContent("4.3 of 5");
+    // The date last, as the one figure wider than the rest.
+    expect(
+      Array.from(document.querySelectorAll("dt"), (dt) => dt.textContent),
+    ).toEqual([
+      "Dives",
+      "Deepest",
+      "Species seen",
+      "Average rating",
+      "Last dive",
+    ]);
     expect(
       screen.getByRole("link", { name: "Back to dive sites" }),
     ).toHaveAttribute("href", "/sites");

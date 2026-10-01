@@ -31,12 +31,6 @@ export function DiveSiteHero({
   const figures: MapHeroFigure[] = [
     { label: "Dives", value: site.dive_count ?? 0 },
   ];
-  if (site.last_dived_on) {
-    figures.push({
-      label: "Last dive",
-      value: formatDateOnly(site.last_dived_on),
-    });
-  }
   if (site.max_dive_depth != null) {
     figures.push({
       label: "Deepest",
@@ -59,6 +53,14 @@ export function DiveSiteHero({
           </span>
         </>
       ),
+    });
+  }
+
+  // Last, as the one figure wider than the rest.
+  if (site.last_dived_on) {
+    figures.push({
+      label: "Last dive",
+      value: formatDateOnly(site.last_dived_on),
     });
   }
 
