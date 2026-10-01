@@ -1,7 +1,8 @@
 "use client";
 
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { Edit, MapPin } from "lucide-react";
+import { Edit, MapPin, Mountain } from "lucide-react";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { ENTRY_TYPE_LABELS, vocabularyLabel } from "@/lib/api/dives";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -37,9 +38,20 @@ export function DiveSiteCard({
   // The pin alone, as the site's page maps it: the locality's centre is the
   // town the geocoder resolved, not the site.
   const isPlaced = site.latitude != null && site.longitude != null;
-  const facts = [
+  const facts: ReactNode[] = [
     site.location?.name,
-    site.altitude != null && `${formatAltitude(site.altitude, units)} altitude`,
+    site.altitude != null && (
+      // The icon glows as the text does, through the actions menu's filter:
+      // `text-shadow` stops at an SVG.
+      <span className="whitespace-nowrap">
+        <Mountain
+          aria-hidden
+          className="mr-0.5 inline-block size-3 align-[-0.125em] [filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
+        />
+        <span className="sr-only">Altitude </span>
+        {formatAltitude(site.altitude, units)}
+      </span>
+    ),
     site.entry_types
       ?.map((entry) => vocabularyLabel(ENTRY_TYPE_LABELS, entry))
       .join(", "),
@@ -95,7 +107,16 @@ export function DiveSiteCard({
       <Link href={`/sites/${site.uuid}`} className={BACKDROP_CARD_LINK}>
         {site.name}
       </Link>
-      {facts.length > 0 && <div className="text-xs">{facts.join(" · ")}</div>}
+      {facts.length > 0 && (
+        <div className="text-xs">
+          {facts.map((fact, index) => (
+            <Fragment key={index}>
+              {index > 0 && " · "}
+              {fact}
+            </Fragment>
+          ))}
+        </div>
+      )}
       <BackdropCardFigures figures={figures} />
     </BackdropCard>
   );

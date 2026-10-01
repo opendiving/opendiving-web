@@ -54,6 +54,10 @@ const card = (props: Partial<Parameters<typeof DiveSiteCard>[0]> = {}) => {
   return screen.getByRole("listitem");
 };
 
+// The line under the name.
+const subtitleOf = (item: HTMLElement) =>
+  within(item).getByRole("link", { name: "The Canyon" }).nextElementSibling!;
+
 const figuresOf = (item: HTMLElement) =>
   Array.from(item.querySelectorAll("dt"), (term) => [
     term.textContent,
@@ -104,17 +108,20 @@ describe("DiveSiteCard", () => {
       }),
     });
 
-    expect(
-      within(item).getByText(
-        "Dahab, South Sinai, Egypt · 0 m altitude · Shore, Boat, hovercraft",
-      ),
-    ).toBeInTheDocument();
+    const line = subtitleOf(item);
+    // The altitude is a mountain on screen and a word to a screen reader.
+    expect(line).toHaveTextContent(
+      "Dahab, South Sinai, Egypt · Altitude 0 m · Shore, Boat, hovercraft",
+    );
+    expect(line.querySelector("svg.lucide-mountain")).toHaveAttribute(
+      "aria-hidden",
+    );
   });
 
   it("leaves out what it does not record", () => {
     const item = card({ site: site({ altitude: 2300, entry_types: [] }) });
 
-    expect(within(item).getByText("2300 m altitude")).toBeInTheDocument();
+    expect(subtitleOf(item)).toHaveTextContent(/^Altitude 2300 m$/);
   });
 
   it("draws no line under the name for a site recording none of them", () => {
