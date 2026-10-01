@@ -149,7 +149,7 @@ export function DiveDetailSidebar({
   const exitCoordinates =
     exit && formatCoordinates(exit.latitude, exit.longitude);
 
-  // The hero's map is capped at zoom 10, where a surface swim is well under a pixel, so
+  // The hero's map is capped at zoom 9, where a surface swim is well under a pixel, so
   // the drift between the two fixes is a line of text or it is nothing.
   const drift =
     entry && exit ? formatDistance(haversineMeters(entry, exit), units) : null;

@@ -113,7 +113,7 @@ describe("dashboard Species Seen tile", () => {
 
   it("holds all four figures in one card, not four", async () => {
     // They are read together as "what my logbook amounts to", so they share a
-    // card the way the dive page's duration and depths do. Asserted structurally
+    // card. Asserted structurally
     // because every text-based check in this file passes either way - the merge
     // is invisible to them, and splitting the card back up would go unnoticed.
     getDiveStats.mockResolvedValue(stats());

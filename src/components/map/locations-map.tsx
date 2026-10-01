@@ -142,9 +142,10 @@ export interface LocationsMapProps {
    * over `SIDE_FADE_WIDTH` of it each side, with the pins kept out of the fades.
    * For a `backdrop` `snapshot` in a frame that may be wider than the picture -
    * a page-wide hero - where the picture's edge would otherwise stand on the
-   * page as a hard line. A frame narrower than the picture shows none of the
-   * fade, since it lies past the frame's edges. Off by default: a card's frame
-   * just under `lg` is nearly as wide as the picture and would show it.
+   * page as a hard line. A frame half the picture's width or narrower shows
+   * none of the fade, since it lies past the frame's edges; a wider one shows
+   * the fades' inner reaches at its sides. Off by default: a card's frame just
+   * under `lg` is nearly as wide as the picture and would show them.
    */
   sideFade?: boolean;
 }
@@ -600,8 +601,8 @@ export function LocationsMap({
                     )}
                   />
                   {/* The sides' fade, over the picture and anchored to it
-                      rather than to the frame, so a frame narrower than the
-                      picture shows the map crisp to its edges. A gradient laid
+                      rather than to the frame, so a frame half the picture's
+                      width or narrower shows the map crisp to its edges. A gradient laid
                       over the picture, never a mask, for the reason the foot's
                       gives below. */}
                   {sideFade && (

@@ -98,9 +98,9 @@ function HeroBackLink({
 }
 
 // What every hero's map is, beside its places: a picture across the whole band,
-// faded at its foot and, where the window is wider than the picture, at its
-// sides, fitted between the top row and the details, and leaving its credit to
-// the hero's details.
+// faded at its foot and at its sides - which a window wider than half the
+// picture starts to show - fitted between the top row and the details, and
+// leaving its credit to the hero's details.
 type HeroMap = Pick<
   LocationsMapProps,
   | "className"

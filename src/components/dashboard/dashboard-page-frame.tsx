@@ -175,9 +175,8 @@ export function DashboardPageFrame({
       )}
 
       {hasDives && (
-        /* The four headline numbers in one card, the way the dive page holds its
-           duration and depths in one - they are read together as "what my
-           logbook amounts to", and four separate cards spent four headers and
+        /* The four headline numbers in one card - they are read together as
+           "what my logbook amounts to", and four separate cards spent four headers and
            four borders saying so four times. Four boxes in a row also read as
            four unrelated things; one box reads as one summary, which is what it
            is.

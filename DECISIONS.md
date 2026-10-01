@@ -3283,11 +3283,11 @@ whole world until the first place is picked. A frame appearing with the first pl
 fields down mid-edit, and an empty map says the field above wants a place, not free text — as
 `DiveSiteMapField` does with `MapPicker`.
 
-`showWhenEmpty` stays opt-in: a trip's page and a dive's sidebar answer "where is this?", where an
-empty world is worse than no map, and gating keeps the chunk unfetched. The trip card opts in: there
-the map is the card's backdrop, and a list mixing cards with and without one reads as two layouts.
-The empty frame's aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a
-definite noun phrase.
+`showWhenEmpty` stays opt-in: a dive or a site is at one spot, and the world says nothing about
+which, so their heroes draw the map's water for one with no position and gating keeps the chunk
+unfetched. A trip's card and its page's hero opt in: there the map is the backdrop of the trip's
+card, and a list mixing cards with and without one reads as two layouts. The empty frame's
+aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a definite noun phrase.
 
 The empty view is `WORLD_CENTER` at `MIN_ZOOM` (0) from `lib/basemap.ts`, read by both maps.
 
@@ -3432,12 +3432,11 @@ order (`visibleItems`, no `sort`) and `hintFor`'s row-relative redundancy check.
 The API derives `species_seen` as the distinct species over a diver's live dives, recomputed on
 every dive write, so the dashboard shows it. The four figures sit in one headerless `Card` as a
 `grid-cols-2 lg:grid-cols-4` grid rather than four cards: a fourth card strands itself at
-`md:grid-cols-3`, and four headers and borders on four numbers read together as one answer, the same
-shape as the dive page's duration-and-depths block. A 2×2 below `lg` rather than a single column, so
-four short figures do not run down the page. Icons sit in front of the label, since a right-aligned
-icon in a quarter-width column floats away from its words; per-width measurements live in the
-component's comment. The cell component is `Stat`, not `StatCard`, because it renders a cell and not
-a card.
+`md:grid-cols-3`, and four headers and borders on four numbers read together as one answer. A 2×2
+below `lg` rather than a single column, so four short figures do not run down the page. Icons sit in
+front of the label, since a right-aligned icon in a quarter-width column floats away from its words;
+per-width measurements live in the component's comment. The cell component is `Stat`, not
+`StatCard`, because it renders a cell and not a card.
 
 ## What actually keeps a species search from leaving is the cache, not the catalog
 
@@ -6802,13 +6801,14 @@ nobody asked.
 
 ## A detail page's sidebar holds its add actions, named short
 
-`/courses/[id]`, `/trips/[id]` and `/sites/[id]` put every "add" for the record in the sidebar,
-named without it: `Log a dive`, `Add a certification`. The page is that record, so naming it again
-costs the sidebar's width and buys nothing — and `Add a Certification for this Course` does not fit.
-Each card below then carries one button, only while it is empty, worded in full
-(`Log a dive for this course`): two routes to one form that a flat controls list can tell apart. The
-certifications card carries no header button, so `CourseCertificationsCard` takes
-`isAdding`/`onAddingChange` and the page owns the flag both buttons set.
+`/courses/[id]` puts every "add" for the record in the sidebar, named without it: `Log a dive`,
+`Add a certification`. The trip and site pages carry their `Log a dive` on the hero's top row
+instead, named the same way. The page is that record, so naming it again costs the sidebar's width
+and buys nothing — and `Add a Certification for this Course` does not fit. Each card below then
+carries one button, only while it is empty, worded in full (`Log a dive for this course`): two
+routes to one form that a flat controls list can tell apart. The certifications card carries no
+header button, so `CourseCertificationsCard` takes `isAdding`/`onAddingChange` and the page owns the
+flag both buttons set.
 
 ## The check-in summary is a list the diver hands over, and it carries no agency marks
 

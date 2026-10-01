@@ -1047,7 +1047,7 @@ describe("LocationsMap", () => {
       }
     });
 
-    it("shows a frame narrower than the picture none of the side fade", async () => {
+    it("shows a frame half the picture's width or narrower none of the side fade", async () => {
       const frame = document.createElement("div");
       frame.style.width = "320px";
       document.body.appendChild(frame);
