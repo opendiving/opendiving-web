@@ -19,6 +19,11 @@ const alias = { "@": path.resolve(dirname, "./src") };
 // walk `node_modules` looking for tests.
 const BROWSER_TESTS = "src/**/*.browser.test.{ts,tsx}";
 
+// The map renderer runs in Node, not in a page, so its tests do too - in a
+// project of their own, because the unit project's setup file patches a
+// `window` that Node does not have.
+const RENDERER_TESTS = "src/map-renderer/**/*.test.ts";
+
 export default defineConfig({
   resolve: { alias },
   test: {
@@ -29,7 +34,7 @@ export default defineConfig({
           name: "unit",
           environment: "jsdom",
           include: ["src/**/*.test.{ts,tsx}"],
-          exclude: [...configDefaults.exclude, BROWSER_TESTS],
+          exclude: [...configDefaults.exclude, BROWSER_TESTS, RENDERER_TESTS],
           // Scoped to this project, and that is the point rather than tidiness.
           // `vitest.setup.ts` is a jsdom patch kit - a no-op `ResizeObserver`, a
           // `matchMedia` that always answers false, pointer-capture no-ops.
@@ -38,6 +43,15 @@ export default defineConfig({
           // implementations with stubs, breaking precisely the behaviour a real
           // browser was brought in to test.
           setupFiles: ["./vitest.setup.ts"],
+        },
+      },
+      {
+        resolve: { alias },
+        test: {
+          name: "node",
+          environment: "node",
+          include: [RENDERER_TESTS],
+          exclude: [...configDefaults.exclude, BROWSER_TESTS],
         },
       },
       {

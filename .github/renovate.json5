@@ -1,7 +1,7 @@
 {
   // What tells anyone a dependency has moved. The other half of the same story is
   // `.github/workflows/vulnerability-scan.yml`, which watches the image that is *already
-  // published* - `node:24-alpine` grows a CVE weeks after a release shipped, with no PR in
+  // published* - `ubuntu:24.04` grows a CVE weeks after a release shipped, with no PR in
   // flight, and no bot that reads this repository's files can see that. The two are not
   // substitutes.
   //
@@ -63,11 +63,13 @@
   // Load-bearing, and the default only by luck. This repository pins in two styles on
   // purpose, and Renovate's job is to renew whichever it finds rather than to normalise:
   //
-  //   - `Dockerfile` floats on `node:24-alpine`, twice, and that float is what makes the CVE
-  //     rebuild in CONTRIBUTING.md work at all: re-running Publish Image at an old `v` tag
-  //     picks up the patched Alpine packages precisely because the base is resolved at build
-  //     time. Digest-pin it and that rebuild reproduces the vulnerable base byte for byte,
-  //     republishes every alias, and fixes nothing while reporting success.
+  //   - `Dockerfile` floats on `ubuntu:24.04` and on `node:24-bookworm-slim`, which it copies
+  //     Node out of, and that float is what makes the CVE rebuild in CONTRIBUTING.md work at
+  //     all: re-running Publish Image at an old `v` tag picks up the patched Node and Ubuntu
+  //     packages precisely because both are resolved at build time - the packages also by the
+  //     `apt-get upgrade` Publish Image never caches. Digest-pin them and that rebuild
+  //     reproduces the vulnerable base byte for byte, republishes every alias, and fixes
+  //     nothing while reporting success.
   //   - `.github/workflows/*` pins first-party actions on a major tag (`actions/checkout@v7`)
   //     and third-party ones by SHA with a trailing version comment
   //     (`docker/login-action@dbcb8138... # v4.6.0`). Renovate updates the SHA *and* the
@@ -137,8 +139,9 @@
   "packageRules": [
     {
       // A Node version is a coordinated change across five files, and a bot reaches three of
-      // them: `.nvmrc` (nvm manager), `package.json`'s `engines.node` (npm), and the one
-      // `Dockerfile`, whose two base tags it updates together (dockerfile manager). The other
+      // them: `.nvmrc` (nvm manager), `package.json`'s `engines.node` (npm), and the
+      // `Dockerfile`'s `node:24-bookworm-slim`, which it copies Node out of (dockerfile
+      // manager). The other
       // two are `ci.yml` and `code-quality.yml`, which hold six occurrences of `24.x` between
       // them - three step names and three `node-version:` inputs -
       // none of which the `github-actions` manager treats as a dependency, and none of which
@@ -160,10 +163,26 @@
       // `@types/node` is deliberately outside this group. It tracks the runtime's major but
       // is an ordinary devDependency with no say in which Node builds or runs the image, so
       // holding its patches behind a checkbox would buy nothing.
+      //
+      // And it is held below 25 outright, because a checkbox is not enough there:
+      // `@maplibre/maplibre-gl-native` ships prebuilt binaries for Node 20, 22 and 24 and its
+      // install script refuses to build one (`--fallback-to-build=false`), so on any other ABI
+      // every `npm ci` in this repository fails. Raise this when it ships one for the next
+      // even major.
       "matchManagers": ["nvm", "dockerfile", "npm"],
       "matchPackageNames": ["node"],
       "groupName": "Node runtime",
       "dependencyDashboardApproval": true,
+      "allowedVersions": "<25",
+    },
+    {
+      // The base image's release, not its patches - `24.04` floats, and a rebuild collects
+      // those. MapLibre Native's Linux binary is built for Ubuntu 24.04 and links that
+      // release's libraries by name (`libicu74`, `libwebp7`), so a newer Ubuntu is a change
+      // only its next binaries can make. Nothing here can see when they do.
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["ubuntu"],
+      "enabled": false,
     },
     {
       // Not the action - `aquasecurity/setup-trivy` keeps its SHA pin renewed like every

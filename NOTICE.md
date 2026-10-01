@@ -2,12 +2,14 @@
 
 OpenDiving Web is licensed under AGPL-3.0 (see `LICENSE`). This file covers third-party material
 that is copied into this repository's own tree — artwork redrawn by hand into source files, and
-vendored assets under `public/` — plus one entry, MapLibre's worker, that is generated into
-`public/` at build time and ships in the image rather than in the tree.
+vendored assets under `public/` — plus two entries that ship in the image rather than in the tree:
+MapLibre's worker, generated into `public/` at build time, and MapLibre Native's binary, which the
+map renderer draws with.
 
 It is deliberately not an inventory of the npm dependency graph. Those packages are installed, not
 redistributed from here, and each carries its own license text inside `node_modules/` — and inside
-the bundle, for the ones whose code reaches the browser.
+the bundle, for the ones whose code reaches the browser. MapLibre Native is the exception, and is
+listed below: its package carries no license file, and its binary is downloaded at install.
 
 The brand mark is not listed because it is not third-party: `src/components/logo.tsx` and
 `src/app/icon.svg` are original artwork for this project. See `DECISIONS.md` for why the mark
@@ -60,6 +62,54 @@ They are the one entry here that is _not_ in the tree: `/public/maplibre/` is gi
 and `pretest`. A clone contains neither. They are listed because they reach the published image and
 the browser bundle, which is where a notice has to travel — but a reader looking for them in a fresh
 checkout will not find them.
+
+## MapLibre Native
+
+<https://github.com/maplibre/maplibre-native>
+
+`map-renderer/node_modules/@maplibre/maplibre-gl-native/` in the image holds the
+`@maplibre/maplibre-gl-native` package, whose install script downloads a prebuilt binary,
+`lib/node-v*/mbgl.node`, from its GitHub release. Neither the package nor the binary carries a
+license file, so its terms travel here:
+
+```
+BSD 2-Clause License
+
+Copyright (c) 2021 MapLibre contributors
+
+Copyright (c) 2018-2021 MapTiler.com
+
+Copyright (c) 2014-2020 Mapbox
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+* Redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in
+  the documentation and/or other materials provided with the
+  distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+The binary also contains the libraries MapLibre Native builds in — FreeType, HarfBuzz, RapidJSON and
+the Mapbox C++ libraries among them — under the licenses its `LICENSES.core.md` reproduces at the
+release tag of the installed version; for 6.4.1,
+<https://github.com/maplibre/maplibre-native/blob/node-v6.4.1/LICENSES.core.md>. MapLibre Native is
+based in part on the work of the FreeType Team.
 
 ## OpenFreeMap basemap styles
 
