@@ -22,6 +22,23 @@ declare const __MAP_RENDERER_SOURCE_DIGEST__: string;
 
 const log = (message: string) => console.log(`[map-renderer] ${message}`);
 
+// glibc gives every thread that allocates an arena of its own and keeps what
+// each frees, and MapLibre Native and Mesa allocate from many threads: two
+// arenas hold the renderer to about three quarters of the memory the default
+// does. glibc reads the setting only as a process starts, so the renderer
+// starts itself again with it, as the same process - which keeps it out of the
+// web server, sharing the image, and out of every command that runs this one.
+if (
+  process.platform === "linux" &&
+  process.env.MALLOC_ARENA_MAX === undefined
+) {
+  process.execve?.(
+    process.execPath,
+    [process.execPath, ...process.execArgv, ...process.argv.slice(1)],
+    { ...process.env, MALLOC_ARENA_MAX: "2" },
+  );
+}
+
 async function main() {
   const port = Number(process.env.PORT || 3001);
   const config = readRendererConfig();
