@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { ChevronDown, Funnel, MapPin, Plus, X } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { ChevronDown, MapPin, Plus, Search, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,10 @@ import {
   ListCardHeader,
   useIsEmptyList,
 } from "@/components/ui/list-card-header";
-import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import {
   NO_SITE_FILTERS,
   SitesFilters,
@@ -91,6 +91,15 @@ export function SitesPageFrame({
     count: cards.length,
     isNarrowed: isSearching || search.length > 0 || isFiltered,
   });
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // The cursor goes in the box as the panel opens, for the course list's
+  // reasons: in an effect, since the box has no layout until the panel's
+  // `hidden` lifts, and only on a change, so a route revisited with the panel
+  // open does not pull up a phone's keyboard unasked.
+  useEffectOnChange(() => {
+    if (isPanelOpen) searchRef.current?.focus();
+  }, [isPanelOpen]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
@@ -107,9 +116,6 @@ export function SitesPageFrame({
       />
 
       <Card>
-        {/* The count and the box that changes it, on one line - and under
-            `sm`, where they do not both fit, the count and the button the box
-            folds behind. */}
         <ListCardHeader title="Dive Site List" isEmpty={isEmptyList}>
           <CountBadge
             count={totalCount}
@@ -118,24 +124,16 @@ export function SitesPageFrame({
             total
             isNarrowed={isCountNarrowed}
           />
-          <ListSearch
-            id="dive-site-search"
-            label="Search dive sites by name or location"
-            toggleLabel="Search dive sites"
-            placeholder="Search by name or location..."
-            value={search}
-            onChange={onSearchChange}
-          />
-          {/* The dive list's panel, and for its reason: shutting it takes the
-              tag and the order with it, so a folded row never narrows or
-              reorders the list unseen. */}
+          {/* The course list's panel, and for its reason: shutting it takes
+              the search, the tag and the order with it, so a folded row never
+              narrows or reorders the list unseen. */}
           <IconTooltip
             label={
               !isPanelOpen
-                ? "Filter and sort dive sites"
-                : siteFiltersChanged(filters)
-                  ? "Close filters, clearing them"
-                  : "Close filters"
+                ? "Search, filter and sort dive sites"
+                : search.length > 0 || siteFiltersChanged(filters)
+                  ? "Close search and filters, clearing them"
+                  : "Close search and filters"
             }
           >
             <Button
@@ -146,6 +144,7 @@ export function SitesPageFrame({
               aria-controls="site-filters"
               onClick={() => {
                 if (isPanelOpen) {
+                  onSearchChange("");
                   onFiltersChange(NO_SITE_FILTERS);
                 } else {
                   onFiltersOpened();
@@ -153,7 +152,7 @@ export function SitesPageFrame({
                 setPanelOpen((open) => !open);
               }}
             >
-              <Funnel className="h-4 w-4" />
+              <Search className="h-4 w-4" />
               {isPanelOpen ? (
                 <X className="h-4 w-4" />
               ) : (
@@ -168,9 +167,12 @@ export function SitesPageFrame({
         {!isEmptyList && (
           <CardContent id="site-filters" hidden={!isPanelOpen}>
             <SitesFilters
+              search={search}
+              onSearchChange={onSearchChange}
               filters={filters}
               onFiltersChange={onFiltersChange}
               tags={tags}
+              searchRef={searchRef}
             />
           </CardContent>
         )}
