@@ -3,21 +3,30 @@ import type { ExternalId } from "@/lib/api/dive-sites";
 // The two registries DiveJSON names, each with the identifier form its schema holds
 // it to and the page that identifier opens. A registry outside them is carried as
 // written and shown as text, since nothing says what its identifier looks like.
-const REGISTRIES: Record<
+//
+// A `Map`, not an object literal: the registry is any producer key the API took,
+// and `constructor` is one, which an object would answer with its prototype's.
+const REGISTRIES = new Map<
   string,
   { label: string; form: RegExp; href: (identifier: string) => string }
-> = {
-  openstreetmap: {
-    label: "OpenStreetMap",
-    form: /^(node|way|relation)\/[1-9][0-9]*$/,
-    href: (identifier) => `https://www.openstreetmap.org/${identifier}`,
-  },
-  wikidata: {
-    label: "Wikidata",
-    form: /^Q[1-9][0-9]*$/,
-    href: (identifier) => `https://www.wikidata.org/wiki/${identifier}`,
-  },
-};
+>([
+  [
+    "openstreetmap",
+    {
+      label: "OpenStreetMap",
+      form: /^(node|way|relation)\/[1-9][0-9]*$/,
+      href: (identifier) => `https://www.openstreetmap.org/${identifier}`,
+    },
+  ],
+  [
+    "wikidata",
+    {
+      label: "Wikidata",
+      form: /^Q[1-9][0-9]*$/,
+      href: (identifier) => `https://www.wikidata.org/wiki/${identifier}`,
+    },
+  ],
+]);
 
 /** Two entries name the same registry record: registry and identifier, compared exactly. */
 export function sameExternalId(first: ExternalId, second: ExternalId): boolean {
@@ -28,7 +37,7 @@ export function sameExternalId(first: ExternalId, second: ExternalId): boolean {
 
 /** The registry as a reader knows it - `OpenStreetMap` - or as written where the format names no such registry. */
 export function registryLabel(registry: string): string {
-  return REGISTRIES[registry]?.label ?? registry;
+  return REGISTRIES.get(registry)?.label ?? registry;
 }
 
 /**
@@ -37,7 +46,7 @@ export function registryLabel(registry: string): string {
  * would lead nowhere a reader could trust.
  */
 export function externalIdHref(entry: ExternalId): string | null {
-  const registry = REGISTRIES[entry.registry];
+  const registry = REGISTRIES.get(entry.registry);
   if (!registry || !registry.form.test(entry.identifier)) return null;
   return registry.href(entry.identifier);
 }

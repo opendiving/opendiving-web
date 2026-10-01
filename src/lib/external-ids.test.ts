@@ -115,6 +115,14 @@ describe("externalIdHref", () => {
     ).toBeNull();
   });
 
+  // A producer key the API accepts, and a property every object inherits.
+  it("reads a registry named like an object's own property as any other", () => {
+    const entry = { registry: "constructor", identifier: "1" };
+
+    expect(externalIdHref(entry)).toBeNull();
+    expect(registryLabel("constructor")).toBe("constructor");
+  });
+
   // Built from a malformed identifier, a link would lead nowhere a reader could
   // trust.
   it("links nothing whose identifier is not its registry's form", () => {

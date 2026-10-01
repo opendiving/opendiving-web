@@ -45,9 +45,12 @@ function depthRange(site: DiveSite, units: UnitSystem): string | null {
 }
 
 // A stored value's label, or the value itself where this build has none yet -
-// the dive page's rule: the slug beats a blank row.
+// the dive page's rule: the slug beats a blank row. Own keys only, so a value
+// named like an inherited property reads as itself.
 const labelOf = <T extends string>(labels: Record<T, string>, value: string) =>
-  labels[value as T] ?? value;
+  Object.prototype.hasOwnProperty.call(labels, value)
+    ? labels[value as T]
+    : value;
 
 /**
  * Everything the site records about itself, in the sidebar of its page: where it
