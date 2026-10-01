@@ -124,10 +124,11 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
             ) : (
               <UnplacedBackdrop coveredBottom={aboveProfile} />
             )}
-            {/* Lifted off the map by the glow the details' text has. */}
+            {/* Without the glow the details' text has: a `drop-shadow` over
+                the fill's gradient draws it in bands. */}
             {outline && (
               <div
-                className="absolute inset-x-3 h-9 sm:h-14 [filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
+                className="absolute inset-x-3 h-9 sm:h-14"
                 style={{ bottom: coveredBottom + SILHOUETTE_GAP }}
               >
                 <DiveProfileSilhouette
