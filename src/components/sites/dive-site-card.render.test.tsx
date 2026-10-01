@@ -116,7 +116,7 @@ describe("DiveSiteCard", () => {
     expect(line.querySelector("svg.lucide-mountain")).toHaveAttribute(
       "aria-hidden",
     );
-    expect(line.querySelector("svg.lucide-log-in")).toHaveAttribute(
+    expect(line.querySelector("svg.lucide-waves-arrow-down")).toHaveAttribute(
       "aria-hidden",
     );
   });

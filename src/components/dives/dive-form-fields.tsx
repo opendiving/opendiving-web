@@ -8,13 +8,13 @@ import {
   Clock,
   CloudSun,
   Eye,
-  LogIn,
   Mountain,
   Shapes,
   Ship,
   Thermometer,
   ThermometerSun,
   Waves,
+  WavesArrowDown,
   WavesArrowUp,
   Weight,
   Wind,
@@ -439,7 +439,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     control={control}
                     name={"entry_type" as Path<TFieldValues>}
                     label="Entry type"
-                    icon={LogIn}
+                    icon={WavesArrowDown}
                     values={ENTRY_TYPES}
                     labels={ENTRY_TYPE_LABELS}
                   />

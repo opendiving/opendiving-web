@@ -39,7 +39,6 @@ import {
   Eye,
   Globe,
   GraduationCap,
-  LogIn,
   Luggage,
   MapPin,
   Mountain,
@@ -48,6 +47,7 @@ import {
   Thermometer,
   ThermometerSun,
   Waves,
+  WavesArrowDown,
   WavesArrowUp,
   Wind,
   type LucideIcon,
@@ -400,7 +400,7 @@ export function DiveDetailSidebar({
               </Reading>
             )}
             {dive.entry_type != null && (
-              <Reading label="Entry Type" icon={LogIn}>
+              <Reading label="Entry Type" icon={WavesArrowDown}>
                 {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
               </Reading>
             )}

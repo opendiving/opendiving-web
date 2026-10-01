@@ -2,7 +2,13 @@
 
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { Edit, LogIn, MapPin, Mountain, type LucideIcon } from "lucide-react";
+import {
+  Edit,
+  MapPin,
+  Mountain,
+  WavesArrowDown,
+  type LucideIcon,
+} from "lucide-react";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { ENTRY_TYPE_LABELS, vocabularyLabel } from "@/lib/api/dives";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -73,7 +79,7 @@ export function DiveSiteCard({
     // The dive page's icon for its entry type.
     entryTypes.length > 0 && (
       <IconFact
-        icon={LogIn}
+        icon={WavesArrowDown}
         label={entryTypes.length > 1 ? "Entry types" : "Entry type"}
       >
         {entryTypes
