@@ -1,6 +1,19 @@
 import type { Dive } from "@/lib/api/dives";
 import type { GeoPoint } from "@/lib/geo-distance";
-import type { MappableLocation } from "@/components/map/locations-map";
+import type { MappableLocation } from "@/lib/map-picture";
+
+// As much of a dive as its map reads: a `Dive`, or the map renderer's payload,
+// which carries the same fields under the same names and no site names.
+export type MappableDive = Pick<
+  Dive,
+  "entry_latitude" | "entry_longitude" | "exit_latitude" | "exit_longitude"
+> & {
+  dive_sites: readonly {
+    name?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+  }[];
+};
 
 // A recorded pair as a point, or null when the dive has no fix on that side.
 //
@@ -19,7 +32,7 @@ export function fixPoint(
 // the ring/dot pair is what tells them apart. Exit-only is the ordinary case,
 // not half a reading: every GPS-carrying export in the API's corpus takes its
 // first fix after surfacing.
-export function diveMapLocations(dive: Dive): MappableLocation[] {
+export function diveMapLocations(dive: MappableDive): MappableLocation[] {
   const entry = fixPoint(dive.entry_latitude, dive.entry_longitude);
   const exit = fixPoint(dive.exit_latitude, dive.exit_longitude);
   return [
