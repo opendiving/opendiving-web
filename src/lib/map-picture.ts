@@ -141,7 +141,7 @@ export interface CardFrame {
 // inside a card - the dashboard's, a detail page's - and its width and band are
 // measured, not derived: `card-frames.browser.test.tsx` renders each card where
 // every list puts it and fails when one is narrower, or its band shorter, than
-// these. The height is a card whose lines do not wrap, the 214 px
+// these. The height is a card whose lines do not wrap, the 238 px
 // `BackdropCardSkeleton` holds less its border, and it decides only how far out
 // a place's footprint opens.
 //
@@ -152,11 +152,11 @@ export interface CardFrame {
 // any band anyway. A trip card carries no outline.
 export const DIVE_CARD_FRAME: CardFrame = {
   width: 252,
-  height: 212,
-  band: { top: 44, bottom: 144 },
+  height: 236,
+  band: { top: 44, bottom: 168 },
 };
 export const TRIP_CARD_FRAME: CardFrame = {
   width: 252,
-  height: 212,
+  height: 236,
   band: { top: 44, bottom: 128 },
 };
