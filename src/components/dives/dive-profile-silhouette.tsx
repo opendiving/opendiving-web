@@ -12,18 +12,12 @@ const HEIGHT = 100;
 // deepest in an even slice of the dive, so the shape reaches the dive's
 // maximum; the surface is pinned at both ends, where every dive starts and
 // finishes. Draws nothing for a series that never leaves the surface.
-//
-// The line is its own drawing over the fill's, so a filter the caller hangs on
-// it with `lineClassName` - a glow - stays off the fill: a `drop-shadow` over
-// the translucent gradient draws it in bands.
 export function DiveProfileSilhouette({
   depths,
   className,
-  lineClassName,
 }: {
   depths: number[];
   className?: string;
-  lineClassName?: string;
 }) {
   const gradientId = useId();
   const deepest = Math.max(0, ...depths);
@@ -38,39 +32,33 @@ export function DiveProfileSilhouette({
     { x: WIDTH, y: 0 },
   ];
   const curve = smoothPath(points);
-  const drawing = {
-    viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
-    preserveAspectRatio: "none",
-    overflow: "visible",
-  };
 
   return (
-    <div aria-hidden className={cn("relative text-foreground", className)}>
-      <svg {...drawing} className="absolute inset-0 size-full">
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="currentColor" stopOpacity="0.45" />
-            <stop offset="1" stopColor="currentColor" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path
-          d={`${curve} L${WIDTH},${HEIGHT} L0,${HEIGHT} Z`}
-          fill={`url(#${gradientId})`}
-        />
-      </svg>
-      <svg
-        {...drawing}
-        className={cn("absolute inset-0 size-full", lineClassName)}
-      >
-        <path
-          d={curve}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1}
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-    </div>
+    <svg
+      aria-hidden
+      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      preserveAspectRatio="none"
+      overflow="visible"
+      className={cn("text-foreground", className)}
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.45" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path
+        d={`${curve} L${WIDTH},${HEIGHT} L0,${HEIGHT} Z`}
+        fill={`url(#${gradientId})`}
+      />
+      <path
+        d={curve}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1}
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }

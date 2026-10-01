@@ -3,8 +3,7 @@ import { render } from "@testing-library/react";
 import { DiveProfileSilhouette } from "./dive-profile-silhouette";
 
 // The curve starts and ends at the surface, its deepest slice touches the
-// foot of the box, a filter meant for the line stays off the fill, and a series
-// that never went under draws nothing.
+// foot of the box, and a series that never went under draws nothing.
 
 const pathsOf = (depths: number[]) => {
   const { container } = render(<DiveProfileSilhouette depths={depths} />);
@@ -28,17 +27,6 @@ describe("DiveProfileSilhouette", () => {
     const [fill, line] = pathsOf([200, 400]);
 
     expect(fill).toBe(`${line} L100,100 L0,100 Z`);
-  });
-
-  it("hangs the line's class on the line's drawing and not the fill's", () => {
-    const { container } = render(
-      <DiveProfileSilhouette depths={[200, 400]} lineClassName="glow" />,
-    );
-    const [fill, line] = container.querySelectorAll("svg");
-
-    expect(line).toHaveClass("glow");
-    expect(line.querySelector("path")).toHaveAttribute("fill", "none");
-    expect(fill).not.toHaveClass("glow");
   });
 
   it("draws nothing for a dive that never left the surface", () => {
