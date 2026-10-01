@@ -35,6 +35,7 @@ import {
   mixtureImportNotes,
   type MixtureImportNotes,
 } from "@/lib/dive-import";
+import { isNonEmptyFieldValue } from "@/lib/dive-form-fields";
 import { recordingDeviceLabel } from "@/lib/dive-recordings";
 import { Info, Loader2, Upload } from "lucide-react";
 import {
@@ -97,8 +98,28 @@ function isDiveFormFieldEmpty<
   // A number input the diver cleared reads back as `NaN` rather than as
   // `undefined`, which is the one non-obvious empty state on this form.
   if (typeof value === "number") return Number.isNaN(value);
+  if (Array.isArray(value)) return value.length === 0;
   return false;
 }
+
+// The dive's members a file states beyond its readings, each under the same name
+// on `ParsedDive` and on the form.
+const PARSED_DIVE_MEMBERS = [
+  "notes",
+  "visibility",
+  "weight",
+  "water_type",
+  "altitude",
+  "type",
+  "rating",
+  "air_temperature",
+  "current",
+  "waves",
+  "weather",
+  "entry_type",
+  "boat_name",
+  "tags",
+] as const satisfies readonly (keyof ParsedDive & keyof DiveFormValues)[];
 
 /**
  * How a parsed file is written onto the form.
@@ -109,10 +130,10 @@ function isDiveFormFieldEmpty<
  * `"fill-only"` is every later file — one the API reported as a second export of
  * a recording the dive already has, or one picked while another is already
  * pending or stored — and it writes only fields the form has left empty. That is
- * how "a second file of one recording fills, never overwrites" reaches
- * `avg_depth` and `duration`: those two are the form's own, and no attach or
- * import path on the server ever writes them, so if the rule did not hold here
- * it would not hold anywhere. A diver who has just corrected a depth does not
+ * how "a second file of one recording fills, never overwrites" reaches the
+ * dive's own fields - its figures, its notes and the rest of what a file states:
+ * no attach path on the server writes them, so if the rule did not hold here it
+ * would not hold anywhere. A diver who has just corrected a depth does not
  * lose the correction to the same computer's second spelling of the same dive.
  */
 export type ParsedDiveApplyMode = "prefill" | "fill-only";
@@ -132,9 +153,9 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   mode: ParsedDiveApplyMode = "prefill",
 ): MixtureImportNotes {
   // One gate for every scalar field below, so "fill-only" cannot be honoured by
-  // some of them and forgotten by one. The dive's water type is not among them:
-  // a file's salinity is a setting of the device, never a kind of water, and the
-  // recording keeps it on attach.
+  // some of them and forgotten by one. The dive's water type is written only as
+  // the file states the dive's own: a file's salinity is a setting of the device,
+  // never a kind of water, and the recording keeps it on attach.
   const writes = <TName extends keyof DiveFormValues & string>(name: TName) =>
     mode === "prefill" || isDiveFormFieldEmpty(form, name);
 
@@ -169,6 +190,13 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   }
   if (parsed.bottom_temperature != null && writes("bottom_temperature")) {
     setDiveFormValue(form, "bottom_temperature", parsed.bottom_temperature);
+  }
+  // An empty string or list is a file stating nothing, never one clearing the form.
+  for (const name of PARSED_DIVE_MEMBERS) {
+    const value = parsed[name];
+    if (value != null && isNonEmptyFieldValue(value) && writes(name)) {
+      setDiveFormValue(form, name, value);
+    }
   }
   if (parsed.mixtures.length === 0) {
     return { guessed: {}, keptPressures: false, discardedPressures: false };
@@ -288,10 +316,10 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   // The first file of a dive is the form's best information and writes
   // everything it carries. Every later one - a second computer, or this
   // computer's other export - fills blanks only, which is how first-file-wins
-  // reaches `avg_depth` and `duration`: those two are the form's own and no
-  // server-side attach or import path writes them, so if the rule does not hold
-  // here it holds nowhere. `DECISIONS.md`, *"A second file of one recording
-  // fills the form, and never overwrites it"*, has the whole argument.
+  // reaches the dive's own fields: no server-side attach writes them, so if the
+  // rule does not hold here it holds nowhere. `DECISIONS.md`, *"A second file of
+  // one recording fills the form, and never overwrites it"*, has the whole
+  // argument.
   const hasFileAlready = pending.length > 0 || recordings.length > 0;
 
   // Applies a parsed file to the form and hands it to the page to attach on

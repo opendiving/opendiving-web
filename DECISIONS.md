@@ -6032,13 +6032,13 @@ follow the primary.
 `applyParsedDiveToForm` takes a mode: `"prefill"`, for a dive's first file, writes everything it
 carries; `"fill-only"`, for every later one, writes only fields the form left empty. The caller
 picks `"fill-only"` when another file is already pending or stored, or the API reports a
-same-recording match on the dive being edited. Only here can the rule hold for `avg_depth` and
-`duration`: every other field is filled server-side at attach under the API's NULL-only rule, but
-those two are the form's and no attach path writes them. Emptiness is `isDiveFormFieldEmpty`: a
-cleared number input reads back `NaN`, and `0` is a reading (a freedive's `max_depth`), so falsiness
-is wrong. Cylinders go through `fillMixtures` (`lib/dive-import.ts`), form first. What it writes is
-saved before the attach, so it fills only rows the API would pair the file with and fill, and leaves
-the rest, and every `gas_number`, to the attach.
+same-recording match on the dive being edited. Only here can the rule hold for the dive's own
+fields: the attach fills the recording and the cylinders server-side under the API's NULL-only rule,
+and writes no other field the form holds. Emptiness is `isDiveFormFieldEmpty`: a cleared number
+input reads back `NaN`, and `0` is a reading (a freedive's `max_depth`), so falsiness is wrong.
+Cylinders go through `fillMixtures` (`lib/dive-import.ts`), form first. What it writes is saved
+before the attach, so it fills only rows the API would pair the file with and fill, and leaves the
+rest, and every `gas_number`, to the attach.
 
 ## A blank cylinder member survives an attach, and the card must not assume otherwise
 

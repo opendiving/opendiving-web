@@ -386,11 +386,11 @@ export interface Dive {
   bottom_temperature?: number;
   visibility?: number;
   // What the water was and where it was, both hand-enterable and both settable on the
-  // form. `water_type` is the diver's answer and nothing seeds it from a file: the
-  // density a computer was set to is its recording's `salinity`, a setting rather than
-  // a kind of water. `altitude` is metres above sea level of the water surface, the fact
-  // a diver can actually type where a recording's `surface_pressure_bar` is the
-  // barometer's reading of it.
+  // form. `water_type` is the diver's answer, or a logbook file's statement of it, and
+  // never the density a computer was set to: that is its recording's `salinity`, a
+  // setting rather than a kind of water. `altitude` is metres above sea level of the
+  // water surface, the fact a diver can actually type where a recording's
+  // `surface_pressure_bar` is the barometer's reading of it.
   //
   // `| null` because the API declares them `X | None` on `DiveBase` with no
   // `exclude_none`, so an unrecorded field arrives as an explicit `null` rather than an
@@ -398,8 +398,8 @@ export interface Dive {
   water_type?: WaterType | null;
   altitude?: number | null;
   // The diver's classification of the dive and the conditions on the day, on the
-  // same terms as the two above: hand-entered, never seeded from a file on the
-  // form, and an explicit `null` when unrecorded. `rating` is 1 to 5;
+  // same terms as the two above: hand-entered or prefilled from a logbook file that
+  // states them, and an explicit `null` when unrecorded. `rating` is 1 to 5;
   // `air_temperature` is °C.
   type?: DiveType | null;
   rating?: number | null;
@@ -1146,6 +1146,23 @@ export interface ParsedDive {
   avg_depth: number | null;
   bottom_temperature: number | null;
   mixtures: ParsedDiveMixture[];
+  // The rest of the dive as the file states it - what a logbook format such as
+  // UDDF, Subsurface's or DM5's records beside the readings - under the form's
+  // own names, so a file read here prefills what logbook import would store.
+  notes: string | null;
+  visibility: number | null;
+  weight: number | null;
+  water_type: WaterType | null;
+  altitude: number | null;
+  type: DiveType | null;
+  rating: number | null;
+  air_temperature: number | null;
+  current: DiveCurrent | null;
+  waves: DiveWaves | null;
+  weather: DiveWeather | null;
+  entry_type: EntryType | null;
+  boat_name: string | null;
+  tags: string[];
   // The density the computer was set to - a FIT file's `dive_settings.water_type` -
   // and **never a prefill of the dive's `water_type`**: a calibration is not a kind of
   // water. A setting of the device, stored on the recording when the file is attached.
