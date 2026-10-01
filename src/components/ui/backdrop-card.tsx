@@ -31,12 +31,15 @@ export function BackdropCardSkeleton() {
 // show the whole world, since a dive or a site is at one spot and the world says
 // nothing about which. Faded as a map is, and the record's icon centred in what
 // the details leave of it: the colour the map names a sea in, muted as the map's
-// own colours are so it sits in the water rather than on it.
+// own colours are so it sits in the water rather than on it, and below whatever
+// covers the top.
 export function UnplacedBackdrop({
   coveredBottom,
+  coveredTop = 0,
   icon: Icon,
 }: {
   coveredBottom: number;
+  coveredTop?: number;
   icon: ComponentType<{ className?: string }>;
 }) {
   return (
@@ -53,8 +56,8 @@ export function UnplacedBackdrop({
         }}
       />
       <div
-        className="absolute inset-x-0 top-0 flex items-center justify-center"
-        style={{ bottom: coveredBottom }}
+        className="absolute inset-x-0 flex items-center justify-center"
+        style={{ top: coveredTop, bottom: coveredBottom }}
       >
         <Icon className="h-10 w-10 text-[var(--map-water-foreground)] opacity-60 saturate-50" />
       </div>

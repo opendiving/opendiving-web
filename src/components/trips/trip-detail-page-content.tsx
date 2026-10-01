@@ -24,11 +24,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
-import {
-  HERO_CONTROL,
-  TripHero,
-  TripHeroSkeleton,
-} from "@/components/trips/trip-hero";
+import { TripHero } from "@/components/trips/trip-hero";
+import { HERO_CONTROL, MapHeroSkeleton } from "@/components/ui/map-hero";
 import { PeopleList } from "@/components/people/people-list";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { BedDouble, Edit, Plus, Calendar, MapPin } from "lucide-react";
@@ -145,7 +142,7 @@ export function TripDetailPageContent() {
   if (isLoadingTrip) {
     return (
       <div aria-busy>
-        <TripHeroSkeleton />
+        <MapHeroSkeleton backHref="/trips" backLabel="Back to trips" />
         <div className={BODY}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">

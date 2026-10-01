@@ -13,7 +13,6 @@ import { useUnits } from "@/hooks/useUnits";
 import { formatDateTime } from "@/lib/date-time";
 import { formatAltitude, formatDepth, type UnitSystem } from "@/lib/units";
 import { formatCoordinates } from "@/lib/validations/dive-site";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { ExternalIdLink } from "@/components/sites/external-id-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,22 +76,6 @@ export function DiveSiteInfoCard({ site }: { site: DiveSite }) {
           <InfoRow label="Coordinates">
             <span className="tabular-nums">{coordinates}</span>
           </InfoRow>
-        )}
-
-        {/* Gated on the same both-or-neither pair the coordinates line is, so a
-            site with no position costs nothing - not even the map's chunk. The
-            map itself would draw nothing either way. */}
-        {coordinates && (
-          <LocationsMap
-            locations={[
-              {
-                name: site.name,
-                latitude: site.latitude,
-                longitude: site.longitude,
-              },
-            ]}
-            subject="the dive site"
-          />
         )}
 
         {depths && <InfoRow label="Depth">{depths}</InfoRow>}
