@@ -698,7 +698,7 @@ navigation; reconsider that one dropdown if stepping is ever wanted.
 
 `weight` (kilograms of ballast, a plain per-dive number on the API's `Dive`) renders directly below
 the gear picker in `DiveFormFields` and inside the "Gear" card on the dive detail page, not beside
-Bottom Temperature/Visibility. The form splits what the diver observed (depth, temperature,
+Bottom temperature/Visibility. The form splits what the diver observed (depth, temperature,
 visibility, water type, altitude) from how the diver was configured (gear, weight), and weight is
 the field most often looked up to check against the suit and cylinder used.
 
@@ -2305,7 +2305,7 @@ The consumption table sits in its own `overflow-x-auto` wrapper, like the mixtur
 so a narrow pane scrolls the table and never the page body. `RMV` and `SAC` are content-driven
 (`18.24 L/min`, `0.82 bar/min`), so shortening headers gains nothing there, and moving units into
 the headers is forbidden by the card's rule: units stay with the values, never doubled in the label.
-"Avg Depth" keeps its full length: it is a mean depth over the stretch a cylinder was breathed, and
+"Avg depth" keeps its full length: it is a mean depth over the stretch a cylinder was breathed, and
 "Depth" beside a per-tank row invites reading it as that gas's deepest point — the misreading
 `diveModWarning` refuses to warn per tank over, a mean depth being the wrong input for a MOD. Before
 shortening a header, check what fraction of the table is `p-4` padding; halving it is what made this
@@ -2814,7 +2814,7 @@ and puts the action above Cancel when they cannot, with 8px between rows.
 ## The dive's duration and depths card has no title
 
 The dive page's duration and depth card has no header. Each figure is already labelled `Duration`,
-`Maximum Depth`, `Average Depth`, so a `Duration & Depth` title restated the labels beneath it in a
+`Maximum depth`, `Average depth`, so a `Duration & Depth` title restated the labels beneath it in a
 heavier weight, and a `Timer` icon named a dive property rather than a page section. The card is
 three stat blocks, first after the header, legible unlabelled.
 
@@ -6792,18 +6792,17 @@ writes nothing ("No existing reference screenshot found."), every run. `page.scr
 (`save: true` by default) also writes there, but an untracked debug PNG is visible and deletable,
 while an ignored baseline is invisible by construction. No test calls either today.
 
-## Controls are sentence case; headings are Title Case
+## Controls and labels are sentence case; headings are Title Case
 
-Every button, link-button and menu item capitalizes its first word and its proper nouns, nothing
-else: `New trip`, `Save changes`, `Back to dive sites`. A page's name is not a proper noun:
-`View all dives` lowercases the page the nav calls `Dives`. A heading that names something — a page,
-card, section or form dialog — is Title Case, with articles, conjunctions and short prepositions
-lowercase: `Dives on This Course`, `Signed-in Devices`. So `New Certification` over
-`Create certification` in one dialog is the rule holding. A heading that says something — a
-confirmation's title, an empty state, a status line — is a sentence: `Delete dive`, `No trips yet`,
-`Message sent`. The split is what no single call site can carry: a new label is written by copying a
-neighbour. Title Case for controls was rejected because long CTAs (`Log A Dive For This Course`)
-read as headings.
+Every button, link-button and menu item capitalizes its first word and proper nouns, nothing else:
+`New trip`, `Back to dive sites`. A page's name is not a proper noun: `View all dives` lowercases
+the page the nav calls `Dives`. So does every label, a field's, a row's or a figure's: `Water type`,
+`Max depth`, so a field reads the same on its form and its page. A heading that names something (a
+page, card, section or form dialog) is Title Case, with articles, conjunctions and short
+prepositions lowercase: `Dives on This Course`, `New Certification`. A heading that says something,
+such as a confirmation's title or an empty state, is a sentence: `Delete dive`, `No trips yet`. A
+new label copies its neighbour, so no single call site can carry the split. Title Case for controls
+was rejected because long CTAs (`Log A Dive For This Course`) read as headings.
 
 ## One `EmptyState`, and the filtered list is not one
 

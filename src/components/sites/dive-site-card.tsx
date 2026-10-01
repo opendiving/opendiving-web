@@ -100,7 +100,7 @@ export function DiveSiteCard({
     },
   ];
   if (site.species_count) {
-    figures.push({ label: "Species Seen", value: site.species_count });
+    figures.push({ label: "Species seen", value: site.species_count });
   }
 
   return (

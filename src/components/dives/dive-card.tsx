@@ -60,19 +60,19 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
     meters ? formatDepth(meters, units, { decimals: 0 }) : "-";
   const figures: BackdropCardFigure[] = [
     { label: "Duration", value: formatDurationHoursMinutes(dive.duration) },
-    { label: "Max Depth", value: depth(dive.max_depth) },
+    { label: "Max depth", value: depth(dive.max_depth) },
   ];
   // `!= null`, since 0 °C is a reading.
   if (dive.bottom_temperature != null) {
     figures.push({
-      label: "Water Temp",
+      label: "Water temp",
       value: formatTemperature(dive.bottom_temperature, units, {
         decimals: 0,
       }),
     });
   }
   if (figures.length < 3 && dive.avg_depth) {
-    figures.push({ label: "Avg Depth", value: depth(dive.avg_depth) });
+    figures.push({ label: "Avg depth", value: depth(dive.avg_depth) });
   }
 
   return (

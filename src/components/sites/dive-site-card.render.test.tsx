@@ -143,7 +143,7 @@ describe("DiveSiteCard", () => {
     expect(figuresOf(card())).toEqual([
       ["Dives", "7"],
       ["Deepest", "31 m"],
-      ["Species Seen", "12"],
+      ["Species seen", "12"],
     ]);
   });
 

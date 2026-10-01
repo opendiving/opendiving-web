@@ -124,7 +124,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                       arithmetic it is: this long, this deep, therefore this
                       much. */}
                   <TableHead>Time</TableHead>
-                  <TableHead>Avg Depth</TableHead>
+                  <TableHead>Avg depth</TableHead>
                   {/* "Used", not the "Gas Used" this said before the table grew
                       a Gas column: two headers three apart both leading with the
                       same word, one naming a mix and one a volume. The unit is in
@@ -279,7 +279,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
               </div>
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Gas Used
+                  Gas used
                 </div>
                 <div className="text-2xl font-bold">
                   {formatGasVolume(gasUse.gas_used, units)}

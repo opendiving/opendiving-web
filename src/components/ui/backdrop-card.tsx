@@ -187,7 +187,7 @@ export interface BackdropCardFigure {
 }
 
 // A card's figures, up to three, a size down from the dive page's. Equal
-// columns, as wide as "Species Seen" or "1h 59min", so figures line up from card
+// columns, as wide as "Species seen" or "1h 59min", so figures line up from card
 // to card; three of them fit a dashboard card from a 370px screen. Narrower
 // phones take columns as wide as their contents instead, which keep the figures
 // on one line down to 320px, where a wrapped label would outgrow the card's

@@ -218,7 +218,7 @@ export function DiveDetailSidebar({
             {dive.dive_sites.length > 0 && (
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Dive Site
+                  Dive site
                 </div>
                 <div className="flex items-start gap-2 text-sm">
                   <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
@@ -272,7 +272,7 @@ export function DiveDetailSidebar({
             {dive.entry_type != null && (
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Entry Type
+                  Entry type
                 </div>
                 <div className="text-sm">
                   {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
@@ -369,12 +369,12 @@ export function DiveDetailSidebar({
           </CardHeader>
           <CardContent className="space-y-4">
             {dive.bottom_temperature != null && (
-              <Reading label="Bottom Temperature" icon={Thermometer}>
+              <Reading label="Bottom temperature" icon={Thermometer}>
                 {formatTemperature(dive.bottom_temperature, units)}
               </Reading>
             )}
             {dive.air_temperature != null && (
-              <Reading label="Air Temperature" icon={ThermometerSun}>
+              <Reading label="Air temperature" icon={ThermometerSun}>
                 {formatTemperature(dive.air_temperature, units)}
               </Reading>
             )}
@@ -384,7 +384,7 @@ export function DiveDetailSidebar({
               </Reading>
             )}
             {dive.water_type != null && (
-              <Reading label="Water Type" icon={Waves}>
+              <Reading label="Water type" icon={Waves}>
                 {labelOf(WATER_TYPE_LABELS, dive.water_type)}
               </Reading>
             )}
@@ -409,7 +409,7 @@ export function DiveDetailSidebar({
               </Reading>
             )}
             {dive.boat_name != null && (
-              <Reading label="Boat Name" icon={Ship}>
+              <Reading label="Boat name" icon={Ship}>
                 {dive.boat_name}
               </Reading>
             )}

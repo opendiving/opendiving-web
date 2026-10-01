@@ -47,15 +47,15 @@ export function TripCard({
   const units = useUnits();
   const figures: BackdropCardFigure[] = [
     { label: "Dives", value: trip.dive_count },
-    { label: "Dive Sites", value: trip.dive_site_count },
+    { label: "Dive sites", value: trip.dive_site_count },
   ];
   if (trip.species_count > 0) {
-    figures.push({ label: "Species Seen", value: trip.species_count });
+    figures.push({ label: "Species seen", value: trip.species_count });
   }
   // Whole units, as a dive card rounds its depths.
   if (figures.length < 3 && trip.max_depth != null) {
     figures.push({
-      label: "Max Depth",
+      label: "Max depth",
       value: formatDepth(trip.max_depth, units, { decimals: 0 }),
     });
   }

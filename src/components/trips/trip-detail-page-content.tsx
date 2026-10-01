@@ -326,7 +326,7 @@ export function TripDetailPageContent() {
               {tripDateRange && (
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Trip Dates
+                    Trip dates
                   </div>
                   <div className="text-sm">{tripDateRange}</div>
                 </div>

@@ -148,12 +148,12 @@ describe("RecentTripsCard", () => {
       ]);
     expect(countsOf("Dahab 2026")).toEqual([
       ["Dives", "12"],
-      ["Dive Sites", "1"],
-      ["Species Seen", "23"],
+      ["Dive sites", "1"],
+      ["Species seen", "23"],
     ]);
     expect(countsOf("Koh Tao 2025")).toEqual([
       ["Dives", "0"],
-      ["Dive Sites", "0"],
+      ["Dive sites", "0"],
     ]);
   });
 
@@ -179,12 +179,12 @@ describe("RecentTripsCard", () => {
       ]);
     expect(figuresOf("Dahab 2026")).toEqual([
       ["Dives", "3"],
-      ["Dive Sites", "2"],
-      ["Max Depth", "31 m"],
+      ["Dive sites", "2"],
+      ["Max depth", "31 m"],
     ]);
     expect(figuresOf("Koh Tao 2025")).toEqual([
       ["Dives", "1"],
-      ["Dive Sites", "1"],
+      ["Dive sites", "1"],
     ]);
   });
 

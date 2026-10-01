@@ -74,7 +74,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
             {dive.max_depth != null && (
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Maximum Depth
+                  Maximum depth
                 </div>
                 <div className="text-2xl font-bold">
                   {formatDepth(dive.max_depth, units)}
@@ -84,7 +84,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
             {dive.avg_depth != null && (
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Average Depth
+                  Average depth
                 </div>
                 <div className="text-2xl font-bold">
                   {formatDepth(dive.avg_depth, units)}
