@@ -13,9 +13,7 @@ import { distinctContactUuids } from "@/lib/contact";
 import { useContactsByUuid } from "@/hooks/useContactsByUuid";
 import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
-import { formatTripLocationNames } from "@/lib/trip-locations";
-import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
-import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
+import { formatTripSpan } from "@/lib/trip-parts";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,12 +21,12 @@ import {
   ItemActionsMenu,
 } from "@/components/ui/item-actions-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardSkeleton } from "@/components/ui/skeleton";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
+import { TripHero, TripHeroSkeleton } from "@/components/trips/trip-hero";
 import { PeopleList } from "@/components/people/people-list";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
-import { PageHeader } from "@/components/ui/page-header";
-import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
+import { BackLink } from "@/components/ui/page-header";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { BedDouble, Edit, Plus, Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -38,12 +36,26 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // Cebu 2026" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Trip deleted successfully.";
 
-// This page has room for the month spelled out, unlike a trip card.
+// The hero's line spells the month out, and the sidebar's dates read the same.
 const LONG_DATE: Intl.DateTimeFormatOptions = {
   year: "numeric",
   month: "long",
   day: "numeric",
 };
+
+// The body's column under the hero, which spans the window. The hero's own
+// details sit in the same column, so they line up with this.
+const BODY = "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6";
+
+// The way back, on the body's first row: the hero's top-left corner holds the
+// map's credit, and its top-right the actions.
+function BackToTrips() {
+  return (
+    <div className="mb-6 flex min-h-10 items-center">
+      <BackLink href="/trips" label="Back to trips" />
+    </div>
+  );
+}
 
 export function TripDetailPageContent() {
   const router = useRouter();
@@ -127,18 +139,6 @@ export function TripDetailPageContent() {
   const tripParts = trip?.parts ?? [];
   const tripDateRange = formatTripSpan(tripParts, LONG_DATE);
 
-  const tripLocations = tripPartLocations(tripParts);
-  // Only whether there is a place to name, which is what decides the separator
-  // below. The subtitle's own text and hover hint come from rendering
-  // `TripLocationsLabel`, so the cap lives there with the trip card's rather
-  // than being passed a second time from here.
-  const tripLocationNames = formatTripLocationNames(tripLocations);
-  // Only places the geocoder gave a position to can be drawn; the parts below
-  // list all of them either way, so a typed-in place isn't silently dropped.
-  const mappedLocations = tripLocations.filter(
-    (location) => location.latitude != null && location.longitude != null,
-  );
-
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
   }
@@ -147,8 +147,26 @@ export function TripDetailPageContent() {
     return null; // Will redirect to signin
   }
 
+  // The hero's skeleton at the hero's height, and the body's at the body's, so
+  // nothing moves when the trip lands. The back link is the real one: where it
+  // goes is known before the trip is.
   if (isLoadingTrip) {
-    return <DetailPageSkeleton backHref="/trips" backLabel="Back to trips" />;
+    return (
+      <div aria-busy>
+        <TripHeroSkeleton />
+        <div className={BODY}>
+          <BackToTrips />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <CardSkeleton lines={7} />
+            </div>
+            <div className="space-y-6">
+              <CardSkeleton lines={4} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!trip) {
@@ -163,28 +181,29 @@ export function TripDetailPageContent() {
     );
   }
 
+  // Ghost over the map, as a card's menu is, and glowing as the details'
+  // text does - the icons through a filter, since `text-shadow` stops at an
+  // SVG. Two close layers, as the text's: `drop-shadow`s chain, each blurring
+  // the last one's 8-bit output, and more of them drew the halo in rings.
+  const glow =
+    "hover:bg-background/80 [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)] [&_svg]:[filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <PageHeader
-        backHref="/trips"
-        backLabel="Back to trips"
-        title={trip.name}
-        subtitle={
-          tripLocationNames || tripDateRange ? (
-            <>
-              {tripDateRange}
-              {tripDateRange && tripLocationNames ? " · " : null}
-              <TripLocationsLabel locations={tripLocations} />
-            </>
-          ) : undefined
-        }
+    <div>
+      <TripHero
+        trip={trip}
         actions={
           <>
-            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={glow}
+              onClick={() => setIsEditOpen(true)}
+            >
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <ItemActionsMenu>
+            <ItemActionsMenu variant="ghost" size="sm" className={glow}>
               <DeleteMenuItem
                 onSelect={() => del.requestDelete(trip.uuid)}
                 disabled={isDeleting}
@@ -214,137 +233,134 @@ export function TripDetailPageContent() {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentDivesCard
-            complete
-            enabled={!!user}
-            tripId={trip.uuid}
-            title="Dives in This Trip"
-            // Not "logged as part of this trip": a part is a noun here now, and
-            // that sentence reads as a claim about which stretch a dive was on.
-            description="Every dive logged on this trip"
-            viewAllHref={null}
-            emptyTitle="No dives logged for this trip yet"
-            emptyDescription="Log a dive and assign it to this trip to see it here."
-            newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
-            newDiveLabel="Log a dive for this trip"
-          />
-        </div>
+      <div className={BODY}>
+        <BackToTrips />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RecentDivesCard
+              complete
+              enabled={!!user}
+              tripId={trip.uuid}
+              title="Dives in This Trip"
+              // Not "logged as part of this trip": a part is a noun here now, and
+              // that sentence reads as a claim about which stretch a dive was on.
+              description="Every dive logged on this trip"
+              viewAllHref={null}
+              emptyTitle="No dives logged for this trip yet"
+              emptyDescription="Log a dive and assign it to this trip to see it here."
+              newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
+              newDiveLabel="Log a dive for this trip"
+            />
+          </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle as="h2" className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Trip Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {tripParts.length > 0 && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    {tripParts.length > 1 ? "Parts" : "Part"}
-                  </div>
-                  {/* One row per part, in the order the diver arranged them,
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle as="h2" className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Trip Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {tripParts.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      {tripParts.length > 1 ? "Parts" : "Part"}
+                    </div>
+                    {/* One row per part, in the order the diver arranged them,
                       rather than the capped joined line the header and the trip
                       cards show: this is the one surface with room to name every
                       place and put the part's own dates beneath each. A part
                       with no place is still a row - it is a stretch of the trip,
                       and dropping it would renumber the rest. */}
-                  <ul className="space-y-1.5">
-                    {tripParts.map((part, index) => {
-                      const dates = formatTripDateRange(
-                        part.start_date ?? undefined,
-                        part.end_date ?? undefined,
-                      );
-                      const accommodation = part.accommodation_uuid
-                        ? contacts[part.accommodation_uuid]
-                        : undefined;
-                      return (
-                        <li
-                          key={index}
-                          className="flex items-start gap-2 text-sm"
-                        >
-                          <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                          <span className="min-w-0">
-                            <span className="block">
-                              {part.location?.name ?? (
-                                <span className="text-muted-foreground">
-                                  No place recorded
+                    <ul className="space-y-1.5">
+                      {tripParts.map((part, index) => {
+                        const dates = formatTripDateRange(
+                          part.start_date ?? undefined,
+                          part.end_date ?? undefined,
+                        );
+                        const accommodation = part.accommodation_uuid
+                          ? contacts[part.accommodation_uuid]
+                          : undefined;
+                        return (
+                          <li
+                            key={index}
+                            className="flex items-start gap-2 text-sm"
+                          >
+                            <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0">
+                              <span className="block">
+                                {part.location?.name ?? (
+                                  <span className="text-muted-foreground">
+                                    No place recorded
+                                  </span>
+                                )}
+                              </span>
+                              {accommodation && (
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <BedDouble className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="sr-only">Stayed at </span>
+                                  {accommodation.name}
+                                </span>
+                              )}
+                              {dates && (
+                                <span className="block text-xs text-muted-foreground">
+                                  {dates}
                                 </span>
                               )}
                             </span>
-                            {accommodation && (
-                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <BedDouble className="h-3.5 w-3.5 shrink-0" />
-                                <span className="sr-only">Stayed at </span>
-                                {accommodation.name}
-                              </span>
-                            )}
-                            {dates && (
-                              <span className="block text-xs text-muted-foreground">
-                                {dates}
-                              </span>
-                            )}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-
-              {tripPeople.some(
-                (reference) => people[reference.person_uuid],
-              ) && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    People
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
-                  <PeopleList people={tripPeople} resolved={people} />
-                </div>
-              )}
+                )}
 
-              {/* What the contacts here are, and not who the diver was with:
+                {tripPeople.some(
+                  (reference) => people[reference.person_uuid],
+                ) && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      People
+                    </div>
+                    <PeopleList people={tripPeople} resolved={people} />
+                  </div>
+                )}
+
+                {/* What the contacts here are, and not who the diver was with:
                   that is the People list above. */}
-              {diveCenterNames.length > 0 && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Dive centers
+                {diveCenterNames.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Dive centers
+                    </div>
+                    <div className="text-sm">{diveCenterNames.join(", ")}</div>
                   </div>
-                  <div className="text-sm">{diveCenterNames.join(", ")}</div>
-                </div>
-              )}
+                )}
 
-              {mappedLocations.length > 0 && (
-                <LocationsMap
-                  locations={mappedLocations}
-                  subject="the trip's locations"
-                />
-              )}
-              {tripDateRange && (
+                {tripDateRange && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Trip dates
+                    </div>
+                    <div className="text-sm">{tripDateRange}</div>
+                  </div>
+                )}
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Trip dates
+                    Created on
                   </div>
-                  <div className="text-sm">{tripDateRange}</div>
+                  <div className="text-sm">{formatDate(trip.created_at)}</div>
                 </div>
-              )}
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Created on
-                </div>
-                <div className="text-sm">{formatDate(trip.created_at)}</div>
-              </div>
-              <Button className="w-full" asChild>
-                <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log a dive
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+                <Button className="w-full" asChild>
+                  <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Log a dive
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

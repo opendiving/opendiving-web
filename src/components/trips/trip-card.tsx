@@ -14,8 +14,8 @@ import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripLocationNames } from "@/lib/trip-locations";
+import { tripFigures } from "@/lib/trip-figures";
 import { useUnits } from "@/hooks/useUnits";
-import { formatDepth } from "@/lib/units";
 import { Edit } from "lucide-react";
 
 interface TripCardProps {
@@ -27,8 +27,8 @@ interface TripCardProps {
 
 // One trip as a card, on /trips and in the dashboard's recent trips: its map as
 // the backdrop - the whole world for a trip with no place on one yet - and what
-// its dives add up to: their count and their sites' at zero too, their species
-// only once there are some, and their deepest point where there are none.
+// its dives add up to, as far as three figures carry it. The trip's page draws
+// the same card the width of the window (`TripHero`).
 export function TripCard({
   trip,
   onEdit,
@@ -45,20 +45,9 @@ export function TripCard({
   // Whether there is a place to name, which is what decides the separator.
   const placeNames = formatTripLocationNames(locations);
   const units = useUnits();
-  const figures: BackdropCardFigure[] = [
-    { label: "Dives", value: trip.dive_count },
-    { label: "Dive sites", value: trip.dive_site_count },
-  ];
-  if (trip.species_count > 0) {
-    figures.push({ label: "Species seen", value: trip.species_count });
-  }
-  // Whole units, as a dive card rounds its depths.
-  if (figures.length < 3 && trip.max_depth != null) {
-    figures.push({
-      label: "Max depth",
-      value: formatDepth(trip.max_depth, units, { decimals: 0 }),
-    });
-  }
+  // The first three of what the trip adds up to, which `tripFigures` orders so
+  // that a trip with species shows those over its depth.
+  const figures: BackdropCardFigure[] = tripFigures(trip, units).slice(0, 3);
 
   return (
     <BackdropCard

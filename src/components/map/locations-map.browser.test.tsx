@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { ThemeProvider } from "next-themes";
 import { LocationsMap } from "./locations-map";
-import type { MappableLocation } from "@/lib/map-picture";
+import {
+  FIT_PADDING,
+  SIDE_FADE_WIDTH,
+  SNAPSHOT_WIDTH,
+  type MappableLocation,
+} from "@/lib/map-picture";
 import { resolveBasemap, type BasemapConfig } from "@/lib/basemap";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 
@@ -802,6 +807,136 @@ describe("LocationsMap", () => {
       expect(document.querySelector("img")).not.toBeNull();
       expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull();
       expect(markers()).toHaveLength(1);
+    });
+
+    // A frame wider than the picture - the trip page's hero on a desktop
+    // window - shows the picture in its middle with the page either side, and
+    // the places have to be in the picture: fitted across the frame, a wide
+    // trip's pins would stand on the page beside it. Two places eighty degrees
+    // apart in a frame taller than it is a trip the sides decide the zoom of.
+    const WIDE = [
+      { name: "Dahab", latitude: 28.49, longitude: 34.51 },
+      { name: "Tulamben", latitude: -8.27, longitude: 115.59 },
+    ];
+    const inWideFrame = (element: React.ReactNode) => {
+      const frame = document.createElement("div");
+      frame.style.width = "1600px";
+      document.body.appendChild(frame);
+      render(withConfig(element, SOLID), { container: frame });
+      return frame;
+    };
+    // Each pin's middle, in the picture's own pixels from its left edge.
+    const pinsAcross = async () => {
+      const image = await picture();
+      await waitFor(() =>
+        expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull(),
+      );
+      await waitFor(() => expect(markers()).toHaveLength(2));
+      const left = image.getBoundingClientRect().left;
+      return Array.from(markers()).map((marker) => {
+        const pin = marker.getBoundingClientRect();
+        return pin.left + pin.width / 2 - left;
+      });
+    };
+
+    it("fits a wide frame's places into the picture rather than across the frame", async () => {
+      const frame = inWideFrame(
+        <LocationsMap
+          subject="the trip's locations"
+          snapshot
+          backdrop
+          className="h-96 sm:h-96"
+          locations={WIDE}
+        />,
+      );
+      try {
+        const xs = await pinsAcross();
+        for (const x of xs) {
+          expect(x).toBeGreaterThanOrEqual(FIT_PADDING - 1);
+          expect(x).toBeLessThanOrEqual(SNAPSHOT_WIDTH - FIT_PADDING + 1);
+        }
+        // Into the picture, not squeezed into its middle for nothing.
+        expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(
+          SNAPSHOT_WIDTH / 2,
+        );
+        expect(document.querySelector("[data-backdrop-side-fade]")).toBeNull();
+      } finally {
+        frame.remove();
+      }
+    });
+
+    it("keeps a side-faded picture's places out of its fades, which are gradients over it", async () => {
+      const frame = inWideFrame(
+        <LocationsMap
+          subject="the trip's locations"
+          snapshot
+          backdrop
+          sideFade
+          className="h-96 sm:h-96"
+          locations={WIDE}
+        />,
+      );
+      try {
+        const xs = await pinsAcross();
+        for (const x of xs) {
+          expect(x).toBeGreaterThanOrEqual(SIDE_FADE_WIDTH - 1);
+          expect(x).toBeLessThanOrEqual(SNAPSHOT_WIDTH - SIDE_FADE_WIDTH + 1);
+        }
+        // As wide as the middle half allows, so the fades cost no more map than
+        // they cover.
+        expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(
+          SNAPSHOT_WIDTH - 2 * SIDE_FADE_WIDTH - 4,
+        );
+
+        // Over the picture, as wide as it, and no mask anywhere under it.
+        const fade = document.querySelector<HTMLElement>(
+          "[data-backdrop-side-fade]",
+        )!;
+        const image = document.querySelector("img")!;
+        expect(fade.getBoundingClientRect().width).toBe(
+          image.getBoundingClientRect().width,
+        );
+        expect(getComputedStyle(fade).backgroundImage).toContain(
+          "linear-gradient",
+        );
+        expect(getComputedStyle(screen.getByRole("img")).maskImage).toBe(
+          "none",
+        );
+      } finally {
+        frame.remove();
+      }
+    });
+
+    it("shows a frame narrower than the picture none of the side fade", async () => {
+      const frame = document.createElement("div");
+      frame.style.width = "320px";
+      document.body.appendChild(frame);
+      try {
+        render(
+          withConfig(
+            <LocationsMap
+              subject="the trip's locations"
+              snapshot
+              backdrop
+              sideFade
+              locations={[WIDE[0]]}
+            />,
+            SOLID,
+          ),
+          { container: frame },
+        );
+        const image = await picture();
+        // The fade lies past the frame's edges: what the frame shows of the
+        // picture starts beyond the left fade and ends before the right one.
+        const shown = screen.getByRole("img").getBoundingClientRect();
+        const drawn = image.getBoundingClientRect();
+        expect(drawn.left + SIDE_FADE_WIDTH).toBeLessThanOrEqual(shown.left);
+        expect(drawn.right - SIDE_FADE_WIDTH).toBeGreaterThanOrEqual(
+          shown.right,
+        );
+      } finally {
+        frame.remove();
+      }
     });
   });
 

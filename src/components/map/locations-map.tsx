@@ -29,6 +29,7 @@ import {
   bandIn,
   FIT_PADDING,
   placedLocations,
+  SIDE_FADE_WIDTH,
   SNAPSHOT_HEIGHT,
   SNAPSHOT_WIDTH,
   type MappableLocation,
@@ -40,6 +41,17 @@ const corners = (bounds: LatLonBounds): LngLatBoundsLike => [
   [bounds.west, bounds.south],
   [bounds.east, bounds.north],
 ];
+
+// How far in from a picture's sides its pins are kept, in the picture's own
+// pixels: clear of the frame's edge where the frame is narrower than the
+// picture, and of the side fades where it has them. A frame wider than the
+// picture fits its places into the picture rather than across the frame, since
+// the picture is all of the map it will ever show.
+const pictureSide = (frameWidth: number, sideFade: boolean | undefined) =>
+  Math.max(
+    (SNAPSHOT_WIDTH - frameWidth) / 2 + FIT_PADDING,
+    sideFade ? SIDE_FADE_WIDTH : FIT_PADDING,
+  );
 
 // `bg-coral`, not `bg-primary`: primary is near-black in light and mid-grey in
 // dark, which is invisible against a dark basemap. Coral is the one accent held
@@ -115,6 +127,16 @@ export interface LocationsMapProps {
    * this map is never interacted with.
    */
   snapshot?: boolean;
+  /**
+   * Dissolve the picture's left and right edges into `--backdrop-fade` as well,
+   * over `SIDE_FADE_WIDTH` of it each side, with the pins kept out of the fades.
+   * For a `backdrop` `snapshot` in a frame that may be wider than the picture -
+   * a page-wide hero - where the picture's edge would otherwise stand on the
+   * page as a hard line. A frame narrower than the picture shows none of the
+   * fade, since it lies past the frame's edges. Off by default: a card's frame
+   * just under `lg` is nearly as wide as the picture and would show it.
+   */
+  sideFade?: boolean;
 }
 
 /**
@@ -135,6 +157,7 @@ export function LocationsMap({
   backdrop,
   coveredBottom = 0,
   snapshot,
+  sideFade,
 }: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
   // From the instance's runtime configuration, so a published image can be
@@ -212,11 +235,12 @@ export function LocationsMap({
       bandIn(frame.height, backdrop ? frame.creditBottom : 0, coveredBottom),
     [frame, backdrop, coveredBottom],
   );
+  const side = frame ? pictureSide(frame.width, sideFade) : FIT_PADDING;
   // The frame a picture is drawn for, which is what a resize has to change
   // before one that does not fit is drawn again - a trip too wide for a narrow
   // frame at any zoom would otherwise be drawn forever.
   const frameSignature =
-    frame && band && JSON.stringify([frame.width, frame.height, band]);
+    frame && band && JSON.stringify([frame.width, frame.height, band, side]);
   // The picture's top-left in the frame: its middle, where the pins are
   // centred, on the middle of the band.
   const pictureAt = frame &&
@@ -231,17 +255,17 @@ export function LocationsMap({
   const [fresh, setFresh] = useState<string | null>(null);
   const picture = snapshotKey ? findSnapshot(snapshotKey) : undefined;
   // Whether this frame can show the picture as drawn: every pin inside the
-  // band. A resize that breaks it is the one resize that draws the map again.
+  // band, and in from the picture's sides as far as this frame keeps them. A
+  // resize that breaks it is the one resize that draws the map again.
   const fits = (candidate: MapSnapshot) =>
     !!frame &&
     !!band &&
     !!pictureAt &&
     candidate.pins.every(({ x, y }) => {
-      const left = pictureAt.left + x;
       const top = pictureAt.top + y;
       return (
-        left >= FIT_PADDING - 1 &&
-        left <= frame.width - FIT_PADDING + 1 &&
+        x >= side - 1 &&
+        x <= SNAPSHOT_WIDTH - side + 1 &&
         top >= band.top - 1 &&
         top <= frame.height - band.bottom + 1
       );
@@ -318,9 +342,13 @@ export function LocationsMap({
       // One arithmetic for a live map and a picture, with the frame placed in
       // the map's own box: the whole of it for a live map, and for a picture
       // the part `pictureAt` shows, which has the band's middle at the box's.
+      // Across, a picture's places are kept in from its own sides rather than
+      // the frame's, which may lie beyond them.
       const bandMiddle =
         (shownBand.top + shownIn.height - shownBand.bottom) / 2;
-      const left = (container.clientWidth - shownIn.width) / 2;
+      const sides = snapshot
+        ? pictureSide(shownIn.width, sideFade)
+        : FIT_PADDING;
       const top = snapshot ? container.clientHeight / 2 - bandMiddle : 0;
       const below = container.clientHeight - top - shownIn.height;
 
@@ -339,8 +367,8 @@ export function LocationsMap({
       const zoom = Math.min(
         map.cameraForBounds(corners(bounds), {
           padding: {
-            left: left + FIT_PADDING,
-            right: left + FIT_PADDING,
+            left: sides,
+            right: sides,
             top: top + FIT_PADDING,
             bottom: below + FIT_PADDING,
           },
@@ -348,8 +376,8 @@ export function LocationsMap({
         })?.zoom ?? MAX_FIT_ZOOM,
         map.cameraForBounds(corners(pins), {
           padding: {
-            left: left + FIT_PADDING,
-            right: left + FIT_PADDING,
+            left: sides,
+            right: sides,
             top: top + shownBand.top,
             bottom: below + shownBand.bottom,
           },
@@ -385,7 +413,7 @@ export function LocationsMap({
     };
     // A picture's frame and band rather than the live map's own size, which
     // never changes while it draws one.
-  }, [map, placed, coveredBottom, backdrop, snapshot, frame]);
+  }, [map, placed, coveredBottom, backdrop, snapshot, sideFade, frame]);
 
   // Markers are MapLibre's rather than absolutely positioned children, which is
   // what hands it the job of drawing a place at 178E in the copy of the world
@@ -536,6 +564,21 @@ export function LocationsMap({
                         "animate-in fade-in duration-300 motion-reduce:animate-none",
                     )}
                   />
+                  {/* The sides' fade, over the picture and anchored to it
+                      rather than to the frame, so a frame narrower than the
+                      picture shows the map crisp to its edges. A gradient laid
+                      over the picture, never a mask, for the reason the foot's
+                      gives below. */}
+                  {sideFade && (
+                    <div
+                      aria-hidden
+                      data-backdrop-side-fade
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        background: `linear-gradient(to right, var(--backdrop-fade, hsl(var(--card))), transparent ${SIDE_FADE_WIDTH}px, transparent ${SNAPSHOT_WIDTH - SIDE_FADE_WIDTH}px, var(--backdrop-fade, hsl(var(--card))))`,
+                      }}
+                    />
+                  )}
                   {shown.pins.map((pin, index) => (
                     <div
                       key={index}

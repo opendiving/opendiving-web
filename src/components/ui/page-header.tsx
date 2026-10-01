@@ -32,6 +32,19 @@ export interface PageHeaderProps {
   actions?: ReactNode;
 }
 
+// The way back from a detail or form page, on its own for a page whose heading
+// is drawn elsewhere - the trip page's, over its hero.
+export function BackLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Button variant="ghost" size="sm" asChild className="px-0">
+      <Link href={href}>
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        {label}
+      </Link>
+    </Button>
+  );
+}
+
 // The "back" button + title/subtitle block shared across detail and form
 // pages, optionally with actions opposite the back button.
 export function PageHeader({
@@ -50,12 +63,7 @@ export function PageHeader({
           capitals, and it is the visible gaps either side of the row that
           match. */}
       <div className="mb-6 flex min-h-10 items-center justify-between gap-4">
-        <Button variant="ghost" size="sm" asChild className="px-0">
-          <Link href={backHref}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {backLabel}
-          </Link>
-        </Button>
+        <BackLink href={backHref} label={backLabel} />
         {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
       </div>
       {/* `nav` shares the title's line, and `h-9` on its controls is exactly
