@@ -108,6 +108,7 @@ const TRIP: Trip = {
   dive_count: 0,
   dive_site_count: 0,
   species_count: 0,
+  max_depth: null,
 };
 
 const dive = (uuid: string, contact_uuid: string | null) =>
