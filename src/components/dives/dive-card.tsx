@@ -9,6 +9,7 @@ import {
   BACKDROP_CARD_LINK,
   BackdropCard,
   BackdropCardFigures,
+  type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { DiveTitle } from "@/components/dives/dive-title";
@@ -71,7 +72,8 @@ interface DiveCardProps {
 
 // One dive as a card, in every list of dives: its sites and fixes on a map as
 // the backdrop with its depth curve across the foot of it, and its duration,
-// deepest point and water temperature.
+// deepest point and water temperature - or its average depth where it has no
+// temperature.
 export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   const units = useUnits();
   // The edit page returns to wherever the card was opened from.
@@ -85,9 +87,22 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   // and the second decimal is not what anyone is scanning for.
   const depth = (meters?: number) =>
     meters ? formatDepth(meters, units, { decimals: 0 }) : "-";
+  const figures: BackdropCardFigure[] = [
+    { label: "Duration", value: formatDurationHoursMinutes(dive.duration) },
+    { label: "Max Depth", value: depth(dive.max_depth) },
+  ];
   // `!= null`, since 0 °C is a reading where 0 m is not.
-  const temperature = (celsius?: number | null) =>
-    celsius != null ? formatTemperature(celsius, units, { decimals: 0 }) : "-";
+  if (dive.bottom_temperature != null) {
+    figures.push({
+      label: "Water Temp",
+      value: formatTemperature(dive.bottom_temperature, units, {
+        decimals: 0,
+      }),
+    });
+  }
+  if (figures.length < 3 && dive.avg_depth) {
+    figures.push({ label: "Avg Depth", value: depth(dive.avg_depth) });
+  }
 
   return (
     <BackdropCard
@@ -151,16 +166,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
         {formatDiveDateTime(dive.start_time)}
         {placeName && ` · ${placeName}`}
       </div>
-      <BackdropCardFigures
-        figures={[
-          {
-            label: "Duration",
-            value: formatDurationHoursMinutes(dive.duration),
-          },
-          { label: "Max Depth", value: depth(dive.max_depth) },
-          { label: "Water Temp", value: temperature(dive.bottom_temperature) },
-        ]}
-      />
+      <BackdropCardFigures figures={figures} />
     </BackdropCard>
   );
 }

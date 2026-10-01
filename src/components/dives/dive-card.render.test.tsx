@@ -6,8 +6,8 @@ import type { Dive } from "@/lib/api/dives";
 import { reveal } from "@/test/intersection";
 
 // A card draws a map for a dive with a position and open water for one without,
-// the dive's depth outline across the foot of either, lays out its duration and
-// depths under their titles, and offers Delete only where its list can run one.
+// the dive's depth outline across the foot of either, lays out its figures under
+// their titles, and offers Delete only where its list can run one.
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
@@ -108,13 +108,13 @@ describe("DiveCard", () => {
     expect(within(item).queryByTestId("outline")).not.toBeInTheDocument();
   });
 
-  it("titles its figures", () => {
-    const figuresOf = (item: HTMLElement) =>
-      Array.from(item.querySelectorAll("dt"), (term) => [
-        term.textContent,
-        term.nextElementSibling?.textContent,
-      ]);
+  const figuresOf = (item: HTMLElement) =>
+    Array.from(item.querySelectorAll("dt"), (term) => [
+      term.textContent,
+      term.nextElementSibling?.textContent,
+    ]);
 
+  it("titles its figures", () => {
     expect(figuresOf(card())).toEqual([
       ["Duration", "45min"],
       ["Max Depth", "31 m"],
@@ -122,20 +122,35 @@ describe("DiveCard", () => {
     ]);
   });
 
-  it("keeps every figure's place on a dive logged without depths or temperature", () => {
-    const item = card({
-      dive: dive({ max_depth: undefined, bottom_temperature: undefined }),
-    });
+  it("shows the average depth in place of a temperature it has not got", () => {
+    const item = card({ dive: dive({ bottom_temperature: undefined }) });
 
-    expect(
-      Array.from(item.querySelectorAll("dd"), (value) => value.textContent),
-    ).toEqual(["45min", "-", "-"]);
+    expect(figuresOf(item)).toEqual([
+      ["Duration", "45min"],
+      ["Max Depth", "31 m"],
+      ["Avg Depth", "18 m"],
+    ]);
   });
 
-  it("shows a water temperature of zero rather than a dash", () => {
+  it("leaves out a temperature it has not got when it has no average depth either", () => {
+    const item = card({
+      dive: dive({
+        max_depth: undefined,
+        avg_depth: undefined,
+        bottom_temperature: undefined,
+      }),
+    });
+
+    expect(figuresOf(item)).toEqual([
+      ["Duration", "45min"],
+      ["Max Depth", "-"],
+    ]);
+  });
+
+  it("shows a water temperature of zero rather than leaving it out", () => {
     const item = card({ dive: dive({ bottom_temperature: 0 }) });
 
-    expect(item.querySelectorAll("dd")[2]).toHaveTextContent("0°C");
+    expect(figuresOf(item)[2]).toEqual(["Water Temp", "0°C"]);
   });
 
   it("names the dive and says when and where it was", () => {

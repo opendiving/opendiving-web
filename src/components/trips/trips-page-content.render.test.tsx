@@ -17,6 +17,10 @@ vi.mock("@/hooks/useAuthGuard", () => ({
   useAuthGuard: () => stable.guard,
 }));
 
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
+
 vi.mock("@/components/ui/use-toast", () => {
   const toast = vi.fn();
   return { useToast: () => ({ toast }) };

@@ -8,11 +8,14 @@ import {
   BACKDROP_CARD_LINK,
   BackdropCard,
   BackdropCardFigures,
+  type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripLocationNames } from "@/lib/trip-locations";
+import { useUnits } from "@/hooks/useUnits";
+import { formatDepth } from "@/lib/units";
 import { Edit } from "lucide-react";
 
 interface TripCardProps {
@@ -24,7 +27,8 @@ interface TripCardProps {
 
 // One trip as a card, on /trips and in the dashboard's recent trips: its map as
 // the backdrop - the whole world for a trip with no place on one yet - and what
-// its dives add up to, zeros included.
+// its dives add up to: their count and their sites' at zero too, their species
+// only once there are some, and their deepest point where there are none.
 export function TripCard({
   trip,
   onEdit,
@@ -40,6 +44,21 @@ export function TripCard({
   const dates = formatTripSpan(trip.parts);
   // Whether there is a place to name, which is what decides the separator.
   const placeNames = formatTripLocationNames(locations);
+  const units = useUnits();
+  const figures: BackdropCardFigure[] = [
+    { label: "Dives", value: trip.dive_count },
+    { label: "Dive Sites", value: trip.dive_site_count },
+  ];
+  if (trip.species_count > 0) {
+    figures.push({ label: "Species Seen", value: trip.species_count });
+  }
+  // Whole units, as a dive card rounds its depths.
+  if (figures.length < 3 && trip.max_depth) {
+    figures.push({
+      label: "Max Depth",
+      value: formatDepth(trip.max_depth, units, { decimals: 0 }),
+    });
+  }
 
   return (
     <BackdropCard
@@ -80,13 +99,7 @@ export function TripCard({
           <TripLocationsLabel locations={locations} className="relative z-10" />
         </div>
       )}
-      <BackdropCardFigures
-        figures={[
-          { label: "Dives", value: trip.dive_count },
-          { label: "Dive Sites", value: trip.dive_site_count },
-          { label: "Species Seen", value: trip.species_count },
-        ]}
-      />
+      <BackdropCardFigures figures={figures} />
     </BackdropCard>
   );
 }

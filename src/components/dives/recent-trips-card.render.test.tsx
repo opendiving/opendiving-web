@@ -18,6 +18,10 @@ vi.mock("@/components/layout/quick-create", () => ({
   useQuickCreate: () => vi.fn(),
 }));
 
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
+
 vi.mock("@/components/ui/use-toast", () => {
   const toast = vi.fn();
   return { useToast: () => ({ toast }) };
@@ -117,8 +121,14 @@ describe("RecentTripsCard", () => {
   it("counts a trip's dives, dive sites and species", async () => {
     vi.mocked(tripsAPI.getTrips).mockResolvedValue({
       data: [
-        { ...MAPPED, dive_count: 12, dive_site_count: 1, species_count: 23 },
-        // No dives yet still shows the line, at zero.
+        {
+          ...MAPPED,
+          dive_count: 12,
+          dive_site_count: 1,
+          species_count: 23,
+          max_depth: 31.4,
+        },
+        // No dives yet still shows the counts, at zero, but not the species.
         TYPED,
       ],
       total_count: 2,
@@ -143,7 +153,37 @@ describe("RecentTripsCard", () => {
     expect(countsOf("Koh Tao 2025")).toEqual([
       ["Dives", "0"],
       ["Dive Sites", "0"],
-      ["Species Seen", "0"],
+    ]);
+  });
+
+  it("shows the deepest dive in place of species none of them saw", async () => {
+    vi.mocked(tripsAPI.getTrips).mockResolvedValue({
+      data: [
+        { ...MAPPED, dive_count: 3, dive_site_count: 2, max_depth: 31.4 },
+        // Dives with no depth recorded on any of them.
+        { ...TYPED, dive_count: 1, dive_site_count: 1, max_depth: null },
+      ],
+      total_count: 2,
+      has_more: false,
+      page: 1,
+      items_per_page: 5,
+    });
+    render(<RecentTripsCard />);
+    await screen.findByRole("link", { name: "Dahab 2026" });
+
+    const figuresOf = (name: string) =>
+      Array.from(rowOf(name).querySelectorAll("dt"), (term) => [
+        term.textContent,
+        term.nextElementSibling?.textContent,
+      ]);
+    expect(figuresOf("Dahab 2026")).toEqual([
+      ["Dives", "3"],
+      ["Dive Sites", "2"],
+      ["Max Depth", "31 m"],
+    ]);
+    expect(figuresOf("Koh Tao 2025")).toEqual([
+      ["Dives", "1"],
+      ["Dive Sites", "1"],
     ]);
   });
 
