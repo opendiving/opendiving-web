@@ -12,13 +12,12 @@ export const BACKDROP_CARD_LINK =
   "block font-medium text-foreground after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring";
 
 // A card's place while its list loads, at the card's measured height - its
-// backdrop band, a name, one line under it and a row of figures, 214px and
-// 238px from `sm` - so the cards land without moving anything. A list item,
-// like the card.
+// backdrop band, a name, one line under it and a row of figures, 238px - so the
+// cards land without moving anything. A list item, like the card.
 export function BackdropCardSkeleton() {
   return (
     <li aria-hidden>
-      <Skeleton className="h-53.5 rounded-lg sm:h-59.5" />
+      <Skeleton className="h-59.5 rounded-lg" />
     </li>
   );
 }
@@ -93,9 +92,9 @@ export function BackdropCard({
         "dark:[--backdrop-card:hsl(var(--card))] dark:hover:[--backdrop-card:hsl(var(--muted))]",
         // A fixed band of backdrop above the name, with the details over its
         // faded foot: however tall they grow, the backdrop shows as much of
-        // itself. The details' own top padding is part of the band, so what
-        // they measure starts at the name.
-        "pt-27 sm:pt-33",
+        // itself, at every width. The details' own top padding is part of the
+        // band, so what they measure starts at the name.
+        "pt-33",
       )}
     >
       {isNear && (
