@@ -76,8 +76,9 @@ describe("DiveHero", () => {
       "Apr 4, 2021, 10:04 · Dahab, Egypt",
     );
     expect(figure("Duration")).toHaveTextContent("45min");
-    expect(figure("Max depth")).toHaveTextContent("30.52 m");
-    expect(figure("Avg depth")).toHaveTextContent("18.2 m");
+    // Whole units, as the dive's card rounds them.
+    expect(figure("Max depth")).toHaveTextContent("31 m");
+    expect(figure("Avg depth")).toHaveTextContent("18 m");
     expect(screen.getByRole("link", { name: "Back to dives" })).toHaveAttribute(
       "href",
       "/dives",
@@ -106,11 +107,55 @@ describe("DiveHero", () => {
   it("shows a recorded maximum without inventing an average", () => {
     render(<DiveHero dive={dive({ max_depth: 30.52 })} />);
 
-    expect(figure("Max depth")).toHaveTextContent("30.52 m");
+    expect(figure("Max depth")).toHaveTextContent("31 m");
     expect(figure("Avg depth")).toBeUndefined();
   });
 
-  it("shows the water's temperature and the visibility after the depths", () => {
+  const labels = () =>
+    Array.from(document.querySelectorAll("dt"), (dt) => dt.textContent);
+
+  it("shows the water's temperature and the visibility after the depths, rounded", () => {
+    render(
+      <DiveHero
+        dive={dive({
+          max_depth: 30.52,
+          bottom_temperature: 25.05,
+          visibility: 15,
+        })}
+      />,
+    );
+
+    expect(figure("Water temp")).toHaveTextContent("25°C");
+    expect(figure("Visibility")).toHaveTextContent("15 m");
+    expect(labels()).toEqual([
+      "Duration",
+      "Max depth",
+      "Water temp",
+      "Visibility",
+    ]);
+  });
+
+  // The average only while the rest leave fewer than four figures, and then
+  // after the maximum.
+  it.each([
+    [
+      "the duration and maximum",
+      { max_depth: 30.52 },
+      ["Duration", "Max depth", "Avg depth"],
+    ],
+    ["the duration alone", {}, ["Duration", "Avg depth"]],
+    [
+      "the duration, maximum and a temperature",
+      { max_depth: 30.52, bottom_temperature: 0 },
+      ["Duration", "Max depth", "Avg depth", "Water temp"],
+    ],
+  ] as const)("shows the average beside %s", (_, fields, shown) => {
+    render(<DiveHero dive={dive({ avg_depth: 18.2, ...fields })} />);
+
+    expect(labels()).toEqual(shown);
+  });
+
+  it("leaves the average off beside four other figures", () => {
     render(
       <DiveHero
         dive={dive({
@@ -122,18 +167,18 @@ describe("DiveHero", () => {
       />,
     );
 
-    // 0 °C is a reading, not an absence.
-    expect(figure("Water temp")).toHaveTextContent("0°C");
-    expect(figure("Visibility")).toHaveTextContent("15 m");
-    expect(
-      Array.from(document.querySelectorAll("dt"), (dt) => dt.textContent),
-    ).toEqual([
+    expect(labels()).toEqual([
       "Duration",
       "Max depth",
-      "Avg depth",
       "Water temp",
       "Visibility",
     ]);
+  });
+
+  it("keeps a zero-degree temperature, which is a reading rather than an absence", () => {
+    render(<DiveHero dive={dive({ bottom_temperature: 0 })} />);
+
+    expect(figure("Water temp")).toHaveTextContent("0°C");
   });
 
   it("reads the water's temperature and the visibility in the diver's units", () => {

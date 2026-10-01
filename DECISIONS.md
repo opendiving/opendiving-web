@@ -2407,8 +2407,9 @@ own timezone (see "A dive's `start_time` displays/edits in its own timezone, nev
 then the place. `formatDiveStartTime` - weekday, month in full, and the offset appended so `10:04`
 can be checked - is rejected there so a dive reads the same on its page as in every list; it stays
 on the import's match rows, where telling two dives apart is the point. A bare date prints no clock
-in either. The duration, depths, water temperature and visibility are the hero's figures, each but
-the duration conditional so a hand-logged dive leaves the duration alone.
+in either. The hero's figures are the duration, maximum depth, water temperature and visibility,
+each but the duration where the dive records it, in whole units as the card rounds them, and the
+average depth after the maximum only while the rest leave fewer than four.
 
 ## The ppO₂ limit is picked from a list, and an unlisted one is added to it
 

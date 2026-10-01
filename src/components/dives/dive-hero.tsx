@@ -20,10 +20,10 @@ import { formatDepth, formatTemperature, formatVisibility } from "@/lib/units";
 
 /**
  * The dive page's heading: the dive's card drawn the width of the window, with
- * its figures - its duration, its depths, the water's temperature and the
- * visibility - at the page's precision rather than the card's whole units,
- * since this is the page to read them on. Each but the duration only where the
- * dive records it, so a hand-logged dive can leave the duration on its own.
+ * its figures in whole units as the card rounds them - its duration, its
+ * maximum depth, the water's temperature and the visibility, each but the
+ * duration only where the dive records it, and the average depth after the
+ * maximum only while those leave fewer than four.
  */
 export function DiveHero({
   dive,
@@ -38,34 +38,34 @@ export function DiveHero({
   // The title names the site; this says where it is.
   const placeName = dive.dive_sites[0]?.location?.name;
 
+  const wholeDepth = (meters: number) =>
+    formatDepth(meters, units, { decimals: 0 });
   const figures: MapHeroFigure[] = [
     { label: "Duration", value: formatDurationHoursMinutes(dive.duration) },
   ];
   if (dive.max_depth != null) {
-    figures.push({
-      label: "Max depth",
-      value: formatDepth(dive.max_depth, units),
-    });
+    figures.push({ label: "Max depth", value: wholeDepth(dive.max_depth) });
   }
-  if (dive.avg_depth != null) {
-    figures.push({
-      label: "Avg depth",
-      value: formatDepth(dive.avg_depth, units),
-    });
-  }
-  // `!= null`, since 0 °C is a reading.
+  // `!= null` throughout, since 0 °C - or a 0 m average - is a reading.
+  const readings: MapHeroFigure[] = [];
   if (dive.bottom_temperature != null) {
-    figures.push({
+    readings.push({
       label: "Water temp",
-      value: formatTemperature(dive.bottom_temperature, units),
+      value: formatTemperature(dive.bottom_temperature, units, {
+        decimals: 0,
+      }),
     });
   }
   if (dive.visibility != null) {
-    figures.push({
+    readings.push({
       label: "Visibility",
       value: formatVisibility(dive.visibility, units),
     });
   }
+  if (dive.avg_depth != null && figures.length + readings.length < 4) {
+    figures.push({ label: "Avg depth", value: wholeDepth(dive.avg_depth) });
+  }
+  figures.push(...readings);
 
   return (
     <MapHero
