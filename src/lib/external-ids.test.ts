@@ -116,7 +116,7 @@ describe("externalIdHref", () => {
   });
 
   // A producer key the API accepts, and a property every object inherits.
-  it("reads a registry named like an object's own property as any other", () => {
+  it("reads a registry named like an inherited property as any other", () => {
     const entry = { registry: "constructor", identifier: "1" };
 
     expect(externalIdHref(entry)).toBeNull();
