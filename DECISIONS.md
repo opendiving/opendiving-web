@@ -698,9 +698,9 @@ navigation; reconsider that one dropdown if stepping is ever wanted.
 
 `weight` (kilograms of ballast, a plain per-dive number on the API's `Dive`) renders directly below
 the gear picker in `DiveFormFields` and inside the "Gear" card on the dive detail page, not beside
-the temperature and visibility readings. The form splits what the diver observed (depth,
-temperature, visibility, water type, altitude) from how the diver was configured (gear, weight), and
-weight is the field most often looked up to check against the suit and cylinder used.
+the environment readings. The form splits what the diver observed (depth, temperature, visibility,
+water type, altitude) from how the diver was configured (gear, weight), and weight is the field most
+often looked up to check against the suit and cylinder used.
 
 The detail page's Gear card renders when either is present: `hasGearInfo` is
 `gear_items.length > 0 || weight != null`, mirroring `hasEnvironmentInfo`. `dives/new` pre-fills it
@@ -2407,8 +2407,8 @@ own timezone (see "A dive's `start_time` displays/edits in its own timezone, nev
 then the place. `formatDiveStartTime` - weekday, month in full, and the offset appended so `10:04`
 can be checked - is rejected there so a dive reads the same on its page as in every list; it stays
 on the import's match rows, where telling two dives apart is the point. A bare date prints no clock
-in either. The duration, depths and water temperature are the hero's figures in the card's order,
-each but the duration conditional so a hand-logged dive leaves the duration alone.
+in either. The duration, depths, water temperature and visibility are the hero's figures, each but
+the duration conditional so a hand-logged dive leaves the duration alone.
 
 ## The ppO₂ limit is picked from a list, and an unlisted one is added to it
 

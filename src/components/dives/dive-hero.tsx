@@ -16,12 +16,12 @@ import {
   formatDiveDateTime,
   formatDurationHoursMinutes,
 } from "@/lib/date-time";
-import { formatDepth, formatTemperature } from "@/lib/units";
+import { formatDepth, formatTemperature, formatVisibility } from "@/lib/units";
 
 /**
  * The dive page's heading: the dive's card drawn the width of the window, with
- * its figures in the card's order - its duration, its depths and the water's
- * temperature - at the page's precision rather than the card's whole units,
+ * its figures - its duration, its depths, the water's temperature and the
+ * visibility - at the page's precision rather than the card's whole units,
  * since this is the page to read them on. Each but the duration only where the
  * dive records it, so a hand-logged dive can leave the duration on its own.
  */
@@ -47,6 +47,12 @@ export function DiveHero({
       value: formatDepth(dive.max_depth, units),
     });
   }
+  if (dive.avg_depth != null) {
+    figures.push({
+      label: "Avg depth",
+      value: formatDepth(dive.avg_depth, units),
+    });
+  }
   // `!= null`, since 0 °C is a reading.
   if (dive.bottom_temperature != null) {
     figures.push({
@@ -54,10 +60,10 @@ export function DiveHero({
       value: formatTemperature(dive.bottom_temperature, units),
     });
   }
-  if (dive.avg_depth != null) {
+  if (dive.visibility != null) {
     figures.push({
-      label: "Avg depth",
-      value: formatDepth(dive.avg_depth, units),
+      label: "Visibility",
+      value: formatVisibility(dive.visibility, units),
     });
   }
 

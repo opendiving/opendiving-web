@@ -31,7 +31,6 @@ import { fixPoint } from "@/components/dives/dive-map-locations";
 import {
   Building2,
   CloudSun,
-  Eye,
   Globe,
   GraduationCap,
   Luggage,
@@ -45,11 +44,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
-import {
-  formatAltitude,
-  formatTemperature,
-  formatVisibility,
-} from "@/lib/units";
+import { formatAltitude, formatTemperature } from "@/lib/units";
 
 interface DiveDetailSidebarProps {
   dive: Dive;
@@ -136,10 +131,10 @@ export function DiveDetailSidebar({
   const hasPeople = divePeople.some(
     (reference) => people[reference.person_uuid],
   );
-  // The water's temperature is the hero's, among the dive's figures.
+  // The water's temperature and the visibility are the hero's, among the
+  // dive's figures.
   const hasEnvironmentInfo =
     dive.air_temperature != null ||
-    dive.visibility != null ||
     dive.water_type != null ||
     dive.altitude != null ||
     dive.current != null ||
@@ -358,11 +353,6 @@ export function DiveDetailSidebar({
             {dive.air_temperature != null && (
               <Reading label="Air temperature" icon={ThermometerSun}>
                 {formatTemperature(dive.air_temperature, units)}
-              </Reading>
-            )}
-            {dive.visibility != null && (
-              <Reading label="Visibility" icon={Eye}>
-                {formatVisibility(dive.visibility, units)}
               </Reading>
             )}
             {dive.water_type != null && (
