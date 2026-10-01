@@ -309,7 +309,7 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="relative me-5 h-9 w-9 rounded-full p-0 max-[370px]:me-2 md:me-0"
+                        className="relative me-3 h-9 w-9 rounded-full p-0 max-[370px]:me-2 md:me-0"
                       >
                         <UserAvatar
                           name={user.name}
