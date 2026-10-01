@@ -55,6 +55,7 @@ export function TripHero({
         )
       }
       figures={tripFigures(trip, units)}
+      mapCredit
       // The whole world for a trip with no place on the map yet, as its card
       // shows.
       backdrop={(covered) => (
@@ -66,6 +67,7 @@ export function TripHero({
           backdrop
           coveredBottom={covered.bottom}
           coveredTop={covered.top}
+          creditElsewhere
           snapshot
           sideFade
         />

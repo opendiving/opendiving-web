@@ -8,21 +8,25 @@ import {
 } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BackLink } from "@/components/ui/page-header";
+import { MapCredit } from "@/components/map/map-credit";
 import { cn } from "@/lib/utils";
 
 // The band's frame, shared with its skeleton so the page lands without moving:
 // a constant height per breakpoint - about a third of a laptop's viewport, less
 // on a phone - that details taller than it, a name wrapping onto three lines,
 // grow from the top, where `pt-36` keeps a band of map above them under the top
-// row and the credit beneath it.
+// row.
 const FRAME =
   "relative isolate flex min-h-72 flex-col justify-end pt-36 sm:min-h-80 lg:min-h-88";
 
 // The page's column, so the details line up with the body under them.
 const COLUMN = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
 
-// The figures' row, as many to a line as fit - three on a phone.
-const FIGURES = "mt-3 flex flex-wrap gap-x-3 gap-y-3 md:mt-4";
+// The figures, as many to a line as fit - three on a phone - and the map's
+// credit at the row's far end, at the details' foot. Where the figures leave it
+// no room, it wraps onto a line of its own under them, still at the right.
+const FIGURES_ROW = "mt-3 flex flex-wrap items-end gap-x-6 gap-y-2 md:mt-4";
+const FIGURES = "flex flex-wrap gap-x-3 gap-y-3";
 
 // The details at a card's sizes below `md`, where a phone's width would
 // otherwise wrap the title and put a figure on a line of its own, and at the
@@ -100,6 +104,9 @@ interface MapHeroProps extends Known {
   // One line under the title, as the record's card has under its name.
   subtitle?: ReactNode;
   figures: MapHeroFigure[];
+  // The backdrop is a map that leaves its credit to the hero
+  // (`creditElsewhere`), which carries it in its details' corner.
+  mapCredit?: boolean;
 }
 
 // A detail page's heading: the record's card drawn the width of the window, its
@@ -116,9 +123,10 @@ export function MapHero({
   title,
   subtitle,
   figures,
+  mapCredit,
 }: MapHeroProps) {
   // How much of the map lies under the details, so its places centre between
-  // the credit and the name - read as the ref attaches and followed after
+  // the top row and the name - read as the ref attaches and followed after
   // that, as a card does it.
   const [detailsHeight, setDetailsHeight] = useState(0);
   const detailsRef = useCallback((element: HTMLElement | null) => {
@@ -178,18 +186,25 @@ export function MapHero({
               {subtitle && <p className={SUBTITLE}>{subtitle}</p>}
             </div>
           </div>
-          {/* Every figure the record has, at the dive page's size. A value
-              never breaks, so "30 m" is one figure. */}
-          <dl className={FIGURES}>
-            {figures.map(({ label, value }) => (
-              <div key={label} className={FIGURE}>
-                <dt className={LABEL}>{label}</dt>
-                <dd className={cn(VALUE, "whitespace-nowrap font-bold")}>
-                  {value}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <div className={FIGURES_ROW}>
+            {/* Every figure the record has, at the dive page's size. A value
+                never breaks, so "30 m" is one figure. */}
+            <dl className={FIGURES}>
+              {figures.map(({ label, value }) => (
+                <div key={label} className={FIGURE}>
+                  <dt className={LABEL}>{label}</dt>
+                  <dd className={cn(VALUE, "whitespace-nowrap font-bold")}>
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            {/* A chip as it is over a card's map, so without the details'
+                glow. */}
+            {mapCredit && (
+              <MapCredit className="ml-auto rounded-sm opacity-75 [text-shadow:none]" />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -223,7 +238,7 @@ export function MapHeroSkeleton({ backHref, backLabel, icon: Icon }: Known) {
             </p>
           </div>
         </div>
-        <div className={FIGURES}>
+        <div className={cn(FIGURES_ROW, FIGURES)}>
           {[0, 1, 2].map((figure) => (
             <div key={figure} className={FIGURE}>
               <Skeleton className={cn("h-4 w-16 md:mb-1 md:h-5", bar)} />

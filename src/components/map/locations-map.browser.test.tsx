@@ -694,6 +694,33 @@ describe("LocationsMap", () => {
     );
   });
 
+  // The caller carries the credit on what it lays over the map, so the places
+  // fit under its controls alone.
+  it("leaves its credit to a caller that carries it, and fits under the covered top", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          creditElsewhere
+          className="h-64 sm:h-64"
+          coveredTop={44}
+          coveredBottom={40}
+          locations={[{ name: "Dahab", latitude: 28.49, longitude: 34.51 }]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    expect(screen.queryByRole("link", { name: /OpenStreetMap/ })).toBeNull();
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const marker = (markers()[0] as HTMLElement).getBoundingClientRect();
+    expect(marker.top + marker.height / 2).toBeCloseTo(
+      (frame.top + 44 + frame.bottom - 40) / 2,
+      0,
+    );
+  });
+
   it("fades a backdrop into a colour laid over it, not through a mask", async () => {
     render(
       withConfig(

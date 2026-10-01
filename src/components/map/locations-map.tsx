@@ -18,7 +18,7 @@ import {
 } from "@/lib/basemap";
 import { useConfig } from "@/contexts/ConfigContext";
 import { formatTripLocationNames } from "@/lib/trip-locations";
-import { Attribution } from "@/components/attribution";
+import { MapCredit } from "@/components/map/map-credit";
 import { MapCanvas } from "@/components/map/map-canvas";
 import {
   findSnapshot,
@@ -54,10 +54,11 @@ const pictureSide = (frameWidth: number, sideFade: boolean | undefined) =>
   );
 
 // A backdrop's credit is inset this far from the frame's top-left corner, or
-// from under the controls covering its top.
+// from under the controls covering its top. Without one, the places fit under
+// those controls alone.
 const CREDIT_INSET = 4;
 const creditBottom = (credit: HTMLElement | null, coveredTop: number) =>
-  credit ? CREDIT_INSET + coveredTop + credit.offsetHeight : 0;
+  credit ? CREDIT_INSET + coveredTop + credit.offsetHeight : coveredTop;
 
 // `bg-coral`, not `bg-primary`: primary is near-black in light and mid-grey in
 // dark, which is invisible against a dark basemap. Coral is the one accent held
@@ -128,6 +129,11 @@ export interface LocationsMapProps {
    */
   coveredTop?: number;
   /**
+   * The caller draws the basemap's credit itself (`MapCredit`), on what it
+   * lays over the map, so the map draws none.
+   */
+  creditElsewhere?: boolean;
+  /**
    * Show a picture of the map rather than the map - for a list of maps. The
    * live map is drawn once, unseen, at `SNAPSHOT_WIDTH` by `SNAPSHOT_HEIGHT`,
    * pictured and let go; the frame then shows the part of the picture that
@@ -168,6 +174,7 @@ export function LocationsMap({
   backdrop,
   coveredBottom = 0,
   coveredTop = 0,
+  creditElsewhere,
   snapshot,
   sideFade,
 }: LocationsMapProps) {
@@ -659,22 +666,22 @@ export function LocationsMap({
           `target="_blank"` is not decoration: this map appears inside dialogs
           holding a half-filled form, and navigating away in the same tab would
           throw it away. */}
-      <div
-        ref={creditRef}
-        className={cn(
-          "absolute z-10 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground",
-          // Inset from a backdrop's corner, which is rounded and would clip it,
-          // and quieter, as it sits over the part of the map that shows.
-          backdrop ? "rounded-sm opacity-75" : "bottom-0 right-0",
-        )}
-        style={
-          backdrop
-            ? { left: CREDIT_INSET, top: CREDIT_INSET + coveredTop }
-            : undefined
-        }
-      >
-        <Attribution value={basemap.attribution} underline={false} />
-      </div>
+      {!creditElsewhere && (
+        <MapCredit
+          ref={creditRef}
+          className={cn(
+            "absolute z-10",
+            // Inset from a backdrop's corner, which is rounded and would clip
+            // it, and quieter, as it sits over the part of the map that shows.
+            backdrop ? "rounded-sm opacity-75" : "bottom-0 right-0",
+          )}
+          style={
+            backdrop
+              ? { left: CREDIT_INSET, top: CREDIT_INSET + coveredTop }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

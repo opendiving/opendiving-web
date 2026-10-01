@@ -200,11 +200,16 @@ describe("TripDetailPage", () => {
     const props = vi.mocked(LocationsMap).mock.lastCall![0];
     expect(props).toMatchObject({
       backdrop: true,
+      creditElsewhere: true,
       snapshot: true,
       showWhenEmpty: true,
       sideFade: true,
     });
     expect(props.locations.map((location) => location.name)).toEqual(["Dahab"]);
+    // Which the hero credits at its details' foot instead.
+    expect(
+      screen.getByRole("link", { name: /OpenStreetMap/ }),
+    ).toBeInTheDocument();
     // The sidebar's own map is gone: the hero's is the one on the page.
     expect(vi.mocked(LocationsMap).mock.calls.every(([p]) => p.backdrop)).toBe(
       true,

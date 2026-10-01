@@ -240,13 +240,19 @@ describe("DiveSiteHero", () => {
       backdrop: true,
       snapshot: true,
       sideFade: true,
+      creditElsewhere: true,
     });
+    // Which the hero credits at its details' foot instead.
+    expect(
+      screen.getByRole("link", { name: /OpenStreetMap/ }),
+    ).toBeInTheDocument();
   });
 
-  it("draws the map's water for a site with no position", () => {
+  it("draws the map's water for a site with no position, and credits no map", () => {
     render(<DiveSiteHero site={SITE} />);
 
     expect(LocationsMap).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: /OpenStreetMap/ })).toBeNull();
   });
 });
 

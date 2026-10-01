@@ -79,6 +79,7 @@ export function DiveSiteHero({
       // The line under the name, as the site's card has it.
       subtitle={facts.length > 0 && <DiveSiteFacts facts={facts} />}
       figures={figures}
+      mapCredit={isPlaced}
       // The map's water for a site with no position, as its card draws one.
       backdrop={(covered) =>
         isPlaced ? (
@@ -95,6 +96,7 @@ export function DiveSiteHero({
             backdrop
             coveredBottom={covered.bottom}
             coveredTop={covered.top}
+            creditElsewhere
             snapshot
             sideFade
           />
