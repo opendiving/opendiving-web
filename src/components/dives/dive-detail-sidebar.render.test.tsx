@@ -212,6 +212,21 @@ describe("DiveDetailSidebar locations", () => {
     expect(screen.queryByTestId("locations-map")).not.toBeInTheDocument();
   });
 
+  // How the diver got in is a fact about the place, so it carries this card
+  // alone rather than Environment's.
+  it("shows the entry type, and carries the card on it alone", () => {
+    renderSidebar(dive({ entry_type: "pier" }));
+
+    const card = within(
+      screen
+        .getByRole("heading", { name: "Location" })
+        .closest(".rounded-lg") as HTMLElement,
+    );
+    expect(card.getByText("Entry Type")).toBeInTheDocument();
+    expect(card.getByText("Pier")).toBeInTheDocument();
+    expect(screen.queryByText("Environment")).not.toBeInTheDocument();
+  });
+
   it("renders no card at all for a dive with nothing to place", () => {
     renderSidebar(dive());
 
@@ -277,7 +292,6 @@ describe.each([
   ["Current", { current: "strong" }, "Strong"],
   ["Waves", { waves: "slight" }, "Slight"],
   ["Weather", { weather: "partly_cloudy" }, "Partly cloudy"],
-  ["Entry Type", { entry_type: "pier" }, "Pier"],
   ["Boat Name", { boat_name: "Legend" }, "Legend"],
   ["Air Temperature", { air_temperature: 24 }, "24°C"],
 ] as const)("DiveDetailSidebar environment: %s", (label, fields, shown) => {

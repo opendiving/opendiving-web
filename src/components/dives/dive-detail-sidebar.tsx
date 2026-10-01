@@ -153,7 +153,6 @@ export function DiveDetailSidebar({
     dive.current != null ||
     dive.waves != null ||
     dive.weather != null ||
-    dive.entry_type != null ||
     dive.boat_name != null;
   const tags = dive.tags ?? [];
 
@@ -180,6 +179,7 @@ export function DiveDetailSidebar({
     <div className="space-y-6">
       {(trip ||
         dive.dive_sites.length > 0 ||
+        dive.entry_type != null ||
         entryCoordinates ||
         exitCoordinates) && (
         <Card>
@@ -235,6 +235,22 @@ export function DiveDetailSidebar({
                       </span>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* How the diver got in at that place, kept off the Entry fix
+                below by the map between them. */}
+            {dive.entry_type != null && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Entry Type
+                </div>
+                <div className="flex items-start gap-2 text-sm">
+                  <WavesArrowDown className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <span className="min-w-0 font-medium">
+                    {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
+                  </span>
                 </div>
               </div>
             )}
@@ -397,11 +413,6 @@ export function DiveDetailSidebar({
             {dive.weather != null && (
               <Reading label="Weather" icon={CloudSun}>
                 {labelOf(WEATHER_LABELS, dive.weather)}
-              </Reading>
-            )}
-            {dive.entry_type != null && (
-              <Reading label="Entry Type" icon={WavesArrowDown}>
-                {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
               </Reading>
             )}
             {dive.boat_name != null && (
