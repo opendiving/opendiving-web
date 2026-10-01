@@ -58,17 +58,16 @@ const WIDTH = 1024;
 // measure the real one in the page moments before the shutter - except `gear-item`, whose
 // entry is also the height it is shot at.
 //
-// 911 is written down because it is not a property of the gear page at all: it is the
+// 718 is written down because it is not a property of the gear page at all: it is the
 // height at which `gear-item.png` stacked over `dive-site.png` comes level with
 // `dive-detail.png` beside them in the README row. That makes it the one figure in this
 // file that goes stale when a *different* image is re-framed, which is a real cost and is
 // argued out in DECISIONS.md rather than here.
 //
-// It is the foot of the `Service` card with no gutter under it, which the other three
-// shots would each have added - and that is the whole of the travel this lever has left.
-// The pair has to come level with a dive shot that lost 458px when it was retaken, so the
-// height that would balance the row exactly is *inside* the Service card, and every stop
-// that keeps a gutter overshoots. DECISIONS.md has the residuals at five container widths.
+// It is the foot of the sidebar's `Gear Information` card with no gutter under it, which
+// the other three shots would each have added. The height that would balance the row
+// exactly is a line above it, among the `Service` card's history entries beside it, and
+// every stop that keeps a gutter overshoots further. DECISIONS.md has the residual.
 //
 // What it has to be on this page is a height that does not end through a row - the same
 // thing `cutAfterCard()` guarantees for the shot that measures. Nothing here can guarantee
@@ -79,7 +78,7 @@ const WIDTH = 1024;
 const HEIGHT = {
   dashboard: 1564,
   "dive-detail": 1086,
-  "gear-item": 911,
+  "gear-item": 718,
   "dive-site": 1086,
 };
 
