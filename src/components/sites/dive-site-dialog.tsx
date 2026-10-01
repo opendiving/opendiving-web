@@ -68,6 +68,9 @@ interface DiveSiteDialogProps {
   // Called with the created/updated dive site so the caller can refresh
   // whatever list it's showing - and, in the dive form, select it straight away.
   onSaved: (diveSite: DiveSite) => void;
+  // Forwarded to `DialogContent`; preventing it keeps focus from returning to
+  // whatever opened the dialog.
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 // The API answers a PATCH with a status message alone, and canonicalizes what it
@@ -96,6 +99,7 @@ export function DiveSiteDialog({
   onOpenChange,
   diveSite,
   onSaved,
+  onCloseAutoFocus,
 }: DiveSiteDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useDialogApiError(open);
@@ -367,7 +371,7 @@ export function DiveSiteDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "Edit Dive Site" : "New Dive Site"}

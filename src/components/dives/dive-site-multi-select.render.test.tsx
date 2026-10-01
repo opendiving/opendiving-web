@@ -15,6 +15,41 @@ vi.mock("@/lib/api/dive-sites", () => ({
   diveSitesAPI: { getDiveSites: vi.fn(), getDiveSite: vi.fn() },
 }));
 
+// The real dialog's form is beside the point; what matters is that it closes
+// through `DialogContent`, whose focus return is what the picker overrides.
+vi.mock("@/components/sites/dive-site-dialog", async () => {
+  const { Dialog, DialogContent, DialogTitle } =
+    await import("@/components/ui/dialog");
+  return {
+    DiveSiteDialog: ({
+      open,
+      onOpenChange,
+      onSaved,
+      onCloseAutoFocus,
+    }: {
+      open: boolean;
+      onOpenChange: (open: boolean) => void;
+      onSaved: (site: unknown) => void;
+      onCloseAutoFocus?: (event: Event) => void;
+    }) => (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
+          <DialogTitle>New Dive Site</DialogTitle>
+          <button
+            type="button"
+            onClick={() => {
+              onSaved({ uuid: "site-new", name: "Canyon", location: null });
+              onOpenChange(false);
+            }}
+          >
+            Save
+          </button>
+        </DialogContent>
+      </Dialog>
+    ),
+  };
+});
+
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const getDiveSites = vi.mocked(diveSitesAPI.getDiveSites);
 
@@ -76,6 +111,67 @@ describe("DiveSiteMultiSelect", () => {
     await userEvent.keyboard("{Enter}");
 
     await waitFor(() => expect(rows()).toEqual(["Blue Hole, Dahab, Egypt"]));
+  });
+
+  // Most dives have one site, so an add leaves the field shut rather than
+  // holding the menu open over the rest of the form for a second.
+  const expectFieldLeft = () => {
+    expect(screen.getByRole("combobox")).not.toHaveFocus();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  };
+
+  it("leaves the field after a site is picked", async () => {
+    render(<Field />);
+    await openMenu();
+
+    await userEvent.click(screen.getByRole("option", { name: /Blue Hole/ }));
+
+    await waitFor(() => expect(rows()).toEqual(["Blue Hole, Dahab, Egypt"]));
+    expectFieldLeft();
+    expect(screen.getByRole("combobox")).toHaveValue("");
+  });
+
+  it("leaves the field after a site is added on Enter", async () => {
+    render(<Field />);
+    await openMenu();
+
+    await userEvent.paste("Blue Hole");
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => expect(rows()).toEqual(["Blue Hole, Dahab, Egypt"]));
+    expectFieldLeft();
+    expect(screen.getByRole("combobox")).toHaveValue("");
+  });
+
+  it("leaves the field after a site is saved from the new-site dialog", async () => {
+    render(<Field />);
+    await openMenu();
+
+    await userEvent.click(
+      screen.getByRole("option", { name: /Add dive site/ }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(rows()).toEqual(["Canyon"]);
+    // The focus return runs on a timer after the dialog unmounts.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expectFieldLeft();
+  });
+
+  it("returns to the field when the new-site dialog is cancelled", async () => {
+    render(<Field />);
+    await openMenu();
+
+    await userEvent.click(
+      screen.getByRole("option", { name: /Add dive site/ }),
+    );
+    await screen.findByRole("dialog");
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.getByRole("combobox")).toHaveFocus());
   });
 
   it("adds nothing from typing the name alone", async () => {
