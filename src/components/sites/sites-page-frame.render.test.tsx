@@ -192,14 +192,25 @@ describe("SitesPageFrame filters", () => {
       ...NO_SITE_FILTERS,
       tagUuid: "tag-wreck",
     });
-    await userEvent.selectOptions(
-      screen.getByLabelText("Sort"),
-      "Most recently dived first",
-    );
+    await userEvent.selectOptions(screen.getByLabelText("Sort"), "By name");
     expect(onFiltersChange).toHaveBeenLastCalledWith({
       ...NO_SITE_FILTERS,
-      sort: "last_dived_on",
+      sort: "name",
     });
+  });
+
+  it("orders the list most recently dived first, offering that first", async () => {
+    frame({ cards: [<li key="t" />] });
+
+    await openPanel();
+
+    const sort = screen.getByLabelText<HTMLSelectElement>("Sort");
+    expect(sort.value).toBe("last_dived_on");
+    expect([...sort.options].map((option) => option.text)).toEqual([
+      "Most recently dived first",
+      "Most dived first",
+      "By name",
+    ]);
   });
 
   // A folded row must never narrow or reorder the list unseen.

@@ -2,10 +2,7 @@
 
 import { type RefObject } from "react";
 
-import {
-  DIVE_SITE_LIST_SORTS,
-  type DiveSiteListSort,
-} from "@/lib/api/dive-sites";
+import type { DiveSiteListSort } from "@/lib/api/dive-sites";
 import type { Tag } from "@/lib/api/tags";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -21,9 +18,11 @@ export interface DiveSiteListFilters {
   sort: DiveSiteListSort;
 }
 
+// Most recently dived first, where the API's own default is by name: the list
+// opens on the sites a diver is most likely to be looking for.
 export const NO_SITE_FILTERS: DiveSiteListFilters = {
   tagUuid: "",
-  sort: "name",
+  sort: "last_dived_on",
 };
 
 /** Whether the row holds anything but its opening state, the sort included. */
@@ -31,10 +30,12 @@ export function siteFiltersChanged(filters: DiveSiteListFilters): boolean {
   return Boolean(filters.tagUuid) || filters.sort !== NO_SITE_FILTERS.sort;
 }
 
+// In the select's order, the default first. A `Record` so an order the API
+// grows fails to compile here rather than going unoffered.
 const SORT_LABELS: Record<DiveSiteListSort, string> = {
-  name: "By name",
-  dive_count: "Most dived first",
   last_dived_on: "Most recently dived first",
+  dive_count: "Most dived first",
+  name: "By name",
 };
 
 export interface SitesFiltersProps {
@@ -107,9 +108,9 @@ export function SitesFilters({
             })
           }
         >
-          {DIVE_SITE_LIST_SORTS.map((sort) => (
+          {Object.entries(SORT_LABELS).map(([sort, label]) => (
             <option key={sort} value={sort}>
-              {SORT_LABELS[sort]}
+              {label}
             </option>
           ))}
         </NativeSelect>
