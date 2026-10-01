@@ -45,8 +45,8 @@ export interface Trip {
   dive_site_count: number;
   species_count: number;
   // The deepest `max_depth` among those dives, in metres, and `null` when none
-  // of them recorded one. Optional because a response cached before the API
-  // computed it carries none.
+  // of them recorded one. Optional while the API that sends it may not be the
+  // one deployed; the `?` comes out once it is.
   max_depth?: number | null;
 }
 

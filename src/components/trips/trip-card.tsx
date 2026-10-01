@@ -53,7 +53,7 @@ export function TripCard({
     figures.push({ label: "Species Seen", value: trip.species_count });
   }
   // Whole units, as a dive card rounds its depths.
-  if (figures.length < 3 && trip.max_depth) {
+  if (figures.length < 3 && trip.max_depth != null) {
     figures.push({
       label: "Max Depth",
       value: formatDepth(trip.max_depth, units, { decimals: 0 }),

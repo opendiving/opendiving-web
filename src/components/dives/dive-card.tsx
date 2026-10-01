@@ -91,7 +91,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
     { label: "Duration", value: formatDurationHoursMinutes(dive.duration) },
     { label: "Max Depth", value: depth(dive.max_depth) },
   ];
-  // `!= null`, since 0 °C is a reading where 0 m is not.
+  // `!= null`, since 0 °C is a reading.
   if (dive.bottom_temperature != null) {
     figures.push({
       label: "Water Temp",
