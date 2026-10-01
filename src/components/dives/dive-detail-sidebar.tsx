@@ -43,7 +43,6 @@ import {
   MapPin,
   Mountain,
   Phone,
-  Ship,
   Thermometer,
   ThermometerSun,
   Waves,
@@ -151,8 +150,7 @@ export function DiveDetailSidebar({
     dive.altitude != null ||
     dive.current != null ||
     dive.waves != null ||
-    dive.weather != null ||
-    dive.boat_name != null;
+    dive.weather != null;
   const tags = dive.tags ?? [];
 
   const entry = fixPoint(dive.entry_latitude, dive.entry_longitude);
@@ -179,6 +177,7 @@ export function DiveDetailSidebar({
       {(trip ||
         dive.dive_sites.length > 0 ||
         dive.entry_type != null ||
+        dive.boat_name != null ||
         entryCoordinates ||
         exitCoordinates) && (
         <Card>
@@ -277,6 +276,14 @@ export function DiveDetailSidebar({
                 <div className="text-sm">
                   {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
                 </div>
+              </div>
+            )}
+            {dive.boat_name != null && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Boat name
+                </div>
+                <div className="text-sm">{dive.boat_name}</div>
               </div>
             )}
           </CardContent>
@@ -406,11 +413,6 @@ export function DiveDetailSidebar({
             {dive.weather != null && (
               <Reading label="Weather" icon={CloudSun}>
                 {labelOf(WEATHER_LABELS, dive.weather)}
-              </Reading>
-            )}
-            {dive.boat_name != null && (
-              <Reading label="Boat name" icon={Ship}>
-                {dive.boat_name}
               </Reading>
             )}
           </CardContent>

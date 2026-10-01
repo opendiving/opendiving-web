@@ -212,28 +212,41 @@ describe("DiveDetailSidebar locations", () => {
     expect(screen.queryByTestId("locations-map")).not.toBeInTheDocument();
   });
 
-  // How the diver got in is a fact about the place, so it carries this card
-  // alone rather than Environment's.
-  it("shows the entry type, and carries the card on it alone", () => {
-    renderSidebar(dive({ entry_type: "pier" }));
+  // How the diver got in, and off which boat, are facts about the place, so
+  // each carries this card alone rather than Environment's.
+  it.each([
+    ["Entry type", { entry_type: "pier" }, "Pier"],
+    ["Boat name", { boat_name: "Legend" }, "Legend"],
+  ] as const)(
+    "shows the %s, and carries the card on it alone",
+    (label, fields, shown) => {
+      renderSidebar(dive(fields));
 
-    const card = within(
-      screen
-        .getByRole("heading", { name: "Location" })
-        .closest(".rounded-lg") as HTMLElement,
+      const card = within(
+        screen
+          .getByRole("heading", { name: "Location" })
+          .closest(".rounded-lg") as HTMLElement,
+      );
+      expect(card.getByText(label)).toBeInTheDocument();
+      expect(card.getByText(shown)).toBeInTheDocument();
+      expect(screen.queryByText("Environment")).not.toBeInTheDocument();
+    },
+  );
+
+  it("lists the entry type and the boat last, after the fixes and their drift", () => {
+    renderSidebar(
+      dive({ ...ENTRY, ...EXIT, entry_type: "boat", boat_name: "Legend" }),
     );
-    expect(card.getByText("Entry type")).toBeInTheDocument();
-    expect(card.getByText("Pier")).toBeInTheDocument();
-    expect(screen.queryByText("Environment")).not.toBeInTheDocument();
-  });
-
-  it("lists the entry type last, after the fixes and their drift", () => {
-    renderSidebar(dive({ ...ENTRY, ...EXIT, entry_type: "boat" }));
 
     expect(
       screen
         .getByText("Entry → exit")
         .compareDocumentPosition(screen.getByText("Entry type")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      screen
+        .getByText("Entry type")
+        .compareDocumentPosition(screen.getByText("Boat name")),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
@@ -302,7 +315,6 @@ describe.each([
   ["Current", { current: "strong" }, "Strong"],
   ["Waves", { waves: "slight" }, "Slight"],
   ["Weather", { weather: "partly_cloudy" }, "Partly cloudy"],
-  ["Boat name", { boat_name: "Legend" }, "Legend"],
   ["Air temperature", { air_temperature: 24 }, "24°C"],
 ] as const)("DiveDetailSidebar environment: %s", (label, fields, shown) => {
   it("carries the card alone, and names the value", () => {
