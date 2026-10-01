@@ -201,19 +201,19 @@ export function DashboardPageFrame({
                 sideways at any of those widths. */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-6">
               <Stat
-                title="Total Dives"
+                title="Total dives"
                 icon={<DiveIcon className="h-4 w-4" />}
                 value={stats && String(stats.total_dives)}
                 hint="Logged in your logbook"
               />
               <Stat
-                title="Max Depth"
+                title="Max depth"
                 icon={<ArrowDownToLine className="h-4 w-4" />}
                 value={stats && formatDepth(stats.max_depth, units)}
                 hint="Personal best"
               />
               <Stat
-                title="Total Time"
+                title="Total time"
                 icon={<Clock className="h-4 w-4" />}
                 value={stats && formatDurationHoursMinutes(stats.total_time)}
                 hint="Underwater"
@@ -222,7 +222,7 @@ export function DashboardPageFrame({
                   this number, itemised. The other three summarise the whole
                   logbook and have nowhere more specific to go. */}
               <Stat
-                title="Species Seen"
+                title="Species seen"
                 icon={<Fish className="h-4 w-4" />}
                 value={stats && String(stats.species_seen)}
                 hint="Distinct species spotted"

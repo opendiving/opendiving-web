@@ -6,20 +6,15 @@ import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useTags } from "@/hooks/useTags";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
-import { formatDateOnly } from "@/lib/date-time";
 import {
   NO_SITE_FILTERS,
   type DiveSiteListFilters,
 } from "@/components/sites/sites-filters";
-import { Button } from "@/components/ui/button";
-import { IconTooltip } from "@/components/ui/tooltip";
 import { SitesPageFrame } from "@/components/sites/sites-page-frame";
-import { TableCell, TableRow } from "@/components/ui/table";
+import { DiveSiteCard } from "@/components/sites/dive-site-card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { useQuickCreate } from "@/components/layout/quick-create";
-import { Eye, Edit, Trash2, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
@@ -80,6 +75,7 @@ export function SitesPageContent() {
     hasMore,
     loadFailed,
     loadMore,
+    reload,
     removeItem,
     applySaved,
   } = useInfiniteResource<DiveSite>(fetchDiveSites, {
@@ -98,10 +94,12 @@ export function SitesPageContent() {
   } = useDeleteResource(diveSitesAPI.deleteDiveSite, {
     successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete dive site. Please try again.",
-    // The row goes locally rather than by re-reading the pages around it: a
+    // The card goes locally rather than by re-reading the pages around it: a
     // diver who has scrolled several pages in should not have the list
-    // collapse back to the first one under them.
-    onDeleted: removeItem,
+    // collapse back to the first one under them. Unless its dives moved to
+    // another site, whose card then counts them - that is a delete that
+    // changes another card, and only a re-read shows it.
+    onDeleted: (id, movedDivesTo) => (movedDivesTo ? reload() : removeItem(id)),
   });
 
   if (isAuthLoading) {
@@ -131,63 +129,14 @@ export function SitesPageContent() {
         onFiltersChange={setFilters}
         onFiltersOpened={() => setWantsTags(true)}
         tags={tags ?? undefined}
-        rows={diveSites.map((diveSite) => (
-          <TableRow key={diveSite.uuid}>
-            <TableCell className="font-medium">
-              <Link
-                href={`/sites/${diveSite.uuid}`}
-                className="hover:underline"
-              >
-                {diveSite.name}
-              </Link>
-            </TableCell>
-            <TableCell>{diveSite.location?.name || "-"}</TableCell>
-            <TableCell className="text-right tabular-nums">
-              {diveSite.dive_count ?? 0}
-            </TableCell>
-            <TableCell className="whitespace-nowrap">
-              {diveSite.last_dived_on
-                ? formatDateOnly(diveSite.last_dived_on)
-                : "-"}
-            </TableCell>
-            <TableCell className="text-right">
-              {/* Named per row, not per action: ten identical "Edit"s tell a
-                          screen reader's controls list nothing about which site.
-                          See DECISIONS.md on the export card's Downloads. */}
-              <div className="flex justify-end gap-2">
-                <IconTooltip label={`View ${diveSite.name}`}>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/sites/${diveSite.uuid}`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </IconTooltip>
-                <IconTooltip label={`Edit ${diveSite.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingSite(diveSite)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-                <IconTooltip label={`Delete ${diveSite.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => requestDeleteDiveSite(diveSite.uuid)}
-                    disabled={deletingId === diveSite.uuid}
-                  >
-                    {deletingId === diveSite.uuid ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </IconTooltip>
-              </div>
-            </TableCell>
-          </TableRow>
+        cards={diveSites.map((diveSite) => (
+          <DiveSiteCard
+            key={diveSite.uuid}
+            site={diveSite}
+            onEdit={() => setEditingSite(diveSite)}
+            onDelete={() => requestDeleteDiveSite(diveSite.uuid)}
+            isDeleting={deletingId === diveSite.uuid}
+          />
         ))}
       />
 

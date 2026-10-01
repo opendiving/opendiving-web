@@ -84,7 +84,7 @@ describe("DiveDetailMain duration and depth card", () => {
   });
 
   it("leaves the duration on its own for a dive with no depths", () => {
-    // Every hand-logged dive that skipped them. An empty "Maximum Depth" block
+    // Every hand-logged dive that skipped them. An empty "Maximum depth" block
     // beside the duration would read as something the diver failed to fill in.
     render(<DiveDetailMain dive={dive()} />);
 

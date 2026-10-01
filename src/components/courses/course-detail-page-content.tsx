@@ -211,7 +211,7 @@ export function CourseDetailPageContent() {
               </InfoRow>
               {agencyLabel && <InfoRow label="Agency">{agencyLabel}</InfoRow>}
               {courseDateRange && (
-                <InfoRow label="Course Dates">{courseDateRange}</InfoRow>
+                <InfoRow label="Course dates">{courseDateRange}</InfoRow>
               )}
               {contact && <InfoRow label="Dive center">{contact.name}</InfoRow>}
               {instructor && (

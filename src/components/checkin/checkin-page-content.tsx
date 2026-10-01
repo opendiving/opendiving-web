@@ -64,7 +64,7 @@ export function CheckInPageContent() {
           // sorted by start time descending, so the first row of the first page is
           // it. Same read the new-dive form makes to carry a dive forward.
           divesAPI.getDives(1, 1),
-          // The dive centres and the instructors the cards name, which a card
+          // The dive centers and the instructors the cards name, which a card
           // holds only by uuid. Each whole list in one read rather than one per
           // card, and alongside the rest rather than after the cards: a diver
           // keeps tens.
@@ -172,7 +172,7 @@ export function CheckInPageContent() {
   );
 }
 
-// The name of the record each card names - its dive centre, its instructor - by
+// The name of the record each card names - its dive center, its instructor - by
 // the card's own uuid, the shape the frame takes. A card naming one the list no
 // longer holds simply has no row.
 function namesByCertification(

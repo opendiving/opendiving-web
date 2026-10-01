@@ -698,7 +698,7 @@ navigation; reconsider that one dropdown if stepping is ever wanted.
 
 `weight` (kilograms of ballast, a plain per-dive number on the API's `Dive`) renders directly below
 the gear picker in `DiveFormFields` and inside the "Gear" card on the dive detail page, not beside
-Bottom Temperature/Visibility. The form splits what the diver observed (depth, temperature,
+Bottom temperature/Visibility. The form splits what the diver observed (depth, temperature,
 visibility, water type, altitude) from how the diver was configured (gear, weight), and weight is
 the field most often looked up to check against the suit and cylinder used.
 
@@ -2305,7 +2305,7 @@ The consumption table sits in its own `overflow-x-auto` wrapper, like the mixtur
 so a narrow pane scrolls the table and never the page body. `RMV` and `SAC` are content-driven
 (`18.24 L/min`, `0.82 bar/min`), so shortening headers gains nothing there, and moving units into
 the headers is forbidden by the card's rule: units stay with the values, never doubled in the label.
-"Avg Depth" keeps its full length: it is a mean depth over the stretch a cylinder was breathed, and
+"Avg depth" keeps its full length: it is a mean depth over the stretch a cylinder was breathed, and
 "Depth" beside a per-tank row invites reading it as that gas's deepest point — the misreading
 `diveModWarning` refuses to warn per tank over, a mean depth being the wrong input for a MOD. Before
 shortening a header, check what fraction of the table is `p-4` padding; halving it is what made this
@@ -2814,7 +2814,7 @@ and puts the action above Cancel when they cannot, with 8px between rows.
 ## The dive's duration and depths card has no title
 
 The dive page's duration and depth card has no header. Each figure is already labelled `Duration`,
-`Maximum Depth`, `Average Depth`, so a `Duration & Depth` title restated the labels beneath it in a
+`Maximum depth`, `Average depth`, so a `Duration & Depth` title restated the labels beneath it in a
 heavier weight, and a `Timer` icon named a dive property rather than a page section. The card is
 three stat blocks, first after the header, legible unlabelled.
 
@@ -2948,10 +2948,10 @@ Placeholder heights come from `getBoundingClientRect()` on the real page with th
 patched `XMLHttpRequest.prototype.send`, comparing loading and loaded geometry of the same element;
 a screenshot does not show a `h-5` bar against a 24px line box or a legend nobody accounted for.
 
-`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive
-and trip cards load into `BackdropCardSkeleton`, one box at the card's measured 238px,
-`RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on `/dives`
-and `/trips`.
+`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive,
+trip and site cards load into `BackdropCardSkeleton`, one box at the card's measured 238px,
+`RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
+`/dives`, `/trips` and `/sites`.
 
 ## The project instructions live in AGENTS.md, and CLAUDE.md is an import
 
@@ -3012,9 +3012,9 @@ is the only unit; the app has no unit preference to consult.
 ## The dive's location card renders on GPS alone
 
 An imported file carries fixes whether or not the diver attached the dive to a site, so the card is
-gated on `trip || dive.dive_sites.length > 0` or either coordinate pair, and the map inside it
-separately on at least one position among sites and fixes: the two-level arrangement the site page
-uses, where the inner gate keeps the `next/dynamic` chunk unfetched.
+gated on a trip, a site, either coordinate pair, the entry type or the boat name, and the map inside
+it separately on at least one position among sites and fixes: the two-level arrangement the site
+page uses, where the inner gate keeps the `next/dynamic` chunk unfetched.
 
 Both gates use `!= null` per coordinate, never truthiness: a dive off West Africa exits at longitude
 0 and one in the Galápagos at latitude 0. `formatCoordinates` and the map's `placedLocations`
@@ -3022,7 +3022,7 @@ already guard this way; the pair is turned into a point once at the top of the c
 from there.
 
 The card is titled "Location" for every combination: a heading that changes between two dives reads
-as two cards, and every block inside is labelled ("Trip", "Dive Site", "Entry", "Exit").
+as two cards, and every block inside is labelled.
 
 ## The edit form submits the whole dive, because the read is the whole dive
 
@@ -4455,7 +4455,7 @@ privacy-page section in the same PR. Today's grant is no wider than running the 
 store your entries, show them back to you, include them in an export you ask for — and widening it
 for features that do not exist overstates what a legal page covers. The three plausible futures need
 different things, and only one is a copyright question: shared dives need an operator display grant,
-probably per act of sharing; a dive-centre view of certifications is a lawful-basis question under
+probably per act of sharing; a dive-center view of certifications is a lawful-basis question under
 GDPR Art. 6, possibly Art. 9; aggregate statistics need no content licence at all.
 
 ## `--warning` is a shared token, not the safety notice's private one
@@ -4519,8 +4519,8 @@ the dashboard under three route names and never renders the landing page or sign
 
 ## Ten rows of "Edit" name nothing
 
-Row-action controls in all five tables (dive sites, certifications, gear items, gear sets, courses)
-and the dive and trip cards' actions menus name their row: `Actions for dive #412`,
+Row-action controls in all four tables (certifications, gear items, gear sets, courses) and the
+dive, trip and site cards' actions menus name their row: `Actions for dive #412`,
 `Actions for Palau 2025`, `Delete Pescador Island`. Uniqueness among the page's controls is the
 point: axe's `button-name` and `link-name` pass `aria-label="Edit"` ten times over, so only reading
 the controls list catches a bare label. Dive cards key off `dive.dive_number`, what the card leads
@@ -5639,9 +5639,9 @@ The `GET /export/divejson` row is three edits: a `"divejson"` member on `ExportF
 nothing forces (a mis-wired row type-checks), so `export.test.ts` asserts every union member's route
 and the render test pairs each row with its segment. DiveJSON sits first, being the project's own
 format. Each row's copy states its difference from the others, a sentence about what one format
-lacks being a claim about every other row. Prose drops counts that are not load-bearing —
-`sites-page-content.tsx` says "the export card's Downloads" — and load-bearing ones (`export.ts`'s
-"the four shapes `/export/*` serves") sit beside their list. Probes: `git grep -w three` in `src/`,
+lacks being a claim about every other row. Prose drops counts that are not load-bearing, and
+load-bearing ones (`export.ts`'s "the four shapes `/export/*` serves") sit beside their list.
+Probes: `git grep -w three` in `src/`,
 `grep -nE "three (Download|button|export|row|format)|all three" DECISIONS.md`, and
 `git grep -niE "export|portab" -- src/app/privacy/`, whose copy names no format.
 `lib/api-proxy.test.ts` and `lib/download.test.ts` use `.uddf` as a generic `Content-Disposition`
@@ -6792,18 +6792,17 @@ writes nothing ("No existing reference screenshot found."), every run. `page.scr
 (`save: true` by default) also writes there, but an untracked debug PNG is visible and deletable,
 while an ignored baseline is invisible by construction. No test calls either today.
 
-## Controls are sentence case; headings are Title Case
+## Controls and labels are sentence case; headings are Title Case
 
-Every button, link-button and menu item capitalizes its first word and its proper nouns, nothing
-else: `New trip`, `Save changes`, `Back to dive sites`. A page's name is not a proper noun:
-`View all dives` lowercases the page the nav calls `Dives`. A heading that names something — a page,
-card, section or form dialog — is Title Case, with articles, conjunctions and short prepositions
-lowercase: `Dives on This Course`, `Signed-in Devices`. So `New Certification` over
-`Create certification` in one dialog is the rule holding. A heading that says something — a
-confirmation's title, an empty state, a status line — is a sentence: `Delete dive`, `No trips yet`,
-`Message sent`. The split is what no single call site can carry: a new label is written by copying a
-neighbour. Title Case for controls was rejected because long CTAs (`Log A Dive For This Course`)
-read as headings.
+Every button, link-button and menu item capitalizes its first word and proper nouns, nothing else:
+`New trip`, `Back to dive sites`. A page's name is not a proper noun: `View all dives` lowercases
+the page the nav calls `Dives`. So does every label, a field's, a row's or a figure's: `Water type`,
+`Max depth`, so a field reads the same on its form and its page. A heading that names something (a
+page, card, section or form dialog) is Title Case, with articles, conjunctions and short
+prepositions lowercase: `Dives on This Course`, `New Certification`. A heading that says something,
+such as a confirmation's title or an empty state, is a sentence: `Delete dive`, `No trips yet`. A
+new label copies its neighbour, so no single call site can carry the split. Title Case for controls
+was rejected because long CTAs (`Log A Dive For This Course`) read as headings.
 
 ## One `EmptyState`, and the filtered list is not one
 

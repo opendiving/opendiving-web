@@ -6,9 +6,8 @@ import { MapPin, Plus } from "lucide-react";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import {
   ENTRY_TYPE_LABELS,
+  vocabularyLabel,
   WATER_TYPE_LABELS,
-  type EntryType,
-  type WaterType,
 } from "@/lib/api/dives";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDateTime } from "@/lib/date-time";
@@ -43,14 +42,6 @@ function depthRange(site: DiveSite, units: UnitSystem): string | null {
   if (to != null) return `To ${formatDepth(to, units)}`;
   return null;
 }
-
-// A stored value's label, or the value itself where this build has none yet -
-// the dive page's rule: the slug beats a blank row. Own keys only, so a value
-// named like an inherited property reads as itself.
-const labelOf = <T extends string>(labels: Record<T, string>, value: string) =>
-  Object.prototype.hasOwnProperty.call(labels, value)
-    ? labels[value as T]
-    : value;
 
 /**
  * Everything the site records about itself, in the sidebar of its page: where it
@@ -107,7 +98,7 @@ export function DiveSiteInfoCard({ site }: { site: DiveSite }) {
         {depths && <InfoRow label="Depth">{depths}</InfoRow>}
         {site.water_type && (
           <InfoRow label="Water type">
-            {labelOf<WaterType>(WATER_TYPE_LABELS, site.water_type)}
+            {vocabularyLabel(WATER_TYPE_LABELS, site.water_type)}
           </InfoRow>
         )}
         {site.altitude != null && (
@@ -118,7 +109,7 @@ export function DiveSiteInfoCard({ site }: { site: DiveSite }) {
         {entryTypes.length > 0 && (
           <InfoRow label={entryTypes.length > 1 ? "Entry types" : "Entry type"}>
             {entryTypes
-              .map((entry) => labelOf<EntryType>(ENTRY_TYPE_LABELS, entry))
+              .map((entry) => vocabularyLabel(ENTRY_TYPE_LABELS, entry))
               .join(", ")}
           </InfoRow>
         )}

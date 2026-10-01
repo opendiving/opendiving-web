@@ -645,7 +645,8 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 This happens whenever a map is on screen, whether or not you
                 interact with it: the form to add or edit a dive site, a dive
-                site&rsquo;s own page, the form to add or edit a trip, a trip
+                site&rsquo;s own page, every dive site with a position in the
+                list of your dive sites, the form to add or edit a trip, a trip
                 with places on it, every trip in the list of your trips and in
                 the dashboard&rsquo;s recent trips, and a dive that has a
                 position — on its own page, and wherever a list of dives shows
@@ -900,7 +901,7 @@ export default async function PrivacyPage() {
                 date of birth and phone number, your dive insurance, your
                 emergency contact, your dive count, deepest dive and last dive,
                 and each certification with its number, dates, instructor and
-                dive centre, beside the front of the card where you stored a
+                dive center, beside the front of the card where you stored a
                 picture of it. Never the back of a card; a card kept as a PDF is
                 named as one rather than shown; and neither your profile picture
                 nor anything else this copy holds about you is shown at all.

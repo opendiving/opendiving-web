@@ -135,6 +135,20 @@ export const ENTRY_TYPE_LABELS: Record<EntryType, string> = {
   pool: "Pool",
 };
 
+/**
+ * A stored vocabulary value's label, or the value itself where this build has none
+ * yet: the API can grow a member before the web ships its label, and the slug beats
+ * a blank. Own keys only, so a value named like an inherited property reads as
+ * itself.
+ */
+export const vocabularyLabel = <T extends string>(
+  labels: Record<T, string>,
+  value: string,
+): string =>
+  Object.prototype.hasOwnProperty.call(labels, value)
+    ? labels[value as T]
+    : value;
+
 // The dive list's two orders, the API's `DiveListSort`: `date` newest first, the
 // default; `rating` highest first, every unrated dive after every rated one, ties
 // newest first.

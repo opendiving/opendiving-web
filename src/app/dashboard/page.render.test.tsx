@@ -86,7 +86,7 @@ describe("dashboard Species Seen tile", () => {
     getDiveStats.mockResolvedValue(stats());
     render(<DashboardPage />);
 
-    expect(await screen.findByText("Species Seen")).toBeInTheDocument();
+    expect(await screen.findByText("Species seen")).toBeInTheDocument();
     expect(screen.getByText("17")).toBeInTheDocument();
     expect(screen.getByText("Distinct species spotted")).toBeInTheDocument();
   });
@@ -97,7 +97,7 @@ describe("dashboard Species Seen tile", () => {
     getDiveStats.mockResolvedValue(stats({ species_seen: 0 }));
     render(<DashboardPage />);
 
-    await screen.findByText("Species Seen");
+    await screen.findByText("Species seen");
     expect(screen.getByText("0")).toBeInTheDocument();
   });
 
@@ -105,7 +105,7 @@ describe("dashboard Species Seen tile", () => {
     getDiveStats.mockReturnValue(new Promise(() => {}));
     render(<DashboardPage />);
 
-    await screen.findByText("Species Seen");
+    await screen.findByText("Species seen");
     // One per tile, and the species one is among them - "0 species" before the
     // answer is known reads as a statement about the logbook.
     expect(screen.getAllByText("—")).toHaveLength(4);
@@ -118,15 +118,15 @@ describe("dashboard Species Seen tile", () => {
     // is invisible to them, and splitting the card back up would go unnoticed.
     getDiveStats.mockResolvedValue(stats());
     const { container } = render(<DashboardPage />);
-    await screen.findByText("Species Seen");
+    await screen.findByText("Species seen");
 
     // By label rather than by value, so the assertion says nothing about how
     // depths or durations happen to be formatted.
     const cards = [
-      "Total Dives",
-      "Max Depth",
-      "Total Time",
-      "Species Seen",
+      "Total dives",
+      "Max depth",
+      "Total time",
+      "Species seen",
     ].map((label) => screen.getByText(label).closest(".rounded-lg.border"));
 
     expect(cards[0]).not.toBeNull();
@@ -140,7 +140,7 @@ describe("dashboard Species Seen tile", () => {
     render(<DashboardPage />);
 
     await waitFor(() => expect(getDiveStats).toHaveBeenCalled());
-    expect(screen.queryByText("Species Seen")).not.toBeInTheDocument();
+    expect(screen.queryByText("Species seen")).not.toBeInTheDocument();
   });
 });
 

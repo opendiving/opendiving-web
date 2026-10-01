@@ -159,7 +159,7 @@ describe("CheckInPage", () => {
 
     expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
     expect(screen.getByText("142")).toBeInTheDocument();
-    // The card's dive centre and instructor, by name: the card holds only
+    // The card's dive center and instructor, by name: the card holds only
     // their uuids.
     expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
     expect(screen.getByText("Alex Diver")).toBeInTheDocument();
@@ -176,12 +176,12 @@ describe("CheckInPage", () => {
     expect(retry()).not.toBeNull();
   });
 
-  it("keeps the cards when the contacts fail, and leaves their dive centres off", async () => {
+  it("keeps the cards when the contacts fail, and leaves their dive centers off", async () => {
     getContacts.mockRejectedValue(new Error("500"));
     render(<CheckInPage />);
 
     expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
-    expect(screen.queryByText("Dive centre")).toBeNull();
+    expect(screen.queryByText("Dive center")).toBeNull();
     expect(retry()).not.toBeNull();
   });
 

@@ -151,7 +151,7 @@ export interface CheckInPageFrameProps {
   /** Every card the diver holds, in the list endpoint's own order. */
   certifications?: CheckInCard[];
   /**
-   * The name of each card's dive centre, by certification uuid. Handed in rather
+   * The name of each card's dive center, by certification uuid. Handed in rather
    * than looked up here: the frame makes no request of its own for what it
    * prints, so whatever renders it decides where the names come from.
    */
@@ -829,7 +829,7 @@ function CertificationSummary({
           }
         />
         <Detail label="Instructor" value={instructorName} />
-        <Detail label="Dive centre" value={contactName} />
+        <Detail label="Dive center" value={contactName} />
       </DetailList>
     </div>
   );

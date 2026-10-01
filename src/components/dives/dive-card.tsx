@@ -9,6 +9,7 @@ import {
   BACKDROP_CARD_LINK,
   BackdropCard,
   BackdropCardFigures,
+  UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
@@ -26,35 +27,6 @@ import {
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth, formatTemperature } from "@/lib/units";
 import { Edit } from "lucide-react";
-
-// A dive with nowhere on a map yet: the map's open water where a trip would
-// show the whole world, since a dive is at one spot and the world says nothing
-// about which. Faded as a map is, and the bubbles centred in what the details
-// leave of it: the colour the map names a sea in, muted as the map's own
-// colours are so they sit in the water rather than on it.
-function UnplacedBackdrop({ coveredBottom }: { coveredBottom: number }) {
-  return (
-    <div
-      aria-hidden
-      className="absolute inset-0 rounded-[inherit] bg-[var(--map-water)]"
-    >
-      {/* The map's own fade, in the same colour space as its. */}
-      <div
-        className="absolute inset-0 rounded-[inherit]"
-        style={{
-          background:
-            "linear-gradient(to bottom, transparent, var(--backdrop-fade))",
-        }}
-      />
-      <div
-        className="absolute inset-x-0 top-0 flex items-center justify-center"
-        style={{ bottom: coveredBottom }}
-      >
-        <DiveIcon className="h-10 w-10 text-[var(--map-water-foreground)] opacity-60 saturate-50" />
-      </div>
-    </div>
-  );
-}
 
 // The profile's band at the foot of the backdrop, just clear of the name: the
 // `h-14` below.
@@ -88,19 +60,19 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
     meters ? formatDepth(meters, units, { decimals: 0 }) : "-";
   const figures: BackdropCardFigure[] = [
     { label: "Duration", value: formatDurationHoursMinutes(dive.duration) },
-    { label: "Max Depth", value: depth(dive.max_depth) },
+    { label: "Max depth", value: depth(dive.max_depth) },
   ];
   // `!= null`, since 0 °C is a reading.
   if (dive.bottom_temperature != null) {
     figures.push({
-      label: "Water Temp",
+      label: "Water temp",
       value: formatTemperature(dive.bottom_temperature, units, {
         decimals: 0,
       }),
     });
   }
   if (figures.length < 3 && dive.avg_depth) {
-    figures.push({ label: "Avg Depth", value: depth(dive.avg_depth) });
+    figures.push({ label: "Avg depth", value: depth(dive.avg_depth) });
   }
 
   return (
@@ -139,7 +111,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
                 snapshot
               />
             ) : (
-              <UnplacedBackdrop coveredBottom={aboveProfile} />
+              <UnplacedBackdrop coveredBottom={aboveProfile} icon={DiveIcon} />
             )}
             {/* Without the glow the details' text has: a `drop-shadow` over
                 the fill's gradient draws it in bands. */}

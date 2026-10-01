@@ -5,9 +5,10 @@ import userEvent from "@testing-library/user-event";
 import { SitesPageFrame } from "./sites-page-frame";
 import { NO_SITE_FILTERS } from "./sites-filters";
 
-// Three things the search costs the frame: the box shares the card's header row
-// with the count, a list searched down to nothing is not an empty one, and a
-// list that is empty has neither to show.
+// The search sits behind the panel button with the tag and the order: it is
+// reachable, shutting the panel empties all three, a list searched down to
+// nothing is not an empty one, and a list that is empty draws neither the count
+// nor the button.
 
 const frame = (props: Partial<Parameters<typeof SitesPageFrame>[0]> = {}) =>
   render(
@@ -15,7 +16,7 @@ const frame = (props: Partial<Parameters<typeof SitesPageFrame>[0]> = {}) =>
       isLoading={false}
       totalCount={0}
       itemsPerPage={10}
-      rows={[]}
+      cards={[]}
       {...props}
     />,
   );
@@ -24,26 +25,70 @@ const frame = (props: Partial<Parameters<typeof SitesPageFrame>[0]> = {}) =>
 const header = () =>
   screen.getByRole("heading", { name: "Dive Site List" }).parentElement!;
 
+const SEARCH = "Search dive sites by name or location";
+
+// One button under two names: it opens the panel, and once open it is the
+// control that shuts it and empties what is in it.
+const toggle = () =>
+  screen.getByRole("button", {
+    name: /^(Search, filter and sort dive sites|Close search and filters)/,
+  });
+
 describe("SitesPageFrame", () => {
-  it("puts the search box in the header row, beside the count", () => {
-    frame({ totalCount: 12, rows: [<tr key="t" />] });
+  it("draws the sites as one list of cards", () => {
+    frame({
+      totalCount: 2,
+      cards: [<li key="a">Blue Hole</li>, <li key="b">The Canyon</li>],
+    });
+
+    const items = within(screen.getByRole("list")).getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Blue Hole",
+      "The Canyon",
+    ]);
+  });
+
+  it("holds the list's place with placeholders while it loads", () => {
+    frame({ isLoading: true, itemsPerPage: 4 });
+
+    const list = screen.getByRole("list");
+    expect(list).toHaveAttribute("aria-busy", "true");
+    expect(list.querySelectorAll("li[aria-hidden]")).toHaveLength(4);
+  });
+
+  it("keeps the search shut behind the button, beside the count", async () => {
+    frame({ totalCount: 12, cards: [<li key="t" />] });
 
     expect(
       within(header()).getByText("12 total dive sites"),
     ).toBeInTheDocument();
-    expect(
-      within(header()).getByLabelText("Search dive sites by name or location"),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText(SEARCH)).not.toBeVisible();
+    expect(toggle()).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(toggle());
+
+    expect(screen.getByLabelText(SEARCH)).toBeVisible();
+    expect(toggle()).toHaveAttribute("aria-expanded", "true");
+  });
+
+  // Pressing a magnifier and then reaching for the box is a click nobody wanted.
+  it("puts the cursor in the search box on opening, and again on re-opening", async () => {
+    frame({ cards: [<li key="t" />] });
+
+    await userEvent.click(toggle());
+    expect(screen.getByLabelText(SEARCH)).toHaveFocus();
+
+    await userEvent.click(toggle());
+    await userEvent.click(toggle());
+    expect(screen.getByLabelText(SEARCH)).toHaveFocus();
   });
 
   it("reports what is typed into it", async () => {
     const onSearchChange = vi.fn();
-    frame({ onSearchChange, rows: [<tr key="t" />] });
+    frame({ onSearchChange, cards: [<li key="t" />] });
 
-    await userEvent.type(
-      screen.getByLabelText("Search dive sites by name or location"),
-      "d",
-    );
+    await userEvent.click(toggle());
+    await userEvent.type(screen.getByLabelText(SEARCH), "d");
 
     expect(onSearchChange).toHaveBeenCalledWith("d");
   });
@@ -68,13 +113,14 @@ describe("SitesPageFrame", () => {
     ).toBeInTheDocument();
   });
 
-  it("drops the count and the box for a list that is simply empty", () => {
+  it("drops the count and the button for a list that is simply empty", () => {
     frame();
 
     expect(screen.queryByText("0 total dive sites")).not.toBeInTheDocument();
     expect(
-      screen.queryByLabelText("Search dive sites by name or location"),
+      screen.queryByRole("button", { name: /^Search, filter and sort/ }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(SEARCH)).not.toBeInTheDocument();
   });
 
   it("keeps them for a search that matched nothing", () => {
@@ -83,9 +129,7 @@ describe("SitesPageFrame", () => {
     expect(
       within(header()).getByText("0 dive sites found"),
     ).toBeInTheDocument();
-    expect(
-      within(header()).getByLabelText("Search dive sites by name or location"),
-    ).toBeInTheDocument();
+    expect(toggle()).toBeInTheDocument();
   });
 
   // The term is only asked for once the typing stops, so for a quarter second
@@ -94,15 +138,14 @@ describe("SitesPageFrame", () => {
   it("keeps them for a term still waiting on the debounce", () => {
     frame({ search: "dahab" });
 
-    expect(
-      within(header()).getByLabelText("Search dive sites by name or location"),
-    ).toBeInTheDocument();
+    expect(toggle()).toBeInTheDocument();
+    expect(screen.getByLabelText(SEARCH)).toBeInTheDocument();
   });
 
   // Emptying the box is the way out of a search that matched nothing, and for
-  // one commit it leaves the term gone and the search's own (empty) rows still
-  // on screen. Dropping the box there would take the diver's cursor with it.
-  it("keeps them through the commit where a cleared term outruns its rows", () => {
+  // one commit it leaves the term gone and the search's own (empty) cards still
+  // on screen. Dropping the panel there would take the diver's cursor with it.
+  it("keeps them through the commit where a cleared term outruns its cards", () => {
     const { rerender } = frame({ search: "dahab", isSearching: true });
 
     rerender(
@@ -110,15 +153,13 @@ describe("SitesPageFrame", () => {
         isLoading={false}
         totalCount={0}
         itemsPerPage={10}
-        rows={[]}
+        cards={[]}
         search=""
         isSearching={false}
       />,
     );
 
-    expect(
-      within(header()).getByLabelText("Search dive sites by name or location"),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText(SEARCH)).toBeInTheDocument();
   });
 });
 
@@ -132,16 +173,13 @@ describe("SitesPageFrame filters", () => {
       created_at: "2026-01-01T00:00:00Z",
     },
   ];
-  const openPanel = () =>
-    userEvent.click(
-      screen.getByRole("button", { name: "Filter and sort dive sites" }),
-    );
+  const openPanel = () => userEvent.click(toggle());
 
   it("reads the tags the first time the panel opens, and reports a tag and an order", async () => {
     const onFiltersOpened = vi.fn();
     const onFiltersChange = vi.fn();
     frame({
-      rows: [<tr key="t" />],
+      cards: [<li key="t" />],
       tags: TAGS,
       onFiltersOpened,
       onFiltersChange,
@@ -154,31 +192,74 @@ describe("SitesPageFrame filters", () => {
       ...NO_SITE_FILTERS,
       tagUuid: "tag-wreck",
     });
-    await userEvent.selectOptions(
-      screen.getByLabelText("Sort"),
-      "Most recently dived first",
-    );
+    await userEvent.selectOptions(screen.getByLabelText("Sort"), "By name");
     expect(onFiltersChange).toHaveBeenLastCalledWith({
       ...NO_SITE_FILTERS,
-      sort: "last_dived_on",
+      sort: "name",
     });
   });
 
+  it("orders the list most recently dived first, offering that first", async () => {
+    frame({ cards: [<li key="t" />] });
+
+    await openPanel();
+
+    const sort = screen.getByLabelText<HTMLSelectElement>("Sort");
+    expect(sort.value).toBe("last_dived_on");
+    expect([...sort.options].map((option) => option.text)).toEqual([
+      "Most recently dived first",
+      "Most dived first",
+      "By name",
+    ]);
+  });
+
   // A folded row must never narrow or reorder the list unseen.
-  it("clears the tag and the order when the panel is shut", async () => {
+  it("clears the search, the tag and the order when the panel is shut", async () => {
+    const onSearchChange = vi.fn();
     const onFiltersChange = vi.fn();
     frame({
-      rows: [<tr key="t" />],
+      cards: [<li key="t" />],
+      search: "dahab",
       filters: { tagUuid: "tag-wreck", sort: "dive_count" },
+      onSearchChange,
       onFiltersChange,
     });
 
     await openPanel();
+    expect(onSearchChange).not.toHaveBeenCalled();
     await userEvent.click(
-      screen.getByRole("button", { name: "Close filters, clearing them" }),
+      screen.getByRole("button", {
+        name: "Close search and filters, clearing them",
+      }),
     );
 
+    expect(onSearchChange).toHaveBeenLastCalledWith("");
     expect(onFiltersChange).toHaveBeenLastCalledWith(NO_SITE_FILTERS);
+  });
+
+  // The name is the only warning that the press throws a term away, so it says
+  // so exactly when there is something to lose.
+  it("says it clears a search alone", async () => {
+    const { rerender } = frame({ cards: [<li key="t" />], search: "dahab" });
+
+    await openPanel();
+    expect(
+      screen.getByRole("button", {
+        name: "Close search and filters, clearing them",
+      }),
+    ).toBeInTheDocument();
+
+    rerender(
+      <SitesPageFrame
+        isLoading={false}
+        totalCount={0}
+        itemsPerPage={10}
+        cards={[<li key="t" />]}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Close search and filters" }),
+    ).toBeInTheDocument();
   });
 
   it("says a list filtered by a tag matched nothing, and offers nothing to add", () => {
@@ -190,16 +271,5 @@ describe("SitesPageFrame filters", () => {
     expect(
       screen.queryByRole("button", { name: /Add your first dive site/ }),
     ).not.toBeInTheDocument();
-  });
-
-  it("heads a column for each site's dives and its last dive", () => {
-    frame({ totalCount: 1, rows: [<tr key="t" />] });
-
-    expect(
-      screen.getByRole("columnheader", { name: "Dives" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Last dive" }),
-    ).toBeInTheDocument();
   });
 });

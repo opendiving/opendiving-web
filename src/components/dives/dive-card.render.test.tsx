@@ -117,8 +117,8 @@ describe("DiveCard", () => {
   it("titles its figures", () => {
     expect(figuresOf(card())).toEqual([
       ["Duration", "45min"],
-      ["Max Depth", "31 m"],
-      ["Water Temp", "24°C"],
+      ["Max depth", "31 m"],
+      ["Water temp", "24°C"],
     ]);
   });
 
@@ -127,8 +127,8 @@ describe("DiveCard", () => {
 
     expect(figuresOf(item)).toEqual([
       ["Duration", "45min"],
-      ["Max Depth", "31 m"],
-      ["Avg Depth", "18 m"],
+      ["Max depth", "31 m"],
+      ["Avg depth", "18 m"],
     ]);
   });
 
@@ -143,14 +143,14 @@ describe("DiveCard", () => {
 
     expect(figuresOf(item)).toEqual([
       ["Duration", "45min"],
-      ["Max Depth", "-"],
+      ["Max depth", "-"],
     ]);
   });
 
   it("shows a water temperature of zero rather than leaving it out", () => {
     const item = card({ dive: dive({ bottom_temperature: 0 }) });
 
-    expect(figuresOf(item)[2]).toEqual(["Water Temp", "0°C"]);
+    expect(figuresOf(item)[2]).toEqual(["Water temp", "0°C"]);
   });
 
   it("names the dive and says when and where it was", () => {

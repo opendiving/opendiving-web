@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { ChevronDown, Funnel, MapPin, Plus, X } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { ChevronDown, MapPin, Plus, Search, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
@@ -12,17 +12,10 @@ import {
   ListCardHeader,
   useIsEmptyList,
 } from "@/components/ui/list-card-header";
-import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import {
   NO_SITE_FILTERS,
   SitesFilters,
@@ -37,7 +30,8 @@ export interface SitesPageFrameProps {
   /** Whether the query that answered `totalCount` narrowed the list. */
   isCountNarrowed?: boolean;
   itemsPerPage: number;
-  rows?: ReactNode[];
+  /** One `DiveSiteCard` per site - list items, for the list this frame draws. */
+  cards?: ReactNode[];
   /** What the search box holds. Empty on arrival. */
   search?: string;
   onSearchChange?: (value: string) => void;
@@ -64,7 +58,7 @@ export interface SitesPageFrameProps {
 
 const noop = () => {};
 
-// Everything /sites draws before its rows exist, kept apart from the data render so
+// Everything /sites draws before its cards exist, kept apart from the data render so
 // the page's first render is this frame. Every data-varying prop is optional,
 // and the defaults are that first render.
 export function SitesPageFrame({
@@ -72,7 +66,7 @@ export function SitesPageFrame({
   totalCount,
   isCountNarrowed = false,
   itemsPerPage,
-  rows = [],
+  cards = [],
   search = "",
   onSearchChange = noop,
   isSearching = false,
@@ -91,12 +85,21 @@ export function SitesPageFrame({
   // Nothing to count and nothing to search. A term in flight and one still in the
   // box waiting for the debounce both count as narrowing, as a tag does, and
   // `useIsEmptyList` holds that reading across the commit where none is true yet
-  // the rows are still the narrowed list's.
+  // the cards are still the narrowed list's.
   const isEmptyList = useIsEmptyList({
     isLoading,
-    count: rows.length,
+    count: cards.length,
     isNarrowed: isSearching || search.length > 0 || isFiltered,
   });
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // The cursor goes in the box as the panel opens, for the course list's
+  // reasons: in an effect, since the box has no layout until the panel's
+  // `hidden` lifts, and only on a change, so a route revisited with the panel
+  // open does not pull up a phone's keyboard unasked.
+  useEffectOnChange(() => {
+    if (isPanelOpen) searchRef.current?.focus();
+  }, [isPanelOpen]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
@@ -113,9 +116,6 @@ export function SitesPageFrame({
       />
 
       <Card>
-        {/* The count and the box that changes it, on one line - and under
-            `sm`, where they do not both fit, the count and the button the box
-            folds behind. */}
         <ListCardHeader title="Dive Site List" isEmpty={isEmptyList}>
           <CountBadge
             count={totalCount}
@@ -124,24 +124,16 @@ export function SitesPageFrame({
             total
             isNarrowed={isCountNarrowed}
           />
-          <ListSearch
-            id="dive-site-search"
-            label="Search dive sites by name or location"
-            toggleLabel="Search dive sites"
-            placeholder="Search by name or location..."
-            value={search}
-            onChange={onSearchChange}
-          />
-          {/* The dive list's panel, and for its reason: shutting it takes the
-              tag and the order with it, so a folded row never narrows or
-              reorders the list unseen. */}
+          {/* The course list's panel, and for its reason: shutting it takes
+              the search, the tag and the order with it, so a folded row never
+              narrows or reorders the list unseen. */}
           <IconTooltip
             label={
               !isPanelOpen
-                ? "Filter and sort dive sites"
-                : siteFiltersChanged(filters)
-                  ? "Close filters, clearing them"
-                  : "Close filters"
+                ? "Search, filter and sort dive sites"
+                : search.length > 0 || siteFiltersChanged(filters)
+                  ? "Close search and filters, clearing them"
+                  : "Close search and filters"
             }
           >
             <Button
@@ -152,6 +144,7 @@ export function SitesPageFrame({
               aria-controls="site-filters"
               onClick={() => {
                 if (isPanelOpen) {
+                  onSearchChange("");
                   onFiltersChange(NO_SITE_FILTERS);
                 } else {
                   onFiltersOpened();
@@ -159,7 +152,7 @@ export function SitesPageFrame({
                 setPanelOpen((open) => !open);
               }}
             >
-              <Funnel className="h-4 w-4" />
+              <Search className="h-4 w-4" />
               {isPanelOpen ? (
                 <X className="h-4 w-4" />
               ) : (
@@ -168,26 +161,32 @@ export function SitesPageFrame({
             </Button>
           </IconTooltip>
         </ListCardHeader>
-        <CardContent>
-          {/* Hidden rather than unmounted, so `aria-controls` points at
-              something, and gone with the button that opens it for a list with
-              nothing in it to narrow. */}
-          {!isEmptyList && (
-            <div id="site-filters" hidden={!isPanelOpen}>
-              <SitesFilters
-                filters={filters}
-                onFiltersChange={onFiltersChange}
-                tags={tags}
-              />
-            </div>
-          )}
-
-          {!isLoading && rows.length === 0 ? (
-            // A narrowed list with nothing in it is a different statement from
-            // an empty one, so it keeps its one line: no icon, no heading, and
-            // pointedly no "add your first dive site", which would be answering
-            // a question nobody asked.
-            isSearching || isFiltered ? (
+        {/* Hidden rather than unmounted, so `aria-controls` points at
+            something, and gone with the button that opens it for a list with
+            nothing in it to narrow. */}
+        {!isEmptyList && (
+          <CardContent id="site-filters" hidden={!isPanelOpen}>
+            <SitesFilters
+              search={search}
+              onSearchChange={onSearchChange}
+              filters={filters}
+              onFiltersChange={onFiltersChange}
+              tags={tags}
+              searchRef={searchRef}
+            />
+          </CardContent>
+        )}
+        {/* The card is the list's header - its count, its search and its
+            filters - and what it says when there is nothing to list. The
+            sites themselves are cards of their own, so they sit below it
+            rather than in it. */}
+        {!isLoading && cards.length === 0 && (
+          <CardContent>
+            {/* A narrowed list with nothing in it is a different statement
+                from an empty one, so it keeps its one line: no icon, no
+                heading, and pointedly no "add your first dive site", which
+                would be answering a question nobody asked. */}
+            {isSearching || isFiltered ? (
               <div className="text-center py-12 text-muted-foreground">
                 {isFiltered
                   ? "No dive sites match those filters."
@@ -205,46 +204,40 @@ export function SitesPageFrame({
                   </Button>
                 }
               />
-            )
-          ) : (
-            <Table
-              // Busy on the outside, hidden on each placeholder row within - the
-              // split `ListRowsSkeleton` documents, applied here because the rows
-              // themselves are `aria-hidden` and would otherwise leave a reader
-              // with a table that is silently empty rather than one that is
-              // loading.
-              aria-busy={rows.length === 0 || undefined}
-            >
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Dives</TableHead>
-                  <TableHead>Last dive</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRowsSkeleton columns={5} rows={itemsPerPage} />
-                )}
-                {rows}
-              </TableBody>
-            </Table>
-          )}
-
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={rows.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="dive sites"
-            onLoadMore={onLoadMore}
-          />
-        </CardContent>
+            )}
+          </CardContent>
+        )}
       </Card>
+
+      {(isLoading || cards.length > 0) && (
+        // One site to a row below `lg`, two above, as /trips and /dives: a
+        // card may hold a map, and a browser keeps only so many of those per
+        // page - see `BackdropCard`.
+        <ul
+          className="mt-6 grid gap-4 lg:grid-cols-2"
+          // Busy on the outside, hidden on each placeholder within - the split
+          // `ListRowsSkeleton` documents, so a reader meets a list that is
+          // loading rather than one that is silently empty.
+          aria-busy={cards.length === 0 || undefined}
+        >
+          {cards.length === 0 &&
+            Array.from({ length: itemsPerPage }, (_, index) => (
+              <BackdropCardSkeleton key={index} />
+            ))}
+          {cards}
+        </ul>
+      )}
+
+      <LoadMoreTrigger
+        hasMore={hasMore}
+        isLoading={isLoadingMore}
+        hasFailed={loadFailed}
+        loadedCount={cards.length}
+        totalCount={totalCount}
+        itemsPerPage={itemsPerPage}
+        itemLabel="dive sites"
+        onLoadMore={onLoadMore}
+      />
     </div>
   );
 }

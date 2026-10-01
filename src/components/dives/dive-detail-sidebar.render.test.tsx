@@ -146,7 +146,7 @@ describe("DiveDetailSidebar locations", () => {
     renderSidebar(dive(EXIT));
 
     expect(screen.queryByText("Trip")).not.toBeInTheDocument();
-    expect(screen.queryByText("Dive Site")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dive site")).not.toBeInTheDocument();
     expect(screen.getByTestId("locations-map")).toBeInTheDocument();
   });
 
@@ -208,8 +208,46 @@ describe("DiveDetailSidebar locations", () => {
       dive({ dive_sites: [site({ latitude: null, longitude: null })] }),
     );
 
-    expect(screen.getByText("Dive Site")).toBeInTheDocument();
+    expect(screen.getByText("Dive site")).toBeInTheDocument();
     expect(screen.queryByTestId("locations-map")).not.toBeInTheDocument();
+  });
+
+  // How the diver got in, and off which boat, are facts about the place, so
+  // each carries this card alone rather than Environment's.
+  it.each([
+    ["Entry type", { entry_type: "pier" }, "Pier"],
+    ["Boat name", { boat_name: "Legend" }, "Legend"],
+  ] as const)(
+    "shows the %s, and carries the card on it alone",
+    (label, fields, shown) => {
+      renderSidebar(dive(fields));
+
+      const card = within(
+        screen
+          .getByRole("heading", { name: "Location" })
+          .closest(".rounded-lg") as HTMLElement,
+      );
+      expect(card.getByText(label)).toBeInTheDocument();
+      expect(card.getByText(shown)).toBeInTheDocument();
+      expect(screen.queryByText("Environment")).not.toBeInTheDocument();
+    },
+  );
+
+  it("lists the entry type and the boat last, after the fixes and their drift", () => {
+    renderSidebar(
+      dive({ ...ENTRY, ...EXIT, entry_type: "boat", boat_name: "Legend" }),
+    );
+
+    expect(
+      screen
+        .getByText("Entry → exit")
+        .compareDocumentPosition(screen.getByText("Entry type")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      screen
+        .getByText("Entry type")
+        .compareDocumentPosition(screen.getByText("Boat name")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("renders no card at all for a dive with nothing to place", () => {
@@ -228,7 +266,7 @@ describe("DiveDetailSidebar environment", () => {
     renderSidebar(dive({ water_type: "salt" }));
 
     expect(screen.getByText("Environment")).toBeInTheDocument();
-    expect(screen.getByText("Water Type")).toBeInTheDocument();
+    expect(screen.getByText("Water type")).toBeInTheDocument();
     expect(screen.getByText("Salt water")).toBeInTheDocument();
   });
 
@@ -260,7 +298,7 @@ describe("DiveDetailSidebar environment", () => {
     renderSidebar(dive({ bottom_temperature: 22.5 }));
 
     expect(screen.getByText("Environment")).toBeInTheDocument();
-    expect(screen.queryByText("Water Type")).not.toBeInTheDocument();
+    expect(screen.queryByText("Water type")).not.toBeInTheDocument();
     expect(screen.queryByText("Altitude")).not.toBeInTheDocument();
   });
 
@@ -277,9 +315,7 @@ describe.each([
   ["Current", { current: "strong" }, "Strong"],
   ["Waves", { waves: "slight" }, "Slight"],
   ["Weather", { weather: "partly_cloudy" }, "Partly cloudy"],
-  ["Entry Type", { entry_type: "pier" }, "Pier"],
-  ["Boat Name", { boat_name: "Legend" }, "Legend"],
-  ["Air Temperature", { air_temperature: 24 }, "24°C"],
+  ["Air temperature", { air_temperature: 24 }, "24°C"],
 ] as const)("DiveDetailSidebar environment: %s", (label, fields, shown) => {
   it("carries the card alone, and names the value", () => {
     renderSidebar(dive(fields));
