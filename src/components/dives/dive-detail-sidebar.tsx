@@ -239,22 +239,6 @@ export function DiveDetailSidebar({
               </div>
             )}
 
-            {/* How the diver got in at that place, kept off the Entry fix
-                below by the map between them. */}
-            {dive.entry_type != null && (
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Entry Type
-                </div>
-                <div className="flex items-start gap-2 text-sm">
-                  <WavesArrowDown className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                  <span className="min-w-0 font-medium">
-                    {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
-                  </span>
-                </div>
-              </div>
-            )}
-
             {hasMappableLocation && (
               <LocationsMap
                 locations={mapLocations}
@@ -284,6 +268,19 @@ export function DiveDetailSidebar({
                   Entry → exit
                 </div>
                 <div className="text-sm tabular-nums">{drift}</div>
+              </div>
+            )}
+            {dive.entry_type != null && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Entry Type
+                </div>
+                <div className="flex items-start gap-2 text-sm">
+                  <WavesArrowDown className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <span className="min-w-0 font-medium">
+                    {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
+                  </span>
+                </div>
               </div>
             )}
           </CardContent>

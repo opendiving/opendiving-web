@@ -227,6 +227,16 @@ describe("DiveDetailSidebar locations", () => {
     expect(screen.queryByText("Environment")).not.toBeInTheDocument();
   });
 
+  it("lists the entry type last, after the fixes and their drift", () => {
+    renderSidebar(dive({ ...ENTRY, ...EXIT, entry_type: "boat" }));
+
+    expect(
+      screen
+        .getByText("Entry → exit")
+        .compareDocumentPosition(screen.getByText("Entry Type")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it("renders no card at all for a dive with nothing to place", () => {
     renderSidebar(dive());
 
