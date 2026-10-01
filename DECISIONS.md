@@ -1733,8 +1733,8 @@ single-line answer; 3px is a sliver of the next card.
 ## The dive-site shot cuts at the foot of one column, not at a seam
 
 Its two columns finish together only at the page's bottom, so a seam frames most of the page. The
-image exists for the map in the sidebar's first card, so `CUT_AFTER_CARD` names it and the frame
-ends at its foot (gutter: the grid's `rowGap`).
+image exists for the hero and its map, so `CUT_AFTER_CARD` names the sidebar's first card under it
+and the frame ends at its foot (gutter: the grid's `rowGap`).
 
 A card may be cut through; a row may not, since a line just above its border reads as clipped, so
 the cut moves down past any row it lands inside to the next row's top. Rows are bordered boxes with
@@ -1763,21 +1763,14 @@ further.
 `refuseSlicedRow()` throws before the shutter if the height lands inside a row; snapping to a gap
 would silently move the balanced height.
 
-## The map is photographed to find out whether it drew
+## The hero's map picture is what tells the shot the map drew
 
-`networkidle` is blind to MapLibre: it settles when tile requests stop, before they are painted, so
-a canvas caught in that window photographs as an empty box.
-
-Reading pixels from page script does not work: `MapCanvas` builds the map without
-`preserveDrawingBuffer`, so `drawImage` returns an empty frame, and enabling the flag for a
-screenshot script would cost every map in the app.
-
-`mapPainted()` screenshots the canvas element instead; Playwright captures through the compositor,
-the same path the page screenshot takes. A flat frame compresses to about a kilobyte and a coastline
-to tens of that, so a byte floor clear of both separates them, and two consecutive captures
-byte-identical and over the floor is a map drawn and no longer moving (MapLibre fades labels in). It
-throws after twenty seconds. The frame is set before the check, because MapLibre redraws whenever
-its box changes.
+`networkidle` is blind to MapLibre: it settles when tile requests stop, before they are painted. The
+hero shows a picture of its map, which the page takes on MapLibre's `idle` - tiles drawn, labels
+faded in - from a map built without `preserveDrawingBuffer`, so no page script could read the canvas
+anyway. `heroMapPictured()` waits for that picture to decode and for its fade-in; a decoded picture
+is a drawn map. The frame is set first, since a frame narrower than the picture was fitted for has
+it drawn again.
 
 ## `visit()` fails loudly when a navigation lands on `/signin`
 
@@ -2724,9 +2717,9 @@ so a caller keeping it cannot make the page jump when the chunk lands. A caller 
 through `className` - the trip card - owns the room the skeleton lands in; the trip card's map is
 out of flow, so it has none.
 
-The site page gates the map on the same `formatCoordinates` result the Coordinates line uses,
-keeping a site with no position from fetching the chunk; a half-set position, which only raw SQL
-produces, draws nothing and shows no coordinates.
+The site and dive heroes gate their map on a position - the site's pin, or `hasMapPosition` over a
+dive's sites and fixes - keeping a record with none from fetching the chunk; a half-set position,
+which only raw SQL produces, counts as none.
 
 ## `fitBounds` unwraps longitudes before it unions them
 
@@ -2746,10 +2739,10 @@ so it should open where the coast is recognisable rather than in a grid of house
 `MapPicker` opens at `PLACED_ZOOM` (11, `components/sites/map-picker.tsx`) for a site with a
 position; the site page's map fits to `MAX_FIT_ZOOM` (9, `lib/basemap.ts`), the same cap a trip
 location gets. Matching the picker is wrong for one reason: the picker can be zoomed out and a
-static map cannot. In the sidebar's ~300px column an offshore site (Chumphon Pinnacle off Koh Tao,
-Kimud Shoal off Cebu) renders at the deeper zoom as a featureless grey square with a coral dot,
-about 11 km across with no land or labels; two levels out shows the island and named towns. A shore
-site reads well at either, and roughly half of dive sites are offshore.
+static map cannot. Across a phone an offshore site (Chumphon Pinnacle off Koh Tao, Kimud Shoal off
+Cebu) renders at the deeper zoom as featureless grey with a coral dot and no land or labels; two
+levels out shows the island and named towns. A shore site reads well at either, and roughly half of
+dive sites are offshore.
 
 The cap is MapLibre's `maxZoom` on the fit, single rather than per caller: a per-caller argument had
 one value, one explicit caller, and a second plausible number sitting in `MapPicker` inviting
@@ -3005,9 +2998,9 @@ is the only unit; the app has no unit preference to consult.
 ## The dive's location card renders on GPS alone
 
 An imported file carries fixes whether or not the diver attached the dive to a site, so the card is
-gated on a trip, a site, either coordinate pair, the entry type or the boat name, and the map inside
-it separately on at least one position among sites and fixes: the two-level arrangement the site
-page uses, where the inner gate keeps the `next/dynamic` chunk unfetched.
+gated on a trip, a site, either coordinate pair, the entry type or the boat name. The dive's map is
+the hero's, gated on at least one position among sites and fixes, which keeps the `next/dynamic`
+chunk unfetched.
 
 Both gates use `!= null` per coordinate, never truthiness: a dive off West Africa exits at longitude
 0 and one in the Galápagos at latitude 0. `formatCoordinates` and the map's `placedLocations`

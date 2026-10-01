@@ -265,8 +265,18 @@ export function LocationsMap({
       top: (band.top + frame.height - band.bottom) / 2 - SNAPSHOT_HEIGHT / 2,
     };
   const theme = resolvedTheme === "dark" ? "dark" : "light";
+  // `sideFade` too: a side-faded picture is fitted into its middle half for a
+  // hero, and a card's picture of the same places is fitted for a card's frame,
+  // so either one passing the other's `fits` would show the places at the
+  // wrong zoom.
   const snapshotKey = snapshot
-    ? JSON.stringify([signature, theme, window.devicePixelRatio, backdrop])
+    ? JSON.stringify([
+        signature,
+        theme,
+        window.devicePixelRatio,
+        backdrop,
+        !!sideFade,
+      ])
     : null;
   const [fresh, setFresh] = useState<string | null>(null);
   const picture = snapshotKey ? findSnapshot(snapshotKey) : undefined;

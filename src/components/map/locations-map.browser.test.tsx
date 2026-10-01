@@ -994,6 +994,59 @@ describe("LocationsMap", () => {
       }
     });
 
+    // A card's picture of the same places is in the cache by the time a hero
+    // opens from a list. Fitted for a card's frame, it would pass a hero's
+    // check and show its places at a card's zoom in the hero's middle third.
+    it("draws a side-faded picture of its own after a card has pictured the same places", async () => {
+      // Places no other test pictures, so the cache holds only what this
+      // test puts in it.
+      const PLACES = [
+        { name: "Cozumel", latitude: 20.42, longitude: -86.95 },
+        { name: "Bonaire", latitude: 12.15, longitude: -68.26 },
+      ];
+      const card = document.createElement("div");
+      card.style.width = "380px";
+      document.body.appendChild(card);
+      const { unmount } = render(
+        withConfig(
+          <LocationsMap
+            subject="the trip's locations"
+            snapshot
+            backdrop
+            className="h-56 sm:h-56"
+            locations={PLACES}
+          />,
+          SOLID,
+        ),
+        { container: card },
+      );
+      await picture();
+      await waitFor(() =>
+        expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull(),
+      );
+      unmount();
+      card.remove();
+
+      const frame = inWideFrame(
+        <LocationsMap
+          subject="the trip's locations"
+          snapshot
+          backdrop
+          sideFade
+          className="h-96 sm:h-96"
+          locations={PLACES}
+        />,
+      );
+      try {
+        const xs = await pinsAcross();
+        expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(
+          SNAPSHOT_WIDTH - 2 * SIDE_FADE_WIDTH - 4,
+        );
+      } finally {
+        frame.remove();
+      }
+    });
+
     it("shows a frame narrower than the picture none of the side fade", async () => {
       const frame = document.createElement("div");
       frame.style.width = "320px";

@@ -337,8 +337,8 @@ export function formatDiveTimeOnly(
 
 // A dive's start as one line: the date, the wall-clock time it was entered in,
 // and the offset that clock was on - "Sunday, April 4, 2021 at 10:04
-// (UTC+02:00)". What the dive detail page's header says under the dive number,
-// which is the one place all three belong together.
+// (UTC+02:00)". For where two dives have to be told apart by when they started
+// - the import's match rows - rather than for reading one dive.
 //
 // Composed from the two functions above rather than asking `Intl` for the date
 // and the time in one call. en-US does join them with " at ", but which

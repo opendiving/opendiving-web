@@ -101,12 +101,12 @@ const CUT_BELOW = { dashboard: "Dive Activity", "dive-detail": "Recordings" };
 // of the named card and whatever is beside it runs on past the edge.
 //
 // `CUT_BELOW` exists so that nothing is ever sliced, and this deliberately gives that up,
-// so it is worth saying where the line is. The dive-site page is two columns - a row of
-// figures over the whole list of dives at the site in the main one, the site's details
-// with its map, then its notes and its species, in the sidebar - and they finish together
-// in exactly one place: the bottom of the page. A seam there is the entire page, which is
-// not what this shot is for. The map is, and it sits in the first sidebar card, which ends
-// well down the list of dives beside it.
+// so it is worth saying where the line is. Under its hero the dive-site page is two
+// columns - the whole list of dives at the site in the main one, the site's details, then
+// its notes and its species, in the sidebar - and they finish together in exactly one
+// place: the bottom of the page. A seam there is the entire page, which is not what this
+// shot is for. The hero is, with its map, and the sidebar's first card under it ends a
+// little way down the list of dives beside it.
 //
 // What gets sliced is the one shape a cut can honestly land in: a list of rows, which
 // reads as a page that goes on rather than as a frame that stopped by accident - the
@@ -548,38 +548,19 @@ async function refuseSlicedRow(page, name, height) {
     );
 }
 
-// A blank frame where the map should be is roughly the size of a flat PNG of the same
-// box, and a drawn coastline is many times that. Well clear of both, so it separates them
-// rather than measuring either: the empty dark frame comes back around a kilobyte.
-const MAP_PAINT_FLOOR = 8_000;
-
-// Waits for MapLibre to have actually drawn, which nothing else in this script can tell.
+// Waits for the hero's map to be on screen, which nothing else in this script can tell.
 //
 // `networkidle` settles when the tile requests stop arriving, which is before the
-// renderer has put them on screen, and the WebGL context is built without
-// `preserveDrawingBuffer` - so a page script that copies the canvas reads an empty buffer
-// however much is visible on it. A map that photographs as an empty box is the failure
-// this shot is most exposed to and the one least likely to be noticed, since every other
-// wait would report success.
-//
-// So the map is photographed to find out. Playwright captures through the compositor,
-// which sees the WebGL surface the way a screenshot of the whole page will, and a PNG of
-// a flat frame compresses to a small fraction of one with a coastline in it. Two captures
-// running that are byte-identical and over the floor is a map that is both drawn and no
-// longer moving - MapLibre fades its labels in, so "drawn" alone would be a frame taken
-// mid-fade.
-async function mapPainted(page) {
-  const canvas = page.locator("canvas").first();
-  let previous = null;
-  for (let attempt = 0; attempt < 40; attempt++) {
-    const png = await canvas.screenshot();
-    if (png.length >= MAP_PAINT_FLOOR && previous?.equals(png)) return png;
-    previous = png;
-    await page.waitForTimeout(500);
-  }
-  throw new Error(
-    `the map never settled into a drawn frame (last capture ${previous?.length ?? 0} bytes, floor ${MAP_PAINT_FLOOR})`,
-  );
+// renderer has put them on screen. The hero shows a picture of its map rather than the
+// map: the page draws it unseen, takes the picture on MapLibre's `idle` - tiles drawn and
+// labels faded in - and fades the picture in. So a decoded picture is a drawn map, and
+// what is left is its fade. The hero's is the first picture in `<main>`.
+async function heroMapPictured(page) {
+  const picture = page.locator("main [role='img'] img").first();
+  await picture.waitFor();
+  await picture.evaluate((image) => image.decode());
+  // Its `duration-300` fade-in.
+  await page.waitForTimeout(400);
 }
 
 // One shutter press, written to both trees from the buffer it returns. Shooting twice
@@ -814,13 +795,12 @@ if (wanted("dive-site")) {
   await page
     .getByRole("heading", { name: CUT_AFTER_CARD["dive-site"] })
     .waitFor();
-  // The frame is settled before the map is checked, rather than leaving it to `shot()`:
-  // MapLibre redraws whenever its box changes, so a check answered at the loading frame
-  // would be a check on a canvas that is about to be drawn again.
+  // The frame is settled before the picture is checked, rather than leaving it to
+  // `shot()`: a frame narrower than the picture was fitted for has it drawn again.
   const height = await cutAfterCard(page, CUT_AFTER_CARD["dive-site"]);
   await page.setViewportSize({ width: WIDTH, height });
   await atTop(page);
-  await mapPainted(page);
+  await heroMapPictured(page);
   await shot(page, "dive-site", height);
 }
 

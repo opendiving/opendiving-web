@@ -9,8 +9,9 @@ interface PageSkeletonProps {
 }
 
 /**
- * The loading state for a detail page, every one of which is a `PageHeader`
- * over the same 2/3 + 1/3 card grid.
+ * The loading state for a detail page that is a `PageHeader` over the 2/3 + 1/3
+ * card grid - every one but the hero pages, which load into
+ * `MapHeroPageSkeleton`.
  *
  * It renders the *real* back button rather than a placeholder for it: where
  * that link goes is known before the record is, and it's the one control on
@@ -25,9 +26,7 @@ export function DetailPageSkeleton({ backHref, backLabel }: PageSkeletonProps) {
         backLabel={backLabel}
         // Sized to the type they stand in for, measured rather than guessed:
         // `text-3xl` sets a 36px line box and the subtitle's `text-base` a 24px
-        // one, so the cards below start at the offset they'll settle at. Every
-        // detail page's subtitle is now plain text, the dive page's included -
-        // its prev/next pager used to sit in this line and cost it 4px.
+        // one, so the cards below start at the offset they'll settle at.
         title={<Skeleton className="h-9 w-64" />}
         subtitle={<Skeleton className="h-6 w-44" />}
         actions={
