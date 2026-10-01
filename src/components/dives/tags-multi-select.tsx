@@ -12,30 +12,31 @@ import { tagKey } from "@/lib/api/tags";
 import { useTags } from "@/hooks/useTags";
 
 export interface TagsMultiSelectProps extends FormControlSlotProps {
-  /** The dive's tags by name, in the diver's order. */
+  /** The dive's or the site's tags by name, in the diver's order. */
   value: string[];
   onChange: (tags: string[]) => void;
   disabled?: boolean;
 }
 
 // A tag as a menu row. Its name is its id: the form holds names, and a pick hands
-// back the stored spelling for the dive to carry.
+// back the stored spelling for the record to carry.
 const tagItem = (name: string): ComboboxItem => ({ id: name, name });
 
 /**
- * Picks a dive's tags: the ones already on it as a row of chips, each with its
- * own remove button, above the combobox that adds to them.
+ * Picks a dive's tags, or a dive site's - one vocabulary serves both: the ones
+ * already on it as a row of chips, each with its own remove button, above the
+ * combobox that adds to them.
  *
  * The menu completes from every tag the diver has, filtered here as they type -
  * a diver keeps a handful, so the whole vocabulary is one read and needs no
  * search round trip. Typing a name that is not among them and pressing Enter
- * adds it as typed, with nothing sent: the dive write creates the tag.
+ * adds it as typed, with nothing sent: the dive or site write creates the tag.
  *
  * **The match is advisory.** Typing `NIGHT` beside a stored `night` picks the
- * stored spelling, and a name already on the dive in any case is not added
+ * stored spelling, and a name already on the record in any case is not added
  * twice - but this compares lowercased, and the API compares Unicode
  * case-folded, so where the two disagree the API decides and the chip takes its
- * spelling once the dive is saved.
+ * spelling once the record is saved.
  */
 export function TagsMultiSelect({
   value,
@@ -52,12 +53,12 @@ export function TagsMultiSelect({
     [tags],
   );
 
-  // Every stored tag the dive already carries in some spelling, so the menu
+  // Every stored tag the record already carries in some spelling, so the menu
   // stops offering it the moment it is picked or typed.
   const excludeIds = useMemo(() => {
-    const onDive = new Set(value.map(tagKey));
+    const carried = new Set(value.map(tagKey));
     return items
-      .filter((item) => onDive.has(tagKey(item.name)))
+      .filter((item) => carried.has(tagKey(item.name)))
       .map((item) => item.id);
   }, [items, value]);
 
@@ -69,7 +70,7 @@ export function TagsMultiSelect({
     onChange([...value, trimmed]);
   };
 
-  // Resolves at once: the dive write is what creates the tag, so the picker only
+  // Resolves at once: the record's write is what creates the tag, so the picker only
   // has to hand the name on.
   const createNamed = async (name: string) => tagItem(name.trim());
 

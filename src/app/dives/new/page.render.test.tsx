@@ -311,6 +311,7 @@ const tagNamed = (uuid: string, name: string, dive_count = 1): Tag => ({
   uuid,
   name,
   dive_count,
+  site_count: 0,
   created_at: "2026-01-01T00:00:00Z",
 });
 

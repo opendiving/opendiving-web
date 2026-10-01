@@ -22,15 +22,26 @@ import { IconTooltip } from "@/components/ui/tooltip";
 
 const diveCount = (count: number) =>
   count === 1 ? "1 dive" : `${count} dives`;
+const siteCount = (count: number) =>
+  count === 1 ? "1 site" : `${count} sites`;
+
+// How many of each carry the tag. The sites only where there are some, since
+// most tags are a dive's alone; the dives always, so a tag carried by nothing
+// still reads as "0 dives" rather than as a bare name.
+const usage = (tag: Tag) =>
+  tag.site_count > 0
+    ? `${diveCount(tag.dive_count)}, ${siteCount(tag.site_count)}`
+    : diveCount(tag.dive_count);
 
 /**
- * The diver's tags, each with how many dives carry it, renamed in the row and
- * deleted with a confirmation.
+ * The diver's tags, each with how many dives and sites carry it, renamed in the
+ * row and deleted with a confirmation.
  *
- * The one place a tag is managed rather than used: the dive form's picker adds
- * them and the dive list filters by them, and neither can rename or delete one.
- * A tag no dive carries any more is still listed, at 0 dives, because it stays
- * until it is deleted - the picker keeps offering a word the diver still uses.
+ * The one place a tag is managed rather than used: the dive and site forms'
+ * picker adds them and the two lists filter by them, and none of those can
+ * rename or delete one. A tag nothing carries any more is still listed, at 0
+ * dives, because it stays until it is deleted - the picker keeps offering a word
+ * the diver still uses.
  *
  * **Renaming happens in the row**, the preset list's shape: the pencil turns the
  * name into a field with a tick to save and a cross to stop, and the row's delete
@@ -87,7 +98,7 @@ export function TagsCard() {
     confirmDelete,
   } = useDeleteResource(tagsAPI.deleteTag, {
     confirmMessage:
-      "Are you sure you want to delete this tag? The dives carrying it keep everything else, but will no longer be filed under it.",
+      "Are you sure you want to delete this tag? The dives and sites carrying it keep everything else, but will no longer be filed under it.",
     successMessage: "Tag deleted successfully.",
     errorMessage: "Failed to delete tag. Please try again.",
     onDeleted: reload,
@@ -103,8 +114,8 @@ export function TagsCard() {
           Tags
         </CardTitle>
         <CardDescription>
-          The words you file dives under. A rename reaches every dive carrying
-          the tag.
+          The words you file dives and dive sites under. A rename reaches
+          everything carrying the tag.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -114,7 +125,7 @@ export function TagsCard() {
           </p>
         ) : tags.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No tags yet. Add one to a dive from its form.
+            No tags yet. Add one to a dive or a dive site from its form.
           </p>
         ) : (
           <ul className="space-y-1">
@@ -175,7 +186,7 @@ export function TagsCard() {
                         {tag.name}
                         <span className="text-muted-foreground">
                           {" "}
-                          · {diveCount(tag.dive_count)}
+                          · {usage(tag)}
                         </span>
                       </span>
                       <IconTooltip label={`Rename "${tag.name}"`}>

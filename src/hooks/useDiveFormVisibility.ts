@@ -90,6 +90,16 @@ export interface DiveFormVisibility {
    */
   autofill: (key: DiveFormFieldKey, value: unknown) => boolean;
   /**
+   * The undo of an `autofill` whose source went away - a site replaced by one that
+   * names no water type: puts back what the prefill carried, where the diver has not
+   * touched the field, and reports whether it did.
+   *
+   * Recorded as this layer's write, as `autofill`'s is. Where the key is not on
+   * screen it is emptied instead, and stays off screen: only a value from outside the
+   * diver's typing puts a field back, and the last dive's value is not one.
+   */
+  restore: (key: DiveFormFieldKey) => boolean;
+  /**
    * Applies the new form's prefill through the visibility rules.
    *
    * `base` is the page's own `reset` object and `carried` is what the last dive (or a
@@ -193,6 +203,9 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   // than state: nothing renders from them, and they must be readable synchronously
   // inside the write that consults them.
   const carriedRef = useRef<Partial<Record<DiveFormFieldKey, unknown>>>({});
+  // What the prefill itself carried, which `autofill` never overwrites - `restore`
+  // goes back to it.
+  const prefilledRef = useRef<Partial<Record<DiveFormFieldKey, unknown>>>({});
   const writtenRef = useRef<Partial<Record<DiveFormFieldKey, unknown>>>({});
   const touchedRef = useRef<Set<DiveFormFieldKey>>(new Set());
 
@@ -497,9 +510,36 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     [isUntouched, readValue],
   );
 
+  const restore = useCallback(
+    (key: DiveFormFieldKey): boolean => {
+      if (!isUntouched(key)) return false;
+
+      const carried =
+        key in prefilledRef.current
+          ? prefilledRef.current[key]
+          : EMPTY_DIVE_FORM_VALUES[key];
+      const onScreen =
+        !hiddenRef.current.includes(key) || revealedRef.current.has(key);
+      const target = onScreen ? carried : EMPTY_DIVE_FORM_VALUES[key];
+
+      if (!sameValue(readValue(key), target)) {
+        formRef.current.setValue(
+          key as unknown as Path<TFieldValues>,
+          target as PathValue<TFieldValues, Path<TFieldValues>>,
+          { shouldValidate: true, shouldDirty: true },
+        );
+      }
+      writtenRef.current[key] = target;
+      carriedRef.current[key] = carried;
+      return true;
+    },
+    [isUntouched, readValue],
+  );
+
   const prefill = useCallback(
     <T>(base: T, carried: Partial<Record<DiveFormFieldKey, unknown>>): T => {
       carriedRef.current = { ...carried };
+      prefilledRef.current = { ...carried };
 
       const hiddenNow = new Set(hiddenRef.current);
       const visible = (key: DiveFormFieldKey) =>
@@ -538,6 +578,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     reveal,
     revealNonEmpty,
     autofill,
+    restore,
     prefill,
     isSaving,
     saveError,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
@@ -9,11 +9,14 @@ import { Loader2, Plus, Save } from "lucide-react";
 import {
   diveSiteFormSchema,
   DiveSiteFormInput,
+  diveSiteFormValues,
+  diveSiteMembersFromForm,
   formatCoordinateForForm,
   parseCoordinatePair,
   parseFormCoordinate,
 } from "@/lib/validations/dive-site";
-import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { diveSitesAPI, DiveSite, ExternalId } from "@/lib/api/dive-sites";
+import { pickExternalId } from "@/lib/external-ids";
 import { GeocodeResult } from "@/lib/api/geocoding";
 import { geocodeResultToLocation } from "@/lib/locations";
 import {
@@ -25,6 +28,10 @@ import {
   DiveSiteSuggestion,
 } from "@/lib/api/dive-site-catalog";
 import { DiveSiteMapField } from "@/components/sites/dive-site-map-field";
+import { DiveSiteDetailsFields } from "@/components/sites/dive-site-details-fields";
+import { HeldSiteOffer } from "@/components/sites/held-site-offer";
+import { OtherNamesField } from "@/components/sites/other-names-field";
+import { ExternalIdsField } from "@/components/sites/external-ids-field";
 import type { PlacePick } from "@/components/sites/place-search";
 import { useGeocodedLocation } from "@/hooks/useGeocodedLocation";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -63,6 +70,22 @@ interface DiveSiteDialogProps {
   onSaved: (diveSite: DiveSite) => void;
 }
 
+// The API answers a PATCH with a status message alone, and canonicalizes what it
+// stores - another name the name already says is dropped, a tag takes the spelling
+// the diver already has - so the saved site is read back rather than assembled.
+// A failed read is not a failed save: the assembled site stands in for it.
+async function readBack(
+  site: DiveSite,
+  update: Partial<DiveSite>,
+): Promise<DiveSite> {
+  try {
+    return await diveSitesAPI.getDiveSite(site.uuid);
+  } catch (error) {
+    console.error("Failed to read the saved dive site back:", error);
+    return { ...site, ...update };
+  }
+}
+
 // The one create/edit form for a dive site, used by the dive sites list and
 // detail pages, the header's quick-create menu and the dive form's site picker.
 // Short enough that a dialog beats navigating away from wherever the diver was -
@@ -80,30 +103,25 @@ export function DiveSiteDialog({
 
   const form = useForm<DiveSiteFormInput>({
     resolver: zodResolver(diveSiteFormSchema),
-    defaultValues: {
-      name: "",
-      location: null,
-      latitude: "",
-      longitude: "",
-      notes: "",
-    },
+    defaultValues: diveSiteFormValues(null),
   });
+
+  // The registry entry the last catalogue pick in this dialog added, which the
+  // next pick replaces. A ref, since nothing renders from it.
+  const pickedEntry = useRef<ExternalId | null>(null);
+  // A catalogue row the diver already holds a site for, picked while creating:
+  // the held site is offered before anything is filled.
+  const [offer, setOffer] = useState<DiveSiteSuggestion | null>(null);
 
   // Reload the form whenever the dialog is opened, so it shows the dive site
   // being edited (or a clean slate) rather than whatever the previous
   // invocation left behind.
-  const { reset, setValue } = form;
+  const { reset, setValue, getValues } = form;
   useEffectOnChange(() => {
     if (!open) return;
-    reset({
-      name: diveSite?.name ?? "",
-      // The whole place, so that saving an edit that never touched this field
-      // sends back the name, the centre and the box it was seeded with.
-      location: diveSite?.location ?? null,
-      latitude: formatCoordinateForForm(diveSite?.latitude),
-      longitude: formatCoordinateForForm(diveSite?.longitude),
-      notes: diveSite?.notes ?? "",
-    });
+    reset(diveSiteFormValues(diveSite));
+    pickedEntry.current = null;
+    setOffer(null);
   }, [open, diveSite, reset]);
 
   // `useWatch` rather than `form.watch()`, which is what `mixture-fields.tsx`
@@ -207,7 +225,12 @@ export function DiveSiteDialog({
   // A name and nothing else, because that is all the record holds: its
   // coordinates are the *site's*, and the catalog never resolved a centre or an
   // extent for the region it names.
-  const placeCatalogSite = (site: DiveSiteSuggestion) => {
+  //
+  // The record's registry entry goes with it, on an edit as on a create - which
+  // is how a site made before picks kept one gets its identity: re-pick its row.
+  // See `pickExternalId` for which entries the pick replaces and which it keeps.
+  const fillFromCatalogSite = (site: DiveSiteSuggestion) => {
+    setOffer(null);
     const position = {
       latitude: formatCoordinateForForm(site.latitude),
       longitude: formatCoordinateForForm(site.longitude),
@@ -221,6 +244,47 @@ export function DiveSiteDialog({
         ? { location: { name: place }, attribution: site.attribution }
         : null,
     );
+    const { externalIds, added } = pickExternalId(
+      getValues("external_ids") ?? [],
+      pickedEntry.current,
+      site.external_id,
+    );
+    setValue("external_ids", externalIds, { shouldDirty: true });
+    pickedEntry.current = added;
+  };
+
+  // A row the diver already has a site for, picked while creating one, offers
+  // that site first and fills nothing until they answer. While editing there is
+  // nothing to offer: the pick fills the site being edited, which may be the
+  // very site the row names.
+  const placeCatalogSite = (site: DiveSiteSuggestion) => {
+    if (!isEdit && site.held_site) {
+      setOffer(site);
+      return;
+    }
+    fillFromCatalogSite(site);
+  };
+
+  // Taking the offer hands the held site back as though it had just been saved
+  // here, so whatever opened the dialog - the dive form's picker selecting it,
+  // the header's menu opening its page - does what it does with a new one, and
+  // nothing is created.
+  const takeOffer = async (uuid: string) => {
+    setApiError(null);
+    try {
+      setIsSubmitting(true);
+      onSaved(await diveSitesAPI.getDiveSite(uuid));
+      onOpenChange(false);
+    } catch (error) {
+      setApiError(
+        getApiErrorMessage(
+          error,
+          "Failed to open that dive site. Please try again.",
+        ),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // A row picked from the search already knows its own name, so there is
@@ -263,19 +327,19 @@ export function DiveSiteDialog({
       // rather than a text box over its name; null is what clears a locality
       // that was entered wrongly.
       const location = data.location ?? null;
+      const members = diveSiteMembersFromForm(data);
 
       if (diveSite) {
-        // The API answers a PATCH with just a status message, so the updated
-        // dive site is assembled here for the caller.
         const update = {
           name: data.name,
           location,
           latitude,
           longitude,
           notes: data.notes,
+          ...members,
         };
         await diveSitesAPI.updateDiveSite(diveSite.uuid, update);
-        onSaved({ ...diveSite, ...update });
+        onSaved(await readBack(diveSite, update));
       } else {
         const created = await diveSitesAPI.createDiveSite({
           name: data.name,
@@ -283,6 +347,7 @@ export function DiveSiteDialog({
           latitude,
           longitude,
           notes: data.notes || undefined,
+          ...members,
         });
         onSaved(created);
       }
@@ -327,6 +392,17 @@ export function DiveSiteDialog({
                   </FormControl>
                   <FormMessage />
                 </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="other_names"
+              render={({ field }) => (
+                <OtherNamesField
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                />
               )}
             />
 
@@ -434,7 +510,29 @@ export function DiveSiteDialog({
               onPickPlace={placePick}
               credit={geocoded.credit}
               announcement={geocoded.announcement}
+              pickNotice={
+                <HeldSiteOffer
+                  suggestion={offer}
+                  disabled={isSubmitting}
+                  onTake={takeOffer}
+                  onDecline={fillFromCatalogSite}
+                />
+              }
             />
+
+            {/* Under the search, since a pick from it is what adds one. */}
+            <FormField
+              control={form.control}
+              name="external_ids"
+              render={({ field }) => (
+                <ExternalIdsField
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+
+            <DiveSiteDetailsFields control={form.control} />
 
             <FormField
               control={form.control}

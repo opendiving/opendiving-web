@@ -98,7 +98,7 @@ const weightField = () =>
 // state, never something sent to the API: it is the cleared sentinel react-hook-form
 // needs (see `diveMixtureSchema.role`, the same pattern for the same reason),
 // converted away by `buildDiveUpdate` and by the create page's submit.
-const vocabularyField = <const T extends readonly [string, ...string[]]>(
+export const vocabularyField = <const T extends readonly [string, ...string[]]>(
   values: T,
 ) =>
   z
@@ -136,7 +136,7 @@ const boatNameField = () =>
 // that match. One message for the list rather than one per tag, which would have
 // nowhere to render: the field's error is the array's. Counted in code points, as
 // the API counts `TAG_NAME_MAX`.
-const tagsField = () =>
+export const tagsField = () =>
   z
     .array(z.string())
     .refine((tags) => tags.every((tag) => [...tag].length <= TAG_NAME_MAX), {
@@ -163,7 +163,7 @@ const ALTITUDE_RANGE_MESSAGE =
   `(${displayBound(ALTITUDE_MIN_M, "altitude", "imperial", "min").toLocaleString("en-US")} and ` +
   `${displayBound(ALTITUDE_MAX_M, "altitude", "imperial", "max").toLocaleString("en-US")} ft)`;
 
-const altitudeField = () =>
+export const altitudeField = () =>
   z
     .number()
     // Metric-worded on purpose, and reachable only in metric mode: imperial entry

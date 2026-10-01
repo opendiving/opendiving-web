@@ -7,10 +7,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
-import { formatDateTime } from "@/lib/date-time";
-import { formatCoordinates } from "@/lib/validations/dive-site";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { Button } from "@/components/ui/button";
 import {
   DeleteMenuItem,
@@ -19,11 +16,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
+import { DiveSiteInfoCard } from "@/components/sites/dive-site-info-card";
+import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
+import { DiveSiteSummaryCard } from "@/components/sites/dive-site-summary-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, Plus, MapPin } from "lucide-react";
-import Link from "next/link";
+import { Edit, FileText } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
@@ -53,13 +52,6 @@ export function DiveSiteDetailPageContent() {
   });
   const isDeleting = del.deletingId !== null;
 
-  const formatDate = (dateString: string) =>
-    formatDateTime(dateString, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
   }
@@ -85,8 +77,6 @@ export function DiveSiteDetailPageContent() {
       </div>
     );
   }
-
-  const coordinates = formatCoordinates(diveSite.latitude, diveSite.longitude);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
@@ -132,7 +122,9 @@ export function DiveSiteDetailPageContent() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
+          <DiveSiteSummaryCard site={diveSite} />
+
           <RecentDivesCard
             complete
             enabled={!!user}
@@ -148,60 +140,32 @@ export function DiveSiteDetailPageContent() {
         </div>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle as="h2" className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Dive Site Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {diveSite.location?.name && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Location
-                  </div>
-                  <div className="text-sm">{diveSite.location.name}</div>
-                </div>
-              )}
-              {coordinates && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Coordinates
-                  </div>
-                  <div className="text-sm tabular-nums">{coordinates}</div>
-                </div>
-              )}
+          <DiveSiteInfoCard site={diveSite} />
 
-              {/* Gated on the same both-or-neither pair the coordinates line
-                  is, so a site with no position costs nothing - not even the
-                  map's chunk. The map itself would draw nothing either way. */}
-              {coordinates && (
-                <LocationsMap
-                  locations={[
-                    {
-                      name: diveSite.name,
-                      latitude: diveSite.latitude,
-                      longitude: diveSite.longitude,
-                    },
-                  ]}
-                  subject="the dive site"
-                />
-              )}
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Added on
-                </div>
-                <div className="text-sm">{formatDate(diveSite.created_at)}</div>
-              </div>
-              <Button className="w-full" asChild>
-                <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log a dive
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Below the details rather than beside the dives: the screenshot's
+              frame ends at the foot of the card above, and cuts through
+              whatever is beside it - a list of dives reads as a page going on,
+              a paragraph cut mid-line does not. */}
+          {diveSite.notes && (
+            <Card>
+              <CardHeader>
+                <CardTitle as="h2" className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                  {diveSite.notes}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          <DiveSiteSpeciesCard
+            siteUuid={diveSite.uuid}
+            speciesCount={diveSite.species_count ?? 0}
+          />
         </div>
       </div>
     </div>

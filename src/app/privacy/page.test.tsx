@@ -929,7 +929,7 @@ describe("the date on this page", () => {
       await renderPage({ google: false, projectOperated });
 
       expect(
-        screen.getByText(/Last updated: September 2026/),
+        screen.getByText(/Last updated: October 2026/),
       ).toBeInTheDocument();
     },
   );

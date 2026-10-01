@@ -51,7 +51,7 @@ export default async function PrivacyPage() {
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Privacy Policy
         </h1>
-        <p className="text-muted-foreground">Last updated: September 2026</p>
+        <p className="text-muted-foreground">Last updated: October 2026</p>
       </div>
 
       <Card>
@@ -445,8 +445,11 @@ export default async function PrivacyPage() {
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
-                  Coordinates you place yourself &mdash; a pin on the map, or a
-                  pair of coordinates typed into a dive site or trip form
+                  Coordinates you place yourself &mdash; a pin on the map, a
+                  pair of coordinates typed into a dive site or trip form, or a
+                  dive site you pick from the catalogue of named sites this copy
+                  carries, which also keeps that site&rsquo;s entry in
+                  OpenStreetMap or Wikidata
                 </li>
                 <li>
                   GPS positions recorded inside a dive-computer file you import,
@@ -456,8 +459,9 @@ export default async function PrivacyPage() {
                 <li>
                   Coordinates carried in a logbook you import &mdash; a logbook
                   file can record where a dive entered and left the water, where
-                  a dive site is, and where a trip went, and those are written
-                  as the file gives them
+                  a dive site is and its entry in a registry such as
+                  OpenStreetMap, and where a trip went, and those are written as
+                  the file gives them
                 </li>
                 <li>
                   GPS positions inside a photo you pick as your profile picture

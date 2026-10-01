@@ -1,7 +1,7 @@
 "use client";
 
-import { type ReactNode } from "react";
-import { MapPin, Plus } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ChevronDown, Funnel, MapPin, Plus, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+import { IconTooltip } from "@/components/ui/tooltip";
+import {
+  NO_SITE_FILTERS,
+  SitesFilters,
+  siteFiltersChanged,
+  type DiveSiteListFilters,
+} from "@/components/sites/sites-filters";
+import type { Tag } from "@/lib/api/tags";
 
 export interface SitesPageFrameProps {
   isLoading: boolean;
@@ -41,6 +49,17 @@ export interface SitesPageFrameProps {
   onLoadMore?: () => void;
   /** Opens the new-site dialog. */
   onNew?: () => void;
+  /** The tag and the order the list is read in. */
+  filters?: DiveSiteListFilters;
+  onFiltersChange?: (filters: DiveSiteListFilters) => void;
+  /**
+   * Fired each time the filter panel is opened. The page reads the diver's tags
+   * off the back of it - the panel is shut on arrival, so most visits need no
+   * such request at all.
+   */
+  onFiltersOpened?: () => void;
+  /** What the tag select offers. */
+  tags?: readonly Tag[];
 }
 
 const noop = () => {};
@@ -62,15 +81,21 @@ export function SitesPageFrame({
   hasMore = false,
   onLoadMore = noop,
   onNew = noop,
+  filters = NO_SITE_FILTERS,
+  onFiltersChange = noop,
+  onFiltersOpened = noop,
+  tags,
 }: SitesPageFrameProps) {
+  const [isPanelOpen, setPanelOpen] = useState(false);
+  const isFiltered = Boolean(filters.tagUuid);
   // Nothing to count and nothing to search. A term in flight and one still in the
-  // box waiting for the debounce both count as narrowing, and `useIsEmptyList`
-  // holds that reading across the commit where neither is true yet the rows are
-  // still the search's.
+  // box waiting for the debounce both count as narrowing, as a tag does, and
+  // `useIsEmptyList` holds that reading across the commit where none is true yet
+  // the rows are still the narrowed list's.
   const isEmptyList = useIsEmptyList({
     isLoading,
     count: rows.length,
-    isNarrowed: isSearching || search.length > 0,
+    isNarrowed: isSearching || search.length > 0 || isFiltered,
   });
 
   return (
@@ -107,16 +132,66 @@ export function SitesPageFrame({
             value={search}
             onChange={onSearchChange}
           />
+          {/* The dive list's panel, and for its reason: shutting it takes the
+              tag and the order with it, so a folded row never narrows or
+              reorders the list unseen. */}
+          <IconTooltip
+            label={
+              !isPanelOpen
+                ? "Filter and sort dive sites"
+                : siteFiltersChanged(filters)
+                  ? "Close filters, clearing them"
+                  : "Close filters"
+            }
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              aria-expanded={isPanelOpen}
+              aria-controls="site-filters"
+              onClick={() => {
+                if (isPanelOpen) {
+                  onFiltersChange(NO_SITE_FILTERS);
+                } else {
+                  onFiltersOpened();
+                }
+                setPanelOpen((open) => !open);
+              }}
+            >
+              <Funnel className="h-4 w-4" />
+              {isPanelOpen ? (
+                <X className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </IconTooltip>
         </ListCardHeader>
         <CardContent>
+          {/* Hidden rather than unmounted, so `aria-controls` points at
+              something, and gone with the button that opens it for a list with
+              nothing in it to narrow. */}
+          {!isEmptyList && (
+            <div id="site-filters" hidden={!isPanelOpen}>
+              <SitesFilters
+                filters={filters}
+                onFiltersChange={onFiltersChange}
+                tags={tags}
+              />
+            </div>
+          )}
+
           {!isLoading && rows.length === 0 ? (
-            // A searched list with nothing in it is a different statement from
+            // A narrowed list with nothing in it is a different statement from
             // an empty one, so it keeps its one line: no icon, no heading, and
             // pointedly no "add your first dive site", which would be answering
             // a question nobody asked.
-            isSearching ? (
+            isSearching || isFiltered ? (
               <div className="text-center py-12 text-muted-foreground">
-                No dive sites match that name or location.
+                {isFiltered
+                  ? "No dive sites match those filters."
+                  : "No dive sites match that name or location."}
               </div>
             ) : (
               <EmptyState
@@ -144,12 +219,14 @@ export function SitesPageFrame({
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Location</TableHead>
+                  <TableHead className="text-right">Dives</TableHead>
+                  <TableHead>Last dive</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.length === 0 && (
-                  <TableRowsSkeleton columns={3} rows={itemsPerPage} />
+                  <TableRowsSkeleton columns={5} rows={itemsPerPage} />
                 )}
                 {rows}
               </TableBody>

@@ -246,7 +246,7 @@ describe("DeleteWithReassignDialog, deleting a dive site", () => {
     await waitFor(() =>
       expect(onConfirm).toHaveBeenCalledWith("site-2", "Blue Hole"),
     );
-    expect(getDiveSites).toHaveBeenCalledWith(1, 25, "");
+    expect(getDiveSites).toHaveBeenCalledWith(1, 25, { search: "" });
     expect(getTrips).not.toHaveBeenCalled();
   });
 });

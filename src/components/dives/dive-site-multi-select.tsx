@@ -105,11 +105,9 @@ export function DiveSiteMultiSelect({
 
   const searchDiveSites = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
-      const response = await diveSitesAPI.getDiveSites(
-        1,
-        SITES_PER_SEARCH,
-        query,
-      );
+      const response = await diveSitesAPI.getDiveSites(1, SITES_PER_SEARCH, {
+        search: query,
+      });
       // Every site the dropdown shows is remembered, so picking one never needs
       // the record fetched straight back just to label its row.
       response.data.forEach(rememberLabel);

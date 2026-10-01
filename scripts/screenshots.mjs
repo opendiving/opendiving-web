@@ -102,11 +102,12 @@ const CUT_BELOW = { dashboard: "Dive Activity", "dive-detail": "Recordings" };
 // of the named card and whatever is beside it runs on past the edge.
 //
 // `CUT_BELOW` exists so that nothing is ever sliced, and this deliberately gives that up,
-// so it is worth saying where the line is. The dive-site page is two cards - the whole
-// list of dives at the site in the main column, the site's details with its map in the
-// sidebar - and they finish together in exactly one place: the bottom of the page. A seam
-// there is the entire page, which is not what this shot is for. The map is, and it sits
-// 200px from the top of a sidebar card that ends less than half way down.
+// so it is worth saying where the line is. The dive-site page is two columns - a row of
+// figures over the whole list of dives at the site in the main one, the site's details
+// with its map, then its notes and its species, in the sidebar - and they finish together
+// in exactly one place: the bottom of the page. A seam there is the entire page, which is
+// not what this shot is for. The map is, and it sits in the first sidebar card, which ends
+// well down the list of dives beside it.
 //
 // What gets sliced is the one shape a cut can honestly land in: a list of rows, which
 // reads as a page that goes on rather than as a frame that stopped by accident - the
@@ -343,43 +344,26 @@ async function pickDive(get) {
 // with none is not a worse picture of the page - it is a picture of a different page.
 //
 // Dive count is the preference on top of that, because a site somebody keeps going back
-// to is what the page is for, and it is not in the list schema: `/dive-sites` carries the
-// name, the position and nothing counted, so the count is one scoped `/dives` request per
-// placed site, read off `total_count` with a single row asked for. The whole site list has
-// to be paged through first for the same reason the count does not come free - the API
-// caps `items_per_page` at 100 and a diver's list runs past that.
+// to is what the page is for. Each site in `/dive-sites` carries its own `dive_count`,
+// so the list is asked for most dived first and paged until the first placed site - the
+// API caps `items_per_page` at 100, and a diver's most dived sites need not be placed.
 //
-// The first placed site seeds the answer, so a log whose sites are all placed and none
-// dived still produces a picture rather than an error. Ties keep the earliest seen, which
-// is name order, the order `/dive-sites` returns.
+// A log whose sites are all placed and none dived still produces a picture rather than an
+// error: the order puts the undived after the dived, by name, and the first placed one
+// wins. Ties go by name, which is the API's own tiebreak.
 async function pickSite(get) {
-  const sites = [];
   for (let page = 1; ; page++) {
     const response = await get(
-      `dive-sites?page=${page}&items_per_page=100`,
+      `dive-sites?page=${page}&items_per_page=100&sort=dive_count`,
     );
     if (!response) break;
-    sites.push(...response.data);
+    const placed = response.data.find(
+      (candidate) => candidate.latitude != null && candidate.longitude != null,
+    );
+    if (placed) return { site: placed.uuid, siteDives: placed.dive_count };
     if (!response.has_more) break;
   }
-
-  const placed = sites.filter(
-    (candidate) => candidate.latitude != null && candidate.longitude != null,
-  );
-
-  let site = placed[0]?.uuid ?? null;
-  let siteDives = 0;
-  for (const candidate of placed) {
-    const scoped = await get(
-      `dives?dive_site_uuid=${candidate.uuid}&page=1&items_per_page=1`,
-    );
-    const count = scoped?.total_count ?? 0;
-    if (count > siteDives) {
-      site = candidate.uuid;
-      siteDives = count;
-    }
-  }
-  return { site, siteDives };
+  return { site: null, siteDives: 0 };
 }
 
 // ---------------------------------------------------------------- the camera
@@ -481,10 +465,10 @@ async function cutBelow(page, label) {
 // moves the cut can land it inside a row of some other list; each pass clears one row's
 // bottom, so it is bounded by the rows on the page and cannot spin.
 //
-// The gutter is read off the grid the card sits in rather than off a neighbour, because a
-// column of one card has no neighbour to measure against - which is exactly the shape this
-// rule is for. `rowGap` is a resolved length whatever the breakpoint, so the figure is
-// still measured in the page being photographed and not written down here.
+// The gutter is read off the grid the card sits in rather than off a neighbour, because the
+// card need not have one: a site with no notes and no species is a sidebar of one card.
+// `rowGap` is a resolved length whatever the breakpoint, so the figure is still measured
+// in the page being photographed and not written down here.
 async function cutAfterCard(page, label) {
   const measured = await page.evaluate((text) => {
     const CARD = "div.rounded-lg.border.bg-card";

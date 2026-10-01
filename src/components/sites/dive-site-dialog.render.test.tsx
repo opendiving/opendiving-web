@@ -10,7 +10,17 @@ import userEvent from "@testing-library/user-event";
 import { DiveSiteDialog } from "./dive-site-dialog";
 
 vi.mock("@/lib/api/dive-sites", () => ({
-  diveSitesAPI: { createDiveSite: vi.fn(), updateDiveSite: vi.fn() },
+  diveSitesAPI: {
+    createDiveSite: vi.fn(),
+    updateDiveSite: vi.fn(),
+    getDiveSite: vi.fn(),
+  },
+}));
+
+// The tags picker reads the diver's vocabulary on mount.
+vi.mock("@/lib/api/tags", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/tags")>()),
+  fetchAllTags: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("@/lib/api/geocoding", () => ({
@@ -53,6 +63,8 @@ const THISTLEGORM = {
   region: "South Sinai",
   source: "osm" as const,
   source_id: "node/255316037",
+  external_id: { registry: "openstreetmap", identifier: "node/255316037" },
+  held_site: null,
   attribution:
     "[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)",
 };
@@ -221,7 +233,7 @@ describe("DiveSiteDialog coordinate accessibility", () => {
 describe("DiveSiteDialog catalog picks", () => {
   const pickFirstSuggestion = async () => {
     const user = userEvent.setup();
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByLabelText("Search for a dive site or place"));
     await user.paste("thistlegorm");
     await user.click(
       await screen.findByRole(

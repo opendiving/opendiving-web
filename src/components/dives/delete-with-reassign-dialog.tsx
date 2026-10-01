@@ -73,11 +73,9 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
     unresolvedHint:
       "Pick a dive site from the list, or clear the field to delete without moving.",
     search: async (query) => {
-      const response = await diveSitesAPI.getDiveSites(
-        1,
-        OPTIONS_PER_SEARCH,
-        query,
-      );
+      const response = await diveSitesAPI.getDiveSites(1, OPTIONS_PER_SEARCH, {
+        search: query,
+      });
       return {
         items: response.data.map((site) => ({
           id: site.uuid,

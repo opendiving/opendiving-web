@@ -18,6 +18,7 @@ import {
 } from "@/lib/validations/dive";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
+import { useDiveSitePrefill } from "@/hooks/useDiveSitePrefill";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { PageHeader } from "@/components/ui/page-header";
@@ -38,6 +39,9 @@ export function NewDivePageContent() {
   // two recordings, and the same computer's JSON beside its FIT is two files of
   // one recording. The API decides which is which when each is attached.
   const [pendingFiles, setPendingFiles] = useState<PendingDiveFile[]>([]);
+  // Whether the last-dive prefill below has landed, given up or failed - the
+  // moment the primary site's values may be written over it.
+  const [prefillSettled, setPrefillSettled] = useState(false);
 
   // Allow pre-selecting a trip/dive site/course via ?trip_uuid=... /
   // ?dive_site_uuid=... / ?course_uuid=..., e.g. when logging a dive from a
@@ -107,6 +111,16 @@ export function NewDivePageContent() {
     fillsDefaults: true,
   });
   const { prefill, revealNonEmpty, autofill } = visibility;
+
+  // The primary site's water type, altitude and entry type, once the last dive's
+  // have landed: a site in the URL is a uuid at mount, its read races the last
+  // dive's, and that prefill gives up on a dirty form - so whichever lands first,
+  // the site's values are written second.
+  useDiveSitePrefill({
+    control: form.control,
+    visibility,
+    enabled: prefillSettled,
+  });
 
   // The moment a value arrives from outside the diver's typing at mount: a trip,
   // dive site or course a page passed in the URL. A diver who clicked "Log a dive
@@ -337,6 +351,8 @@ export function NewDivePageContent() {
         );
       } catch (error) {
         console.error("Failed to fetch last dive for pre-fill:", error);
+      } finally {
+        if (!cancelled) setPrefillSettled(true);
       }
     };
 
