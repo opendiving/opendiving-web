@@ -249,8 +249,8 @@ export function Header() {
           </div>
 
           {/* Actions */}
-          {/* The four controls and the wordmark need ~360px at the full gaps, so
-              only phones narrower than 370px get the tighter ones. */}
+          {/* Phones narrower than 370px get tighter gaps, so the wordmark and
+              the four controls don't crowd each other. */}
           <div className="flex flex-shrink-0 items-center space-x-2 max-[370px]:space-x-1">
             {isAuthenticated && user && (
               <DropdownMenu>
