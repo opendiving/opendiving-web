@@ -48,6 +48,21 @@ function parsedDive(
     avg_depth: null,
     bottom_temperature: null,
     mixtures,
+    // The rest of the dive, which most dive-computer files leave unstated.
+    notes: null,
+    visibility: null,
+    weight: null,
+    water_type: null,
+    altitude: null,
+    type: null,
+    rating: null,
+    air_temperature: null,
+    current: null,
+    waves: null,
+    weather: null,
+    entry_type: null,
+    boat_name: null,
+    tags: [],
     salinity: null,
     // Returned by the parse but never applied to the form - the API writes these
     // itself when the file is attached. Spelled out so this fixture stays a complete

@@ -48,6 +48,21 @@ function parsedDive(
     avg_depth: null,
     bottom_temperature: null,
     mixtures,
+    // The rest of the dive, which most dive-computer files leave unstated.
+    notes: null,
+    visibility: null,
+    weight: null,
+    water_type: null,
+    altitude: null,
+    type: null,
+    rating: null,
+    air_temperature: null,
+    current: null,
+    waves: null,
+    weather: null,
+    entry_type: null,
+    boat_name: null,
+    tags: [],
     // A setting of the device, never applied to the form - null is the ordinary
     // case, since only a FIT file records it at all.
     salinity: null,
@@ -244,6 +259,69 @@ describe("applyParsedDiveToForm", () => {
 
     expect(written).not.toHaveProperty("water_type");
   });
+
+  it("takes the water type a file states for the dive itself", () => {
+    const { form, written } = recordingForm();
+
+    applyParsedDiveToForm(
+      form,
+      parsedDive([], { water_type: "fresh", salinity: "en13319" }),
+      () => {},
+    );
+
+    expect(written.water_type).toBe("fresh");
+  });
+
+  it("prefills the rest of the dive a logbook file states", () => {
+    // A UDDF dive carries the diver's own entries beside the readings, and logbook
+    // import stores every one of them; the form takes the same file the same way.
+    const { form, written } = recordingForm();
+
+    applyParsedDiveToForm(
+      form,
+      parsedDive([], {
+        notes: "Turtle at the safety stop",
+        visibility: 15,
+        weight: 4,
+        altitude: 0,
+        rating: 4,
+        air_temperature: 31.5,
+        current: "light",
+        entry_type: "boat",
+        tags: ["reef"],
+      }),
+      () => {},
+    );
+
+    expect(written).toMatchObject({
+      notes: "Turtle at the safety stop",
+      visibility: 15,
+      weight: 4,
+      altitude: 0,
+      rating: 4,
+      air_temperature: 31.5,
+      current: "light",
+      entry_type: "boat",
+      tags: ["reef"],
+    });
+  });
+
+  it("leaves a member the file states nothing about to the form", () => {
+    // The Suunto app writes `""` for notes on every Ocean file, and a file with no
+    // tags reads as an empty list: neither may wipe what the last dive carried over.
+    const { form, written } = recordingForm();
+
+    applyParsedDiveToForm(
+      form,
+      parsedDive([], { notes: "", tags: [], weight: null, boat_name: null }),
+      () => {},
+    );
+
+    expect(written).not.toHaveProperty("notes");
+    expect(written).not.toHaveProperty("tags");
+    expect(written).not.toHaveProperty("weight");
+    expect(written).not.toHaveProperty("boat_name");
+  });
 });
 
 // A form already holding values, for the fill-only cases below. Unlike
@@ -354,6 +432,25 @@ describe("applyParsedDiveToForm in fill-only mode", () => {
     );
 
     expect(written.max_depth).toBe(19.1);
+  });
+
+  it("fills the dive's other members only where the form is empty", () => {
+    const { form, written } = formHoldingValues({
+      notes: "Typed on the boat",
+      tags: [],
+      weight: undefined,
+    });
+
+    applyParsedDiveToForm(
+      form,
+      parsedDive([], { notes: "From the logbook", tags: ["reef"], weight: 4 }),
+      () => {},
+      "fill-only",
+    );
+
+    expect(written).not.toHaveProperty("notes");
+    expect(written.tags).toEqual(["reef"]);
+    expect(written.weight).toBe(4);
   });
 
   it("treats zero as a reading, not as an absence", () => {
