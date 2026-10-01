@@ -17,6 +17,10 @@ vi.mock("@/hooks/useAuthGuard", () => ({
   useAuthGuard: () => stable.guard,
 }));
 
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
+
 vi.mock("@/components/ui/use-toast", () => {
   const toast = vi.fn();
   return { useToast: () => ({ toast }) };
@@ -51,6 +55,7 @@ const trip = (uuid: string, name: string, dives: number): Trip => ({
   dive_count: dives,
   dive_site_count: 0,
   species_count: 0,
+  max_depth: null,
 });
 
 const DAHAB = trip("trip-1", "Dahab 2026", 12);
