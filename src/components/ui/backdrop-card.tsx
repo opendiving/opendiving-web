@@ -184,6 +184,28 @@ export function BackdropCard({
   );
 }
 
+// A card's name and the line under it, after its kind's icon - the header's New
+// menu's for it, as a detail page's hero leads with - as tall as the two lines
+// together, so the icon adds no height to a card that has both. It glows as the
+// text does, through a filter: `text-shadow` stops at an SVG.
+export function BackdropCardHeading({
+  icon: Icon,
+  children,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <Icon
+        aria-hidden
+        className="size-10 shrink-0 stroke-[1.5] [filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
+      />
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
 export interface BackdropCardFigure {
   label: string;
   value: ReactNode;

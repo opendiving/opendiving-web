@@ -9,6 +9,7 @@ import {
   BACKDROP_CARD_LINK,
   BackdropCard,
   BackdropCardFigures,
+  BackdropCardHeading,
   UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
@@ -130,13 +131,15 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
         );
       }}
     >
-      <Link href={`/dives/${dive.uuid}`} className={BACKDROP_CARD_LINK}>
-        <DiveTitle diveNumber={dive.dive_number} sites={dive.dive_sites} />
-      </Link>
-      <div className="text-xs">
-        {formatDiveDateTime(dive.start_time)}
-        {placeName && ` · ${placeName}`}
-      </div>
+      <BackdropCardHeading icon={DiveIcon}>
+        <Link href={`/dives/${dive.uuid}`} className={BACKDROP_CARD_LINK}>
+          <DiveTitle diveNumber={dive.dive_number} sites={dive.dive_sites} />
+        </Link>
+        <div className="text-xs">
+          {formatDiveDateTime(dive.start_time)}
+          {placeName && ` · ${placeName}`}
+        </div>
+      </BackdropCardHeading>
       <BackdropCardFigures figures={figures} />
     </BackdropCard>
   );

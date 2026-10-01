@@ -8,6 +8,7 @@ import {
   BACKDROP_CARD_LINK,
   BackdropCard,
   BackdropCardFigures,
+  BackdropCardHeading,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
@@ -16,7 +17,7 @@ import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { tripFigures } from "@/lib/trip-figures";
 import { useUnits } from "@/hooks/useUnits";
-import { Edit } from "lucide-react";
+import { Edit, Luggage } from "lucide-react";
 
 interface TripCardProps {
   trip: Trip;
@@ -75,19 +76,24 @@ export function TripCard({
         />
       )}
     >
-      <Link href={`/trips/${trip.uuid}`} className={BACKDROP_CARD_LINK}>
-        {trip.name}
-      </Link>
-      {/* One line, as the trip page's subtitle joins the same two. The place
-          is lifted over the link for its hover hint, and only as far as its
-          own text reaches. */}
-      {(dates || placeNames) && (
-        <div className="text-xs">
-          {dates}
-          {dates && placeNames ? " · " : null}
-          <TripLocationsLabel locations={locations} className="relative z-10" />
-        </div>
-      )}
+      <BackdropCardHeading icon={Luggage}>
+        <Link href={`/trips/${trip.uuid}`} className={BACKDROP_CARD_LINK}>
+          {trip.name}
+        </Link>
+        {/* One line, as the trip page's subtitle joins the same two. The place
+            is lifted over the link for its hover hint, and only as far as its
+            own text reaches. */}
+        {(dates || placeNames) && (
+          <div className="text-xs">
+            {dates}
+            {dates && placeNames ? " · " : null}
+            <TripLocationsLabel
+              locations={locations}
+              className="relative z-10"
+            />
+          </div>
+        )}
+      </BackdropCardHeading>
       <BackdropCardFigures figures={figures} />
     </BackdropCard>
   );
