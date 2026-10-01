@@ -325,7 +325,7 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   // so its own label should say that.
   searchErrorLabel?: string;
   // For pickers that append to a list rather than filling a single field
-  // (`DiveSiteMultiSelect`, `GearItemMultiSelect`): keep the menu up after a
+  // (`GearItemMultiSelect`, `PeopleMultiSelect`): keep the menu up after a
   // pick and clear the typed filter, so several items can be added in a row.
   // Single-value callers leave this off - once they have their one value, the
   // menu closing and the input showing the chosen name is the right outcome.
