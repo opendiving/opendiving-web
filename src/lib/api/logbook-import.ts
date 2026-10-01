@@ -152,6 +152,11 @@ export type ImportNoteCode =
   // so information rather than a warning.
   | "read_as_written"
   | "value_dropped"
+  // A value the document does not state, worked out from what it does - a
+  // dive's duration from its profile's span, its bottom temperature from its
+  // coldest sample. Information: nothing was lost. At the API's note cap these
+  // give way to every other note, so a truncated list keeps the others.
+  | "value_derived"
   | "reference_unresolved"
   | "species_unresolved"
   | "file_not_contained"

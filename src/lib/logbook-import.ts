@@ -120,7 +120,8 @@ export function reviewCollectionRows(
  * member's identity and settings deliberately not applied, a check-in detail
  * or portrait written as confirmed, a portrait kept because the account's
  * changed after the preview, a person linked to the account on this instance
- * its entry names, the tags an import adds, and a file whose bytes simply are not in a bare
+ * its entry names, the tags an import adds, a value worked out from what the
+ * document states, and a file whose bytes simply are not in a bare
  * document are all the import working as designed - `file_not_contained`
  * especially, which is the *expected* state of every referenced file when a
  * document rather than an archive was imported, and colouring it as a failure
@@ -141,7 +142,7 @@ export function noteIsWarning(code: ImportNoteCode | string): boolean {
 }
 
 /**
- * The sentence that says the note list is a prefix, or `null` when it is whole.
+ * The sentence that says the note list is not all of them, or `null` when it is.
  *
  * The API caps the list and ships the overflow as a count precisely so a client
  * can say this. Without it a 600-note import renders 500 notes as though they
