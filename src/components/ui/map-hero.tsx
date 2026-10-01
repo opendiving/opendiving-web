@@ -22,11 +22,20 @@ const FRAME =
 const COLUMN = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
 
 // The figures' row, as many to a line as fit - three on a phone.
-const FIGURES = "mt-4 flex flex-wrap gap-x-3 gap-y-3";
+const FIGURES = "mt-3 flex flex-wrap gap-x-3 gap-y-3 md:mt-4";
+
+// The details at a card's sizes below `md`, where a phone's width would
+// otherwise wrap the title and put a figure on a line of its own, and at the
+// dive page's above it. In the text's own colour at every width, as a card's
+// are: the glow behind them is what lifts them off the map.
+const TITLE = "text-base font-medium md:text-3xl md:font-bold";
+const SUBTITLE = "text-xs md:mt-1 md:text-base";
+const LABEL = "text-xs md:mb-1 md:text-sm md:font-medium";
+const VALUE = "text-base md:text-2xl";
 
 // Every figure at least as wide as the widest short one, "Average rating", so
 // they line up. A date is wider, and its record lists it last.
-const FIGURE = "min-w-26";
+const FIGURE = "min-w-22 md:min-w-26";
 
 // The band's top row, at the column's edges rather than the window's, where a
 // wide screen would put it far from everything else. Above the details and the
@@ -53,8 +62,12 @@ interface Known {
 // The kind's icon before the title and the line under it, as tall as the two
 // together, glowing as their text does - through a filter, since `text-shadow`
 // stops at an SVG.
+// The icon and the title block beside it, as close as a card sets them below
+// `md`.
+const HEADING = "flex items-center gap-2.5 md:gap-4";
+
 const ICON =
-  "size-14 shrink-0 stroke-[1.5] [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+  "size-10 shrink-0 stroke-[1.5] md:size-14 [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
 
 // Known before the record is, so the skeleton's is the real one. Padded as the
 // actions opposite it are, rather than flush as a plain page's back link is:
@@ -159,13 +172,11 @@ export function MapHero({
         className="z-[1] [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)]"
       >
         <div className={cn(COLUMN, "pb-5")}>
-          <div className="flex items-center gap-4">
+          <div className={HEADING}>
             <Icon aria-hidden className={ICON} />
             <div className="min-w-0">
-              <h1 className="text-3xl font-bold">{title}</h1>
-              {subtitle && (
-                <p className="mt-1 text-muted-foreground">{subtitle}</p>
-              )}
+              <h1 className={TITLE}>{title}</h1>
+              {subtitle && <p className={SUBTITLE}>{subtitle}</p>}
             </div>
           </div>
           {/* Every figure the record has, at the dive page's size. A value
@@ -173,10 +184,8 @@ export function MapHero({
           <dl className={FIGURES}>
             {figures.map(({ label, value }) => (
               <div key={label} className={FIGURE}>
-                <dt className="mb-1 text-sm font-medium text-muted-foreground">
-                  {label}
-                </dt>
-                <dd className="whitespace-nowrap text-2xl font-bold">
+                <dt className={LABEL}>{label}</dt>
+                <dd className={cn(VALUE, "whitespace-nowrap font-bold")}>
                   {value}
                 </dd>
               </div>
@@ -204,22 +213,22 @@ export function MapHeroSkeleton({ backHref, backLabel, icon: Icon }: Known) {
         </div>
       </div>
       <div className={cn(COLUMN, "relative z-[1] pb-5")}>
-        <div className="flex items-center gap-4">
+        <div className={HEADING}>
           <Icon aria-hidden className={cn(ICON, "text-muted-foreground")} />
           <div className="min-w-0">
-            <h1 className="text-3xl font-bold">
-              <Skeleton className={cn("h-9 w-64", bar)} />
+            <h1 className={TITLE}>
+              <Skeleton className={cn("h-6 w-48 md:h-9 md:w-64", bar)} />
             </h1>
-            <p className="mt-1">
-              <Skeleton className={cn("h-6 w-44", bar)} />
+            <p className="md:mt-1">
+              <Skeleton className={cn("h-4 w-36 md:h-6 md:w-44", bar)} />
             </p>
           </div>
         </div>
         <div className={FIGURES}>
           {[0, 1, 2].map((figure) => (
             <div key={figure} className={FIGURE}>
-              <Skeleton className={cn("mb-1 h-5 w-16", bar)} />
-              <Skeleton className={cn("h-8 w-12", bar)} />
+              <Skeleton className={cn("h-4 w-16 md:mb-1 md:h-5", bar)} />
+              <Skeleton className={cn("h-6 w-12 md:h-8", bar)} />
             </div>
           ))}
         </div>
