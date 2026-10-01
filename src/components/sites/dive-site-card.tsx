@@ -2,7 +2,7 @@
 
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { Edit, MapPin, Mountain } from "lucide-react";
+import { Edit, LogIn, MapPin, Mountain, type LucideIcon } from "lucide-react";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { ENTRY_TYPE_LABELS, vocabularyLabel } from "@/lib/api/dives";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -25,6 +25,30 @@ interface DiveSiteCardProps {
   isDeleting: boolean;
 }
 
+// A fact marked by an icon, which a screen reader hears as its label. The icon
+// glows as the text does, through the actions menu's filter: `text-shadow`
+// stops at an SVG.
+function IconFact({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="whitespace-nowrap">
+      <Icon
+        aria-hidden
+        className="mr-0.5 inline-block size-3 align-[-0.125em] [filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
+      />
+      <span className="sr-only">{label} </span>
+      {children}
+    </span>
+  );
+}
+
 // One dive site as a card, on /sites: its pin on a map as the backdrop - the
 // map's water for a site with none, as a dive card draws one - where it is, how
 // high and how divers get in, and what the diver's own dives there add up to.
@@ -38,23 +62,25 @@ export function DiveSiteCard({
   // The pin alone, as the site's page maps it: the locality's centre is the
   // town the geocoder resolved, not the site.
   const isPlaced = site.latitude != null && site.longitude != null;
+  const entryTypes = site.entry_types ?? [];
   const facts: ReactNode[] = [
     site.location?.name,
     site.altitude != null && (
-      // The icon glows as the text does, through the actions menu's filter:
-      // `text-shadow` stops at an SVG.
-      <span className="whitespace-nowrap">
-        <Mountain
-          aria-hidden
-          className="mr-0.5 inline-block size-3 align-[-0.125em] [filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
-        />
-        <span className="sr-only">Altitude </span>
+      <IconFact icon={Mountain} label="Altitude">
         {formatAltitude(site.altitude, units)}
-      </span>
+      </IconFact>
     ),
-    site.entry_types
-      ?.map((entry) => vocabularyLabel(ENTRY_TYPE_LABELS, entry))
-      .join(", "),
+    // The dive page's icon for its entry type.
+    entryTypes.length > 0 && (
+      <IconFact
+        icon={LogIn}
+        label={entryTypes.length > 1 ? "Entry types" : "Entry type"}
+      >
+        {entryTypes
+          .map((entry) => vocabularyLabel(ENTRY_TYPE_LABELS, entry))
+          .join(", ")}
+      </IconFact>
+    ),
   ].filter(Boolean);
   const figures: BackdropCardFigure[] = [
     { label: "Dives", value: site.dive_count ?? 0 },

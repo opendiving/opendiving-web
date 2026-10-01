@@ -109,11 +109,14 @@ describe("DiveSiteCard", () => {
     });
 
     const line = subtitleOf(item);
-    // The altitude is a mountain on screen and a word to a screen reader.
+    // Each marked by an icon on screen and by a word to a screen reader.
     expect(line).toHaveTextContent(
-      "Dahab, South Sinai, Egypt · Altitude 0 m · Shore, Boat, hovercraft",
+      "Dahab, South Sinai, Egypt · Altitude 0 m · Entry types Shore, Boat, hovercraft",
     );
     expect(line.querySelector("svg.lucide-mountain")).toHaveAttribute(
+      "aria-hidden",
+    );
+    expect(line.querySelector("svg.lucide-log-in")).toHaveAttribute(
       "aria-hidden",
     );
   });
@@ -122,6 +125,12 @@ describe("DiveSiteCard", () => {
     const item = card({ site: site({ altitude: 2300, entry_types: [] }) });
 
     expect(subtitleOf(item)).toHaveTextContent(/^Altitude 2300 m$/);
+  });
+
+  it("names one way in in the singular", () => {
+    const item = card({ site: site({ entry_types: ["pier"] }) });
+
+    expect(subtitleOf(item)).toHaveTextContent(/^Entry type Pier$/);
   });
 
   it("draws no line under the name for a site recording none of them", () => {
