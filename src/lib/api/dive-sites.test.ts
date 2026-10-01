@@ -43,8 +43,7 @@ describe("diveSitesAPI.getDiveSites", () => {
     });
   });
 
-  // The default order is the API's own, and one key fewer is one cache entry
-  // shared with every caller that never names it.
+  // The default order is the API's own, and an empty tag is no filter.
   it("leaves the default order off the request", async () => {
     await diveSitesAPI.getDiveSites(1, 10, { sort: "name", tagUuid: "" });
 
