@@ -68,13 +68,17 @@ interface Known {
 }
 
 // The icon and the title block beside it, closer where the details are small.
-const HEADING = "flex items-center gap-2.5 md:gap-4";
+// Aligned at the top rather than centred, so a line that wraps does not pull
+// the icon down off the title.
+const HEADING = "flex items-start gap-2.5 md:gap-4";
 
-// The kind's icon before the title and the line under it, as tall as the two
-// together, glowing as their text does - through a filter, since `text-shadow`
-// stops at an SVG.
+// The kind's icon before the title and the line under it, its drawing reaching
+// from the title's capitals to the line's first baseline at both sizes: the box
+// sits 4px down the title's line and is a little taller than the drawing,
+// which a 24-unit icon keeps inside 2-22. It glows as their text does -
+// through a filter, since `text-shadow` stops at an SVG.
 const ICON =
-  "size-10 shrink-0 stroke-[1.5] md:size-14 [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+  "mt-1 size-8.5 shrink-0 stroke-[1.5] md:size-14 [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
 
 // Known before the record is, so the skeleton's is the real one. Padded as the
 // actions opposite it are, rather than flush as a plain page's back link is:
