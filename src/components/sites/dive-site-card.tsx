@@ -76,7 +76,7 @@ export function DiveSiteCard({
         {formatAltitude(site.altitude, units)}
       </IconFact>
     ),
-    // The dive page's icon for its entry type.
+    // The dive form's icon for its entry type.
     entryTypes.length > 0 && (
       <IconFact
         icon={WavesArrowDown}

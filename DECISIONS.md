@@ -3012,9 +3012,9 @@ is the only unit; the app has no unit preference to consult.
 ## The dive's location card renders on GPS alone
 
 An imported file carries fixes whether or not the diver attached the dive to a site, so the card is
-gated on `trip || dive.dive_sites.length > 0` or either coordinate pair, and the map inside it
-separately on at least one position among sites and fixes: the two-level arrangement the site page
-uses, where the inner gate keeps the `next/dynamic` chunk unfetched.
+gated on a trip, a site, either coordinate pair, the entry type or the boat name, and the map inside
+it separately on at least one position among sites and fixes: the two-level arrangement the site
+page uses, where the inner gate keeps the `next/dynamic` chunk unfetched.
 
 Both gates use `!= null` per coordinate, never truthiness: a dive off West Africa exits at longitude
 0 and one in the Galápagos at latitude 0. `formatCoordinates` and the map's `placedLocations`
@@ -3022,7 +3022,7 @@ already guard this way; the pair is turned into a point once at the top of the c
 from there.
 
 The card is titled "Location" for every combination: a heading that changes between two dives reads
-as two cards, and every block inside is labelled ("Trip", "Dive Site", "Entry", "Exit").
+as two cards, and every block inside is labelled.
 
 ## The edit form submits the whole dive, because the read is the whole dive
 
@@ -5639,9 +5639,9 @@ The `GET /export/divejson` row is three edits: a `"divejson"` member on `ExportF
 nothing forces (a mis-wired row type-checks), so `export.test.ts` asserts every union member's route
 and the render test pairs each row with its segment. DiveJSON sits first, being the project's own
 format. Each row's copy states its difference from the others, a sentence about what one format
-lacks being a claim about every other row. Prose drops counts that are not load-bearing —
-`sites-page-content.tsx` says "the export card's Downloads" — and load-bearing ones (`export.ts`'s
-"the four shapes `/export/*` serves") sit beside their list. Probes: `git grep -w three` in `src/`,
+lacks being a claim about every other row. Prose drops counts that are not load-bearing, and
+load-bearing ones (`export.ts`'s "the four shapes `/export/*` serves") sit beside their list.
+Probes: `git grep -w three` in `src/`,
 `grep -nE "three (Download|button|export|row|format)|all three" DECISIONS.md`, and
 `git grep -niE "export|portab" -- src/app/privacy/`, whose copy names no format.
 `lib/api-proxy.test.ts` and `lib/download.test.ts` use `.uddf` as a generic `Content-Disposition`
