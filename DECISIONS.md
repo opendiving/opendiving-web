@@ -5688,7 +5688,7 @@ beside the token because the API hashes the parts again and refuses a token mint
 "About the Original Files" renders `ImportReport.conversion`, omitted when `conversion` is `null`.
 `restored` keeps its own column, never folded into `created`: un-deleting is the number a backup
 restore came for. Notes are a persistent list, never a toast; a non-zero `notes_truncated` marks the
-list a prefix and says the counts are not.
+list incomplete and says the counts are not.
 
 A bare document's `not_contained` files are expected, so `noteIsWarning` excludes
 `file_not_contained` and `fileRestoreHint` says to import the archive.

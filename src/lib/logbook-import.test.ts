@@ -177,6 +177,9 @@ describe("noteIsWarning", () => {
         // The tags an import adds to the diver's list: the dives carry them, so
         // nothing is lost.
         "tags_created",
+        // A duration or bottom temperature worked out from the profile: nothing
+        // is lost, and it lands on nearly every dive of a dive-computer file.
+        "value_derived",
       ].some(noteIsWarning),
     ).toBe(false);
   });

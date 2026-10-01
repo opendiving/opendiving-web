@@ -152,6 +152,11 @@ export type ImportNoteCode =
   // so information rather than a warning.
   | "read_as_written"
   | "value_dropped"
+  // A value the document does not state, worked out from what it does - a
+  // dive's duration from its profile's span, its bottom temperature from its
+  // coldest sample. Information: nothing was lost. At the API's note cap these
+  // give way to every other note, so a truncated list keeps the others.
+  | "value_derived"
   | "reference_unresolved"
   | "species_unresolved"
   | "file_not_contained"
@@ -372,10 +377,10 @@ export interface ImportReport {
   /**
    * Notes beyond the API's cap that are **not** in `notes`.
    *
-   * Non-zero means the list above is a prefix rather than the whole story, and
-   * the UI has to say so - otherwise a 600-note import renders 500 notes as if
-   * they were all of them. The collection counts stay complete either way; it is
-   * only the note list that is truncated.
+   * Non-zero means the list above is not the whole story, and the UI has to say
+   * so - otherwise a 600-note import renders 500 notes as if they were all of
+   * them. The collection counts stay complete either way; it is only the note
+   * list that is truncated.
    */
   notes_truncated: number;
   /**
