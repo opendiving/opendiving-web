@@ -114,4 +114,4 @@ docker run --rm -i -w /app/map-renderer --entrypoint node \
       }
     });
   ' <"$OUT/picture.webp" || fail "The renderer drew the wrong picture" "$RENDERER"
-echo "The map renderer draws a picture."
+echo "The map renderer draws a picture, with signature $SIGNATURE."
