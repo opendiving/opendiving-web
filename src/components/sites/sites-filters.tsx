@@ -41,9 +41,9 @@ export interface SitesFiltersProps {
   tags?: readonly Tag[];
 }
 
-// The tag and the order, above the site table: the dive list's row, for the
-// sites. The two summary orders put every site with no dive after every one
-// with some.
+// The tag and the order, in the header card above the site cards: the dive
+// list's row, for the sites. The two summary orders put every site with no dive
+// after every one with some.
 export function SitesFilters({
   filters,
   onFiltersChange,
@@ -51,7 +51,7 @@ export function SitesFilters({
 }: SitesFiltersProps) {
   return (
     // Two across from `sm`, one per line on a phone.
-    <div className="mb-4 grid grid-cols-1 items-end gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2">
       <div className="space-y-2">
         <Label htmlFor="site-tag">Tag</Label>
         {/* A plain `<select>`: "Any tag" *is* `""`, and Radix reserves that

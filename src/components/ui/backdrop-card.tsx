@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { useNearViewport } from "@/hooks/useNearViewport";
 import { ItemActionsMenu } from "@/components/ui/item-actions-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +27,41 @@ export function BackdropCardSkeleton() {
   );
 }
 
+// A record with nowhere on a map yet: the map's open water where a trip would
+// show the whole world, since a dive or a site is at one spot and the world says
+// nothing about which. Faded as a map is, and the record's icon centred in what
+// the details leave of it: the colour the map names a sea in, muted as the map's
+// own colours are so it sits in the water rather than on it.
+export function UnplacedBackdrop({
+  coveredBottom,
+  icon: Icon,
+}: {
+  coveredBottom: number;
+  icon: ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div
+      aria-hidden
+      className="absolute inset-0 rounded-[inherit] bg-[var(--map-water)]"
+    >
+      {/* The map's own fade, in the same colour space as its. */}
+      <div
+        className="absolute inset-0 rounded-[inherit]"
+        style={{
+          background:
+            "linear-gradient(to bottom, transparent, var(--backdrop-fade))",
+        }}
+      />
+      <div
+        className="absolute inset-x-0 top-0 flex items-center justify-center"
+        style={{ bottom: coveredBottom }}
+      >
+        <Icon className="h-10 w-10 text-[var(--map-water-foreground)] opacity-60 saturate-50" />
+      </div>
+    </div>
+  );
+}
+
 interface BackdropCardProps {
   // What fills the card behind its details, handed how many pixels of its foot
   // the details cover. Rendered only while the card is on or near the screen.
@@ -35,8 +75,8 @@ interface BackdropCardProps {
   children: ReactNode;
 }
 
-// One record as a card, as /trips, /dives and the lists of recent ones draw
-// them: a backdrop - a map, or whatever stands in for one - its details over
+// One record as a card, as /trips, /dives, /sites and the lists of recent ones
+// draw them: a backdrop - a map, or whatever stands in for one - its details over
 // the foot of it, and its actions in the corner. A list item, so a caller
 // renders it in a list.
 export function BackdropCard({

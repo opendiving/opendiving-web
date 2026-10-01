@@ -645,7 +645,8 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 This happens whenever a map is on screen, whether or not you
                 interact with it: the form to add or edit a dive site, a dive
-                site&rsquo;s own page, the form to add or edit a trip, a trip
+                site&rsquo;s own page, every dive site with a position in the
+                list of your dive sites, the form to add or edit a trip, a trip
                 with places on it, every trip in the list of your trips and in
                 the dashboard&rsquo;s recent trips, and a dive that has a
                 position — on its own page, and wherever a list of dives shows

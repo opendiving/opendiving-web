@@ -2948,10 +2948,10 @@ Placeholder heights come from `getBoundingClientRect()` on the real page with th
 patched `XMLHttpRequest.prototype.send`, comparing loading and loaded geometry of the same element;
 a screenshot does not show a `h-5` bar against a 24px line box or a legend nobody accounted for.
 
-`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive
-and trip cards load into `BackdropCardSkeleton`, one box at the card's measured 238px,
-`RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on `/dives`
-and `/trips`.
+`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive,
+trip and site cards load into `BackdropCardSkeleton`, one box at the card's measured 238px,
+`RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
+`/dives`, `/trips` and `/sites`.
 
 ## The project instructions live in AGENTS.md, and CLAUDE.md is an import
 
@@ -4519,8 +4519,8 @@ the dashboard under three route names and never renders the landing page or sign
 
 ## Ten rows of "Edit" name nothing
 
-Row-action controls in all five tables (dive sites, certifications, gear items, gear sets, courses)
-and the dive and trip cards' actions menus name their row: `Actions for dive #412`,
+Row-action controls in all four tables (certifications, gear items, gear sets, courses) and the
+dive, trip and site cards' actions menus name their row: `Actions for dive #412`,
 `Actions for Palau 2025`, `Delete Pescador Island`. Uniqueness among the page's controls is the
 point: axe's `button-name` and `link-name` pass `aria-label="Edit"` ten times over, so only reading
 the controls list catches a bare label. Dive cards key off `dive.dive_number`, what the card leads

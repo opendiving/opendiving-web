@@ -15,7 +15,7 @@ const frame = (props: Partial<Parameters<typeof SitesPageFrame>[0]> = {}) =>
       isLoading={false}
       totalCount={0}
       itemsPerPage={10}
-      rows={[]}
+      cards={[]}
       {...props}
     />,
   );
@@ -25,8 +25,29 @@ const header = () =>
   screen.getByRole("heading", { name: "Dive Site List" }).parentElement!;
 
 describe("SitesPageFrame", () => {
+  it("draws the sites as one list of cards", () => {
+    frame({
+      totalCount: 2,
+      cards: [<li key="a">Blue Hole</li>, <li key="b">The Canyon</li>],
+    });
+
+    const items = within(screen.getByRole("list")).getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Blue Hole",
+      "The Canyon",
+    ]);
+  });
+
+  it("holds the list's place with placeholders while it loads", () => {
+    frame({ isLoading: true, itemsPerPage: 4 });
+
+    const list = screen.getByRole("list");
+    expect(list).toHaveAttribute("aria-busy", "true");
+    expect(list.querySelectorAll("li[aria-hidden]")).toHaveLength(4);
+  });
+
   it("puts the search box in the header row, beside the count", () => {
-    frame({ totalCount: 12, rows: [<tr key="t" />] });
+    frame({ totalCount: 12, cards: [<li key="t" />] });
 
     expect(
       within(header()).getByText("12 total dive sites"),
@@ -38,7 +59,7 @@ describe("SitesPageFrame", () => {
 
   it("reports what is typed into it", async () => {
     const onSearchChange = vi.fn();
-    frame({ onSearchChange, rows: [<tr key="t" />] });
+    frame({ onSearchChange, cards: [<li key="t" />] });
 
     await userEvent.type(
       screen.getByLabelText("Search dive sites by name or location"),
@@ -100,9 +121,9 @@ describe("SitesPageFrame", () => {
   });
 
   // Emptying the box is the way out of a search that matched nothing, and for
-  // one commit it leaves the term gone and the search's own (empty) rows still
+  // one commit it leaves the term gone and the search's own (empty) cards still
   // on screen. Dropping the box there would take the diver's cursor with it.
-  it("keeps them through the commit where a cleared term outruns its rows", () => {
+  it("keeps them through the commit where a cleared term outruns its cards", () => {
     const { rerender } = frame({ search: "dahab", isSearching: true });
 
     rerender(
@@ -110,7 +131,7 @@ describe("SitesPageFrame", () => {
         isLoading={false}
         totalCount={0}
         itemsPerPage={10}
-        rows={[]}
+        cards={[]}
         search=""
         isSearching={false}
       />,
@@ -141,7 +162,7 @@ describe("SitesPageFrame filters", () => {
     const onFiltersOpened = vi.fn();
     const onFiltersChange = vi.fn();
     frame({
-      rows: [<tr key="t" />],
+      cards: [<li key="t" />],
       tags: TAGS,
       onFiltersOpened,
       onFiltersChange,
@@ -168,7 +189,7 @@ describe("SitesPageFrame filters", () => {
   it("clears the tag and the order when the panel is shut", async () => {
     const onFiltersChange = vi.fn();
     frame({
-      rows: [<tr key="t" />],
+      cards: [<li key="t" />],
       filters: { tagUuid: "tag-wreck", sort: "dive_count" },
       onFiltersChange,
     });
@@ -190,16 +211,5 @@ describe("SitesPageFrame filters", () => {
     expect(
       screen.queryByRole("button", { name: /Add your first dive site/ }),
     ).not.toBeInTheDocument();
-  });
-
-  it("heads a column for each site's dives and its last dive", () => {
-    frame({ totalCount: 1, rows: [<tr key="t" />] });
-
-    expect(
-      screen.getByRole("columnheader", { name: "Dives" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Last dive" }),
-    ).toBeInTheDocument();
   });
 });
