@@ -16,6 +16,7 @@ import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { formatTripSpan } from "@/lib/trip-parts";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   DeleteMenuItem,
   ItemActionsMenu,
@@ -28,7 +29,7 @@ import { TripHero } from "@/components/trips/trip-hero";
 import { HERO_CONTROL, MapHeroSkeleton } from "@/components/ui/map-hero";
 import { PeopleList } from "@/components/people/people-list";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { BedDouble, Edit, Plus, Calendar, MapPin } from "lucide-react";
+import { BedDouble, Edit, Plus, Calendar, Luggage, MapPin } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -142,7 +143,11 @@ export function TripDetailPageContent() {
   if (isLoadingTrip) {
     return (
       <div aria-busy>
-        <MapHeroSkeleton backHref="/trips" backLabel="Back to trips" />
+        <MapHeroSkeleton
+          backHref="/trips"
+          backLabel="Back to trips"
+          icon={Luggage}
+        />
         <div className={BODY}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
@@ -175,16 +180,17 @@ export function TripDetailPageContent() {
         trip={trip}
         actions={
           <>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={HERO_CONTROL}
-              onClick={() => setIsEditOpen(true)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
+            <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
+              <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
+                <Plus className="h-4 w-4 mr-2" />
+                Log a dive
+              </Link>
             </Button>
             <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
+              <DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
               <DeleteMenuItem
                 onSelect={() => del.requestDelete(trip.uuid)}
                 disabled={isDeleting}
@@ -332,12 +338,6 @@ export function TripDetailPageContent() {
                   </div>
                   <div className="text-sm">{formatDate(trip.created_at)}</div>
                 </div>
-                <Button className="w-full" asChild>
-                  <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Log a dive
-                  </Link>
-                </Button>
               </CardContent>
             </Card>
           </div>

@@ -73,6 +73,7 @@ export function DiveSiteHero({
     <MapHero
       backHref="/sites"
       backLabel="Back to dive sites"
+      icon={MapPin}
       actions={actions}
       title={site.name}
       // The line under the name, as the site's card has it.

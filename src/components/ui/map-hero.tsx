@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BackLink } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
@@ -36,15 +41,28 @@ const TOP_ROW = "absolute inset-x-0 top-2 z-10";
 export const HERO_CONTROL =
   "hover:bg-background/80 [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)] [&_svg]:[filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
 
-interface Back {
+// What a hero knows before its record has loaded, so its skeleton draws them
+// for real: the way back, and the record's kind.
+interface Known {
   backHref: string;
   backLabel: string;
+  // The kind's icon, as the header's New menu marks it.
+  icon: ComponentType<{ className?: string }>;
 }
+
+// The kind's icon before the title and the line under it, as tall as the two
+// together, glowing as their text does - through a filter, since `text-shadow`
+// stops at an SVG.
+const ICON =
+  "size-14 shrink-0 stroke-[1.5] [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
 
 // Known before the record is, so the skeleton's is the real one. Padded as the
 // actions opposite it are, rather than flush as a plain page's back link is:
 // over the map it is a button among buttons.
-function HeroBackLink({ backHref, backLabel }: Back) {
+function HeroBackLink({
+  backHref,
+  backLabel,
+}: Pick<Known, "backHref" | "backLabel">) {
   return (
     <BackLink
       href={backHref}
@@ -59,7 +77,7 @@ export interface MapHeroFigure {
   value: ReactNode;
 }
 
-interface MapHeroProps extends Back {
+interface MapHeroProps extends Known {
   // What fills the band behind the details, handed how many pixels of its top
   // the top row covers and of its foot the details do.
   backdrop: (covered: { top: number; bottom: number }) => ReactNode;
@@ -80,6 +98,7 @@ interface MapHeroProps extends Back {
 export function MapHero({
   backHref,
   backLabel,
+  icon: Icon,
   backdrop,
   actions,
   title,
@@ -140,8 +159,15 @@ export function MapHero({
         className="z-[1] [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)]"
       >
         <div className={cn(COLUMN, "pb-5")}>
-          <h1 className="text-3xl font-bold">{title}</h1>
-          {subtitle && <p className="mt-1 text-muted-foreground">{subtitle}</p>}
+          <div className="flex items-center gap-4">
+            <Icon aria-hidden className={ICON} />
+            <div className="min-w-0">
+              <h1 className="text-3xl font-bold">{title}</h1>
+              {subtitle && (
+                <p className="mt-1 text-muted-foreground">{subtitle}</p>
+              )}
+            </div>
+          </div>
           {/* Every figure the record has, at the dive page's size. A value
               never breaks, so "30 m" is one figure. */}
           <dl className={FIGURES}>
@@ -167,7 +193,7 @@ export function MapHero({
 // is the same height before and after the record lands. The bars are a step
 // lighter than the box they lie on, which is the one place a bar is drawn on
 // a bar.
-export function MapHeroSkeleton({ backHref, backLabel }: Back) {
+export function MapHeroSkeleton({ backHref, backLabel, icon: Icon }: Known) {
   const bar = "bg-background/60";
   return (
     <div className={FRAME}>
@@ -178,12 +204,17 @@ export function MapHeroSkeleton({ backHref, backLabel }: Back) {
         </div>
       </div>
       <div className={cn(COLUMN, "relative z-[1] pb-5")}>
-        <h1 className="text-3xl font-bold">
-          <Skeleton className={cn("h-9 w-64", bar)} />
-        </h1>
-        <p className="mt-1">
-          <Skeleton className={cn("h-6 w-44", bar)} />
-        </p>
+        <div className="flex items-center gap-4">
+          <Icon aria-hidden className={cn(ICON, "text-muted-foreground")} />
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold">
+              <Skeleton className={cn("h-9 w-64", bar)} />
+            </h1>
+            <p className="mt-1">
+              <Skeleton className={cn("h-6 w-44", bar)} />
+            </p>
+          </div>
+        </div>
         <div className={FIGURES}>
           {[0, 1, 2].map((figure) => (
             <div key={figure} className={FIGURE}>

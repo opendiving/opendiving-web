@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import TripDetailPage from "./page";
 import type { Trip } from "@/lib/api/trips";
 import type { Dive } from "@/lib/api/dives";
@@ -210,14 +211,12 @@ describe("TripDetailPage", () => {
     );
   });
 
-  it("keeps every action reachable from the hero and the body", async () => {
+  // Logging a dive is the one on the hero's row, and editing joins deleting
+  // under the menu.
+  it("keeps every action reachable from the hero's top row", async () => {
     render(<TripDetailPage />);
 
     await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
-    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "More actions" }),
-    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to trips" })).toHaveAttribute(
       "href",
       "/trips",
@@ -226,6 +225,15 @@ describe("TripDetailPage", () => {
       "href",
       "/dives/new?trip_uuid=trip-1",
     );
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Edit" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Delete" }),
+    ).toBeInTheDocument();
   });
 
   it("puts a part's accommodation under its place", async () => {

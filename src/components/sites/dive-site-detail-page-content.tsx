@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -9,6 +10,7 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   DeleteMenuItem,
   ItemActionsMenu,
@@ -16,13 +18,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
-import { DiveSiteInfoCard } from "@/components/sites/dive-site-info-card";
 import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
 import { DiveSiteHero } from "@/components/sites/dive-site-hero";
 import { HERO_CONTROL, MapHeroSkeleton } from "@/components/ui/map-hero";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, FileText } from "lucide-react";
+import { Edit, FileText, MapPin, Plus } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
@@ -69,7 +70,11 @@ export function DiveSiteDetailPageContent() {
   if (isLoadingDiveSite) {
     return (
       <div aria-busy>
-        <MapHeroSkeleton backHref="/sites" backLabel="Back to dive sites" />
+        <MapHeroSkeleton
+          backHref="/sites"
+          backLabel="Back to dive sites"
+          icon={MapPin}
+        />
         <div className={BODY}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
@@ -102,16 +107,17 @@ export function DiveSiteDetailPageContent() {
         site={diveSite}
         actions={
           <>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={HERO_CONTROL}
-              onClick={() => setIsEditOpen(true)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
+            <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
+              <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
+                <Plus className="h-4 w-4 mr-2" />
+                Log a dive
+              </Link>
             </Button>
             <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
+              <DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
               <DeleteMenuItem
                 onSelect={() => del.requestDelete(diveSite.uuid)}
                 disabled={isDeleting}
@@ -159,12 +165,6 @@ export function DiveSiteDetailPageContent() {
           </div>
 
           <div className="space-y-6">
-            <DiveSiteInfoCard site={diveSite} />
-
-            {/* Below the details rather than beside the dives: the screenshot's
-              frame ends at the foot of the card above, and cuts through
-              whatever is beside it - a list of dives reads as a page going on,
-              a paragraph cut mid-line does not. */}
             {diveSite.notes && (
               <Card>
                 <CardHeader>

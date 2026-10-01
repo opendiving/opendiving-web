@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Luggage } from "lucide-react";
 import { Trip } from "@/lib/api/trips";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { MapHero } from "@/components/ui/map-hero";
@@ -40,6 +41,7 @@ export function TripHero({
     <MapHero
       backHref="/trips"
       backLabel="Back to trips"
+      icon={Luggage}
       actions={actions}
       title={trip.name}
       // One line, as the trip card's.
