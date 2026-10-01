@@ -24,9 +24,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
-import { TripHero, TripHeroSkeleton } from "@/components/trips/trip-hero";
+import {
+  HERO_CONTROL,
+  TripHero,
+  TripHeroSkeleton,
+} from "@/components/trips/trip-hero";
 import { PeopleList } from "@/components/people/people-list";
-import { BackLink } from "@/components/ui/page-header";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { BedDouble, Edit, Plus, Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -46,16 +49,6 @@ const LONG_DATE: Intl.DateTimeFormatOptions = {
 // The body's column under the hero, which spans the window. The hero's own
 // details sit in the same column, so they line up with this.
 const BODY = "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6";
-
-// The way back, on the body's first row: the hero's top-left corner holds the
-// map's credit, and its top-right the actions.
-function BackToTrips() {
-  return (
-    <div className="mb-6 flex min-h-10 items-center">
-      <BackLink href="/trips" label="Back to trips" />
-    </div>
-  );
-}
 
 export function TripDetailPageContent() {
   const router = useRouter();
@@ -148,14 +141,12 @@ export function TripDetailPageContent() {
   }
 
   // The hero's skeleton at the hero's height, and the body's at the body's, so
-  // nothing moves when the trip lands. The back link is the real one: where it
-  // goes is known before the trip is.
+  // nothing moves when the trip lands.
   if (isLoadingTrip) {
     return (
       <div aria-busy>
         <TripHeroSkeleton />
         <div className={BODY}>
-          <BackToTrips />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <CardSkeleton lines={7} />
@@ -181,13 +172,6 @@ export function TripDetailPageContent() {
     );
   }
 
-  // Ghost over the map, as a card's menu is, and glowing as the details'
-  // text does - the icons through a filter, since `text-shadow` stops at an
-  // SVG. Two close layers, as the text's: `drop-shadow`s chain, each blurring
-  // the last one's 8-bit output, and more of them drew the halo in rings.
-  const glow =
-    "hover:bg-background/80 [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)] [&_svg]:[filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
-
   return (
     <div>
       <TripHero
@@ -197,13 +181,13 @@ export function TripDetailPageContent() {
             <Button
               variant="ghost"
               size="sm"
-              className={glow}
+              className={HERO_CONTROL}
               onClick={() => setIsEditOpen(true)}
             >
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <ItemActionsMenu variant="ghost" size="sm" className={glow}>
+            <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
               <DeleteMenuItem
                 onSelect={() => del.requestDelete(trip.uuid)}
                 disabled={isDeleting}
@@ -234,7 +218,6 @@ export function TripDetailPageContent() {
       />
 
       <div className={BODY}>
-        <BackToTrips />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <RecentDivesCard

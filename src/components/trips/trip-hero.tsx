@@ -4,6 +4,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import { Trip } from "@/lib/api/trips";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BackLink } from "@/components/ui/page-header";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripLocationNames } from "@/lib/trip-locations";
@@ -14,12 +15,39 @@ import { cn } from "@/lib/utils";
 // The band's frame, shared with its skeleton so the page lands without moving:
 // a constant height per breakpoint - about a third of a laptop's viewport, less
 // on a phone - that details taller than it, a name wrapping onto three lines,
-// grow from the top, where `pt-24` keeps a band of map above them.
+// grow from the top, where `pt-36` keeps a band of map above them under the top
+// row and the credit beneath it.
 const FRAME =
-  "relative isolate flex min-h-72 flex-col justify-end pt-24 sm:min-h-80 lg:min-h-88";
+  "relative isolate flex min-h-72 flex-col justify-end pt-36 sm:min-h-80 lg:min-h-88";
 
 // The page's column, so the details line up with the body under them.
 const COLUMN = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
+
+// The band's top row, at the column's edges rather than the window's, where a
+// wide screen would put it far from everything else. Above the details and the
+// map, with the credit.
+const TOP_ROW = "absolute inset-x-0 top-2 z-10";
+
+// A control on the band's top row: ghost over the map, as a card's menu is,
+// and glowing as the details' text does - the icons through a filter, since
+// `text-shadow` stops at an SVG. Two close layers, as the text's:
+// `drop-shadow`s chain, each blurring the last one's 8-bit output, and more of
+// them drew the halo in rings.
+export const HERO_CONTROL =
+  "hover:bg-background/80 [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)] [&_svg]:[filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+
+// Known before the trip is, so the skeleton's is the real one. Padded as the
+// actions opposite it are, rather than flush as a plain page's back link is:
+// over the map it is a button among buttons.
+function BackToTrips() {
+  return (
+    <BackLink
+      href="/trips"
+      label="Back to trips"
+      className={cn("px-3", HERO_CONTROL)}
+    />
+  );
+}
 
 // This page has room for the month spelled out, unlike a trip card.
 const LONG_DATE: Intl.DateTimeFormatOptions = {
@@ -30,7 +58,8 @@ const LONG_DATE: Intl.DateTimeFormatOptions = {
 
 interface TripHeroProps {
   trip: Trip;
-  // Edit and the menu, in the band's top-right corner as a card's menu is.
+  // Edit and the menu, in the band's top-right corner as a card's menu is,
+  // opposite the way back.
   actions?: ReactNode;
 }
 
@@ -66,6 +95,18 @@ export function TripHero({ trip, actions }: TripHeroProps) {
     return () => observer.disconnect();
   }, []);
 
+  // And how much the top row covers, which the credit goes under.
+  const [topRowBottom, setTopRowBottom] = useState(0);
+  const topRowRef = useCallback((element: HTMLElement | null) => {
+    if (!element) return;
+    const measure = () =>
+      setTopRowBottom(element.offsetTop + element.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div
       className={cn(
@@ -86,18 +127,17 @@ export function TripHero({ trip, actions }: TripHeroProps) {
           className="h-full rounded-none border-0 sm:h-full"
           backdrop
           coveredBottom={detailsHeight}
+          coveredTop={topRowBottom}
           snapshot
           sideFade
         />
       </div>
-      {/* At the column's right edge rather than the window's, where a wide
-          screen would put them far from everything else. Above the details
-          and the map, with the credit. */}
-      {actions && (
-        <div className="absolute inset-x-0 top-2 z-10">
-          <div className={cn(COLUMN, "flex justify-end gap-1")}>{actions}</div>
+      <div ref={topRowRef} className={TOP_ROW}>
+        <div className={cn(COLUMN, "flex items-center justify-between gap-4")}>
+          <BackToTrips />
+          {actions && <div className="flex shrink-0 gap-1">{actions}</div>}
         </div>
-      )}
+      </div>
       {/* Above the map by a flex item's z-index, as a card's details are.
           Every line is lifted off what the map still shows beneath it by a glow
           in the page's colour: two soft layers close together, since more of
@@ -146,6 +186,11 @@ export function TripHeroSkeleton() {
   return (
     <div className={FRAME}>
       <Skeleton className="absolute inset-0 rounded-none" />
+      <div className={TOP_ROW}>
+        <div className={COLUMN}>
+          <BackToTrips />
+        </div>
+      </div>
       <div className={cn(COLUMN, "relative z-[1] pb-5")}>
         <h1 className="text-3xl font-bold">
           <Skeleton className={cn("h-9 w-64", bar)} />

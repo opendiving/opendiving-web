@@ -53,6 +53,12 @@ const pictureSide = (frameWidth: number, sideFade: boolean | undefined) =>
     sideFade ? SIDE_FADE_WIDTH : FIT_PADDING,
   );
 
+// A backdrop's credit is inset this far from the frame's top-left corner, or
+// from under the controls covering its top.
+const CREDIT_INSET = 4;
+const creditBottom = (credit: HTMLElement | null, coveredTop: number) =>
+  credit ? CREDIT_INSET + coveredTop + credit.offsetHeight : 0;
+
 // `bg-coral`, not `bg-primary`: primary is near-black in light and mid-grey in
 // dark, which is invisible against a dark basemap. Coral is the one accent held
 // constant across both themes.
@@ -117,6 +123,11 @@ export interface LocationsMapProps {
    */
   coveredBottom?: number;
   /**
+   * How many pixels along the top the caller covers with controls of its own.
+   * A backdrop's credit goes under them, and the places under the credit.
+   */
+  coveredTop?: number;
+  /**
    * Show a picture of the map rather than the map - for a list of maps. The
    * live map is drawn once, unseen, at `SNAPSHOT_WIDTH` by `SNAPSHOT_HEIGHT`,
    * pictured and let go; the frame then shows the part of the picture that
@@ -156,6 +167,7 @@ export function LocationsMap({
   className,
   backdrop,
   coveredBottom = 0,
+  coveredTop = 0,
   snapshot,
   sideFade,
 }: LocationsMapProps) {
@@ -210,7 +222,7 @@ export function LocationsMap({
         const next = {
           width: element.clientWidth,
           height: element.clientHeight,
-          creditBottom: credit ? credit.offsetTop + credit.offsetHeight : 0,
+          creditBottom: creditBottom(credit, coveredTop),
         };
         setFrame((current) =>
           current &&
@@ -226,7 +238,7 @@ export function LocationsMap({
       observer.observe(element);
       return () => observer.disconnect();
     },
-    [snapshot],
+    [snapshot, coveredTop],
   );
 
   const band = useMemo(
@@ -312,7 +324,7 @@ export function LocationsMap({
         : {
             width: container.clientWidth,
             height: container.clientHeight,
-            creditBottom: credit ? credit.offsetTop + credit.offsetHeight : 0,
+            creditBottom: creditBottom(credit, coveredTop),
           };
       if (!shownIn) return;
       const shownBand = bandIn(
@@ -413,7 +425,16 @@ export function LocationsMap({
     };
     // A picture's frame and band rather than the live map's own size, which
     // never changes while it draws one.
-  }, [map, placed, coveredBottom, backdrop, snapshot, sideFade, frame]);
+  }, [
+    map,
+    placed,
+    coveredBottom,
+    coveredTop,
+    backdrop,
+    snapshot,
+    sideFade,
+    frame,
+  ]);
 
   // Markers are MapLibre's rather than absolutely positioned children, which is
   // what hands it the job of drawing a place at 178E in the copy of the world
@@ -644,8 +665,13 @@ export function LocationsMap({
           "absolute z-10 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground",
           // Inset from a backdrop's corner, which is rounded and would clip it,
           // and quieter, as it sits over the part of the map that shows.
-          backdrop ? "left-1 top-1 rounded-sm opacity-75" : "bottom-0 right-0",
+          backdrop ? "rounded-sm opacity-75" : "bottom-0 right-0",
         )}
+        style={
+          backdrop
+            ? { left: CREDIT_INSET, top: CREDIT_INSET + coveredTop }
+            : undefined
+        }
       >
         <Attribution value={basemap.attribution} underline={false} />
       </div>

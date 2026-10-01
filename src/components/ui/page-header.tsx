@@ -34,9 +34,17 @@ export interface PageHeaderProps {
 
 // The way back from a detail or form page, on its own for a page whose heading
 // is drawn elsewhere - the trip page's, over its hero.
-export function BackLink({ href, label }: { href: string; label: string }) {
+export function BackLink({
+  href,
+  label,
+  className,
+}: {
+  href: string;
+  label: string;
+  className?: string;
+}) {
   return (
-    <Button variant="ghost" size="sm" asChild className="px-0">
+    <Button variant="ghost" size="sm" asChild className={cn("px-0", className)}>
       <Link href={href}>
         <ArrowLeft className="h-4 w-4 mr-2" />
         {label}

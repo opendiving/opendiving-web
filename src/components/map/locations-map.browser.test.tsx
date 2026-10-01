@@ -664,6 +664,36 @@ describe("LocationsMap", () => {
     }
   });
 
+  // The caller's controls along the top cover the corner the credit would
+  // take, so it goes under them, and the place under it.
+  it("puts a backdrop's credit under a covered top, and its place under that", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          backdrop
+          // Tall enough that the band is not clamped to its floor.
+          className="h-64 sm:h-64"
+          coveredTop={44}
+          coveredBottom={40}
+          locations={[{ name: "Dahab", latitude: 28.49, longitude: 34.51 }]}
+        />,
+      ),
+    );
+    await spanOnScreen();
+
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    const credit = screen
+      .getByRole("link", { name: /OpenStreetMap/ })
+      .parentElement!.getBoundingClientRect();
+    const marker = (markers()[0] as HTMLElement).getBoundingClientRect();
+    expect(credit.top).toBeGreaterThanOrEqual(frame.top + 44);
+    expect(marker.top + marker.height / 2).toBeCloseTo(
+      (credit.bottom + frame.bottom - 40) / 2,
+      0,
+    );
+  });
+
   it("fades a backdrop into a colour laid over it, not through a mask", async () => {
     render(
       withConfig(
@@ -787,6 +817,40 @@ describe("LocationsMap", () => {
       await waitFor(() => expect(middle()).toBeCloseTo(0, 0));
       expect(document.querySelector("canvas.maplibregl-canvas")).toBeNull();
       expect(document.querySelector("img")).not.toBeNull();
+    });
+
+    // A caller measures its controls after the map has measured its frame, so
+    // the top they cover arrives on a later render that leaves the frame's
+    // size alone.
+    it("refits a picture's place under a covered top that arrives later", async () => {
+      const Covered = ({ coveredTop }: { coveredTop: number }) =>
+        withConfig(
+          <LocationsMap
+            subject="the trip's locations"
+            snapshot
+            backdrop
+            className="h-64 sm:h-64"
+            coveredTop={coveredTop}
+            locations={[{ name: "Dahab", latitude: 28.49, longitude: 34.51 }]}
+          />,
+          SOLID,
+        );
+      const { rerender } = render(<Covered coveredTop={0} />);
+      await picture();
+
+      rerender(<Covered coveredTop={60} />);
+      await waitFor(() => {
+        const frame = screen.getByRole("img").getBoundingClientRect();
+        const credit = screen
+          .getByRole("link", { name: /OpenStreetMap/ })
+          .parentElement!.getBoundingClientRect();
+        const pin = (markers()[0] as HTMLElement).getBoundingClientRect();
+        expect(credit.top).toBeGreaterThanOrEqual(frame.top + 60);
+        expect(pin.top + pin.height / 2).toBeCloseTo(
+          (credit.bottom + frame.bottom) / 2,
+          0,
+        );
+      });
     });
 
     it("comes back as its picture, without building a map again", async () => {
