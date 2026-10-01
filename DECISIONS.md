@@ -6212,10 +6212,10 @@ The `concurrency` key is `edge` for a `main` push and `release` for everything e
 its pending run on a third arrival, fatal for a release queued behind the bump merge's edge build.
 
 Render ignores a moved tag; the job calls a [Deploy Hook](https://render.com/docs/deploy-hooks) with
-`imgURL` naming the digest read off `:sha-`. `RENDER_DEPLOY_HOOKS` is comma-separated (the api copy
-needs two); absent it passes with a notice, set-but-empty fails. Each hook is `::add-mask::`ed
-(substrings are not), and whitespace is stripped with `tr -d ' \t\r'`, not `[:space:]`, which eats
-the separators.
+`imgURL` naming the digest read off `:sha-`. `RENDER_DEPLOY_HOOKS` is comma-separated, one hook per
+service the image runs as (the web server and the map renderer); absent it passes with a notice,
+set-but-empty fails. Each hook is `::add-mask::`ed (substrings are not), and whitespace is stripped
+with `tr -d ' \t\r'`, not `[:space:]`, which eats the separators.
 
 ## `code-quality.yml` carries no commented-out steps: Renovate skips them and git keeps the text
 

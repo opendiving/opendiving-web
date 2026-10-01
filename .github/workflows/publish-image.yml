@@ -352,7 +352,11 @@ jobs:
       # is tagged or deployed: the web server serves a page, and the map renderer draws a
       # picture on a style that needs no network. A failure here stops `merge`, and with it
       # `deploy`. See the script for what each check is.
+      #
+      # Skipped where the checked-out ref has no script: a CVE rebuild of a release cut before
+      # it, whose image has no map renderer to check either, and which must still republish.
       - name: Smoke-test the image
+        if: hashFiles('scripts/smoke-test-image.sh') != ''
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: scripts/smoke-test-image.sh "${IMAGE}@${DIGEST}"
