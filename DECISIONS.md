@@ -3530,7 +3530,7 @@ from disk, and a health endpoint running none of the app's code is a strange thi
 `src/proxy.ts` matcher excludes it, like `api/`: a policy about scripts and styles says nothing
 about two words of text, and it keeps a fresh nonce off a path hit every thirty seconds. The check
 is a `node -e` one-liner in exec form: the image ships neither `curl` nor `wget`, and with no shell
-involved `process.env.PORT` is read by node at run time, so a moved port still works.
+involved `process.env.PORT` is read by node at run time, so a moved port works.
 
 ## The image builds once per architecture, and a `v*` tag is checked against `package.json`
 
@@ -3649,17 +3649,15 @@ across ecosystems, or match `customManagers`. The regex `customManagers` entry c
 `npx --yes <tool>@<version>` pins in `code-quality.yml` (`depcheck`, `@next/bundle-analyzer`,
 `madge`, `@axe-core/cli`), seen by no other manager.
 
-`pinDigests: false` is load-bearing: the `Dockerfile` floats on `ubuntu:24.04` and
-`node:24-bookworm-slim` so a Publish Image re-run at an old `v` tag collects a patched base, and the
-runner stage it never caches collects patched Ubuntu packages; a digest pin, or
+`pinDigests: false` is load-bearing: the `Dockerfile` floats on its base tags so a Publish Image
+re-run at an old `v` tag collects patched packages, where a digest pin, or
 `helpers:pinGitHubActionDigests`, rebuilds the vulnerable base and reports success. First-party
 actions pin a major tag, third-party a SHA; Renovate renews both.
 
 Node waits on `dependencyDashboardApproval` (`.nvmrc`, `engines.node`, `Dockerfile` grouped): the
 `24.x` in `with:` strings in `ci.yml` and `code-quality.yml` is invisible to the `github-actions`
 manager, so an automatic bump ships a runtime CI does not test, and odd majors are not LTS
-(`engines.node`: `>=24 <25`). It is also held `<25`, and `ubuntu` is not watched: MapLibre Native's
-prebuilt binaries cover Node 20–24 on Ubuntu 24.04 alone, and its install never builds one.
+(`engines.node`: `>=24 <25`).
 
 `aquasecurity/trivy` (`setup-trivy`'s `version:` input, `currentValue: latest`) is disabled by name:
 a number there freezes the scanner's advisory knowledge.
@@ -6213,9 +6211,9 @@ its pending run on a third arrival, fatal for a release queued behind the bump m
 
 Render ignores a moved tag; the job calls a [Deploy Hook](https://render.com/docs/deploy-hooks) with
 `imgURL` naming the digest read off `:sha-`. `RENDER_DEPLOY_HOOKS` is comma-separated, one hook per
-service the image runs as (the web server and the map renderer); absent it passes with a notice,
-set-but-empty fails. Each hook is `::add-mask::`ed (substrings are not), and whitespace is stripped
-with `tr -d ' \t\r'`, not `[:space:]`, which eats the separators.
+service; absent it passes with a notice, set-but-empty fails. Each hook is `::add-mask::`ed
+(substrings are not), and whitespace is stripped with `tr -d ' \t\r'`, not `[:space:]`, which eats
+the separators.
 
 ## `code-quality.yml` carries no commented-out steps: Renovate skips them and git keeps the text
 
