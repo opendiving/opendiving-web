@@ -202,7 +202,7 @@ describe("what the summary prints", () => {
     expect(screen.queryByText("Date of birth")).toBeNull();
   });
 
-  it("prints a card's dive centre from what it is handed, and no row without one", () => {
+  it("prints a card's dive center from what it is handed, and no row without one", () => {
     // The frame looks nothing up itself: the name comes in beside the card, by
     // the card's uuid, and a card with no entry there has no line at all.
     render(
@@ -215,7 +215,7 @@ describe("what the summary prints", () => {
       }),
     );
 
-    expect(screen.getAllByText("Dive centre")).toHaveLength(1);
+    expect(screen.getAllByText("Dive center")).toHaveLength(1);
     expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
   });
 
@@ -959,7 +959,7 @@ describe("sharing it as a link", () => {
     expect(screen.getByRole("button", { name: /share/i })).toBeEnabled();
   });
 
-  // The cards and their dive centres are read by the server whenever the link is
+  // The cards and their dive centers are read by the server whenever the link is
   // opened, so a failure there costs the link nothing it keeps.
   it("shares when only the cards failed to load", () => {
     Object.assign(auth.user, COMPLETE);

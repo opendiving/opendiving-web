@@ -901,7 +901,7 @@ export default async function PrivacyPage() {
                 date of birth and phone number, your dive insurance, your
                 emergency contact, your dive count, deepest dive and last dive,
                 and each certification with its number, dates, instructor and
-                dive centre, beside the front of the card where you stored a
+                dive center, beside the front of the card where you stored a
                 picture of it. Never the back of a card; a card kept as a PDF is
                 named as one rather than shown; and neither your profile picture
                 nor anything else this copy holds about you is shown at all.

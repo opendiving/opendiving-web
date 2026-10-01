@@ -4455,7 +4455,7 @@ privacy-page section in the same PR. Today's grant is no wider than running the 
 store your entries, show them back to you, include them in an export you ask for — and widening it
 for features that do not exist overstates what a legal page covers. The three plausible futures need
 different things, and only one is a copyright question: shared dives need an operator display grant,
-probably per act of sharing; a dive-centre view of certifications is a lawful-basis question under
+probably per act of sharing; a dive-center view of certifications is a lawful-basis question under
 GDPR Art. 6, possibly Art. 9; aggregate statistics need no content licence at all.
 
 ## `--warning` is a shared token, not the safety notice's private one
