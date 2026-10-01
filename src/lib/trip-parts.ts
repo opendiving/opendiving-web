@@ -68,9 +68,15 @@ export function formatTripSpan(
  * sidebar hand them theirs (`formatTripLocationNames`,
  * `components/map/locations-map.tsx`). A placeless part contributes nothing
  * here rather than an unnamed gap.
+ *
+ * Generic over the location so the map renderer, whose payload carries a part's
+ * position and footprint but no name, gets back what it put in.
  */
-export function tripPartLocations(parts?: TripPart[] | null): Location[] {
+export function tripPartLocations<L = Location>(
+  parts?:
+    readonly (Omit<TripPart, "location"> & { location?: L | null })[] | null,
+): L[] {
   return (parts ?? [])
     .map((part) => part.location)
-    .filter((location): location is Location => !!location);
+    .filter((location): location is L => !!location);
 }

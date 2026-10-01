@@ -71,6 +71,7 @@ src/lib/api/        axios clients, one module per API area
 src/lib/validations/  Zod schemas backing the forms
 src/hooks/          shared hooks (pagination, auth guards, drag-sort, ...)
 src/contexts/       AuthContext
+src/map-renderer/   the map renderer, a Node program shipped in the same image
 ```
 
 Components in `src/components/ui/` come from shadcn/ui — prefer adding a new primitive there over
@@ -83,7 +84,8 @@ a file named `foo.browser.test.tsx` belongs to the second project instead and ru
 question, because a real browser is slower and the isolation is weaker. What qualifies is a property
 of the question rather than a subject area: jsdom has no WebGL2 context, and it performs no layout
 at all, so a question about a real renderer or about measured geometry belongs in that lane and
-everything else does not.
+everything else does not. The map renderer's tests, under `src/map-renderer/`, run in a third
+project, in plain Node, which is where the renderer runs.
 
 **A geometry assertion there is vacuous without `import "@/app/globals.css"` in the test file.** The
 browser project renders no `app/layout.tsx`, so none of this app's Tailwind is loaded: without that
@@ -97,6 +99,26 @@ Coverage is measured over `src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/
 `src/app/**`, with floors per directory in `vitest.config.mts`. CI does not collect it;
 `npm run test:coverage` prints the report and checks the floors. New helpers in `src/lib/` should
 come with tests; bug fixes should come with a test that fails without the fix.
+
+## Running the map renderer
+
+The map pictures the API stores for dive and trip cards are drawn by a second program in this
+repository, `src/map-renderer/`, which the API calls. It ships in the same image and is started with
+`node map-renderer/index.mjs` instead of the web server's command. To run it beside the dev server:
+
+```bash
+npm run map-renderer   # builds it, then listens on :3001
+```
+
+On macOS that is all: MapLibre Native, which it draws with, ships macOS binaries and needs no X
+server. It reads `.env` as the dev server does — the same `MAP_*` variables and `SITE_URL` — plus
+`PORT`, which defaults to 3001 so it does not collide with `next dev`. To have a local API draw
+through it, set `MAP_RENDERER_URL=host.docker.internal:3001` in the API's `src/.env` and restart its
+compose stack: the API runs in Docker and reaches your machine by that name.
+
+On Linux it needs Ubuntu 24.04, the only Linux MapLibre Native ships binaries for, with `xvfb`
+installed: the renderer starts its own X display. Anywhere else, build the image and run that
+command in it.
 
 ## Two things that will bite you
 
@@ -332,12 +354,14 @@ for the other. What they raise it _for_ is one of two responses, so start with t
 
 **Rebuilding a published version.** A published version is never repointed — a bad release gets a
 successor, not a rewrite — and a CVE in the base image is the one sanctioned exception. It works
-because the `Dockerfile` floats on `node:24-alpine` rather than a digest, so the build resolves a
-patched base. Run **Publish Image** by hand with `ref` set to the `v` tag, and tick **Also push
-:latest** if that version is still the newest. One run recomputes the version's whole alias set,
-which is the point: a hand-picked subset would leave everyone following `latest` or `0.4` on the
-vulnerable digest. That is this repository's workflow rebuilding this repository's image — the api
-repo rebuilds its own the same way, and a base-image CVE will often want both.
+because the `Dockerfile` floats on `ubuntu:24.04` and on `node:24-bookworm-slim`, which it copies
+Node out of, rather than on digests, and because Publish Image never takes the stage that runs
+`apt-get upgrade` from its build cache: the build resolves a patched Node and the Ubuntu packages
+published since the base was cut. Run **Publish Image** by hand with `ref` set to the `v` tag, and
+tick **Also push :latest** if that version is still the newest. One run recomputes the version's
+whole alias set, which is the point: a hand-picked subset would leave everyone following `latest` or
+`0.4` on the vulnerable digest. That is this repository's workflow rebuilding this repository's
+image — the api repo rebuilds its own the same way, and a base-image CVE will often want both.
 
 **Cutting a new patch release** is the other response, and the two are not interchangeable. Which
 one applies is the split below.
@@ -346,10 +370,11 @@ one applies is the split below.
 morning with Trivy — its `X.Y.Z`, `X.Y`, bare major and `latest`, which are one image under four
 names, resolved to a digest so it is scanned once — and `edge` alongside it, which is the image the
 project's own instance is running and the only one that exists before the first release is cut. It
-reports HIGH and CRITICAL findings in both halves of each image: the Alpine packages that come from
-`node:24-alpine`, and the npm packages `npm ci` installed into `.next/standalone`. This is the job
-that closes the loop with the rebuild above, because the case it catches is a release that was clean
-the day it shipped and grew a CVE three weeks later, with no PR in flight and nobody looking.
+reports HIGH and CRITICAL findings in both halves of each image: the Ubuntu packages, and the npm
+packages `npm ci` installed — into `.next/standalone`, and into the map renderer's
+`map-renderer/node_modules`. This is the job that closes the loop with the rebuild above, because
+the case it catches is a release that was clean the day it shipped and grew a CVE three weeks later,
+with no PR in flight and nobody looking.
 
 **The alert is a code-scanning alert** on the repository's **Security** tab, and you are the one who
 acts on it. The run also writes a summary to the workflow run itself, and that is the half worth
@@ -394,7 +419,7 @@ allow-list in that job — which is the point at which a new licence gets looked
 absorbed. Both are a gate on the diff; neither says anything about what is already installed.
 
 **Version bumps.** `.github/renovate.json5` is the other half: it watches `package.json` and
-`package-lock.json`, both `Dockerfile` base tags, `.nvmrc`, every pinned GitHub Action, and the four
+`package-lock.json`, the `Dockerfile`'s Node tag, `.nvmrc`, every pinned GitHub Action, and the four
 `npx --yes <tool>@<version>` pins in `code-quality.yml` that belong to no ecosystem and would
 otherwise never move at all. Routine updates arrive in one batch on Monday morning; a
 vulnerability-driven one ignores the schedule and is titled `fix(deps):`, so it lands in the Fixes
@@ -412,11 +437,17 @@ section of the release notes rather than among the chores.
 > so.
 
 One thing Renovate will not do on its own is move Node. `.nvmrc`, `engines.node` in `package.json`
-and the two `Dockerfile` base tags are all reachable to it; `node-version:` in `ci.yml` and
+and the `Dockerfile`'s Node tag are all reachable to it; `node-version:` in `ci.yml` and
 `code-quality.yml` is not, so an auto-opened PR would build the image on a new runtime while CI kept
 testing the old one. That update is grouped and held behind a checkbox on the **Dependency
 Dashboard** issue: it tells you a new Node is out and waits for a person, who edits the two
 workflows by hand.
+
+Two holds sit beside it, both for the map renderer's MapLibre Native, whose install script fetches a
+prebuilt binary and never builds one. Its binaries cover Node 20, 22 and 24, so the Node group
+offers nothing from 25 up — on any other ABI every `npm ci` here fails — and they are built for
+Ubuntu 24.04 alone, so Renovate does not offer a newer Ubuntu at all. Both are lifted by hand in
+`.github/renovate.json5` once the package ships binaries for the next one.
 
 To check what Renovate would actually do before trusting a change to that file:
 
@@ -444,7 +475,7 @@ worktree — the container needs the files, and `--dry-run=extract` writes nothi
   attached, recurring forever. The four release aliases that _are_ scanned are every form in which
   someone can be pinned to the supported release; `edge` is scanned beside them and is not one of
   them.
-- **The `linux/arm64` image**, on the assumption that it installs the same Alpine packages as
+- **The `linux/arm64` image**, on the assumption that it installs the same Ubuntu packages as
   `linux/amd64` and resolves the same lockfile. If that ever stops holding, the scan step is where a
   `--platform` pass goes.
 - **Vulnerabilities with no fix published upstream.** They are counted in the run summary but drive

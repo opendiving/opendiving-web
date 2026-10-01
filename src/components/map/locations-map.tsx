@@ -23,31 +23,18 @@ import { MapCanvas } from "@/components/map/map-canvas";
 import {
   findSnapshot,
   rememberSnapshot,
-  SNAPSHOT_HEIGHT,
-  SNAPSHOT_WIDTH,
   type MapSnapshot,
 } from "@/components/map/map-snapshots";
+import {
+  bandIn,
+  FIT_PADDING,
+  placedLocations,
+  SNAPSHOT_HEIGHT,
+  SNAPSHOT_WIDTH,
+  type MappableLocation,
+  type PlacedLocation,
+} from "@/lib/map-picture";
 import { cn } from "@/lib/utils";
-
-// Breathing room between the outermost place and the edge of the frame, so a
-// pin never sits on the border where half of its context is cropped away.
-const FIT_PADDING = 24;
-
-// Where the places have to land, as padding from a frame's top and bottom:
-// clear of whatever the caller covers the foot with, and of a backdrop's credit
-// over the top edge. Never so small that nothing fits: MapLibre then refuses
-// the fit and leaves the camera wherever it was.
-function bandIn(
-  height: number,
-  creditBottom: number,
-  coveredBottom: number,
-): { top: number; bottom: number } {
-  const top = FIT_PADDING + creditBottom;
-  return {
-    top,
-    bottom: Math.min(FIT_PADDING + coveredBottom, height - top - FIT_PADDING),
-  };
-}
 
 const corners = (bounds: LatLonBounds): LngLatBoundsLike => [
   [bounds.west, bounds.south],
@@ -62,6 +49,9 @@ const corners = (bounds: LatLonBounds): LngLatBoundsLike => [
 // coral, same 12px, so the pair reads as one legend where a second colour would
 // read as a second meaning. The tinted rather than transparent centre is what
 // keeps the ring a ring over a busy coastline in either theme.
+//
+// The map renderer draws the same two into a card's picture
+// (`map-renderer/pins.ts`), so a change here is a change there.
 const markerClassName = (variant: "pin" | "fix") =>
   cn(
     "h-3 w-3 rounded-full border-2 shadow",
@@ -69,90 +59,6 @@ const markerClassName = (variant: "pin" | "fix") =>
       ? "border-coral bg-background/80"
       : "border-background bg-coral",
   );
-
-/**
- * As much of a place as this map needs, which is the position and the name.
- * Loose enough to take a trip location - both what the API returns and what the
- * form holds while it is being edited - as well as a dive site, which is the
- * same two fields under the same names.
- */
-export interface MappableLocation {
-  name: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  bbox_south?: number | null;
-  bbox_north?: number | null;
-  bbox_west?: number | null;
-  bbox_east?: number | null;
-  /**
-   * How the marker is drawn: the default solid dot for a place somebody chose,
-   * or a hollow ring for a `"fix"` - a position a device recorded, which is not
-   * the same claim at all. A dive's entry and exit fixes are the only ones so
-   * far, and a mis-pinned site or a fix a kilometre off the site is the thing
-   * the two shapes make visible at a glance.
-   *
-   * Deliberately not `kind: "site" | "gps"` or anything else domain-shaped:
-   * this component knows about positions and names, and one optional styling
-   * field is what keeps it that way.
-   */
-  variant?: "pin" | "fix";
-}
-
-interface PlacedLocation {
-  name: string;
-  latitude: number;
-  longitude: number;
-  variant: "pin" | "fix";
-  bounds: LatLonBounds;
-}
-
-/**
- * The places that can actually be drawn, with the extent each one asks for.
- *
- * A place typed in by hand has no position and is skipped - the trip form's
- * part rows say so ("Not on the map") rather than leaving its absence here
- * unexplained.
- * A place the geocoder gave a footprint for is fitted by that footprint, which
- * is what keeps a country from opening at the zoom of its centroid; anything
- * else is fitted as the degenerate box of its own point.
- */
-function placedLocations(locations: MappableLocation[]): PlacedLocation[] {
-  const placed: PlacedLocation[] = [];
-  for (const location of locations) {
-    const { latitude, longitude } = location;
-    if (latitude == null || longitude == null) continue;
-
-    const { bbox_south, bbox_north, bbox_west, bbox_east } = location;
-    // All four or none: the API validates that, and half a box is not an
-    // extent, so the point is the safer reading of a broken one.
-    const hasBox =
-      bbox_south != null &&
-      bbox_north != null &&
-      bbox_west != null &&
-      bbox_east != null;
-
-    placed.push({
-      name: location.name,
-      latitude,
-      longitude,
-      variant: location.variant ?? "pin",
-      bounds: hasBox
-        ? {
-            south: bbox_south,
-            north: bbox_north,
-            west: bbox_west,
-            east: bbox_east,
-          }
-        : {
-            south: latitude,
-            north: latitude,
-            west: longitude,
-            east: longitude,
-          },
-    });
-  }
-  return placed;
-}
 
 export interface LocationsMapProps {
   locations: MappableLocation[];

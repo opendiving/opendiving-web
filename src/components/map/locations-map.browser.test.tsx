@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { ThemeProvider } from "next-themes";
-import { LocationsMap, type MappableLocation } from "./locations-map";
+import { LocationsMap } from "./locations-map";
+import type { MappableLocation } from "@/lib/map-picture";
 import { resolveBasemap, type BasemapConfig } from "@/lib/basemap";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 

@@ -48,8 +48,9 @@ export interface PublicConfig {
 /** `PublicConfig` plus the parts only the server renders with. */
 export interface RuntimeConfig extends PublicConfig {
   /**
-   * This instance's own origin. Only `metadataBase` and the OpenGraph URL use it, so a
-   * wrong value costs link previews rather than anything functional.
+   * This instance's own origin. In the web server only `metadataBase` and the OpenGraph
+   * URL use it, so there a wrong value costs link previews; the map renderer also names the
+   * instance by it to the basemap and resolves a relative style URL against it.
    */
   siteUrl: string;
   /**

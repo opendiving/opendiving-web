@@ -43,6 +43,10 @@ on:
         description: "Also push :latest"
         type: boolean
         default: false
+      measure:
+        description: "Also measure the map renderer on linux/amd64 (render times, memory, image size)"
+        type: boolean
+        default: false
 
 # `packages: write` is the whole point of the job; `contents: read` is what checkout
 # needs. The GITHUB_TOKEN these grant is also what links the resulting package back to
@@ -329,6 +333,12 @@ jobs:
           # layers on every build, which costs more than the cache saves.
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          # The runtime stage is never taken from the cache, because it is where the
+          # Ubuntu packages are installed and upgraded: a cached copy would hand every
+          # build - a CVE rebuild included - the packages of whichever build first ran
+          # it. The stages that build the app stay cached; this one only copies their
+          # output over a fresh `apt-get`.
+          no-cache-filters: runner
           # Buildx would otherwise push a provenance attestation alongside the image,
           # which renders on the GHCR package page as an extra `unknown/unknown` entry
           # next to the two real architectures. Drop the `false` if the attestation is
@@ -337,6 +347,30 @@ jobs:
           # `NEXT_PUBLIC_API_URL` is deliberately not passed: the published image calls the
           # relative `/api/v1` and forwards it from its own route handler, which is what
           # lets one image run on any domain. See the Dockerfile.
+
+      # Both programs the image carries, started from the bytes just pushed, before anything
+      # is tagged or deployed: the web server serves a page, and the map renderer draws a
+      # picture on a style that needs no network. A failure here stops `merge`, and with it
+      # `deploy`. See the script for what each check is.
+      #
+      # Skipped where the checked-out ref has no script: a CVE rebuild of a release cut before
+      # it, whose image has no map renderer to check either, and which must still republish.
+      - name: Smoke-test the image
+        if: hashFiles('scripts/smoke-test-image.sh') != ''
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: scripts/smoke-test-image.sh "${IMAGE}@${DIGEST}"
+
+      # The figures the flagship's renderer plan is chosen by, on the architecture it runs.
+      # Only when asked: it takes minutes, and it makes a handful of renders' worth of
+      # requests to OpenFreeMap - see the script's header.
+      - name: Measure the map renderer
+        if: inputs.measure && matrix.platform == 'linux/amd64'
+        # `bash` named, for its `pipefail`: the default shell would report the `tee`.
+        shell: bash
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: node scripts/measure-map-renderer.mjs "${IMAGE}@${DIGEST}" | tee -a "$GITHUB_STEP_SUMMARY"
 
       # An empty file named after the digest, because that is all the merge step needs and
       # an artifact cannot carry a bare string. The name is the digest without its
@@ -453,8 +487,9 @@ jobs:
   # built rather than `:edge`, because the tag may have moved on by the time the service
   # pulls and "deploy what this run produced" is the only version of this with a meaning.
   #
-  # `RENDER_DEPLOY_HOOKS` is comma-separated and this repository needs exactly one entry; the
-  # plural shape is shared with the api repo, where one image is deployed as two services.
+  # `RENDER_DEPLOY_HOOKS` is comma-separated, one hook per service this image runs as: the web
+  # server, and the map renderer beside it - as the api repo's image runs as the API and its
+  # worker.
   # **Absent is a supported state**: a fork has no hook, and neither does this repository until
   # somebody sets one, so absent prints a notice and goes green. A default-branch build that is
   # red for everyone who cannot hold the secret is a build people learn to ignore, which costs
