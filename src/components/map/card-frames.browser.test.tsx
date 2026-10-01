@@ -93,6 +93,7 @@ const TRIP: Trip = {
   dive_count: 12,
   dive_site_count: 7,
   species_count: 48,
+  max_depth: 31.4,
 };
 
 const SITE: DiveSite = {
