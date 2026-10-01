@@ -3529,8 +3529,8 @@ probe. `await connection()`, because a handler with no request-time API is prere
 from disk, and a health endpoint running none of the app's code is a strange thing to trust. The
 `src/proxy.ts` matcher excludes it, like `api/`: a policy about scripts and styles says nothing
 about two words of text, and it keeps a fresh nonce off a path hit every thirty seconds. The check
-is a `node -e` one-liner in exec form: `node:24-alpine` ships neither `curl` nor `wget`, and with no
-shell involved `process.env.PORT` is read by node at run time, so a moved port still works.
+is a `node -e` one-liner in exec form: the image ships neither `curl` nor `wget`, and with no shell
+involved `process.env.PORT` is read by node at run time, so a moved port still works.
 
 ## The image builds once per architecture, and a `v*` tag is checked against `package.json`
 
@@ -3649,15 +3649,17 @@ across ecosystems, or match `customManagers`. The regex `customManagers` entry c
 `npx --yes <tool>@<version>` pins in `code-quality.yml` (`depcheck`, `@next/bundle-analyzer`,
 `madge`, `@axe-core/cli`), seen by no other manager.
 
-`pinDigests: false` is load-bearing: the `Dockerfile` floats on `node:24-alpine` so a Publish Image
-re-run at an old `v` tag collects patched Alpine packages, where a digest pin, or
+`pinDigests: false` is load-bearing: the `Dockerfile` floats on `ubuntu:24.04` and
+`node:24-bookworm-slim` so a Publish Image re-run at an old `v` tag collects a patched base, and the
+runner stage it never caches collects patched Ubuntu packages; a digest pin, or
 `helpers:pinGitHubActionDigests`, rebuilds the vulnerable base and reports success. First-party
 actions pin a major tag, third-party a SHA; Renovate renews both.
 
 Node waits on `dependencyDashboardApproval` (`.nvmrc`, `engines.node`, `Dockerfile` grouped): the
 `24.x` in `with:` strings in `ci.yml` and `code-quality.yml` is invisible to the `github-actions`
 manager, so an automatic bump ships a runtime CI does not test, and odd majors are not LTS
-(`engines.node`: `>=24 <25`).
+(`engines.node`: `>=24 <25`). It is also held `<25`, and `ubuntu` is not watched: MapLibre Native's
+prebuilt binaries cover Node 20–24 on Ubuntu 24.04 alone, and its install never builds one.
 
 `aquasecurity/trivy` (`setup-trivy`'s `version:` input, `currentValue: latest`) is disabled by name:
 a number there freezes the scanner's advisory knowledge.
@@ -3668,9 +3670,9 @@ a number there freezes the scanner's advisory knowledge.
 scheduled job asks whether what people already run is, and only that drives the rebuild
 CONTRIBUTING.md documents.
 
-Both use Trivy: `npm audit` cannot see the Alpine half of `node:24-alpine`, and one database serves
-both jobs. `trivy fs` runs `HIGH,CRITICAL --ignore-unfixed` over production dependencies; an
-unfixable finding leaves no move. `--scanners vuln` is explicit: a base-image CVE is already public,
+Both use Trivy: `npm audit` cannot see the image's Ubuntu packages, and one database serves both
+jobs. `trivy fs` runs `HIGH,CRITICAL --ignore-unfixed` over production dependencies; an unfixable
+finding leaves no move. `--scanners vuln` is explicit: a base-image CVE is already public,
 notification rather than the disclosure `SECURITY.md` forbids.
 
 Findings fail only the PR job; the scheduled one fails just when release tags exist and no alias
@@ -6874,3 +6876,31 @@ page refuses, in another form.
 `/import` is the one door for every file the app reads; `/data` keeps its URL and is the export
 page. The picker filters nothing: the API decides by the bytes, and a file it cannot read is a row,
 not a refusal.
+
+## The map renderer ships in the web image, as a command of its own
+
+Card map pictures are drawn by MapLibre Native in `src/map-renderer/`, bundled into the web image
+and started as `node map-renderer/index.mjs`, the way the API image runs its worker. It reuses the
+web's basemap resolution, vendored styles, place functions and fit constants by import, so a card's
+picture and a live map agree by construction. The image is Ubuntu 24.04 because that is the only
+Linux MapLibre Native ships binaries for. Rejected: TileServer GL, which would move the fit into the
+API in Python and fix styles at startup; and a renderer image of its own, which the release
+machinery, built for two images named after their repositories, would have to learn.
+
+## A card's picture is fitted for the smallest card, with its pins in the pixels
+
+One picture per record and theme serves every card, so it is fitted for the narrowest frame and the
+shortest band any card has (`DIVE_CARD_FRAME`, `TRIP_CARD_FRAME`), and a wider card shows more map
+around the same middle. Every dive is fitted for the band its depth outline leaves, so one digest
+serves outlined and plain cards. `card-frames.browser.test.tsx` fails when a card shrinks below
+them. Pins are drawn into the picture because the stretched link covers the backdrop: nothing about
+a pin is hoverable, so positions beside the image would be a second channel for nothing.
+
+## The renderer's signature covers what changes a picture's pixels
+
+The signature hashes the sources that reach the renderer's bundle, the MapLibre Native version, each
+theme's style source, and the vendored style and sprite files when they are in use. The sources
+rather than the bundle's bytes, so a bundler upgrade that only reformats output keeps every picture;
+neither the credit nor, for the vendored pair, `SITE_URL`, since neither draws anything. A web merge
+touching none of it renames no picture. Upstream tile data and a remote style edited behind its URL
+change pixels without changing it, which a backdrop tolerates.

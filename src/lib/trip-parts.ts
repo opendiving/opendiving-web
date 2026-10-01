@@ -73,7 +73,8 @@ export function formatTripSpan(
  * position and footprint but no name, gets back what it put in.
  */
 export function tripPartLocations<L = Location>(
-  parts?: readonly (Omit<TripPart, "location"> & { location?: L | null })[] | null,
+  parts?:
+    readonly (Omit<TripPart, "location"> & { location?: L | null })[] | null,
 ): L[] {
   return (parts ?? [])
     .map((part) => part.location)

@@ -31,7 +31,7 @@ request for something exploitable; the fix and the disclosure should arrive toge
 
 Our own scanner's findings about the published image are not an exception to the line above. They
 are code-scanning alerts on this repository, raised by `.github/workflows/vulnerability-scan.yml` so
-that the base-image rebuild gets done, and they name advisories Alpine and NVD published first —
+that the base-image rebuild gets done, and they name advisories Ubuntu and NVD published first —
 `trivy image` against the same public tag tells you the same thing. (Before 2026-09-12 they were
 issues labelled `image-cve`; the last of those was closed on the day of the move, and none has been
 opened since.) This rule is about a defect in _our_ code that nobody has disclosed yet — that still
