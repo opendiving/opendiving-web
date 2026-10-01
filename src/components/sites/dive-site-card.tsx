@@ -9,7 +9,6 @@ import {
   BACKDROP_CARD_LINK,
   BackdropCard,
   BackdropCardFigures,
-  BackdropCardHeading,
   UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
@@ -90,16 +89,14 @@ export function DiveSiteCard({
         )
       }
     >
-      <BackdropCardHeading icon={MapPin}>
-        <Link href={`/sites/${site.uuid}`} className={BACKDROP_CARD_LINK}>
-          {site.name}
-        </Link>
-        {facts.length > 0 && (
-          <div className="text-xs">
-            <DiveSiteFacts facts={facts} />
-          </div>
-        )}
-      </BackdropCardHeading>
+      <Link href={`/sites/${site.uuid}`} className={BACKDROP_CARD_LINK}>
+        {site.name}
+      </Link>
+      {facts.length > 0 && (
+        <div className="text-xs">
+          <DiveSiteFacts facts={facts} />
+        </div>
+      )}
       <BackdropCardFigures figures={figures} />
     </BackdropCard>
   );

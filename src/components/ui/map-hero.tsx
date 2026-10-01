@@ -59,13 +59,12 @@ interface Known {
   icon: ComponentType<{ className?: string }>;
 }
 
+// The icon and the title block beside it, closer where the details are small.
+const HEADING = "flex items-center gap-2.5 md:gap-4";
+
 // The kind's icon before the title and the line under it, as tall as the two
 // together, glowing as their text does - through a filter, since `text-shadow`
 // stops at an SVG.
-// The icon and the title block beside it, as close as a card sets them below
-// `md`.
-const HEADING = "flex items-center gap-2.5 md:gap-4";
-
 const ICON =
   "size-10 shrink-0 stroke-[1.5] md:size-14 [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
 
