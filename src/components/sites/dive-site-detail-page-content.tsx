@@ -18,6 +18,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
+import { DiveSiteInfoCard } from "@/components/sites/dive-site-info-card";
 import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
 import { DiveSiteHero } from "@/components/sites/dive-site-hero";
 import { HERO_CONTROL, MapHeroSkeleton } from "@/components/ui/map-hero";
@@ -165,6 +166,8 @@ export function DiveSiteDetailPageContent() {
           </div>
 
           <div className="space-y-6">
+            <DiveSiteInfoCard site={diveSite} />
+
             {diveSite.notes && (
               <Card>
                 <CardHeader>

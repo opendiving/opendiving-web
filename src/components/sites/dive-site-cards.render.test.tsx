@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 
 import type { DiveSite } from "@/lib/api/dive-sites";
 import type { SpeciesLifeListEntry } from "@/lib/api/species";
 import { DiveSiteHero } from "./dive-site-hero";
+import { DiveSiteInfoCard } from "./dive-site-info-card";
 import { DiveSiteSpeciesCard } from "./dive-site-species-card";
 
-// What the site page says about the site itself: its hero, with what the site
-// records and what the diver's dives there add up to, and the species seen on
-// them.
+// What the site page says about the site itself: its hero, with the line the
+// site's card carries and what the diver's dives there add up to, the rest of
+// what it records, and the species seen on them.
 
 const account = vi.hoisted(() => ({
   user: { uuid: "user-1", units: "metric" as "metric" | "imperial" },
@@ -40,10 +41,105 @@ const SITE: DiveSite = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
+const row = (label: string) =>
+  screen.getByText(label, { selector: "div" }).nextElementSibling;
+
 beforeEach(() => {
   account.user.units = "metric";
   vi.mocked(speciesAPI.getLifeList).mockReset();
   vi.mocked(LocationsMap).mockClear();
+});
+
+describe("DiveSiteInfoCard", () => {
+  it("shows every member the site has", () => {
+    render(
+      <DiveSiteInfoCard
+        site={{
+          ...SITE,
+          other_names: ["砂辺", "Sunabe"],
+          tags: ["shore dive", "macro"],
+          external_ids: [
+            { registry: "openstreetmap", identifier: "node/313862678" },
+            { registry: "wikidata", identifier: "Q11520018" },
+            { registry: "wrecksite", identifier: "10021" },
+          ],
+        }}
+      />,
+    );
+
+    expect(row("Also known as")).toHaveTextContent("砂辺, Sunabe");
+    expect(
+      within(row("Tags") as HTMLElement)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["shore dive", "macro"]);
+
+    const registries = within(row("In other registries") as HTMLElement);
+    expect(
+      registries.getByRole("link", { name: /OpenStreetMap node\/313862678/ }),
+    ).toHaveAttribute("href", "https://www.openstreetmap.org/node/313862678");
+    expect(
+      registries.getByRole("link", { name: /Wikidata Q11520018/ }),
+    ).toHaveAttribute("href", "https://www.wikidata.org/wiki/Q11520018");
+    // A registry the format names no form for is text, not a guess at a URL.
+    expect(registries.getByText(/wrecksite/).closest("a")).toBeNull();
+  });
+
+  it("shows nothing for a member the site lacks", () => {
+    render(<DiveSiteInfoCard site={{ ...SITE, tags: ["macro"] }} />);
+
+    for (const label of [
+      "Also known as",
+      "Coordinates",
+      "In other registries",
+    ]) {
+      expect(
+        screen.queryByText(label, { selector: "div" }),
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  // Nothing of it would be left but the heading.
+  it("draws no card for a site that records none of it", () => {
+    const { container } = render(<DiveSiteInfoCard site={SITE} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  // Each is on the line in the hero above it.
+  it("leaves the place, its water, depths, altitude and entry to the hero", () => {
+    render(
+      <DiveSiteInfoCard
+        site={{
+          ...SITE,
+          location: { name: "Chatan, Okinawa, Japan" },
+          water_type: "salt",
+          depth_from: 3,
+          depth_to: 18,
+          altitude: 2,
+          entry_types: ["shore"],
+          // So that there is a card to look in.
+          tags: ["macro"],
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Dive Site Information" }),
+    ).toBeInTheDocument();
+    for (const label of [
+      "Location",
+      "Water type",
+      "Depth",
+      "Altitude",
+      "Entry type",
+      "Added on",
+    ]) {
+      expect(
+        screen.queryByText(label, { selector: "div" }),
+      ).not.toBeInTheDocument();
+    }
+  });
 });
 
 describe("DiveSiteHero", () => {
