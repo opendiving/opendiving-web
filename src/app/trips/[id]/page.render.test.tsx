@@ -236,6 +236,36 @@ describe("TripDetailPage", () => {
     ).toBeInTheDocument();
   });
 
+  // The dates are on the hero's line, and when it was created is not the trip's.
+  it("leaves the trip's dates to the hero", async () => {
+    render(<TripDetailPage />);
+
+    await screen.findByRole("heading", { name: "Trip Information" });
+    expect(screen.queryByText("Trip dates")).toBeNull();
+    expect(screen.queryByText("Created on")).toBeNull();
+  });
+
+  it("draws no information card for a trip with nothing more to say", async () => {
+    vi.mocked(tripsAPI.getTrip).mockResolvedValue({
+      ...TRIP,
+      parts: [],
+      people: [],
+    });
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      data: [],
+      total_count: 0,
+      has_more: false,
+      page: 1,
+      items_per_page: 100,
+    });
+    render(<TripDetailPage />);
+
+    await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
+    expect(
+      screen.queryByRole("heading", { name: "Trip Information" }),
+    ).toBeNull();
+  });
+
   it("puts a part's accommodation under its place", async () => {
     render(<TripDetailPage />);
 

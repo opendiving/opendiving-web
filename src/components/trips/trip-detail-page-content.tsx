@@ -12,8 +12,7 @@ import { fetchAllPages, isAbortError } from "@/lib/api/client";
 import { distinctContactUuids } from "@/lib/contact";
 import { useContactsByUuid } from "@/hooks/useContactsByUuid";
 import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
-import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
-import { formatTripSpan } from "@/lib/trip-parts";
+import { formatTripDateRange } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -36,13 +35,6 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // The plain-delete toast, and the first half of the one a move gets - "moved to
 // Cebu 2026" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Trip deleted successfully.";
-
-// The hero's line spells the month out, and the sidebar's dates read the same.
-const LONG_DATE: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-};
 
 // The body's column under the hero, which spans the window. The hero's own
 // details sit in the same column, so they line up with this.
@@ -124,11 +116,10 @@ export function TripDetailPageContent() {
     tripPeople.map((reference) => reference.person_uuid),
   );
 
-  const formatDate = (dateString: string) =>
-    formatDateTime(dateString, LONG_DATE);
-
   const tripParts = trip?.parts ?? [];
-  const tripDateRange = formatTripSpan(tripParts, LONG_DATE);
+  const hasPeople = tripPeople.some(
+    (reference) => people[reference.person_uuid],
+  );
 
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
@@ -239,107 +230,99 @@ export function TripDetailPageContent() {
             />
           </div>
 
+          {/* The trip's dates are on the hero's line. A trip with nothing more
+              to say draws no card - there would be nothing in it but its
+              heading. */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle as="h2" className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Trip Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {tripParts.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">
-                      {tripParts.length > 1 ? "Parts" : "Part"}
-                    </div>
-                    {/* One row per part, in the order the diver arranged them,
+            {(tripParts.length > 0 ||
+              hasPeople ||
+              diveCenterNames.length > 0) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle as="h2" className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Trip Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {tripParts.length > 0 && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        {tripParts.length > 1 ? "Parts" : "Part"}
+                      </div>
+                      {/* One row per part, in the order the diver arranged them,
                       rather than the capped joined line the header and the trip
                       cards show: this is the one surface with room to name every
                       place and put the part's own dates beneath each. A part
                       with no place is still a row - it is a stretch of the trip,
                       and dropping it would renumber the rest. */}
-                    <ul className="space-y-1.5">
-                      {tripParts.map((part, index) => {
-                        const dates = formatTripDateRange(
-                          part.start_date ?? undefined,
-                          part.end_date ?? undefined,
-                        );
-                        const accommodation = part.accommodation_uuid
-                          ? contacts[part.accommodation_uuid]
-                          : undefined;
-                        return (
-                          <li
-                            key={index}
-                            className="flex items-start gap-2 text-sm"
-                          >
-                            <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                            <span className="min-w-0">
-                              <span className="block">
-                                {part.location?.name ?? (
-                                  <span className="text-muted-foreground">
-                                    No place recorded
+                      <ul className="space-y-1.5">
+                        {tripParts.map((part, index) => {
+                          const dates = formatTripDateRange(
+                            part.start_date ?? undefined,
+                            part.end_date ?? undefined,
+                          );
+                          const accommodation = part.accommodation_uuid
+                            ? contacts[part.accommodation_uuid]
+                            : undefined;
+                          return (
+                            <li
+                              key={index}
+                              className="flex items-start gap-2 text-sm"
+                            >
+                              <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                              <span className="min-w-0">
+                                <span className="block">
+                                  {part.location?.name ?? (
+                                    <span className="text-muted-foreground">
+                                      No place recorded
+                                    </span>
+                                  )}
+                                </span>
+                                {accommodation && (
+                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <BedDouble className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="sr-only">Stayed at </span>
+                                    {accommodation.name}
+                                  </span>
+                                )}
+                                {dates && (
+                                  <span className="block text-xs text-muted-foreground">
+                                    {dates}
                                   </span>
                                 )}
                               </span>
-                              {accommodation && (
-                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <BedDouble className="h-3.5 w-3.5 shrink-0" />
-                                  <span className="sr-only">Stayed at </span>
-                                  {accommodation.name}
-                                </span>
-                              )}
-                              {dates && (
-                                <span className="block text-xs text-muted-foreground">
-                                  {dates}
-                                </span>
-                              )}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-
-                {tripPeople.some(
-                  (reference) => people[reference.person_uuid],
-                ) && (
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">
-                      People
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
-                    <PeopleList people={tripPeople} resolved={people} />
-                  </div>
-                )}
+                  )}
 
-                {/* What the contacts here are, and not who the diver was with:
+                  {hasPeople && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        People
+                      </div>
+                      <PeopleList people={tripPeople} resolved={people} />
+                    </div>
+                  )}
+
+                  {/* What the contacts here are, and not who the diver was with:
                   that is the People list above. */}
-                {diveCenterNames.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">
-                      Dive centers
+                  {diveCenterNames.length > 0 && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        Dive centers
+                      </div>
+                      <div className="text-sm">
+                        {diveCenterNames.join(", ")}
+                      </div>
                     </div>
-                    <div className="text-sm">{diveCenterNames.join(", ")}</div>
-                  </div>
-                )}
-
-                {tripDateRange && (
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">
-                      Trip dates
-                    </div>
-                    <div className="text-sm">{tripDateRange}</div>
-                  </div>
-                )}
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Created on
-                  </div>
-                  <div className="text-sm">{formatDate(trip.created_at)}</div>
-                </div>
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
