@@ -53,6 +53,9 @@ export function DiveSiteMultiSelect({
 }: DiveSiteMultiSelectProps) {
   const [labels, setLabels] = useState<Record<string, DiveSiteSummary>>({});
   const [showNewDialog, setShowNewDialog] = useState(false);
+  // Set by a save in the new-site dialog, so its close doesn't hand focus back
+  // to the input - which would reopen the menu `blurOnSelect` just shut.
+  const savedFromDialogRef = useRef(false);
   // Every uuid a single-site lookup has already been fired for, successful or not.
   const requestedRef = useRef<Set<string>>(new Set());
 
@@ -142,6 +145,7 @@ export function DiveSiteMultiSelect({
   });
 
   const handleCreated = (newDiveSite: DiveSite) => {
+    savedFromDialogRef.current = true;
     rememberLabel(newDiveSite);
     addSite(newDiveSite.uuid);
   };
@@ -240,6 +244,9 @@ export function DiveSiteMultiSelect({
         noMatchesLabel="No dive sites match."
         addNewLabel="Add dive site..."
         keepOpenOnSelect
+        // Most dives have a single site, so an added one closes the field
+        // rather than inviting a second.
+        blurOnSelect
         onAddNew={() => setShowNewDialog(true)}
       />
 
@@ -247,6 +254,10 @@ export function DiveSiteMultiSelect({
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onSaved={handleCreated}
+        onCloseAutoFocus={(event) => {
+          if (savedFromDialogRef.current) event.preventDefault();
+          savedFromDialogRef.current = false;
+        }}
       />
     </div>
   );

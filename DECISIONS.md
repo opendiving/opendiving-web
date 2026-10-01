@@ -671,9 +671,11 @@ fire on an already-focused element — so focus alone leaves the input a dead en
 keeps focus (a pick, Escape, a dialog restoring focus). A click always brings the menu back.
 
 `keepOpenOnSelect` keeps the menu up after a pick and clears the typed filter so several items can
-be added in a row. `DiveSiteMultiSelect` and `GearItemMultiSelect` set it, their picked items moving
-into the list above; `TripCombobox` leaves it off because it fills a single field, where closing and
-showing the chosen name is right.
+be added in a row. The append-only pickers set it, their picked items moving into the list above;
+`TripCombobox` leaves it off because it fills a single field, where closing and showing the chosen
+name is right. `DiveSiteMultiSelect` adds `blurOnSelect`, which closes the menu and leaves the field
+after a pick: most dives have one site, and an open menu would cover the fields below. Its new-site
+dialog skips the focus return after a save for the same reason.
 
 ## Dropdowns are navigable with Up/Down and Enter
 

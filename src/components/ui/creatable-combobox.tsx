@@ -332,6 +332,11 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   //
   // It implies `commitOnEnterOnly`, which used to be part of it.
   keepOpenOnSelect?: boolean;
+  // For an append-only field where one item is the usual answer: a pick still
+  // clears the filter, but closes the menu and leaves the field rather than
+  // readying it for the next, so the dropdown isn't left over the rest of the
+  // form. Only read alongside `keepOpenOnSelect`.
+  blurOnSelect?: boolean;
   // Typed text becomes a value only from a deliberate Enter, never from focus
   // leaving and never from a keystroke that happens to spell an option exactly.
   // Picking a row from the menu still works, and abandoning a half-typed query
@@ -376,6 +381,7 @@ export function CreatableCombobox({
   queryTooLongLabel,
   searchErrorLabel = "Search is unavailable right now.",
   keepOpenOnSelect = false,
+  blurOnSelect = false,
   commitOnEnterOnly = false,
   // Forwarded to the text input rather than the wrapper, so `FormLabel`'s
   // `htmlFor` lands on the thing that actually takes focus.
@@ -641,6 +647,11 @@ export function CreatableCombobox({
       // clicking the already-focused input did nothing, forcing a click-away
       // and click-back to add a second item.
       setInputValue("");
+      if (blurOnSelect) {
+        closeMenu();
+        inputRef.current?.blur();
+        return;
+      }
       setIsOpen(true);
       inputRef.current?.focus();
       return;
@@ -719,7 +730,9 @@ export function CreatableCombobox({
       setInputValue(keepOpenOnSelect ? "" : action.item.name);
       setTyped(false);
       onChange(action.item.id);
-      readyForNext();
+      // The Enter that got here has already blurred the field and closed the
+      // menu, which is where `blurOnSelect` wants them left.
+      if (!blurOnSelect) readyForNext();
       return;
     }
 
@@ -734,7 +747,7 @@ export function CreatableCombobox({
       setInputValue(keepOpenOnSelect ? "" : created.name);
       setTyped(false);
       onChange(created.id);
-      readyForNext();
+      if (!blurOnSelect) readyForNext();
     } catch (error) {
       console.error("Failed to create item:", error);
       onChange(undefined);
