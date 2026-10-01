@@ -251,7 +251,7 @@ export function Header() {
           {/* Actions */}
           {/* The four controls and the wordmark need ~360px at the full gaps, so
               only phones narrower than 370px get the tighter ones. */}
-          <div className="flex flex-shrink-0 items-center space-x-3 max-[370px]:space-x-1">
+          <div className="flex flex-shrink-0 items-center space-x-2 max-[370px]:space-x-1">
             {isAuthenticated && user && (
               <DropdownMenu>
                 {/* The hint wraps the *menu* trigger rather than sitting
