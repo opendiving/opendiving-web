@@ -247,7 +247,7 @@ describe("DiveDetailSidebar environment", () => {
   });
 
   it("hides both rows on a dive that records neither", () => {
-    renderSidebar(dive({ bottom_temperature: 22.5 }));
+    renderSidebar(dive({ visibility: 12 }));
 
     expect(screen.getByText("Environment")).toBeInTheDocument();
     expect(screen.queryByText("Water type")).not.toBeInTheDocument();
@@ -258,6 +258,14 @@ describe("DiveDetailSidebar environment", () => {
     renderSidebar(dive());
 
     expect(screen.queryByText("Environment")).not.toBeInTheDocument();
+  });
+
+  // It is among the hero's figures, and on its own carries no card here.
+  it("leaves the water's temperature to the hero", () => {
+    renderSidebar(dive({ bottom_temperature: 22.5 }));
+
+    expect(screen.queryByText("Environment")).not.toBeInTheDocument();
+    expect(screen.queryByText(/temperature/i)).not.toBeInTheDocument();
   });
 });
 
@@ -278,7 +286,7 @@ describe.each([
   });
 
   it("hides the row on a dive that does not record it", () => {
-    renderSidebar(dive({ bottom_temperature: 22.5 }));
+    renderSidebar(dive({ visibility: 12 }));
 
     expect(screen.queryByText(label)).not.toBeInTheDocument();
   });

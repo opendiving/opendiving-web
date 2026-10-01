@@ -38,7 +38,6 @@ import {
   MapPin,
   Mountain,
   Phone,
-  Thermometer,
   ThermometerSun,
   Waves,
   WavesArrowUp,
@@ -137,8 +136,8 @@ export function DiveDetailSidebar({
   const hasPeople = divePeople.some(
     (reference) => people[reference.person_uuid],
   );
+  // The water's temperature is the hero's, among the dive's figures.
   const hasEnvironmentInfo =
-    dive.bottom_temperature != null ||
     dive.air_temperature != null ||
     dive.visibility != null ||
     dive.water_type != null ||
@@ -356,11 +355,6 @@ export function DiveDetailSidebar({
             <CardTitle as="h2">Environment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {dive.bottom_temperature != null && (
-              <Reading label="Bottom temperature" icon={Thermometer}>
-                {formatTemperature(dive.bottom_temperature, units)}
-              </Reading>
-            )}
             {dive.air_temperature != null && (
               <Reading label="Air temperature" icon={ThermometerSun}>
                 {formatTemperature(dive.air_temperature, units)}

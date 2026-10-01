@@ -110,6 +110,37 @@ describe("DiveHero", () => {
     expect(figure("Avg depth")).toBeUndefined();
   });
 
+  it("shows the water's temperature, in the card's order", () => {
+    render(
+      <DiveHero
+        dive={dive({
+          max_depth: 30.52,
+          avg_depth: 18.2,
+          bottom_temperature: 0,
+        })}
+      />,
+    );
+
+    // 0 °C is a reading, not an absence.
+    expect(figure("Water temp")).toHaveTextContent("0°C");
+    expect(
+      Array.from(document.querySelectorAll("dt"), (dt) => dt.textContent),
+    ).toEqual(["Duration", "Max depth", "Water temp", "Avg depth"]);
+  });
+
+  it("reads the water's temperature in the diver's units", () => {
+    auth.units = "imperial";
+    render(<DiveHero dive={dive({ bottom_temperature: 22 })} />);
+
+    expect(figure("Water temp")).toHaveTextContent("°F");
+  });
+
+  it("leaves off a temperature the dive does not record", () => {
+    render(<DiveHero dive={dive()} />);
+
+    expect(figure("Water temp")).toBeUndefined();
+  });
+
   it("keeps a zero-metre average, which is a reading rather than an absence", () => {
     // `!= null`, not truthiness - the guard that has bitten `gas_number` and
     // the mixture pressures in this repo.

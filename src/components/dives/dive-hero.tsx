@@ -16,14 +16,14 @@ import {
   formatDiveDateTime,
   formatDurationHoursMinutes,
 } from "@/lib/date-time";
-import { formatDepth } from "@/lib/units";
+import { formatDepth, formatTemperature } from "@/lib/units";
 
 /**
  * The dive page's heading: the dive's card drawn the width of the window, with
- * the three numbers that describe the shape of the dive - its duration and its
- * depths, at the page's two decimals rather than the card's whole units, since
- * this is the page to read them on. A dive that recorded no depths leaves the
- * duration on its own.
+ * its figures in the card's order - its duration, its depths and the water's
+ * temperature - at the page's precision rather than the card's whole units,
+ * since this is the page to read them on. Each but the duration only where the
+ * dive records it, so a hand-logged dive can leave the duration on its own.
  */
 export function DiveHero({
   dive,
@@ -45,6 +45,13 @@ export function DiveHero({
     figures.push({
       label: "Max depth",
       value: formatDepth(dive.max_depth, units),
+    });
+  }
+  // `!= null`, since 0 °C is a reading.
+  if (dive.bottom_temperature != null) {
+    figures.push({
+      label: "Water temp",
+      value: formatTemperature(dive.bottom_temperature, units),
     });
   }
   if (dive.avg_depth != null) {
