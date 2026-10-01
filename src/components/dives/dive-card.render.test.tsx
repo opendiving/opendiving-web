@@ -40,6 +40,7 @@ function dive(overrides: Partial<Dive> = {}): Dive {
     duration: 2700,
     max_depth: 30.52,
     avg_depth: 18.2,
+    bottom_temperature: 24.4,
     dive_sites: [],
     mixtures: [],
     ...overrides,
@@ -116,19 +117,25 @@ describe("DiveCard", () => {
 
     expect(figuresOf(card())).toEqual([
       ["Duration", "45min"],
-      ["Maximum Depth", "31 m"],
-      ["Average Depth", "18 m"],
+      ["Max Depth", "31 m"],
+      ["Water Temp", "24°C"],
     ]);
   });
 
-  it("keeps every figure's place on a dive logged without depths", () => {
+  it("keeps every figure's place on a dive logged without depths or temperature", () => {
     const item = card({
-      dive: dive({ max_depth: undefined, avg_depth: undefined }),
+      dive: dive({ max_depth: undefined, bottom_temperature: undefined }),
     });
 
     expect(
       Array.from(item.querySelectorAll("dd"), (value) => value.textContent),
     ).toEqual(["45min", "-", "-"]);
+  });
+
+  it("shows a water temperature of zero rather than a dash", () => {
+    const item = card({ dive: dive({ bottom_temperature: 0 }) });
+
+    expect(item.querySelectorAll("dd")[2]).toHaveTextContent("0°C");
   });
 
   it("names the dive and says when and where it was", () => {

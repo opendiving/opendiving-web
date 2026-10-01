@@ -142,18 +142,19 @@ export function BackdropCard({
   );
 }
 
-// A card's figures, laid out as the dive page lays out a dive's duration and
-// depths, a size down. Columns as wide as their contents on a phone, where
-// three equal ones wrap "Maximum Depth" inside a detail page's card and the
-// card outgrows its skeleton; a value never breaks, so "1h 11min" is one
-// figure, and on the narrowest screens a label wraps instead.
+// A card's figures, a size down from the dive page's. Columns as wide as their
+// contents and one gap at every width, so the figures sit the same distance
+// apart on every card: the gap is the widest that keeps a dive's three on one
+// line inside a dashboard card at 320px, where equal columns or a wider gap
+// wrap a label and the card outgrows its skeleton. A value never breaks, so
+// "1h 11min" is one figure.
 export function BackdropCardFigures({
   figures,
 }: {
   figures: { label: string; value: ReactNode }[];
 }) {
   return (
-    <dl className="mt-3 grid w-fit grid-cols-[repeat(3,auto)] gap-3 sm:grid-cols-3 sm:gap-6">
+    <dl className="mt-3 grid w-fit grid-cols-[repeat(3,auto)] gap-3">
       {figures.map(({ label, value }) => (
         <div key={label}>
           <dt className="text-xs">{label}</dt>

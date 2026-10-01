@@ -23,7 +23,7 @@ import {
   formatDurationHoursMinutes,
 } from "@/lib/date-time";
 import { useUnits } from "@/hooks/useUnits";
-import { formatDepth } from "@/lib/units";
+import { formatDepth, formatTemperature } from "@/lib/units";
 import { Edit } from "lucide-react";
 
 // A dive with nowhere on a map yet: the map's open water where a trip would
@@ -70,8 +70,8 @@ interface DiveCardProps {
 }
 
 // One dive as a card, in every list of dives: its sites and fixes on a map as
-// the backdrop with its depth curve across the foot of it, and its duration and
-// depths as the dive page shows them.
+// the backdrop with its depth curve across the foot of it, and its duration,
+// deepest point and water temperature.
 export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   const units = useUnits();
   // The edit page returns to wherever the card was opened from.
@@ -82,9 +82,12 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   // The title names the site; this says where it is.
   const placeName = dive.dive_sites[0]?.location?.name;
   // Whole units, unlike the dive page's two decimals: it is a list to scan,
-  // and the second decimal of a depth is not what anyone is scanning for.
+  // and the second decimal is not what anyone is scanning for.
   const depth = (meters?: number) =>
     meters ? formatDepth(meters, units, { decimals: 0 }) : "-";
+  // `!= null`, since 0 °C is a reading where 0 m is not.
+  const temperature = (celsius?: number | null) =>
+    celsius != null ? formatTemperature(celsius, units, { decimals: 0 }) : "-";
 
   return (
     <BackdropCard
@@ -154,8 +157,8 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
             label: "Duration",
             value: formatDurationHoursMinutes(dive.duration),
           },
-          { label: "Maximum Depth", value: depth(dive.max_depth) },
-          { label: "Average Depth", value: depth(dive.avg_depth) },
+          { label: "Max Depth", value: depth(dive.max_depth) },
+          { label: "Water Temp", value: temperature(dive.bottom_temperature) },
         ]}
       />
     </BackdropCard>
