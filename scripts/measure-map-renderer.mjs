@@ -36,6 +36,10 @@ const LIMITS = ["--cpus=0.5", "--memory=512m"];
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const UPSTREAM = "https://tiles.openfreemap.org";
 const RENDERER = ["node", "map-renderer/index.mjs"];
+// The vendored styles' TileJSON, its vector tiles, the Natural Earth underlay and
+// the glyph ranges.
+const OPENFREEMAP_PATHS =
+  /^\/(planet(\/[\w-]+\/\d+\/\d+\/\d+\.pbf)?|natural_earth\/ne2sr\/\d+\/\d+\/\d+\.png|fonts\/[\w%,.-]+\/\d+-\d+\.pbf)$/;
 
 // Quiet on failure: a process listed in `/proc` can be gone by the time it is
 // read, and the error says so in the exception rather than on the terminal.
@@ -192,6 +196,7 @@ function proxy() {
   const recorded = new Map();
   let replaying = false;
   let upstreamRequests = 0;
+  const refused = new Set();
   const server = createServer(async (request, response) => {
     const url = new URL(request.url, "http://proxy");
     const base = `http://host.docker.internal:${server.address().port}`;
@@ -223,12 +228,20 @@ function proxy() {
     }
     if (!url.pathname.startsWith("/ofm/")) return send(404, "");
 
+    // Only what the vendored styles ask OpenFreeMap for, so the proxy can be made
+    // to fetch nothing else from it, and nothing at all from anywhere else.
     const key = url.pathname.slice("/ofm".length);
+    if (!OPENFREEMAP_PATHS.test(key)) {
+      refused.add(key);
+      return send(404, "");
+    }
     let entry = recorded.get(key);
     if (!entry && replaying) entry = standIn(recorded, key);
     if (!entry && !replaying) {
+      const target = new URL(key, UPSTREAM);
+      if (target.origin !== UPSTREAM) return send(404, "");
       upstreamRequests += 1;
-      const upstream = await fetch(`${UPSTREAM}${key}`);
+      const upstream = await fetch(target);
       let body = Buffer.from(await upstream.arrayBuffer());
       const type = upstream.headers.get("content-type") ?? "";
       if (type.includes("json")) {
@@ -245,7 +258,7 @@ function proxy() {
   return {
     server,
     replay: () => (replaying = true),
-    stats: () => ({ recorded: recorded.size, upstreamRequests }),
+    stats: () => ({ recorded: recorded.size, upstreamRequests, refused }),
     listen: () =>
       new Promise((done) =>
         server.listen(0, "0.0.0.0", () => done(server.address().port)),
@@ -401,7 +414,10 @@ const settled = memory("measure-memory");
 stop("measure-memory");
 recorder.server.close();
 
-const { recorded, upstreamRequests } = recorder.stats();
+const { recorded, upstreamRequests, refused } = recorder.stats();
+if (refused.size > 0) {
+  console.error(`The proxy refused: ${[...refused].join(", ")}`);
+}
 say(
   `**The renderer's memory** over ${RENDERS} renders of distinct places, served from ` +
     `${recorded} responses recorded from ${upstreamRequests} requests to OpenFreeMap ` +

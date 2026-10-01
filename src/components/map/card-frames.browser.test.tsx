@@ -218,26 +218,21 @@ interface Measured {
 }
 
 // Each card's map frame and its band, as the map itself works them out.
-async function measureCards(): Promise<Measured[]> {
-  const probes = await waitFor(() => {
-    const found = [
-      ...document.querySelectorAll<HTMLElement>("li [data-covered-bottom]"),
-    ];
-    expect(found.length).toBeGreaterThan(0);
-    // The credit, which the band starts under.
-    for (const probe of found) {
-      expect(probe.textContent).toContain("OpenFreeMap");
-    }
-    return found;
-  });
+function measureNow(): Measured[] {
+  const probes = [
+    ...document.querySelectorAll<HTMLElement>("li [data-covered-bottom]"),
+  ];
+  expect(probes.length).toBeGreaterThan(0);
   return probes.map((probe) => {
     const frame = probe.firstElementChild as HTMLElement;
+    // The credit, which the band starts under.
     const credit = [...frame.children].find((child) =>
       child.textContent?.includes("OpenFreeMap"),
-    ) as HTMLElement;
+    ) as HTMLElement | undefined;
+    expect(credit).toBeDefined();
     const band = bandIn(
       frame.clientHeight,
-      credit.offsetTop + credit.offsetHeight,
+      credit!.offsetTop + credit!.offsetHeight,
       Number(probe.dataset.coveredBottom),
     );
     return {
@@ -245,6 +240,27 @@ async function measureCards(): Promise<Measured[]> {
       height: frame.clientHeight,
       bandHeight: frame.clientHeight - band.top - band.bottom,
     };
+  });
+}
+
+const frames = (count: number) =>
+  new Promise<void>((done) => {
+    const next = (left: number) =>
+      left === 0 ? done() : requestAnimationFrame(() => next(left - 1));
+    next(count);
+  });
+
+// Once the cards have settled: a card hears of its details' height from a
+// `ResizeObserver` and passes it down on its next render, so a reading taken
+// in between pairs a new frame with an old foot. Read until two readings a few
+// frames apart agree.
+function measureCards(): Promise<Measured[]> {
+  return waitFor(async () => {
+    const before = measureNow();
+    await frames(3);
+    const after = measureNow();
+    expect(after).toEqual(before);
+    return after;
   });
 }
 
