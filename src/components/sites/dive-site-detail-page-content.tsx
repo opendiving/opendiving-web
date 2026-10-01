@@ -21,7 +21,11 @@ import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { DiveSiteInfoCard } from "@/components/sites/dive-site-info-card";
 import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
 import { DiveSiteHero } from "@/components/sites/dive-site-hero";
-import { HERO_CONTROL, MapHeroSkeleton } from "@/components/ui/map-hero";
+import {
+  HERO_BODY,
+  HERO_CONTROL,
+  MapHeroSkeleton,
+} from "@/components/ui/map-hero";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, FileText, MapPin, Plus } from "lucide-react";
@@ -30,10 +34,6 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // The plain-delete toast, and the first half of the one a move gets - "moved to
 // Blue Hole" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Dive site deleted successfully.";
-
-// The body's column under the hero, which spans the window. The hero's own
-// details sit in the same column, so they line up with this.
-const BODY = "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6";
 
 export function DiveSiteDetailPageContent() {
   const router = useRouter();
@@ -76,7 +76,7 @@ export function DiveSiteDetailPageContent() {
           backLabel="Back to dive sites"
           icon={MapPin}
         />
-        <div className={BODY}>
+        <div className={HERO_BODY}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <CardSkeleton lines={7} />
@@ -148,7 +148,7 @@ export function DiveSiteDetailPageContent() {
         }
       />
 
-      <div className={BODY}>
+      <div className={HERO_BODY}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <RecentDivesCard

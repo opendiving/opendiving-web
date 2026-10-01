@@ -20,12 +20,6 @@ export interface PageHeaderProps {
    */
   subtitle?: ReactNode;
   /**
-   * Navigation *between records*, as opposed to the `actions` that operate on
-   * the one being shown - currently the dive page's previous/next pager. Sits
-   * on the title's own line: it is about the record named beside it.
-   */
-  nav?: ReactNode;
-  /**
    * Right-aligned on the back link's row - on detail pages, Edit and the
    * `ItemActionsMenu` holding everything else.
    */
@@ -60,7 +54,6 @@ export function PageHeader({
   backLabel,
   title,
   subtitle,
-  nav,
   actions,
 }: PageHeaderProps) {
   return (
@@ -74,14 +67,7 @@ export function PageHeader({
         <BackLink href={backHref} label={backLabel} />
         {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
       </div>
-      {/* `nav` shares the title's line, and `h-9` on its controls is exactly
-          the `text-3xl` line box, so the two sit level without either being
-          nudged. Wraps below the title on a narrow screen rather than
-          squeezing it. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h1 className="text-3xl font-bold">{title}</h1>
-        {nav}
-      </div>
+      <h1 className="text-3xl font-bold">{title}</h1>
       {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}
     </div>
   );

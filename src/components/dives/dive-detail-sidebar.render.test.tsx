@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveDetailSidebar } from "./dive-detail-sidebar";
-import type { LocationsMapProps } from "@/components/map/locations-map";
 import type { Dive, DiveSiteSummary } from "@/lib/api/dives";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
@@ -25,19 +24,8 @@ afterEach(() => {
 // The card these cover has to hold four positions that arrive in any
 // combination - a site's pin, an entry fix, an exit fix, none of them - and the
 // combinations are the whole point: exit-only is the ordinary recording, and a
-// dive with fixes but no trip and no site still has somewhere to show them. The
-// fit and the markers belong to `locations-map.browser.test.tsx`, which needs a
-// real browser for them, so here the map is a stub that records what it was
-// handed.
-vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: ({ locations, subject }: LocationsMapProps) => (
-    <div
-      data-testid="locations-map"
-      data-subject={subject}
-      data-locations={JSON.stringify(locations)}
-    />
-  ),
-}));
+// dive with fixes but no trip and no site still has somewhere to show them.
+// Their map is the hero's, covered in `dive-hero.render.test.tsx`.
 
 // Dahab: the exit fix from the corpus file this feature was built against, and
 // a second pair a short surface swim away from it.
@@ -114,11 +102,6 @@ function course(overrides: Partial<Course> = {}): Course {
   };
 }
 
-const mapLocations = (): LocationsMapProps["locations"] =>
-  JSON.parse(
-    screen.getByTestId("locations-map").getAttribute("data-locations")!,
-  );
-
 describe("DiveDetailSidebar locations", () => {
   it("shows an exit-only dive as a complete recording", () => {
     // Every GPS-carrying file in the API's corpus takes its first fix after
@@ -131,13 +114,6 @@ describe("DiveDetailSidebar locations", () => {
     expect(screen.getByText("28.4375, 34.4584")).toBeInTheDocument();
     expect(screen.queryByText("Entry")).not.toBeInTheDocument();
     expect(screen.queryByText(/entry → exit/i)).not.toBeInTheDocument();
-
-    expect(mapLocations()).toEqual([
-      { name: "Exit", latitude: 28.4375, longitude: 34.4584, variant: "fix" },
-    ]);
-    expect(
-      screen.getByTestId("locations-map").getAttribute("data-subject"),
-    ).toBe("the dive's location");
   });
 
   it("carries the card on GPS alone, with no trip and no site", () => {
@@ -147,7 +123,7 @@ describe("DiveDetailSidebar locations", () => {
 
     expect(screen.queryByText("Trip")).not.toBeInTheDocument();
     expect(screen.queryByText("Dive site")).not.toBeInTheDocument();
-    expect(screen.getByTestId("locations-map")).toBeInTheDocument();
+    expect(screen.getByText("Exit")).toBeInTheDocument();
   });
 
   it("measures the drift when both fixes were recorded", () => {
@@ -180,15 +156,6 @@ describe("DiveDetailSidebar locations", () => {
     expect(screen.queryByText(/entry → exit/i)).not.toBeInTheDocument();
   });
 
-  it("tells a recorded fix apart from a placed pin on the map", () => {
-    renderSidebar(dive({ dive_sites: [site()], ...EXIT }));
-
-    expect(mapLocations()).toEqual([
-      { name: "Blue Hole", latitude: 28.5721, longitude: 34.5372 },
-      { name: "Exit", latitude: 28.4375, longitude: 34.4584, variant: "fix" },
-    ]);
-  });
-
   it("keeps an equator coordinate, which is a position rather than an absence", () => {
     // The zero-versus-absent trap, on the one row where a 0 is real: a dive off
     // West Africa exits at longitude 0.
@@ -196,20 +163,6 @@ describe("DiveDetailSidebar locations", () => {
 
     expect(screen.getByText("Exit")).toBeInTheDocument();
     expect(screen.getByText("0, 0")).toBeInTheDocument();
-    expect(mapLocations()).toEqual([
-      { name: "Exit", latitude: 0, longitude: 0, variant: "fix" },
-    ]);
-  });
-
-  it("skips the map for a site with no pin and no fixes", () => {
-    // The card still has the site's name to show; the map would draw nothing,
-    // and gating here is what keeps its chunk unfetched.
-    renderSidebar(
-      dive({ dive_sites: [site({ latitude: null, longitude: null })] }),
-    );
-
-    expect(screen.getByText("Dive site")).toBeInTheDocument();
-    expect(screen.queryByTestId("locations-map")).not.toBeInTheDocument();
   });
 
   // How the diver got in, and off which boat, are facts about the place, so
@@ -254,7 +207,6 @@ describe("DiveDetailSidebar locations", () => {
     renderSidebar(dive());
 
     expect(screen.queryByText("Location")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("locations-map")).not.toBeInTheDocument();
   });
 });
 

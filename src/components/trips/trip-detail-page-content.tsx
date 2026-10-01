@@ -25,7 +25,11 @@ import { CardSkeleton } from "@/components/ui/skeleton";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripHero } from "@/components/trips/trip-hero";
-import { HERO_CONTROL, MapHeroSkeleton } from "@/components/ui/map-hero";
+import {
+  HERO_BODY,
+  HERO_CONTROL,
+  MapHeroSkeleton,
+} from "@/components/ui/map-hero";
 import { PeopleList } from "@/components/people/people-list";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { BedDouble, Edit, Plus, Calendar, Luggage, MapPin } from "lucide-react";
@@ -35,10 +39,6 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // The plain-delete toast, and the first half of the one a move gets - "moved to
 // Cebu 2026" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Trip deleted successfully.";
-
-// The body's column under the hero, which spans the window. The hero's own
-// details sit in the same column, so they line up with this.
-const BODY = "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6";
 
 export function TripDetailPageContent() {
   const router = useRouter();
@@ -139,7 +139,7 @@ export function TripDetailPageContent() {
           backLabel="Back to trips"
           icon={Luggage}
         />
-        <div className={BODY}>
+        <div className={HERO_BODY}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <CardSkeleton lines={7} />
@@ -211,7 +211,7 @@ export function TripDetailPageContent() {
         }
       />
 
-      <div className={BODY}>
+      <div className={HERO_BODY}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <RecentDivesCard

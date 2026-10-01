@@ -22,6 +22,8 @@ export interface DiveNeighborNavProps {
    * did not ask for.
    */
   reloadToken?: number;
+  // The buttons' look, from the surface they sit on - the dive hero's top row.
+  className?: string;
 }
 
 // What the button's tooltip and accessible name say about where it goes. The
@@ -63,6 +65,7 @@ function neighborLabel(
 export function DiveNeighborNav({
   diveUuid,
   reloadToken = 0,
+  className,
 }: DiveNeighborNavProps) {
   // Keyed by the uuid they were fetched for. Navigating between two dives keeps
   // this component mounted with a new `diveUuid`, and a plain `neighbors` state
@@ -113,11 +116,13 @@ export function DiveNeighborNav({
         direction="previous"
         neighbor={neighbors?.previous ?? null}
         isPending={isPending}
+        className={className}
       />
       <NavLink
         direction="next"
         neighbor={neighbors?.next ?? null}
         isPending={isPending}
+        className={className}
       />
     </nav>
   );
@@ -128,6 +133,7 @@ interface NavLinkProps {
   neighbor: DiveNeighbor | null;
   // Whether `neighbor` being null means "still loading" rather than "end of log".
   isPending: boolean;
+  className?: string;
 }
 
 /**
@@ -155,7 +161,7 @@ interface NavLinkProps {
  * step keeps the page mounted" in `DECISIONS.md`. Both halves are load-bearing:
  * the hoist keeps the component mounted, and this keeps the node inside it.
  */
-function NavLink({ direction, neighbor, isPending }: NavLinkProps) {
+function NavLink({ direction, neighbor, isPending, className }: NavLinkProps) {
   const router = useRouter();
   const isPrevious = direction === "previous";
   const Chevron = isPrevious ? ChevronLeft : ChevronRight;
@@ -168,9 +174,10 @@ function NavLink({ direction, neighbor, isPending }: NavLinkProps) {
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       size="sm"
       className={cn(
+        className,
         // Matches `Button`'s own `disabled:` styling, since `aria-disabled` is
         // what stands in for `disabled` here.
         !href && "pointer-events-none opacity-50",
@@ -211,9 +218,14 @@ function NavLink({ direction, neighbor, isPending }: NavLinkProps) {
           router.push(href);
         }}
       >
-        {isPrevious && <Chevron className="h-4 w-4 mr-1" />}
-        {isPrevious ? "Previous" : "Next"}
-        {!isPrevious && <Chevron className="h-4 w-4 ml-1" />}
+        {/* The chevron alone on a phone, where the words would push the
+            top row past the screen's edge; the name is `aria-label`'s at
+            every width. */}
+        {isPrevious && <Chevron className="h-4 w-4 sm:mr-1" />}
+        <span className="max-sm:hidden">
+          {isPrevious ? "Previous" : "Next"}
+        </span>
+        {!isPrevious && <Chevron className="h-4 w-4 sm:ml-1" />}
       </a>
     </Button>
   );

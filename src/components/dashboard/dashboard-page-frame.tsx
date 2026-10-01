@@ -182,9 +182,8 @@ export function DashboardPageFrame({
            four unrelated things; one box reads as one summary, which is what it
            is.
 
-           No header, for the dive card's reason: each figure is already
-           labelled, so a "Your diving" title above them would only restate the
-           four labels underneath. `pt-6` because `CardContent`'s own padding
+           No header: each figure is already labelled, so a "Your diving" title
+           above them would only restate the four labels underneath. `pt-6` because `CardContent`'s own padding
            assumes a header sits above it. */
         <Card>
           <CardContent className="pt-6">

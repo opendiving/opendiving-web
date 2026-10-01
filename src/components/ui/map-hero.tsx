@@ -22,6 +22,10 @@ const FRAME =
 // The page's column, so the details line up with the body under them.
 const COLUMN = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
 
+// The body's column under the hero, which spans the window: the hero's own
+// details sit in the same column, so they line up with it.
+export const HERO_BODY = "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6";
+
 // The figures, as many to a line as fit - three on a phone - and the map's
 // credit at the row's far end, at the details' foot. Where the figures leave it
 // no room, it wraps onto a line of its own under them, still at the right.
@@ -100,7 +104,8 @@ interface MapHeroProps extends Known {
   // Edit and the menu, in the band's top-right corner as a card's menu is,
   // opposite the way back.
   actions?: ReactNode;
-  title: string;
+  // Usually the record's name; a node for a dive's, which links its sites.
+  title: ReactNode;
   // One line under the title, as the record's card has under its name.
   subtitle?: ReactNode;
   figures: MapHeroFigure[];

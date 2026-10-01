@@ -2400,19 +2400,15 @@ accessible name lets a regression that puts `avg_depth` back into the tooltip sh
 the accessible name is not a proxy for testing the visible one, even where both come from the same
 data.
 
-## The dive's clock sits in the page header, and one `Duration & Depth` card holds the rest
+## The dive's clock sits with its date on the hero's line, as its card prints them
 
-The start time belongs with the date, already in the page header: `formatDiveStartTime` prints date,
-clock time and, where the dive records one, its offset as one line — or the date alone, where the
-dive records no time of day. The offset stays because a dive displays in its own timezone (see "A
-dive's `start_time` displays/edits in its own timezone, never the browser's") and `10:04` alone
-cannot be checked; a DiveJSON import may carry no offset, and the line then stops after the clock
-rather than inventing `(UTC+00:00)` — see "An unknown UTC offset is a third state, and `new Date()`
-never sees an offset-less string". It is composed from `formatDiveDateTime` + `formatDiveTimeOnly`
-rather than one `Intl` call: the separator a locale picks is an ICU detail, and the offset is
-appended by hand regardless. What remains is one `Duration & Depth` card: three stat blocks at one
-weight, `md:grid-cols-3`, depths individually conditional so a hand-logged dive leaves duration
-alone.
+The dive hero's line is its card's: `formatDiveDateTime`, the short date and the clock in the dive's
+own timezone (see "A dive's `start_time` displays/edits in its own timezone, never the browser's"),
+then the place. `formatDiveStartTime` - weekday, month in full, and the offset appended so `10:04`
+can be checked - is rejected there so a dive reads the same on its page as in every list; it stays
+on the import's match rows, where telling two dives apart is the point. A bare date prints no clock
+in either. The duration and depths are the hero's figures, the depths individually conditional so a
+hand-logged dive leaves the duration alone.
 
 ## The ppO₂ limit is picked from a list, and an unlisted one is added to it
 
@@ -2811,17 +2807,13 @@ that knows nothing about line breaks, so a footer that did wrap (320px, a longer
 text size) would lose its spacing. `flex-wrap-reverse` keeps the buttons on one line when they fit
 and puts the action above Cancel when they cannot, with 8px between rows.
 
-## The dive's duration and depths card has no title
+## A headerless card restores `pt-6` by hand
 
-The dive page's duration and depth card has no header. Each figure is already labelled `Duration`,
-`Maximum depth`, `Average depth`, so a `Duration & Depth` title restated the labels beneath it in a
-heavier weight, and a `Timer` icon named a dive property rather than a page section. The card is
-three stat blocks, first after the header, legible unlabelled.
-
-`CardContent` takes an explicit `pt-6`: its default `p-6 pt-0` assumes a `CardHeader` supplied the
-top padding. The dashboard's stats-error card (`dashboard-page-frame.tsx`) restores it the same way;
-two headerless call sites do not earn a `headerless` variant in `ui/card.tsx`, which would have to
-guess whether the next one wants the same padding.
+A card whose figures are each labelled - the dashboard's stats - has no header, and its
+`CardContent` takes an explicit `pt-6`: the default `p-6 pt-0` assumes a `CardHeader` supplied the
+top padding. The dashboard's stats-error card restores it the same way; two headerless call sites do
+not earn a `headerless` variant in `ui/card.tsx`, which would have to guess whether the next one
+wants the same padding.
 
 ## Pages hold their shape while they load, instead of collapsing into a spinner
 
@@ -5502,18 +5494,16 @@ The trip and course lookups outlive the dive, so each is stored with the uuid it
 only while the dive names it — keyed on `trip_uuid`, not the dive, so a step within a trip keeps the
 row. `layout.render.test.tsx` holds the second `getTrip` unresolved to pin it.
 
-## The adjacent-dive pager is two buttons on the title line, and the title row wraps on a phone
+## The adjacent-dive pager is two buttons on the dive hero's top row, and Edit is in the menu
 
-The adjacent-dive pager is `‹ Previous` and `Next ›`, two `outline`/`sm` buttons on the title's line
-after the dive number, not chevrons inside the date subtitle, which read as punctuation and split on
-wrap. The back link's row is rejected: right-aligned there, `Next ›` sits beside the menu holding
-`Delete`, the control never hit by accident. The title row is `flex-wrap` for five-digit numbers on
-a phone. `PageHeader` has a `nav` slot; `subtitle` stays `ReactNode` for `DetailPageSkeleton`.
-Labels are fixed words, never the neighbour's date: neighbours arrive by a second request while the
-component stays mounted, so a derived label would empty mid-click. The date rides `aria-label` and
-`title` (`Previous dive: #11, Apr 3, 2021`), the visible word starting that string (WCAG 2.5.3),
-inside a `<nav aria-label="Adjacent dives">`. `dive-neighbor-nav.tsx` exports `DiveNeighborNav`; the
-subtitle is plain text from `formatDiveStartTime`.
+The pager is `‹ Previous` and `Next ›`, `ghost`/`sm` buttons on the dive hero's top row where a
+trip's and a site's Log a dive is, with Edit, Merge and Delete under the menu beside them. Beside
+the title is rejected: it kept `Next ›` apart from `Delete`, but the row then reads the same on
+every hero, and `Delete` still sits behind a menu and a confirmation. Below `sm` the buttons show
+chevrons alone, to keep the row on a phone. Labels are fixed words, never the neighbour's date:
+neighbours arrive by a second request while the component stays mounted, so a derived label would
+empty mid-click. The date rides `aria-label` and `title` (`Previous dive: #11, Apr 3, 2021`), which
+starts with the visible word (WCAG 2.5.3), inside a `<nav aria-label="Adjacent dives">`.
 
 ## Admin is superuser routes and web pages, not a panel
 

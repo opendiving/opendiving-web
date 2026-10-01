@@ -14,12 +14,17 @@ import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveNeighborNav } from "@/components/dives/dive-neighbor-nav";
 import { DiveMergeAction } from "@/components/dives/dive-merge-action";
-import { DiveTitle, diveTitleText } from "@/components/dives/dive-title";
+import { diveTitleText } from "@/components/dives/dive-title";
 import { DiveDetailProvider } from "@/components/dives/dive-detail-context";
-import { Button } from "@/components/ui/button";
+import { DiveHero } from "@/components/dives/dive-hero";
+import { DiveIcon } from "@/components/logo";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { PageHeader } from "@/components/ui/page-header";
-import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
+import {
+  HERO_BODY,
+  HERO_CONTROL,
+  MapHeroSkeleton,
+} from "@/components/ui/map-hero";
+import { CardSkeleton } from "@/components/ui/skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
@@ -27,7 +32,6 @@ import {
   ItemActionsMenu,
 } from "@/components/ui/item-actions-menu";
 import { Edit, Merge } from "lucide-react";
-import { formatDiveStartTime } from "@/lib/date-time";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -41,7 +45,7 @@ import { PageSpinner } from "@/components/ui/page-spinner";
  * `dives/[id]` - the page included - is torn down and rebuilt when the uuid
  * changes. Two things the page was written to do therefore never happened: it
  * kept the outgoing dive on screen under `opacity-50` while the next one loaded
- * (it re-mounted with no dive and drew `DetailPageSkeleton` instead), and the
+ * (it re-mounted with no dive and drew the page's skeleton instead), and the
  * pager's single `<a>` held the keyboard focus across the step (its node went
  * with the page, dropping focus to `<body>`). `dives/(detail)/` is outside the
  * dynamic segment, so this component is re-rendered rather than re-mounted, and
@@ -208,8 +212,28 @@ export default function DiveDetailLayout({
   // `isLoadingDive` again while `useResource` still holds the dive being left -
   // and this component staying mounted across the step is what makes that hold
   // worth anything.
+  // The hero's skeleton at the hero's height, and the body's at the body's, so
+  // nothing moves when the dive lands.
   if (isLoadingDive && !dive) {
-    return <DetailPageSkeleton backHref="/dives" backLabel="Back to dives" />;
+    return (
+      <div aria-busy>
+        <MapHeroSkeleton
+          backHref="/dives"
+          backLabel="Back to dives"
+          icon={DiveIcon}
+        />
+        <div className={HERO_BODY}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <CardSkeleton lines={7} />
+            </div>
+            <div className="space-y-6">
+              <CardSkeleton lines={4} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!dive) {
@@ -225,35 +249,19 @@ export default function DiveDetailLayout({
   }
 
   return (
-    <div
-      className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6"
-      aria-busy={isLoadingDive}
-    >
-      <PageHeader
-        backHref="/dives"
-        backLabel="Back to dives"
-        title={
-          <DiveTitle diveNumber={dive.dive_number} sites={dive.dive_sites} />
-        }
-        // The time of day sits here with the date rather than in a card of its
-        // own below: the two are one fact, and splitting them put the dive's
-        // date in the header and the clock it was on two scroll positions away.
-        subtitle={formatDiveStartTime(dive.start_time)}
-        // Beside the dive it steps away from, rather than inside the date line
-        // below it, and off the back link's row: a step is a thing you do
-        // repeatedly and quickly, and it should not share a corner with the
-        // menu that holds Delete.
-        nav={
-          <DiveNeighborNav diveUuid={dive.uuid} reloadToken={neighborsToken} />
-        }
+    <div aria-busy={isLoadingDive}>
+      <DiveHero
+        dive={dive}
+        // The pager where a trip's and a site's Log a dive is, and Edit with
+        // the rest under the menu - see "The adjacent-dive pager" in
+        // DECISIONS.md.
         actions={
           <>
-            <Button variant="outline" asChild>
-              <Link href={`/dives/${dive.uuid}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
+            <DiveNeighborNav
+              diveUuid={dive.uuid}
+              reloadToken={neighborsToken}
+              className={HERO_CONTROL}
+            />
             <DiveMergeAction
               dive={dive}
               reloadToken={neighborsToken}
@@ -263,7 +271,17 @@ export default function DiveDetailLayout({
               }}
             >
               {(openMerge) => (
-                <ItemActionsMenu>
+                <ItemActionsMenu
+                  variant="ghost"
+                  size="sm"
+                  className={HERO_CONTROL}
+                >
+                  <DropdownMenuItem asChild>
+                    <Link href={`/dives/${dive.uuid}/edit`}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Link>
+                  </DropdownMenuItem>
                   {/* Absent on a hand-logged dive, or one with no neighbour. */}
                   {openMerge && (
                     <DropdownMenuItem onSelect={openMerge}>
@@ -292,19 +310,21 @@ export default function DiveDetailLayout({
         onConfirm={del.confirmDelete}
       />
 
-      <DiveDetailProvider
-        value={{
-          dive,
-          isLoading: isLoadingDive,
-          trip,
-          course,
-          contact,
-          people,
-          refreshDive,
-        }}
-      >
-        {children}
-      </DiveDetailProvider>
+      <div className={HERO_BODY}>
+        <DiveDetailProvider
+          value={{
+            dive,
+            isLoading: isLoadingDive,
+            trip,
+            course,
+            contact,
+            people,
+            refreshDive,
+          }}
+        >
+          {children}
+        </DiveDetailProvider>
+      </div>
     </div>
   );
 }
