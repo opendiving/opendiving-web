@@ -134,12 +134,14 @@ describe("DiveSiteHero", () => {
   const figure = (label: string) =>
     screen.getByText(label, { selector: "dt" }).nextElementSibling;
 
-  it("heads the page with the site's name and place over every figure its dives add up to", () => {
+  it("heads the page with the site's name and its card's line over every figure its dives add up to", () => {
     render(
       <DiveSiteHero
         site={{
           ...SITE,
           location: { name: "Chatan, Okinawa, Japan" },
+          altitude: 2,
+          entry_types: ["shore", "pier"],
           dive_count: 12,
           last_dived_on: "2026-09-14",
           max_dive_depth: 21.4,
@@ -154,7 +156,7 @@ describe("DiveSiteHero", () => {
       name: "Sunabe Seawall",
     });
     expect(heading.nextElementSibling).toHaveTextContent(
-      "Chatan, Okinawa, Japan",
+      "Chatan, Okinawa, Japan · Altitude 2 m · Entry types Shore, Pier",
     );
     expect(figure("Dives")).toHaveTextContent("12");
     expect(figure("Last dive")).toHaveTextContent("Sep 14, 2026");

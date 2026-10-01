@@ -5,6 +5,10 @@ import { MapPin } from "lucide-react";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
+import {
+  DiveSiteFacts,
+  diveSiteFacts,
+} from "@/components/sites/dive-site-facts";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDateOnly } from "@/lib/date-time";
@@ -27,6 +31,7 @@ export function DiveSiteHero({
   const units = useUnits();
   // The pin alone, as the site's card maps it.
   const isPlaced = site.latitude != null && site.longitude != null;
+  const facts = diveSiteFacts(site, units);
 
   const figures: MapHeroFigure[] = [
     { label: "Dives", value: site.dive_count ?? 0 },
@@ -70,7 +75,8 @@ export function DiveSiteHero({
       backLabel="Back to dive sites"
       actions={actions}
       title={site.name}
-      subtitle={site.location?.name}
+      // The line under the name, as the site's card has it.
+      subtitle={facts.length > 0 && <DiveSiteFacts facts={facts} />}
       figures={figures}
       // The map's water for a site with no position, as its card draws one.
       backdrop={(covered) =>
