@@ -48,6 +48,21 @@ function parsedDive(
     avg_depth: null,
     bottom_temperature: null,
     mixtures,
+    // The rest of the dive, which most dive-computer files leave unstated.
+    notes: null,
+    visibility: null,
+    weight: null,
+    water_type: null,
+    altitude: null,
+    type: null,
+    rating: null,
+    air_temperature: null,
+    current: null,
+    waves: null,
+    weather: null,
+    entry_type: null,
+    boat_name: null,
+    tags: [],
     // A setting of the device, never applied to the form - null is the ordinary
     // case, since only a FIT file records it at all.
     salinity: null,
