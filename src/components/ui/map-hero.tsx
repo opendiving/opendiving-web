@@ -218,35 +218,95 @@ export function MapHero({
         ref={detailsRef}
         className="z-[1] [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)]"
       >
-        <div className={cn(COLUMN, "pb-5")}>
-          <div className={HEADING}>
-            <Icon aria-hidden className={ICON} />
-            <div className="min-w-0">
-              <h1 className={TITLE}>{title}</h1>
-              {subtitle && <p className={SUBTITLE}>{subtitle}</p>}
-            </div>
-          </div>
-          <div className={FIGURES_ROW}>
-            {/* Every figure the record has, at the dive page's size. A value
-                never breaks, so "30 m" is one figure. */}
-            <dl className={FIGURES}>
-              {figures.map(({ label, value }) => (
-                <div key={label} className={FIGURE}>
-                  <dt className={LABEL}>{label}</dt>
-                  <dd className={cn(VALUE, "whitespace-nowrap font-bold")}>
-                    {value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            {/* A chip as it is over a card's map, so without the details'
-                glow. */}
-            {mapCredit && (
-              <MapCredit className="ml-auto rounded-sm opacity-75 [text-shadow:none]" />
-            )}
-          </div>
+        <HeroDetails
+          className="pb-5"
+          icon={Icon}
+          title={title}
+          subtitle={subtitle}
+          figures={figures}
+        >
+          {/* A chip as it is over a card's map, so without the details'
+              glow. */}
+          {mapCredit && (
+            <MapCredit className="ml-auto rounded-sm opacity-75 [text-shadow:none]" />
+          )}
+        </HeroDetails>
+      </div>
+    </div>
+  );
+}
+
+// The icon, the name, its line and its figures, in the page's column. `children`
+// closes the figures' row.
+function HeroDetails({
+  className,
+  icon: Icon,
+  title,
+  subtitle,
+  figures,
+  children,
+}: Pick<MapHeroProps, "icon" | "title" | "subtitle" | "figures"> & {
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={cn(COLUMN, className)}>
+      <div className={HEADING}>
+        <Icon aria-hidden className={ICON} />
+        <div className="min-w-0">
+          <h1 className={TITLE}>{title}</h1>
+          {subtitle && <p className={SUBTITLE}>{subtitle}</p>}
         </div>
       </div>
+      <div className={FIGURES_ROW}>
+        {/* Every figure the record has, at the dive page's size. A value
+            never breaks, so "30 m" is one figure. */}
+        <dl className={FIGURES}>
+          {figures.map(({ label, value }) => (
+            <div key={label} className={FIGURE}>
+              <dt className={LABEL}>{label}</dt>
+              <dd className={cn(VALUE, "whitespace-nowrap font-bold")}>
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// A map hero's top row, in the flow rather than over the band, at the height
+// the band puts it.
+const PLAIN_TOP_ROW = cn(COLUMN, "flex items-center gap-4 pt-2");
+const PLAIN_DETAILS = "mt-3 md:mt-4";
+
+// The heading of a record with no place to map, laid out as a map hero's: the
+// top row, then the details straight under it, with no band between them.
+export function PlainHero({
+  backHref,
+  backLabel,
+  icon,
+  actions,
+  title,
+  subtitle,
+  figures,
+}: Omit<MapHeroProps, "backdrop" | "mapCredit">) {
+  return (
+    // The actions' glow is drawn in the page's colour, so it shows nothing here.
+    <div className="[--backdrop-fade:hsl(var(--background))]">
+      <div className={cn(PLAIN_TOP_ROW, "justify-between")}>
+        <HeroBackLink backHref={backHref} backLabel={backLabel} />
+        {actions && <div className="flex shrink-0 gap-1">{actions}</div>}
+      </div>
+      <HeroDetails
+        className={PLAIN_DETAILS}
+        icon={icon}
+        title={title}
+        subtitle={subtitle}
+        figures={figures}
+      />
     </div>
   );
 }
@@ -256,8 +316,7 @@ export function MapHero({
 // is the same height before and after the record lands. The bars are a step
 // lighter than the box they lie on, which is the one place a bar is drawn on
 // a bar.
-function MapHeroSkeleton({ backHref, backLabel, icon: Icon }: Known) {
-  const bar = "bg-background/60";
+function MapHeroSkeleton({ backHref, backLabel, icon }: Known) {
   return (
     <div className={FRAME}>
       <Skeleton className="absolute inset-0 rounded-none" />
@@ -266,26 +325,51 @@ function MapHeroSkeleton({ backHref, backLabel, icon: Icon }: Known) {
           <HeroBackLink backHref={backHref} backLabel={backLabel} />
         </div>
       </div>
-      <div className={cn(COLUMN, "relative z-[1] pb-5")}>
-        <div className={HEADING}>
-          <Icon aria-hidden className={cn(ICON, "text-muted-foreground")} />
-          <div className="min-w-0">
-            <h1 className={TITLE}>
-              <Skeleton className={cn("h-6 w-48 md:h-9 md:w-64", bar)} />
-            </h1>
-            <p className="md:mt-1">
-              <Skeleton className={cn("h-4 w-36 md:h-6 md:w-44", bar)} />
-            </p>
+      <HeroDetailsSkeleton
+        className="relative z-[1] pb-5"
+        icon={icon}
+        bar="bg-background/60"
+      />
+    </div>
+  );
+}
+
+function PlainHeroSkeleton({ backHref, backLabel, icon }: Known) {
+  return (
+    <div>
+      <div className={PLAIN_TOP_ROW}>
+        <HeroBackLink backHref={backHref} backLabel={backLabel} />
+      </div>
+      <HeroDetailsSkeleton className={PLAIN_DETAILS} icon={icon} />
+    </div>
+  );
+}
+
+function HeroDetailsSkeleton({
+  className,
+  icon: Icon,
+  bar,
+}: Pick<Known, "icon"> & { className: string; bar?: string }) {
+  return (
+    <div className={cn(COLUMN, className)}>
+      <div className={HEADING}>
+        <Icon aria-hidden className={cn(ICON, "text-muted-foreground")} />
+        <div className="min-w-0">
+          <h1 className={TITLE}>
+            <Skeleton className={cn("h-6 w-48 md:h-9 md:w-64", bar)} />
+          </h1>
+          <p className="md:mt-1">
+            <Skeleton className={cn("h-4 w-36 md:h-6 md:w-44", bar)} />
+          </p>
+        </div>
+      </div>
+      <div className={cn(FIGURES_ROW, FIGURES)}>
+        {[0, 1, 2].map((figure) => (
+          <div key={figure} className={FIGURE}>
+            <Skeleton className={cn("h-4 w-16 md:mb-1 md:h-5", bar)} />
+            <Skeleton className={cn("h-6 w-12 md:h-8", bar)} />
           </div>
-        </div>
-        <div className={cn(FIGURES_ROW, FIGURES)}>
-          {[0, 1, 2].map((figure) => (
-            <div key={figure} className={FIGURE}>
-              <Skeleton className={cn("h-4 w-16 md:mb-1 md:h-5", bar)} />
-              <Skeleton className={cn("h-6 w-12 md:h-8", bar)} />
-            </div>
-          ))}
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -293,10 +377,18 @@ function MapHeroSkeleton({ backHref, backLabel, icon: Icon }: Known) {
 
 // A hero page's place while its record loads: the hero's skeleton at the hero's
 // height, and the body's at the body's, so nothing moves when the record lands.
-export function MapHeroPageSkeleton(known: Known) {
+// `plain` for a page whose hero is a `PlainHero`.
+export function MapHeroPageSkeleton({
+  plain,
+  ...known
+}: Known & { plain?: boolean }) {
   return (
     <div aria-busy>
-      <MapHeroSkeleton {...known} />
+      {plain ? (
+        <PlainHeroSkeleton {...known} />
+      ) : (
+        <MapHeroSkeleton {...known} />
+      )}
       <div className={HERO_BODY}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">

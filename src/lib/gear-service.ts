@@ -165,6 +165,19 @@ function countOf(count: number, unit: "day" | "dive"): string {
   return `${count} ${unit}${count === 1 ? "" : "s"}`;
 }
 
+// The earliest date any active schedule falls due, "YYYY-MM-DD" - a past one
+// included, since an overdue service is still the next one. `null` when no
+// active schedule has a time-based interval.
+export function nextServiceDate(
+  schedules: GearServiceScheduleSummary[],
+): string | null {
+  const dates = schedules
+    .filter((s) => s.is_active !== false && s.next_due_on)
+    .map((s) => s.next_due_on!)
+    .sort();
+  return dates[0] ?? null;
+}
+
 // A short human phrase for when a schedule is next due: "Overdue by 3 dives",
 // "Due in 10 days".
 export function formatServiceDue(

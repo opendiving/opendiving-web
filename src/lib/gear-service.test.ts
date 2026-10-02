@@ -8,6 +8,7 @@ import {
   divesSince,
   formatServiceDue,
   formatServiceDueQualifier,
+  nextServiceDate,
   serviceStatus,
   serviceStatusBadgeVariant,
   serviceStatusLabel,
@@ -199,6 +200,29 @@ describe("divesSince", () => {
   it("clamps at zero when dives have been deleted", () => {
     // `dive_count` is a lifetime counter and can move backwards.
     expect(divesSince(35, 40)).toBe(0);
+  });
+});
+
+describe("nextServiceDate", () => {
+  it("is the earliest due date among active schedules, overdue included", () => {
+    expect(
+      nextServiceDate([
+        schedule({ next_due_on: "2027-01-01" }),
+        schedule({ next_due_on: "2026-01-01" }),
+        schedule({ next_due_on: "2025-01-01", is_active: false }),
+        schedule({ next_due_at_dive_count: 50 }),
+      ]),
+    ).toBe("2026-01-01");
+  });
+
+  it("is null without a dated active schedule", () => {
+    expect(nextServiceDate([])).toBeNull();
+    expect(
+      nextServiceDate([
+        schedule({ next_due_at_dive_count: 50 }),
+        schedule({ next_due_on: "2026-01-01", is_active: false }),
+      ]),
+    ).toBeNull();
   });
 });
 
