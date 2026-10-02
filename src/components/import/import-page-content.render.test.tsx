@@ -9,6 +9,8 @@ import {
 import userEvent from "@testing-library/user-event";
 
 import { ImportPageContent } from "./import-page-content";
+import type { DiveNumberingSummary } from "@/lib/api/dives";
+import { combineStartTime, getBrowserUtcOffsetMinutes } from "@/lib/date-time";
 import type {
   ImportCheckInDetail,
   ImportCollectionReport,
@@ -28,6 +30,9 @@ const mocks = vi.hoisted(() => ({
   apply: vi.fn(),
   toast: vi.fn(),
   refreshUser: vi.fn(),
+  getDiveNumbering: vi.fn(),
+  getNextDiveNumber: vi.fn(),
+  renumberDives: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAuthGuard", () => ({
@@ -60,6 +65,15 @@ vi.mock("@/lib/api/logbook-import", async (importOriginal) => ({
   // what is under test, and a mocked `MAX_*` would make the check vacuous.
   ...(await importOriginal<typeof import("@/lib/api/logbook-import")>()),
   logbookImportAPI: { preview: mocks.preview, apply: mocks.apply },
+}));
+
+vi.mock("@/lib/api/dives", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/dives")>()),
+  divesAPI: {
+    getDiveNumbering: mocks.getDiveNumbering,
+    getNextDiveNumber: mocks.getNextDiveNumber,
+    renumberDives: mocks.renumberDives,
+  },
 }));
 
 vi.mock("@/components/ui/use-toast", () => ({
@@ -184,8 +198,24 @@ async function readWith(result: ImportPreview, ...files: File[]) {
 const sentNames = (call: unknown[]) =>
   (call[0] as File[]).map((file) => file.name);
 
+function numbering(
+  overrides: Partial<DiveNumberingSummary> = {},
+): DiveNumberingSummary {
+  return {
+    total_dives: 3,
+    lowest: 1,
+    highest: 3,
+    missing_count: 0,
+    duplicate_count: 0,
+    out_of_date_order_count: 0,
+    is_sequential: true,
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.getDiveNumbering.mockResolvedValue(numbering());
 });
 
 describe("choosing files", () => {
@@ -720,6 +750,139 @@ describe("the result", () => {
       "href",
       "/dives",
     );
+  });
+});
+
+describe("the result's renumber", () => {
+  // Noon in UTC, so the day is the 12th at any browser offset the suite runs at.
+  const earliest = "2019-03-12T12:00:00Z";
+  const writeDives = () =>
+    mocks.apply.mockResolvedValueOnce(
+      report({
+        dives: [
+          dive({ uuid: "a", start_time: "2019-05-01T12:00:00Z" }),
+          dive({ uuid: "b", start_time: earliest }),
+          dive({ uuid: "c", outcome: "linked", start_time: "2018-01-01" }),
+        ],
+      }),
+    );
+
+  it("is offered from the earliest new dive's day where the import left dives sharing a number", async () => {
+    mocks.getDiveNumbering
+      .mockResolvedValueOnce(numbering())
+      .mockResolvedValueOnce(
+        numbering({
+          total_dives: 5,
+          highest: 3,
+          duplicate_count: 2,
+          is_sequential: false,
+        }),
+      );
+    mocks.getNextDiveNumber.mockResolvedValueOnce({
+      dive_number: 12,
+      is_taken: true,
+    });
+    mocks.renumberDives.mockResolvedValue({
+      dry_run: true,
+      dives_in_scope: 4,
+      changes: [],
+    });
+    writeDives();
+    await readWith(preview({ dives: [dive()] }));
+    await userEvent.click(importButton());
+
+    expect(
+      await screen.findByText(/Renumbering from Mar 12, 2019/),
+    ).toBeVisible();
+    expect(screen.getByText(/2 dives share a number/)).toBeVisible();
+    expect(mocks.getNextDiveNumber).toHaveBeenCalledWith(
+      combineStartTime("2019-03-11 23:59:59", getBrowserUtcOffsetMinutes()),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Renumber" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Start at")).toHaveValue(12);
+    await waitFor(() =>
+      expect(mocks.renumberDives).toHaveBeenCalledWith({
+        start_at: 12,
+        from_start_time: combineStartTime(
+          "2019-03-12 00:00:00",
+          getBrowserUtcOffsetMinutes(),
+        ),
+        dry_run: true,
+      }),
+    );
+  });
+
+  it("gives way to a status that takes focus once the renumber is written", async () => {
+    mocks.getDiveNumbering
+      .mockResolvedValueOnce(numbering())
+      .mockResolvedValueOnce(
+        numbering({ out_of_date_order_count: 1, is_sequential: false }),
+      );
+    mocks.getNextDiveNumber.mockResolvedValueOnce({
+      dive_number: 1,
+      is_taken: true,
+    });
+    const change = {
+      dive_uuid: "b",
+      start_time: earliest,
+      dive_number: 4,
+      new_dive_number: 1,
+    };
+    mocks.renumberDives.mockImplementation(
+      async ({ dry_run }: { dry_run?: boolean }) => ({
+        dry_run: Boolean(dry_run),
+        dives_in_scope: 4,
+        changes: [change],
+      }),
+    );
+    writeDives();
+    await readWith(preview({ dives: [dive()] }));
+    await userEvent.click(importButton());
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Renumber" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Renumber 1 dive" }),
+    );
+
+    const status = await screen.findByText("Your dives are renumbered.");
+    await waitFor(() => expect(status).toHaveFocus());
+    expect(
+      screen.queryByRole("button", { name: "Renumber" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("is not offered where the import left the log no more tangled than it was", async () => {
+    const tangled = numbering({ duplicate_count: 2, is_sequential: false });
+    mocks.getDiveNumbering.mockResolvedValue(tangled);
+    writeDives();
+    await readWith(preview({ dives: [dive()] }));
+    await userEvent.click(importButton());
+
+    await screen.findByRole("heading", { name: "Imported" });
+    await waitFor(() =>
+      expect(mocks.getDiveNumbering).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Renumber" }),
+    ).not.toBeInTheDocument();
+    expect(mocks.getNextDiveNumber).not.toHaveBeenCalled();
+  });
+
+  it("is not offered where the log's numbering could not be read with the files", async () => {
+    mocks.getDiveNumbering.mockRejectedValueOnce(new Error("offline"));
+    writeDives();
+    await readWith(preview({ dives: [dive()] }));
+    await userEvent.click(importButton());
+
+    await screen.findByRole("heading", { name: "Imported" });
+    expect(mocks.getDiveNumbering).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("button", { name: "Renumber" }),
+    ).not.toBeInTheDocument();
   });
 });
 
