@@ -26,7 +26,12 @@ import {
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { Edit, User } from "lucide-react";
+import { Edit, Mail, Phone, User } from "lucide-react";
+
+// An icon set in the subtitle's line, at its text's size, before the value it
+// marks; the link never breaks between them.
+const SUBTITLE_LINK = "whitespace-nowrap hover:underline";
+const SUBTITLE_ICON = "mr-1 inline size-[1em] align-[-0.125em]";
 
 // One person: what the diver keeps about them, and every dive that names them.
 // The dives are the list's `person_uuid` filter, the same rows the People page's
@@ -96,15 +101,17 @@ export function PersonDetailPageContent() {
   const subtitle = [
     person.username && `@${person.username}`,
     person.email && (
-      <a href={`mailto:${person.email}`} className="hover:underline">
+      <a href={`mailto:${person.email}`} className={SUBTITLE_LINK}>
+        <Mail aria-hidden className={SUBTITLE_ICON} />
         {person.email}
       </a>
     ),
     person.phone && (
       <a
         href={`tel:${person.phone.replace(/[^\d+]/g, "")}`}
-        className="hover:underline"
+        className={SUBTITLE_LINK}
       >
+        <Phone aria-hidden className={SUBTITLE_ICON} />
         {person.phone}
       </a>
     ),
