@@ -29,9 +29,11 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 import { Edit, Mail, Phone, User } from "lucide-react";
 
 // An icon set in the subtitle's line, at its text's size, before the value it
-// marks; the link never breaks between them.
+// marks; the link never breaks between them. A step lower than a site's facts
+// set theirs: drawn to the capitals' height beside a lowercase address, the
+// envelope reads as sitting above the line.
 const SUBTITLE_LINK = "whitespace-nowrap hover:underline";
-const SUBTITLE_ICON = "mr-1 inline size-[1em] align-[-0.125em]";
+const SUBTITLE_ICON = "mr-1 inline-block size-[1em] align-[-0.2em]";
 
 // One person: what the diver keeps about them, and every dive that names them.
 // The dives are the list's `person_uuid` filter, the same rows the People page's
