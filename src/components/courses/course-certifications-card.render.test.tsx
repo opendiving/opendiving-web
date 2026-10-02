@@ -151,6 +151,31 @@ describe("the course's certifications card", () => {
     ).toEqual(["Add the first certification"]);
   });
 
+  it("drops its header while there is nothing to list", async () => {
+    render_();
+    await screen.findByText("No certifications from this course yet");
+
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: "Certifications from This Course",
+    });
+    expect(heading).toHaveClass("sr-only");
+    expect([...heading.parentElement!.children]).toEqual([heading]);
+  });
+
+  it("keeps it once there is", async () => {
+    getCertifications.mockImplementation(async () => page([CREATED]));
+    render_();
+    await screen.findByRole("button", { name: /Advanced Nitrox/ });
+
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Certifications from This Course",
+      }),
+    ).not.toHaveClass("sr-only");
+  });
+
   it("shows a certification created from here without a reload", async () => {
     render_();
     await screen.findByText("No certifications from this course yet");

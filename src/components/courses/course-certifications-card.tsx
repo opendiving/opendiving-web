@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/certifications";
 import type { Course } from "@/lib/api/courses";
 import { formatDateOnly } from "@/lib/date-time";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -106,33 +107,46 @@ export function CourseCertificationsCard({
 
   useSavedElsewhere("certification", () => void refresh());
 
+  const isEmpty = !isLoading && certifications.length === 0;
+
   return (
     <>
       <Card>
         {/* Title and description as direct children, with no wrapper: this
             card carries no header control, and a `<div>` around the
-            pair would eat `CardHeader`'s own 6px gap. */}
-        <CardHeader>
-          <CardTitle as="h2" className="flex items-center gap-2">
-            <BadgeCheck className="h-5 w-5" />
-            Certifications from This Course
-          </CardTitle>
-          {/* The sidebar's button is not the only way in: an existing card can
-              name this course from its own form, which is how a card logged
-              before the course was. */}
-          <CardDescription>
-            The cards this training issued. An existing card can name this
-            course from its own form too.
-          </CardDescription>
+            pair would eat `CardHeader`'s own 6px gap. With nothing to list,
+            the header drops to its hidden heading, as the list pages' cards
+            do - the empty state says what the card is for, and carries the
+            description's hint along with it. */}
+        <CardHeader className={cn(isEmpty && "p-0")}>
+          {isEmpty ? (
+            <CardTitle as="h2" className="sr-only">
+              Certifications from This Course
+            </CardTitle>
+          ) : (
+            <>
+              <CardTitle as="h2" className="flex items-center gap-2">
+                <BadgeCheck className="h-5 w-5" />
+                Certifications from This Course
+              </CardTitle>
+              {/* The sidebar's button is not the only way in: an existing card can
+                  name this course from its own form, which is how a card logged
+                  before the course was. */}
+              <CardDescription>
+                The cards this training issued. An existing card can name this
+                course from its own form too.
+              </CardDescription>
+            </>
+          )}
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <ListRowsSkeleton rows={2} />
-          ) : certifications.length === 0 ? (
+          ) : isEmpty ? (
             <EmptyState
               icon={BadgeCheck}
               title="No certifications from this course yet"
-              description="Add the card this training issued and it will appear here."
+              description="Add the card this training issued, or name this course from an existing card's form."
               action={
                 <Button onClick={() => onAddingChange(true)}>
                   <Plus className="h-4 w-4 mr-2" />
