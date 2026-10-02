@@ -176,7 +176,7 @@ describe("TripDetailPage", () => {
     });
     expect(heading).toHaveTextContent("Egypt, spring");
     expect(heading.nextElementSibling).toHaveTextContent(
-      "April 3 - April 8, 2026 · Dahab +1",
+      "Apr 3 - Apr 8, 2026 · Dahab +1",
     );
 
     // Every figure the trip has, the depth in whole units.

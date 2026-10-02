@@ -51,12 +51,9 @@ export function tripSpan(parts?: TripPart[] | null): TripSpan {
  * rather than "" for the same reason it gives: a table wants "-" where a
  * subtitle wants to disappear.
  */
-export function formatTripSpan(
-  parts?: TripPart[] | null,
-  options?: Intl.DateTimeFormatOptions,
-): string | undefined {
+export function formatTripSpan(parts?: TripPart[] | null): string | undefined {
   const { start, end } = tripSpan(parts);
-  return formatTripDateRange(start, end, options);
+  return formatTripDateRange(start, end);
 }
 
 /**

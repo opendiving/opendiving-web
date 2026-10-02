@@ -12,13 +12,6 @@ import { tripFigures } from "@/lib/trip-figures";
 import { useUnits } from "@/hooks/useUnits";
 import type { ReturnTarget } from "@/lib/return-to";
 
-// This page has room for the month spelled out, unlike a trip card.
-const LONG_DATE: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-};
-
 // The trip page's heading: the trip card drawn the width of the window.
 export function TripHero({
   trip,
@@ -33,9 +26,10 @@ export function TripHero({
   const mappedLocations = locations.filter(
     (location) => location.latitude != null && location.longitude != null,
   );
-  // Only when some part of the trip carries a date; deliberately no fall back
-  // to the trip's creation date.
-  const dates = formatTripSpan(trip.parts, LONG_DATE);
+  // In the card's format, so a trip reads the same on its page as in every
+  // list. Only when some part of the trip carries a date; deliberately no fall
+  // back to the trip's creation date.
+  const dates = formatTripSpan(trip.parts);
   // Whether there is a place to name, which is what decides the separator.
   const placeNames = formatTripLocationNames(locations);
   const units = useUnits();
