@@ -158,16 +158,17 @@ function scrollContainerOf(element: HTMLElement): HTMLElement | null {
  * Scrolls the focused field back into view whenever the visible viewport
  * *resizes*, for as long as the caller is mounted.
  *
- * **The keyboard opening is not the end of the story it looks like.** iOS
- * reveals the focused input itself before it fires anything, so the field is on
- * screen at the moment of the tap and the bug is what happens next:
+ * **The keyboard opening is not the end of the story it looks like.** The field
+ * is on screen at the moment of the tap, and the bug is what happens next:
  * `useVisualViewport` mirrors the shrunken viewport onto the variables above,
  * `ui/dialog.tsx` re-centres `DialogContent` and cuts its `max-height` to
  * match, and the content's `scrollTop` survives all of it unchanged. A dialog
  * that was 780px of visible content becomes 400px anchored at the same offset,
  * so what it shows is the *top* of what it was showing. A field near the foot
  * of it - "Save as" at the end of the Fields tab, which is the report this
- * came from - drops out of the box the diver is typing into.
+ * came from - drops out of the box the diver is typing into. This is the only
+ * reveal a tapped field gets: `useFocusTappedFieldInPlace` keeps Safari from
+ * scrolling to it.
  *
  * **It has to wait for the dialog to finish resizing, and that is the part that
  * is easy to get wrong.** `DialogContent` carries `transition: all 200ms`, so
@@ -231,6 +232,128 @@ export function useKeepFocusedFieldVisible() {
     return () => {
       cancelAnimationFrame(frame);
       viewport.removeEventListener("resize", reveal);
+    };
+  }, []);
+}
+
+/** The `<input>` types an on-screen keyboard opens for. */
+const KEYBOARD_INPUT_TYPES = new Set([
+  "text",
+  "search",
+  "email",
+  "url",
+  "tel",
+  "password",
+  "number",
+]);
+
+/** How far a finger may drift, in CSS pixels, and still count as a tap. */
+const TAP_SLOP = 10;
+
+type KeyboardField = HTMLInputElement | HTMLTextAreaElement;
+
+/** The text field a tap on `target` focuses: the field itself, or a label's. */
+function tappedField(target: EventTarget | null): KeyboardField | null {
+  if (!(target instanceof Element)) return null;
+  const hit = target.closest("input, textarea, label");
+  const field = hit instanceof HTMLLabelElement ? hit.control : hit;
+  if (
+    !(field instanceof HTMLTextAreaElement) &&
+    !(field instanceof HTMLInputElement && KEYBOARD_INPUT_TYPES.has(field.type))
+  ) {
+    return null;
+  }
+  return field.disabled || field.readOnly ? null : field;
+}
+
+/**
+ * Puts the caret where the finger landed, which the cancelled tap would have
+ * done: at the end of the text where the browser cannot map the point to an
+ * offset, or the tap was on a label. Called before the field has focus, which
+ * then restores this selection rather than choosing its own.
+ */
+function placeCaret(field: KeyboardField, x: number, y: number) {
+  // `email` and `number` inputs have no selection to set.
+  if (field.selectionStart === null) return;
+  const position =
+    "caretPositionFromPoint" in document
+      ? document.caretPositionFromPoint(x, y)
+      : null;
+  const offset =
+    position?.offsetNode === field ? position.offset : field.value.length;
+  field.setSelectionRange(offset, offset);
+}
+
+/**
+ * Focuses a tapped text field with `preventScroll` in place of the tap, for as
+ * long as the caller is mounted.
+ *
+ * **As the keyboard opens, iOS pans the visual viewport to centre the focused
+ * field above it, and a fixed dialog goes with the pan.** The page gets no
+ * animation frames until the keyboard has settled, so `useVisualViewport` can
+ * only bring the dialog back afterwards: the diver sees it fly up with the
+ * keyboard and slide back down. WebKit skips that pan for a `preventScroll`
+ * focus, which leaves the dialog still while the keyboard rises, and then the
+ * resize fits it to the space left.
+ *
+ * The tap's default is cancelled, not just preceded by the focus, because the
+ * tap's own caret placement makes Safari pan all the same. That costs the first
+ * tap its `click`, which no field here needs - the comboboxes and date pickers
+ * open on focus - and its caret placement, which `placeCaret` redoes. A field
+ * that already has focus is left to the browser, so a second tap moves the
+ * caret natively.
+ *
+ * Listens on the document so that a field in a popover over the dialog is
+ * covered too. Only a one-finger tap counts; a drag is the diver scrolling.
+ */
+export function useFocusTappedFieldInPlace() {
+  useEffect(() => {
+    let start: { x: number; y: number } | null = null;
+
+    const onTouchStart = (event: TouchEvent) => {
+      const touch = event.touches.length === 1 ? event.touches[0] : null;
+      start = touch && { x: touch.clientX, y: touch.clientY };
+    };
+    const onTouchCancel = () => {
+      start = null;
+    };
+    const onTouchEnd = (event: TouchEvent) => {
+      const from = start;
+      start = null;
+      const touch = event.changedTouches[0];
+      // `defaultPrevented` is a second open dialog's copy of this having
+      // handled the tap already.
+      if (!from || !touch || event.touches.length || event.defaultPrevented) {
+        return;
+      }
+      const drift = Math.hypot(touch.clientX - from.x, touch.clientY - from.y);
+      if (drift > TAP_SLOP) return;
+      const field = tappedField(event.target);
+      if (!field || field === document.activeElement) return;
+
+      event.preventDefault();
+      // Caret first, so that a focus handler's own selection stands:
+      // `CreatableCombobox` selects its label for the first keystroke to
+      // replace.
+      placeCaret(field, touch.clientX, touch.clientY);
+      field.focus({ preventScroll: true });
+    };
+
+    const capture = { capture: true };
+    document.addEventListener("touchstart", onTouchStart, {
+      capture: true,
+      passive: true,
+    });
+    // Not passive, or `preventDefault` is ignored.
+    document.addEventListener("touchend", onTouchEnd, {
+      capture: true,
+      passive: false,
+    });
+    document.addEventListener("touchcancel", onTouchCancel, capture);
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart, capture);
+      document.removeEventListener("touchend", onTouchEnd, capture);
+      document.removeEventListener("touchcancel", onTouchCancel, capture);
     };
   }, []);
 }
