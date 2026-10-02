@@ -6,6 +6,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useReturnTo } from "@/hooks/useReturnTo";
 import { peopleAPI, type Person } from "@/lib/api/people";
 import { formatDateTime } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
@@ -49,6 +50,7 @@ export function PersonDetailPageContent() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const back = useReturnTo({ href: "/people", label: "Back to people" });
 
   const {
     resource: person,
@@ -68,7 +70,7 @@ export function PersonDetailPageContent() {
       "Are you sure you want to delete this person? The dives, trips and courses they were on keep everything else, but will no longer name them, and the certifications they signed will name no instructor.",
     successMessage: "Person deleted successfully.",
     errorMessage: "Failed to delete person. Please try again.",
-    onDeleted: () => router.push("/people"),
+    onDeleted: () => router.push(back.href),
   });
   const isDeleting = del.deletingId !== null;
 
@@ -81,7 +83,7 @@ export function PersonDetailPageContent() {
   }
 
   if (isLoadingPerson) {
-    return <DetailPageSkeleton backHref="/people" backLabel="Back to people" />;
+    return <DetailPageSkeleton backHref={back.href} backLabel={back.label} />;
   }
 
   if (!person) {
@@ -89,8 +91,8 @@ export function PersonDetailPageContent() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Person not found."
-          backHref="/people"
-          backLabel="Back to people"
+          backHref={back.href}
+          backLabel={back.label}
         />
       </div>
     );
@@ -99,8 +101,8 @@ export function PersonDetailPageContent() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
       <PageHeader
-        backHref="/people"
-        backLabel="Back to people"
+        backHref={back.href}
+        backLabel={back.label}
         title={person.name}
         subtitle={person.username ? `@${person.username}` : undefined}
         actions={

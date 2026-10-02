@@ -30,7 +30,11 @@ vi.mock("@/lib/api/dives", async (importOriginal) => ({
 const push = vi.fn();
 // Stable reference, as in `useAuthGuard.test.tsx`.
 const router = { push };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+const at = vi.hoisted(() => ({ searchParams: new URLSearchParams() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  useSearchParams: () => at.searchParams,
+}));
 
 const { divesAPI } = await import("@/lib/api/dives");
 
@@ -54,6 +58,7 @@ describe("DiveNeighborNav", () => {
   beforeEach(() => {
     vi.mocked(divesAPI.getDiveNeighbors).mockReset();
     push.mockClear();
+    at.searchParams = new URLSearchParams();
   });
 
   // The `console.error` stub below would otherwise stay installed for the rest of
@@ -79,6 +84,17 @@ describe("DiveNeighborNav", () => {
     const next = screen.getByRole("link", { name: /next dive/i });
     expect(next).toHaveAttribute("href", "/dives/newer-uuid");
     expect(next).toHaveAccessibleName(/#13, Apr 5, 2021/);
+  });
+
+  it("keeps the way back the dive on screen was opened with", async () => {
+    at.searchParams = new URLSearchParams("from=/trips/trip-1");
+    vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(neighbors());
+
+    render(<DiveNeighborNav diveUuid="current-uuid" />);
+
+    expect(
+      await screen.findByRole("link", { name: /previous dive/i }),
+    ).toHaveAttribute("href", "/dives/older-uuid?from=%2Ftrips%2Ftrip-1");
   });
 
   it("shows a word that doesn't change with the destination behind it", async () => {

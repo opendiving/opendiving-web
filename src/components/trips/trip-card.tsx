@@ -16,6 +16,7 @@ import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { tripFigures } from "@/lib/trip-figures";
 import { useUnits } from "@/hooks/useUnits";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { Edit } from "lucide-react";
 
 interface TripCardProps {
@@ -45,6 +46,7 @@ export function TripCard({
   // Whether there is a place to name, which is what decides the separator.
   const placeNames = formatTripLocationNames(locations);
   const units = useUnits();
+  const withReturnTo = useWithReturnTo();
   // The first three of what the trip adds up to, which `tripFigures` orders so
   // that a trip with species shows those over its depth.
   const figures: BackdropCardFigure[] = tripFigures(trip, units).slice(0, 3);
@@ -75,7 +77,10 @@ export function TripCard({
         />
       )}
     >
-      <Link href={`/trips/${trip.uuid}`} className={BACKDROP_CARD_LINK}>
+      <Link
+        href={withReturnTo(`/trips/${trip.uuid}`)}
+        className={BACKDROP_CARD_LINK}
+      >
         {trip.name}
       </Link>
       {/* One line, as the trip page's subtitle joins the same two. The place

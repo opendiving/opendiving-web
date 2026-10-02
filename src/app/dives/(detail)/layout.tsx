@@ -6,6 +6,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { coursesAPI, Course } from "@/lib/api/courses";
@@ -60,6 +61,8 @@ export default function DiveDetailLayout({
 }) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
+  const back = useReturnTo({ href: "/dives", label: "Back to dives" });
+  const withReturnTo = useWithReturnTo();
   // Each stored with the uuid it was looked up for, and read back only while
   // the dive on screen still names that uuid - the same shape, and for the same
   // reason, as `DiveNeighborNav`'s neighbours. This state now outlives a step, so
@@ -118,7 +121,7 @@ export default function DiveDetailLayout({
     confirmMessage: DELETE_DIVE_CONFIRMATION,
     successMessage: "Dive deleted successfully.",
     errorMessage: "Failed to delete dive. Please try again.",
-    onDeleted: () => router.push("/dives"),
+    onDeleted: () => router.push(back.href),
   });
   const isDeleting = del.deletingId !== null;
 
@@ -214,8 +217,8 @@ export default function DiveDetailLayout({
   if (isLoadingDive && !dive) {
     return (
       <MapHeroPageSkeleton
-        backHref="/dives"
-        backLabel="Back to dives"
+        backHref={back.href}
+        backLabel={back.label}
         icon={DiveIcon}
       />
     );
@@ -226,8 +229,8 @@ export default function DiveDetailLayout({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Dive not found."
-          backHref="/dives"
-          backLabel="Back to dives"
+          backHref={back.href}
+          backLabel={back.label}
         />
       </div>
     );
@@ -237,6 +240,7 @@ export default function DiveDetailLayout({
     <div aria-busy={isLoadingDive}>
       <DiveHero
         dive={dive}
+        back={back}
         // The pager where a trip's and a site's Log a dive is, and Edit with
         // the rest under the menu - see "The adjacent-dive pager" in
         // DECISIONS.md.
@@ -262,7 +266,7 @@ export default function DiveDetailLayout({
                   className={HERO_CONTROL}
                 >
                   <DropdownMenuItem asChild>
-                    <Link href={`/dives/${dive.uuid}/edit`}>
+                    <Link href={withReturnTo(`/dives/${dive.uuid}/edit`)}>
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
                     </Link>

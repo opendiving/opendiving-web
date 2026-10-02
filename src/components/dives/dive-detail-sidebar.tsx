@@ -44,6 +44,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatAltitude, formatTemperature } from "@/lib/units";
 
 interface DiveDetailSidebarProps {
@@ -127,6 +128,7 @@ export function DiveDetailSidebar({
   onRecordingsChanged,
 }: DiveDetailSidebarProps) {
   const units = useUnits();
+  const withReturnTo = useWithReturnTo();
   const divePeople = dive.people ?? [];
   const hasPeople = divePeople.some(
     (reference) => people[reference.person_uuid],
@@ -183,7 +185,7 @@ export function DiveDetailSidebar({
                   <Luggage className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                   <div className="min-w-0">
                     <Link
-                      href={`/trips/${trip.uuid}`}
+                      href={withReturnTo(`/trips/${trip.uuid}`)}
                       className="font-medium hover:underline"
                     >
                       {trip.name}
@@ -279,7 +281,7 @@ export function DiveDetailSidebar({
               Course
             </div>
             <Link
-              href={`/courses/${course.uuid}`}
+              href={withReturnTo(`/courses/${course.uuid}`)}
               className="flex items-center gap-2 text-sm font-medium hover:underline"
             >
               <GraduationCap className="h-4 w-4 text-muted-foreground" />

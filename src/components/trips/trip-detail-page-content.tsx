@@ -6,6 +6,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { divesAPI } from "@/lib/api/dives";
 import { fetchAllPages, isAbortError } from "@/lib/api/client";
@@ -43,6 +44,8 @@ export function TripDetailPageContent() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const back = useReturnTo({ href: "/trips", label: "Back to trips" });
+  const withReturnTo = useWithReturnTo();
 
   const {
     resource: trip,
@@ -58,7 +61,7 @@ export function TripDetailPageContent() {
   const del = useDeleteResource(tripsAPI.deleteTrip, {
     successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete trip. Please try again.",
-    onDeleted: () => router.push("/trips"),
+    onDeleted: () => router.push(back.href),
   });
   const isDeleting = del.deletingId !== null;
 
@@ -130,8 +133,8 @@ export function TripDetailPageContent() {
   if (isLoadingTrip) {
     return (
       <MapHeroPageSkeleton
-        backHref="/trips"
-        backLabel="Back to trips"
+        backHref={back.href}
+        backLabel={back.label}
         icon={Luggage}
       />
     );
@@ -142,8 +145,8 @@ export function TripDetailPageContent() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Trip not found."
-          backHref="/trips"
-          backLabel="Back to trips"
+          backHref={back.href}
+          backLabel={back.label}
         />
       </div>
     );
@@ -153,10 +156,11 @@ export function TripDetailPageContent() {
     <div>
       <TripHero
         trip={trip}
+        back={back}
         actions={
           <>
             <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
-              <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
+              <Link href={withReturnTo(`/dives/new?trip_uuid=${trip.uuid}`)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Log a dive
               </Link>

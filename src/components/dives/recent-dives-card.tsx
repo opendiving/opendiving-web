@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import Link from "next/link";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import {
   CARD_TITLE_ACTION,
   CARD_TITLE_ROW,
@@ -92,6 +93,7 @@ export function RecentDivesCard({
   newDiveHref = "/dives/new",
   newDiveLabel = "Log your first dive",
 }: RecentDivesCardProps) {
+  const withReturnTo = useWithReturnTo();
   const fetchDives = useCallback(
     (page: number, perPage: number) =>
       divesAPI.getDives(page, perPage, {
@@ -165,7 +167,7 @@ export function RecentDivesCard({
             description={emptyDescription}
             action={
               <Button asChild>
-                <Link href={newDiveHref}>
+                <Link href={withReturnTo(newDiveHref)}>
                   <Plus className="h-4 w-4 mr-2" />
                   {newDiveLabel}
                 </Link>

@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { useChartWidth } from "@/hooks/useChartWidth";
 import { useKeepInside } from "@/hooks/useKeepInside";
 import { useUnits } from "@/hooks/useUnits";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import {
   displayNumber,
   formatDepth,
@@ -115,6 +116,7 @@ const readStoredMarks = () => readStoredSeries(GAS_USE_SERIES_KEY);
 
 export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   const units = useUnits();
+  const withReturnTo = useWithReturnTo();
   // Index into `points` of the dive under the cursor (or keyboard focus). One
   // piece of state for the whole chart, not a tooltip component per dot: at a
   // few hundred dives, per-dot tooltip instances are a lot of machinery for one
@@ -471,7 +473,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
               // nothing to a screen reader.
               <a
                 key={point.dive_uuid}
-                href={`/dives/${point.dive_uuid}`}
+                href={withReturnTo(`/dives/${point.dive_uuid}`)}
                 aria-label={describePoint(point, units)}
                 onMouseEnter={() => setHovered(index)}
                 onMouseLeave={() => setHovered(null)}

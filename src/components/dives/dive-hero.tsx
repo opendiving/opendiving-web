@@ -17,6 +17,7 @@ import {
   formatDurationHoursMinutes,
 } from "@/lib/date-time";
 import { formatDepth, formatTemperature, formatVisibility } from "@/lib/units";
+import type { ReturnTarget } from "@/lib/return-to";
 
 /**
  * The dive page's heading: the dive's card drawn the width of the window, with
@@ -27,9 +28,11 @@ import { formatDepth, formatTemperature, formatVisibility } from "@/lib/units";
  */
 export function DiveHero({
   dive,
+  back,
   actions,
 }: {
   dive: Dive;
+  back: ReturnTarget;
   actions?: ReactNode;
 }) {
   const units = useUnits();
@@ -69,8 +72,8 @@ export function DiveHero({
 
   return (
     <MapHero
-      backHref="/dives"
-      backLabel="Back to dives"
+      backHref={back.href}
+      backLabel={back.label}
       icon={DiveIcon}
       actions={actions}
       title={

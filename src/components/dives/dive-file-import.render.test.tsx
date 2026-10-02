@@ -17,6 +17,7 @@ vi.mock("@/lib/api/dives", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/dives")>()),
   divesAPI: {
     parseDiveFile: vi.fn(),
+    attachRecordingFile: vi.fn(),
   },
 }));
 
@@ -25,11 +26,10 @@ vi.mock("@/components/ui/use-toast", () => ({
 }));
 
 // The component pushes a route when the diver accepts a match against another
-// dive. Nothing in this file exercises that path, but `useRouter` throws
-// outright without a mounted app router, so the hook has to resolve to
-// something for the component to render at all.
+// dive, and `useRouter` throws outright without a mounted app router.
+const router = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => router,
 }));
 
 const { divesAPI } = await import("@/lib/api/dives");
@@ -81,8 +81,10 @@ function parsedDive(
 // import happens, which is what an import actually meets.
 function Harness({
   onFileAdded,
+  returnTo,
 }: {
   onFileAdded?: (pending: PendingDiveFile) => void;
+  returnTo?: string;
 } = {}) {
   const form = useForm<DiveFormValues>({
     defaultValues: {
@@ -94,6 +96,7 @@ function Harness({
       <DiveFileImport
         form={form}
         onFileAdded={onFileAdded}
+        returnTo={returnTo}
         replaceMixtures={(mixtures) =>
           form.setValue("mixtures", mixtures, { shouldDirty: true })
         }
@@ -183,6 +186,33 @@ describe("DiveFileImport", () => {
       "ocean.json",
     ]);
     expect(screen.getByLabelText("Max depth")).toHaveValue(30.1);
+  });
+
+  it("goes to the dive a file is attached to, leading back where the form would have", async () => {
+    vi.mocked(divesAPI.parseDiveFile).mockResolvedValue(
+      parsedDive([], {
+        matches: [
+          {
+            dive_uuid: "dive-7",
+            dive_number: 7,
+            recording_uuid: "rec-7",
+            same_recording: true,
+          },
+        ],
+      }),
+    );
+
+    render(<Harness returnTo="/trips/trip-1" />);
+    importFile();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Attach there" }),
+    );
+
+    await waitFor(() =>
+      expect(router.push).toHaveBeenCalledWith(
+        "/dives/dive-7?from=%2Ftrips%2Ftrip-1",
+      ),
+    );
   });
 
   it("keeps going through the rest of a batch when one file will not parse", async () => {

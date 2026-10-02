@@ -5,6 +5,7 @@ import { Download, Loader2 } from "lucide-react";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { useContact } from "@/hooks/useContact";
 import { usePerson } from "@/hooks/usePerson";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import {
   certificationsAPI,
   certificationAgencyLabel,
@@ -63,6 +64,7 @@ function DetailRow({
 // the rest of the dialog is what the diver opened it for.
 function CourseRow({ courseUuid }: { courseUuid: string }) {
   const [course, setCourse] = useState<Course | null>(null);
+  const withReturnTo = useWithReturnTo();
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +87,10 @@ function CourseRow({ courseUuid }: { courseUuid: string }) {
     <div>
       <dt className="text-xs text-muted-foreground">Course</dt>
       <dd className="text-sm">
-        <Link href={`/courses/${course.uuid}`} className="hover:underline">
+        <Link
+          href={withReturnTo(`/courses/${course.uuid}`)}
+          className="hover:underline"
+        >
           {course.name}
         </Link>
       </dd>
@@ -112,13 +117,17 @@ function ContactRow({ contactUuid }: { contactUuid: string }) {
 // record has arrived and linked to their page.
 function InstructorRow({ personUuid }: { personUuid: string }) {
   const person = usePerson(personUuid);
+  const withReturnTo = useWithReturnTo();
   if (!person) return null;
 
   return (
     <div>
       <dt className="text-xs text-muted-foreground">Instructor</dt>
       <dd className="text-sm">
-        <Link href={`/people/${person.uuid}`} className="hover:underline">
+        <Link
+          href={withReturnTo(`/people/${person.uuid}`)}
+          className="hover:underline"
+        >
           {person.name}
         </Link>
       </dd>

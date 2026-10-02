@@ -47,6 +47,8 @@ const SITE = {
   longitude: 34.5372,
 } as Dive["dive_sites"][number];
 
+const BACK = { href: "/dives", label: "Back to dives" };
+
 const figure = (label: string) =>
   screen.queryByText(label, { selector: "dt" })?.nextElementSibling;
 
@@ -54,6 +56,7 @@ describe("DiveHero", () => {
   it("heads the page with the dive's title, its start and place, and its figures", () => {
     render(
       <DiveHero
+        back={BACK}
         dive={dive({
           dive_number: 212,
           dive_sites: [
@@ -88,7 +91,12 @@ describe("DiveHero", () => {
   it("shows the depths in feet for an imperial diver", () => {
     // Whole feet, and the value behind them is still the 30.48 m the API sent.
     auth.units = "imperial";
-    render(<DiveHero dive={dive({ max_depth: 30.48, avg_depth: 18.2 })} />);
+    render(
+      <DiveHero
+        back={BACK}
+        dive={dive({ max_depth: 30.48, avg_depth: 18.2 })}
+      />,
+    );
 
     expect(figure("Max depth")).toHaveTextContent("100 ft");
     expect(figure("Avg depth")).toHaveTextContent("60 ft");
@@ -97,7 +105,7 @@ describe("DiveHero", () => {
   it("leaves the duration on its own for a dive with no depths", () => {
     // Every hand-logged dive that skipped them. An empty depth beside the
     // duration would read as something the diver failed to fill in.
-    render(<DiveHero dive={dive()} />);
+    render(<DiveHero back={BACK} dive={dive()} />);
 
     expect(figure("Duration")).toHaveTextContent("45min");
     expect(figure("Max depth")).toBeUndefined();
@@ -105,7 +113,7 @@ describe("DiveHero", () => {
   });
 
   it("shows a recorded maximum without inventing an average", () => {
-    render(<DiveHero dive={dive({ max_depth: 30.52 })} />);
+    render(<DiveHero back={BACK} dive={dive({ max_depth: 30.52 })} />);
 
     expect(figure("Max depth")).toHaveTextContent("31 m");
     expect(figure("Avg depth")).toBeUndefined();
@@ -117,6 +125,7 @@ describe("DiveHero", () => {
   it("shows the water's temperature and the visibility after the depths, rounded", () => {
     render(
       <DiveHero
+        back={BACK}
         dive={dive({
           max_depth: 30.52,
           bottom_temperature: 25.05,
@@ -150,7 +159,9 @@ describe("DiveHero", () => {
       ["Duration", "Max depth", "Avg depth", "Water temp"],
     ],
   ] as const)("shows the average beside %s", (_, fields, shown) => {
-    render(<DiveHero dive={dive({ avg_depth: 18.2, ...fields })} />);
+    render(
+      <DiveHero back={BACK} dive={dive({ avg_depth: 18.2, ...fields })} />,
+    );
 
     expect(labels()).toEqual(shown);
   });
@@ -158,6 +169,7 @@ describe("DiveHero", () => {
   it("leaves the average off beside four other figures", () => {
     render(
       <DiveHero
+        back={BACK}
         dive={dive({
           max_depth: 30.52,
           avg_depth: 18.2,
@@ -176,7 +188,7 @@ describe("DiveHero", () => {
   });
 
   it("keeps a zero-degree temperature, which is a reading rather than an absence", () => {
-    render(<DiveHero dive={dive({ bottom_temperature: 0 })} />);
+    render(<DiveHero back={BACK} dive={dive({ bottom_temperature: 0 })} />);
 
     expect(figure("Water temp")).toHaveTextContent("0°C");
   });
@@ -184,7 +196,10 @@ describe("DiveHero", () => {
   it("reads the water's temperature and the visibility in the diver's units", () => {
     auth.units = "imperial";
     render(
-      <DiveHero dive={dive({ bottom_temperature: 22, visibility: 15 })} />,
+      <DiveHero
+        back={BACK}
+        dive={dive({ bottom_temperature: 22, visibility: 15 })}
+      />,
     );
 
     expect(figure("Water temp")).toHaveTextContent("°F");
@@ -192,7 +207,7 @@ describe("DiveHero", () => {
   });
 
   it("leaves off a temperature and a visibility the dive does not record", () => {
-    render(<DiveHero dive={dive()} />);
+    render(<DiveHero back={BACK} dive={dive()} />);
 
     expect(figure("Water temp")).toBeUndefined();
     expect(figure("Visibility")).toBeUndefined();
@@ -201,13 +216,15 @@ describe("DiveHero", () => {
   it("keeps a zero-metre average, which is a reading rather than an absence", () => {
     // `!= null`, not truthiness - the guard that has bitten `gas_number` and
     // the mixture pressures in this repo.
-    render(<DiveHero dive={dive({ max_depth: 30.52, avg_depth: 0 })} />);
+    render(
+      <DiveHero back={BACK} dive={dive({ max_depth: 30.52, avg_depth: 0 })} />,
+    );
 
     expect(figure("Avg depth")).toHaveTextContent("0 m");
   });
 
   it("hands its map the dive's places, as the card's backdrop, and credits it itself", () => {
-    render(<DiveHero dive={dive(EXIT)} />);
+    render(<DiveHero back={BACK} dive={dive(EXIT)} />);
 
     expect(vi.mocked(LocationsMap).mock.lastCall![0]).toMatchObject({
       locations: [
@@ -225,7 +242,9 @@ describe("DiveHero", () => {
   });
 
   it("tells a recorded fix apart from a placed pin on the map", () => {
-    render(<DiveHero dive={dive({ dive_sites: [SITE], ...EXIT })} />);
+    render(
+      <DiveHero back={BACK} dive={dive({ dive_sites: [SITE], ...EXIT })} />,
+    );
 
     expect(vi.mocked(LocationsMap).mock.lastCall![0].locations).toEqual([
       { name: "Blue Hole", latitude: 28.5721, longitude: 34.5372 },
@@ -235,7 +254,12 @@ describe("DiveHero", () => {
 
   it("keeps an equator fix, which is a position rather than an absence", () => {
     // A dive off West Africa exits at longitude 0.
-    render(<DiveHero dive={dive({ exit_latitude: 0, exit_longitude: 0 })} />);
+    render(
+      <DiveHero
+        back={BACK}
+        dive={dive({ exit_latitude: 0, exit_longitude: 0 })}
+      />,
+    );
 
     expect(vi.mocked(LocationsMap).mock.lastCall![0].locations).toEqual([
       { name: "Exit", latitude: 0, longitude: 0, variant: "fix" },
@@ -246,6 +270,7 @@ describe("DiveHero", () => {
     // A site without a pin is no position either.
     render(
       <DiveHero
+        back={BACK}
         dive={dive({
           dive_sites: [{ ...SITE, latitude: null, longitude: null }],
         })}
