@@ -23,6 +23,7 @@ export function GearItemHero({
     gearTypeLabel(gearItem.type),
     gearItem.brand,
     gearItem.rented ? "Rented" : null,
+    gearItem.is_archived ? "Archived" : null,
   ]
     .filter(Boolean)
     .join(" · ");
