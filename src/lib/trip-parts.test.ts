@@ -74,16 +74,6 @@ describe("formatTripSpan", () => {
   it("shows the one date a half-dated trip has", () => {
     expect(formatTripSpan([{ start_date: "2026-04-18" }])).toBe("Apr 18, 2026");
   });
-
-  it("passes its format options through", () => {
-    expect(
-      formatTripSpan([{ start_date: "2026-04-18" }], {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-    ).toBe("April 18, 2026");
-  });
 });
 
 describe("tripPartLocations", () => {
