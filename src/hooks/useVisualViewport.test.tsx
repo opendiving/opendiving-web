@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import {
+  useFocusTappedFieldInPlace,
   useKeepFocusedFieldVisible,
   useVisualViewport,
 } from "./useVisualViewport";
@@ -327,6 +328,162 @@ describe("useKeepFocusedFieldVisible", () => {
     const { cleanup } = mountField();
     const { unmount } = renderHook(() => useKeepFocusedFieldVisible());
     unmount();
+    cleanup();
+  });
+});
+
+describe("useFocusTappedFieldInPlace", () => {
+  // jsdom has no `Touch` constructor, so the events are plain ones carrying the
+  // two lists the hook reads.
+  function touch(
+    type: "touchstart" | "touchend",
+    target: Element,
+    point: { x: number; y: number },
+    fingers = 1,
+  ) {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    const contact = { clientX: point.x, clientY: point.y, target };
+    Object.defineProperties(event, {
+      touches: {
+        value: type === "touchend" ? [] : Array(fingers).fill(contact),
+      },
+      changedTouches: { value: [contact] },
+    });
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  /** Touches down and lifts off, returning the `touchend` for inspection. */
+  function tap(target: Element, to = { x: 40, y: 20 }, fingers = 1) {
+    touch("touchstart", target, { x: 40, y: 20 }, fingers);
+    return touch("touchend", target, to);
+  }
+
+  function mount(html: string) {
+    const root = document.createElement("div");
+    root.innerHTML = html;
+    document.body.append(root);
+    return { root, cleanup: () => root.remove() };
+  }
+
+  afterEach(() => {
+    // Only ever stubbed per test - jsdom has none of its own.
+    Reflect.deleteProperty(document, "caretPositionFromPoint");
+  });
+
+  it("focuses a tapped field without scrolling, in place of the tap", () => {
+    const { root, cleanup } = mount('<input value="hello world" />');
+    const field = root.querySelector("input")!;
+    const focus = vi.spyOn(field, "focus");
+    const { unmount } = renderHook(() => useFocusTappedFieldInPlace());
+
+    const end = tap(field);
+
+    expect(end.defaultPrevented).toBe(true);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(document.activeElement).toBe(field);
+    unmount();
+    cleanup();
+  });
+
+  it("puts the caret where the finger landed", () => {
+    const { root, cleanup } = mount("<textarea>hello world</textarea>");
+    const field = root.querySelector("textarea")!;
+    const caretAt = vi.fn(() => ({ offsetNode: field, offset: 2 }));
+    Object.defineProperty(document, "caretPositionFromPoint", {
+      configurable: true,
+      value: caretAt,
+    });
+    const { unmount } = renderHook(() => useFocusTappedFieldInPlace());
+
+    tap(field, { x: 41, y: 22 });
+
+    expect(caretAt).toHaveBeenCalledWith(41, 22);
+    expect([field.selectionStart, field.selectionEnd]).toEqual([2, 2]);
+    unmount();
+    cleanup();
+  });
+
+  it("puts the caret at the end where the point maps to nothing", () => {
+    // jsdom has no `caretPositionFromPoint`, which is the older-Safari case.
+    const { root, cleanup } = mount('<input value="hello world" />');
+    const field = root.querySelector("input")!;
+    const { unmount } = renderHook(() => useFocusTappedFieldInPlace());
+
+    tap(field);
+
+    expect([field.selectionStart, field.selectionEnd]).toEqual([11, 11]);
+    unmount();
+    cleanup();
+  });
+
+  it("focuses a label's field the same way", () => {
+    const { root, cleanup } = mount(
+      '<label for="notes">Notes</label><textarea id="notes"></textarea>',
+    );
+    const { unmount } = renderHook(() => useFocusTappedFieldInPlace());
+
+    const end = tap(root.querySelector("label")!);
+
+    expect(end.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(root.querySelector("textarea"));
+    unmount();
+    cleanup();
+  });
+
+  it.each([
+    ["a drag", '<input value="x" />', { x: 40, y: 60 }, 1],
+    ["two fingers", '<input value="x" />', { x: 40, y: 20 }, 2],
+    ["a checkbox", '<input type="checkbox" />', { x: 40, y: 20 }, 1],
+    ["a read-only field", '<input value="x" readonly />', { x: 40, y: 20 }, 1],
+    ["a button", "<button>Save</button>", { x: 40, y: 20 }, 1],
+  ])("leaves %s to the browser", (_, html, to, fingers) => {
+    const { root, cleanup } = mount(html);
+    const target = root.firstElementChild!;
+    const { unmount } = renderHook(() => useFocusTappedFieldInPlace());
+
+    const end = tap(target, to, fingers);
+
+    expect(end.defaultPrevented).toBe(false);
+    expect(document.activeElement).not.toBe(target);
+    unmount();
+    cleanup();
+  });
+
+  it("leaves a field that already has focus to the browser", () => {
+    // The second tap, which is how the diver moves the caret natively.
+    const { root, cleanup } = mount('<input value="x" />');
+    const field = root.querySelector("input")!;
+    field.focus();
+    const { unmount } = renderHook(() => useFocusTappedFieldInPlace());
+
+    expect(tap(field).defaultPrevented).toBe(false);
+    unmount();
+    cleanup();
+  });
+
+  it("focuses once with two dialogs open", () => {
+    const { root, cleanup } = mount('<input value="x" />');
+    const field = root.querySelector("input")!;
+    const focus = vi.spyOn(field, "focus");
+    const first = renderHook(() => useFocusTappedFieldInPlace());
+    const second = renderHook(() => useFocusTappedFieldInPlace());
+
+    tap(field);
+
+    expect(focus).toHaveBeenCalledTimes(1);
+    first.unmount();
+    second.unmount();
+    cleanup();
+  });
+
+  it("stops listening once unmounted", () => {
+    const { root, cleanup } = mount('<input value="x" />');
+    const field = root.querySelector("input")!;
+    const { unmount } = renderHook(() => useFocusTappedFieldInPlace());
+    unmount();
+
+    expect(tap(field).defaultPrevented).toBe(false);
     cleanup();
   });
 });

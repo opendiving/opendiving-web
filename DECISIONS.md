@@ -6569,6 +6569,20 @@ the transition starts, `MIN_SETTLE_FRAMES` (16: past 200ms at 60Hz) floors the w
 It listens to `resize`, never `scroll`: the visual viewport also scrolls when Safari pans to a
 focused field, and correcting on that fights the browser.
 
+## A tap on a field in an open dialog is focused with `preventScroll`
+
+As the keyboard opens, iOS pans the visual viewport to centre the focused field above it, and the
+fixed `DialogContent` goes with it. The page gets no animation frames until the keyboard has
+settled, so `useVisualViewport` can only bring the dialog back afterwards: it flies up, then slides
+down. No faster correction helps, since the pan happens in frames the page never gets.
+
+`useFocusTappedFieldInPlace` (`hooks/useVisualViewport.ts`) cancels a one-finger tap on an unfocused
+text field or its label while a dialog is open, and focuses the field with `preventScroll`, which
+WebKit honours for that pan. The caret goes to `caretPositionFromPoint`, or the end of the text.
+
+Rejected: focusing in `touchend` without cancelling the tap. The tap's own caret placement still
+makes Safari pan, a little later.
+
 ## Toasts are swiped away in the direction they already sit
 
 Radix's `swipeDirection` defaults to `right`, but `ToastViewport` stacks toasts across the top of a

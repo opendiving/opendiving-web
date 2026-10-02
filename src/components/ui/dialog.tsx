@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/ui/tooltip";
 import {
+  useFocusTappedFieldInPlace,
   useKeepFocusedFieldVisible,
   useVisualViewport,
 } from "@/hooks/useVisualViewport";
@@ -69,10 +70,11 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 /**
- * The two things a dialog owes the visible viewport, for as long as it is open:
- * the CSS variables `DialogOverlay` and `DialogContent` are positioned with, and
- * a focused field kept inside the box those variables have just resized.
- * Renders nothing.
+ * What a dialog owes the visible viewport, for as long as it is open: the CSS
+ * variables `DialogOverlay` and `DialogContent` are positioned with, a tapped
+ * field focused without Safari panning the dialog off the screen, and the
+ * focused field kept inside the box those variables have just resized. Renders
+ * nothing.
  *
  * **A child of the content rather than a hook in `DialogContent`'s body**,
  * because `DialogContent` is rendered by every page that *declares* a dialog,
@@ -83,6 +85,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
  */
 function VisualViewportEffects() {
   useVisualViewport();
+  useFocusTappedFieldInPlace();
   useKeepFocusedFieldVisible();
   return null;
 }
