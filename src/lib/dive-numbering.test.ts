@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { DiveNumberingSummary } from "@/lib/api/dives";
-import { describeDiveNumbering } from "@/lib/dive-numbering";
+import type { ImportDiveReport } from "@/lib/api/logbook-import";
+import {
+  describeDiveNumbering,
+  importRenumberScope,
+  numberingTangledSince,
+} from "@/lib/dive-numbering";
 
 function summary(
   overrides: Partial<DiveNumberingSummary> = {},
@@ -107,5 +112,107 @@ describe("describeDiveNumbering", () => {
     expect(describeDiveNumbering(summary({ out_of_date_order_count: 1 }))).toBe(
       "Numbered #1–#3 — 1 out of date order.",
     );
+  });
+});
+
+describe("numberingTangledSince", () => {
+  it("is true where more dives share a number than before", () => {
+    expect(
+      numberingTangledSince(summary(), summary({ duplicate_count: 2 })),
+    ).toBe(true);
+  });
+
+  it("is true where more dives are out of date order than before", () => {
+    expect(
+      numberingTangledSince(
+        summary({ out_of_date_order_count: 1 }),
+        summary({ out_of_date_order_count: 3 }),
+      ),
+    ).toBe(true);
+  });
+
+  it("is false where the log is no more tangled than before", () => {
+    const tangled = summary({ duplicate_count: 2, out_of_date_order_count: 1 });
+    expect(numberingTangledSince(tangled, tangled)).toBe(false);
+  });
+
+  it("is false where only unused numbers grew, which a file's own numbers make", () => {
+    expect(
+      numberingTangledSince(summary(), summary({ missing_count: 40 })),
+    ).toBe(false);
+  });
+});
+
+function importedDive(
+  start_time: string | null,
+  outcome: ImportDiveReport["outcome"] = "created",
+): ImportDiveReport {
+  return {
+    uuid: outcome === "skipped" ? null : "d",
+    outcome,
+    files_added: 0,
+    recordings_added: 0,
+    reason: null,
+    start_time,
+    duration: null,
+    max_depth: null,
+    device: null,
+    members: [],
+  };
+}
+
+describe("importRenumberScope", () => {
+  it("starts on the day of the earliest dive the import brought into the log", () => {
+    expect(
+      importRenumberScope(
+        [
+          importedDive("2019-05-01T09:00:00+02:00"),
+          importedDive("2019-03-12T09:00:00+02:00", "restored"),
+          // Already in the log, so not where the import's dives begin.
+          importedDive("2018-01-01T09:00:00+02:00", "linked"),
+          importedDive("2017-01-01T09:00:00+02:00", "updated"),
+          importedDive("2016-01-01T09:00:00+02:00", "skipped"),
+        ],
+        120,
+      ),
+    ).toEqual({
+      fromDate: "2019-03-12",
+      lastInstantBefore: "2019-03-11T23:59:59+02:00",
+    });
+  });
+
+  it("is null where no dive entered the log", () => {
+    expect(
+      importRenumberScope(
+        [
+          importedDive("2019-03-12T09:00:00+02:00", "linked"),
+          importedDive(null, "skipped"),
+        ],
+        120,
+      ),
+    ).toBeNull();
+  });
+
+  it("reads the day at the given offset, so the scope reaches a dive just past midnight further east", () => {
+    // 19:30 on the 11th in UTC, 22:30 at +03:00.
+    expect(
+      importRenumberScope([importedDive("2019-03-12T00:30:00+05:00")], 180),
+    ).toEqual({
+      fromDate: "2019-03-11",
+      lastInstantBefore: "2019-03-10T23:59:59+03:00",
+    });
+  });
+
+  it("places a naive start at its wall clock as UTC and a bare date at the start of its day", () => {
+    expect(
+      importRenumberScope([importedDive("2019-03-12T01:00:00")], -120),
+    ).toEqual({
+      fromDate: "2019-03-11",
+      lastInstantBefore: "2019-03-10T23:59:59-02:00",
+    });
+    expect(importRenumberScope([importedDive("2019-03-12")], 0)).toEqual({
+      fromDate: "2019-03-12",
+      lastInstantBefore: "2019-03-11T23:59:59+00:00",
+    });
   });
 });

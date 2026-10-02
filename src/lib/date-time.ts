@@ -160,6 +160,14 @@ export function diveWallClockTime(startTime: string): number {
   return shiftByEmbeddedOffset(startTime).shifted.getTime();
 }
 
+// Where the API places a dive's `start_time` when it orders dives: the instant
+// it names, its wall clock read as UTC where it carries no offset, the start of
+// its day where it is a bare date. The dive list, the number suggestion and a
+// renumber's scope all compare dives this way.
+export function diveStartInstant(startTime: string): number {
+  return parseAsWallClockUtc(startTime).getTime();
+}
+
 // A `start_time` that carries only a date, with no time at all, e.g.
 // "2021-04-04".
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;

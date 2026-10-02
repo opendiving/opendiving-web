@@ -59,10 +59,24 @@ interface TaggedPreview {
   result: DiveRenumberResult | null;
 }
 
-function RenumberForm({ onDone }: { onDone: (renumbered: boolean) => void }) {
+// What the form opens on, for a caller that knows which part of the log wants
+// renumbering. Without it the form opens on the whole log from #1.
+export interface RenumberDefaults {
+  startAt: number;
+  // "YYYY-MM-DD", read at the browser's offset as `scopeStartTime` reads it.
+  fromDate: string;
+}
+
+function RenumberForm({
+  defaults,
+  onDone,
+}: {
+  defaults?: RenumberDefaults;
+  onDone: (renumbered: boolean) => void;
+}) {
   const { toast } = useToast();
-  const [startAt, setStartAt] = useState("1");
-  const [fromDate, setFromDate] = useState("");
+  const [startAt, setStartAt] = useState(String(defaults?.startAt ?? 1));
+  const [fromDate, setFromDate] = useState(defaults?.fromDate ?? "");
   const [preview, setPreview] = useState<TaggedPreview | null>(null);
   const [isApplying, setIsApplying] = useState(false);
 
@@ -267,6 +281,10 @@ export interface RenumberDivesDialogProps {
   // Called after numbers have actually been written, so the caller can refetch
   // the list and the numbering summary this just invalidated.
   onRenumbered: () => void;
+  defaults?: RenumberDefaults;
+  // For a caller whose Renumber button leaves the page once the log is
+  // renumbered, so focus has somewhere to go when the dialog closes.
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 // Renumbers a log consecutively, in date order. The only thing in the app that
@@ -279,12 +297,18 @@ export function RenumberDivesDialog({
   open,
   onOpenChange,
   onRenumbered,
+  defaults,
+  onCloseAutoFocus,
 }: RenumberDivesDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         {open ? (
           <RenumberForm
+            defaults={defaults}
             onDone={(renumbered) => {
               if (renumbered) onRenumbered();
               onOpenChange(false);
