@@ -10,6 +10,7 @@ import {
   ImportFileList,
   type SelectedImportFile,
 } from "@/components/import/import-file-list";
+import { ImportNumberingSuggestion } from "@/components/import/import-numbering-suggestion";
 import { ImportReportView } from "@/components/import/import-report-view";
 import { ImportReview } from "@/components/import/import-review";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { StatusMessage } from "@/components/ui/status-message";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { divesAPI, type DiveNumberingSummary } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
   logbookImportAPI,
@@ -44,6 +46,10 @@ import {
 interface Plan {
   sent: SelectedImportFile[];
   preview: ImportPreview;
+  // The log's numbering beside the read, which writes nothing: the log as the
+  // import found it, for the result to tell what the import changed in it.
+  // Null when it could not be read, and the result then offers no renumber.
+  numbering: DiveNumberingSummary | null;
 }
 
 interface Transfer {
@@ -87,6 +93,8 @@ function ImportFlow() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [stale, setStale] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [numberingBefore, setNumberingBefore] =
+    useState<DiveNumberingSummary | null>(null);
   const [phase, setPhase] = useState<"idle" | "reading" | "importing">("idle");
   const [transfer, setTransfer] = useState<Transfer | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -157,11 +165,17 @@ function ImportFlow() {
       total: sent.reduce((sum, item) => sum + item.file.size, 0),
     });
     try {
-      const preview = await logbookImportAPI.preview(
-        sent.map((item) => item.file),
-        trackTransfer,
-      );
-      setPlan({ sent, preview });
+      const [preview, numbering] = await Promise.all([
+        logbookImportAPI.preview(
+          sent.map((item) => item.file),
+          trackTransfer,
+        ),
+        divesAPI.getDiveNumbering().catch((caught) => {
+          console.error("Failed to read the log's numbering:", caught);
+          return null;
+        }),
+      ]);
+      setPlan({ sent, preview, numbering });
     } catch (caught) {
       setError(
         getApiErrorMessage(
@@ -198,6 +212,7 @@ function ImportFlow() {
       // imported facts back as nulls.
       if (checkInWasWritten(applied)) await refreshUser();
       setResult(applied);
+      setNumberingBefore(plan.numbering);
       setPlan(null);
       setFiles([]);
       toast({
@@ -235,6 +250,12 @@ function ImportFlow() {
             dives={result.dives}
             members={result.members}
             written
+          />
+        )}
+        {numberingBefore && (
+          <ImportNumberingSuggestion
+            before={numberingBefore}
+            dives={result.dives}
           />
         )}
         {/* `archive` is a property of the files, which the preview reported and
