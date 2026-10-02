@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
@@ -45,13 +46,15 @@ export function QuickCreateProvider({
 }) {
   const { user } = useAuth();
   const router = useRouter();
+  const withReturnTo = useWithReturnTo();
   const [kind, setKind] = useState<QuickCreateKind | null>(null);
 
   const openCreate = useCallback((next: QuickCreateKind) => setKind(next), []);
 
   // Take the diver to what they just made - its own page where there is one,
-  // otherwise the section list - even from that section's own list, where the
-  // new row would land wherever the sort puts it, often out of sight.
+  // which leads back to the page it was made on, otherwise the section list -
+  // even from that section's own list, where the new row would land wherever
+  // the sort puts it, often out of sight.
   const goTo = (href: string) => {
     setKind(null);
     router.push(href);
@@ -70,17 +73,19 @@ export function QuickCreateProvider({
           <TripDialog
             open={kind === "trip"}
             onOpenChange={close}
-            onSaved={(trip) => goTo(`/trips/${trip.uuid}`)}
+            onSaved={(trip) => goTo(withReturnTo(`/trips/${trip.uuid}`))}
           />
           <DiveSiteDialog
             open={kind === "site"}
             onOpenChange={close}
-            onSaved={(diveSite) => goTo(`/sites/${diveSite.uuid}`)}
+            onSaved={(diveSite) =>
+              goTo(withReturnTo(`/sites/${diveSite.uuid}`))
+            }
           />
           <GearItemDialog
             open={kind === "gear"}
             onOpenChange={close}
-            onSaved={(gearItem) => goTo(`/gear/${gearItem.uuid}`)}
+            onSaved={(gearItem) => goTo(withReturnTo(`/gear/${gearItem.uuid}`))}
           />
           <CertificationDialog
             open={kind === "certification"}
@@ -90,12 +95,12 @@ export function QuickCreateProvider({
           <CourseDialog
             open={kind === "course"}
             onOpenChange={close}
-            onSaved={(course) => goTo(`/courses/${course.uuid}`)}
+            onSaved={(course) => goTo(withReturnTo(`/courses/${course.uuid}`))}
           />
           <PersonDialog
             open={kind === "person"}
             onOpenChange={close}
-            onSaved={(person) => goTo(`/people/${person.uuid}`)}
+            onSaved={(person) => goTo(withReturnTo(`/people/${person.uuid}`))}
           />
         </>
       )}

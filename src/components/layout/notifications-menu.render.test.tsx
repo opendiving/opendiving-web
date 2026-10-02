@@ -42,6 +42,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => stable.pathname,
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/api/gear-service", async (importOriginal) => {
@@ -269,9 +270,10 @@ describe("the service-due rows", () => {
       "Log service for Service on Scubapro R195",
       "Log service for Service (Second stage) on MK25 EVO",
     ]);
+    // And back from the item's page to the page the bell was opened on.
     expect(within(panel).getByRole("link", { name: /R195/ })).toHaveAttribute(
       "href",
-      "/gear/item-2",
+      "/gear/item-2?from=%2Fdashboard",
     );
   });
 

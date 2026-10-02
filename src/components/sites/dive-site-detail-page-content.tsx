@@ -7,6 +7,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,8 @@ export function DiveSiteDetailPageContent() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const back = useReturnTo({ href: "/sites", label: "Back to dive sites" });
+  const withReturnTo = useWithReturnTo();
 
   const {
     resource: diveSite,
@@ -53,7 +56,7 @@ export function DiveSiteDetailPageContent() {
   const del = useDeleteResource(diveSitesAPI.deleteDiveSite, {
     successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete dive site. Please try again.",
-    onDeleted: () => router.push("/sites"),
+    onDeleted: () => router.push(back.href),
   });
   const isDeleting = del.deletingId !== null;
 
@@ -67,8 +70,8 @@ export function DiveSiteDetailPageContent() {
   if (isLoadingDiveSite) {
     return (
       <MapHeroPageSkeleton
-        backHref="/sites"
-        backLabel="Back to dive sites"
+        backHref={back.href}
+        backLabel={back.label}
         icon={MapPin}
       />
     );
@@ -79,8 +82,8 @@ export function DiveSiteDetailPageContent() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Dive site not found."
-          backHref="/sites"
-          backLabel="Back to dive sites"
+          backHref={back.href}
+          backLabel={back.label}
         />
       </div>
     );
@@ -90,10 +93,15 @@ export function DiveSiteDetailPageContent() {
     <div>
       <DiveSiteHero
         site={diveSite}
+        back={back}
         actions={
           <>
             <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
-              <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
+              <Link
+                href={withReturnTo(
+                  `/dives/new?dive_site_uuid=${diveSite.uuid}`,
+                )}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Log a dive
               </Link>

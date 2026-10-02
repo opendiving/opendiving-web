@@ -13,6 +13,7 @@ import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDateOnly } from "@/lib/date-time";
 import { formatDepth } from "@/lib/units";
+import type { ReturnTarget } from "@/lib/return-to";
 
 /**
  * The site page's heading: the site's card drawn the width of the window, with
@@ -23,9 +24,11 @@ import { formatDepth } from "@/lib/units";
  */
 export function DiveSiteHero({
   site,
+  back,
   actions,
 }: {
   site: DiveSite;
+  back: ReturnTarget;
   actions?: ReactNode;
 }) {
   const units = useUnits();
@@ -71,8 +74,8 @@ export function DiveSiteHero({
 
   return (
     <MapHero
-      backHref="/sites"
-      backLabel="Back to dive sites"
+      backHref={back.href}
+      backLabel={back.label}
       icon={MapPin}
       actions={actions}
       title={site.name}

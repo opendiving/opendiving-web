@@ -1746,7 +1746,7 @@ first placed site.
 
 ## The gear frame's `HEIGHT` is the lever under the README row, written down rather than measured
 
-`gear-item`'s `HEIGHT` is 718, the one figure written down rather than measured: the README row sets
+`gear-item`'s `HEIGHT` is 688, the one figure written down rather than measured: the README row sets
 it, not the page, because `gear-item.png` stacks over `dive-site.png` beside `dive-detail.png` and
 the pair must come level.
 
@@ -1754,10 +1754,9 @@ Measured, not reasoned: the row's markdown through GitHub's `/markdown` API, sty
 `github-markdown-css`, with the committed PNGs in a doctype document (quirks mode collapses the line
 box). A `<br>` between stacked images adds 6px of unscaled descent.
 
-718 is the foot of the sidebar's _Gear Information_ card, with no gutter. The exact balance, about
-700, falls between two lines of the _Service_ card's history; at 718 the pair ends 7px below the
-dive shot at every container width from 680 to 1012px, and every gutter-respecting stop overshoots
-further.
+688 is the gap between the first two entries of the _Service_ card's history. The exact balance,
+about 700, falls inside the second entry, so the pair ends a few pixels above the dive shot; the
+next gap is 60px further down.
 
 `HEIGHT` stays a number and goes stale when `dive-detail` or `dive-site` is re-framed.
 `refuseSlicedRow()` throws before the shutter if the height lands inside a row; snapping to a gap

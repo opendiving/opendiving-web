@@ -10,13 +10,16 @@ import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { tripFigures } from "@/lib/trip-figures";
 import { useUnits } from "@/hooks/useUnits";
+import type { ReturnTarget } from "@/lib/return-to";
 
 // The trip page's heading: the trip card drawn the width of the window.
 export function TripHero({
   trip,
+  back,
   actions,
 }: {
   trip: Trip;
+  back: ReturnTarget;
   actions?: ReactNode;
 }) {
   const locations = tripPartLocations(trip.parts);
@@ -33,8 +36,8 @@ export function TripHero({
 
   return (
     <MapHero
-      backHref="/trips"
-      backLabel="Back to trips"
+      backHref={back.href}
+      backLabel={back.label}
       icon={Luggage}
       actions={actions}
       title={trip.name}

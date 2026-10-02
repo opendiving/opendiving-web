@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { isFormPath, labelForPath, resolveReturnTarget } from "./return-to";
+import {
+  isFormPath,
+  labelForPath,
+  resolveReturnTarget,
+  withReturnTo,
+} from "./return-to";
 
 const FALLBACK = { href: "/dives", label: "Back to dives" };
 
@@ -105,5 +110,71 @@ describe("isFormPath", () => {
     expect(isFormPath("/dives")).toBe(false);
     expect(isFormPath("/dives/abc")).toBe(false);
     expect(isFormPath("/trips/abc")).toBe(false);
+  });
+});
+
+describe("withReturnTo", () => {
+  // What the opened page reads back, as `useReturnTo` would.
+  const backFrom = (href: string) =>
+    resolveReturnTarget(
+      { from: new URL(href, "http://localhost").searchParams.get("from") },
+      FALLBACK,
+    );
+
+  it("names the page the link is followed from", () => {
+    expect(withReturnTo("/trips/abc", "/dashboard")).toBe(
+      "/trips/abc?from=%2Fdashboard",
+    );
+    expect(backFrom(withReturnTo("/dives/d", "/trips/abc"))).toEqual({
+      href: "/trips/abc",
+      label: "Back to trip",
+    });
+  });
+
+  // Dashboard to trip to dive, and back twice.
+  it("keeps that page's own way back", () => {
+    const trip = withReturnTo("/trips/abc", "/dashboard");
+    const back = backFrom(withReturnTo("/dives/d", trip));
+    expect(back).toEqual({ href: trip, label: "Back to trip" });
+    expect(backFrom(back.href)).toEqual({
+      href: "/dashboard",
+      label: "Back to dashboard",
+    });
+  });
+
+  it("adds nothing where the opened page's back link already goes", () => {
+    expect(withReturnTo("/dives/d", "/dives")).toBe("/dives/d");
+    expect(withReturnTo("/dives/new", "/dives")).toBe("/dives/new");
+    expect(withReturnTo("/dives/d/edit", "/dives/d")).toBe("/dives/d/edit");
+    // An edit from the list is not one from its own dive.
+    expect(withReturnTo("/dives/d/edit", "/dives")).toBe(
+      "/dives/d/edit?from=%2Fdives",
+    );
+  });
+
+  it("adds nothing from a form, or from nowhere", () => {
+    expect(withReturnTo("/dives/d", "/dives/new")).toBe("/dives/d");
+    expect(withReturnTo("/dives/d", "/dives/x/edit?from=/trips/t")).toBe(
+      "/dives/d",
+    );
+    expect(withReturnTo("/dives/d", null)).toBe("/dives/d");
+  });
+
+  it("leaves a link to the page it is on as that page stands", () => {
+    expect(withReturnTo("/courses/c", "/courses/c?from=/dashboard")).toBe(
+      "/courses/c?from=/dashboard",
+    );
+    expect(withReturnTo("/courses/c", "/courses/c")).toBe("/courses/c");
+  });
+
+  it("joins a query the link already has", () => {
+    expect(withReturnTo("/dives/new?trip_uuid=t", "/people/p")).toBe(
+      "/dives/new?trip_uuid=t&from=%2Fpeople%2Fp",
+    );
+  });
+
+  it("stops a long walk from growing the URL any further", () => {
+    const deep = `/sites/s?from=${"x".repeat(1000)}`;
+    expect(withReturnTo("/dives/d", deep)).toBe("/dives/d?from=%2Fsites%2Fs");
   });
 });

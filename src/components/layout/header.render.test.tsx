@@ -23,6 +23,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // The header only asks this context for the "+" menu's opener, and nothing in

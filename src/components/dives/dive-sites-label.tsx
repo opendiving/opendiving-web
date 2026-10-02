@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { DiveSiteSummary } from "@/lib/api/dives";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 
 export interface DiveSitesLabelProps {
   sites: DiveSiteSummary[];
@@ -17,6 +20,8 @@ export function DiveSitesLabel({
   linked = false,
   className,
 }: DiveSitesLabelProps) {
+  const withReturnTo = useWithReturnTo();
+
   if (sites.length === 0) {
     return <span className={className}>-</span>;
   }
@@ -41,7 +46,10 @@ export function DiveSitesLabel({
       }
     >
       {linked ? (
-        <Link href={`/sites/${primary.uuid}`} className="hover:underline">
+        <Link
+          href={withReturnTo(`/sites/${primary.uuid}`)}
+          className="hover:underline"
+        >
           {primary.name}
         </Link>
       ) : (

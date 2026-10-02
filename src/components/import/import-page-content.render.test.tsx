@@ -86,6 +86,13 @@ vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: mocks.toast }),
 }));
 
+// Where the dive links are followed from, which the written ones lead back to.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  usePathname: () => "/import",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 const MB = 1024 * 1024;
 
 function report(overrides: Partial<ImportReport> = {}): ImportReport {
@@ -544,7 +551,8 @@ describe("the dive rows", () => {
       expect(within(table).getByText(outcome)).toBeVisible();
     }
     // Before anything is written, only the dives the diver already has are
-    // there to open - in a new tab, so the review stays put.
+    // there to open - in a new tab, so the review stays put, and with no way
+    // back to an importer that tab never had.
     const links = within(table).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/dives/c",
@@ -748,8 +756,8 @@ describe("the result", () => {
     expect(within(table).getByText("Skipped: No samples.")).toBeVisible();
     const links = within(table).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/dives/a",
-      "/dives/b",
+      "/dives/a?from=%2Fimport",
+      "/dives/b?from=%2Fimport",
     ]);
     expect(links[0]).not.toHaveAttribute("target");
     expect(screen.getByRole("link", { name: "Done" })).toHaveAttribute(

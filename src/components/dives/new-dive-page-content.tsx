@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useReturnTo } from "@/hooks/useReturnTo";
+import { withReturnTo } from "@/lib/return-to";
 import { useSuggestedDiveNumber } from "@/hooks/useSuggestedDiveNumber";
 import { divesAPI } from "@/lib/api/dives";
 import { coursesAPI, type Course } from "@/lib/api/courses";
@@ -453,8 +454,9 @@ export function NewDivePageContent() {
       });
 
       // The dive that was just logged, not wherever the form was opened from:
-      // after a successful save the thing worth seeing is the new record.
-      router.push(`/dives/${created.uuid}`);
+      // after a successful save the thing worth seeing is the new record. Its
+      // back link goes where the form's would have.
+      router.push(withReturnTo(`/dives/${created.uuid}`, returnTo.href));
     } catch (error) {
       console.error("Failed to create dive:", error);
 

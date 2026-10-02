@@ -6,6 +6,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
 import { useContact } from "@/hooks/useContact";
 import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { splitCourseInstructor } from "@/lib/people";
@@ -58,6 +59,8 @@ export function CourseDetailPageContent() {
   // Held here rather than in the certifications card, because the sidebar's
   // button opens the same dialog the card's empty state does.
   const [isAddingCertification, setIsAddingCertification] = useState(false);
+  const back = useReturnTo({ href: "/courses", label: "Back to courses" });
+  const withReturnTo = useWithReturnTo();
 
   const {
     resource: course,
@@ -77,7 +80,7 @@ export function CourseDetailPageContent() {
       "Are you sure you want to delete this course? The dives and certifications on it are kept, but they will no longer name it.",
     successMessage: "Course deleted successfully.",
     errorMessage: "Failed to delete course. Please try again.",
-    onDeleted: () => router.push("/courses"),
+    onDeleted: () => router.push(back.href),
   });
   const isDeleting = del.deletingId !== null;
 
@@ -107,9 +110,7 @@ export function CourseDetailPageContent() {
   }
 
   if (isLoadingCourse) {
-    return (
-      <DetailPageSkeleton backHref="/courses" backLabel="Back to courses" />
-    );
+    return <DetailPageSkeleton backHref={back.href} backLabel={back.label} />;
   }
 
   if (!course) {
@@ -117,8 +118,8 @@ export function CourseDetailPageContent() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Course not found."
-          backHref="/courses"
-          backLabel="Back to courses"
+          backHref={back.href}
+          backLabel={back.label}
         />
       </div>
     );
@@ -132,8 +133,8 @@ export function CourseDetailPageContent() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
       <PageHeader
-        backHref="/courses"
-        backLabel="Back to courses"
+        backHref={back.href}
+        backLabel={back.label}
         title={course.name}
         subtitle={
           agencyLabel && courseDateRange
@@ -217,7 +218,7 @@ export function CourseDetailPageContent() {
               {instructor && (
                 <InfoRow label="Instructor">
                   <Link
-                    href={`/people/${instructor.uuid}`}
+                    href={withReturnTo(`/people/${instructor.uuid}`)}
                     className="hover:underline"
                   >
                     {instructor.name}
@@ -254,7 +255,9 @@ export function CourseDetailPageContent() {
                   the pair no longer fits across. */}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 <Button asChild>
-                  <Link href={`/dives/new?course_uuid=${course.uuid}`}>
+                  <Link
+                    href={withReturnTo(`/dives/new?course_uuid=${course.uuid}`)}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Log a dive
                   </Link>

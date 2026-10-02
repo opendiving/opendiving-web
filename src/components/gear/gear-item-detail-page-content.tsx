@@ -6,16 +6,13 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
-import {
-  gearAPI,
-  GearItem,
-  gearItemLabel,
-  gearTypeLabel,
-} from "@/lib/api/gear";
+import { useReturnTo } from "@/hooks/useReturnTo";
+import { gearAPI, GearItem, gearItemLabel } from "@/lib/api/gear";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { formatDateTime } from "@/lib/date-time";
+import { cn } from "@/lib/utils";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
+import { GearItemHero } from "@/components/gear/gear-item-hero";
 import { GearServiceCard } from "@/components/gear/gear-service-card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -26,9 +23,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { PageHeader } from "@/components/ui/page-header";
+import {
+  HERO_BODY,
+  HERO_CONTROL,
+  MapHeroPageSkeleton,
+} from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, Backpack, Archive, ArchiveRestore } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -40,6 +40,7 @@ export function GearItemDetailPageContent() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+  const back = useReturnTo({ href: "/gear", label: "Back to gear" });
 
   const {
     resource: gearItem,
@@ -58,7 +59,7 @@ export function GearItemDetailPageContent() {
       "Deleting removes this gear from your dives and gear sets. To keep it in your log and its service history, archive it instead. Either way, its service reminders stop.",
     successMessage: "Gear deleted successfully.",
     errorMessage: "Failed to delete gear. Please try again.",
-    onDeleted: () => router.push("/gear"),
+    onDeleted: () => router.push(back.href),
   });
   const isDeleting = del.deletingId !== null;
 
@@ -101,7 +102,14 @@ export function GearItemDetailPageContent() {
   }
 
   if (isLoadingGear) {
-    return <DetailPageSkeleton backHref="/gear" backLabel="Back to gear" />;
+    return (
+      <MapHeroPageSkeleton
+        plain
+        backHref={back.href}
+        backLabel={back.label}
+        icon={Backpack}
+      />
+    );
   }
 
   if (!gearItem) {
@@ -109,27 +117,30 @@ export function GearItemDetailPageContent() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Gear not found."
-          backHref="/gear"
-          backLabel="Back to gear"
+          backHref={back.href}
+          backLabel={back.label}
         />
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <PageHeader
-        backHref="/gear"
-        backLabel="Back to gear"
-        title={gearItem.name}
-        subtitle={gearItem.brand ?? undefined}
+    <div>
+      <GearItemHero
+        gearItem={gearItem}
+        back={back}
         actions={
           <>
-            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={HERO_CONTROL}
+              onClick={() => setIsEditOpen(true)}
+            >
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <ItemActionsMenu>
+            <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
               <DropdownMenuItem
                 disabled={isArchiving}
                 onSelect={() =>
@@ -154,7 +165,7 @@ export function GearItemDetailPageContent() {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={cn(HERO_BODY, "grid grid-cols-1 lg:grid-cols-3 gap-6")}>
         <div className="lg:col-span-2 space-y-6">
           {/* Above the dive list on purpose: service is the thing you can act on
               from this page, the dive list is reference. */}
@@ -162,7 +173,7 @@ export function GearItemDetailPageContent() {
             gearItem={gearItem}
             onChanged={() => {
               // Refetches the item so its embedded `service` summaries (and so the
-              // header's badge) pick up the new due dates. Failures are logged
+              // hero's next service date) pick up the new due dates. Failures are logged
               // rather than surfaced - the card has already toasted the real error.
               loadGearItem().catch((error) =>
                 console.error("Failed to reload gear:", error),
@@ -183,77 +194,34 @@ export function GearItemDetailPageContent() {
           />
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle as="h2" className="flex items-center gap-2">
-                <Backpack className="h-5 w-5" />
-                Gear Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Dives
-                </div>
-                <div className="text-2xl font-bold tabular-nums">
-                  {gearItem.dive_count}
-                </div>
-              </div>
+        {(gearItem.is_archived || gearItem.notes) && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle as="h2" className="flex items-center gap-2">
+                  <Backpack className="h-5 w-5" />
+                  Gear Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {gearItem.is_archived && (
+                  <Badge variant="outline">Archived</Badge>
+                )}
 
-              {(gearItem.rented || gearItem.is_archived) && (
-                <div className="flex flex-wrap gap-2">
-                  {gearItem.rented && <Badge variant="secondary">Rented</Badge>}
-                  {gearItem.is_archived && (
-                    <Badge variant="outline">Archived</Badge>
-                  )}
-                </div>
-              )}
-
-              {gearItem.type && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Type
+                {gearItem.notes && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Notes
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
+                      {gearItem.notes}
+                    </p>
                   </div>
-                  <div className="text-sm">{gearTypeLabel(gearItem.type)}</div>
-                </div>
-              )}
-
-              {gearItem.brand && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Brand
-                  </div>
-                  <div className="text-sm">{gearItem.brand}</div>
-                </div>
-              )}
-
-              {gearItem.notes && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Notes
-                  </div>
-                  <p className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
-                    {gearItem.notes}
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Added on
-                </div>
-                <div className="text-sm">
-                  {formatDateTime(gearItem.created_at, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
       <GearItemDialog

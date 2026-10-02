@@ -295,12 +295,37 @@ describe("every destination's first render is its own frame", () => {
   );
 });
 
-// The two form pages take their back link from the URL, through `useReturnTo` - the one
-// hook in the app that reads `useSearchParams()` with no Suspense boundary above it.
+// The form pages and the record pages take their back link from the URL, through
+// `useReturnTo`, which reads `useSearchParams()` with no Suspense boundary above it.
 const backLink = (container: HTMLElement) => {
   const link = container.querySelector("a");
   return { href: link?.getAttribute("href"), label: link?.textContent };
 };
+
+// A record is opened from all over - a dive from a trip, a trip from the dashboard - so
+// each record page's back link, drawn before its record arrives, goes where it was
+// opened from.
+describe("a record page's back link", () => {
+  it.each(
+    DESTINATIONS.filter((d) => d.route.endsWith("/[id]")).map(
+      (d) => [d.path, d] as const,
+    ),
+  )("%s", async (route, destination) => {
+    stable.params = destination.params ?? {};
+    stable.searchParams = new URLSearchParams("from=/dashboard");
+
+    const { container } = await drawFrame(
+      route,
+      destination.page,
+      destination.pageProps ?? {},
+    );
+
+    expect(backLink(container)).toEqual({
+      href: "/dashboard",
+      label: "Back to dashboard",
+    });
+  });
+});
 
 describe("/dives/new", () => {
   it.each([

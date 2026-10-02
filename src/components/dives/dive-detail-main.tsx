@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Backpack, Fish, FileText, Weight } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatWeight } from "@/lib/units";
 
 interface DiveDetailMainProps {
@@ -40,6 +41,7 @@ interface DiveDetailMainProps {
 export function DiveDetailMain({ dive }: DiveDetailMainProps) {
   const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
   const units = useUnits();
+  const withReturnTo = useWithReturnTo();
   const sightings = dive.sightings ?? [];
   // A column only when some row fills it, so a dive whose species were logged
   // without a count or a note shows the names alone.
@@ -89,7 +91,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                       <TableCell className="font-medium">
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
-                            href={`/gear/${item.uuid}`}
+                            href={withReturnTo(`/gear/${item.uuid}`)}
                             className="hover:underline"
                           >
                             {item.name}
@@ -163,7 +165,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                         photo-less one collapsing to the height of its text. */}
                     <TableCell className="w-16">
                       <Link
-                        href={`/species/${sighting.uuid}`}
+                        href={withReturnTo(`/species/${sighting.uuid}`)}
                         // The name cell beside this links to the same page and
                         // carries the accessible name. Two adjacent links to one
                         // destination is a tab stop nobody wants and a link list
@@ -191,7 +193,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                           label is that same string, so nothing diverges from
                           what is on screen. */}
                       <Link
-                        href={`/species/${sighting.uuid}`}
+                        href={withReturnTo(`/species/${sighting.uuid}`)}
                         className="hover:underline"
                         aria-label={speciesDisplayName(sighting)}
                       >

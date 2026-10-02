@@ -11,6 +11,7 @@ import { formatServiceDueQualifier, serviceStatus } from "@/lib/gear-service";
 import { TruncatedNote } from "@/components/ui/truncated-note";
 import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
 import { NotificationRow } from "@/components/layout/notification-row";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 
 // How a row names its gear item. Unlike the gear detail card, this list spans every item
 // a diver owns, so the item is what tells one row from the next - and the kind is only
@@ -41,6 +42,8 @@ export function ServiceDueList({
   onNavigate,
   onLogService,
 }: ServiceDueListProps) {
+  const withReturnTo = useWithReturnTo();
+
   return (
     <div className="space-y-1">
       {entries.map((entry) => {
@@ -51,7 +54,7 @@ export function ServiceDueList({
           <NotificationRow
             key={entry.schedule_uuid}
             title={itemLabel}
-            href={`/gear/${entry.gear_item_uuid}`}
+            href={withReturnTo(`/gear/${entry.gear_item_uuid}`)}
             subtitle={`${serviceKindLabel(entry.kind)}${entry.label ? ` (${entry.label})` : ""}`}
             badge={
               <ServiceStatusBadge
