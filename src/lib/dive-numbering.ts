@@ -7,9 +7,9 @@ function plural(count: number, singular: string, pluralForm: string): string {
 }
 
 // A plain-English description of what a renumber would tidy in a log, for the
-// card above the dive list. Null when nothing is unused, shared or out of date
-// order, which takes the card - and with it the only way in to Renumber - off a
-// tidy log entirely.
+// card above the dive list and the offer on an import's result. Null when
+// nothing is unused, shared or out of date order, which takes both - and with
+// them every way in to Renumber - off a tidy log entirely.
 //
 // Deliberately descriptive rather than corrective: it never says "should", and
 // nothing here is phrased as a problem. Gaps are the ordinary shape of a log

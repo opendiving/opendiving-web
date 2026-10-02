@@ -10,7 +10,6 @@ import userEvent from "@testing-library/user-event";
 
 import { ImportPageContent } from "./import-page-content";
 import type { DiveNumberingSummary } from "@/lib/api/dives";
-import { combineStartTime, getBrowserUtcOffsetMinutes } from "@/lib/date-time";
 import type {
   ImportCheckInDetail,
   ImportCollectionReport,
@@ -74,6 +73,13 @@ vi.mock("@/lib/api/dives", async (importOriginal) => ({
     getNextDiveNumber: mocks.getNextDiveNumber,
     renumberDives: mocks.renumberDives,
   },
+}));
+
+// Pinned so the day a renumber's scope starts on is the same wherever the suite
+// runs; `importRenumberScope`'s own tests cover the offsets.
+vi.mock("@/lib/date-time", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/date-time")>()),
+  getBrowserUtcOffsetMinutes: () => 120,
 }));
 
 vi.mock("@/components/ui/use-toast", () => ({
@@ -754,7 +760,6 @@ describe("the result", () => {
 });
 
 describe("the result's renumber", () => {
-  // Noon in UTC, so the day is the 12th at any browser offset the suite runs at.
   const earliest = "2019-03-12T12:00:00Z";
   const writeDives = () =>
     mocks.apply.mockResolvedValueOnce(
@@ -796,7 +801,7 @@ describe("the result's renumber", () => {
     ).toBeVisible();
     expect(screen.getByText(/2 dives share a number/)).toBeVisible();
     expect(mocks.getNextDiveNumber).toHaveBeenCalledWith(
-      combineStartTime("2019-03-11 23:59:59", getBrowserUtcOffsetMinutes()),
+      "2019-03-11T23:59:59+02:00",
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Renumber" }));
@@ -805,10 +810,7 @@ describe("the result's renumber", () => {
     await waitFor(() =>
       expect(mocks.renumberDives).toHaveBeenCalledWith({
         start_at: 12,
-        from_start_time: combineStartTime(
-          "2019-03-12 00:00:00",
-          getBrowserUtcOffsetMinutes(),
-        ),
+        from_start_time: "2019-03-12T00:00:00+02:00",
         dry_run: true,
       }),
     );
