@@ -12,13 +12,13 @@ import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { splitCourseInstructor } from "@/lib/people";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { certificationAgencyLabel } from "@/lib/api/certifications";
-import { courseStatusBadgeVariant, courseStatusLabel } from "@/lib/course";
-import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
+import { courseStatusLabel } from "@/lib/course";
+import { formatTripDateRange } from "@/lib/date-time";
+import { cn } from "@/lib/utils";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { CourseCertificationsCard } from "@/components/courses/course-certifications-card";
 import { CourseDialog } from "@/components/courses/course-dialog";
 import { PeopleList } from "@/components/people/people-list";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DeleteMenuItem,
@@ -26,8 +26,12 @@ import {
 } from "@/components/ui/item-actions-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { PageHeader } from "@/components/ui/page-header";
-import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
+import {
+  HERO_BODY,
+  HERO_CONTROL,
+  MapHeroPageSkeleton,
+  PlainHero,
+} from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { BadgeCheck, Edit, Plus, GraduationCap } from "lucide-react";
 import Link from "next/link";
@@ -93,14 +97,6 @@ export function CourseDetailPageContent() {
   );
   const instructor = instructorUuid ? people[instructorUuid] : undefined;
 
-  const courseDateRange = course
-    ? formatTripDateRange(
-        course.start_date ?? undefined,
-        course.end_date ?? undefined,
-        { year: "numeric", month: "long", day: "numeric" },
-      )
-    : undefined;
-
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
   }
@@ -110,7 +106,15 @@ export function CourseDetailPageContent() {
   }
 
   if (isLoadingCourse) {
-    return <DetailPageSkeleton backHref={back.href} backLabel={back.label} />;
+    return (
+      <MapHeroPageSkeleton
+        plain
+        figureless
+        backHref={back.href}
+        backLabel={back.label}
+        icon={GraduationCap}
+      />
+    );
   }
 
   if (!course) {
@@ -125,29 +129,40 @@ export function CourseDetailPageContent() {
     );
   }
 
-  const agencyLabel = certificationAgencyLabel(
-    course.agency,
-    course.agency_other,
-  );
+  // In the courses table's formats, so a course reads the same on its page as
+  // in the list.
+  const subtitle = [
+    certificationAgencyLabel(course.agency, course.agency_other),
+    formatTripDateRange(
+      course.start_date ?? undefined,
+      course.end_date ?? undefined,
+    ),
+    courseStatusLabel(course.status),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <PageHeader
+    <div>
+      <PlainHero
         backHref={back.href}
         backLabel={back.label}
+        icon={GraduationCap}
         title={course.name}
-        subtitle={
-          agencyLabel && courseDateRange
-            ? `${agencyLabel} · ${courseDateRange}`
-            : (agencyLabel ?? courseDateRange ?? undefined)
-        }
+        subtitle={subtitle || undefined}
+        figures={[]}
         actions={
           <>
-            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={HERO_CONTROL}
+              onClick={() => setIsEditOpen(true)}
+            >
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <ItemActionsMenu>
+            <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
               <DeleteMenuItem
                 onSelect={() => del.requestDelete(course.uuid)}
                 disabled={isDeleting}
@@ -174,7 +189,7 @@ export function CourseDetailPageContent() {
         onConfirm={del.confirmDelete}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={cn(HERO_BODY, "grid grid-cols-1 lg:grid-cols-3 gap-6")}>
         <div className="lg:col-span-2 space-y-6">
           <RecentDivesCard
             complete
@@ -205,15 +220,6 @@ export function CourseDetailPageContent() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <InfoRow label="Status">
-                <Badge variant={courseStatusBadgeVariant(course.status)}>
-                  {courseStatusLabel(course.status)}
-                </Badge>
-              </InfoRow>
-              {agencyLabel && <InfoRow label="Agency">{agencyLabel}</InfoRow>}
-              {courseDateRange && (
-                <InfoRow label="Course dates">{courseDateRange}</InfoRow>
-              )}
               {contact && <InfoRow label="Dive center">{contact.name}</InfoRow>}
               {instructor && (
                 <InfoRow label="Instructor">
@@ -243,13 +249,6 @@ export function CourseDetailPageContent() {
                   <span className="whitespace-pre-wrap">{course.notes}</span>
                 </InfoRow>
               )}
-              <InfoRow label="Created on">
-                {formatDateTime(course.created_at, {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </InfoRow>
               {/* Two columns exactly where the sidebar is wide: it is the full
                   content width until `lg`, where it becomes a third of it and
                   the pair no longer fits across. */}
