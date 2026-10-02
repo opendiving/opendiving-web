@@ -16,8 +16,8 @@ export const TwinTankIcon = createLucideIcon({
       { d: "M20 6.5V3a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3.5", key: "valve-r" },
     ],
     ["path", { d: "M8 3h8", key: "manifold" }],
-    ["path", { d: "M2 14h20", key: "band-top" }],
-    ["path", { d: "M2 18h20", key: "band-bottom" }],
+    ["path", { d: "M2 11h20", key: "band-top" }],
+    ["path", { d: "M2 17h20", key: "band-bottom" }],
     [
       "path",
       {
