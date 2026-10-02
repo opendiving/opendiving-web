@@ -20,7 +20,6 @@ import {
   DeleteMenuItem,
   ItemActionsMenu,
 } from "@/components/ui/item-actions-menu";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -30,7 +29,13 @@ import {
 } from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, Backpack, Archive, ArchiveRestore } from "lucide-react";
+import {
+  Edit,
+  Backpack,
+  Archive,
+  ArchiveRestore,
+  FileText,
+} from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 export function GearItemDetailPageContent() {
@@ -194,30 +199,19 @@ export function GearItemDetailPageContent() {
           />
         </div>
 
-        {(gearItem.is_archived || gearItem.notes) && (
+        {gearItem.notes && (
           <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle as="h2" className="flex items-center gap-2">
-                  <Backpack className="h-5 w-5" />
-                  Gear Information
+                  <FileText className="h-5 w-5" />
+                  Notes
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {gearItem.is_archived && (
-                  <Badge variant="outline">Archived</Badge>
-                )}
-
-                {gearItem.notes && (
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">
-                      Notes
-                    </div>
-                    <p className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
-                      {gearItem.notes}
-                    </p>
-                  </div>
-                )}
+              <CardContent>
+                <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                  {gearItem.notes}
+                </p>
               </CardContent>
             </Card>
           </div>

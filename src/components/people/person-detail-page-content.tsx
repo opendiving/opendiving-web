@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { Edit, Mail, Phone, User } from "lucide-react";
+import { Edit, FileText, Mail, Phone, User } from "lucide-react";
 
 // An icon set in the subtitle's line, at its text's size, before the value it
 // marks; the link never breaks between them. A step lower than a site's facts
@@ -196,15 +196,14 @@ export function PersonDetailPageContent() {
             <Card>
               <CardHeader>
                 <CardTitle as="h2" className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Person Information
+                  <FileText className="h-5 w-5" />
+                  Notes
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Notes
-                </div>
-                <p className="whitespace-pre-wrap text-sm">{person.notes}</p>
+                <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                  {person.notes}
+                </p>
               </CardContent>
             </Card>
           </div>
