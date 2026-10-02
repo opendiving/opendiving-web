@@ -7,7 +7,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
-import { useReturnTo } from "@/hooks/useReturnTo";
+import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ export function DiveSiteDetailPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const back = useReturnTo({ href: "/sites", label: "Back to dive sites" });
+  const withReturnTo = useWithReturnTo();
 
   const {
     resource: diveSite,
@@ -96,7 +97,11 @@ export function DiveSiteDetailPageContent() {
         actions={
           <>
             <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
-              <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
+              <Link
+                href={withReturnTo(
+                  `/dives/new?dive_site_uuid=${diveSite.uuid}`,
+                )}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Log a dive
               </Link>

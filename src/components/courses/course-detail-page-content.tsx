@@ -255,7 +255,9 @@ export function CourseDetailPageContent() {
                   the pair no longer fits across. */}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 <Button asChild>
-                  <Link href={`/dives/new?course_uuid=${course.uuid}`}>
+                  <Link
+                    href={withReturnTo(`/dives/new?course_uuid=${course.uuid}`)}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Log a dive
                   </Link>

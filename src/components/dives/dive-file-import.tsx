@@ -37,6 +37,7 @@ import {
 } from "@/lib/dive-import";
 import { isNonEmptyFieldValue } from "@/lib/dive-form-fields";
 import { recordingDeviceLabel } from "@/lib/dive-recordings";
+import { withReturnTo } from "@/lib/return-to";
 import { Info, Loader2, Upload } from "lucide-react";
 import {
   Popover,
@@ -274,6 +275,9 @@ export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
   // match against another one. Absent on the create form, where every match is
   // another dive by definition.
   diveUuid?: string;
+  // Where the form goes back to, which the dive a file is attached to instead
+  // leads back to as well, as a saved dive does.
+  returnTo?: string;
 }
 
 export function DiveFileImport<TFieldValues extends DiveFormValues>({
@@ -288,6 +292,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   onRemoveStored,
   onRestoreStored,
   diveUuid,
+  returnTo,
 }: DiveFileImportProps<TFieldValues>) {
   const { toast } = useToast();
   const router = useRouter();
@@ -488,7 +493,9 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
         description: `Added to dive #${offer.match.dive_number}.`,
       });
       setOffer(null);
-      router.push(`/dives/${offer.match.dive_uuid}`);
+      router.push(
+        withReturnTo(`/dives/${offer.match.dive_uuid}`, returnTo ?? null),
+      );
     } catch (error) {
       console.error("Failed to attach the dive file:", error);
       toast({

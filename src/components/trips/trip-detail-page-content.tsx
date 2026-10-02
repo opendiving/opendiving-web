@@ -6,7 +6,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
-import { useReturnTo } from "@/hooks/useReturnTo";
+import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { divesAPI } from "@/lib/api/dives";
 import { fetchAllPages, isAbortError } from "@/lib/api/client";
@@ -45,6 +45,7 @@ export function TripDetailPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const back = useReturnTo({ href: "/trips", label: "Back to trips" });
+  const withReturnTo = useWithReturnTo();
 
   const {
     resource: trip,
@@ -159,7 +160,7 @@ export function TripDetailPageContent() {
         actions={
           <>
             <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
-              <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
+              <Link href={withReturnTo(`/dives/new?trip_uuid=${trip.uuid}`)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Log a dive
               </Link>

@@ -119,7 +119,13 @@ export function ImportDiveTable({
                 <th scope="row" className="text-left font-normal py-1.5 pr-3">
                   {linkable ? (
                     <Link
-                      href={withReturnTo(`/dives/${dive.uuid}`)}
+                      // A new tab has no importer to go back to: the preview
+                      // lives in this one.
+                      href={
+                        written
+                          ? withReturnTo(`/dives/${dive.uuid}`)
+                          : `/dives/${dive.uuid}`
+                      }
                       className="underline underline-offset-2"
                       {...(written
                         ? {}

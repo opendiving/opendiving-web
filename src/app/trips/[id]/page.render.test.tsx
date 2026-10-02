@@ -232,7 +232,7 @@ describe("TripDetailPage", () => {
     );
     expect(screen.getByRole("link", { name: "Log a dive" })).toHaveAttribute(
       "href",
-      "/dives/new?trip_uuid=trip-1",
+      "/dives/new?trip_uuid=trip-1&from=%2Ftrips%2Ftrip-1",
     );
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
 
