@@ -33,8 +33,8 @@ const CNS_LIMIT_PERCENT = 100;
  * are readings the diver never had the option to enter, so an absent card cannot read
  * as something they forgot to fill in.
  *
- * Sits between the mixtures and the gas consumption on the detail page, following that
- * file's ordering rule - the gas that produced this exposure is directly above it.
+ * Sits under the tanks and the gas consumption on the detail page, following that file's
+ * ordering rule - the gas that produced this exposure is already on screen above it.
  *
  * Everything here is displayed exactly as stored, with no derivation at all. That is
  * unusual for this page and deliberate: CNS and OTU are the output of whichever
@@ -157,7 +157,7 @@ function Reading({
         </span>
         {/* `text-warning`, not `text-warning-foreground` - the latter is the white
             that sits *on* `bg-warning` and is invisible as text on a card in light
-            mode. Same trap as the MOD warnings on the mixtures card. */}
+            mode. Same trap as the MOD warnings on the Tanks card. */}
         <span
           className={`text-2xl font-bold ${alert ? "text-warning" : ""}`.trim()}
         >

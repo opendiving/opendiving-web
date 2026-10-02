@@ -21,7 +21,8 @@ import {
   ppO2Limit,
   tankUsageSentences,
 } from "@/lib/dive-mixtures";
-import { AlertTriangle, Wind } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { TwinTankIcon } from "@/components/icons/twin-tank-icon";
 import { useUnits } from "@/hooks/useUnits";
 import { formatComparableDepth, formatPressure } from "@/lib/units";
 
@@ -50,7 +51,7 @@ function RecordedCell({ value }: { value: string | null }) {
 }
 
 /**
- * The dive's gas mixtures, one row per cylinder. Renders nothing when the dive has none,
+ * The dive's tanks, one row per cylinder. Renders nothing when the dive has none,
  * which is the common case for a dive logged by hand.
  *
  * Sits between the depth figures and the gas-consumption card on the detail page: the
@@ -113,8 +114,8 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
     <Card>
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
-          <Wind className="h-5 w-5" />
-          Gas Mixtures
+          <TwinTankIcon className="h-5 w-5" />
+          Tanks
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -130,7 +131,7 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
           {/* The card title names this table on screen but not to a screen reader,
               which announces the `table` element itself with no name at all. */}
           <TableCaption className="sr-only">
-            Gas mixtures, one row per cylinder
+            Tanks, one row per cylinder
           </TableCaption>
           <TableHeader>
             <TableRow>
