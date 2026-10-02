@@ -108,83 +108,89 @@ export function CourseCertificationsCard({
   useSavedElsewhere("certification", () => void refresh());
 
   const isEmpty = !isLoading && certifications.length === 0;
+  // A course with no agency - a private instructor's - usually issues no card,
+  // so the card waits for one rather than inviting it. The dialogs below stay
+  // mounted either way: the sidebar's button still opens the create one.
+  const isHidden = !course.agency && certifications.length === 0;
 
   return (
     <>
-      <Card>
-        {/* Title and description as direct children, with no wrapper: this
+      {!isHidden && (
+        <Card>
+          {/* Title and description as direct children, with no wrapper: this
             card carries no header control, and a `<div>` around the
             pair would eat `CardHeader`'s own 6px gap. With nothing to list,
             the header drops to its hidden heading, as the list pages' cards
             do - the empty state says what the card is for, and carries the
             description's hint along with it. */}
-        <CardHeader className={cn(isEmpty && "p-0")}>
-          {isEmpty ? (
-            <CardTitle as="h2" className="sr-only">
-              Certifications from This Course
-            </CardTitle>
-          ) : (
-            <>
-              <CardTitle as="h2" className="flex items-center gap-2">
-                <BadgeCheck className="h-5 w-5" />
+          <CardHeader className={cn(isEmpty && "p-0")}>
+            {isEmpty ? (
+              <CardTitle as="h2" className="sr-only">
                 Certifications from This Course
               </CardTitle>
-              {/* The sidebar's button is not the only way in: an existing card can
+            ) : (
+              <>
+                <CardTitle as="h2" className="flex items-center gap-2">
+                  <BadgeCheck className="h-5 w-5" />
+                  Certifications from This Course
+                </CardTitle>
+                {/* The sidebar's button is not the only way in: an existing card can
                   name this course from its own form, which is how a card logged
                   before the course was. */}
-              <CardDescription>
-                The cards this training issued. An existing card can name this
-                course from its own form too.
-              </CardDescription>
-            </>
-          )}
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <ListRowsSkeleton rows={2} />
-          ) : isEmpty ? (
-            <EmptyState
-              icon={BadgeCheck}
-              title="No certifications from this course yet"
-              description="Add the card this training issued, or name this course from an existing card's form."
-              action={
-                <Button onClick={() => onAddingChange(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add the first certification
-                </Button>
-              }
-            />
-          ) : (
-            <ul className="space-y-3">
-              {certifications.map((certification) => (
-                <li key={certification.uuid}>
-                  <button
-                    type="button"
-                    className="w-full text-left p-3 rounded-lg border hover:bg-muted transition-colors"
-                    onClick={() => setViewing(certification)}
-                  >
-                    <div className="font-medium text-foreground">
-                      {certification.name}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {certificationAgencyLabel(
-                        certification.agency,
-                        certification.agency_other,
-                      )}
-                      {certification.certified_on && (
-                        <>
-                          {" · "}
-                          {formatDateOnly(certification.certified_on)}
-                        </>
-                      )}
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                <CardDescription>
+                  The cards this training issued. An existing card can name this
+                  course from its own form too.
+                </CardDescription>
+              </>
+            )}
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <ListRowsSkeleton rows={2} />
+            ) : isEmpty ? (
+              <EmptyState
+                icon={BadgeCheck}
+                title="No certifications from this course yet"
+                description="Add the card this training issued, or name this course from an existing card's form."
+                action={
+                  <Button onClick={() => onAddingChange(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add the first certification
+                  </Button>
+                }
+              />
+            ) : (
+              <ul className="space-y-3">
+                {certifications.map((certification) => (
+                  <li key={certification.uuid}>
+                    <button
+                      type="button"
+                      className="w-full text-left p-3 rounded-lg border hover:bg-muted transition-colors"
+                      onClick={() => setViewing(certification)}
+                    >
+                      <div className="font-medium text-foreground">
+                        {certification.name}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {certificationAgencyLabel(
+                          certification.agency,
+                          certification.agency_other,
+                        )}
+                        {certification.certified_on && (
+                          <>
+                            {" · "}
+                            {formatDateOnly(certification.certified_on)}
+                          </>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <CertificationDialog
         open={isAdding}

@@ -116,14 +116,19 @@ beforeEach(() => {
 
 // The page owns "is the create dialog open", because its sidebar opens the same
 // dialog this card's empty state does. This stands in for the page.
-function Harness() {
+function Harness({ course = COURSE }: { course?: Course }) {
   const [isAdding, setIsAdding] = useState(false);
   return (
-    <CourseCertificationsCard
-      course={COURSE}
-      isAdding={isAdding}
-      onAddingChange={setIsAdding}
-    />
+    <>
+      <button type="button" onClick={() => setIsAdding(true)}>
+        Sidebar add
+      </button>
+      <CourseCertificationsCard
+        course={course}
+        isAdding={isAdding}
+        onAddingChange={setIsAdding}
+      />
+    </>
   );
 }
 
@@ -168,6 +173,43 @@ describe("the course's certifications card", () => {
     render_();
     await screen.findByRole("button", { name: /Advanced Nitrox/ });
 
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Certifications from This Course",
+      }),
+    ).not.toHaveClass("sr-only");
+  });
+
+  // A private instructor's course: no agency, so nothing invites a card until
+  // there is one.
+  const NO_AGENCY: Course = { ...COURSE, agency: null };
+
+  it("stays hidden on a course with no agency and no certifications", async () => {
+    render(<Harness course={NO_AGENCY} />);
+    await waitFor(() => expect(getCertifications).toHaveBeenCalled());
+
+    expect(
+      screen.queryByRole("heading", {
+        name: "Certifications from This Course",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No certifications from this course yet"),
+    ).not.toBeInTheDocument();
+
+    // The sidebar's button still reaches the dialog the card owns.
+    await userEvent.click(screen.getByRole("button", { name: "Sidebar add" }));
+    expect(await screen.findByLabelText("Course")).toHaveValue(COURSE.name);
+  });
+
+  it("shows on a course with no agency once it has a certification", async () => {
+    getCertifications.mockImplementation(async () => page([CREATED]));
+    render(<Harness course={NO_AGENCY} />);
+
+    expect(
+      await screen.findByRole("button", { name: /Advanced Nitrox/ }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
         level: 2,
