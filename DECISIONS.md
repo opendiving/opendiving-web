@@ -6270,17 +6270,17 @@ running instance shows the credit only once that API build lands.
 
 ## The species page credits the taxonomy, and composes that credit by hand
 
-The classification card's foot in `species-detail-page-content.tsx` reads "Taxonomy: World Register
-of Marine Species, CC BY", composed from anchors rather than handed to `Attribution`, for the reason
+The Taxonomy card's foot in `species-detail-page-content.tsx` reads "Taxonomy: World Register of
+Marine Species, CC BY", composed from anchors rather than handed to `Attribution`, for the reason
 `SpeciesPhotoCredit` is: a credit with two hyperlinks cannot come from one string, and `Species`
 carries no `attribution` field — only `SpeciesSearchResult` does. Source then licence; the photo
 credit leads with its author instead.
 
 `NOTICE.md` stays silent on WoRMS: it covers material copied into this tree, and the taxonomy lives
-in the API's catalog. The AphiaID row stays plain text — linking the number wants a per-taxon URL
-and leaves one labelled fact silently clickable. Wikidata gets no line: its half is the common
-names, CC0 asks for nothing, and the picker's second credit exists only for search results naming
-upstream Wikidata rows the catalog never stored.
+in the API's catalog. The AphiaID row links the taxon's own WoRMS page, underlined so the one value
+in the card that is also a destination says so. Wikidata gets no line: its half is the common names,
+CC0 asks for nothing, and the picker's second credit exists only for search results naming upstream
+Wikidata rows the catalog never stored.
 
 ## The deco readouts have a panel, because the depth plot has two edges and they need three
 

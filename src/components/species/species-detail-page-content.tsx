@@ -207,13 +207,18 @@ export function SpeciesDetailPageContent() {
               )}
               {/* The identity the catalog is keyed on, and the one number that
                   means anything outside this database - which is why the export
-                  carries it too. Still plain text, but no longer because a link
-                  out to WoRMS is off the table: it is the credit below that
-                  carries the link now, and this number is the wrong element to
-                  hang it on - following it wants a per-taxon URL, and the row
-                  would then be the only value in the card that is also a
-                  destination. */}
-              <InfoRow label="WoRMS AphiaID">{species.aphia_id}</InfoRow>
+                  carries it too. Underlined as the credit's links are, so the one
+                  value in the card that is also a destination says so. */}
+              <InfoRow label="WoRMS AphiaID">
+                <a
+                  href={`https://www.marinespecies.org/aphia.php?p=taxdetails&id=${species.aphia_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-muted-foreground"
+                >
+                  {species.aphia_id}
+                </a>
+              </InfoRow>
               {/* The classification in this card is WoRMS's - every catalog row
                   is keyed on an AphiaID, and the API credits every one of them
                   to WoRMS - and WoRMS's text content is CC BY, a licence that
