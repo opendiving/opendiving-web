@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
@@ -10,6 +10,7 @@ import { getApiErrorMessage } from "@/lib/api/error";
 import { canMergeDive } from "@/lib/dive-recordings";
 import { formatDiveDateTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
+import { withReturnTo } from "@/lib/return-to";
 
 interface DiveMergeActionProps {
   dive: Dive;
@@ -64,6 +65,8 @@ export function DiveMergeAction({
   children,
 }: DiveMergeActionProps) {
   const router = useRouter();
+  // The dive a merge keeps leads back where the one on screen did.
+  const from = useSearchParams()?.get("from") ?? null;
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
@@ -136,7 +139,7 @@ export function DiveMergeAction({
         setLoaded(null);
         await onMerged();
       } else {
-        router.push(`/dives/${result.dive.uuid}`);
+        router.push(withReturnTo(`/dives/${result.dive.uuid}`, from));
       }
     } catch (error) {
       console.error("Failed to merge dives:", error);

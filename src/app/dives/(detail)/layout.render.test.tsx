@@ -39,6 +39,8 @@ vi.mock("@/hooks/useAuthGuard", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   useParams: () => ({ id: dive.current?.uuid ?? "" }),
+  usePathname: () => `/dives/${dive.current?.uuid ?? ""}`,
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // The hero's figures read the diver's units, and its map is covered where it

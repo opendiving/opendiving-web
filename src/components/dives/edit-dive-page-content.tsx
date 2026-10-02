@@ -8,6 +8,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useReturnTo } from "@/hooks/useReturnTo";
+import { withReturnTo } from "@/lib/return-to";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import {
@@ -197,7 +198,8 @@ export function EditDivePageContent() {
         description: "Dive updated successfully!",
       });
 
-      router.push(`/dives/${diveId}`);
+      // The dive, with its back link going where the form's would have.
+      router.push(withReturnTo(`/dives/${diveId}`, returnTo.href));
     } catch (error) {
       console.error("Failed to update dive:", error);
 

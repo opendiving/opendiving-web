@@ -18,7 +18,12 @@ vi.mock("@/components/ui/use-toast", () => ({
 }));
 
 const router = { push: vi.fn() };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+// Opened from a trip, which the dive a merge keeps should still lead back to.
+const searchParams = new URLSearchParams("from=/trips/trip-1");
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  useSearchParams: () => searchParams,
+}));
 
 const { divesAPI } = await import("@/lib/api/dives");
 
@@ -165,7 +170,9 @@ describe("DiveMergeAction", () => {
 
     expect(divesAPI.mergeDives).toHaveBeenCalledWith(["part-2", "part-1"]);
     await waitFor(() =>
-      expect(router.push).toHaveBeenCalledWith("/dives/part-1"),
+      expect(router.push).toHaveBeenCalledWith(
+        "/dives/part-1?from=%2Ftrips%2Ftrip-1",
+      ),
     );
     expect(onMerged).not.toHaveBeenCalled();
   });

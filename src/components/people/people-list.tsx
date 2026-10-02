@@ -8,6 +8,7 @@ import {
   type PersonReference,
 } from "@/lib/api/people";
 import { cn } from "@/lib/utils";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 
 interface PeopleListProps {
   // The references on the record, in the diver's order.
@@ -22,6 +23,7 @@ interface PeopleListProps {
 // A reference whose person has not been read - still loading, or deleted since -
 // has no row, the way a contact that could not be looked up leaves its row out.
 export function PeopleList({ people, resolved, className }: PeopleListProps) {
+  const withReturnTo = useWithReturnTo();
   const rows = people.flatMap((reference) => {
     const person = resolved[reference.person_uuid];
     return person ? [{ reference, person }] : [];
@@ -38,7 +40,7 @@ export function PeopleList({ people, resolved, className }: PeopleListProps) {
           <User className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
           <span className="min-w-0">
             <Link
-              href={`/people/${person.uuid}`}
+              href={withReturnTo(`/people/${person.uuid}`)}
               className="font-medium hover:underline"
             >
               {person.name}

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { divesAPI, DiveNeighbor, DiveNeighbors } from "@/lib/api/dives";
 import { formatDiveDateTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
+import { withReturnTo } from "@/lib/return-to";
 
 export interface DiveNeighborNavProps {
   diveUuid: string;
@@ -163,11 +164,15 @@ interface NavLinkProps {
  */
 function NavLink({ direction, neighbor, isPending, className }: NavLinkProps) {
   const router = useRouter();
+  // A step sideways keeps the way back the dive on screen was opened with.
+  const from = useSearchParams()?.get("from") ?? null;
   const isPrevious = direction === "previous";
   const Chevron = isPrevious ? ChevronLeft : ChevronRight;
   const fallbackLabel = isPrevious ? "Previous dive" : "Next dive";
 
-  const href = neighbor ? `/dives/${neighbor.uuid}` : undefined;
+  const href = neighbor
+    ? withReturnTo(`/dives/${neighbor.uuid}`, from)
+    : undefined;
   const label = neighbor
     ? neighborLabel(fallbackLabel, neighbor)
     : fallbackLabel;

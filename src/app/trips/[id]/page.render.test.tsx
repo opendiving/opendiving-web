@@ -25,6 +25,7 @@ const stable = vi.hoisted(() => ({
   },
   router: { push: vi.fn(), replace: vi.fn() },
   params: { id: "trip-1" },
+  searchParams: new URLSearchParams(),
 }));
 
 vi.mock("@/hooks/useAuthGuard", () => ({
@@ -39,6 +40,8 @@ vi.mock("@/contexts/AuthContext", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => stable.router,
   useParams: () => stable.params,
+  usePathname: () => `/trips/${stable.params.id}`,
+  useSearchParams: () => stable.searchParams,
 }));
 
 vi.mock("@/components/ui/use-toast", () => {
@@ -130,6 +133,7 @@ const dive = (uuid: string, contact_uuid: string | null) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  stable.searchParams = new URLSearchParams();
   vi.mocked(tripsAPI.getTrip).mockResolvedValue(TRIP);
   // As the trip lists them: newest first, one with no contact, one shop twice.
   vi.mocked(divesAPI.getDives).mockResolvedValue({
@@ -241,6 +245,16 @@ describe("TripDetailPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("goes back to the page it was opened from", async () => {
+    stable.searchParams = new URLSearchParams("from=/dashboard");
+    render(<TripDetailPage />);
+
+    await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
+    expect(
+      screen.getByRole("link", { name: "Back to dashboard" }),
+    ).toHaveAttribute("href", "/dashboard");
+  });
+
   // The dates are on the hero's line, and when it was created is not the trip's.
   it("leaves the trip's dates to the hero", async () => {
     render(<TripDetailPage />);
@@ -314,9 +328,10 @@ describe("TripDetailPage", () => {
       (link) => link.closest("li")!.textContent,
     );
     expect(rows).toEqual(["SamCompanion", "Alex M. @alexm"]);
+    // And back to this trip from theirs.
     expect(screen.getByRole("link", { name: "Sam" })).toHaveAttribute(
       "href",
-      "/people/sam",
+      "/people/sam?from=%2Ftrips%2Ftrip-1",
     );
   });
 });

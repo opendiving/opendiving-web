@@ -6,6 +6,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useReturnTo } from "@/hooks/useReturnTo";
 import {
   gearAPI,
   GearItem,
@@ -40,6 +41,7 @@ export function GearItemDetailPageContent() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+  const back = useReturnTo({ href: "/gear", label: "Back to gear" });
 
   const {
     resource: gearItem,
@@ -58,7 +60,7 @@ export function GearItemDetailPageContent() {
       "Deleting removes this gear from your dives and gear sets. To keep it in your log and its service history, archive it instead. Either way, its service reminders stop.",
     successMessage: "Gear deleted successfully.",
     errorMessage: "Failed to delete gear. Please try again.",
-    onDeleted: () => router.push("/gear"),
+    onDeleted: () => router.push(back.href),
   });
   const isDeleting = del.deletingId !== null;
 
@@ -101,7 +103,7 @@ export function GearItemDetailPageContent() {
   }
 
   if (isLoadingGear) {
-    return <DetailPageSkeleton backHref="/gear" backLabel="Back to gear" />;
+    return <DetailPageSkeleton backHref={back.href} backLabel={back.label} />;
   }
 
   if (!gearItem) {
@@ -109,8 +111,8 @@ export function GearItemDetailPageContent() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Gear not found."
-          backHref="/gear"
-          backLabel="Back to gear"
+          backHref={back.href}
+          backLabel={back.label}
         />
       </div>
     );
@@ -119,8 +121,8 @@ export function GearItemDetailPageContent() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
       <PageHeader
-        backHref="/gear"
-        backLabel="Back to gear"
+        backHref={back.href}
+        backLabel={back.label}
         title={gearItem.name}
         subtitle={gearItem.brand ?? undefined}
         actions={

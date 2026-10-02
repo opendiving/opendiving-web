@@ -7,6 +7,8 @@ const stable = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: stable.push }),
+  usePathname: () => "/dashboard",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -47,7 +49,7 @@ function NewPerson() {
 }
 
 describe("QuickCreateProvider", () => {
-  it("opens the created person's page", async () => {
+  it("opens the created person's page, leading back to where it was made", async () => {
     render(
       <QuickCreateProvider>
         <NewPerson />
@@ -57,7 +59,9 @@ describe("QuickCreateProvider", () => {
     await userEvent.click(screen.getByRole("button", { name: "New person" }));
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(stable.push).toHaveBeenCalledWith("/people/person-1");
+    expect(stable.push).toHaveBeenCalledWith(
+      "/people/person-1?from=%2Fdashboard",
+    );
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
 });

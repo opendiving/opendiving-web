@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Dive } from "@/lib/api/dives";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteMenuItem } from "@/components/ui/item-actions-menu";
@@ -25,6 +24,7 @@ import {
   formatDurationHoursMinutes,
 } from "@/lib/date-time";
 import { useUnits } from "@/hooks/useUnits";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatDepth, formatTemperature } from "@/lib/units";
 import { Edit } from "lucide-react";
 
@@ -47,8 +47,8 @@ interface DiveCardProps {
 // temperature.
 export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   const units = useUnits();
-  // The edit page returns to wherever the card was opened from.
-  const pathname = usePathname();
+  // The dive's page and its edit form both return to the page the card is on.
+  const withReturnTo = useWithReturnTo();
   const locations = diveMapLocations(dive);
   const isPlaced = hasMapPosition(locations);
   const outline = dive.depth_outline;
@@ -81,9 +81,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
       actions={
         <>
           <DropdownMenuItem asChild>
-            <Link
-              href={`/dives/${dive.uuid}/edit?from=${encodeURIComponent(pathname)}`}
-            >
+            <Link href={withReturnTo(`/dives/${dive.uuid}/edit`)}>
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Link>
@@ -130,7 +128,10 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
         );
       }}
     >
-      <Link href={`/dives/${dive.uuid}`} className={BACKDROP_CARD_LINK}>
+      <Link
+        href={withReturnTo(`/dives/${dive.uuid}`)}
+        className={BACKDROP_CARD_LINK}
+      >
         <DiveTitle diveNumber={dive.dive_number} sites={dive.dive_sites} />
       </Link>
       <div className="text-xs">

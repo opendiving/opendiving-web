@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { useUnits } from "@/hooks/useUnits";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import type {
   ImportDiveReport,
   ImportMemberReport,
@@ -51,6 +52,7 @@ export function ImportDiveTable({
   written,
 }: ImportDiveTableProps) {
   const units = useUnits();
+  const withReturnTo = useWithReturnTo();
 
   return (
     <div className="overflow-x-auto">
@@ -117,7 +119,7 @@ export function ImportDiveTable({
                 <th scope="row" className="text-left font-normal py-1.5 pr-3">
                   {linkable ? (
                     <Link
-                      href={`/dives/${dive.uuid}`}
+                      href={withReturnTo(`/dives/${dive.uuid}`)}
                       className="underline underline-offset-2"
                       {...(written
                         ? {}

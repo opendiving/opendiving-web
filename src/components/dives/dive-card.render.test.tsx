@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveCard } from "./dive-card";
@@ -13,9 +13,14 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
 }));
 
+const at = vi.hoisted(() => ({ pathname: "/trips/trip-1" }));
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/trips/trip-1",
+  usePathname: () => at.pathname,
+  useSearchParams: () => new URLSearchParams(),
 }));
+afterEach(() => {
+  at.pathname = "/trips/trip-1";
+});
 
 // The map needs WebGL; what matters here is which cards get one, and of what.
 vi.mock("@/components/map/locations-map-lazy", () => ({
@@ -153,7 +158,7 @@ describe("DiveCard", () => {
     expect(figuresOf(item)[2]).toEqual(["Water temp", "0°C"]);
   });
 
-  it("names the dive and says when and where it was", () => {
+  it("names the dive, says when and where it was, and leads back to the page it is on", () => {
     const item = card({
       dive: dive({
         dive_sites: [
@@ -168,8 +173,15 @@ describe("DiveCard", () => {
 
     expect(
       within(item).getByRole("link", { name: "#212 Blue Hole" }),
-    ).toHaveAttribute("href", "/dives/dive-1");
+    ).toHaveAttribute("href", "/dives/dive-1?from=%2Ftrips%2Ftrip-1");
     expect(item).toHaveTextContent("Apr 4, 2026, 10:04 · Dahab, Egypt");
+  });
+
+  it("opens the dive plainly from the dive list, where its back link goes anyway", () => {
+    at.pathname = "/dives";
+    expect(
+      within(card()).getByRole("link", { name: "Dive #212" }),
+    ).toHaveAttribute("href", "/dives/dive-1");
   });
 
   it("edits back to the list it was opened from, and deletes only when asked to", async () => {

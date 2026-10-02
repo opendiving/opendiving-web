@@ -1,11 +1,12 @@
-// Where a form's "back" link, its Cancel button, and (where it makes sense) its
-// post-save redirect should send someone.
+// Where a form's or a record page's "back" link, a form's Cancel button, and
+// (where it makes sense) a save or a delete should send someone.
 //
 // The dive form is reachable from at least six places - the dashboard, the dive
 // list, the header's create menu, and the "log a dive here" buttons on a trip or
-// a dive site - so a hardcoded `/dives` is wrong for most of them. Rather than
-// each caller threading its own href through the form, the destination is read
-// off the URL, which means it also survives a reload or a shared link.
+// a dive site - and a dive from a trip, a site, the dashboard and more, so a
+// hardcoded `/dives` is wrong for most of them. Rather than each caller
+// threading its own href through the page, the destination is read off the URL,
+// which means it also survives a reload or a shared link.
 //
 // Deliberately not `router.back()`: a deep link or a refresh has no history
 // entry to pop, and after a successful save "back" points at the form that was
@@ -56,6 +57,32 @@ export function labelForPath(path: string): string {
 export function isFormPath(path: string): boolean {
   const route = path.split(/[?#]/)[0].replace(/\/$/, "");
   return route === "/dives/new" || route.endsWith("/edit");
+}
+
+// Past this, a `from` keeps only its path. Every record followed from another
+// nests the page before it, so a long enough walk would otherwise grow the URL
+// without bound; this is a dozen or so records deep.
+const FROM_MAX_LENGTH = 1000;
+
+// `href` with a `?from=` naming the page it is followed from, so the page it
+// opens can send the diver back there: a dive opened from a trip says "Back to
+// trip". `from` is that page's path *and* query, so a trip opened from the
+// dashboard still says "Back to dashboard" once the diver comes back to it from
+// one of its dives.
+//
+// Nothing is added where the opened page's back link already points - its
+// parent path, so a dive followed from `/dives` or an edit from its own dive
+// keeps a clean URL - nor from a form, which nothing should return to. A link
+// to the very page it is followed from is that page as it stands, way back and
+// all, rather than a page that leads back to itself.
+export function withReturnTo(href: string, from: string | null): string {
+  if (!from || isFormPath(from)) return href;
+  const path = href.split(/[?#]/)[0];
+  if (from.split(/[?#]/)[0] === path) return from;
+  if (from === path.slice(0, path.lastIndexOf("/"))) return href;
+  const kept = from.length > FROM_MAX_LENGTH ? from.split(/[?#]/)[0] : from;
+  const separator = href.includes("?") ? "&" : "?";
+  return `${href}${separator}from=${encodeURIComponent(kept)}`;
 }
 
 export interface ReturnToParams {

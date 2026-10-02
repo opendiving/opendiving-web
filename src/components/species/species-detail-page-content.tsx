@@ -4,6 +4,7 @@ import { Fish } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
+import { useReturnTo } from "@/hooks/useReturnTo";
 import { speciesAPI, Species, speciesPhotoUrl } from "@/lib/api/species";
 import {
   speciesDisplayName,
@@ -58,6 +59,7 @@ function InfoRow({
  */
 export function SpeciesDetailPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
+  const back = useReturnTo({ href: "/species", label: "Back to species" });
 
   const { resource: species, isLoading: isLoadingSpecies } =
     useResource<Species>(speciesAPI.getSpecies, {
@@ -79,9 +81,7 @@ export function SpeciesDetailPageContent() {
   }
 
   if (isLoadingSpecies) {
-    return (
-      <DetailPageSkeleton backHref="/species" backLabel="Back to species" />
-    );
+    return <DetailPageSkeleton backHref={back.href} backLabel={back.label} />;
   }
 
   if (!species) {
@@ -89,8 +89,8 @@ export function SpeciesDetailPageContent() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Species not found."
-          backHref="/species"
-          backLabel="Back to species"
+          backHref={back.href}
+          backLabel={back.label}
         />
       </div>
     );
@@ -104,8 +104,8 @@ export function SpeciesDetailPageContent() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
       <PageHeader
-        backHref="/species"
-        backLabel="Back to species"
+        backHref={back.href}
+        backLabel={back.label}
         title={displayName}
         subtitle={secondary !== displayName ? secondary : undefined}
       />

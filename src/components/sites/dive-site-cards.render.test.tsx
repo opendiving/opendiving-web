@@ -142,6 +142,8 @@ describe("DiveSiteInfoCard", () => {
   });
 });
 
+const BACK = { href: "/sites", label: "Back to dive sites" };
+
 describe("DiveSiteHero", () => {
   const figure = (label: string) =>
     screen.getByText(label, { selector: "dt" }).nextElementSibling;
@@ -149,6 +151,7 @@ describe("DiveSiteHero", () => {
   it("heads the page with the site's name and its card's line over every figure its dives add up to", () => {
     render(
       <DiveSiteHero
+        back={BACK}
         site={{
           ...SITE,
           location: { name: "Chatan, Okinawa, Japan" },
@@ -194,7 +197,7 @@ describe("DiveSiteHero", () => {
   });
 
   it("says one end of a depth range where only one is recorded", () => {
-    render(<DiveSiteHero site={{ ...SITE, depth_to: 40 }} />);
+    render(<DiveSiteHero back={BACK} site={{ ...SITE, depth_to: 40 }} />);
 
     expect(
       screen.getByRole("heading", { level: 1 }).nextElementSibling,
@@ -205,6 +208,7 @@ describe("DiveSiteHero", () => {
     account.user.units = "imperial";
     render(
       <DiveSiteHero
+        back={BACK}
         site={{ ...SITE, depth_from: 4.57, depth_to: 30.48, altitude: 1829 }}
       />,
     );
@@ -215,7 +219,7 @@ describe("DiveSiteHero", () => {
   });
 
   it("counts no dives, and leaves off every figure no dive gives it", () => {
-    render(<DiveSiteHero site={{ ...SITE, dive_count: 0 }} />);
+    render(<DiveSiteHero back={BACK} site={{ ...SITE, dive_count: 0 }} />);
 
     expect(figure("Dives")).toHaveTextContent("0");
     for (const label of [
@@ -230,7 +234,10 @@ describe("DiveSiteHero", () => {
 
   it("hands its map the site's pin, as the card's backdrop", () => {
     render(
-      <DiveSiteHero site={{ ...SITE, latitude: 26.33, longitude: 127.74 }} />,
+      <DiveSiteHero
+        back={BACK}
+        site={{ ...SITE, latitude: 26.33, longitude: 127.74 }}
+      />,
     );
 
     expect(vi.mocked(LocationsMap).mock.lastCall![0]).toMatchObject({
@@ -249,7 +256,7 @@ describe("DiveSiteHero", () => {
   });
 
   it("draws the map's water for a site with no position, and credits no map", () => {
-    render(<DiveSiteHero site={SITE} />);
+    render(<DiveSiteHero back={BACK} site={SITE} />);
 
     expect(LocationsMap).not.toHaveBeenCalled();
     expect(screen.queryByRole("link", { name: /OpenStreetMap/ })).toBeNull();

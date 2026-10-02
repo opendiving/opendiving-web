@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { isFormPath } from "@/lib/return-to";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -67,15 +67,6 @@ const CREATE_ACTIONS: CreateAction[] = [
   { label: "New course", icon: GraduationCap, kind: "course" },
 ];
 
-// The create menu is reachable from every page, so the form it opens is told
-// where it was launched from - otherwise its Back/Cancel would guess. Nothing is
-// appended when the current page is itself a form (see `isFormPath`), which
-// would otherwise send Cancel straight back to the form being cancelled.
-function withReturnTo(href: string, pathname: string | null): string {
-  if (!pathname || isFormPath(pathname)) return href;
-  return `${href}?from=${encodeURIComponent(pathname)}`;
-}
-
 // Maps URL path prefixes to the nav item that should be highlighted as active.
 const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/dashboard", page: "dashboard" },
@@ -103,6 +94,9 @@ export function Header() {
   const openCreate = useQuickCreate();
   const pathname = usePathname();
   const currentPage = getCurrentPage(pathname);
+  // The create menu is reachable from every page, so the form it opens is told
+  // where it was launched from - otherwise its Back/Cancel would guess.
+  const withReturnTo = useWithReturnTo();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const { toast } = useToast();
@@ -274,7 +268,7 @@ export function Header() {
                     return "href" in action ? (
                       <DropdownMenuItem key={action.label} asChild>
                         <Link
-                          href={withReturnTo(action.href, pathname)}
+                          href={withReturnTo(action.href)}
                           className="flex items-center"
                         >
                           <Icon className="mr-2 h-4 w-4" />

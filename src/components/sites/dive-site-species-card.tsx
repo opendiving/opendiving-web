@@ -7,6 +7,7 @@ import { fetchAllPages, isAbortError } from "@/lib/api/client";
 import { speciesAPI, type SpeciesLifeListEntry } from "@/lib/api/species";
 import { speciesDisplayName, speciesSecondaryName } from "@/lib/species";
 import { SpeciesThumbnail } from "@/components/species/species-thumbnail";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const diveCount = (count: number) =>
@@ -30,6 +31,7 @@ export function DiveSiteSpeciesCard({
 }) {
   const [species, setSpecies] = useState<SpeciesLifeListEntry[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const withReturnTo = useWithReturnTo();
 
   useEffect(() => {
     if (speciesCount === 0) return;
@@ -79,7 +81,7 @@ export function DiveSiteSpeciesCard({
               return (
                 <li key={entry.uuid}>
                   <Link
-                    href={`/species/${entry.uuid}`}
+                    href={withReturnTo(`/species/${entry.uuid}`)}
                     className="flex items-center gap-3 rounded-md text-sm hover:underline"
                   >
                     <SpeciesThumbnail
