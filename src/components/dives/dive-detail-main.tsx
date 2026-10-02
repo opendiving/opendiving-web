@@ -30,8 +30,9 @@ interface DiveDetailMainProps {
 /**
  * The dive detail page's main column, ordered so each card's inputs are already on screen
  * by the time a card derived from them appears: under the hero's duration and depth
- * numbers, the profile that is their detailed form, then the mixtures whose pressures its
- * third curve traces, then the consumption figures derived from all three.
+ * numbers, the profile that is their detailed form, then the tanks whose pressures its
+ * third curve traces, then the consumption figures derived from all three, then the
+ * exposure those same tanks produced.
  *
  * Every card renders only when the dive carries the relevant data, so a hand-logged dive
  * shows whatever else was filled in.
@@ -52,13 +53,11 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
 
       <DiveMixturesCard dive={dive} />
 
-      {/* Between the gas and what it cost: the mixtures above are what produced this
-          exposure, and the consumption below is the other thing those same cylinders
-          determined. Renders nothing unless the dive was imported from a format that
-          records any of it. */}
-      <DiveExposureCard dive={dive} />
-
       <DiveGasConsumptionCard dive={dive} />
+
+      {/* Renders nothing unless the dive was imported from a format that records any
+          of it. */}
+      <DiveExposureCard dive={dive} />
 
       {/* Shown whenever *either* is recorded - a dive can have a logged weight without
           any gear items listed, and vice versa. */}

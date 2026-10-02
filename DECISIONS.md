@@ -1894,9 +1894,9 @@ Card-title icons are `gap-2` on the title, never `mr-2` on the icon, and inherit
 
 ## The dive page's gear list is a table, and its columns lead with Type
 
-`DiveDetailMain`'s Gear card is a `Table`, the same shape as the Gas Mixtures card above it, rather
-than a `<ul>` of `gearItemLabel(item)`: brand and name glued into one string give the eye nothing to
-scan down at seven items.
+`DiveDetailMain`'s Gear card is a `Table`, the same shape as the Tanks card further up, rather than
+a `<ul>` of `gearItemLabel(item)`: brand and name glued into one string give the eye nothing to scan
+down at seven items.
 
 Columns are Type, Brand, Name, deliberately not `/gear`'s Name/Type/Brand. `/gear` lists things you
 own, looked up by name; the dive page is a kit list read by type ("what suit? what computer?"), and
