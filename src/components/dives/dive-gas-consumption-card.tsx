@@ -89,7 +89,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
           <p className="text-sm text-muted-foreground">{reason}</p>
         ) : rows.length > 0 ? (
           <>
-            {/* No wrapper of its own, for the reason the mixtures card above
+            {/* No wrapper of its own, for the reason the Tanks card above
                 states: shadcn's `Table` brings its own scroll container and the
                 second one never scrolled.
 
@@ -160,7 +160,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                         )}
                         {row.role && (
                           // Same hand-maintained map and same fallback as the
-                          // mixtures card - a role the API has and this build
+                          // Tanks card - a role the API has and this build
                           // hasn't renders as its wire value rather than as an
                           // empty badge.
                           <Badge variant="outline">
