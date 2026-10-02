@@ -269,7 +269,8 @@ function tappedField(target: EventTarget | null): KeyboardField | null {
 /**
  * Puts the caret where the finger landed, which the cancelled tap would have
  * done: at the end of the text where the browser cannot map the point to an
- * offset, or the tap was on a label.
+ * offset, or the tap was on a label. Called before the field has focus, which
+ * then restores this selection rather than choosing its own.
  */
 function placeCaret(field: KeyboardField, x: number, y: number) {
   // `email` and `number` inputs have no selection to set.
@@ -331,8 +332,11 @@ export function useFocusTappedFieldInPlace() {
       if (!field || field === document.activeElement) return;
 
       event.preventDefault();
-      field.focus({ preventScroll: true });
+      // Caret first, so that a focus handler's own selection stands:
+      // `CreatableCombobox` selects its label for the first keystroke to
+      // replace.
       placeCaret(field, touch.clientX, touch.clientY);
+      field.focus({ preventScroll: true });
     };
 
     const capture = { capture: true };

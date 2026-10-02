@@ -417,6 +417,21 @@ describe("useFocusTappedFieldInPlace", () => {
     cleanup();
   });
 
+  it("leaves the selection a focus handler makes standing", () => {
+    // `CreatableCombobox` selects its label on focus so that the first
+    // keystroke replaces it; a caret placed after the focus would undo that.
+    const { root, cleanup } = mount('<input value="Dahab 2025" />');
+    const field = root.querySelector("input")!;
+    field.addEventListener("focus", () => field.select());
+    const { unmount } = renderHook(() => useFocusTappedFieldInPlace());
+
+    tap(field);
+
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 10]);
+    unmount();
+    cleanup();
+  });
+
   it("focuses a label's field the same way", () => {
     const { root, cleanup } = mount(
       '<label for="notes">Notes</label><textarea id="notes"></textarea>',
