@@ -176,6 +176,12 @@ export function CourseDetailPageContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          <CourseCertificationsCard
+            course={course}
+            isAdding={isAddingCertification}
+            onAddingChange={setIsAddingCertification}
+          />
+
           <RecentDivesCard
             complete
             enabled={!!user}
@@ -187,12 +193,6 @@ export function CourseDetailPageContent() {
             emptyDescription="Log a dive and assign it to this course to see it here."
             newDiveHref={`/dives/new?course_uuid=${course.uuid}`}
             newDiveLabel="Log a dive for this course"
-          />
-
-          <CourseCertificationsCard
-            course={course}
-            isAdding={isAddingCertification}
-            onAddingChange={setIsAddingCertification}
           />
         </div>
 
