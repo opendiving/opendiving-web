@@ -21,6 +21,7 @@ import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 import { DiveCard } from "@/components/dives/dive-card";
 import { Plus } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
+import { cn } from "@/lib/utils";
 
 const RECENT_DIVES_COUNT = 5;
 
@@ -58,6 +59,10 @@ export interface RecentDivesCardProps {
   // them" - and the API clamps `items_per_page` to 100, so a diver past that
   // number was shown a list that looked complete and was not. There is no
   // number to get wrong now.
+  //
+  // A complete list that holds nothing also drops its header down to its hidden
+  // heading, as the list pages' cards do: the empty state already says what the
+  // card is for. The dashboard's preview keeps it beside the trips card.
   complete?: boolean;
   title?: string;
   description?: string;
@@ -127,26 +132,37 @@ export function RecentDivesCard({
     errorMessage: "Failed to load dives. Please try again.",
   });
 
+  const isEmpty = !isLoadingDives && recentDives.length === 0;
+  const isHeaderless = complete && isEmpty;
+
   return (
     <Card>
-      <CardHeader>
-        <div className={CARD_TITLE_ROW}>
-          <CardTitle as="h2" className="flex items-center gap-2">
-            <DiveIcon className="h-5 w-5" />
+      <CardHeader className={cn(isHeaderless && "p-0")}>
+        {isHeaderless ? (
+          <CardTitle as="h2" className="sr-only">
             {title}
           </CardTitle>
-          {viewAllHref && (
-            <Button
-              variant="outline"
-              size="sm"
-              className={CARD_TITLE_ACTION}
-              asChild
-            >
-              <Link href={viewAllHref}>{viewAllLabel}</Link>
-            </Button>
-          )}
-        </div>
-        <CardDescription>{description}</CardDescription>
+        ) : (
+          <>
+            <div className={CARD_TITLE_ROW}>
+              <CardTitle as="h2" className="flex items-center gap-2">
+                <DiveIcon className="h-5 w-5" />
+                {title}
+              </CardTitle>
+              {viewAllHref && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={CARD_TITLE_ACTION}
+                  asChild
+                >
+                  <Link href={viewAllHref}>{viewAllLabel}</Link>
+                </Button>
+              )}
+            </div>
+            <CardDescription>{description}</CardDescription>
+          </>
+        )}
       </CardHeader>
       <CardContent>
         {isLoadingDives ? (
@@ -160,7 +176,7 @@ export function RecentDivesCard({
               <BackdropCardSkeleton key={index} />
             ))}
           </ul>
-        ) : recentDives.length === 0 ? (
+        ) : isEmpty ? (
           <EmptyState
             icon={DiveIcon}
             title={emptyTitle}
