@@ -3,12 +3,13 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 
 import type { DiveSite } from "@/lib/api/dive-sites";
 import type { SpeciesLifeListEntry } from "@/lib/api/species";
+import { DiveSiteHero } from "./dive-site-hero";
 import { DiveSiteInfoCard } from "./dive-site-info-card";
-import { DiveSiteSummaryCard } from "./dive-site-summary-card";
 import { DiveSiteSpeciesCard } from "./dive-site-species-card";
 
-// The site page's three cards about the site itself: what it records, what the
-// diver's dives there add up to, and the species seen on them.
+// What the site page says about the site itself: its hero, with the line the
+// site's card carries and what the diver's dives there add up to, the rest of
+// what it records, and the species seen on them.
 
 const account = vi.hoisted(() => ({
   user: { uuid: "user-1", units: "metric" as "metric" | "imperial" },
@@ -25,7 +26,13 @@ vi.mock("@/lib/api/species", async (importOriginal) => {
   };
 });
 
+// The map is covered where it lives; here it is what the hero hands it.
+vi.mock("@/components/map/locations-map-lazy", () => ({
+  LocationsMap: vi.fn(() => null),
+}));
+
 const { speciesAPI } = await import("@/lib/api/species");
+const { LocationsMap } = await import("@/components/map/locations-map-lazy");
 
 const SITE: DiveSite = {
   uuid: "site-1",
@@ -40,6 +47,7 @@ const row = (label: string) =>
 beforeEach(() => {
   account.user.units = "metric";
   vi.mocked(speciesAPI.getLifeList).mockReset();
+  vi.mocked(LocationsMap).mockClear();
 });
 
 describe("DiveSiteInfoCard", () => {
@@ -49,11 +57,6 @@ describe("DiveSiteInfoCard", () => {
         site={{
           ...SITE,
           other_names: ["砂辺", "Sunabe"],
-          depth_from: 3,
-          depth_to: 18,
-          water_type: "salt",
-          altitude: 2,
-          entry_types: ["shore", "pier"],
           tags: ["shore dive", "macro"],
           external_ids: [
             { registry: "openstreetmap", identifier: "node/313862678" },
@@ -65,10 +68,6 @@ describe("DiveSiteInfoCard", () => {
     );
 
     expect(row("Also known as")).toHaveTextContent("砂辺, Sunabe");
-    expect(row("Depth")).toHaveTextContent("3 m – 18 m");
-    expect(row("Water type")).toHaveTextContent("Salt water");
-    expect(row("Altitude")).toHaveTextContent("2 m");
-    expect(row("Entry types")).toHaveTextContent("Shore, Pier");
     expect(
       within(row("Tags") as HTMLElement)
         .getAllByRole("listitem")
@@ -87,15 +86,11 @@ describe("DiveSiteInfoCard", () => {
   });
 
   it("shows nothing for a member the site lacks", () => {
-    render(<DiveSiteInfoCard site={SITE} />);
+    render(<DiveSiteInfoCard site={{ ...SITE, tags: ["macro"] }} />);
 
     for (const label of [
       "Also known as",
-      "Depth",
-      "Water type",
-      "Altitude",
-      "Entry type",
-      "Tags",
+      "Coordinates",
       "In other registries",
     ]) {
       expect(
@@ -104,31 +99,64 @@ describe("DiveSiteInfoCard", () => {
     }
   });
 
-  it("says one end of a range where only one is recorded", () => {
-    render(<DiveSiteInfoCard site={{ ...SITE, depth_to: 40 }} />);
+  // Nothing of it would be left but the heading.
+  it("draws no card for a site that records none of it", () => {
+    const { container } = render(<DiveSiteInfoCard site={SITE} />);
 
-    expect(row("Depth")).toHaveTextContent("To 40 m");
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it("reads depths and the altitude in the diver's units", () => {
-    account.user.units = "imperial";
+  // Each is on the line in the hero above it.
+  it("leaves the place, its water, depths, altitude and entry to the hero", () => {
     render(
       <DiveSiteInfoCard
-        site={{ ...SITE, depth_from: 4.57, depth_to: 30.48, altitude: 1829 }}
+        site={{
+          ...SITE,
+          location: { name: "Chatan, Okinawa, Japan" },
+          water_type: "salt",
+          depth_from: 3,
+          depth_to: 18,
+          altitude: 2,
+          entry_types: ["shore"],
+          // So that there is a card to look in.
+          tags: ["macro"],
+        }}
       />,
     );
 
-    expect(row("Depth")).toHaveTextContent("15 ft – 100 ft");
-    expect(row("Altitude")).toHaveTextContent("6001 ft");
+    expect(
+      screen.getByRole("heading", { name: "Dive Site Information" }),
+    ).toBeInTheDocument();
+    for (const label of [
+      "Location",
+      "Water type",
+      "Depth",
+      "Altitude",
+      "Entry type",
+      "Added on",
+    ]) {
+      expect(
+        screen.queryByText(label, { selector: "div" }),
+      ).not.toBeInTheDocument();
+    }
   });
 });
 
-describe("DiveSiteSummaryCard", () => {
-  it("adds up the diver's dives at the site", () => {
+describe("DiveSiteHero", () => {
+  const figure = (label: string) =>
+    screen.getByText(label, { selector: "dt" }).nextElementSibling;
+
+  it("heads the page with the site's name and its card's line over every figure its dives add up to", () => {
     render(
-      <DiveSiteSummaryCard
+      <DiveSiteHero
         site={{
           ...SITE,
+          location: { name: "Chatan, Okinawa, Japan" },
+          water_type: "salt",
+          depth_from: 3,
+          depth_to: 18,
+          altitude: 2,
+          entry_types: ["shore", "pier"],
           dive_count: 12,
           last_dived_on: "2026-09-14",
           max_dive_depth: 21.4,
@@ -138,22 +166,93 @@ describe("DiveSiteSummaryCard", () => {
       />,
     );
 
-    const figure = (label: string) =>
-      screen.getByText(label, { selector: "dt" }).nextElementSibling;
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "Sunabe Seawall",
+    });
+    expect(heading.nextElementSibling).toHaveTextContent(
+      "Chatan, Okinawa, Japan · Water type Salt water · Depth 3 m – 18 m · Altitude 2 m · Entry types Shore, Pier",
+    );
     expect(figure("Dives")).toHaveTextContent("12");
     expect(figure("Last dive")).toHaveTextContent("Sep 14, 2026");
-    expect(figure("Deepest")).toHaveTextContent("21.4 m");
-    expect(figure("Species")).toHaveTextContent("7");
+    expect(figure("Deepest")).toHaveTextContent("21 m");
+    expect(figure("Species seen")).toHaveTextContent("7");
     expect(figure("Average rating")).toHaveTextContent("4.3 of 5");
+    // The date last, as the one figure wider than the rest.
+    expect(
+      Array.from(document.querySelectorAll("dt"), (dt) => dt.textContent),
+    ).toEqual([
+      "Dives",
+      "Deepest",
+      "Species seen",
+      "Average rating",
+      "Last dive",
+    ]);
+    expect(
+      screen.getByRole("link", { name: "Back to dive sites" }),
+    ).toHaveAttribute("href", "/sites");
   });
 
-  // The dives card beside it already says there are none.
-  it("draws nothing for a site with no dives", () => {
-    const { container } = render(
-      <DiveSiteSummaryCard site={{ ...SITE, dive_count: 0 }} />,
+  it("says one end of a depth range where only one is recorded", () => {
+    render(<DiveSiteHero site={{ ...SITE, depth_to: 40 }} />);
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).toHaveTextContent("Depth To 40 m");
+  });
+
+  it("reads the line's depths and altitude in the diver's units", () => {
+    account.user.units = "imperial";
+    render(
+      <DiveSiteHero
+        site={{ ...SITE, depth_from: 4.57, depth_to: 30.48, altitude: 1829 }}
+      />,
     );
 
-    expect(container).toBeEmptyDOMElement();
+    expect(
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).toHaveTextContent("Depth 15 ft – 100 ft · Altitude 6001 ft");
+  });
+
+  it("counts no dives, and leaves off every figure no dive gives it", () => {
+    render(<DiveSiteHero site={{ ...SITE, dive_count: 0 }} />);
+
+    expect(figure("Dives")).toHaveTextContent("0");
+    for (const label of [
+      "Last dive",
+      "Deepest",
+      "Species seen",
+      "Average rating",
+    ]) {
+      expect(screen.queryByText(label, { selector: "dt" })).toBeNull();
+    }
+  });
+
+  it("hands its map the site's pin, as the card's backdrop", () => {
+    render(
+      <DiveSiteHero site={{ ...SITE, latitude: 26.33, longitude: 127.74 }} />,
+    );
+
+    expect(vi.mocked(LocationsMap).mock.lastCall![0]).toMatchObject({
+      locations: [
+        { name: "Sunabe Seawall", latitude: 26.33, longitude: 127.74 },
+      ],
+      backdrop: true,
+      snapshot: true,
+      sideFade: true,
+      creditElsewhere: true,
+    });
+    // Which the hero credits at its details' foot instead.
+    expect(
+      screen.getByRole("link", { name: /OpenStreetMap/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("draws the map's water for a site with no position, and credits no map", () => {
+    render(<DiveSiteHero site={SITE} />);
+
+    expect(LocationsMap).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: /OpenStreetMap/ })).toBeNull();
   });
 });
 
@@ -200,7 +299,7 @@ describe("DiveSiteSpeciesCard", () => {
     });
   });
 
-  it("asks nothing, and draws nothing, while the summary counts none", async () => {
+  it("asks nothing, and draws nothing, while the hero counts none", async () => {
     const { container } = render(
       <DiveSiteSpeciesCard siteUuid="site-1" speciesCount={0} />,
     );

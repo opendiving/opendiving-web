@@ -41,7 +41,16 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ id: dive.current?.uuid ?? "" }),
 }));
 
-// Rendered inside the header; its own behaviour belongs to
+// The hero's figures read the diver's units, and its map is covered where it
+// lives.
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
+vi.mock("@/components/map/locations-map-lazy", () => ({
+  LocationsMap: () => null,
+}));
+
+// Rendered inside the hero; its own behaviour belongs to
 // `dive-neighbor-nav.render.test.tsx`. The token it is handed is this file's
 // business, though - see the reload test below.
 const navTokens = vi.hoisted(() => ({ seen: [] as (number | undefined)[] }));

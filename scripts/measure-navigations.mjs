@@ -185,7 +185,8 @@ if (!Number.isInteger(RUNS) || RUNS < 1) {
 // ------------------------------------------------------------- the navigations
 // Data, so that adding one is a row rather than a branch. Each entry says where the
 // navigation starts and what to press; `arrive` is for the one that cannot be reached by
-// opening a URL.
+// opening a URL, and `before` for a press that has to be made ready first - a menu opened
+// before the clock starts, so that the click measured is the one that navigates.
 //
 // The first three are the ones the timing story is told about. The fourth and fifth are
 // where the destination's frame is a *different* shape from the one the source page drew.
@@ -233,8 +234,10 @@ const NAVIGATIONS = [
     label: "Dive detail → its edit page",
     drawsFrame: true,
     from: (subjects) => subjects.dive,
-    target: (page) =>
-      page.locator("main").getByRole("link", { name: "Edit", exact: true }),
+    // Under the hero's menu, whose items are portalled out of `<main>`.
+    before: (page) =>
+      page.locator("main").getByRole("button", { name: "More actions" }).click(),
+    target: (page) => page.getByRole("menuitem", { name: "Edit", exact: true }),
   },
   {
     id: "dives-new",
@@ -647,6 +650,7 @@ async function measure(page, navigation, subjects) {
   try {
     if (navigation.arrive) await navigation.arrive(page, { traffic });
     else await open(page, navigation.from(subjects));
+    if (navigation.before) await navigation.before(page);
 
     await arm(page);
     const mark = traffic.mark();

@@ -54,8 +54,8 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   const outline = dive.depth_outline;
   // The title names the site; this says where it is.
   const placeName = dive.dive_sites[0]?.location?.name;
-  // Whole units, unlike the dive page's two decimals: it is a list to scan,
-  // and the second decimal is not what anyone is scanning for.
+  // Whole units, as the dive page's hero rounds them: the second decimal is not
+  // what anyone reads a dive's depth for.
   const depth = (meters?: number) =>
     meters ? formatDepth(meters, units, { decimals: 0 }) : "-";
   const figures: BackdropCardFigure[] = [

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -9,6 +10,7 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   DeleteMenuItem,
   ItemActionsMenu,
@@ -18,11 +20,14 @@ import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassig
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { DiveSiteInfoCard } from "@/components/sites/dive-site-info-card";
 import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
-import { DiveSiteSummaryCard } from "@/components/sites/dive-site-summary-card";
-import { PageHeader } from "@/components/ui/page-header";
-import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
+import { DiveSiteHero } from "@/components/sites/dive-site-hero";
+import {
+  HERO_BODY,
+  HERO_CONTROL,
+  MapHeroPageSkeleton,
+} from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, FileText } from "lucide-react";
+import { Edit, FileText, MapPin, Plus } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
@@ -59,10 +64,13 @@ export function DiveSiteDetailPageContent() {
   if (!isAuthenticated) {
     return null; // Will redirect to signin
   }
-
   if (isLoadingDiveSite) {
     return (
-      <DetailPageSkeleton backHref="/sites" backLabel="Back to dive sites" />
+      <MapHeroPageSkeleton
+        backHref="/sites"
+        backLabel="Back to dive sites"
+        icon={MapPin}
+      />
     );
   }
 
@@ -79,19 +87,22 @@ export function DiveSiteDetailPageContent() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <PageHeader
-        backHref="/sites"
-        backLabel="Back to dive sites"
-        title={diveSite.name}
-        subtitle={diveSite.location?.name ?? undefined}
+    <div>
+      <DiveSiteHero
+        site={diveSite}
         actions={
           <>
-            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
+            <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
+              <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
+                <Plus className="h-4 w-4 mr-2" />
+                Log a dive
+              </Link>
             </Button>
-            <ItemActionsMenu>
+            <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
+              <DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
               <DeleteMenuItem
                 onSelect={() => del.requestDelete(diveSite.uuid)}
                 disabled={isDeleting}
@@ -121,51 +132,47 @@ export function DiveSiteDetailPageContent() {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <DiveSiteSummaryCard site={diveSite} />
+      <div className={HERO_BODY}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RecentDivesCard
+              complete
+              enabled={!!user}
+              diveSiteId={diveSite.uuid}
+              title="Dives at This Site"
+              description="All dives logged at this dive site"
+              viewAllHref={null}
+              emptyTitle="No dives logged at this site yet"
+              emptyDescription="Log a dive and assign it to this dive site to see it here."
+              newDiveHref={`/dives/new?dive_site_uuid=${diveSite.uuid}`}
+              newDiveLabel="Log a dive at this site"
+            />
+          </div>
 
-          <RecentDivesCard
-            complete
-            enabled={!!user}
-            diveSiteId={diveSite.uuid}
-            title="Dives at This Site"
-            description="All dives logged at this dive site"
-            viewAllHref={null}
-            emptyTitle="No dives logged at this site yet"
-            emptyDescription="Log a dive and assign it to this dive site to see it here."
-            newDiveHref={`/dives/new?dive_site_uuid=${diveSite.uuid}`}
-            newDiveLabel="Log a dive at this site"
-          />
-        </div>
+          <div className="space-y-6">
+            <DiveSiteInfoCard site={diveSite} />
 
-        <div className="space-y-6">
-          <DiveSiteInfoCard site={diveSite} />
+            {diveSite.notes && (
+              <Card>
+                <CardHeader>
+                  <CardTitle as="h2" className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Notes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                    {diveSite.notes}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
-          {/* Below the details rather than beside the dives: the screenshot's
-              frame ends at the foot of the card above, and cuts through
-              whatever is beside it - a list of dives reads as a page going on,
-              a paragraph cut mid-line does not. */}
-          {diveSite.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle as="h2" className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Notes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
-                  {diveSite.notes}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          <DiveSiteSpeciesCard
-            siteUuid={diveSite.uuid}
-            speciesCount={diveSite.species_count ?? 0}
-          />
+            <DiveSiteSpeciesCard
+              siteUuid={diveSite.uuid}
+              speciesCount={diveSite.species_count ?? 0}
+            />
+          </div>
         </div>
       </div>
     </div>

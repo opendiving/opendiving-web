@@ -20,16 +20,31 @@ export interface PageHeaderProps {
    */
   subtitle?: ReactNode;
   /**
-   * Navigation *between records*, as opposed to the `actions` that operate on
-   * the one being shown - currently the dive page's previous/next pager. Sits
-   * on the title's own line: it is about the record named beside it.
-   */
-  nav?: ReactNode;
-  /**
    * Right-aligned on the back link's row - on detail pages, Edit and the
    * `ItemActionsMenu` holding everything else.
    */
   actions?: ReactNode;
+}
+
+// The way back from a detail or form page, on its own for a page whose heading
+// is drawn elsewhere - a detail page's, over its hero.
+export function BackLink({
+  href,
+  label,
+  className,
+}: {
+  href: string;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <Button variant="ghost" size="sm" asChild className={cn("px-0", className)}>
+      <Link href={href}>
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        {label}
+      </Link>
+    </Button>
+  );
 }
 
 // The "back" button + title/subtitle block shared across detail and form
@@ -39,7 +54,6 @@ export function PageHeader({
   backLabel,
   title,
   subtitle,
-  nav,
   actions,
 }: PageHeaderProps) {
   return (
@@ -50,22 +64,10 @@ export function PageHeader({
           capitals, and it is the visible gaps either side of the row that
           match. */}
       <div className="mb-6 flex min-h-10 items-center justify-between gap-4">
-        <Button variant="ghost" size="sm" asChild className="px-0">
-          <Link href={backHref}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {backLabel}
-          </Link>
-        </Button>
+        <BackLink href={backHref} label={backLabel} />
         {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
       </div>
-      {/* `nav` shares the title's line, and `h-9` on its controls is exactly
-          the `text-3xl` line box, so the two sit level without either being
-          nudged. Wraps below the title on a narrow screen rather than
-          squeezing it. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h1 className="text-3xl font-bold">{title}</h1>
-        {nav}
-      </div>
+      <h1 className="text-3xl font-bold">{title}</h1>
       {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}
     </div>
   );

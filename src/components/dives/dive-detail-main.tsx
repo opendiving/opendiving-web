@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Dive } from "@/lib/api/dives";
 import { gearTypeLabel } from "@/lib/api/gear";
-import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { speciesDisplayName, speciesNameWithRank } from "@/lib/species";
 import { SpeciesThumbnail } from "@/components/species/species-thumbnail";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Backpack, Fish, FileText, Weight } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
-import { formatDepth, formatWeight } from "@/lib/units";
+import { formatWeight } from "@/lib/units";
 
 interface DiveDetailMainProps {
   dive: Dive;
@@ -30,12 +29,12 @@ interface DiveDetailMainProps {
 
 /**
  * The dive detail page's main column, ordered so each card's inputs are already on screen
- * by the time a card derived from them appears: the duration and depth numbers, then the
- * profile that is their detailed form, then the mixtures whose pressures its third curve
- * traces, then the consumption figures derived from all three.
+ * by the time a card derived from them appears: under the hero's duration and depth
+ * numbers, the profile that is their detailed form, then the mixtures whose pressures its
+ * third curve traces, then the consumption figures derived from all three.
  *
- * Every card past the first renders only when the dive carries the relevant data, so a
- * hand-logged dive shows just the duration and whatever else was filled in.
+ * Every card renders only when the dive carries the relevant data, so a hand-logged dive
+ * shows whatever else was filled in.
  */
 export function DiveDetailMain({ dive }: DiveDetailMainProps) {
   const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
@@ -48,53 +47,6 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
 
   return (
     <div className="lg:col-span-2 space-y-6">
-      {/* The three numbers that describe the shape of the dive, in one card and
-          at one weight. They were two - a "Time & Duration" card holding the
-          start time and the duration, and a "Depth Information" card below it -
-          which spent a whole card's header on a single figure and put "45min"
-          and "30.5 m" in different boxes despite being read together. The start
-          time went up to the page header, where the date already was.
-
-          No header: each figure is already labelled, so a "Duration & Depth"
-          title above them only restated the two labels underneath it. `pt-6`
-          because `CardContent`'s own padding assumes a header sits above it. */}
-      <Card>
-        <CardContent className="pt-6">
-          {/* Three columns for three figures, and a dive that recorded no depths
-              simply leaves the duration on its own rather than stretching it. */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground mb-1">
-                Duration
-              </div>
-              <div className="text-2xl font-bold">
-                {formatDurationHoursMinutes(dive.duration)}
-              </div>
-            </div>
-            {dive.max_depth != null && (
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Maximum depth
-                </div>
-                <div className="text-2xl font-bold">
-                  {formatDepth(dive.max_depth, units)}
-                </div>
-              </div>
-            )}
-            {dive.avg_depth != null && (
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Average depth
-                </div>
-                <div className="text-2xl font-bold">
-                  {formatDepth(dive.avg_depth, units)}
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Renders nothing for a dive logged by hand. */}
       <DiveProfileCard dive={dive} />
 

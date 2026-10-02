@@ -175,16 +175,14 @@ export function DashboardPageFrame({
       )}
 
       {hasDives && (
-        /* The four headline numbers in one card, the way the dive page holds its
-           duration and depths in one - they are read together as "what my
-           logbook amounts to", and four separate cards spent four headers and
+        /* The four headline numbers in one card - they are read together as
+           "what my logbook amounts to", and four separate cards spent four headers and
            four borders saying so four times. Four boxes in a row also read as
            four unrelated things; one box reads as one summary, which is what it
            is.
 
-           No header, for the dive card's reason: each figure is already
-           labelled, so a "Your diving" title above them would only restate the
-           four labels underneath. `pt-6` because `CardContent`'s own padding
+           No header: each figure is already labelled, so a "Your diving" title
+           above them would only restate the four labels underneath. `pt-6` because `CardContent`'s own padding
            assumes a header sits above it. */
         <Card>
           <CardContent className="pt-6">

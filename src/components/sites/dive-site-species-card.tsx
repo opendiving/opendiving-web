@@ -15,11 +15,11 @@ const diveCount = (count: number) =>
 /**
  * The species sighted on the diver's dives at a site, each linking to its own
  * page: the life list, narrowed to the dives naming this site at any position -
- * the same dives the summary's species count is taken over, so the two agree.
+ * the same dives the hero's species count is taken over, so the two agree.
  *
  * Read whole, as the Tags card reads the tags: a site's species are a list worth
  * seeing entire, and `fetchAllPages` stops at its ceiling with a warning. Nothing
- * is asked for, and nothing drawn, while the summary counts none.
+ * is asked for, and nothing drawn, while the hero counts none.
  */
 export function DiveSiteSpeciesCard({
   siteUuid,

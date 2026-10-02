@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import TripDetailPage from "./page";
 import type { Trip } from "@/lib/api/trips";
 import type { Dive } from "@/lib/api/dives";
@@ -10,7 +11,9 @@ import type { Person } from "@/lib/api/people";
 // land: each part's accommodation under its place, the "Dive centers" line the page
 // derives from the trip's dives rather than reading off the trip, and the people
 // the trip itself records. The derivation's order is `distinctContactUuids`',
-// tested beside it.
+// tested beside it. And the hero over it all: the trip's name as the heading, its
+// dates and places, its figures, and what its map is handed - the map itself is
+// covered where it lives.
 
 // Returned by identity, for the reason the other page tests give: the effects here
 // are keyed on values read off these objects.
@@ -26,6 +29,11 @@ const stable = vi.hoisted(() => ({
 
 vi.mock("@/hooks/useAuthGuard", () => ({
   useAuthGuard: () => stable.guard,
+}));
+
+// The hero's depth figure reads the diver's units.
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -44,7 +52,7 @@ vi.mock("@/components/dives/recent-dives-card", () => ({
   RecentDivesCard: () => null,
 }));
 vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: () => null,
+  LocationsMap: vi.fn(() => null),
 }));
 
 vi.mock("@/lib/api/trips", async (importOriginal) => ({
@@ -65,6 +73,7 @@ vi.mock("@/lib/api/people", async (importOriginal) => ({
 }));
 
 const { tripsAPI } = await import("@/lib/api/trips");
+const { LocationsMap } = await import("@/components/map/locations-map-lazy");
 const { divesAPI } = await import("@/lib/api/dives");
 const { fetchAllContacts } = await import("@/lib/api/contacts");
 const { fetchAllPeople } = await import("@/lib/api/people");
@@ -95,7 +104,12 @@ const TRIP: Trip = {
   uuid: "trip-1",
   name: "Egypt, spring",
   parts: [
-    { location: { name: "Dahab" }, accommodation_uuid: "coral" },
+    {
+      location: { name: "Dahab", latitude: 28.49, longitude: 34.51 },
+      accommodation_uuid: "coral",
+      start_date: "2026-04-03",
+      end_date: "2026-04-08",
+    },
     { location: { name: "Sharm" } },
   ],
   people: [
@@ -142,6 +156,121 @@ beforeEach(() => {
 });
 
 describe("TripDetailPage", () => {
+  it("heads the page with the trip's name, dates and places over its figures", async () => {
+    vi.mocked(tripsAPI.getTrip).mockResolvedValue({
+      ...TRIP,
+      dive_count: 12,
+      dive_site_count: 5,
+      species_count: 3,
+      max_depth: 30.4,
+    });
+    render(<TripDetailPage />);
+
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: "Egypt, spring",
+    });
+    expect(heading).toHaveTextContent("Egypt, spring");
+    expect(heading.nextElementSibling).toHaveTextContent(
+      "April 3 - April 8, 2026 · Dahab +1",
+    );
+
+    // Every figure the trip has, the depth in whole units.
+    const figure = (label: string) =>
+      screen.getByText(label).nextElementSibling?.textContent;
+    expect(figure("Dives")).toBe("12");
+    expect(figure("Dive sites")).toBe("5");
+    expect(figure("Species seen")).toBe("3");
+    expect(figure("Max depth")).toBe("30 m");
+  });
+
+  it("leaves off the species a trip has none of, and a depth it has none of", async () => {
+    render(<TripDetailPage />);
+
+    await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
+    expect(screen.getByText("Dives").nextElementSibling).toHaveTextContent("0");
+    expect(screen.queryByText("Species seen")).toBeNull();
+    expect(screen.queryByText("Max depth")).toBeNull();
+  });
+
+  it("hands the hero's map the parts with a position, as the card's backdrop", async () => {
+    render(<TripDetailPage />);
+
+    await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
+    const props = vi.mocked(LocationsMap).mock.lastCall![0];
+    expect(props).toMatchObject({
+      backdrop: true,
+      creditElsewhere: true,
+      snapshot: true,
+      showWhenEmpty: true,
+      sideFade: true,
+    });
+    expect(props.locations.map((location) => location.name)).toEqual(["Dahab"]);
+    // Which the hero credits at its details' foot instead.
+    expect(
+      screen.getByRole("link", { name: /OpenStreetMap/ }),
+    ).toBeInTheDocument();
+    // The sidebar's own map is gone: the hero's is the one on the page.
+    expect(vi.mocked(LocationsMap).mock.calls.every(([p]) => p.backdrop)).toBe(
+      true,
+    );
+  });
+
+  // Logging a dive is the one on the hero's row, and editing joins deleting
+  // under the menu.
+  it("keeps every action reachable from the hero's top row", async () => {
+    render(<TripDetailPage />);
+
+    await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
+    expect(screen.getByRole("link", { name: "Back to trips" })).toHaveAttribute(
+      "href",
+      "/trips",
+    );
+    expect(screen.getByRole("link", { name: "Log a dive" })).toHaveAttribute(
+      "href",
+      "/dives/new?trip_uuid=trip-1",
+    );
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Edit" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Delete" }),
+    ).toBeInTheDocument();
+  });
+
+  // The dates are on the hero's line, and when it was created is not the trip's.
+  it("leaves the trip's dates to the hero", async () => {
+    render(<TripDetailPage />);
+
+    await screen.findByRole("heading", { name: "Trip Information" });
+    expect(screen.queryByText("Trip dates")).toBeNull();
+    expect(screen.queryByText("Created on")).toBeNull();
+  });
+
+  it("draws no information card for a trip with nothing more to say", async () => {
+    vi.mocked(tripsAPI.getTrip).mockResolvedValue({
+      ...TRIP,
+      parts: [],
+      people: [],
+    });
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      data: [],
+      total_count: 0,
+      has_more: false,
+      page: 1,
+      items_per_page: 100,
+    });
+    render(<TripDetailPage />);
+
+    await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
+    expect(
+      screen.queryByRole("heading", { name: "Trip Information" }),
+    ).toBeNull();
+  });
+
   it("puts a part's accommodation under its place", async () => {
     render(<TripDetailPage />);
 

@@ -698,9 +698,9 @@ navigation; reconsider that one dropdown if stepping is ever wanted.
 
 `weight` (kilograms of ballast, a plain per-dive number on the API's `Dive`) renders directly below
 the gear picker in `DiveFormFields` and inside the "Gear" card on the dive detail page, not beside
-Bottom temperature/Visibility. The form splits what the diver observed (depth, temperature,
-visibility, water type, altitude) from how the diver was configured (gear, weight), and weight is
-the field most often looked up to check against the suit and cylinder used.
+the environment readings. The form splits what the diver observed (depth, temperature, visibility,
+water type, altitude) from how the diver was configured (gear, weight), and weight is the field most
+often looked up to check against the suit and cylinder used.
 
 The detail page's Gear card renders when either is present: `hasGearInfo` is
 `gear_items.length > 0 || weight != null`, mirroring `hasEnvironmentInfo`. `dives/new` pre-fills it
@@ -1733,8 +1733,8 @@ single-line answer; 3px is a sliver of the next card.
 ## The dive-site shot cuts at the foot of one column, not at a seam
 
 Its two columns finish together only at the page's bottom, so a seam frames most of the page. The
-image exists for the map in the sidebar's first card, so `CUT_AFTER_CARD` names it and the frame
-ends at its foot (gutter: the grid's `rowGap`).
+image exists for the hero and its map, so `CUT_AFTER_CARD` names the sidebar's first card under it
+and the frame ends at its foot (gutter: the grid's `rowGap`).
 
 A card may be cut through; a row may not, since a line just above its border reads as clipped, so
 the cut moves down past any row it lands inside to the next row's top. Rows are bordered boxes with
@@ -1763,21 +1763,14 @@ further.
 `refuseSlicedRow()` throws before the shutter if the height lands inside a row; snapping to a gap
 would silently move the balanced height.
 
-## The map is photographed to find out whether it drew
+## The hero's map picture is what tells the shot the map drew
 
-`networkidle` is blind to MapLibre: it settles when tile requests stop, before they are painted, so
-a canvas caught in that window photographs as an empty box.
-
-Reading pixels from page script does not work: `MapCanvas` builds the map without
-`preserveDrawingBuffer`, so `drawImage` returns an empty frame, and enabling the flag for a
-screenshot script would cost every map in the app.
-
-`mapPainted()` screenshots the canvas element instead; Playwright captures through the compositor,
-the same path the page screenshot takes. A flat frame compresses to about a kilobyte and a coastline
-to tens of that, so a byte floor clear of both separates them, and two consecutive captures
-byte-identical and over the floor is a map drawn and no longer moving (MapLibre fades labels in). It
-throws after twenty seconds. The frame is set before the check, because MapLibre redraws whenever
-its box changes.
+`networkidle` is blind to MapLibre: it settles when tile requests stop, before they are painted. The
+hero shows a picture of its map, which the page takes on MapLibre's `idle` - tiles drawn, labels
+faded in - from a map built without `preserveDrawingBuffer`, so no page script could read the canvas
+anyway. `heroMapPictured()` waits for that picture to decode and for its fade-in; a decoded picture
+is a drawn map. The frame is set first, since a frame narrower than the picture was fitted for has
+it drawn again.
 
 ## `visit()` fails loudly when a navigation lands on `/signin`
 
@@ -2400,19 +2393,16 @@ accessible name lets a regression that puts `avg_depth` back into the tooltip sh
 the accessible name is not a proxy for testing the visible one, even where both come from the same
 data.
 
-## The dive's clock sits in the page header, and one `Duration & Depth` card holds the rest
+## The dive's clock sits with its date on the hero's line, as its card prints them
 
-The start time belongs with the date, already in the page header: `formatDiveStartTime` prints date,
-clock time and, where the dive records one, its offset as one line — or the date alone, where the
-dive records no time of day. The offset stays because a dive displays in its own timezone (see "A
-dive's `start_time` displays/edits in its own timezone, never the browser's") and `10:04` alone
-cannot be checked; a DiveJSON import may carry no offset, and the line then stops after the clock
-rather than inventing `(UTC+00:00)` — see "An unknown UTC offset is a third state, and `new Date()`
-never sees an offset-less string". It is composed from `formatDiveDateTime` + `formatDiveTimeOnly`
-rather than one `Intl` call: the separator a locale picks is an ICU detail, and the offset is
-appended by hand regardless. What remains is one `Duration & Depth` card: three stat blocks at one
-weight, `md:grid-cols-3`, depths individually conditional so a hand-logged dive leaves duration
-alone.
+The dive hero's line is its card's: `formatDiveDateTime`, the short date and the clock in the dive's
+own timezone (see "A dive's `start_time` displays/edits in its own timezone, never the browser's"),
+then the place. `formatDiveStartTime` - weekday, month in full, and the offset appended so `10:04`
+can be checked - is rejected there so a dive reads the same on its page as in every list; it stays
+on the import's match rows, where telling two dives apart is the point. A bare date prints no clock
+in either. The hero's figures are the duration, maximum depth, water temperature and visibility,
+each but the duration where the dive records it, in whole units as the card rounds them, and the
+average depth after the maximum only while the rest leave fewer than four.
 
 ## The ppO₂ limit is picked from a list, and an unlisted one is added to it
 
@@ -2727,9 +2717,9 @@ so a caller keeping it cannot make the page jump when the chunk lands. A caller 
 through `className` - the trip card - owns the room the skeleton lands in; the trip card's map is
 out of flow, so it has none.
 
-The site page gates the map on the same `formatCoordinates` result the Coordinates line uses,
-keeping a site with no position from fetching the chunk; a half-set position, which only raw SQL
-produces, draws nothing and shows no coordinates.
+The site and dive heroes gate their map on a position - the site's pin, or `hasMapPosition` over a
+dive's sites and fixes - keeping a record with none from fetching the chunk; a half-set position,
+which only raw SQL produces, counts as none.
 
 ## `fitBounds` unwraps longitudes before it unions them
 
@@ -2749,10 +2739,10 @@ so it should open where the coast is recognisable rather than in a grid of house
 `MapPicker` opens at `PLACED_ZOOM` (11, `components/sites/map-picker.tsx`) for a site with a
 position; the site page's map fits to `MAX_FIT_ZOOM` (9, `lib/basemap.ts`), the same cap a trip
 location gets. Matching the picker is wrong for one reason: the picker can be zoomed out and a
-static map cannot. In the sidebar's ~300px column an offshore site (Chumphon Pinnacle off Koh Tao,
-Kimud Shoal off Cebu) renders at the deeper zoom as a featureless grey square with a coral dot,
-about 11 km across with no land or labels; two levels out shows the island and named towns. A shore
-site reads well at either, and roughly half of dive sites are offshore.
+static map cannot. Across a phone an offshore site (Chumphon Pinnacle off Koh Tao, Kimud Shoal off
+Cebu) renders at the deeper zoom as featureless grey with a coral dot and no land or labels; two
+levels out shows the island and named towns. A shore site reads well at either, and roughly half of
+dive sites are offshore.
 
 The cap is MapLibre's `maxZoom` on the fit, single rather than per caller: a per-caller argument had
 one value, one explicit caller, and a second plausible number sitting in `MapPicker` inviting
@@ -2811,17 +2801,13 @@ that knows nothing about line breaks, so a footer that did wrap (320px, a longer
 text size) would lose its spacing. `flex-wrap-reverse` keeps the buttons on one line when they fit
 and puts the action above Cancel when they cannot, with 8px between rows.
 
-## The dive's duration and depths card has no title
+## A headerless card restores `pt-6` by hand
 
-The dive page's duration and depth card has no header. Each figure is already labelled `Duration`,
-`Maximum depth`, `Average depth`, so a `Duration & Depth` title restated the labels beneath it in a
-heavier weight, and a `Timer` icon named a dive property rather than a page section. The card is
-three stat blocks, first after the header, legible unlabelled.
-
-`CardContent` takes an explicit `pt-6`: its default `p-6 pt-0` assumes a `CardHeader` supplied the
-top padding. The dashboard's stats-error card (`dashboard-page-frame.tsx`) restores it the same way;
-two headerless call sites do not earn a `headerless` variant in `ui/card.tsx`, which would have to
-guess whether the next one wants the same padding.
+A card whose figures are each labelled - the dashboard's stats - has no header, and its
+`CardContent` takes an explicit `pt-6`: the default `p-6 pt-0` assumes a `CardHeader` supplied the
+top padding. The dashboard's stats-error card restores it the same way; two headerless call sites do
+not earn a `headerless` variant in `ui/card.tsx`, which would have to guess whether the next one
+wants the same padding.
 
 ## Pages hold their shape while they load, instead of collapsing into a spinner
 
@@ -3012,9 +2998,9 @@ is the only unit; the app has no unit preference to consult.
 ## The dive's location card renders on GPS alone
 
 An imported file carries fixes whether or not the diver attached the dive to a site, so the card is
-gated on a trip, a site, either coordinate pair, the entry type or the boat name, and the map inside
-it separately on at least one position among sites and fixes: the two-level arrangement the site
-page uses, where the inner gate keeps the `next/dynamic` chunk unfetched.
+gated on a trip, a site, either coordinate pair, the entry type or the boat name. The dive's map is
+the hero's, gated on at least one position among sites and fixes, which keeps the `next/dynamic`
+chunk unfetched.
 
 Both gates use `!= null` per coordinate, never truthiness: a dive off West Africa exits at longitude
 0 and one in the Galápagos at latitude 0. `formatCoordinates` and the map's `placedLocations`
@@ -3297,11 +3283,11 @@ whole world until the first place is picked. A frame appearing with the first pl
 fields down mid-edit, and an empty map says the field above wants a place, not free text — as
 `DiveSiteMapField` does with `MapPicker`.
 
-`showWhenEmpty` stays opt-in: a trip's page and a dive's sidebar answer "where is this?", where an
-empty world is worse than no map, and gating keeps the chunk unfetched. The trip card opts in: there
-the map is the card's backdrop, and a list mixing cards with and without one reads as two layouts.
-The empty frame's aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a
-definite noun phrase.
+`showWhenEmpty` stays opt-in: a dive or a site is at one spot, and the world says nothing about
+which, so their heroes draw the map's water for one with no position and gating keeps the chunk
+unfetched. A trip's card and its page's hero opt in: there the map is the backdrop of the trip's
+card, and a list mixing cards with and without one reads as two layouts. The empty frame's
+aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a definite noun phrase.
 
 The empty view is `WORLD_CENTER` at `MIN_ZOOM` (0) from `lib/basemap.ts`, read by both maps.
 
@@ -3446,12 +3432,11 @@ order (`visibleItems`, no `sort`) and `hintFor`'s row-relative redundancy check.
 The API derives `species_seen` as the distinct species over a diver's live dives, recomputed on
 every dive write, so the dashboard shows it. The four figures sit in one headerless `Card` as a
 `grid-cols-2 lg:grid-cols-4` grid rather than four cards: a fourth card strands itself at
-`md:grid-cols-3`, and four headers and borders on four numbers read together as one answer, the same
-shape as the dive page's duration-and-depths block. A 2×2 below `lg` rather than a single column, so
-four short figures do not run down the page. Icons sit in front of the label, since a right-aligned
-icon in a quarter-width column floats away from its words; per-width measurements live in the
-component's comment. The cell component is `Stat`, not `StatCard`, because it renders a cell and not
-a card.
+`md:grid-cols-3`, and four headers and borders on four numbers read together as one answer. A 2×2
+below `lg` rather than a single column, so four short figures do not run down the page. Icons sit in
+front of the label, since a right-aligned icon in a quarter-width column floats away from its words;
+per-width measurements live in the component's comment. The cell component is `Stat`, not
+`StatCard`, because it renders a cell and not a card.
 
 ## What actually keeps a species search from leaving is the cache, not the catalog
 
@@ -5502,18 +5487,16 @@ The trip and course lookups outlive the dive, so each is stored with the uuid it
 only while the dive names it — keyed on `trip_uuid`, not the dive, so a step within a trip keeps the
 row. `layout.render.test.tsx` holds the second `getTrip` unresolved to pin it.
 
-## The adjacent-dive pager is two buttons on the title line, and the title row wraps on a phone
+## The adjacent-dive pager is two buttons on the dive hero's top row, and Edit is in the menu
 
-The adjacent-dive pager is `‹ Previous` and `Next ›`, two `outline`/`sm` buttons on the title's line
-after the dive number, not chevrons inside the date subtitle, which read as punctuation and split on
-wrap. The back link's row is rejected: right-aligned there, `Next ›` sits beside the menu holding
-`Delete`, the control never hit by accident. The title row is `flex-wrap` for five-digit numbers on
-a phone. `PageHeader` has a `nav` slot; `subtitle` stays `ReactNode` for `DetailPageSkeleton`.
-Labels are fixed words, never the neighbour's date: neighbours arrive by a second request while the
-component stays mounted, so a derived label would empty mid-click. The date rides `aria-label` and
-`title` (`Previous dive: #11, Apr 3, 2021`), the visible word starting that string (WCAG 2.5.3),
-inside a `<nav aria-label="Adjacent dives">`. `dive-neighbor-nav.tsx` exports `DiveNeighborNav`; the
-subtitle is plain text from `formatDiveStartTime`.
+The pager is `‹ Previous` and `Next ›`, `ghost`/`sm` buttons on the dive hero's top row where a
+trip's and a site's Log a dive is, with Edit, Merge and Delete under the menu beside them. Beside
+the title is rejected: it kept `Next ›` apart from `Delete`, but the row then reads the same on
+every hero, and `Delete` still sits behind a menu and a confirmation. Below `sm` the buttons show
+chevrons alone, to keep the row on a phone. Labels are fixed words, never the neighbour's date:
+neighbours arrive by a second request while the component stays mounted, so a derived label would
+empty mid-click. The date rides `aria-label` and `title` (`Previous dive: #11, Apr 3, 2021`), which
+starts with the visible word (WCAG 2.5.3), inside a `<nav aria-label="Adjacent dives">`.
 
 ## Admin is superuser routes and web pages, not a panel
 
@@ -6818,13 +6801,14 @@ nobody asked.
 
 ## A detail page's sidebar holds its add actions, named short
 
-`/courses/[id]`, `/trips/[id]` and `/sites/[id]` put every "add" for the record in the sidebar,
-named without it: `Log a dive`, `Add a certification`. The page is that record, so naming it again
-costs the sidebar's width and buys nothing — and `Add a Certification for this Course` does not fit.
-Each card below then carries one button, only while it is empty, worded in full
-(`Log a dive for this course`): two routes to one form that a flat controls list can tell apart. The
-certifications card carries no header button, so `CourseCertificationsCard` takes
-`isAdding`/`onAddingChange` and the page owns the flag both buttons set.
+`/courses/[id]` puts every "add" for the record in the sidebar, named without it: `Log a dive`,
+`Add a certification`. The trip and site pages carry their `Log a dive` on the hero's top row
+instead, named the same way. The page is that record, so naming it again costs the sidebar's width
+and buys nothing — and `Add a Certification for this Course` does not fit. Each card below then
+carries one button, only while it is empty, worded in full (`Log a dive for this course`): two
+routes to one form that a flat controls list can tell apart. The certifications card carries no
+header button, so `CourseCertificationsCard` takes `isAdding`/`onAddingChange` and the page owns the
+flag both buttons set.
 
 ## The check-in summary is a list the diver hands over, and it carries no agency marks
 

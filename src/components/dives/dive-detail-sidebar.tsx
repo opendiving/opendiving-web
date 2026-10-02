@@ -24,26 +24,19 @@ import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { PeopleList } from "@/components/people/people-list";
 import { RatingStars } from "@/components/dives/rating-input";
 import { Badge } from "@/components/ui/badge";
-import {
-  diveMapLocations,
-  fixPoint,
-  hasMapPosition,
-} from "@/components/dives/dive-map-locations";
+import { fixPoint } from "@/components/dives/dive-map-locations";
 import {
   Building2,
   CloudSun,
-  Eye,
   Globe,
   GraduationCap,
   Luggage,
   MapPin,
   Mountain,
   Phone,
-  Thermometer,
   ThermometerSun,
   Waves,
   WavesArrowUp,
@@ -51,11 +44,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
-import {
-  formatAltitude,
-  formatTemperature,
-  formatVisibility,
-} from "@/lib/units";
+import { formatAltitude, formatTemperature } from "@/lib/units";
 
 interface DiveDetailSidebarProps {
   dive: Dive;
@@ -142,10 +131,10 @@ export function DiveDetailSidebar({
   const hasPeople = divePeople.some(
     (reference) => people[reference.person_uuid],
   );
+  // The water's temperature and the visibility are the hero's, among the
+  // dive's figures.
   const hasEnvironmentInfo =
-    dive.bottom_temperature != null ||
     dive.air_temperature != null ||
-    dive.visibility != null ||
     dive.water_type != null ||
     dive.altitude != null ||
     dive.current != null ||
@@ -160,17 +149,10 @@ export function DiveDetailSidebar({
   const exitCoordinates =
     exit && formatCoordinates(exit.latitude, exit.longitude);
 
-  // The map is capped at zoom 10, where a surface swim is well under a pixel, so
+  // The hero's map is capped at zoom 9, where a surface swim is well under a pixel, so
   // the drift between the two fixes is a line of text or it is nothing.
   const drift =
     entry && exit ? formatDistance(haversineMeters(entry, exit), units) : null;
-
-  const mapLocations = diveMapLocations(dive);
-  // The map draws nothing without a position anyway; this gate is what keeps a
-  // dive with no positions at all from fetching its chunk (same as the site
-  // page). Linked sites are the reason it is not simply `entry || exit`: a dive
-  // may have a pinned site and no fixes of its own.
-  const hasMappableLocation = hasMapPosition(mapLocations);
 
   return (
     <div className="space-y-6">
@@ -235,13 +217,6 @@ export function DiveDetailSidebar({
                   </div>
                 </div>
               </div>
-            )}
-
-            {hasMappableLocation && (
-              <LocationsMap
-                locations={mapLocations}
-                subject="the dive's location"
-              />
             )}
 
             {entryCoordinates && (
@@ -375,19 +350,9 @@ export function DiveDetailSidebar({
             <CardTitle as="h2">Environment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {dive.bottom_temperature != null && (
-              <Reading label="Bottom temperature" icon={Thermometer}>
-                {formatTemperature(dive.bottom_temperature, units)}
-              </Reading>
-            )}
             {dive.air_temperature != null && (
               <Reading label="Air temperature" icon={ThermometerSun}>
                 {formatTemperature(dive.air_temperature, units)}
-              </Reading>
-            )}
-            {dive.visibility != null && (
-              <Reading label="Visibility" icon={Eye}>
-                {formatVisibility(dive.visibility, units)}
               </Reading>
             )}
             {dive.water_type != null && (
