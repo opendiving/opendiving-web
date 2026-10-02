@@ -1,25 +1,32 @@
 "use client";
 
-import { Fish } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Fish, ListTree } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useReturnTo } from "@/hooks/useReturnTo";
+import { useSpeciesLifeListEntry } from "@/hooks/useSpeciesLifeListEntry";
 import { speciesAPI, Species, speciesPhotoUrl } from "@/lib/api/species";
 import {
   speciesDisplayName,
-  speciesNameWithRank,
   speciesRankLabel,
+  speciesSeenOn,
 } from "@/lib/species";
+import { cn } from "@/lib/utils";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { SpeciesPhotoCredit } from "@/components/species/species-photo-credit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
-import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
+import {
+  HERO_BODY,
+  MapHeroPageSkeleton,
+  PlainHero,
+  type MapHeroFigure,
+} from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
-// One labelled fact in the classification card, rendered only when the catalog
+// One labelled fact in the taxonomy card, rendered only when the catalog
 // records it - the same shape the course and dive sidebars use.
 function InfoRow({
   label,
@@ -71,6 +78,12 @@ export function SpeciesDetailPageContent() {
     species ? speciesDisplayName(species) : undefined,
     "Species",
   );
+  // In parallel with the catalog row rather than after it: the route's id is
+  // the species' uuid either way.
+  const params = useParams();
+  const history = useSpeciesLifeListEntry(
+    user ? (params.id as string) : undefined,
+  );
 
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
@@ -80,8 +93,15 @@ export function SpeciesDetailPageContent() {
     return null; // Will redirect to signin
   }
 
-  if (isLoadingSpecies) {
-    return <DetailPageSkeleton backHref={back.href} backLabel={back.label} />;
+  if (isLoadingSpecies || history.isLoading) {
+    return (
+      <MapHeroPageSkeleton
+        plain
+        backHref={back.href}
+        backLabel={back.label}
+        icon={Fish}
+      />
+    );
   }
 
   if (!species) {
@@ -97,20 +117,56 @@ export function SpeciesDetailPageContent() {
   }
 
   const displayName = speciesDisplayName(species);
-  const secondary = speciesNameWithRank(species);
   const rank = speciesRankLabel(species.rank);
   const photoSrc = speciesPhotoUrl(species.uuid, species.photo_sha256);
+  // The scientific name with its authority, as a citation writes it - the
+  // authority alone where the title already is the name.
+  const scientificName = species.common_name ? (
+    <>
+      <span className="italic">{species.scientific_name}</span>
+      {species.authority && ` ${species.authority}`}
+    </>
+  ) : (
+    species.authority
+  );
+
+  // Zeroes for a species none of the diver's dives records, since that is what
+  // the API's 404 says; nothing when the lookup failed, rather than zeroes it
+  // cannot vouch for.
+  const figures: MapHeroFigure[] = [];
+  if (!history.failed) {
+    figures.push(
+      { label: "Dives", value: history.entry?.dive_count ?? 0 },
+      { label: "Dive sites", value: history.entry?.dive_site_count ?? 0 },
+    );
+  }
+  if (history.entry) {
+    figures.push({
+      label: "Last seen",
+      value: speciesSeenOn(history.entry.last_seen),
+    });
+  }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <PageHeader
+    <div>
+      <PlainHero
         backHref={back.href}
         backLabel={back.label}
+        icon={Fish}
         title={displayName}
-        subtitle={secondary !== displayName ? secondary : undefined}
+        subtitle={
+          (scientificName || rank) && (
+            <>
+              {scientificName}
+              {scientificName && rank && " · "}
+              {rank}
+            </>
+          )
+        }
+        figures={figures}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={cn(HERO_BODY, "grid grid-cols-1 lg:grid-cols-3 gap-6")}>
         <div className="lg:col-span-2 space-y-6">
           {/* Scoped to this species by the filter `getDives` gained for it -
               the same shape the trip, site, gear and course pages use, which is
@@ -155,21 +211,11 @@ export function SpeciesDetailPageContent() {
           <Card>
             <CardHeader>
               <CardTitle as="h2" className="flex items-center gap-2">
-                <Fish className="h-5 w-5" />
-                Classification
+                <ListTree className="h-5 w-5" />
+                Taxonomy
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <InfoRow label="Scientific name">
-                <span className="italic">{species.scientific_name}</span>
-                {species.authority && (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    {species.authority}
-                  </span>
-                )}
-              </InfoRow>
-              {rank && <InfoRow label="Rank">{rank}</InfoRow>}
               {species.kingdom && (
                 <InfoRow label="Kingdom">{species.kingdom}</InfoRow>
               )}
@@ -190,13 +236,18 @@ export function SpeciesDetailPageContent() {
               )}
               {/* The identity the catalog is keyed on, and the one number that
                   means anything outside this database - which is why the export
-                  carries it too. Still plain text, but no longer because a link
-                  out to WoRMS is off the table: it is the credit below that
-                  carries the link now, and this number is the wrong element to
-                  hang it on - following it wants a per-taxon URL, and the row
-                  would then be the only value in the card that is also a
-                  destination. */}
-              <InfoRow label="WoRMS AphiaID">{species.aphia_id}</InfoRow>
+                  carries it too. Underlined as the credit's links are, so the one
+                  value in the card that is also a destination says so. */}
+              <InfoRow label="WoRMS AphiaID">
+                <a
+                  href={`https://www.marinespecies.org/aphia.php?p=taxdetails&id=${species.aphia_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-muted-foreground"
+                >
+                  {species.aphia_id}
+                </a>
+              </InfoRow>
               {/* The classification in this card is WoRMS's - every catalog row
                   is keyed on an AphiaID, and the API credits every one of them
                   to WoRMS - and WoRMS's text content is CC BY, a licence that

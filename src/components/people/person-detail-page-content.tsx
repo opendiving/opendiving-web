@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -8,7 +8,7 @@ import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useReturnTo } from "@/hooks/useReturnTo";
 import { peopleAPI, type Person } from "@/lib/api/people";
-import { formatDateTime } from "@/lib/date-time";
+import { cn } from "@/lib/utils";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { PersonDialog } from "@/components/people/person-dialog";
 import { Button } from "@/components/ui/button";
@@ -18,30 +18,22 @@ import {
 } from "@/components/ui/item-actions-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { PageHeader } from "@/components/ui/page-header";
-import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
+import {
+  HERO_BODY,
+  HERO_CONTROL,
+  MapHeroPageSkeleton,
+  PlainHero,
+} from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { Edit, User } from "lucide-react";
+import { Edit, Mail, Phone, User } from "lucide-react";
 
-// One labelled fact in the person's info card, rendered only when it is
-// recorded - the shape the course page's rows take.
-function InfoRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="text-sm font-medium text-muted-foreground mb-1">
-        {label}
-      </div>
-      <div className="text-sm">{children}</div>
-    </div>
-  );
-}
+// An icon set in the subtitle's line, at its text's size, before the value it
+// marks; the link never breaks between them. A step lower than a site's facts
+// set theirs: drawn to the capitals' height beside a lowercase address, the
+// envelope reads as sitting above the line.
+const SUBTITLE_LINK = "whitespace-nowrap hover:underline";
+const SUBTITLE_ICON = "mr-1 inline-block size-[1em] align-[-0.2em]";
 
 // One person: what the diver keeps about them, and every dive that names them.
 // The dives are the list's `person_uuid` filter, the same rows the People page's
@@ -83,7 +75,15 @@ export function PersonDetailPageContent() {
   }
 
   if (isLoadingPerson) {
-    return <DetailPageSkeleton backHref={back.href} backLabel={back.label} />;
+    return (
+      <MapHeroPageSkeleton
+        plain
+        figureless
+        backHref={back.href}
+        backLabel={back.label}
+        icon={User}
+      />
+    );
   }
 
   if (!person) {
@@ -98,20 +98,57 @@ export function PersonDetailPageContent() {
     );
   }
 
+  // The linked account's current username and nothing else of theirs: the
+  // link shows the diver that much, and the account is told nothing.
+  const subtitle = [
+    person.username && `@${person.username}`,
+    person.email && (
+      <a href={`mailto:${person.email}`} className={SUBTITLE_LINK}>
+        <Mail aria-hidden className={SUBTITLE_ICON} />
+        {person.email}
+      </a>
+    ),
+    person.phone && (
+      <a
+        href={`tel:${person.phone.replace(/[^\d+]/g, "")}`}
+        className={SUBTITLE_LINK}
+      >
+        <Phone aria-hidden className={SUBTITLE_ICON} />
+        {person.phone}
+      </a>
+    ),
+  ].filter(Boolean);
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <PageHeader
+    <div>
+      <PlainHero
         backHref={back.href}
         backLabel={back.label}
+        icon={User}
         title={person.name}
-        subtitle={person.username ? `@${person.username}` : undefined}
+        subtitle={
+          subtitle.length > 0
+            ? subtitle.map((part, index) => (
+                <Fragment key={index}>
+                  {index > 0 && " · "}
+                  {part}
+                </Fragment>
+              ))
+            : undefined
+        }
+        figures={[]}
         actions={
           <>
-            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={HERO_CONTROL}
+              onClick={() => setIsEditOpen(true)}
+            >
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <ItemActionsMenu>
+            <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
               <DeleteMenuItem
                 onSelect={() => del.requestDelete(person.uuid)}
                 disabled={isDeleting}
@@ -138,7 +175,7 @@ export function PersonDetailPageContent() {
         onConfirm={del.confirmDelete}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={cn(HERO_BODY, "grid grid-cols-1 lg:grid-cols-3 gap-6")}>
         <div className="lg:col-span-2">
           <RecentDivesCard
             complete
@@ -154,56 +191,24 @@ export function PersonDetailPageContent() {
           />
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle as="h2" className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Person Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* The linked account's current username and nothing else of
-                  theirs: the link shows the diver that much, and the account
-                  is told nothing. */}
-              {person.username && (
-                <InfoRow label="Username">@{person.username}</InfoRow>
-              )}
-              {person.email && (
-                <InfoRow label="Email">
-                  <a
-                    href={`mailto:${person.email}`}
-                    className="hover:underline"
-                  >
-                    {person.email}
-                  </a>
-                </InfoRow>
-              )}
-              {person.phone && (
-                <InfoRow label="Phone">
-                  <a
-                    href={`tel:${person.phone.replace(/[^\d+]/g, "")}`}
-                    className="hover:underline"
-                  >
-                    {person.phone}
-                  </a>
-                </InfoRow>
-              )}
-              {person.notes && (
-                <InfoRow label="Notes">
-                  <span className="whitespace-pre-wrap">{person.notes}</span>
-                </InfoRow>
-              )}
-              <InfoRow label="Added on">
-                {formatDateTime(person.created_at, {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </InfoRow>
-            </CardContent>
-          </Card>
-        </div>
+        {person.notes && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle as="h2" className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Person Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Notes
+                </div>
+                <p className="whitespace-pre-wrap text-sm">{person.notes}</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

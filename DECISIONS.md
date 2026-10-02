@@ -2815,10 +2815,10 @@ route that early-returns a centred `Loader2` produces content, then an empty col
 mark, then content: two layout changes and a flash on every link. Placeholders shaped like the thing
 they replace give one layout instead of three. `Skeleton` (`components/ui/skeleton.tsx`) is the
 primitive; `CardSkeleton` and `ListRowsSkeleton` sit beside it, `TableRowsSkeleton` goes inside a
-real `<TableBody>`, and `DetailPageSkeleton`/`FormPageSkeleton` (`components/ui/page-skeleton.tsx`)
-assemble page shells from them. The page-level ones build on the real `Card` and `PageHeader`
-primitives rather than re-describing their padding, which is what guarantees the header the same
-height before and after the record lands.
+real `<TableBody>`, and `MapHeroPageSkeleton` (`components/ui/map-hero.tsx`) and `FormPageSkeleton`
+(`components/ui/page-skeleton.tsx`) assemble page shells from them. The page-level ones build on the
+real `Card`, `PageHeader` and hero primitives rather than re-describing their padding, which is what
+guarantees the header the same height before and after the record lands.
 
 Left out: a GitHub-style top progress bar, a signal rather than a fix while pages blank, and a
 stale-while-revalidate layer under `useInfiniteResource`, which would show previous rows
@@ -2877,7 +2877,7 @@ owns a fork of React.
 
 ## Loading skeletons: What renders for real, and what doesn't
 
-`DetailPageSkeleton` draws the real back button rather than a bar: where it goes is known before the
+The page skeletons draw the real back button rather than a bar: where it goes is known before the
 record is, and it is the one control someone wants during the wait. List pages keep their
 `<TableHeader>` and column labels and put skeleton rows in the body, so the table has its real width
 from the first frame.
@@ -6270,17 +6270,17 @@ running instance shows the credit only once that API build lands.
 
 ## The species page credits the taxonomy, and composes that credit by hand
 
-The classification card's foot in `species-detail-page-content.tsx` reads "Taxonomy: World Register
-of Marine Species, CC BY", composed from anchors rather than handed to `Attribution`, for the reason
+The Taxonomy card's foot in `species-detail-page-content.tsx` reads "Taxonomy: World Register of
+Marine Species, CC BY", composed from anchors rather than handed to `Attribution`, for the reason
 `SpeciesPhotoCredit` is: a credit with two hyperlinks cannot come from one string, and `Species`
 carries no `attribution` field — only `SpeciesSearchResult` does. Source then licence; the photo
 credit leads with its author instead.
 
 `NOTICE.md` stays silent on WoRMS: it covers material copied into this tree, and the taxonomy lives
-in the API's catalog. The AphiaID row stays plain text — linking the number wants a per-taxon URL
-and leaves one labelled fact silently clickable. Wikidata gets no line: its half is the common
-names, CC0 asks for nothing, and the picker's second credit exists only for search results naming
-upstream Wikidata rows the catalog never stored.
+in the API's catalog. The AphiaID row links the taxon's own WoRMS page, underlined so the one value
+in the card that is also a destination says so. Wikidata gets no line: its half is the common names,
+CC0 asks for nothing, and the picker's second credit exists only for search results naming upstream
+Wikidata rows the catalog never stored.
 
 ## The deco readouts have a panel, because the depth plot has two edges and they need three
 

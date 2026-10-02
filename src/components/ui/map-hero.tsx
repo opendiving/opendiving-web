@@ -258,21 +258,23 @@ function HeroDetails({
           {subtitle && <p className={SUBTITLE}>{subtitle}</p>}
         </div>
       </div>
-      <div className={FIGURES_ROW}>
-        {/* Every figure the record has, at the dive page's size. A value
-            never breaks, so "30 m" is one figure. */}
-        <dl className={FIGURES}>
-          {figures.map(({ label, value }) => (
-            <div key={label} className={FIGURE}>
-              <dt className={LABEL}>{label}</dt>
-              <dd className={cn(VALUE, "whitespace-nowrap font-bold")}>
-                {value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-        {children}
-      </div>
+      {(figures.length > 0 || children) && (
+        <div className={FIGURES_ROW}>
+          {/* Every figure the record has, at the dive page's size. A value
+              never breaks, so "30 m" is one figure. */}
+          <dl className={FIGURES}>
+            {figures.map(({ label, value }) => (
+              <div key={label} className={FIGURE}>
+                <dt className={LABEL}>{label}</dt>
+                <dd className={cn(VALUE, "whitespace-nowrap font-bold")}>
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -334,13 +336,22 @@ function MapHeroSkeleton({ backHref, backLabel, icon }: Known) {
   );
 }
 
-function PlainHeroSkeleton({ backHref, backLabel, icon }: Known) {
+function PlainHeroSkeleton({
+  backHref,
+  backLabel,
+  icon,
+  figureless,
+}: Known & { figureless?: boolean }) {
   return (
     <div>
       <div className={PLAIN_TOP_ROW}>
         <HeroBackLink backHref={backHref} backLabel={backLabel} />
       </div>
-      <HeroDetailsSkeleton className={PLAIN_DETAILS} icon={icon} />
+      <HeroDetailsSkeleton
+        className={PLAIN_DETAILS}
+        icon={icon}
+        figureless={figureless}
+      />
     </div>
   );
 }
@@ -349,7 +360,12 @@ function HeroDetailsSkeleton({
   className,
   icon: Icon,
   bar,
-}: Pick<Known, "icon"> & { className: string; bar?: string }) {
+  figureless,
+}: Pick<Known, "icon"> & {
+  className: string;
+  bar?: string;
+  figureless?: boolean;
+}) {
   return (
     <div className={cn(COLUMN, className)}>
       <div className={HEADING}>
@@ -363,29 +379,33 @@ function HeroDetailsSkeleton({
           </p>
         </div>
       </div>
-      <div className={cn(FIGURES_ROW, FIGURES)}>
-        {[0, 1, 2].map((figure) => (
-          <div key={figure} className={FIGURE}>
-            <Skeleton className={cn("h-4 w-16 md:mb-1 md:h-5", bar)} />
-            <Skeleton className={cn("h-6 w-12 md:h-8", bar)} />
-          </div>
-        ))}
-      </div>
+      {!figureless && (
+        <div className={cn(FIGURES_ROW, FIGURES)}>
+          {[0, 1, 2].map((figure) => (
+            <div key={figure} className={FIGURE}>
+              <Skeleton className={cn("h-4 w-16 md:mb-1 md:h-5", bar)} />
+              <Skeleton className={cn("h-6 w-12 md:h-8", bar)} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 // A hero page's place while its record loads: the hero's skeleton at the hero's
 // height, and the body's at the body's, so nothing moves when the record lands.
-// `plain` for a page whose hero is a `PlainHero`.
+// `plain` for a page whose hero is a `PlainHero`, and `figureless` for one
+// drawn with no figures.
 export function MapHeroPageSkeleton({
   plain,
+  figureless,
   ...known
-}: Known & { plain?: boolean }) {
+}: Known & { plain?: boolean; figureless?: boolean }) {
   return (
     <div aria-busy>
       {plain ? (
-        <PlainHeroSkeleton {...known} />
+        <PlainHeroSkeleton {...known} figureless={figureless} />
       ) : (
         <MapHeroSkeleton {...known} />
       )}

@@ -80,7 +80,7 @@ export function CardSkeleton({
 export function ListRowsSkeleton({ rows = 1 }: { rows?: number }) {
   return (
     // Busy on the outside, hidden on the inside - the same split
-    // `DetailPageSkeleton` uses, and the reason it needs two elements: the two
+    // `FormPageSkeleton` uses, and the reason it needs two elements: the two
     // attributes cancel out on one node, since `aria-busy` says nothing to a
     // reader that has already been told to skip the subtree. Without the hidden
     // half, the boxes announce as a list of empty containers where the spinner

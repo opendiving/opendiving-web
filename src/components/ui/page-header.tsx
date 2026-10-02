@@ -8,7 +8,7 @@ export interface PageHeaderProps {
   backHref: string;
   backLabel: string;
   /**
-   * Usually a plain string. A node so `DetailPageSkeleton` can put a
+   * Usually a plain string. A node so `FormPageSkeleton` can put a
    * `Skeleton` bar here while the record loads, which is what keeps the header
    * the same height before and after it lands.
    */
