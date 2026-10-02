@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Backpack } from "lucide-react";
 import { GearItem, gearTypeLabel } from "@/lib/api/gear";
-import { nextServiceDate } from "@/lib/gear-service";
+import { nextService } from "@/lib/gear-service";
 import { formatDateOnly } from "@/lib/date-time";
 import { PlainHero, type MapHeroFigure } from "@/components/ui/map-hero";
 import type { ReturnTarget } from "@/lib/return-to";
@@ -30,9 +30,17 @@ export function GearItemHero({
   const figures: MapHeroFigure[] = [
     { label: "Dives", value: gearItem.dive_count },
   ];
-  const nextService = nextServiceDate(gearItem.service ?? []);
-  if (nextService) {
-    figures.push({ label: "Next service", value: formatDateOnly(nextService) });
+  const next = nextService(gearItem.service ?? [], gearItem.dive_count);
+  if (next) {
+    figures.push({
+      label: "Next service",
+      value:
+        next.kind === "overdue"
+          ? "Overdue"
+          : next.kind === "date"
+            ? formatDateOnly(next.on)
+            : `In ${next.remaining} dive${next.remaining === 1 ? "" : "s"}`,
+    });
   }
 
   return (

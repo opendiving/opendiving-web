@@ -8,7 +8,7 @@ import {
   divesSince,
   formatServiceDue,
   formatServiceDueQualifier,
-  nextServiceDate,
+  nextService,
   serviceStatus,
   serviceStatusBadgeVariant,
   serviceStatusLabel,
@@ -203,25 +203,56 @@ describe("divesSince", () => {
   });
 });
 
-describe("nextServiceDate", () => {
+describe("nextService", () => {
   it("is the earliest due date among active schedules, overdue included", () => {
     expect(
-      nextServiceDate([
-        schedule({ next_due_on: "2027-01-01" }),
-        schedule({ next_due_on: "2026-01-01" }),
-        schedule({ next_due_on: "2025-01-01", is_active: false }),
-        schedule({ next_due_at_dive_count: 50 }),
-      ]),
-    ).toBe("2026-01-01");
+      nextService(
+        [
+          schedule({ next_due_on: "2027-01-01" }),
+          schedule({ next_due_on: "2026-01-01" }),
+          schedule({ next_due_on: "2025-01-01", is_active: false }),
+          schedule({ next_due_at_dive_count: 50 }),
+        ],
+        10,
+        TODAY,
+      ),
+    ).toEqual({ kind: "date", on: "2026-01-01" });
   });
 
-  it("is null without a dated active schedule", () => {
-    expect(nextServiceDate([])).toBeNull();
+  it("is overdue when a dive count has run out, whatever the dates say", () => {
     expect(
-      nextServiceDate([
-        schedule({ next_due_at_dive_count: 50 }),
-        schedule({ next_due_on: "2026-01-01", is_active: false }),
-      ]),
+      nextService(
+        [
+          schedule({ next_due_on: "2027-01-01", next_due_at_dive_count: 100 }),
+          schedule({ next_due_on: "2026-09-01" }),
+        ],
+        120,
+        TODAY,
+      ),
+    ).toEqual({ kind: "overdue" });
+  });
+
+  it("counts the fewest dives left when no schedule has a date", () => {
+    expect(
+      nextService(
+        [
+          schedule({ next_due_at_dive_count: 50 }),
+          schedule({ next_due_at_dive_count: 30 }),
+        ],
+        20,
+        TODAY,
+      ),
+    ).toEqual({ kind: "dives", remaining: 10 });
+  });
+
+  it("is null without an active schedule that has a due point", () => {
+    expect(nextService([], 0, TODAY)).toBeNull();
+    expect(
+      nextService(
+        [schedule(), schedule({ next_due_on: "2026-01-01", is_active: false })],
+        0,
+        TODAY,
+      ),
     ).toBeNull();
   });
 });

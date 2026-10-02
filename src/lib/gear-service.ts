@@ -165,17 +165,36 @@ function countOf(count: number, unit: "day" | "dive"): string {
   return `${count} ${unit}${count === 1 ? "" : "s"}`;
 }
 
-// The earliest date any active schedule falls due, "YYYY-MM-DD" - a past one
-// included, since an overdue service is still the next one. `null` when no
-// active schedule has a time-based interval.
-export function nextServiceDate(
+// When an item's next service falls, read off each active schedule's urgent arm
+// as `nextServiceDue` picks it: `overdue` when a dive count has run out, since
+// that schedule's date says nothing; else the earliest due date, a past one
+// included; else, with only dive counts to go on, the fewest dives left. `null`
+// when no active schedule has either arm.
+export function nextService(
   schedules: GearServiceScheduleSummary[],
-): string | null {
-  const dates = schedules
-    .filter((s) => s.is_active !== false && s.next_due_on)
-    .map((s) => s.next_due_on!)
-    .sort();
-  return dates[0] ?? null;
+  diveCount: number,
+  today: string = todayIsoDate(),
+):
+  | { kind: "overdue" }
+  | { kind: "date"; on: string }
+  | { kind: "dives"; remaining: number }
+  | null {
+  let date: string | null = null;
+  let dives: number | null = null;
+  for (const schedule of schedules) {
+    if (schedule.is_active === false) continue;
+    const due = nextServiceDue(schedule, diveCount, today);
+    if (!due) continue;
+    if (due.unit === "dive") {
+      if (due.overdue) return { kind: "overdue" };
+      dives = Math.min(dives ?? due.count, due.count);
+    } else if (!date || schedule.next_due_on! < date) {
+      date = schedule.next_due_on!;
+    }
+  }
+  if (date) return { kind: "date", on: date };
+  if (dives != null) return { kind: "dives", remaining: dives };
+  return null;
 }
 
 // A short human phrase for when a schedule is next due: "Overdue by 3 dives",
