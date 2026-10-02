@@ -135,14 +135,16 @@ export function speciesNameWithRank(species: RankedSpecies): string {
  * them, and only a species seen exactly once ever collapses.
  */
 export function speciesSeenRange(firstSeen: string, lastSeen: string): string {
-  const first = seenOn(firstSeen);
-  const last = seenOn(lastSeen);
+  const first = speciesSeenOn(firstSeen);
+  const last = speciesSeenOn(lastSeen);
   return first === last ? first : `${first} – ${last}`;
 }
 
-// A dive start time as a bare date. Separate from the range above only so both
-// ends are formatted identically by construction.
-function seenOn(startTime: string): string {
+/**
+ * A sighting's dive start time as a bare date, in that dive's zone - each end of
+ * `speciesSeenRange`, and the species page's last sighting.
+ */
+export function speciesSeenOn(startTime: string): string {
   return formatDiveDateTime(startTime, {
     year: "numeric",
     month: "short",

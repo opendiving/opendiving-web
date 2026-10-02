@@ -1,7 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_API_BASE_URL } from "@/lib/api-base";
-import { speciesPhotoUrl } from "./species";
+import { speciesAPI, speciesPhotoUrl } from "./species";
+
+vi.mock("./client", () => ({ apiClient: { get: vi.fn() } }));
+
+const { apiClient } = await import("./client");
+const get = vi.mocked(apiClient.get);
+
+beforeEach(() => {
+  get.mockReset();
+});
 
 // `NEXT_PUBLIC_API_URL` is inlined by the compiler at build time, so the base
 // this module composes against is fixed for the whole test run and cannot be
@@ -63,5 +72,28 @@ describe("speciesPhotoUrl", () => {
     expect(speciesPhotoUrl(UUID, DIGEST)).not.toBe(
       speciesPhotoUrl(UUID, other),
     );
+  });
+});
+
+describe("getLifeListEntry", () => {
+  it("reads the caller's history with the species from its own route", async () => {
+    const entry = { uuid: UUID, dive_count: 4, dive_site_count: 2 };
+    get.mockResolvedValue({ data: entry });
+
+    await expect(speciesAPI.getLifeListEntry(UUID)).resolves.toBe(entry);
+    expect(get).toHaveBeenCalledWith(`/user/species/${UUID}`);
+  });
+
+  it("answers null for a species none of the caller's dives records", async () => {
+    get.mockRejectedValue({ response: { status: 404 } });
+
+    await expect(speciesAPI.getLifeListEntry(UUID)).resolves.toBeNull();
+  });
+
+  it("lets any other failure through, so it is not read as never seen", async () => {
+    const failure = { response: { status: 500 } };
+    get.mockRejectedValue(failure);
+
+    await expect(speciesAPI.getLifeListEntry(UUID)).rejects.toBe(failure);
   });
 });

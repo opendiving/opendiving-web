@@ -1,12 +1,18 @@
 "use client";
 
+import { useParams } from "next/navigation";
 import { Fish, ListTree } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useReturnTo } from "@/hooks/useReturnTo";
+import { useSpeciesLifeListEntry } from "@/hooks/useSpeciesLifeListEntry";
 import { speciesAPI, Species, speciesPhotoUrl } from "@/lib/api/species";
-import { speciesDisplayName, speciesRankLabel } from "@/lib/species";
+import {
+  speciesDisplayName,
+  speciesRankLabel,
+  speciesSeenOn,
+} from "@/lib/species";
 import { cn } from "@/lib/utils";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { SpeciesPhotoCredit } from "@/components/species/species-photo-credit";
@@ -15,6 +21,7 @@ import {
   HERO_BODY,
   MapHeroPageSkeleton,
   PlainHero,
+  type MapHeroFigure,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -71,6 +78,12 @@ export function SpeciesDetailPageContent() {
     species ? speciesDisplayName(species) : undefined,
     "Species",
   );
+  // In parallel with the catalog row rather than after it: the route's id is
+  // the species' uuid either way.
+  const params = useParams();
+  const history = useSpeciesLifeListEntry(
+    user ? (params.id as string) : undefined,
+  );
 
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
@@ -80,11 +93,10 @@ export function SpeciesDetailPageContent() {
     return null; // Will redirect to signin
   }
 
-  if (isLoadingSpecies) {
+  if (isLoadingSpecies || history.isLoading) {
     return (
       <MapHeroPageSkeleton
         plain
-        figureless
         backHref={back.href}
         backLabel={back.label}
         icon={Fish}
@@ -118,6 +130,23 @@ export function SpeciesDetailPageContent() {
     species.authority
   );
 
+  // Zeroes for a species none of the diver's dives records, since that is what
+  // the API's 404 says; nothing when the lookup failed, rather than zeroes it
+  // cannot vouch for.
+  const figures: MapHeroFigure[] = [];
+  if (!history.failed) {
+    figures.push(
+      { label: "Dives", value: history.entry?.dive_count ?? 0 },
+      { label: "Dive sites", value: history.entry?.dive_site_count ?? 0 },
+    );
+  }
+  if (history.entry) {
+    figures.push({
+      label: "Last seen",
+      value: speciesSeenOn(history.entry.last_seen),
+    });
+  }
+
   return (
     <div>
       <PlainHero
@@ -134,7 +163,7 @@ export function SpeciesDetailPageContent() {
             </>
           )
         }
-        figures={[]}
+        figures={figures}
       />
 
       <div className={cn(HERO_BODY, "grid grid-cols-1 lg:grid-cols-3 gap-6")}>

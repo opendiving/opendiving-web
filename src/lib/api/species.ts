@@ -119,6 +119,15 @@ export interface SpeciesLifeListEntry {
 }
 
 /**
+ * `GET /user/species/{uuid}` - one species' life-list entry, with the figures the
+ * list carries for it, plus the distinct dive sites those dives name at any
+ * position, as a site's summary counts its dives.
+ */
+export interface SpeciesLifeListDetail extends SpeciesLifeListEntry {
+  dive_site_count: number;
+}
+
+/**
  * One row of the picker's feed, merged by the API from the local catalog, WoRMS
  * and Wikidata.
  *
@@ -305,5 +314,25 @@ export const speciesAPI = {
       },
     });
     return response.data;
+  },
+
+  /**
+   * The signed-in diver's history with one species: its life-list row plus
+   * `dive_site_count`. `null` when none of their live dives records it - the
+   * API's 404, which is an answer here rather than a failure, since every
+   * thumbnail in the app links a species page, logged or not.
+   */
+  async getLifeListEntry(uuid: string): Promise<SpeciesLifeListDetail | null> {
+    try {
+      const response = await apiClient.get<SpeciesLifeListDetail>(
+        `/user/species/${uuid}`,
+      );
+      return response.data;
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 404) return null;
+      throw error;
+    }
   },
 };
