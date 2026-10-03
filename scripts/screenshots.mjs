@@ -12,6 +12,10 @@
 // and reading the token back out of the API container's log, so it only works against
 // a local stack whose logs you can read - see DECISIONS.md.
 //
+// The `dive-site` and `gear-item` shots include dive cards, whose maps are pictures the API
+// has the map renderer draw. Without the renderer running and the API pointed at it
+// ("Running the map renderer" in CONTRIBUTING.md), those cards show water instead.
+//
 // Chromium comes from CHROME_PATH, or from the usual Chrome install; playwright-core
 // only drives it, so `npm install` never downloads a browser.
 import { execFileSync } from "node:child_process";

@@ -767,6 +767,32 @@ describe("DiveSiteDialog registry entries", () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved));
   });
 
+  // The save went through; the picture the site named may show its old pin.
+  it("hands back the assembled site, without its picture, when the read fails", async () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const onSaved = vi.fn();
+    vi.mocked(diveSitesAPI.getDiveSite).mockRejectedValue(
+      new Error("Network Error"),
+    );
+    render(
+      <DiveSiteDialog
+        open
+        onOpenChange={() => {}}
+        onSaved={onSaved}
+        diveSite={{ ...HELD, map_picture: "digest-before" }}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    expect(onSaved.mock.calls[0][0]).toMatchObject({
+      uuid: HELD.uuid,
+      map_picture: null,
+    });
+    quiet.mockRestore();
+  });
+
   describe("a row the diver already holds", () => {
     beforeEach(() => {
       suggestDiveSites.mockResolvedValue({

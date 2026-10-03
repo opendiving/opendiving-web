@@ -353,7 +353,7 @@ describe("TripDialog", () => {
     // The save went through, so the dialog does not say it failed; the old
     // picture may show the old places, so the card shows water until a read.
     it("still hands the caller the saved trip when it cannot be read back", async () => {
-      vi.spyOn(console, "error").mockImplementation(() => {});
+      const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
       updateTrip.mockResolvedValue({ message: "Trip updated" });
       getTrip.mockRejectedValue(new Error("Network Error"));
 
@@ -363,6 +363,7 @@ describe("TripDialog", () => {
       expect(
         screen.queryByText(/Failed to update trip/),
       ).not.toBeInTheDocument();
+      quiet.mockRestore();
     });
   });
 });
