@@ -5,6 +5,9 @@ import type { Dive } from "@/lib/api/dives";
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
+import { FactsLine } from "@/components/ui/icon-fact";
+import { diveFacts } from "@/components/dives/dive-facts";
+import { diveChips } from "@/components/dives/dive-chips";
 import { DiveTitle } from "@/components/dives/dive-title";
 import {
   diveMapLocations,
@@ -12,10 +15,7 @@ import {
 } from "@/components/dives/dive-map-locations";
 import { DiveIcon } from "@/components/logo";
 import { useUnits } from "@/hooks/useUnits";
-import {
-  formatDiveDateTime,
-  formatDurationHoursMinutes,
-} from "@/lib/date-time";
+import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { formatDepth, formatTemperature, formatVisibility } from "@/lib/units";
 import type { ReturnTarget } from "@/lib/return-to";
 
@@ -38,8 +38,7 @@ export function DiveHero({
   const units = useUnits();
   const locations = diveMapLocations(dive);
   const isPlaced = hasMapPosition(locations);
-  // The title names the site; this says where it is.
-  const placeName = dive.dive_sites[0]?.location?.name;
+  const facts = diveFacts(dive);
 
   const wholeDepth = (meters: number) =>
     formatDepth(meters, units, { decimals: 0 });
@@ -77,15 +76,14 @@ export function DiveHero({
       icon={DiveIcon}
       actions={actions}
       title={
-        <DiveTitle diveNumber={dive.dive_number} sites={dive.dive_sites} />
+        <DiveTitle
+          diveNumber={dive.dive_number}
+          sites={dive.dive_sites}
+          course={dive.course_uuid != null}
+        />
       }
-      // Its card's line: when, in the dive's own timezone, and where.
-      subtitle={
-        <>
-          {formatDiveDateTime(dive.start_time)}
-          {placeName && ` · ${placeName}`}
-        </>
-      }
+      subtitle={<FactsLine facts={facts} />}
+      overline={diveChips(dive)}
       figures={figures}
       mapCredit={isPlaced}
       // The map's water for a dive with no position, or where this instance

@@ -36,6 +36,19 @@ describe("DiveTitle", () => {
 
     expect(container).toHaveTextContent("Dive #212");
   });
+
+  it("marks a training dive after its name", () => {
+    const { container } = render(
+      <DiveTitle
+        diveNumber={212}
+        sites={[{ uuid: "a", name: "Blue Hole" }]}
+        course
+      />,
+    );
+
+    expect(container).toHaveTextContent("#212 Blue Hole (training dive)");
+    expect(container.querySelector("svg")).toHaveAttribute("aria-hidden");
+  });
 });
 
 // The same name for the tab, where it can only be text.

@@ -303,8 +303,8 @@ describe("DiveDetailSidebar environment, read from a newer API", () => {
   });
 });
 
-// The diver's own classification sits in Dive Information beside "Logged on",
-// not in the header and not among the readings.
+// The diver's own classification sits in Dive Information, not among the
+// readings.
 describe("DiveDetailSidebar dive information", () => {
   const information = () =>
     within(
@@ -313,7 +313,7 @@ describe("DiveDetailSidebar dive information", () => {
         .closest(".rounded-lg") as HTMLElement,
     );
 
-  it("shows the type, the rating and the tags beside the date it was logged", () => {
+  it("shows the type, the rating and the tags", () => {
     renderSidebar(
       dive({
         type: "closed_circuit",
@@ -331,16 +331,14 @@ describe("DiveDetailSidebar dive information", () => {
         .getAllByRole("listitem")
         .map((item) => item.textContent),
     ).toEqual(["night", "Wreck"]);
-    expect(information().getByText("Logged on")).toBeInTheDocument();
   });
 
-  it("shows none of the three on a dive that records none", () => {
+  it("draws no card for a dive that records none of the three", () => {
     renderSidebar(dive());
 
-    expect(screen.queryByText("Dive type")).not.toBeInTheDocument();
-    expect(screen.queryByText("Rating")).not.toBeInTheDocument();
-    expect(screen.queryByText("Tags")).not.toBeInTheDocument();
-    expect(screen.getByText("Logged on")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Dive Information" }),
+    ).not.toBeInTheDocument();
   });
 });
 

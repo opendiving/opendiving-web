@@ -94,6 +94,51 @@ describe("DiveHero", () => {
     );
   });
 
+  it("adds the boat to its line, and tags its title with the water and the kind", () => {
+    render(
+      <DiveHero
+        back={BACK}
+        dive={dive({
+          water_type: "fresh",
+          entry_type: "boat",
+          boat_name: "Legend",
+          type: "closed_circuit",
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).toHaveTextContent("Apr 4, 2021, 10:04 · Boat Legend");
+    expect(
+      screen.getByText("CCR").parentElement!.parentElement,
+    ).toHaveTextContent("FreshFresh waterCCRClosed circuit");
+  });
+
+  // Each goes without saying.
+  it("tags neither salt water nor open circuit", () => {
+    render(
+      <DiveHero
+        back={BACK}
+        dive={dive({ water_type: "salt", type: "open_circuit" })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).toHaveTextContent(/^Apr 4, 2021, 10:04$/);
+    expect(screen.queryByText("Salt water")).not.toBeInTheDocument();
+    expect(screen.queryByText("Open circuit")).not.toBeInTheDocument();
+  });
+
+  it("marks a training dive's title with the course's icon", () => {
+    render(<DiveHero back={BACK} dive={dive({ course_uuid: "course-1" })} />);
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Dive #1 (training dive)",
+    );
+  });
+
   it("shows the depths in feet for an imperial diver", () => {
     // Whole feet, and the value behind them is still the 30.48 m the API sent.
     auth.units = "imperial";

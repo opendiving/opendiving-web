@@ -157,7 +157,7 @@ describe("DiveSiteHero", () => {
         site={{
           ...SITE,
           location: { name: "Chatan, Okinawa, Japan" },
-          water_type: "salt",
+          water_type: "fresh",
           depth_from: 3,
           depth_to: 18,
           altitude: 2,
@@ -176,7 +176,7 @@ describe("DiveSiteHero", () => {
       name: "Sunabe Seawall",
     });
     expect(heading.nextElementSibling).toHaveTextContent(
-      "Chatan, Okinawa, Japan · Water type Salt water · Depth 3 m – 18 m · Altitude 2 m · Entry types Shore, Pier",
+      "Chatan, Okinawa, Japan · Water type Fresh water · Depth 3 m – 18 m · Altitude 2 m · Entry types Shore, Pier",
     );
     expect(figure("Dives")).toHaveTextContent("12");
     expect(figure("Last dive")).toHaveTextContent("Sep 14, 2026");
@@ -196,6 +196,20 @@ describe("DiveSiteHero", () => {
     expect(
       screen.getByRole("link", { name: "Back to dive sites" }),
     ).toHaveAttribute("href", "/sites");
+  });
+
+  // The sea goes without saying.
+  it("leaves salt water off its line", () => {
+    render(
+      <DiveSiteHero
+        back={BACK}
+        site={{ ...SITE, water_type: "salt", altitude: 2 }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).toHaveTextContent(/^Altitude 2 m$/);
   });
 
   it("says one end of a depth range where only one is recorded", () => {

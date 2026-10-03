@@ -263,6 +263,23 @@ describe("DiveCard", () => {
     expect(item).toHaveTextContent("Apr 4, 2026, 10:04 · Dahab, Egypt");
   });
 
+  // The hero's title and line, so a dive reads the same on its page as here.
+  it("marks a training dive, tags its water and kind, and carries the hero's line", () => {
+    const item = card({
+      dive: dive({
+        course_uuid: "course-1",
+        water_type: "fresh",
+        boat_name: "Legend",
+        type: "closed_circuit",
+      }),
+    });
+
+    expect(item).toHaveTextContent(
+      "FreshFresh waterCCRClosed circuitDive #212 (training dive)Apr 4, 2026, 10:04 · Boat Legend",
+    );
+    expect(within(item).getByText("CCR")).toHaveAttribute("aria-hidden");
+  });
+
   it("opens the dive plainly from the dive list, where its back link goes anyway", () => {
     at.pathname = "/dives";
     expect(

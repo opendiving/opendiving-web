@@ -48,6 +48,13 @@ export const WATER_TYPE_LABELS: Record<WaterType, string> = {
   brackish: "Brackish",
 };
 
+// What a dive's title is tagged with, as `DIVE_TYPE_ABBREVIATIONS` below. Salt
+// water has none: it is the water that goes without saying.
+export const WATER_TYPE_ABBREVIATIONS: Partial<Record<WaterType, string>> = {
+  fresh: "Fresh",
+  brackish: "Brackish",
+};
+
 // What kind of dive it was, the diver's own statement - never read off a recording's
 // mode, since a backup computer run in gauge mode was on an open-circuit dive. The
 // four below are the conditions on the day and where the diver got in. Each mirrors
@@ -73,6 +80,17 @@ export const DIVE_TYPE_LABELS: Record<DiveType, string> = {
   freedive: "Freediving",
   snorkel: "Snorkeling",
   surface_supplied: "Surface-supplied",
+};
+
+// What a dive's title is tagged with, for the kinds a diver says by their
+// initials. Open circuit has none: it is the dive that goes without saying.
+// The two without initials anyone uses are spelled short instead.
+export const DIVE_TYPE_ABBREVIATIONS: Partial<Record<DiveType, string>> = {
+  closed_circuit: "CCR",
+  semi_closed: "SCR",
+  surface_supplied: "SSD",
+  freedive: "Freedive",
+  snorkel: "Snorkel",
 };
 
 export const CURRENTS = [

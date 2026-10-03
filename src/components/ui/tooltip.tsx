@@ -41,7 +41,7 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 // short enough that reaching for a hint doesn't feel like waiting for one.
 // Radix's own default is 700ms, which is tuned for tooltips that decorate
 // already-labelled controls rather than ones that carry the only words.
-const HINT_DELAY_MS = 300;
+export const HINT_DELAY_MS = 300;
 
 // Radix opens a hint on focus with no delay, which is what a keyboard arrival
 // wants and what a pointer-driven focus never does. Two controls take focus

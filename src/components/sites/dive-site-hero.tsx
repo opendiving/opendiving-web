@@ -5,10 +5,8 @@ import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
-import {
-  DiveSiteFacts,
-  diveSiteFacts,
-} from "@/components/sites/dive-site-facts";
+import { diveSiteFacts } from "@/components/sites/dive-site-facts";
+import { FactsLine } from "@/components/ui/icon-fact";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDateOnly } from "@/lib/date-time";
@@ -80,7 +78,7 @@ export function DiveSiteHero({
       actions={actions}
       title={site.name}
       // The line under the name, as the site's card has it.
-      subtitle={facts.length > 0 && <DiveSiteFacts facts={facts} />}
+      subtitle={facts.length > 0 && <FactsLine facts={facts} />}
       figures={figures}
       mapCredit={isPlaced}
       // The map's water for a site with no position, or where this instance
