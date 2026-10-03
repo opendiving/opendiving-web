@@ -94,7 +94,7 @@ describe("DiveHero", () => {
     );
   });
 
-  it("adds the water and the boat to its line, and tags its title with the kind", () => {
+  it("adds the boat to its line, and tags its title with the water and the kind", () => {
     render(
       <DiveHero
         back={BACK}
@@ -109,16 +109,14 @@ describe("DiveHero", () => {
 
     expect(
       screen.getByRole("heading", { level: 1 }).nextElementSibling,
-    ).toHaveTextContent(
-      "Apr 4, 2021, 10:04 · Water type Fresh water · Boat Legend",
-    );
-    expect(screen.getByText("CCR").parentElement).toHaveTextContent(
-      "CCRClosed circuit",
-    );
+    ).toHaveTextContent("Apr 4, 2021, 10:04 · Boat Legend");
+    expect(
+      screen.getByText("CCR").parentElement!.parentElement,
+    ).toHaveTextContent("FreshFresh waterCCRClosed circuit");
   });
 
   // Each goes without saying.
-  it("leaves salt water off its line and open circuit untagged", () => {
+  it("tags neither salt water nor open circuit", () => {
     render(
       <DiveHero
         back={BACK}
@@ -129,7 +127,8 @@ describe("DiveHero", () => {
     expect(
       screen.getByRole("heading", { level: 1 }).nextElementSibling,
     ).toHaveTextContent(/^Apr 4, 2021, 10:04$/);
-    expect(screen.queryByText("OC")).not.toBeInTheDocument();
+    expect(screen.queryByText("Salt water")).not.toBeInTheDocument();
+    expect(screen.queryByText("Open circuit")).not.toBeInTheDocument();
   });
 
   it("marks a training dive's title with the course's icon", () => {

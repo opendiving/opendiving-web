@@ -7,7 +7,7 @@ import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { diveFacts } from "@/components/dives/dive-facts";
-import { diveTypeChip } from "@/components/dives/dive-type-chip";
+import { diveChips } from "@/components/dives/dive-chips";
 import { DiveTitle } from "@/components/dives/dive-title";
 import {
   diveMapLocations,
@@ -83,7 +83,7 @@ export function DiveHero({
         />
       }
       subtitle={<FactsLine facts={facts} />}
-      overline={diveTypeChip(dive.type)}
+      overline={diveChips(dive)}
       figures={figures}
       mapCredit={isPlaced}
       // The map's water for a dive with no position, or where this instance

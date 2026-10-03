@@ -48,6 +48,13 @@ export const WATER_TYPE_LABELS: Record<WaterType, string> = {
   brackish: "Brackish",
 };
 
+// What a dive's title is tagged with, as `DIVE_TYPE_ABBREVIATIONS` below. Salt
+// water has none: it is the water that goes without saying.
+export const WATER_TYPE_ABBREVIATIONS: Partial<Record<WaterType, string>> = {
+  fresh: "Fresh",
+  brackish: "Brackish",
+};
+
 // What kind of dive it was, the diver's own statement - never read off a recording's
 // mode, since a backup computer run in gauge mode was on an open-circuit dive. The
 // four below are the conditions on the day and where the diver got in. Each mirrors

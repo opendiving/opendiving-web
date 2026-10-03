@@ -14,7 +14,7 @@ import {
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { DiveTitle } from "@/components/dives/dive-title";
 import { diveFacts } from "@/components/dives/dive-facts";
-import { diveTypeChip } from "@/components/dives/dive-type-chip";
+import { diveChips } from "@/components/dives/dive-chips";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { diveMapLocations } from "@/components/dives/dive-map-locations";
 import { DiveIcon } from "@/components/logo";
@@ -120,7 +120,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
         );
       }}
     >
-      {diveTypeChip(dive.type)}
+      {diveChips(dive)}
       <Link
         href={withReturnTo(`/dives/${dive.uuid}`)}
         className={BACKDROP_CARD_LINK}
