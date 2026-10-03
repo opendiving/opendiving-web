@@ -13,9 +13,9 @@ import {
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
 import { MapBackdrop } from "@/components/map/map-backdrop";
-import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
-import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
-import { formatTripLocationNames } from "@/lib/trip-locations";
+import { tripPartLocations } from "@/lib/trip-parts";
+import { tripFacts } from "@/components/trips/trip-facts";
+import { FactsLine } from "@/components/ui/icon-fact";
 import { tripFigures } from "@/lib/trip-figures";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
@@ -40,11 +40,7 @@ export function TripCard({
   isDeleting,
 }: TripCardProps) {
   const locations = tripPartLocations(trip.parts);
-  // Only when some part of the trip carries a date; deliberately no fall back
-  // to the trip's creation date.
-  const dates = formatTripSpan(trip.parts);
-  // Whether there is a place to name, which is what decides the separator.
-  const placeNames = formatTripLocationNames(locations);
+  const facts = tripFacts(trip);
   const units = useUnits();
   const withReturnTo = useWithReturnTo();
   // The first three of what the trip adds up to, which `tripFigures` orders so
@@ -81,14 +77,9 @@ export function TripCard({
       >
         {trip.name}
       </Link>
-      {/* One line, as the trip page's subtitle joins the same two. The place
-          is lifted over the link for its hover hint, and only as far as its
-          own text reaches. */}
-      {(dates || placeNames) && (
+      {facts.length > 0 && (
         <div className="text-xs">
-          {dates}
-          {dates && placeNames ? " · " : null}
-          <TripLocationsLabel locations={locations} className="relative z-10" />
+          <FactsLine facts={facts} />
         </div>
       )}
       <BackdropCardFigures figures={figures} />

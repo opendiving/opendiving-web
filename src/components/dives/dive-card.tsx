@@ -13,13 +13,12 @@ import {
 } from "@/components/ui/backdrop-card";
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { DiveTitle } from "@/components/dives/dive-title";
+import { diveFacts } from "@/components/dives/dive-facts";
+import { FactsLine } from "@/components/ui/icon-fact";
 import { diveMapLocations } from "@/components/dives/dive-map-locations";
 import { DiveIcon } from "@/components/logo";
 import { DiveProfileSilhouette } from "@/components/dives/dive-profile-silhouette";
-import {
-  formatDiveDateTime,
-  formatDurationHoursMinutes,
-} from "@/lib/date-time";
+import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatDepth, formatTemperature } from "@/lib/units";
@@ -47,8 +46,6 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   // The dive's page and its edit form both return to the page the card is on.
   const withReturnTo = useWithReturnTo();
   const outline = dive.depth_outline;
-  // The title names the site; this says where it is.
-  const placeName = dive.dive_sites[0]?.location?.name;
   // Whole units, as the dive page's hero rounds them: the second decimal is not
   // what anyone reads a dive's depth for.
   const depth = (meters?: number) =>
@@ -133,8 +130,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
         />
       </Link>
       <div className="text-xs">
-        {formatDiveDateTime(dive.start_time)}
-        {placeName && ` · ${placeName}`}
+        <FactsLine facts={diveFacts(dive)} />
       </div>
       <BackdropCardFigures figures={figures} />
     </BackdropCard>

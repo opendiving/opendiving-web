@@ -1,17 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Shapes, Ship, Waves } from "lucide-react";
-import {
-  DIVE_TYPE_LABELS,
-  vocabularyLabel,
-  WATER_TYPE_LABELS,
-  type Dive,
-} from "@/lib/api/dives";
+import type { Dive } from "@/lib/api/dives";
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
-import { FactsLine, IconFact } from "@/components/ui/icon-fact";
+import { FactsLine } from "@/components/ui/icon-fact";
+import { diveFacts } from "@/components/dives/dive-facts";
 import { DiveTitle } from "@/components/dives/dive-title";
 import {
   diveMapLocations,
@@ -19,10 +14,7 @@ import {
 } from "@/components/dives/dive-map-locations";
 import { DiveIcon } from "@/components/logo";
 import { useUnits } from "@/hooks/useUnits";
-import {
-  formatDiveDateTime,
-  formatDurationHoursMinutes,
-} from "@/lib/date-time";
+import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { formatDepth, formatTemperature, formatVisibility } from "@/lib/units";
 import type { ReturnTarget } from "@/lib/return-to";
 
@@ -45,29 +37,7 @@ export function DiveHero({
   const units = useUnits();
   const locations = diveMapLocations(dive);
   const isPlaced = hasMapPosition(locations);
-  // Its card's line - when, in the dive's own timezone, and where, since the
-  // title names the site and this says where it is - then the water, the boat
-  // and the kind of dive, the water only where it is not the sea's and the kind
-  // only where it is not open circuit: each goes without saying.
-  const facts = [
-    formatDiveDateTime(dive.start_time),
-    dive.dive_sites[0]?.location?.name,
-    dive.water_type != null && dive.water_type !== "salt" && (
-      <IconFact icon={Waves} label="Water type">
-        {vocabularyLabel(WATER_TYPE_LABELS, dive.water_type)}
-      </IconFact>
-    ),
-    dive.boat_name && (
-      <IconFact icon={Ship} label="Boat">
-        {dive.boat_name}
-      </IconFact>
-    ),
-    dive.type != null && dive.type !== "open_circuit" && (
-      <IconFact icon={Shapes} label="Dive type">
-        {vocabularyLabel(DIVE_TYPE_LABELS, dive.type)}
-      </IconFact>
-    ),
-  ].filter(Boolean);
+  const facts = diveFacts(dive);
 
   const wholeDepth = (meters: number) =>
     formatDepth(meters, units, { decimals: 0 });

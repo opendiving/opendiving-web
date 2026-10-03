@@ -6,9 +6,9 @@ import { Trip } from "@/lib/api/trips";
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { MapHero } from "@/components/ui/map-hero";
-import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
-import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
-import { formatTripLocationNames } from "@/lib/trip-locations";
+import { tripPartLocations } from "@/lib/trip-parts";
+import { tripFacts } from "@/components/trips/trip-facts";
+import { FactsLine } from "@/components/ui/icon-fact";
 import { tripFigures } from "@/lib/trip-figures";
 import { useUnits } from "@/hooks/useUnits";
 import type { ReturnTarget } from "@/lib/return-to";
@@ -24,12 +24,7 @@ export function TripHero({
   actions?: ReactNode;
 }) {
   const locations = tripPartLocations(trip.parts);
-  // In the card's format, so a trip reads the same on its page as in every
-  // list. Only when some part of the trip carries a date; deliberately no fall
-  // back to the trip's creation date.
-  const dates = formatTripSpan(trip.parts);
-  // Whether there is a place to name, which is what decides the separator.
-  const placeNames = formatTripLocationNames(locations);
+  const facts = tripFacts(trip);
   const units = useUnits();
 
   return (
@@ -39,16 +34,7 @@ export function TripHero({
       icon={Luggage}
       actions={actions}
       title={trip.name}
-      // One line, as the trip card's.
-      subtitle={
-        (dates || placeNames) && (
-          <>
-            {dates}
-            {dates && placeNames ? " · " : null}
-            <TripLocationsLabel locations={locations} />
-          </>
-        )
-      }
+      subtitle={facts.length > 0 && <FactsLine facts={facts} />}
       figures={tripFigures(trip, units)}
       mapCredit
       // The whole world for a trip with no place on the map yet, as its card
