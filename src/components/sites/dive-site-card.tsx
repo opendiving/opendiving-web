@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Edit, MapPin } from "lucide-react";
+import { Edit } from "lucide-react";
+import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteMenuItem } from "@/components/ui/item-actions-menu";
@@ -87,7 +88,10 @@ export function DiveSiteCard({
           )}
           coveredBottom={coveredBottom}
           water={
-            <UnplacedBackdrop coveredBottom={coveredBottom} icon={MapPin} />
+            <UnplacedBackdrop
+              coveredBottom={coveredBottom}
+              icon={DiveSiteIcon}
+            />
           }
         />
       )}

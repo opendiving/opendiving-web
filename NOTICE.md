@@ -30,6 +30,34 @@ This is a trademark used under Google's branding guidelines, not material under 
 license. It carries no permission to use it for anything other than identifying Google's sign-in
 service, and a fork that drops Google sign-in should drop the mark with it.
 
+## Lucide
+
+<https://lucide.dev>
+
+`src/components/icons/twin-tank-icon.tsx` and `src/components/icons/dive-site-icon.tsx` are built
+from Lucide path data copied into the source and modified: the first is `fire-extinguisher` without
+its hose and nozzle, drawn twice and joined; the second is `map-pin` with original bubbles in place
+of its inner circle. Neither icon is one Lucide inherited from Feather, so Lucide's own ISC license
+is the only one that applies, and it asks for this notice to travel with every copy:
+
+> ISC License
+>
+> Copyright (c) 2026 Lucide Icons and Contributors
+>
+> Permission to use, copy, modify, and/or distribute this software for any purpose with or without
+> fee is hereby granted, provided that the above copyright notice and this permission notice appear
+> in all copies.
+>
+> THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
+> SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+> AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+> WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+> NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+> OF THIS SOFTWARE.
+
+Every other Lucide icon in the app is imported from `lucide-react` and is covered by that package's
+own license file, as the introduction above describes.
+
 ## svgsilh — the hero's reef
 
 <https://svgsilh.com/image/1298776.html>

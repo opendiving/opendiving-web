@@ -114,7 +114,7 @@ describe("DiveSiteCard", () => {
 
     expect(within(item).queryByRole("img")).not.toBeInTheDocument();
     expect(
-      item.querySelector(".bg-\\[var\\(--map-water\\)\\] svg.lucide-map-pin"),
+      item.querySelector(".bg-\\[var\\(--map-water\\)\\] svg.lucide-dive-site"),
     ).toBeInTheDocument();
     expect(getMapPicture).not.toHaveBeenCalled();
   });

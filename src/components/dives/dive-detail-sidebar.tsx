@@ -34,7 +34,6 @@ import {
   Globe,
   GraduationCap,
   Luggage,
-  MapPin,
   Mountain,
   Phone,
   ThermometerSun,
@@ -43,6 +42,7 @@ import {
   Wind,
   type LucideIcon,
 } from "lucide-react";
+import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatAltitude, formatTemperature } from "@/lib/units";
@@ -204,7 +204,7 @@ export function DiveDetailSidebar({
                   Dive site
                 </div>
                 <div className="flex items-start gap-2 text-sm">
-                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <DiveSiteIcon className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                   <div className="min-w-0">
                     <DiveSitesLabel
                       sites={dive.dive_sites}

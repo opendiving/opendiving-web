@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MapPin } from "lucide-react";
+import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
@@ -76,7 +76,7 @@ export function DiveSiteHero({
     <MapHero
       backHref={back.href}
       backLabel={back.label}
-      icon={MapPin}
+      icon={DiveSiteIcon}
       actions={actions}
       title={site.name}
       // The line under the name, as the site's card has it.
@@ -101,7 +101,7 @@ export function DiveSiteHero({
           <UnplacedBackdrop
             coveredBottom={covered.bottom}
             coveredTop={covered.top}
-            icon={MapPin}
+            icon={DiveSiteIcon}
           />
         )
       }

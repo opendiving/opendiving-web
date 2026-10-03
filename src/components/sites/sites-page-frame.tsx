@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { ChevronDown, MapPin, Plus, Search, X } from "lucide-react";
+import { ChevronDown, Plus, Search, X } from "lucide-react";
+import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
@@ -194,7 +195,7 @@ export function SitesPageFrame({
               </div>
             ) : (
               <EmptyState
-                icon={MapPin}
+                icon={DiveSiteIcon}
                 title="No dive sites yet"
                 description="Add your first dive site to start tracking your favorite spots!"
                 action={
