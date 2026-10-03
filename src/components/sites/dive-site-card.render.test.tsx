@@ -1,13 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveSiteCard } from "./dive-site-card";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { reveal } from "@/test/intersection";
 
-// A card maps a site by its pin and draws water without one, says where the
-// site is, how high and how divers get in where it records them, and lays out
-// what the diver's dives there add up to.
+// A card shows the server's picture of a site's pin and water without one, says
+// where the site is, how high and how divers get in where it records them, and
+// lays out what the diver's dives there add up to.
 
 const account = vi.hoisted(() => ({
   user: { uuid: "user-1", units: "metric" as "metric" | "imperial" },
@@ -16,14 +16,30 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => account,
 }));
 
-// The map needs WebGL; what matters here is which cards get one, and of what.
-vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: ({ locations }: { locations: { name: string }[] }) => (
-    <div data-testid="map">
-      {locations.map((location) => location.name).join("; ")}
-    </div>
-  ),
+vi.mock("next-themes", () => ({
+  useTheme: () => ({ resolvedTheme: "light" }),
 }));
+
+// The picture's bytes; what matters here is which cards ask for one, of what.
+const { getMapPicture } = vi.hoisted(() => ({ getMapPicture: vi.fn() }));
+vi.mock("@/lib/api/map-pictures", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/map-pictures")>()),
+  mapPicturesAPI: { getMapPicture },
+}));
+
+// jsdom implements neither.
+const originalCreate = URL.createObjectURL;
+const originalRevoke = URL.revokeObjectURL;
+beforeEach(() => {
+  URL.createObjectURL = vi.fn(() => "blob:picture");
+  URL.revokeObjectURL = vi.fn();
+  getMapPicture.mockReset();
+  getMapPicture.mockResolvedValue(new Blob(["webp"]));
+});
+afterEach(() => {
+  URL.createObjectURL = originalCreate;
+  URL.revokeObjectURL = originalRevoke;
+});
 
 function site(overrides: Partial<DiveSite> = {}): DiveSite {
   return {
@@ -65,12 +81,23 @@ const figuresOf = (item: HTMLElement) =>
   ]);
 
 describe("DiveSiteCard", () => {
-  it("maps a site by its pin", () => {
+  it("shows the server's picture of a site's pin, named by the site", async () => {
     const item = card({
-      site: site({ latitude: 28.5721, longitude: 34.5372 }),
+      site: site({
+        latitude: 28.5721,
+        longitude: 34.5372,
+        map_picture: "digest-canyon",
+      }),
     });
 
-    expect(within(item).getByTestId("map")).toHaveTextContent("The Canyon");
+    const map = await within(item).findByRole("img", {
+      name: "Map of The Canyon",
+    });
+    expect(map.querySelector("img")).toHaveAttribute("src", "blob:picture");
+    expect(getMapPicture).toHaveBeenCalledExactlyOnceWith(
+      "/dive-site/site-1/map-picture?theme=light&v=digest-canyon",
+      expect.any(AbortSignal),
+    );
   });
 
   // The locality's centre is the town, not the site.
@@ -85,10 +112,11 @@ describe("DiveSiteCard", () => {
       }),
     });
 
-    expect(within(item).queryByTestId("map")).not.toBeInTheDocument();
+    expect(within(item).queryByRole("img")).not.toBeInTheDocument();
     expect(
       item.querySelector(".bg-\\[var\\(--map-water\\)\\] svg.lucide-map-pin"),
     ).toBeInTheDocument();
+    expect(getMapPicture).not.toHaveBeenCalled();
   });
 
   it("names the site and links to its page", () => {

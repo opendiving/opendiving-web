@@ -12,7 +12,7 @@ import {
   emptyTripPart,
   normalizeTripParts,
 } from "@/lib/validations/trip";
-import { tripsAPI, Trip } from "@/lib/api/trips";
+import { tripsAPI, Trip, type TripUpdate } from "@/lib/api/trips";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -49,6 +49,20 @@ interface TripDialogProps {
   // Called with the created/updated trip so the caller can refresh whatever
   // list it's showing - and, in the dive form, select it straight away.
   onSaved: (trip: Trip) => void;
+}
+
+// The API answers a PATCH with a status message alone, and the saved trip is
+// read back rather than assembled: what its card draws - the digest naming its
+// map picture, which changes with its places - is the server's to say. A failed
+// read is not a failed save: the assembled trip stands in for it, without a
+// picture, since the old one may show the old places.
+async function readBack(trip: Trip, update: TripUpdate): Promise<Trip> {
+  try {
+    return await tripsAPI.getTrip(trip.uuid);
+  } catch (error) {
+    console.error("Failed to read the saved trip back:", error);
+    return { ...trip, ...update, map_picture: null };
+  }
 }
 
 // The one create/edit form for a trip, used by the trips list and detail pages,
@@ -141,15 +155,9 @@ export function TripDialog({
       const people = data.people ?? [];
 
       if (trip) {
-        // The API answers a PATCH with just a status message, so the updated
-        // trip is assembled here for the caller.
-        await tripsAPI.updateTrip(trip.uuid, {
-          name: data.name,
-          parts,
-          people,
-          notes: data.notes,
-        });
-        onSaved({ ...trip, name: data.name, parts, people, notes: data.notes });
+        const update = { name: data.name, parts, people, notes: data.notes };
+        await tripsAPI.updateTrip(trip.uuid, update);
+        onSaved(await readBack(trip, update));
       } else {
         const created = await tripsAPI.createTrip({
           name: data.name,

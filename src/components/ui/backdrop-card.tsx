@@ -27,12 +27,12 @@ export function BackdropCardSkeleton() {
   );
 }
 
-// A record with nowhere on a map yet: the map's open water where a trip would
-// show the whole world, since a dive or a site is at one spot and the world says
-// nothing about which. Faded as a map is, and the record's icon centred in what
-// the details leave of it: the colour the map names a sea in, muted as the map's
-// own colours are so it sits in the water rather than on it, and below whatever
-// covers the top.
+// A record with no map to show: the map's open water, where this instance has
+// drawn no picture of it - nowhere on a map yet, no map renderer, or a picture
+// that could not be had - and on a hero, a dive or a site with no position.
+// Faded as a map is, and the record's icon centred in what the details leave of
+// it: the colour the map names a sea in, muted as the map's own colours are so
+// it sits in the water rather than on it, and below whatever covers the top.
 export function UnplacedBackdrop({
   coveredBottom,
   coveredTop = 0,
@@ -89,7 +89,7 @@ export function BackdropCard({
   children,
 }: BackdropCardProps) {
   // How much of the backdrop lies under the details, from the name down, so a
-  // map's places centre between the credit and the name. Read as the ref
+  // picture's places centre between the credit and the name. Read as the ref
   // attaches and followed after that, as `useChartWidth` does: a name that
   // wraps grows the block.
   const [detailsHeight, setDetailsHeight] = useState(0);
@@ -103,13 +103,11 @@ export function BackdropCard({
     return () => observer.disconnect();
   }, []);
 
-  // The backdrop only while the card is on or near the screen. A browser keeps
-  // around sixteen WebGL contexts per page and silently blanks the oldest past
-  // that, and a list scrolls through every card; MapLibre releases its context
-  // when it is removed, so an unmounted map gives its slot back. The margin is
-  // small because two columns of cards on a tall screen already come close.
-  // Coming back costs nothing once a map has drawn: `snapshot` keeps a picture
-  // of it.
+  // The backdrop only while the card is on or near the screen, so a card off
+  // screen asks for nothing: its picture is requested as it comes near, and
+  // the request let go if it leaves first, which keeps a long list's requests
+  // to the cards a diver is looking at. Coming back costs nothing once a
+  // picture has arrived: the page keeps it.
   const [nearRef, isNear] = useNearViewport<HTMLLIElement>({
     rootMargin: "100px",
   });
@@ -141,10 +139,8 @@ export function BackdropCard({
       )}
     >
       {isNear && (
-        // Out of flow, so a lazy map's placeholder takes no room of its own.
-        // The radius is the card's less the border it sits inside, and a map
-        // clips to it itself: in Firefox a rounded clip from further up does
-        // not reach it.
+        // Out of flow, under the details. The radius is the card's less the
+        // border it sits inside, which the backdrop clips itself to.
         <div className="absolute inset-0 rounded-[calc(var(--radius)-1px)]">
           {backdrop(detailsHeight)}
         </div>

@@ -26,10 +26,7 @@ vi.mock("@/components/ui/use-toast", () => {
   return { useToast: () => ({ toast }) };
 });
 
-// Covered where they live, and each would make requests of its own here.
-vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: () => null,
-}));
+// Covered where it lives, and it would make requests of its own here.
 vi.mock("@/components/trips/trip-dialog", () => ({
   TripDialog: () => null,
 }));

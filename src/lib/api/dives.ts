@@ -496,6 +496,10 @@ export interface Dive {
   // A list-response field: absent on the detail response, and null on a row
   // with no curve to draw.
   depth_outline?: DepthOutline | null;
+  // The digest naming the dive card's map picture (`lib/api/map-pictures.ts`):
+  // a list-response field like `depth_outline`, and null where this instance
+  // draws no picture of the dive - nothing placed, or no map renderer.
+  map_picture?: string | null;
 }
 
 /** A recording's depth curve at a dive card's resolution. */

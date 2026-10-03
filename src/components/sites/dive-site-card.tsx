@@ -12,7 +12,9 @@ import {
   UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
+import { CardMapPicture } from "@/components/map/card-map-picture";
+import { mapLabel } from "@/components/map/map-label";
+import { placedLocations } from "@/lib/map-picture";
 import {
   DiveSiteFacts,
   diveSiteFacts,
@@ -27,9 +29,9 @@ interface DiveSiteCardProps {
   isDeleting: boolean;
 }
 
-// One dive site as a card, on /sites: its pin on a map as the backdrop - the
-// map's water for a site with none, as a dive card draws one - its line of facts,
-// and what the diver's own dives there add up to.
+// One dive site as a card, on /sites: the server's picture of its pin as the
+// backdrop - the map's water where there is none, as a dive card draws it - its
+// line of facts, and what the diver's own dives there add up to.
 export function DiveSiteCard({
   site,
   onEdit,
@@ -37,9 +39,6 @@ export function DiveSiteCard({
   isDeleting,
 }: DiveSiteCardProps) {
   const units = useUnits();
-  // The pin alone, as the site's page maps it: the locality's centre is the
-  // town the geocoder resolved, not the site.
-  const isPlaced = site.latitude != null && site.longitude != null;
   const facts = diveSiteFacts(site, units);
   const figures: BackdropCardFigure[] = [
     { label: "Dives", value: site.dive_count ?? 0 },
@@ -68,26 +67,30 @@ export function DiveSiteCard({
           <DeleteMenuItem onSelect={onDelete} disabled={isDeleting} />
         </>
       }
-      backdrop={(coveredBottom) =>
-        isPlaced ? (
-          <LocationsMap
-            locations={[
+      backdrop={(coveredBottom) => (
+        <CardMapPicture
+          kind="dive-site"
+          uuid={site.uuid}
+          digest={site.map_picture}
+          // The pin alone, as the server draws it and the site's page maps it:
+          // the locality's centre is the town the geocoder resolved, not the
+          // site.
+          label={mapLabel(
+            placedLocations([
               {
                 name: site.name,
                 latitude: site.latitude,
                 longitude: site.longitude,
               },
-            ]}
-            subject={`the location of ${site.name}`}
-            className="h-full rounded-[inherit] border-0 sm:h-full"
-            backdrop
-            coveredBottom={coveredBottom}
-            snapshot
-          />
-        ) : (
-          <UnplacedBackdrop coveredBottom={coveredBottom} icon={MapPin} />
-        )
-      }
+            ]),
+            `the location of ${site.name}`,
+          )}
+          coveredBottom={coveredBottom}
+          water={
+            <UnplacedBackdrop coveredBottom={coveredBottom} icon={MapPin} />
+          }
+        />
+      )}
     >
       <Link href={`/sites/${site.uuid}`} className={BACKDROP_CARD_LINK}>
         {site.name}

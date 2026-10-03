@@ -2713,8 +2713,8 @@ screenshot exercises, so omission is a type error.
 
 The frame's height lives in the component, duplicated once in the `next/dynamic` skeleton beside it,
 so a caller keeping it cannot make the page jump when the chunk lands. A caller setting its own
-through `className` - the trip card - owns the room the skeleton lands in; the trip card's map is
-out of flow, so it has none.
+through `className` - a hero - owns the room the skeleton lands in; a hero's map is out of flow, so
+it has none.
 
 The site and dive heroes gate their map on a position - the site's pin, or `hasMapPosition` over a
 dive's sites and fixes - keeping a record with none from fetching the chunk; a half-set position,
@@ -3284,9 +3284,10 @@ fields down mid-edit, and an empty map says the field above wants a place, not f
 
 `showWhenEmpty` stays opt-in: a dive or a site is at one spot, and the world says nothing about
 which, so their heroes draw the map's water for one with no position and gating keeps the chunk
-unfetched. A trip's card and its page's hero opt in: there the map is the backdrop of the trip's
-card, and a list mixing cards with and without one reads as two layouts. The empty frame's
-aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a definite noun phrase.
+unfetched. A trip's hero opts in, showing what the trip's card shows: the API draws a trip with no
+place as the whole world, since a list mixing cards with and without a map reads as two layouts. The
+empty frame's aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a definite
+noun phrase.
 
 The empty view is `WORLD_CENTER` at `MIN_ZOOM` (0) from `lib/basemap.ts`, read by both maps.
 
@@ -6901,3 +6902,23 @@ rather than the bundle's bytes, so a bundler upgrade that only reformats output 
 neither the credit nor, for the vendored pair, `SITE_URL`, since neither draws anything. A web merge
 touching none of it renames no picture. Upstream tile data and a remote style edited behind its URL
 change pixels without changing it, which a backdrop tolerates.
+
+## Cards show the server's map picture, and the map's water without one
+
+Dive, trip and site cards ask the API for their record's picture (`CardMapPicture`), named by the
+digest the record carries, and place it with its middle on the middle of their band. No digest, a
+404, 429 or 503, or a failed request shows `UnplacedBackdrop`, so an instance without the renderer
+shows no map on its cards. A card asks again only when it mounts again, never on a timer: a failure
+is a renderer down or busy, and every card on every open page asking on a schedule would add to it.
+Rejected: drawing in the browser as the fallback, which keeps two renderers and WebGL on list pages.
+The heroes draw their own photograph in the browser: a window-wide picture needs a size and fit of
+its own.
+
+## A page keeps two picture requests out, and a card lets its request go
+
+A picture not drawn yet holds its request open for the draw, and over HTTP/1.1 - a plain-HTTP LAN
+install among them - a browser opens six connections per host across all its tabs. So
+`card-pictures.ts` keeps two out per page and queues the rest in the order asked, and a card that
+unmounts aborts its request or leaves the queue. Rejected: one count across tabs through Web Locks,
+which exist only in a secure context, so the per-page cap is needed wherever they are missing; and
+answering a miss at once and polling, which the no-timer rule refuses.
