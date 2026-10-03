@@ -24,7 +24,6 @@ import {
   Settings,
   Menu,
   Plus,
-  MapPin,
   Luggage,
   Backpack,
   BadgeCheck,
@@ -37,6 +36,7 @@ import {
   CloudDownload,
   Shield,
 } from "lucide-react";
+import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { useEffect, useRef, useState } from "react";
 import {
   useQuickCreate,
@@ -61,7 +61,7 @@ type CreateAction = {
 const CREATE_ACTIONS: CreateAction[] = [
   { label: "New dive", icon: DiveIcon, href: "/dives/new" },
   { label: "New trip", icon: Luggage, kind: "trip" },
-  { label: "New dive site", icon: MapPin, kind: "site" },
+  { label: "New dive site", icon: DiveSiteIcon, kind: "site" },
   { label: "New gear", icon: Backpack, kind: "gear" },
   { label: "New certification", icon: BadgeCheck, kind: "certification" },
   { label: "New course", icon: GraduationCap, kind: "course" },

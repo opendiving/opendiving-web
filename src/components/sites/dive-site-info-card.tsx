@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MapPin } from "lucide-react";
+import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { ExternalIdLink } from "@/components/sites/external-id-link";
@@ -44,7 +44,7 @@ export function DiveSiteInfoCard({ site }: { site: DiveSite }) {
     <Card>
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
-          <MapPin className="h-5 w-5" />
+          <DiveSiteIcon className="h-5 w-5" />
           Dive Site Information
         </CardTitle>
       </CardHeader>

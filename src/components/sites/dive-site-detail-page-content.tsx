@@ -28,7 +28,8 @@ import {
   MapHeroPageSkeleton,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, FileText, MapPin, Plus } from "lucide-react";
+import { Edit, FileText, Plus } from "lucide-react";
+import { DiveSiteHeroIcon } from "@/components/icons/dive-site-icon";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
@@ -72,7 +73,7 @@ export function DiveSiteDetailPageContent() {
       <MapHeroPageSkeleton
         backHref={back.href}
         backLabel={back.label}
-        icon={MapPin}
+        icon={DiveSiteHeroIcon}
       />
     );
   }
