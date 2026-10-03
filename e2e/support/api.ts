@@ -1,6 +1,7 @@
 import { expect, test as base, type Page, type Route } from "@playwright/test";
 
 import type { User } from "@/lib/api/auth";
+import type { InstanceConfig } from "@/lib/api/config";
 import type {
   Dive,
   DiveNeighbors,
@@ -93,6 +94,16 @@ export const GEAR_SET: GearSet = {
   created_at: "2024-01-05T10:05:00+01:00",
 };
 
+// No map renderer, as a default install has none: every card and page head is
+// the map's water, and nothing asks for a tile these fixtures would then have
+// to answer.
+const CONFIG: InstanceConfig = {
+  registration_mode: "open",
+  project_operated: false,
+  join_links: false,
+  map_tiles: false,
+};
+
 const NUMBERING: DiveNumberingSummary = {
   total_dives: 2,
   lowest: DIVE_B.dive_number,
@@ -151,6 +162,8 @@ function respond(method: string, path: string): unknown | undefined {
   if (method !== "GET") return undefined;
 
   if (path === "/user") return USER;
+  // What each card's and page head's map asks before drawing anything.
+  if (path === "/config") return CONFIG;
   if (path === "/dives/numbering") return NUMBERING;
   if (path === "/dives") return page1([DIVE_A, DIVE_B]);
   if (path === "/gear-items") return page1([GEAR_ITEM]);
