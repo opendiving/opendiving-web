@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { Dive } from "@/lib/api/dives";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
+import { MapBackdrop } from "@/components/map/map-backdrop";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
 import { DiveTitle } from "@/components/dives/dive-title";
@@ -88,22 +88,22 @@ export function DiveHero({
       }
       figures={figures}
       mapCredit={isPlaced}
-      // The map's water for a dive with no position, as its card draws one.
-      backdrop={({ map, covered }) =>
-        isPlaced ? (
-          <LocationsMap
-            locations={locations}
-            subject={`the location of dive #${dive.dive_number}`}
-            {...map}
-          />
-        ) : (
-          <UnplacedBackdrop
-            coveredBottom={covered.bottom}
-            coveredTop={covered.top}
-            icon={DiveIcon}
-          />
-        )
-      }
+      // The map's water for a dive with no position, or where this instance
+      // draws no map, as its card draws one.
+      backdrop={({ map, covered }) => (
+        <MapBackdrop
+          locations={locations}
+          subject={`the location of dive #${dive.dive_number}`}
+          {...map}
+          water={
+            <UnplacedBackdrop
+              coveredBottom={covered.bottom}
+              coveredTop={covered.top}
+              icon={DiveIcon}
+            />
+          }
+        />
+      )}
     />
   );
 }

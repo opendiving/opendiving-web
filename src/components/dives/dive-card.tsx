@@ -11,11 +11,9 @@ import {
   UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
-import { CardMapPicture } from "@/components/map/card-map-picture";
-import { mapLabel } from "@/components/map/map-label";
+import { MapBackdrop } from "@/components/map/map-backdrop";
 import { DiveTitle } from "@/components/dives/dive-title";
 import { diveMapLocations } from "@/components/dives/dive-map-locations";
-import { placedLocations } from "@/lib/map-picture";
 import { DiveIcon } from "@/components/logo";
 import { DiveProfileSilhouette } from "@/components/dives/dive-profile-silhouette";
 import {
@@ -40,8 +38,8 @@ interface DiveCardProps {
   isDeleting?: boolean;
 }
 
-// One dive as a card, in every list of dives: the server's picture of its
-// sites and fixes as the backdrop - the map's water where there is none - with
+// One dive as a card, in every list of dives: a map of its sites and fixes as
+// the backdrop - the map's water where it has none - with
 // its depth curve across the foot of it, and its duration, deepest point and
 // water temperature - or its average depth where it has no temperature.
 export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
@@ -96,14 +94,9 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
           : coveredBottom;
         return (
           <>
-            <CardMapPicture
-              kind="dive"
-              uuid={dive.uuid}
-              digest={dive.map_picture}
-              label={mapLabel(
-                placedLocations(diveMapLocations(dive)),
-                `the location of dive #${dive.dive_number}`,
-              )}
+            <MapBackdrop
+              locations={diveMapLocations(dive)}
+              subject={`the location of dive #${dive.dive_number}`}
               coveredBottom={aboveProfile}
               water={
                 <UnplacedBackdrop

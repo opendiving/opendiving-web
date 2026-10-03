@@ -54,8 +54,9 @@ vi.mock("@/components/ui/use-toast", () => {
 vi.mock("@/components/dives/recent-dives-card", () => ({
   RecentDivesCard: () => null,
 }));
-vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: vi.fn(() => null),
+vi.mock("@/components/map/map-backdrop", () => ({
+  MapBackdrop: vi.fn(() => null),
+  useMapTiles: () => true,
 }));
 
 vi.mock("@/lib/api/trips", async (importOriginal) => ({
@@ -76,7 +77,7 @@ vi.mock("@/lib/api/people", async (importOriginal) => ({
 }));
 
 const { tripsAPI } = await import("@/lib/api/trips");
-const { LocationsMap } = await import("@/components/map/locations-map-lazy");
+const { MapBackdrop } = await import("@/components/map/map-backdrop");
 const { divesAPI } = await import("@/lib/api/dives");
 const { fetchAllContacts } = await import("@/lib/api/contacts");
 const { fetchAllPeople } = await import("@/lib/api/people");
@@ -197,27 +198,22 @@ describe("TripDetailPage", () => {
     expect(screen.queryByText("Max depth")).toBeNull();
   });
 
-  it("hands the hero's map the parts with a position, as the card's backdrop", async () => {
+  it("hands the hero's map the trip's places, the world where none has a position", async () => {
     render(<TripDetailPage />);
 
     await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
-    const props = vi.mocked(LocationsMap).mock.lastCall![0];
-    expect(props).toMatchObject({
-      backdrop: true,
-      creditElsewhere: true,
-      snapshot: true,
-      showWhenEmpty: true,
-      sideFade: true,
-    });
-    expect(props.locations.map((location) => location.name)).toEqual(["Dahab"]);
+    const props = vi.mocked(MapBackdrop).mock.lastCall![0];
+    expect(props).toMatchObject({ hero: true, showWhenEmpty: true });
+    expect(props.locations.map((location) => location.name)).toEqual([
+      "Dahab",
+      "Sharm",
+    ]);
     // Which the hero credits at its details' foot instead.
     expect(
       screen.getByRole("link", { name: /OpenStreetMap/ }),
     ).toBeInTheDocument();
     // The sidebar's own map is gone: the hero's is the one on the page.
-    expect(vi.mocked(LocationsMap).mock.calls.every(([p]) => p.backdrop)).toBe(
-      true,
-    );
+    expect(vi.mocked(MapBackdrop).mock.calls.every(([p]) => p.hero)).toBe(true);
   });
 
   // Logging a dive is the one on the hero's row, and editing joins deleting

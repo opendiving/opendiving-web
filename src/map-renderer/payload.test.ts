@@ -1,163 +1,80 @@
 import { describe, expect, it } from "vitest";
 
-import { DIVE_CARD_FRAME, TRIP_CARD_FRAME } from "@/lib/map-picture";
-import {
-  MAX_PLACES,
-  parsePayload,
-  PayloadError,
-  payloadFrame,
-  payloadPlaces,
-} from "./payload";
+import { MAX_FIT_ZOOM } from "@/lib/basemap";
+import { parsePayload, PayloadError } from "./payload";
 
-const DIVE = {
-  kind: "dive",
-  theme: "light",
-  dive_sites: [
-    { latitude: 28.5721, longitude: 34.5372 },
-    { latitude: null, longitude: null },
-  ],
-  entry_latitude: null,
-  entry_longitude: null,
-  exit_latitude: 28.5689,
-  exit_longitude: 34.5355,
-};
-
-const PLACE = {
-  latitude: 26.82,
-  longitude: 30.8,
-  bbox_south: 22,
-  bbox_north: 31.67,
-  bbox_west: 24.7,
-  bbox_east: 36.9,
-};
-
-const TRIP = {
-  kind: "trip",
-  theme: "dark",
-  parts: [{ location: PLACE }, { location: null }],
-};
+const TILE = { kind: "tile", theme: "light", z: 9, x: 300, y: 215 };
 
 function rejects(body: unknown, message: RegExp) {
-  let thrown: unknown;
-  try {
-    parsePayload(body);
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown).toBeInstanceOf(PayloadError);
-  expect((thrown as Error).message).toMatch(message);
+  expect(() => parsePayload(body)).toThrow(PayloadError);
+  expect(() => parsePayload(body)).toThrow(message);
 }
 
 describe("parsePayload", () => {
-  it("takes a dive and a trip in the contract's shape", () => {
-    expect(parsePayload(DIVE)).toEqual(DIVE);
-    expect(parsePayload(TRIP)).toEqual(TRIP);
-  });
-
-  it("takes a dive with no site and a trip with no part", () => {
-    expect(parsePayload({ ...DIVE, dive_sites: [] })).toMatchObject({
-      dive_sites: [],
+  it("takes a tile in either theme", () => {
+    expect(parsePayload(TILE)).toEqual(TILE);
+    expect(parsePayload({ ...TILE, theme: "dark" })).toEqual({
+      ...TILE,
+      theme: "dark",
     });
-    expect(parsePayload({ ...TRIP, parts: [] })).toMatchObject({ parts: [] });
   });
 
-  // The API digests exactly the fields it sends, so one this side read and the
-  // digest left out would be a picture that never updates.
-  it("refuses a field the contract does not name", () => {
-    rejects({ ...DIVE, name: "Blue Hole" }, /unexpected name/);
-    rejects(
-      { ...DIVE, dive_sites: [{ latitude: 1, longitude: 2, name: "x" }] },
-      /dive_sites\[0\] has unexpected name/,
-    );
-    rejects(
-      { ...TRIP, parts: [{ location: { ...PLACE, name: "Egypt" } }] },
-      /parts\[0\]\.location has unexpected name/,
-    );
-    rejects(
-      { ...TRIP, parts: [{ location: null, start_date: "2026-04-18" }] },
-      /parts\[0\] has unexpected start_date/,
-    );
+  it("takes the corners of the grid at every zoom it draws", () => {
+    for (let z = 0; z <= MAX_FIT_ZOOM; z += 1) {
+      const last = 2 ** z - 1;
+      expect(parsePayload({ ...TILE, z, x: 0, y: 0 })).toMatchObject({ z });
+      expect(parsePayload({ ...TILE, z, x: last, y: last })).toMatchObject({
+        x: last,
+        y: last,
+      });
+    }
   });
 
-  it("refuses a body missing a field, rather than reading it as null", () => {
-    const { exit_longitude: _, ...dive } = DIVE;
-    rejects(dive, /missing exit_longitude/);
-    const { bbox_east: __, ...place } = PLACE;
-    rejects({ ...TRIP, parts: [{ location: place }] }, /missing bbox_east/);
-    rejects({ ...TRIP, parts: [{}] }, /parts\[0\] is missing location/);
+  // The deepest any of the web's maps is fitted at, and the API's ceiling too.
+  it("refuses a zoom past the deepest a map is fitted at", () => {
+    expect(MAX_FIT_ZOOM).toBe(9);
+    rejects({ ...TILE, z: 10, x: 0, y: 0 }, /z must be from 0 to 9/);
+    rejects({ ...TILE, z: -1 }, /z must be from 0 to 9/);
   });
 
-  it("refuses an unknown kind or theme", () => {
-    rejects({ ...DIVE, kind: "site" }, /kind/);
-    rejects({ ...DIVE, theme: "sepia" }, /theme/);
-    rejects({ ...DIVE, theme: undefined }, /theme/);
-    rejects([DIVE], /object/);
+  it("refuses a square outside the grid", () => {
+    rejects({ ...TILE, x: 512 }, /x must be from 0 to 511/);
+    rejects({ ...TILE, y: 512 }, /y must be from 0 to 511/);
+    rejects({ ...TILE, z: 0, x: 1, y: 0 }, /x must be from 0 to 0/);
+    rejects({ ...TILE, x: -1 }, /x must be from 0/);
+  });
+
+  it("refuses coordinates that are not integers", () => {
+    rejects({ ...TILE, x: 1.5 }, /x must be an integer/);
+    rejects({ ...TILE, z: "9" }, /z must be an integer/);
+    rejects({ ...TILE, y: null }, /y must be an integer/);
+  });
+
+  it("refuses a body naming a record's places", () => {
+    rejects(
+      {
+        kind: "dive",
+        theme: "light",
+        dive_sites: [{ latitude: 28.5721, longitude: 34.5372 }],
+        entry_latitude: null,
+        entry_longitude: null,
+        exit_latitude: null,
+        exit_longitude: null,
+      },
+      /missing z, x, y/,
+    );
+    rejects({ ...TILE, kind: "trip" }, /kind must be "tile"/);
+  });
+
+  it("refuses a missing key and an extra one alike", () => {
+    const { y: _y, ...missing } = TILE;
+    rejects(missing, /missing y/);
+    rejects({ ...TILE, account: "someone" }, /unexpected account/);
+  });
+
+  it("refuses a theme it does not draw, and a body that is not an object", () => {
+    rejects({ ...TILE, theme: "sepia" }, /theme/);
+    rejects([TILE], /object/);
     rejects(null, /object/);
-  });
-
-  it("refuses a coordinate that is not a number or null", () => {
-    rejects({ ...DIVE, exit_latitude: "28.5" }, /exit_latitude/);
-    rejects(
-      { ...DIVE, dive_sites: [{ latitude: 1, longitude: true }] },
-      /dive_sites\[0\]\.longitude must be a number or null/,
-    );
-    rejects({ ...DIVE, dive_sites: "none" }, /dive_sites must be a list/);
-  });
-
-  it("refuses a coordinate off the globe", () => {
-    rejects({ ...DIVE, exit_latitude: 91 }, /exit_latitude must be within ±90/);
-    rejects(
-      { ...TRIP, parts: [{ location: { ...PLACE, bbox_west: -181 } }] },
-      /bbox_west must be within ±180/,
-    );
-  });
-
-  it("refuses a list longer than any record has", () => {
-    const sites = Array.from({ length: MAX_PLACES + 1 }, () => ({
-      latitude: 1,
-      longitude: 1,
-    }));
-    rejects({ ...DIVE, dive_sites: sites }, /more than/);
-  });
-});
-
-describe("payloadPlaces", () => {
-  // The dive and trip pages' own functions, so a card shows what its record's
-  // page shows: sites as pins and recorded fixes as rings.
-  it("derives a dive's places as the dive page does", () => {
-    const places = payloadPlaces(parsePayload(DIVE));
-    expect(
-      places.map(({ latitude, longitude, variant }) => ({
-        latitude,
-        longitude,
-        variant,
-      })),
-    ).toEqual([
-      { latitude: 28.5721, longitude: 34.5372, variant: "pin" },
-      { latitude: 28.5689, longitude: 34.5355, variant: "fix" },
-    ]);
-  });
-
-  it("derives a trip's places as the trip page does, footprints included", () => {
-    const places = payloadPlaces(parsePayload(TRIP));
-    expect(places).toHaveLength(1);
-    expect(places[0].bounds).toEqual({
-      south: 22,
-      north: 31.67,
-      west: 24.7,
-      east: 36.9,
-    });
-  });
-
-  it("draws nothing named, since it is sent no names", () => {
-    const places = payloadPlaces(parsePayload(TRIP));
-    expect(places.every(({ name }) => name === "")).toBe(true);
-  });
-});
-
-describe("payloadFrame", () => {
-  it("fits a dive for the outlined dive card and a trip for the trip card", () => {
-    expect(payloadFrame(parsePayload(DIVE))).toBe(DIVE_CARD_FRAME);
-    expect(payloadFrame(parsePayload(TRIP))).toBe(TRIP_CARD_FRAME);
   });
 });

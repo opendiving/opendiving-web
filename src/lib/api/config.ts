@@ -34,11 +34,12 @@ export interface InstanceConfig {
    */
   join_links: boolean;
   /**
-   * Whether this instance has a map renderer drawing its cards' map pictures.
-   * Only `/privacy` reads it, from the server, to say who fetches the cards'
-   * tiles; a card learns the same from its own record's `map_picture`.
+   * Whether this instance has a map renderer drawing the map tiles its cards and
+   * page heads are composed from. A card or a hero asks for no tile while it is
+   * false, and shows the map's water instead; `/privacy` reads it from the
+   * server, to say who fetches the basemap for those maps.
    */
-  map_pictures: boolean;
+  map_tiles: boolean;
 }
 
 /** One live join link: the slug its address carries, and the name it is shown by. */
@@ -71,7 +72,7 @@ export const JOIN_CHANNEL_SLUG = /^[a-z0-9-]{1,32}$/;
  * Anonymous by design, and not a leak: the landing page discloses the first two
  * anyway, the mode by which form it then shows and the operator by how that form
  * reads, and `/privacy` discloses `join_links` by whether its join-link paragraph
- * is there and `map_pictures` by what it says draws a card's map.
+ * is there and `map_tiles` by whether a card shows a map at all.
  */
 export const configAPI = {
   /**

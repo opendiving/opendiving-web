@@ -1,5 +1,5 @@
-// The map renderer: draws a dive's or a trip's card picture for the API, in the
-// web image, started with `node map-renderer/index.mjs` rather than the web
+// The map renderer: draws the map tiles the API stores for every card and page
+// head, in the web image, started with `node map-renderer/index.mjs` rather than the web
 // server's `node server.js`. `scripts/build-map-renderer.mjs` bundles this file
 // and everything it imports from the web into that one module.
 //
@@ -50,7 +50,7 @@ async function main() {
   if (process.platform === "linux") {
     display = await startDisplay();
     process.env.DISPLAY = display.name;
-    // Each picture is drawn on a new map, and Mesa compiles a new map's
+    // Each tile is drawn on a new map, and Mesa compiles a new map's
     // shaders from nothing unless it may keep them - which, for a user with no
     // home directory, it may only where it is told to. Kept, they make a
     // fresh map nearly as quick as a warm one.

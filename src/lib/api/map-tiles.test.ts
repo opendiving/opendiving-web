@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AxiosRequestConfig } from "axios";
 
 import { apiClient } from "./client";
-import { mapPicturesAPI, mapPictureUrl } from "./map-pictures";
+import { mapTilesAPI, mapTileUrl } from "./map-tiles";
 
 // Through the real client, with its adapter swapped out: what is under test is
 // what reaches the wire - the route, the bytes asked for as a blob, the signal -
@@ -25,28 +25,24 @@ afterEach(() => {
   apiClient.defaults.adapter = originalAdapter;
 });
 
-describe("mapPictureUrl", () => {
+describe("mapTileUrl", () => {
   it.each([
-    ["dive", "/dive/dive-1/map-picture?theme=light&v=abc123"],
-    ["trip", "/trip/dive-1/map-picture?theme=light&v=abc123"],
-    ["dive-site", "/dive-site/dive-1/map-picture?theme=light&v=abc123"],
-  ] as const)("names a %s's picture by its theme and digest", (kind, url) => {
-    expect(mapPictureUrl(kind, "dive-1", "light", "abc123")).toBe(url);
-  });
-
-  it("escapes what it is handed", () => {
-    expect(mapPictureUrl("trip", "a/b", "dark", "x&y")).toBe(
-      "/trip/a%2Fb/map-picture?theme=dark&v=x%26y",
-    );
-  });
+    ["light", 9, 300, 215, "/map-tiles/light/9/300/215"],
+    ["dark", 0, 0, 0, "/map-tiles/dark/0/0/0"],
+  ] as const)(
+    "names a %s tile by its square of the grid",
+    (theme, z, x, y, url) => {
+      expect(mapTileUrl(theme, z, x, y)).toBe(url);
+    },
+  );
 });
 
-describe("mapPicturesAPI.getMapPicture", () => {
-  it("asks for the picture's bytes, abortably", async () => {
+describe("mapTilesAPI.getMapTile", () => {
+  it("asks for the tile's bytes, abortably", async () => {
     const controller = new AbortController();
-    const url = mapPictureUrl("dive", "dive-1", "dark", "abc123");
+    const url = mapTileUrl("dark", 9, 300, 215);
 
-    const blob = await mapPicturesAPI.getMapPicture(url, controller.signal);
+    const blob = await mapTilesAPI.getMapTile(url, controller.signal);
 
     expect(blob.type).toBe("image/webp");
     const [config] = adapter.mock.calls[0];
@@ -57,16 +53,13 @@ describe("mapPicturesAPI.getMapPicture", () => {
   });
 
   // The client coalesces concurrent GETs of one URL into one request, so a
-  // card that aborted its own would hand the abort to the next card asking.
+  // map that aborted its own would hand the abort to the next map asking.
   it("sends each ask, never sharing a request another may abort", async () => {
-    const url = mapPictureUrl("trip", "trip-1", "light", "abc123");
+    const url = mapTileUrl("light", 9, 300, 215);
     const first = new AbortController();
 
-    const aborted = mapPicturesAPI.getMapPicture(url, first.signal);
-    const second = mapPicturesAPI.getMapPicture(
-      url,
-      new AbortController().signal,
-    );
+    const aborted = mapTilesAPI.getMapTile(url, first.signal);
+    const second = mapTilesAPI.getMapTile(url, new AbortController().signal);
     first.abort();
 
     await expect(aborted).rejects.toThrow();

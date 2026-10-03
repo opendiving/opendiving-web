@@ -2,10 +2,9 @@ import path from "node:path";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SNAPSHOT_HEIGHT, SNAPSHOT_WIDTH } from "@/lib/map-picture";
+import { tileCenter, TILE_SIZE } from "@/lib/map-camera";
 import { createEngine, PIXEL_RATIO, type NativeModule } from "./engine";
 import { parsePayload } from "./payload";
-import { PINS_SOURCE } from "./pins";
 import { createResources } from "./resources";
 import { readRendererConfig } from "./style";
 
@@ -13,17 +12,22 @@ import { readRendererConfig } from "./style";
 // asked and answers each render as a test says - so a failed render and one
 // that never finishes can be had on purpose. The WebP at the end is real.
 
-const WIDTH = SNAPSHOT_WIDTH * PIXEL_RATIO;
-const HEIGHT = SNAPSHOT_HEIGHT * PIXEL_RATIO;
+const SIDE = TILE_SIZE * PIXEL_RATIO;
 
 type Answer = "draw" | "fail" | "hang";
 
 interface FakeMap {
+  options: { ratio: number; mode: string };
   loaded: {
     sources: Record<string, unknown>;
     layers: { id: string }[];
   }[];
-  renders: { zoom: number; center: [number, number] }[];
+  renders: {
+    zoom: number;
+    center: [number, number];
+    width: number;
+    height: number;
+  }[];
   cancelled: number;
   released: boolean;
 }
@@ -33,21 +37,23 @@ function fakeNative(answers: Answer[] = []) {
   const native: NativeModule = {
     on: () => {},
     Map: class {
-      private state: FakeMap = {
-        loaded: [],
-        renders: [],
-        cancelled: 0,
-        released: false,
-      };
+      private state: FakeMap;
       private pending?: (error: Error) => void;
-      constructor() {
+      constructor(options: FakeMap["options"]) {
+        this.state = {
+          options: { ratio: options.ratio, mode: options.mode },
+          loaded: [],
+          renders: [],
+          cancelled: 0,
+          released: false,
+        };
         maps.push(this.state);
       }
       load(style: FakeMap["loaded"][number]) {
         this.state.loaded.push(style);
       }
       render(
-        options: { zoom: number; center: [number, number] },
+        options: FakeMap["renders"][number],
         callback: (error: Error | null, pixels?: Uint8Array) => void,
       ) {
         this.state.renders.push(options);
@@ -59,7 +65,7 @@ function fakeNative(answers: Answer[] = []) {
         setTimeout(() =>
           answer === "fail"
             ? callback(new Error("Failed to load glyphs"))
-            : callback(null, new Uint8Array(WIDTH * HEIGHT * 4).fill(200)),
+            : callback(null, new Uint8Array(SIDE * SIDE * 4).fill(200)),
         );
       }
       cancel() {
@@ -86,14 +92,13 @@ const resources = createResources({
   publicDir: path.resolve("public"),
 });
 
-const DIVE = parsePayload({
-  kind: "dive",
+// The tile over Dahab at the deepest zoom a map is fitted at.
+const TILE = parsePayload({
+  kind: "tile",
   theme: "light",
-  dive_sites: [{ latitude: 28.5721, longitude: 34.5372 }],
-  entry_latitude: null,
-  entry_longitude: null,
-  exit_latitude: 28.5689,
-  exit_longitude: 34.5355,
+  z: 9,
+  x: 305,
+  y: 215,
 });
 
 let close: (() => void) | undefined;
@@ -122,55 +127,66 @@ describe("the engine", () => {
     expect(maps.every((map) => map.released)).toBe(true);
   });
 
-  it("draws a 2048x1024 WebP of the payload's places, pins on top", async () => {
+  it("draws a 1024x1024 WebP of the tile, once, at its middle and its zoom", async () => {
     const { engine, drawn } = await engineWith();
-    const picture = await engine.draw(DIVE);
+    const tile = await engine.draw(TILE);
 
-    const { format, width, height } = await sharp(picture).metadata();
+    const { format, width, height } = await sharp(tile).metadata();
     expect({ format, width, height }).toEqual({
       format: "webp",
-      width: WIDTH,
-      height: HEIGHT,
+      width: 1024,
+      height: 1024,
     });
 
     const [map] = drawn();
-    expect(map.renders[0].zoom).toBe(9);
-    const [style] = map.loaded;
-    expect(style.layers[style.layers.length - 1].id).toBe("opendiving-pins");
-    const pins = style.sources[PINS_SOURCE] as {
-      data: { features: { properties: { variant: string } }[] };
-    };
-    expect(pins.data.features.map((pin) => pin.properties.variant)).toEqual([
-      "pin",
-      "fix",
+    expect(map.options).toEqual({ ratio: 2, mode: "tile" });
+    const middle = tileCenter(9, 305, 215);
+    expect(map.renders).toEqual([
+      {
+        zoom: 9,
+        center: [middle.longitude, middle.latitude],
+        width: 512,
+        height: 512,
+      },
     ]);
   });
 
-  // MapLibre Native keeps every tile a map has drawn, so a map is never kept
-  // past its picture.
-  it("draws every picture on a map of its own, and lets it go", async () => {
+  // Nothing of any record: the style as loaded, with no source or layer of
+  // this app's own.
+  it("draws the theme's style as it loaded, and nothing over it", async () => {
+    const { engine, maps, drawn } = await engineWith();
+    await engine.draw({ ...TILE, theme: "dark" });
+
+    const [, darkWarm] = maps;
+    const [style] = drawn()[0].loaded;
+    expect(style).toEqual(darkWarm.loaded[0]);
+  });
+
+  // MapLibre Native keeps every source tile a map has drawn, so a map is never
+  // kept past its tile.
+  it("draws every tile on a map of its own, and lets it go", async () => {
     const { engine, drawn } = await engineWith();
-    await engine.draw(DIVE);
-    await engine.draw(DIVE);
+    await engine.draw(TILE);
+    await engine.draw(TILE);
     expect(drawn()).toHaveLength(2);
     expect(drawn().every((map) => map.released)).toBe(true);
   });
 
   it("answers a failed render with an error, and lets its map go", async () => {
     const { engine, drawn } = await engineWith(["fail"]);
-    await expect(engine.draw(DIVE)).rejects.toThrow(/glyphs/);
+    await expect(engine.draw(TILE)).rejects.toThrow(/glyphs/);
     expect(drawn()[0].released).toBe(true);
-    expect((await engine.draw(DIVE)).length).toBeGreaterThan(0);
+    expect((await engine.draw(TILE)).length).toBeGreaterThan(0);
   });
 
   it("cancels and lets go a render that passes its deadline", async () => {
     const { engine, drawn } = await engineWith(["hang"], 50);
-    await expect(engine.draw(DIVE)).rejects.toThrow(/deadline/);
+    await expect(engine.draw(TILE)).rejects.toThrow(/deadline/);
     const [hung] = drawn();
     expect(hung.cancelled).toBe(1);
     expect(hung.released).toBe(true);
 
-    expect((await engine.draw(DIVE)).length).toBeGreaterThan(0);
+    expect((await engine.draw(TILE)).length).toBeGreaterThan(0);
   });
 
   it("is not ready while its basemap cannot load", async () => {
@@ -192,6 +208,6 @@ describe("the engine", () => {
     close = () => engine.close();
     await new Promise((done) => setTimeout(done, 20));
     expect(engine.isReady()).toBe(false);
-    await expect(engine.draw(DIVE)).rejects.toThrow(/502/);
+    await expect(engine.draw(TILE)).rejects.toThrow(/502/);
   });
 });

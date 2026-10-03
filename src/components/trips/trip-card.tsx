@@ -12,9 +12,7 @@ import {
   UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
-import { CardMapPicture } from "@/components/map/card-map-picture";
-import { mapLabel } from "@/components/map/map-label";
-import { placedLocations } from "@/lib/map-picture";
+import { MapBackdrop } from "@/components/map/map-backdrop";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripLocationNames } from "@/lib/trip-locations";
@@ -30,9 +28,9 @@ interface TripCardProps {
   isDeleting: boolean;
 }
 
-// One trip as a card, on /trips and in the dashboard's recent trips: the
-// server's picture of its places as the backdrop - the whole world for a trip
-// with no place on one yet, and the map's water where there is no picture - and
+// One trip as a card, on /trips and in the dashboard's recent trips: a map of
+// its places as the backdrop - the whole world for a trip with no place on one
+// yet, and the map's water where this instance draws no map - and
 // what its dives add up to, as far as three figures carry it. The trip's page
 // draws the same card the width of the window (`TripHero`).
 export function TripCard({
@@ -66,14 +64,10 @@ export function TripCard({
         </>
       }
       backdrop={(coveredBottom) => (
-        <CardMapPicture
-          kind="trip"
-          uuid={trip.uuid}
-          digest={trip.map_picture}
-          label={mapLabel(
-            placedLocations(locations),
-            `the places of ${trip.name}`,
-          )}
+        <MapBackdrop
+          locations={locations}
+          subject={`the places of ${trip.name}`}
+          showWhenEmpty
           coveredBottom={coveredBottom}
           water={
             <UnplacedBackdrop coveredBottom={coveredBottom} icon={Luggage} />

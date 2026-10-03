@@ -48,8 +48,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
 }));
-vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: () => null,
+vi.mock("@/components/map/map-backdrop", () => ({
+  MapBackdrop: () => null,
+  useMapTiles: () => true,
 }));
 
 // Rendered inside the hero; its own behaviour belongs to

@@ -38,7 +38,7 @@ describe("rendererSignature", () => {
     expect(await rendererSignature(same)).toBe(signature);
   });
 
-  // Each of these would draw a picture differently.
+  // Each of these would draw a tile differently.
   it("changes with the renderer's code, MapLibre Native and the basemap", async () => {
     const base = inputs();
     const signature = await rendererSignature(base);
@@ -76,11 +76,11 @@ describe("rendererSignature", () => {
   });
 
   // None of these moves a pixel, and the web merges several times a day.
-  it("stays the same for what draws nothing into a picture", async () => {
+  it("stays the same for what draws nothing into a tile", async () => {
     const base = inputs();
     const signature = await rendererSignature(base);
     for (const env of [
-      // The credit, drawn by the web beside the picture.
+      // The credit, drawn by the web beside the tiles.
       { SITE_URL: "https://dives.example.com", MAP_ATTRIBUTION: "© Somebody" },
       // Where the instance lives, which the vendored pair draws nothing from.
       { SITE_URL: "https://other.example.com" },

@@ -31,7 +31,7 @@ function answers(body: unknown, { ok = true, status = 200 } = {}) {
   });
 }
 
-const NONE = { projectOperated: false, joinLinks: false, mapPictures: false };
+const NONE = { projectOperated: false, joinLinks: false, mapTiles: false };
 
 describe("readLegalPageConfig", () => {
   it("is true for each field only where the API said so", async () => {
@@ -39,26 +39,26 @@ describe("readLegalPageConfig", () => {
       registration_mode: "invite",
       project_operated: true,
       join_links: true,
-      map_pictures: true,
+      map_tiles: true,
     });
     await expect(readLegalPageConfig()).resolves.toEqual({
       projectOperated: true,
       joinLinks: true,
-      mapPictures: true,
+      mapTiles: true,
     });
 
-    answers({ project_operated: false, join_links: true, map_pictures: false });
+    answers({ project_operated: false, join_links: true, map_tiles: false });
     await expect(readLegalPageConfig()).resolves.toEqual({
       projectOperated: false,
       joinLinks: true,
-      mapPictures: false,
+      mapTiles: false,
     });
 
-    answers({ project_operated: false, join_links: false, map_pictures: true });
+    answers({ project_operated: false, join_links: false, map_tiles: true });
     await expect(readLegalPageConfig()).resolves.toEqual({
       projectOperated: false,
       joinLinks: false,
-      mapPictures: true,
+      mapTiles: true,
     });
   });
 
@@ -71,13 +71,13 @@ describe("readLegalPageConfig", () => {
         registration_mode: "open",
         project_operated: false,
         join_links: false,
-        map_pictures: false,
+        map_tiles: false,
       },
     ],
     ["the fields are absent", { registration_mode: "open" }],
     [
       "the fields are strings",
-      { project_operated: "true", join_links: "true", map_pictures: "true" },
+      { project_operated: "true", join_links: "true", map_tiles: "true" },
     ],
   ])("is false for every field when %s", async (_label, body) => {
     answers(body);

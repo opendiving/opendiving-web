@@ -3,10 +3,11 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RecentTripsCard } from "./recent-trips-card";
 import type { Trip } from "@/lib/api/trips";
+import { giveFramesASize } from "@/test/frame-size";
 import { reveal } from "@/test/intersection";
 
-// Each row names its own controls, shows the server's picture of every trip -
-// the world for one with no place on it - and deletes where it stands. Two trips
+// Each row names its own controls, shows a map of every trip - the world for
+// one with no place on it - and deletes where it stands. Two trips
 // on purpose: a control named from a constant passes a one-row test exactly as
 // well as one named from the trip.
 
@@ -30,25 +31,33 @@ vi.mock("@/components/ui/use-toast", () => {
 
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "dark" }) }));
 
-// The pictures' bytes; what matters here is which rows ask for one, of what.
-const { getMapPicture } = vi.hoisted(() => ({ getMapPicture: vi.fn() }));
-vi.mock("@/lib/api/map-pictures", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/api/map-pictures")>()),
-  mapPicturesAPI: { getMapPicture },
+vi.mock("@/hooks/useInstanceConfig", () => ({
+  useInstanceConfig: () => ({ config: { map_tiles: true }, isLoading: false }),
 }));
 
-// jsdom implements neither.
+// The tiles' bytes; what matters here is which rows ask for them, of what.
+const { getMapTile } = vi.hoisted(() => ({ getMapTile: vi.fn() }));
+vi.mock("@/lib/api/map-tiles", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/map-tiles")>()),
+  mapTilesAPI: { getMapTile },
+}));
+
+// jsdom implements neither, and lays nothing out: each row's map is given a
+// card's frame.
 const originalCreate = URL.createObjectURL;
 const originalRevoke = URL.revokeObjectURL;
+let restoreSize: () => void;
 beforeEach(() => {
   let created = 0;
   URL.createObjectURL = vi.fn(() => `blob:${++created}`);
   URL.revokeObjectURL = vi.fn();
-  getMapPicture.mockResolvedValue(new Blob(["webp"]));
+  restoreSize = giveFramesASize({ width: 400, height: 236 });
+  getMapTile.mockResolvedValue(new Blob(["webp"]));
 });
 afterEach(() => {
   URL.createObjectURL = originalCreate;
   URL.revokeObjectURL = originalRevoke;
+  restoreSize();
 });
 
 // The form is covered where it lives, and its pickers would make requests of
@@ -78,7 +87,6 @@ const trip = (overrides: Partial<Trip>): Trip => ({
 const MAPPED = trip({
   uuid: "trip-1",
   name: "Dahab 2026",
-  map_picture: "digest-dahab",
   parts: [
     {
       location: { name: "Dahab, Egypt", latitude: 28.5, longitude: 34.5 },
@@ -88,12 +96,11 @@ const MAPPED = trip({
   ],
 });
 
-// A place typed in by hand has a name and no position, so its card's picture
-// is of the whole world rather than the place.
+// A place typed in by hand has a name and no position, so its card's map is
+// of the whole world rather than the place.
 const TYPED = trip({
   uuid: "trip-2",
   name: "Koh Tao 2025",
-  map_picture: "digest-world",
   parts: [{ location: { name: "Koh Tao" } }],
 });
 
@@ -115,7 +122,7 @@ beforeEach(() => {
 });
 
 describe("RecentTripsCard", () => {
-  it("shows a picture of every trip, the world for one with no place on it", async () => {
+  it("shows a map of every trip, the world for one with no place on it", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
     await act(async () => reveal());
@@ -130,11 +137,13 @@ describe("RecentTripsCard", () => {
         name: "Map of the world, awaiting the places of Koh Tao 2025",
       }),
     ).toBeInTheDocument();
-    // In the page's theme, under the digest each trip names.
-    expect(getMapPicture.mock.calls.map(([url]) => url)).toEqual([
-      "/trip/trip-1/map-picture?theme=dark&v=digest-dahab",
-      "/trip/trip-2/map-picture?theme=dark&v=digest-world",
-    ]);
+    // In the page's theme: the place at the zoom a lone place opens at, and
+    // the world's one tile.
+    const urls = getMapTile.mock.calls.map(([url]) => url as string);
+    expect(urls).toContain("/map-tiles/dark/0/0/0");
+    expect(
+      urls.filter((url) => url.startsWith("/map-tiles/dark/9/")),
+    ).not.toEqual([]);
   });
 
   it("counts a trip's dives, dive sites and species", async () => {
@@ -225,11 +234,12 @@ describe("RecentTripsCard", () => {
   });
 
   // A card off screen asks for nothing, and /trips holds every trip.
-  it("waits for a card to near the screen before asking for its picture", async () => {
+  it("waits for a card to near the screen before drawing its map", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
 
-    expect(getMapPicture).not.toHaveBeenCalled();
+    expect(getMapTile).not.toHaveBeenCalled();
+    expect(screen.queryAllByRole("img")).toHaveLength(0);
     await act(async () => reveal());
     expect(await screen.findAllByRole("img")).toHaveLength(2);
   });

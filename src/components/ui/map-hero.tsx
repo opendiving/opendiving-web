@@ -9,7 +9,10 @@ import {
 import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { BackLink } from "@/components/ui/page-header";
 import { MapCredit } from "@/components/map/map-credit";
-import type { LocationsMapProps } from "@/components/map/locations-map";
+import {
+  useMapTiles,
+  type MapBackdropProps,
+} from "@/components/map/map-backdrop";
 import { cn } from "@/lib/utils";
 
 // The band's frame, shared with its skeleton so the page lands without moving:
@@ -97,20 +100,11 @@ function HeroBackLink({
   );
 }
 
-// What every hero's map is, beside its places: a picture across the whole band,
+// What every hero's map is, beside its places: a canvas centred in the band,
 // faded at its foot and at its sides - which a window wider than half the
-// picture starts to show - fitted between the top row and the details, and
+// canvas starts to show - fitted between the top row and the details, and
 // leaving its credit to the hero's details.
-type HeroMap = Pick<
-  LocationsMapProps,
-  | "className"
-  | "backdrop"
-  | "snapshot"
-  | "sideFade"
-  | "creditElsewhere"
-  | "coveredTop"
-  | "coveredBottom"
->;
+type HeroMap = Pick<MapBackdropProps, "hero" | "coveredTop" | "coveredBottom">;
 
 export interface MapHeroFigure {
   label: string;
@@ -118,9 +112,9 @@ export interface MapHeroFigure {
 }
 
 interface MapHeroProps extends Known {
-  // What fills the band behind the details: a `LocationsMap` spreading `map`,
-  // or for a record with no place on one, something told how many pixels of
-  // its top the top row covers and of its foot the details do.
+  // What fills the band behind the details: a `MapBackdrop` spreading `map`,
+  // with water told how many pixels of its top the top row covers and of its
+  // foot the details do.
   backdrop: (frame: {
     map: HeroMap;
     covered: { top: number; bottom: number };
@@ -133,8 +127,9 @@ interface MapHeroProps extends Known {
   // One line under the title, as the record's card has under its name.
   subtitle?: ReactNode;
   figures: MapHeroFigure[];
-  // Whether the backdrop is the map, whose credit `map` leaves to the hero's
-  // details' corner - unset for a record drawn without one.
+  // Whether the backdrop is a map where this instance draws them, whose credit
+  // `map` leaves to the hero's details' corner - unset for a record drawn
+  // without one.
   mapCredit?: boolean;
 }
 
@@ -154,6 +149,10 @@ export function MapHero({
   figures,
   mapCredit,
 }: MapHeroProps) {
+  // A map only where this instance draws its tiles: anywhere else every
+  // backdrop is water, and there is nothing to credit.
+  const tiles = useMapTiles();
+  const credited = mapCredit && tiles === true;
   // How much of the map lies under the details, so its places centre between
   // the top row and the name - read as the ref attaches and followed after
   // that, as a card does it.
@@ -189,15 +188,11 @@ export function MapHero({
         "bg-background [--backdrop-fade:hsl(var(--background))]",
       )}
     >
-      {/* Out of flow, so the lazy map's placeholder takes no room of its own. */}
+      {/* Out of flow, under the top row and the details. */}
       <div className="absolute inset-0">
         {backdrop({
           map: {
-            className: "h-full rounded-none border-0 sm:h-full",
-            backdrop: true,
-            snapshot: true,
-            sideFade: true,
-            creditElsewhere: true,
+            hero: true,
             coveredTop: topRowBottom,
             coveredBottom: detailsHeight,
           },
@@ -227,7 +222,7 @@ export function MapHero({
         >
           {/* A chip as it is over a card's map, so without the details'
               glow. */}
-          {mapCredit && (
+          {credited && (
             <MapCredit className="ml-auto rounded-sm opacity-75 [text-shadow:none]" />
           )}
         </HeroDetails>

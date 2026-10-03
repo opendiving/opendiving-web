@@ -3,11 +3,12 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveCard } from "./dive-card";
 import type { Dive } from "@/lib/api/dives";
+import { giveFramesASize } from "@/test/frame-size";
 import { reveal } from "@/test/intersection";
 
-// A card shows the server's picture of a dive that names one and open water for
-// one without, the dive's depth outline across the foot of either, lays out its
-// figures under their titles, and offers Delete only where its list can run one.
+// A card shows a map of a placed dive and open water for one without, the
+// dive's depth outline across the foot of either, lays out its figures under
+// their titles, and offers Delete only where its list can run one.
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
@@ -26,26 +27,39 @@ vi.mock("next-themes", () => ({
   useTheme: () => ({ resolvedTheme: "light" }),
 }));
 
-// The picture's bytes; what matters here is which cards ask for one, and what
-// a card is called.
-const { getMapPicture } = vi.hoisted(() => ({ getMapPicture: vi.fn() }));
-vi.mock("@/lib/api/map-pictures", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/api/map-pictures")>()),
-  mapPicturesAPI: { getMapPicture },
+const instance = vi.hoisted(() => ({ mapTiles: true }));
+vi.mock("@/hooks/useInstanceConfig", () => ({
+  useInstanceConfig: () => ({
+    config: { map_tiles: instance.mapTiles },
+    isLoading: false,
+  }),
 }));
 
-// jsdom implements neither.
+// The tiles' bytes; what matters here is which cards ask for them, and what a
+// card is called.
+const { getMapTile } = vi.hoisted(() => ({ getMapTile: vi.fn() }));
+vi.mock("@/lib/api/map-tiles", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/map-tiles")>()),
+  mapTilesAPI: { getMapTile },
+}));
+
+// jsdom implements neither, and lays nothing out: each card's map is given a
+// card's frame.
 const originalCreate = URL.createObjectURL;
 const originalRevoke = URL.revokeObjectURL;
+let restoreSize: () => void;
 beforeEach(() => {
-  URL.createObjectURL = vi.fn(() => "blob:picture");
+  instance.mapTiles = true;
+  URL.createObjectURL = vi.fn(() => "blob:tile");
   URL.revokeObjectURL = vi.fn();
-  getMapPicture.mockReset();
-  getMapPicture.mockResolvedValue(new Blob(["webp"]));
+  restoreSize = giveFramesASize({ width: 400, height: 236 });
+  getMapTile.mockReset();
+  getMapTile.mockResolvedValue(new Blob(["webp"]));
 });
 afterEach(() => {
   URL.createObjectURL = originalCreate;
   URL.revokeObjectURL = originalRevoke;
+  restoreSize();
 });
 
 vi.mock("@/components/dives/dive-profile-silhouette", () => ({
@@ -83,9 +97,8 @@ const water = (item: HTMLElement) =>
   item.querySelector(".bg-\\[var\\(--map-water\\)\\] svg");
 
 describe("DiveCard", () => {
-  // Named from the dive's own sites and fixes: the picture's request carried
-  // positions alone.
-  it("shows the server's picture of the dive, named by its site and its fixes", async () => {
+  // Named from the dive's own sites and fixes: its tiles carry nothing of it.
+  it("shows a map of the dive, named by its site and its fixes", async () => {
     const item = card({
       dive: dive({
         dive_sites: [
@@ -98,16 +111,17 @@ describe("DiveCard", () => {
         ],
         exit_latitude: 28.58,
         exit_longitude: 34.55,
-        map_picture: "digest-placed",
       }),
     });
 
     const map = await within(item).findByRole("img", {
       name: "Map of Blue Hole; Exit",
     });
-    expect(map.querySelector("img")).toHaveAttribute("src", "blob:picture");
-    expect(getMapPicture).toHaveBeenCalledExactlyOnceWith(
-      "/dive/dive-1/map-picture?theme=light&v=digest-placed",
+    expect(map.querySelector("img")).toHaveAttribute("src", "blob:tile");
+    expect(map.querySelectorAll("[data-marker]")).toHaveLength(2);
+    // In the page's theme, at the zoom a dive this small opens at.
+    expect(getMapTile).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/map-tiles\/light\/9\/\d+\/\d+$/),
       expect.any(AbortSignal),
     );
   });
@@ -121,8 +135,8 @@ describe("DiveCard", () => {
     expect(water(item)).toBeInTheDocument();
   });
 
-  // No renderer, or an API from before the pictures: the record names none.
-  it("draws water, and asks for nothing, for a placed dive with no picture", () => {
+  it("draws water, and asks for nothing, where this instance draws no map", () => {
+    instance.mapTiles = false;
     const item = card({
       dive: dive({
         dive_sites: [
@@ -133,17 +147,16 @@ describe("DiveCard", () => {
             longitude: 34.54,
           },
         ],
-        map_picture: null,
       }),
     });
 
     expect(within(item).queryByRole("img")).not.toBeInTheDocument();
     expect(water(item)).toBeInTheDocument();
-    expect(getMapPicture).not.toHaveBeenCalled();
+    expect(getMapTile).not.toHaveBeenCalled();
   });
 
-  it("draws water where the picture cannot be had", async () => {
-    getMapPicture.mockRejectedValue(
+  it("draws water where a tile cannot be had", async () => {
+    getMapTile.mockRejectedValue(
       Object.assign(new Error("Service Unavailable"), {
         response: { status: 503 },
       }),
@@ -155,14 +168,14 @@ describe("DiveCard", () => {
             uuid: "site-1",
             name: "Blue Hole",
             latitude: 28.57,
-            longitude: 34.54,
+            // Somewhere this page holds no tile of: the tests share it.
+            longitude: 100.54,
           },
         ],
-        map_picture: "digest-unavailable",
       }),
     });
 
-    await waitFor(() => expect(getMapPicture).toHaveBeenCalledOnce());
+    await waitFor(() => expect(getMapTile).toHaveBeenCalled());
     await act(async () => {});
     expect(within(item).queryByRole("img")).not.toBeInTheDocument();
     expect(water(item)).toBeInTheDocument();

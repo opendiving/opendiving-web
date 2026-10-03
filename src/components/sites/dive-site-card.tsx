@@ -13,9 +13,7 @@ import {
   UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
-import { CardMapPicture } from "@/components/map/card-map-picture";
-import { mapLabel } from "@/components/map/map-label";
-import { placedLocations } from "@/lib/map-picture";
+import { MapBackdrop } from "@/components/map/map-backdrop";
 import {
   DiveSiteFacts,
   diveSiteFacts,
@@ -30,8 +28,8 @@ interface DiveSiteCardProps {
   isDeleting: boolean;
 }
 
-// One dive site as a card, on /sites: the server's picture of its pin as the
-// backdrop - the map's water where there is none, as a dive card draws it - its
+// One dive site as a card, on /sites: a map of its pin as the backdrop - the
+// map's water where it has none, as a dive card draws it - its
 // line of facts, and what the diver's own dives there add up to.
 export function DiveSiteCard({
   site,
@@ -69,23 +67,17 @@ export function DiveSiteCard({
         </>
       }
       backdrop={(coveredBottom) => (
-        <CardMapPicture
-          kind="dive-site"
-          uuid={site.uuid}
-          digest={site.map_picture}
-          // The pin alone, as the server draws it and the site's page maps it:
-          // the locality's centre is the town the geocoder resolved, not the
-          // site.
-          label={mapLabel(
-            placedLocations([
-              {
-                name: site.name,
-                latitude: site.latitude,
-                longitude: site.longitude,
-              },
-            ]),
-            `the location of ${site.name}`,
-          )}
+        <MapBackdrop
+          // The pin alone, as the site's page maps it: the locality's centre is
+          // the town the geocoder resolved, not the site.
+          locations={[
+            {
+              name: site.name,
+              latitude: site.latitude,
+              longitude: site.longitude,
+            },
+          ]}
+          subject={`the location of ${site.name}`}
           coveredBottom={coveredBottom}
           water={
             <UnplacedBackdrop

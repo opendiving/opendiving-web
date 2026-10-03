@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import { Luggage } from "lucide-react";
 import { Trip } from "@/lib/api/trips";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
+import { MapBackdrop } from "@/components/map/map-backdrop";
+import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { MapHero } from "@/components/ui/map-hero";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
@@ -23,9 +24,6 @@ export function TripHero({
   actions?: ReactNode;
 }) {
   const locations = tripPartLocations(trip.parts);
-  const mappedLocations = locations.filter(
-    (location) => location.latitude != null && location.longitude != null,
-  );
   // In the card's format, so a trip reads the same on its page as in every
   // list. Only when some part of the trip carries a date; deliberately no fall
   // back to the trip's creation date.
@@ -54,13 +52,20 @@ export function TripHero({
       figures={tripFigures(trip, units)}
       mapCredit
       // The whole world for a trip with no place on the map yet, as its card
-      // shows.
-      backdrop={({ map }) => (
-        <LocationsMap
-          locations={mappedLocations}
+      // shows, and the card's water where this instance draws no map.
+      backdrop={({ map, covered }) => (
+        <MapBackdrop
+          locations={locations}
           showWhenEmpty
           subject={`the places of ${trip.name}`}
           {...map}
+          water={
+            <UnplacedBackdrop
+              coveredBottom={covered.bottom}
+              coveredTop={covered.top}
+              icon={Luggage}
+            />
+          }
         />
       )}
     />

@@ -1,5 +1,6 @@
-// Everything a picture fetches - tiles, glyphs, sprites, a remote style - and the
-// bounded cache that keeps a second picture of the same coast off the network.
+// Everything a render fetches - source tiles, glyphs, sprites, a remote style -
+// and the bounded cache that keeps the next tile of the same coast off the
+// network.
 //
 // Requests to the basemap carry the headers the instance's own pages send when a
 // browser fetches the same tiles - `Origin` and `Referer` naming its `SITE_URL` -
@@ -12,9 +13,9 @@ import path from "node:path";
 export const USER_AGENT =
   "OpenDiving-MapRenderer (+https://github.com/opendiving/opendiving-web)";
 
-// What a picture of one place costs, a few times over: the vendored basemap's
-// glyph ranges, sprite and underlay are shared by every picture, and the vector
-// tiles of a place are a few hundred kilobytes.
+// What a coast's worth of tiles costs, a few times over: the vendored basemap's
+// glyph ranges, sprite and underlay are shared by every tile, and a vector tile
+// is a few hundred kilobytes at most.
 export const CACHE_BYTES = 32 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 15_000;
 // Larger than any tile, glyph range or sprite sheet; a provider sending more is
@@ -23,7 +24,7 @@ const MAX_RESOURCE_BYTES = 16 * 1024 * 1024;
 
 /**
  * A resource that could not be had. Fails the whole render, which is the point:
- * a picture missing its tiles would be stored and shown for weeks.
+ * a tile drawn without its source tile would be stored and shown for weeks.
  */
 export class ResourceError extends Error {}
 

@@ -1,25 +1,18 @@
-// What a card's map picture and the maps the browser draws have to agree on: the
-// picture's size, how a place becomes an extent, the band of a frame its pins are
-// kept to, and the smallest frame a card gives its map.
-//
-// Imported by the web's maps and by the map renderer (`src/map-renderer/`), which
-// runs in Node - so nothing here may import anything that needs a browser, or
-// anything that needs a server.
+// What every map this app draws has to agree on: how a place becomes an extent,
+// the band of a frame its pins are kept to, and the canvas a page head's map is
+// drawn across.
 
 import type { LatLonBounds } from "@/lib/basemap";
 
-// The size every picture is drawn at, in CSS pixels: wider and taller than any
-// frame a trip card gives the map - the widest is /trips' single column just
-// below `lg`, a little under 980 - so a frame only ever shows a part of it, and
-// a resize moves the picture rather than asking for a new one.
-export const SNAPSHOT_WIDTH = 1024;
-export const SNAPSHOT_HEIGHT = 512;
+// How wide a detail page's hero draws its map, in CSS pixels: a canvas this wide
+// centred in the frame, which a window wider than it shows dissolving into the
+// page at its sides, and a narrower one shows the middle of.
+export const HERO_CANVAS_WIDTH = 1024;
 
-// How far in from each side a picture dissolves into the page where a frame is
-// wider than it - a detail page's hero on a desktop window. A quarter of the
-// picture: wide enough that the eye finds no edge, and leaves the middle half
-// for the pins.
-export const SIDE_FADE_WIDTH = SNAPSHOT_WIDTH / 4;
+// How far in from each side a hero's canvas dissolves into the page. A quarter
+// of it: wide enough that the eye finds no edge, and leaves the middle half for
+// the pins.
+export const SIDE_FADE_WIDTH = HERO_CANVAS_WIDTH / 4;
 
 // Breathing room between the outermost place and the edge of the frame, so a
 // pin never sits on the border where half of its context is cropped away.
@@ -27,8 +20,8 @@ export const FIT_PADDING = 24;
 
 // Where the places have to land, as padding from a frame's top and bottom:
 // clear of whatever the caller covers the foot with, and of a backdrop's credit
-// over the top edge. Never so small that nothing fits: MapLibre then refuses
-// the fit and leaves the camera wherever it was.
+// over the top edge. Never so small that nothing fits: a fit then has no room
+// and gives up.
 export function bandIn(
   height: number,
   creditBottom: number,
@@ -42,12 +35,33 @@ export function bandIn(
 }
 
 /**
+ * The part of a frame its map is drawn across, as an offset and a width, and
+ * how far in from the frame's sides its places are kept.
+ *
+ * A card's map is the whole frame, its places `FIT_PADDING` in. A hero's is a
+ * canvas `HERO_CANVAS_WIDTH` wide centred in the frame - wider than a phone's
+ * frame, which shows its middle, and narrower than a desktop window's - with
+ * its places kept out of the side fades as well as in from the frame's edges.
+ */
+export function mapCanvas(
+  frameWidth: number,
+  hero: boolean,
+): { left: number; width: number; inset: number } {
+  if (!hero) return { left: 0, width: frameWidth, inset: FIT_PADDING };
+  const left = (frameWidth - HERO_CANVAS_WIDTH) / 2;
+  return {
+    left,
+    width: HERO_CANVAS_WIDTH,
+    inset: Math.max(FIT_PADDING, left + SIDE_FADE_WIDTH),
+  };
+}
+
+/**
  * As much of a place as a map needs: its position, its footprint where it has
  * one, and a name for a pointer and a screen reader. Loose enough to take a trip
  * location - both what the API returns and what the form holds while it is
  * being edited - as well as a dive site, which carries the same fields under the
- * same names. The name is optional because the map renderer draws no text for a
- * place and is never sent one.
+ * same names.
  */
 export interface MappableLocation {
   name?: string;
@@ -129,40 +143,3 @@ export function placedLocations(
   }
   return placed;
 }
-
-/**
- * A frame a card gives its map, in CSS pixels, and the band in it - as padding
- * from its top and bottom, `bandIn`'s shape - that the pins are kept to.
- */
-export interface CardFrame {
-  width: number;
-  height: number;
-  band: { top: number; bottom: number };
-}
-
-// The smallest frame each kind of card gives its map, at a 320 px viewport,
-// which is what a picture is fitted for: one picture per record and theme has to
-// keep every pin inside the band of every card that shows it, and a wider card
-// only shows more of the map around the same middle. The narrowest is a list
-// inside a card - the dashboard's, a detail page's - and its width and band are
-// measured, not derived: `card-frames.browser.test.tsx` renders each card where
-// every list puts it and fails when one is narrower, or its band shorter, than
-// these. The height is a card whose lines do not wrap, the 238 px
-// `BackdropCardSkeleton` holds less its border, and it decides only how far out
-// a place's footprint opens.
-//
-// The band sits under the credit, 24 px below its 20, and above the details. A
-// dive is fitted for the band an outlined dive card leaves, which its depth
-// outline clamps to the `FIT_PADDING` floor: fitting every dive for it keeps one
-// picture per dive, and a dive's places nearly always open at `MAX_FIT_ZOOM` in
-// any band anyway. A trip card carries no outline.
-export const DIVE_CARD_FRAME: CardFrame = {
-  width: 252,
-  height: 236,
-  band: { top: 44, bottom: 168 },
-};
-export const TRIP_CARD_FRAME: CardFrame = {
-  width: 252,
-  height: 236,
-  band: { top: 44, bottom: 128 },
-};

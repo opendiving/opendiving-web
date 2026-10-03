@@ -2,7 +2,7 @@
 //
 //   GET  /healthz    200 while it can render, 503 otherwise
 //   GET  /signature  200 {"signature": "<64 lowercase hex>"}
-//   POST /render     200 image/webp, 2048x1024, with X-Map-Signature;
+//   POST /render     200 image/webp, a 1024x1024 tile, with X-Map-Signature;
 //                    400 for a body of the wrong shape; 503 when the queue is
 //                    full, the render passes its deadline, or it cannot render
 //
@@ -11,22 +11,23 @@
 
 import { createServer, type IncomingMessage, type Server } from "node:http";
 
-import { parsePayload, PayloadError, type RenderPayload } from "./payload";
+import { parsePayload, PayloadError, type TilePayload } from "./payload";
 
-// Room for several pages and browsers at once: a first view asks for at most
-// ten pictures, and a page keeps two requests in flight. Counted with the one
-// being drawn, so the last place in a full queue waits for 23 renders before
-// its own - which is what the API's deadline is sized against.
+// The most draws the API's default deadline, `MAP_RENDERER_TIMEOUT`'s 90 s,
+// covers at the slowest cold tile `scripts/measure-map-renderer.mjs` measured
+// on the flagship's plan - counted with the one being drawn, so the last place
+// in a full queue is answered inside the deadline by construction. A first
+// view asking for more is answered 503 past it, which shows water.
 export const QUEUE_LIMIT = 24;
 
-// Many times any real body, which is a few coordinates per place.
-const MAX_BODY_BYTES = 256 * 1024;
+// Many times a tile's body, which is five short keys.
+const MAX_BODY_BYTES = 4 * 1024;
 
 export interface Renderer {
-  /** Whether a picture could be drawn now. */
+  /** Whether a tile could be drawn now. */
   isHealthy(): boolean;
-  /** One picture, or a thrown error. */
-  draw(payload: RenderPayload): Promise<Buffer>;
+  /** One tile, or a thrown error. */
+  draw(payload: TilePayload): Promise<Buffer>;
 }
 
 export interface RendererServerOptions {
@@ -62,7 +63,7 @@ export function createRendererServer({
   queueLimit = QUEUE_LIMIT,
   log = () => {},
 }: RendererServerOptions): Server {
-  // Draws are taken strictly in turn: MapLibre Native renders one picture at a
+  // Draws are taken strictly in turn: MapLibre Native renders one tile at a
   // time per map, and on half a CPU a second at once would only make both late.
   let admitted = 0;
   let turn: Promise<unknown> = Promise.resolve();
@@ -110,7 +111,7 @@ export function createRendererServer({
       return fail(400, "The body must be application/json");
     }
 
-    let payload: RenderPayload;
+    let payload: TilePayload;
     try {
       payload = parsePayload(JSON.parse(await readBody(request)));
     } catch (error) {
@@ -137,27 +138,28 @@ export function createRendererServer({
 
     admitted += 1;
     const queued = performance.now();
+    const tile = `${payload.theme} ${payload.z}/${payload.x}/${payload.y}`;
     const drawn = turn.then(async () => {
       if (gone) return null;
       const started = performance.now();
-      const picture = await renderer.draw(payload);
+      const image = await renderer.draw(payload);
       log(
-        `drew a ${payload.kind} (${payload.theme}) in ` +
+        `drew a tile, ${tile}, in ` +
           `${Math.round(performance.now() - started)} ms, after ` +
           `${Math.round(started - queued)} ms in the queue`,
       );
-      return picture;
+      return image;
     });
     turn = drawn.catch(() => {});
 
     try {
-      const picture = await drawn;
-      if (picture) {
-        send(200, picture, "image/webp", { "X-Map-Signature": signature });
+      const image = await drawn;
+      if (image) {
+        send(200, image, "image/webp", { "X-Map-Signature": signature });
       }
     } catch (error) {
-      log(`Could not draw a ${payload.kind}: ${(error as Error).message}`);
-      fail(503, "The picture could not be drawn");
+      log(`Could not draw the tile ${tile}: ${(error as Error).message}`);
+      fail(503, "The tile could not be drawn");
     } finally {
       admitted -= 1;
     }
