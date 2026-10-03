@@ -2,7 +2,6 @@ import { GraduationCap } from "lucide-react";
 import { DiveSiteSummary } from "@/lib/api/dives";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { LINE_ICON } from "@/components/ui/icon-fact";
-import { cn } from "@/lib/utils";
 
 export interface DiveTitleProps {
   diveNumber: number;
@@ -34,10 +33,7 @@ export function DiveTitle({ diveNumber, sites, course }: DiveTitleProps) {
       {course && (
         <>
           {" "}
-          <GraduationCap
-            aria-hidden
-            className={cn(LINE_ICON, "text-muted-foreground")}
-          />
+          <GraduationCap aria-hidden className={LINE_ICON} />
           <span className="sr-only">(training dive)</span>
         </>
       )}
