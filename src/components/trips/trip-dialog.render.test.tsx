@@ -10,7 +10,7 @@ import type { Trip } from "@/lib/api/trips";
 // than something that appears once a place has been picked.
 
 vi.mock("@/lib/api/trips", () => ({
-  tripsAPI: { createTrip: vi.fn(), updateTrip: vi.fn() },
+  tripsAPI: { createTrip: vi.fn(), updateTrip: vi.fn(), getTrip: vi.fn() },
 }));
 
 vi.mock("@/lib/api/contacts", async (importOriginal) => ({
@@ -29,6 +29,7 @@ const { contactsAPI } = await import("@/lib/api/contacts");
 const { peopleAPI, fetchAllPeople } = await import("@/lib/api/people");
 const updateTrip = vi.mocked(tripsAPI.updateTrip);
 const createTrip = vi.mocked(tripsAPI.createTrip);
+const getTrip = vi.mocked(tripsAPI.getTrip);
 
 const SAM = {
   uuid: "person-sam",
@@ -295,5 +296,73 @@ describe("TripDialog", () => {
     expect(
       updateTrip.mock.calls[0][1].parts?.map((part) => part.accommodation_uuid),
     ).toEqual([null, "contact-coral"]);
+  });
+
+  // A PATCH answers with a message, and what the trip's card draws - the digest
+  // naming its map picture - changes with its places on the server's say. So
+  // the trip the caller is handed is the one the server now has.
+  describe("after an edit", () => {
+    const EDITED: Trip = {
+      uuid: "trip-1",
+      name: "Egypt, spring",
+      parts: [],
+      notes: "",
+      user_uuid: "user-1",
+      created_at: "2026-04-01T09:00:00Z",
+      dive_count: 0,
+      dive_site_count: 0,
+      species_count: 0,
+      max_depth: null,
+      map_picture: "digest-before",
+    };
+
+    const saveRenamed = async () => {
+      const onSaved = vi.fn();
+      render(
+        <TripDialog
+          open
+          onOpenChange={() => {}}
+          trip={EDITED}
+          onSaved={onSaved}
+        />,
+      );
+      await userEvent.clear(screen.getByLabelText("Name *"));
+      await userEvent.type(screen.getByLabelText("Name *"), "Egypt, April");
+      await userEvent.click(screen.getByRole("button", { name: /Save/ }));
+      await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+      return onSaved.mock.calls[0][0] as Trip;
+    };
+
+    it("hands the caller the trip read back, with the picture it now names", async () => {
+      updateTrip.mockResolvedValue({ message: "Trip updated" });
+      getTrip.mockResolvedValue({
+        ...EDITED,
+        name: "Egypt, April",
+        map_picture: "digest-after",
+      });
+
+      const saved = await saveRenamed();
+
+      expect(getTrip).toHaveBeenCalledWith("trip-1");
+      expect(saved).toMatchObject({
+        name: "Egypt, April",
+        map_picture: "digest-after",
+      });
+    });
+
+    // The save went through, so the dialog does not say it failed; the old
+    // picture may show the old places, so the card shows water until a read.
+    it("still hands the caller the saved trip when it cannot be read back", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      updateTrip.mockResolvedValue({ message: "Trip updated" });
+      getTrip.mockRejectedValue(new Error("Network Error"));
+
+      const saved = await saveRenamed();
+
+      expect(saved).toMatchObject({ name: "Egypt, April", map_picture: null });
+      expect(
+        screen.queryByText(/Failed to update trip/),
+      ).not.toBeInTheDocument();
+    });
   });
 });

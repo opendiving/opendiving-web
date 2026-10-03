@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Luggage } from "lucide-react";
 import { Trip } from "@/lib/api/trips";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteMenuItem } from "@/components/ui/item-actions-menu";
@@ -8,9 +9,12 @@ import {
   BACKDROP_CARD_LINK,
   BackdropCard,
   BackdropCardFigures,
+  UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
+import { CardMapPicture } from "@/components/map/card-map-picture";
+import { mapLabel } from "@/components/map/map-label";
+import { placedLocations } from "@/lib/map-picture";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripLocationNames } from "@/lib/trip-locations";
@@ -26,10 +30,11 @@ interface TripCardProps {
   isDeleting: boolean;
 }
 
-// One trip as a card, on /trips and in the dashboard's recent trips: its map as
-// the backdrop - the whole world for a trip with no place on one yet - and what
-// its dives add up to, as far as three figures carry it. The trip's page draws
-// the same card the width of the window (`TripHero`).
+// One trip as a card, on /trips and in the dashboard's recent trips: the
+// server's picture of its places as the backdrop - the whole world for a trip
+// with no place on one yet, and the map's water where there is no picture - and
+// what its dives add up to, as far as three figures carry it. The trip's page
+// draws the same card the width of the window (`TripHero`).
 export function TripCard({
   trip,
   onEdit,
@@ -37,9 +42,6 @@ export function TripCard({
   isDeleting,
 }: TripCardProps) {
   const locations = tripPartLocations(trip.parts);
-  const mappedLocations = locations.filter(
-    (location) => location.latitude != null && location.longitude != null,
-  );
   // Only when some part of the trip carries a date; deliberately no fall back
   // to the trip's creation date.
   const dates = formatTripSpan(trip.parts);
@@ -64,16 +66,18 @@ export function TripCard({
         </>
       }
       backdrop={(coveredBottom) => (
-        // The whole world for a trip with no place on the map yet, so every
-        // card in a list has a map and no two layouts sit side by side.
-        <LocationsMap
-          locations={mappedLocations}
-          showWhenEmpty
-          subject={`the places of ${trip.name}`}
-          className="h-full rounded-[inherit] border-0 sm:h-full"
-          backdrop
+        <CardMapPicture
+          kind="trip"
+          uuid={trip.uuid}
+          digest={trip.map_picture}
+          label={mapLabel(
+            placedLocations(locations),
+            `the places of ${trip.name}`,
+          )}
           coveredBottom={coveredBottom}
-          snapshot
+          water={
+            <UnplacedBackdrop coveredBottom={coveredBottom} icon={Luggage} />
+          }
         />
       )}
     >

@@ -27,20 +27,26 @@ export interface LegalPageConfig {
   projectOperated: boolean;
   /** Whether this instance has any join link - never which. */
   joinLinks: boolean;
+  /** Whether this instance's server draws its cards' map pictures. */
+  mapPictures: boolean;
 }
 
-const NEITHER: LegalPageConfig = { projectOperated: false, joinLinks: false };
+const NONE: LegalPageConfig = {
+  projectOperated: false,
+  joinLinks: false,
+  mapPictures: false,
+};
 
 /**
- * The two facts about this instance the legal pages render on, from one request.
+ * The facts about this instance the legal pages render on, from one request.
  *
  * Each is `true` only where the API answered `true` for it. Every other outcome -
  * `false`, an API too old to carry the field, a timeout, a connection refused, a
  * response that is not JSON - is `false`, and the asymmetry is the point: the copy that
  * gets the wrong answer in that direction is a project-run one that reads like any other
  * instance, which costs nothing. Wrong in the other direction is a self-hoster's privacy
- * policy naming a person who has never touched their machine, or describing join links
- * nobody set up.
+ * policy naming a person who has never touched their machine, describing join links
+ * nobody set up, or saying their server draws maps it cannot.
  *
  * That is also what keeps a self-hosted copy whose API is down rendering its legal pages
  * unchanged rather than failing: there is no error path out of here, only `false`.
@@ -75,23 +81,24 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
     if (!response.ok) {
       console.warn(
         `[instance-config] GET /config answered ${response.status}; ` +
-          `reading this instance as not project-operated and without join links.`,
+          `reading this instance as not project-operated, without join links or map pictures.`,
       );
-      return NEITHER;
+      return NONE;
     }
 
     const config = (await response.json()) as Partial<InstanceConfig>;
     return {
       projectOperated: config.project_operated === true,
       joinLinks: config.join_links === true,
+      mapPictures: config.map_pictures === true,
     };
   } catch (error: unknown) {
     console.warn(
       "[instance-config] Couldn't read this instance's configuration; " +
-        "reading it as not project-operated and without join links.",
+        "reading it as not project-operated, without join links or map pictures.",
       error,
     );
-    return NEITHER;
+    return NONE;
   } finally {
     clearTimeout(deadline);
   }

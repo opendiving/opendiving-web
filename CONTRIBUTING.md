@@ -102,9 +102,10 @@ come with tests; bug fixes should come with a test that fails without the fix.
 
 ## Running the map renderer
 
-The map pictures the API stores for dive and trip cards are drawn by a second program in this
-repository, `src/map-renderer/`, which the API calls. It ships in the same image and is started with
-`node map-renderer/index.mjs` instead of the web server's command. To run it beside the dev server:
+The map pictures the API stores for dive, trip and dive site cards are drawn by a second program in
+this repository, `src/map-renderer/`, which the API calls. It ships in the same image and is started
+with `node map-renderer/index.mjs` instead of the web server's command. To run it beside the dev
+server:
 
 ```bash
 npm run map-renderer   # builds it, then listens on :3001

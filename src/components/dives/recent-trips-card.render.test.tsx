@@ -1,13 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RecentTripsCard } from "./recent-trips-card";
 import type { Trip } from "@/lib/api/trips";
 import { reveal } from "@/test/intersection";
 
-// Each row names its own controls, draws a map for every trip - the world for
-// one with no place on it - and deletes where it stands. Two trips on purpose: a control named from a
-// constant passes a one-row test exactly as well as one named from the trip.
+// Each row names its own controls, shows the server's picture of every trip -
+// the world for one with no place on it - and deletes where it stands. Two trips
+// on purpose: a control named from a constant passes a one-row test exactly as
+// well as one named from the trip.
 
 vi.mock("@/lib/api/trips", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/trips")>()),
@@ -27,22 +28,28 @@ vi.mock("@/components/ui/use-toast", () => {
   return { useToast: () => ({ toast }) };
 });
 
-// The map needs WebGL; what matters here is which rows get one.
-vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: ({
-    locations,
-    showWhenEmpty,
-  }: {
-    locations: { name: string }[];
-    showWhenEmpty?: boolean;
-  }) => (
-    <div data-testid="map">
-      {locations.length > 0
-        ? locations.map((location) => location.name).join("; ")
-        : showWhenEmpty && "the world"}
-    </div>
-  ),
+vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "dark" }) }));
+
+// The pictures' bytes; what matters here is which rows ask for one, of what.
+const { getMapPicture } = vi.hoisted(() => ({ getMapPicture: vi.fn() }));
+vi.mock("@/lib/api/map-pictures", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/map-pictures")>()),
+  mapPicturesAPI: { getMapPicture },
 }));
+
+// jsdom implements neither.
+const originalCreate = URL.createObjectURL;
+const originalRevoke = URL.revokeObjectURL;
+beforeEach(() => {
+  let created = 0;
+  URL.createObjectURL = vi.fn(() => `blob:${++created}`);
+  URL.revokeObjectURL = vi.fn();
+  getMapPicture.mockResolvedValue(new Blob(["webp"]));
+});
+afterEach(() => {
+  URL.createObjectURL = originalCreate;
+  URL.revokeObjectURL = originalRevoke;
+});
 
 // The form is covered where it lives, and its pickers would make requests of
 // their own here; what matters is which trip it was opened for.
@@ -71,6 +78,7 @@ const trip = (overrides: Partial<Trip>): Trip => ({
 const MAPPED = trip({
   uuid: "trip-1",
   name: "Dahab 2026",
+  map_picture: "digest-dahab",
   parts: [
     {
       location: { name: "Dahab, Egypt", latitude: 28.5, longitude: 34.5 },
@@ -80,11 +88,12 @@ const MAPPED = trip({
   ],
 });
 
-// A place typed in by hand has a name and no position, so its card's map shows
-// the whole world rather than the place.
+// A place typed in by hand has a name and no position, so its card's picture
+// is of the whole world rather than the place.
 const TYPED = trip({
   uuid: "trip-2",
   name: "Koh Tao 2025",
+  map_picture: "digest-world",
   parts: [{ location: { name: "Koh Tao" } }],
 });
 
@@ -106,17 +115,26 @@ beforeEach(() => {
 });
 
 describe("RecentTripsCard", () => {
-  it("draws a map for every trip, the world for one with no place on it", async () => {
+  it("shows a picture of every trip, the world for one with no place on it", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
     await act(async () => reveal());
 
-    expect(within(rowOf("Dahab 2026")).getByTestId("map")).toHaveTextContent(
-      "Dahab, Egypt",
-    );
-    expect(within(rowOf("Koh Tao 2025")).getByTestId("map")).toHaveTextContent(
-      "the world",
-    );
+    expect(
+      await within(rowOf("Dahab 2026")).findByRole("img", {
+        name: "Map of Dahab, Egypt",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      await within(rowOf("Koh Tao 2025")).findByRole("img", {
+        name: "Map of the world, awaiting the places of Koh Tao 2025",
+      }),
+    ).toBeInTheDocument();
+    // In the page's theme, under the digest each trip names.
+    expect(getMapPicture.mock.calls.map(([url]) => url)).toEqual([
+      "/trip/trip-1/map-picture?theme=dark&v=digest-dahab",
+      "/trip/trip-2/map-picture?theme=dark&v=digest-world",
+    ]);
   });
 
   it("counts a trip's dives, dive sites and species", async () => {
@@ -206,15 +224,14 @@ describe("RecentTripsCard", () => {
     expect(rowOf("Koh Tao 2025")).not.toHaveTextContent("·");
   });
 
-  // A browser keeps only so many live maps per page, and /trips holds every
-  // trip, so a card mounts its map only once it is near the screen.
-  it("waits for a card to near the screen before drawing its map", async () => {
+  // A card off screen asks for nothing, and /trips holds every trip.
+  it("waits for a card to near the screen before asking for its picture", async () => {
     render(<RecentTripsCard />);
     await screen.findByRole("link", { name: "Dahab 2026" });
 
-    expect(screen.queryByTestId("map")).toBeNull();
+    expect(getMapPicture).not.toHaveBeenCalled();
     await act(async () => reveal());
-    expect(screen.getAllByTestId("map")).toHaveLength(2);
+    expect(await screen.findAllByRole("img")).toHaveLength(2);
   });
 
   it("names each row's menu after its trip", async () => {

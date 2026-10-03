@@ -17,8 +17,8 @@ import {
   type LatLonBounds,
 } from "@/lib/basemap";
 import { useConfig } from "@/contexts/ConfigContext";
-import { formatTripLocationNames } from "@/lib/trip-locations";
 import { MapCredit } from "@/components/map/map-credit";
+import { mapLabel } from "@/components/map/map-label";
 import { MapCanvas } from "@/components/map/map-canvas";
 import {
   findSnapshot,
@@ -90,10 +90,10 @@ export interface LocationsMapProps {
    *
    * For a form that shows this map beside the field that fills it, where a
    * frame appearing only once the first place is picked shoves everything below
-   * it down the dialog mid-edit, and for a trip card, whose map is the card's
-   * backdrop and whose list would otherwise mix two layouts. Off by default,
-   * because elsewhere the map answers "where is this?", and an empty world is a
-   * worse answer than no map at all.
+   * it down the dialog mid-edit, and for a trip page's hero, which shows the
+   * whole world as the trip's card does. Off by default, because elsewhere the
+   * map answers "where is this?", and an empty world is a worse answer than no
+   * map at all.
    */
   showWhenEmpty?: boolean;
   /**
@@ -105,9 +105,9 @@ export interface LocationsMapProps {
   className?: string;
   /**
    * Draw the map as the backdrop of whatever the caller lays over it: solid at
-   * its top edge, fading into `--backdrop-fade` at its bottom - the card's
-   * colour unless the caller sets another, as a card does for its hover. The
-   * credit moves to the top-left, where the map it credits can be seen.
+   * its top edge, fading into `--backdrop-fade` at its bottom - the card colour
+   * unless the caller sets another, as a hero sets the page's. The credit moves
+   * to the top-left, where the map it credits can be seen.
    */
   backdrop?: boolean;
   /**
@@ -127,14 +127,14 @@ export interface LocationsMapProps {
    */
   creditElsewhere?: boolean;
   /**
-   * Show a picture of the map rather than the map - for a list of maps. The
-   * live map is drawn once, unseen, at `SNAPSHOT_WIDTH` by `SNAPSHOT_HEIGHT`,
-   * pictured and let go; the frame then shows the part of the picture that
-   * centres the places where the fit would have. A browser holds only so many
-   * live WebGL maps per page, so a list has to let its off-screen ones go, and
-   * without a picture each one would be drawn again from nothing on its way
-   * back on screen, as it would on every resize. A picture is enough because
-   * this map is never interacted with.
+   * Show a picture of the map rather than the map - for a detail page's hero.
+   * The live map is drawn once, unseen, at `SNAPSHOT_WIDTH` by
+   * `SNAPSHOT_HEIGHT`, pictured and let go; the frame then shows the part of the
+   * picture that centres the places where the fit would have. Without the
+   * picture, which the page keeps (`map-snapshots.ts`), the map would be drawn
+   * again from nothing on every resize and every return to the page. A picture
+   * is enough because this map is never interacted with. A card's map is the
+   * server's picture instead (`CardMapPicture`).
    */
   snapshot?: boolean;
   /**
@@ -144,8 +144,7 @@ export interface LocationsMapProps {
    * a page-wide hero - where the picture's edge would otherwise stand on the
    * page as a hard line. A frame half the picture's width or narrower shows
    * none of the fade, since it lies past the frame's edges; a wider one shows
-   * the fades' inner reaches at its sides. Off by default: a card's frame just
-   * under `lg` is nearly as wide as the picture and would show them.
+   * the fades' inner reaches at its sides.
    */
   sideFade?: boolean;
 }
@@ -266,10 +265,9 @@ export function LocationsMap({
       top: (band.top + frame.height - band.bottom) / 2 - SNAPSHOT_HEIGHT / 2,
     };
   const theme = resolvedTheme === "dark" ? "dark" : "light";
-  // `sideFade` too: a side-faded picture is fitted into its middle half for a
-  // hero, and a card's picture of the same places is fitted for a card's frame,
-  // so either one passing the other's `fits` would show the places at the
-  // wrong zoom.
+  // `sideFade` too: a side-faded picture is fitted into its middle half, and
+  // one without the fades across the frame, so either one passing the other's
+  // `fits` would show the places at the wrong zoom.
   const snapshotKey = snapshot
     ? JSON.stringify([
         signature,
@@ -359,7 +357,7 @@ export function LocationsMap({
         return;
       }
 
-      // A backdrop is map under the whole card, so the places are sized
+      // A backdrop is map under the whole surface, so the places are sized
       // against the whole frame - fitted into the band alone, a town's outline
       // opens at a zoom its own label does not appear at - and only their pins
       // are kept to the band, and centred in it. The pins rather than the
@@ -526,23 +524,7 @@ export function LocationsMap({
   // do not have to.
   if (placed.length === 0 && !showWhenEmpty) return null;
 
-  // Every location has a name, but nothing stops one being blank, and "Map of
-  // " reads as a bug to anyone hearing it - hence the caller's `subject` as the
-  // fallback. `formatTripLocationNames` is the same joining rule the trip's own
-  // header uses, and it drops the blanks.
-  //
-  // Uncapped, unlike every surface that is looked at: a cap withholds names
-  // from a reader who cannot see the pins, which is the one reader this label
-  // exists for. The separator is shared with those surfaces, because it is
-  // about telling one place from the next and withholds nothing.
-  const names = formatTripLocationNames(placed);
-  // The empty frame says what it is rather than borrowing the label of the
-  // places it doesn't have: "Map of the trip's locations" over a blank world is
-  // wrong in exactly the place nobody looking at the screen can see it.
-  const label =
-    placed.length > 0
-      ? `Map of ${names ?? subject}`
-      : `Map of the world, awaiting ${subject}`;
+  const label = mapLabel(placed, subject);
 
   const unsupported = (
     <p className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">

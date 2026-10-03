@@ -13,7 +13,7 @@ import dynamic from "next/dynamic";
  * Declared here rather than at each call site so the placeholder cannot drift
  * from the map's own height: a skeleton of a different size makes the page jump
  * when the chunk lands. A caller that sets its own height through `className`
- * owns that room instead - the trip card's map is out of flow, and has none.
+ * owns that room instead - a hero's map is out of flow, and has none.
  */
 export const LocationsMap = dynamic(() => import("./locations-map"), {
   ssr: false,

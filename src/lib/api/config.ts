@@ -33,6 +33,12 @@ export interface InstanceConfig {
    * `lib/api/config.server.ts`.
    */
   join_links: boolean;
+  /**
+   * Whether this instance has a map renderer drawing its cards' map pictures.
+   * Only `/privacy` reads it, from the server, to say who fetches the cards'
+   * tiles; a card learns the same from its own record's `map_picture`.
+   */
+  map_pictures: boolean;
 }
 
 /** One live join link: the slug its address carries, and the name it is shown by. */
@@ -53,7 +59,7 @@ export const JOIN_CHANNEL_SLUG = /^[a-z0-9-]{1,32}$/;
  * The instance's public configuration, from the API rather than from this
  * container's own environment.
  *
- * All three fields are API truth, and the app has already paid once for keeping a
+ * Every field is API truth, and the app has already paid once for keeping a
  * second copy of a server fact in the web's environment: the Google client id is
  * mirrored here, and that mirror is why the web "has no way to learn that the API
  * lacks a secret". A web env var would also make flipping the mode a web restart
@@ -65,7 +71,7 @@ export const JOIN_CHANNEL_SLUG = /^[a-z0-9-]{1,32}$/;
  * Anonymous by design, and not a leak: the landing page discloses the first two
  * anyway, the mode by which form it then shows and the operator by how that form
  * reads, and `/privacy` discloses `join_links` by whether its join-link paragraph
- * is there.
+ * is there and `map_pictures` by what it says draws a card's map.
  */
 export const configAPI = {
   /**

@@ -11,12 +11,11 @@ import {
   UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
+import { CardMapPicture } from "@/components/map/card-map-picture";
+import { mapLabel } from "@/components/map/map-label";
 import { DiveTitle } from "@/components/dives/dive-title";
-import {
-  diveMapLocations,
-  hasMapPosition,
-} from "@/components/dives/dive-map-locations";
+import { diveMapLocations } from "@/components/dives/dive-map-locations";
+import { placedLocations } from "@/lib/map-picture";
 import { DiveIcon } from "@/components/logo";
 import { DiveProfileSilhouette } from "@/components/dives/dive-profile-silhouette";
 import {
@@ -41,16 +40,14 @@ interface DiveCardProps {
   isDeleting?: boolean;
 }
 
-// One dive as a card, in every list of dives: its sites and fixes on a map as
-// the backdrop with its depth curve across the foot of it, and its duration,
-// deepest point and water temperature - or its average depth where it has no
-// temperature.
+// One dive as a card, in every list of dives: the server's picture of its
+// sites and fixes as the backdrop - the map's water where there is none - with
+// its depth curve across the foot of it, and its duration, deepest point and
+// water temperature - or its average depth where it has no temperature.
 export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   const units = useUnits();
   // The dive's page and its edit form both return to the page the card is on.
   const withReturnTo = useWithReturnTo();
-  const locations = diveMapLocations(dive);
-  const isPlaced = hasMapPosition(locations);
   const outline = dive.depth_outline;
   // The title names the site; this says where it is.
   const placeName = dive.dive_sites[0]?.location?.name;
@@ -99,18 +96,22 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
           : coveredBottom;
         return (
           <>
-            {isPlaced ? (
-              <LocationsMap
-                locations={locations}
-                subject={`the location of dive #${dive.dive_number}`}
-                className="h-full rounded-[inherit] border-0 sm:h-full"
-                backdrop
-                coveredBottom={aboveProfile}
-                snapshot
-              />
-            ) : (
-              <UnplacedBackdrop coveredBottom={aboveProfile} icon={DiveIcon} />
-            )}
+            <CardMapPicture
+              kind="dive"
+              uuid={dive.uuid}
+              digest={dive.map_picture}
+              label={mapLabel(
+                placedLocations(diveMapLocations(dive)),
+                `the location of dive #${dive.dive_number}`,
+              )}
+              coveredBottom={aboveProfile}
+              water={
+                <UnplacedBackdrop
+                  coveredBottom={aboveProfile}
+                  icon={DiveIcon}
+                />
+              }
+            />
             {/* Without the glow the details' text has: a `drop-shadow` over
                 the fill's gradient draws it in bands. */}
             {outline && (

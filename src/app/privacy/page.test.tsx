@@ -23,11 +23,11 @@ import { PROJECT_OPERATOR } from "@/lib/operator";
 // count here has two correct answers rather than one, and an instance that has not
 // turned Google on must not read as though it had.
 //
-// The other instance-dependent halves are the operator block and the join-link
-// sentences, and both are mocked at the module that asks the API rather than at
-// `fetch`: what the page branches on is the two booleans that function returns, and
-// staging a response body here would be testing `config.server.ts` a second time in
-// the wrong file.
+// The other instance-dependent halves are the operator block, the join-link
+// sentences and the map pictures, all mocked at the module that asks the API rather
+// than at `fetch`: what the page branches on is the booleans that function returns,
+// and staging a response body here would be testing `config.server.ts` a second time
+// in the wrong file.
 const { runtimeConfig, readLegalPageConfig } = vi.hoisted(() => ({
   runtimeConfig: vi.fn(),
   readLegalPageConfig: vi.fn(),
@@ -42,15 +42,21 @@ async function renderPage({
   google,
   projectOperated = false,
   joinLinks = false,
+  mapPictures = false,
 }: {
   google: boolean;
   projectOperated?: boolean;
   joinLinks?: boolean;
+  mapPictures?: boolean;
 }) {
   runtimeConfig.mockReturnValue({
     googleClientId: google ? "abc.apps.googleusercontent.com" : undefined,
   });
-  readLegalPageConfig.mockResolvedValue({ projectOperated, joinLinks });
+  readLegalPageConfig.mockResolvedValue({
+    projectOperated,
+    joinLinks,
+    mapPictures,
+  });
   render(await PrivacyPage());
 }
 
@@ -654,6 +660,130 @@ describe.each([
       expect(entry).toBeUndefined();
       expect(joinParagraph()).not.toHaveTextContent(/Google/);
     }
+  });
+});
+
+// Who fetches a card's map depends on whether this copy's server draws it, which
+// only the API knows. Either way the record pages and the two forms still draw
+// their maps in the browser, and §4.4 has to say both halves on both copies.
+describe("the map pictures", () => {
+  const section = (heading: RegExp, next: RegExp) => {
+    const start = screen.getByText(heading);
+    const end = screen.getByText(next);
+    const text: string[] = [];
+    for (
+      let node = start.nextElementSibling;
+      node && node !== end;
+      node = node.nextElementSibling
+    ) {
+      text.push(node.textContent ?? "");
+    }
+    return text.join(" ").replace(/\s+/g, " ");
+  };
+  const mapTiles = () => section(/4\.4 Map Tiles/, /4\.5 Place Names/);
+
+  it.each([[false], [true]])(
+    "leave the record pages' and the forms' maps to the browser, map pictures: %s",
+    async (mapPictures) => {
+      await renderPage({ google: false, mapPictures });
+
+      const text = mapTiles();
+      expect(text).toMatch(
+        /your browser fetches its tiles directly from a third-party basemap provider/,
+      );
+      expect(text).toMatch(
+        /the form to add or edit a dive site and the form to add or edit a trip/,
+      );
+      expect(text).toMatch(
+        /at the head of its own page, a dive site with a position, a trip, .* and a dive that has a position/,
+      );
+    },
+  );
+
+  it("say the cards show no map where this copy draws none", async () => {
+    await renderPage({ google: false, mapPictures: false });
+
+    expect(mapTiles()).toMatch(
+      /The cards that list your dives, trips and dive sites show no map on this copy/,
+    );
+    expect(document.body.textContent).not.toMatch(/map pictures?/i);
+    expect(
+      screen.getByText(/Two things sit outside\s+those buttons/),
+    ).toBeInTheDocument();
+  });
+
+  it("say this server draws the cards' maps, and what becomes of them, where it does", async () => {
+    await renderPage({ google: false, mapPictures: true });
+
+    const text = mapTiles();
+    expect(text).toMatch(
+      /on this copy this server draws it rather than your browser/,
+    );
+    expect(text).toMatch(
+      /the provider sees this server’s address rather than yours/,
+    );
+    expect(text).toMatch(/in the list of your dive sites/);
+    expect(text).not.toMatch(/show no map/);
+
+    // §6.2: a third thing outside the buttons, the export and the deletion.
+    const rights = screen.getByText(/The first \w+ need no request/);
+    expect(rights).toHaveTextContent(/Three things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Nor are the map pictures/);
+    expect(rights).toHaveTextContent(
+      /picture outlives it until 30 days pass without it being shown/,
+    );
+    expect(rights).toHaveTextContent(
+      /a dive site and a dive there with no recorded fix share one/,
+    );
+
+    // §7: how long they are kept, and that they go with the account.
+    const retention = section(
+      /7\. Data Retention/,
+      /8\. Where Your Data Lives/,
+    );
+    expect(retention).toMatch(
+      /a picture this server has not been asked for in 30 days is deleted/,
+    );
+    expect(retention).toMatch(
+      /the files you uploaded, and the map pictures drawn of your places, are unlinked from disk/,
+    );
+
+    // §8: where they are.
+    expect(
+      screen.getByText(/one copy of OpenDiving is one database/),
+    ).toHaveTextContent(/The files volume also holds the map pictures/);
+  });
+
+  it("are named in the operator block's answers only where this copy draws them", async () => {
+    const answers = () => {
+      const block = screen
+        .getByRole("heading", { name: /Who Runs This Copy/ })
+        .closest("section")!;
+      return (block.textContent ?? "").replace(/\s+/g, " ");
+    };
+
+    await renderPage({ google: false, projectOperated: true });
+    expect(answers()).toMatch(
+      /the app, the API, the background worker, the Postgres database/,
+    );
+    expect(answers()).toMatch(/the app, the API and the worker reach/);
+    expect(answers()).not.toMatch(/map (renderer|pictures)/i);
+
+    cleanup();
+    await renderPage({
+      google: false,
+      projectOperated: true,
+      mapPictures: true,
+    });
+    expect(answers()).toMatch(
+      /the background worker, the map renderer §4\.4 describes, the Postgres database/,
+    );
+    expect(answers()).toMatch(
+      /The map pictures §4\.4 says this copy draws are kept there too/,
+    );
+    expect(answers()).toMatch(
+      /the app, the API, the worker and the map renderer reach/,
+    );
   });
 });
 
