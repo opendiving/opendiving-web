@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 
-// A place's marker, the one way a pin is drawn: on the live maps, as the element
-// MapLibre positions, and over the tiles a card or a page head composes. Its own
-// module, importing nothing from `maplibre-gl`, so the tile maps carry none of
-// GL JS in their bundles.
+// A place's marker over the trip form's live map, as the element MapLibre
+// positions, and over the tiles a card or a page head composes; the site
+// picker's pin is its own. Its own module, importing nothing from `maplibre-gl`,
+// so the tile maps carry none of GL JS in their bundles.
 //
 // `bg-coral`, not `bg-primary`: primary is near-black in light and mid-grey in
 // dark, which is invisible against a dark basemap. Coral is the one accent held

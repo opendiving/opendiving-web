@@ -6904,10 +6904,10 @@ with holes.
 ## Pins are the web's
 
 A card's and a hero's pins are DOM markers over the tiles, drawn with `markerClassName` from
-`components/map/marker.ts` - the one place a pin is drawn, importing nothing from `maplibre-gl` so
-the tile maps carry no GL JS. They are projected with the camera of the set on screen, on the copy
-of the world nearest its centre, so a trip across the antimeridian keeps both sides. Rejected: pins
-in the renderer's pixels, which make a tile a record's rather than a place's.
+`components/map/marker.ts`, which the trip form's live map draws with too and which imports nothing
+from `maplibre-gl`, so the tile maps carry no GL JS. They are projected with the camera of the set
+on screen, on the copy of the world nearest its centre, so a trip across the antimeridian keeps both
+sides. Rejected: pins in the renderer's pixels, which make a tile a record's rather than a place's.
 
 ## A page head keeps its band
 
