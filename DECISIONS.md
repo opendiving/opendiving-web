@@ -1740,9 +1740,9 @@ A card may be cut through; a row may not, since a line just above its border rea
 the cut moves down past any row it lands inside to the next row's top. Rows are bordered boxes with
 a bordered ancestor (`RecentDivesCard`'s `<li class="rounded-lg border">`); cards have none.
 
-The subject is the placed site with the most dives; a position is required, since `LocationsMap`
-renders nothing without coordinates. `/dive-sites?sort=dive_count` is paged (capped at 100) to the
-first placed site.
+The subject is the placed site with the most dives; a position is required, since a site without
+coordinates has no map at the head of its page. `/dive-sites?sort=dive_count` is paged (capped
+at 100) to the first placed site.
 
 ## The gear frame's `HEIGHT` is the lever under the README row, written down rather than measured
 
@@ -1761,15 +1761,6 @@ next gap is 60px further down.
 `HEIGHT` stays a number and goes stale when `dive-detail` or `dive-site` is re-framed.
 `refuseSlicedRow()` throws before the shutter if the height lands inside a row; snapping to a gap
 would silently move the balanced height.
-
-## The hero's map picture is what tells the shot the map drew
-
-`networkidle` is blind to MapLibre: it settles when tile requests stop, before they are painted. The
-hero shows a picture of its map, which the page takes on MapLibre's `idle` - tiles drawn, labels
-faded in - from a map built without `preserveDrawingBuffer`, so no page script could read the canvas
-anyway. `heroMapPictured()` waits for that picture to decode and for its fade-in; a decoded picture
-is a drawn map. The frame is set first, since a frame narrower than the picture was fitted for has
-it drawn again.
 
 ## `visit()` fails loudly when a navigation lands on `/signin`
 
@@ -2703,8 +2694,8 @@ lets callers skip gating on having something to draw.
 
 ## The read-only map lives in `components/map/`, not in `components/trips/`
 
-A dive site is not a trip location, so the shared picture lives in
-`components/map/locations-map.tsx` rather than being imported across feature folders.
+It lives beside the canvas, credit, marker and label it shares with the cards' and the heads' maps,
+rather than in `components/trips/` with its one caller.
 
 `subject`, the aria-label's fallback, is read only when the places have no usable names; names are
 joined by `formatTripLocationNames`. It is required despite an obvious default because the reading
@@ -2712,13 +2703,11 @@ path has no visual tell: an omitted value gives a wrong label on a screen-reader
 screenshot exercises, so omission is a type error.
 
 The frame's height lives in the component, duplicated once in the `next/dynamic` skeleton beside it,
-so a caller keeping it cannot make the page jump when the chunk lands. A caller setting its own
-through `className` - a hero - owns the room the skeleton lands in; a hero's map is out of flow, so
-it has none.
+so a caller cannot make the page jump when the chunk lands.
 
-The site and dive heroes gate their map on a position - the site's pin, or `hasMapPosition` over a
-dive's sites and fixes - keeping a record with none from fetching the chunk; a half-set position,
-which only raw SQL produces, counts as none.
+The site and dive heroes credit a map only for a record with a position - the site's pin, or
+`hasMapPosition` over a dive's sites and fixes; a half-set position, which only raw SQL produces,
+counts as none.
 
 ## `fitBounds` unwraps longitudes before it unions them
 
@@ -2743,9 +2732,8 @@ Cebu) renders at the deeper zoom as featureless grey with a coral dot and no lan
 levels out shows the island and named towns. A shore site reads well at either, and roughly half of
 dive sites are offshore.
 
-The cap is MapLibre's `maxZoom` on the fit, single rather than per caller: a per-caller argument had
-one value, one explicit caller, and a second plausible number sitting in `MapPicker` inviting
-someone to pass it.
+The cap is `MAX_FIT_ZOOM`, single rather than per caller: a per-caller argument had one value, one
+explicit caller, and a second plausible number sitting in `MapPicker` inviting someone to pass it.
 
 ## Locations are always sent on edit, never omitted
 
@@ -2779,9 +2767,9 @@ only.
 fit a trip card's line beside its dates. It stays private because every surface that joins a trip's
 places for a reader — the trip card, the dive sidebar and the trip page's own subtitle — renders
 this component, so there is one number and nothing for a second one to disagree with. Every such
-list separates with `; `, a comma being indistinguishable from the commas inside each name.
-`LocationsMap`'s accessible label takes the separator and not the cap: a cap withholds names from
-the one reader who cannot count the pins.
+list separates with `; `, a comma being indistinguishable from the commas inside each name. A map's
+accessible label (`mapLabel`) takes the separator and not the cap: a cap withholds names from the
+one reader who cannot count the pins.
 
 `title` answers a mouse and nobody else: no hover on touch, unreachable by keyboard on a `<span>`.
 The alternative is a `Popover` trigger nested in a link; hover-only stands until the app has a
@@ -3283,11 +3271,10 @@ fields down mid-edit, and an empty map says the field above wants a place, not f
 `DiveSiteMapField` does with `MapPicker`.
 
 `showWhenEmpty` stays opt-in: a dive or a site is at one spot, and the world says nothing about
-which, so their heroes draw the map's water for one with no position and gating keeps the chunk
-unfetched. A trip's hero opts in, showing what the trip's card shows: the API draws a trip with no
-place as the whole world, since a list mixing cards with and without a map reads as two layouts. The
-empty frame's aria-label is `Map of the world, awaiting ${subject}`, each `subject` being a definite
-noun phrase.
+which, so their cards and heroes draw the map's water for one with no position. A trip's card and
+hero opt in and show a trip with no place as the whole world, since a list mixing cards with and
+without a map reads as two layouts. The empty frame's aria-label is
+`Map of the world, awaiting ${subject}`, each `subject` being a definite noun phrase.
 
 The empty view is `WORLD_CENTER` at `MIN_ZOOM` (0) from `lib/basemap.ts`, read by both maps.
 
@@ -5131,11 +5118,11 @@ jump; zoom state is seeded, not set (`react-hooks/set-state-in-effect`). `clampC
 `LatLonBounds`, `WORLD_CENTER` and `DEFAULT_TILE_ATTRIBUTION` are in `lib/basemap.ts`, which bounds
 what the picker emits. `parseAttribution` and `AttributionPart` are in `components/attribution.tsx`
 beside their one consumer, not in `lib/basemap.ts`: parsing a credit line is not basemap arithmetic,
-and half of what reaches `Attribution` is the geocoder's credit. `project`, `unproject`,
-`nearestWrappedX`, `clampCenter`, `visibleTiles`, `tileUrl`, `tileSrcSet`, `tileSource`,
-`tileOrigins`, `needsDarkFilter` and the `TILE_SIZE`/`MIN_ZOOM`/`MAX_ZOOM` figures have no
-successor: MapLibre owns projection, clamping and tile fetching, `resolveBasemap` is the one
-resolver, and `basemapOrigins` is what `proxy.ts` derives.
+and half of what reaches `Attribution` is the geocoder's credit. `unproject`, `clampCenter`,
+`tileSrcSet`, `tileSource`, `tileOrigins` and `needsDarkFilter` have no successor: on the live maps
+MapLibre owns projection, clamping and tile fetching, `resolveBasemap` is the one resolver, and
+`basemapOrigins` is what `proxy.ts` derives. The cards' and heads' maps project, wrap and lay out
+the renderer's tiles, fetched from this app's own API, with `lib/map-camera.ts`.
 
 `img-src` names no third party — `proxy.test.ts` asserts `'self' data: blob:` in all three basemap
 configurations — because every tile goes through `connect-src` in both of MapLibre's modes; see "The
@@ -6877,48 +6864,75 @@ not a refusal.
 
 ## The map renderer ships in the web image, as a command of its own
 
-Card map pictures are drawn by MapLibre Native in `src/map-renderer/`, bundled into the web image
-and started as `node map-renderer/index.mjs`, the way the API image runs its worker. It reuses the
-web's basemap resolution, vendored styles, place functions and fit constants by import, so a card's
-picture and a live map agree by construction. The image is Ubuntu 24.04 because that is the only
-Linux MapLibre Native ships binaries for. Rejected: TileServer GL, which would move the fit into the
-API in Python and fix styles at startup; and a renderer image of its own, which the release
-machinery, built for two images named after their repositories, would have to learn.
+Map tiles are drawn by MapLibre Native in `src/map-renderer/`, bundled into the web image and
+started as `node map-renderer/index.mjs`, the way the API image runs its worker. It reuses the web's
+basemap resolution and vendored styles by import, so a tile and a live map agree by construction.
+The image is Ubuntu 24.04 because that is the only Linux MapLibre Native ships binaries for.
+Rejected: TileServer GL, which fixes its styles at startup; and a renderer image of its own, which
+the release machinery, built for two images named after their repositories, would have to learn.
 
-## A card's picture is fitted for the smallest card, with its pins in the pixels
+## The renderer draws tiles that every record and account shares
 
-One picture per record and theme serves every card, so it is fitted for the narrowest frame and the
-shortest band any card has (`DIVE_CARD_FRAME`, `TRIP_CARD_FRAME`), and a wider card shows more map
-around the same middle. Every dive is fitted for the band its depth outline leaves, so one digest
-serves outlined and plain cards. `card-frames.browser.test.tsx` fails when a card shrinks below
-them. Pins are drawn into the picture because the stretched link covers the backdrop: nothing about
-a pin is hoverable, so positions beside the image would be a second channel for nothing.
+`POST /render` draws one square of the Web Mercator grid, `z/x/y`, 512 CSS px at ratio 2 in MapLibre
+Native's `tile` mode, which places labels crossing a tile's edge so its neighbours agree. Nothing of
+any record is in a tile, so the API stores each once per theme for the whole instance and every card
+and page head showing that square shares it; at 512 px one tile is one vector tile of the basemap.
+The zoom stops at `MAX_FIT_ZOOM`, the deepest any map is fitted at, on both sides of the contract.
+Rejected: a larger picture per rounded cell, offset in the browser, which a window-wide hero makes
+window-sized; and 256 px tiles, twice the requests per frame.
 
-## The renderer's signature covers what changes a picture's pixels
+## The renderer's signature covers what changes a tile's pixels
 
 The signature hashes the sources that reach the renderer's bundle, the MapLibre Native version, each
 theme's style source, and the vendored style and sprite files when they are in use. The sources
-rather than the bundle's bytes, so a bundler upgrade that only reformats output keeps every picture;
+rather than the bundle's bytes, so a bundler upgrade that only reformats output keeps every tile;
 neither the credit nor, for the vendored pair, `SITE_URL`, since neither draws anything. A web merge
-touching none of it renames no picture. Upstream tile data and a remote style edited behind its URL
+touching none of it redraws no tile. Upstream tile data and a remote style edited behind its URL
 change pixels without changing it, which a backdrop tolerates.
 
-## Cards show the server's map picture, and the map's water without one
+## A map fits its own frame and floors the zoom
 
-Dive, trip and site cards ask the API for their record's picture (`CardMapPicture`), named by the
-digest the record carries, and place it with its middle on the middle of their band. No digest, a
-404, 429 or 503, or a failed request shows `UnplacedBackdrop`, so an instance without the renderer
-shows no map on its cards. A card asks again only when it mounts again, never on a timer: a failure
-is a renderer down or busy, and every card on every open page asking on a schedule would add to it.
-Rejected: drawing in the browser as the fallback, which keeps two renderers and WebGL on list pages.
-The heroes draw their own photograph in the browser: a window-wide picture needs a size and fit of
-its own.
+`MapBackdrop` measures its frame and fits it as a live backdrop would (`frameCamera`, held to GL
+JS's `cameraForBounds`): the places' extents over the frame, the pins into the band, the lesser
+zoom. It floors that zoom and lays the tiles covering the frame as `<img>`s on whole pixels;
+flooring only draws pins closer, so they stay in the band, and lettering stays the size it was drawn
+at. A frame shows a set once every tile has arrived, and keeps the last whole set, with its pins,
+until the next is whole. Rejected: scaling tiles by the fractional zoom, which blurs them at ratio
+2; one fit for the smallest card, which a hero cannot share; showing tiles as they arrive, a map
+with holes.
 
-## A page keeps two picture requests out, and a card lets its request go
+## Pins are the web's
 
-A picture not drawn yet holds its request open for the draw, and over HTTP/1.1 - a plain-HTTP LAN
-install among them - a browser opens six connections per host across all its tabs. So
-`card-pictures.ts` keeps two out per page and queues the rest in the order asked, and a card that
-unmounts aborts its request or leaves the queue. Rejected: one count across tabs through Web Locks,
-which exist only in a secure context, so the per-page cap is needed wherever they are missing; and
-answering a miss at once and polling, which the no-timer rule refuses.
+A card's and a hero's pins are DOM markers over the tiles, drawn with `markerClassName` from
+`components/map/marker.ts` - the one place a pin is drawn, importing nothing from `maplibre-gl` so
+the tile maps carry no GL JS. They are projected with the camera of the set on screen, on the copy
+of the world nearest its centre, so a trip across the antimeridian keeps both sides. Rejected: pins
+in the renderer's pixels, which make a tile a record's rather than a place's.
+
+## A page head keeps its band
+
+A hero's map is a canvas `HERO_CANVAS_WIDTH` wide centred in the frame (`mapCanvas`), fitted for
+that width or the frame's where narrower, with its pins kept out of the outer `SIDE_FADE_WIDTH`
+either side, where a gradient over the canvas dissolves it into the page. A phone shows the canvas's
+middle and none of the fade. Rejected: tiles edge to edge across the window, which deletes the side
+fade and changes how every detail page looks.
+
+## Cards and page heads show water where no tile can be had
+
+A card or a hero asks for nothing until `GET /config` says `map_tiles` (`useMapTiles`), and shows
+`UnplacedBackdrop` - the map's water with the record's icon - where it is false, where nothing has a
+position, or where a tile could not be had, asking again only on a new mount, never on a timer: a
+failure is a renderer down or busy, and every map on every open page asking on a schedule would add
+to it. Tiles the page already holds show before the config answers, and a hero credits the basemap
+only where tiles are drawn. Rejected: drawing in the browser without a renderer, which keeps two
+renderers and loads GL JS on every detail page of a default install.
+
+## A page keeps four tile requests out, and a map lets its requests go
+
+A tile not drawn yet holds its request open for the draw, and over HTTP/1.1 - a plain-HTTP LAN
+install among them - a browser opens six connections per host across all its tabs. A card needs up
+to six tiles, so `tile-requests.ts` keeps four out per page, one per tile however many maps show it,
+queues the rest in the order asked, and a map that unmounts aborts its requests or leaves the queue.
+Rejected: two, which draws a single card in three turns; one count across tabs through Web Locks,
+which exist only in a secure context; and answering a miss at once and polling, which the no-timer
+rule refuses.

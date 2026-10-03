@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Measures a built image the way the flagship would run it - each container held
 // to half a CPU and 512 MB, Render's `0.5c-512mb` - and prints the figures as
-// markdown: what a render takes cold and warm, what the renderer's container
-// holds after 200 renders, what the web server holds, and how big the image is.
+// markdown: what a tile takes to draw cold and warm, the renderer queue the
+// API's deadline covers at the slowest of them, what the renderer's container
+// holds after 200 tiles, what the web server holds, and how big the image is.
 //
 //   node scripts/measure-map-renderer.mjs ghcr.io/opendiving/opendiving-web@sha256:...
 //
@@ -10,13 +11,14 @@
 // figures from anywhere else - an arm64 laptop, amd64 under emulation - say
 // nothing about the flagship. Needs Docker and nothing from npm.
 //
-// **It makes a handful of renders' worth of requests to OpenFreeMap and no
-// more.** The cold renders fetch the default basemap over the network, as a
-// first view on an instance does. Everything after that is served from here:
-// a few more renders are recorded through a proxy, and the 200-render run is
-// answered from that recording - each tile it asks for given a recorded tile of
-// the same zoom, each glyph range a recorded range - so it exercises 200
-// distinct places' worth of tile keys without asking OpenFreeMap for them.
+// **It makes a handful of tiles' worth of requests to OpenFreeMap and no
+// more.** The cold tiles fetch the default basemap over the network, as a
+// first view of a region on an instance does. Everything after that is served
+// from here: a few more tiles are recorded through a proxy, and the 200-tile
+// run is answered from that recording - each source tile it asks for given a
+// recorded one of the same zoom, each glyph range a recorded range - so it
+// exercises 200 distinct tiles' worth of keys without asking OpenFreeMap for
+// them.
 //
 // `MEASURE_RENDERS` sets the length of the memory run (200).
 
@@ -32,6 +34,10 @@ if (!IMAGE) {
   process.exit(2);
 }
 const RENDERS = Number(process.env.MEASURE_RENDERS || 200);
+// The API's default `MAP_RENDERER_TIMEOUT`, which a full queue has to finish
+// inside, and the queue it never shrinks below while that holds.
+const DEADLINE_MS = 90_000;
+const QUEUE_FLOOR = 24;
 const LIMITS = ["--cpus=0.5", "--memory=512m"];
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const UPSTREAM = "https://tiles.openfreemap.org";
@@ -151,43 +157,39 @@ async function render(base, body) {
   return { ms: performance.now() - started, bytes };
 }
 
-const NO_FIXES = {
-  entry_latitude: null,
-  entry_longitude: null,
-  exit_latitude: null,
-  exit_longitude: null,
+// The tile of the grid holding a place at a zoom, as the web names it.
+const tileAt = (theme, z, latitude, longitude) => {
+  const tiles = 2 ** z;
+  const sin = Math.sin((latitude * Math.PI) / 180);
+  const y = 0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI);
+  return {
+    kind: "tile",
+    theme,
+    z,
+    x: Math.min(tiles - 1, Math.floor(((longitude + 180) / 360) * tiles)),
+    y: Math.min(tiles - 1, Math.max(0, Math.floor(y * tiles))),
+  };
 };
-const dive = (theme, ...sites) => ({
-  kind: "dive",
-  theme,
-  dive_sites: sites.map(([latitude, longitude]) => ({ latitude, longitude })),
-  ...NO_FIXES,
-});
-const place = (latitude, longitude, box) => ({
-  location: {
-    latitude,
-    longitude,
-    bbox_south: box?.[0] ?? null,
-    bbox_north: box?.[1] ?? null,
-    bbox_west: box?.[2] ?? null,
-    bbox_east: box?.[3] ?? null,
-  },
-});
-const trip = (theme, ...parts) => ({ kind: "trip", theme, parts });
 
-// Places nobody else's run has warmed: a dive card, a trip spread across the
-// antimeridian, a country-sized part.
+// Tiles nobody else's run has warmed, across the zooms a page asks for: a dive
+// card's at the deepest, a coast and a country a trip opens on, an ocean
+// between islands, and the whole world.
 const COLD = [
-  dive("light", [28.5721, 34.5372]),
-  dive("light", [20.3285, -87.0277]),
-  dive("dark", [-8.5503, 119.4891]),
-  trip("dark", place(-18.1416, 178.4419), place(-13.8333, -171.7667)),
-  trip("light", place(-23.6, 133.9, [-43.6, -10.7, 113.3, 153.6])),
+  tileAt("light", 9, 28.5721, 34.5372),
+  tileAt("light", 9, 20.3285, -87.0277),
+  tileAt("dark", 9, -8.5503, 119.4891),
+  tileAt("light", 6, 26.82, 30.8),
+  tileAt("dark", 4, -16, -176.7),
+  tileAt("light", 2, 20, 0),
+  tileAt("dark", 0, 0, 0),
 ];
 const RECORDED = [
-  dive("light", [28.5721, 34.5372]),
-  dive("dark", [28.5721, 34.5372]),
-  dive("light", [27.2579, 33.8116], [26.9, 33.95]),
+  tileAt("light", 9, 28.5721, 34.5372),
+  tileAt("dark", 9, 28.5721, 34.5372),
+  tileAt("light", 9, 27.2579, 33.8116),
+  tileAt("light", 6, 27, 34),
+  tileAt("light", 3, 30, 30),
+  tileAt("light", 0, 0, 0),
 ];
 
 // ---- A recording proxy for OpenFreeMap, and the styles pointed at it ----
@@ -299,11 +301,10 @@ function standIn(recorded, key) {
   return undefined;
 }
 
-// Longitude folded back into [-180, 180), which the renderer insists on.
-const wrap = (longitude) => ((((longitude + 180) % 360) + 360) % 360) - 180;
-
-// Distinct places, from a fixed seed so every run asks for the same ones.
-function* places(count) {
+// Distinct tiles, from a fixed seed so every run asks for the same ones: most
+// at the deepest zoom, as the cards that open on a lone place ask, and the rest
+// shallower, as trips and wide dives do.
+function* tiles(count) {
   let seed = 20261001;
   const random = () => {
     seed = (seed * 1103515245 + 12345) % 2 ** 31;
@@ -314,26 +315,13 @@ function* places(count) {
     const latitude = -60 + random() * 120;
     const longitude = -180 + random() * 360;
     const kind = random();
-    if (kind < 0.7) {
-      yield dive(theme, [latitude, longitude]);
-    } else if (kind < 0.9) {
-      yield dive(
-        theme,
-        [latitude, longitude],
-        [latitude + random() - 0.5, wrap(longitude + random() - 0.5)],
-      );
-    } else {
-      yield trip(
-        theme,
-        place(latitude, longitude, [
-          latitude - 2,
-          latitude + 2,
-          wrap(longitude - 3),
-          wrap(longitude + 3),
-        ]),
-        place(latitude + 5 * random(), wrap(longitude + 5 * random())),
-      );
-    }
+    const z =
+      kind < 0.7
+        ? 9
+        : kind < 0.9
+          ? 5 + Math.floor(random() * 4)
+          : Math.floor(random() * 5);
+    yield tileAt(theme, z, latitude, longitude);
   }
 }
 
@@ -359,26 +347,35 @@ say(
 );
 say();
 
-// Render times against the real default basemap.
+// Draw times against the real default basemap.
 const cold = await start("measure-cold", [], RENDERER);
 const coldTimes = [];
 for (const body of COLD) coldTimes.push(await render(cold, body));
 const warmTimes = [];
 for (const body of COLD) warmTimes.push(await render(cold, body));
 stop("measure-cold");
+const name = ({ theme, z, x, y }) => `${theme} ${z}/${x}/${y}`;
+const slowest = Math.max(...coldTimes.map(({ ms }) => ms));
+// The most draws the deadline covers at the slowest cold tile, counted with
+// the one being drawn - never below the floor unless the floor would pass it.
+const covered = Math.floor(DEADLINE_MS / slowest);
+const queue =
+  QUEUE_FLOOR * slowest <= DEADLINE_MS
+    ? Math.max(QUEUE_FLOOR, covered)
+    : covered;
 say(
-  `**Render times**, ${COLD.length} places, fetching from OpenFreeMap over the network:`,
+  `**Tile times**, ${COLD.length} tiles, fetching from OpenFreeMap over the network:`,
 );
 say();
 say(
-  `- cold: ${range(coldTimes.map(({ ms }) => ms))} (each: ${coldTimes.map(({ ms }) => seconds(ms)).join(", ")})`,
+  `- cold: ${range(coldTimes.map(({ ms }) => ms))} (each: ${coldTimes.map(({ ms }, index) => `${name(COLD[index])} ${seconds(ms)}`).join(", ")})`,
 );
-say(`- warm, the same places again: ${range(warmTimes.map(({ ms }) => ms))}`);
+say(`- warm, the same tiles again: ${range(warmTimes.map(({ ms }) => ms))}`);
 say(
   `- WebP sizes: ${coldTimes.map(({ bytes }) => `${Math.round(bytes / 1024)} KB`).join(", ")}`,
 );
 say(
-  `- 24 x the slowest cold render: ${seconds(24 * Math.max(...coldTimes.map(({ ms }) => ms)))}`,
+  `- the queue a ${seconds(DEADLINE_MS)} deadline covers at the slowest cold tile: ${queue} (${queue} x ${seconds(slowest)} = ${seconds(queue * slowest)})`,
 );
 say();
 
@@ -403,7 +400,7 @@ const idle = memory("measure-memory");
 const samples = [];
 const memoryTimes = [];
 let drawn = 0;
-for (const body of places(RENDERS)) {
+for (const body of tiles(RENDERS)) {
   memoryTimes.push((await render(renderer, body)).ms);
   drawn += 1;
   if (drawn % 25 === 0 || drawn === RENDERS)
@@ -419,9 +416,9 @@ if (refused.size > 0) {
   console.error(`The proxy refused: ${[...refused].join(", ")}`);
 }
 say(
-  `**The renderer's memory** over ${RENDERS} renders of distinct places, served from ` +
+  `**The renderer's memory** over ${RENDERS} distinct tiles, served from ` +
     `${recorded} responses recorded from ${upstreamRequests} requests to OpenFreeMap ` +
-    `(${RECORDED.length} renders), each render ${range(memoryTimes)}:`,
+    `(${RECORDED.length} tiles), each tile ${range(memoryTimes)}:`,
 );
 say();
 say("| after | cgroup | anon | file | node | Xvfb |");
@@ -432,7 +429,7 @@ const row = (label, sample) =>
       `${mb(sample.rss.MainThread ?? sample.rss.node)} | ${mb(sample.rss.Xvfb)} |`,
   );
 row("start", idle);
-for (const [count, sample] of samples) row(`${count} renders`, sample);
+for (const [count, sample] of samples) row(`${count} tiles`, sample);
 row("30 s idle", settled);
 say();
 say(

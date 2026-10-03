@@ -7,8 +7,8 @@
 //
 // The bundle carries a digest of the sources it was built from, which the
 // renderer folds into its signature. The sources rather than the bundle's own
-// bytes, so a bundler upgrade that only reformats its output does not rename
-// every stored picture.
+// bytes, so a bundler upgrade that only reformats its output does not have
+// every stored tile drawn again.
 
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, readFileSync, rmSync } from "node:fs";

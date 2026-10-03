@@ -4,9 +4,10 @@
 #   - the web server, as the image starts by default, serves a page. A page and
 #     not just `/healthz`, which is shallow on purpose and answers 200 from a
 #     process whose every page is a 500.
-#   - the map renderer, started with its own command, draws a dive on a style
-#     that needs no network into a 2048x1024 WebP with its pin where it belongs,
-#     and refuses a malformed body.
+#   - the map renderer, started with its own command, draws a tile on a style
+#     that needs no network into a 1024x1024 WebP of that style's background
+#     and nothing else, and refuses a malformed body and a zoom past the deepest
+#     a map is fitted at.
 #
 #   scripts/smoke-test-image.sh ghcr.io/opendiving/opendiving-web@sha256:...
 #
@@ -59,8 +60,8 @@ grep -q '<title>OpenDiving' "$OUT/home.html" ||
 echo "The web server serves the home page."
 
 # ---- The map renderer ----
-# A background in a colour no pin is drawn in, and nothing else: no tiles, no
-# glyphs, no sprite. Spelled `rgb()` because a `#` would end the data: URL.
+# A background and nothing else: no tiles, no glyphs, no sprite. Spelled
+# `rgb()` because a `#` would end the data: URL.
 BACKGROUND="#204060"
 STYLE='data:application/json,{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"rgb(32,64,96)"}}]}'
 docker run -d --name "$RENDERER" -p 127.0.0.1::3000 \
@@ -72,21 +73,23 @@ wait_for "$RENDERER_URL/healthz" "$RENDERER"
 SIGNATURE="$(curl -fsS "$RENDERER_URL/signature" | sed -E 's/.*"signature":"([^"]*)".*/\1/')"
 [[ "$SIGNATURE" =~ ^[0-9a-f]{64}$ ]] || fail "Not a signature: $SIGNATURE" "$RENDERER"
 
-DIVE='{"kind":"dive","theme":"light","dive_sites":[{"latitude":28.5721,"longitude":34.5372}],"entry_latitude":null,"entry_longitude":null,"exit_latitude":null,"exit_longitude":null}'
-STATUS="$(curl -sS -o "$OUT/picture.webp" -D "$OUT/headers" -w '%{http_code}' \
-  -H 'Content-Type: application/json' --data "$DIVE" "$RENDERER_URL/render")"
+TILE='{"kind":"tile","theme":"light","z":9,"x":305,"y":213}'
+STATUS="$(curl -sS -o "$OUT/tile.webp" -D "$OUT/headers" -w '%{http_code}' \
+  -H 'Content-Type: application/json' --data "$TILE" "$RENDERER_URL/render")"
 [ "$STATUS" = "200" ] || fail "POST /render answered $STATUS" "$RENDERER"
 grep -qi '^content-type: image/webp' "$OUT/headers" ||
   fail "POST /render did not answer image/webp" "$RENDERER"
 grep -qi "^x-map-signature: $SIGNATURE" "$OUT/headers" ||
   fail "POST /render did not name the signature" "$RENDERER"
 
-STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
-  -H 'Content-Type: application/json' --data '{"kind":"dive"}' "$RENDERER_URL/render")"
-[ "$STATUS" = "400" ] || fail "A malformed body answered $STATUS, not 400" "$RENDERER"
+for BODY in '{"kind":"tile"}' '{"kind":"tile","theme":"light","z":10,"x":0,"y":0}'; do
+  STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
+    -H 'Content-Type: application/json' --data "$BODY" "$RENDERER_URL/render")"
+  [ "$STATUS" = "400" ] || fail "$BODY answered $STATUS, not 400" "$RENDERER"
+done
 
-# The picture, read with the image's own sharp: its size, the fixture's colour
-# in a corner, and coral in the middle, where a lone site's pin is drawn.
+# The tile, read with the image's own sharp: its size, and the fixture's colour
+# in its corners and its middle - nothing of any record is drawn into a tile.
 docker run --rm -i -w /app/map-renderer --entrypoint node \
   -e BACKGROUND="$BACKGROUND" "$IMAGE" -e '
     const sharp = require("sharp");
@@ -103,15 +106,16 @@ docker run --rm -i -w /app/map-renderer --entrypoint node \
       const near = (pixel, hex) =>
         pixel.every((value, i) => Math.abs(value - parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16)) <= 8);
       const problems = [];
-      if (format !== "webp" || width !== 2048 || height !== 1024) {
-        problems.push(`a ${width}x${height} ${format}, not a 2048x1024 webp`);
+      if (format !== "webp" || width !== 1024 || height !== 1024) {
+        problems.push(`a ${width}x${height} ${format}, not a 1024x1024 webp`);
       }
-      if (!near(at(10, 10), process.env.BACKGROUND)) problems.push(`the corner is ${at(10, 10)}`);
-      if (!near(at(1024, 512), "#ff7f50")) problems.push(`the middle is ${at(1024, 512)}, not the pin`);
+      for (const [x, y] of [[10, 10], [1013, 10], [10, 1013], [1013, 1013], [512, 512]]) {
+        if (!near(at(x, y), process.env.BACKGROUND)) problems.push(`(${x}, ${y}) is ${at(x, y)}`);
+      }
       if (problems.length) {
         console.error(problems.join("; "));
         process.exit(1);
       }
     });
-  ' <"$OUT/picture.webp" || fail "The renderer drew the wrong picture" "$RENDERER"
-echo "The map renderer draws a picture, with signature $SIGNATURE."
+  ' <"$OUT/tile.webp" || fail "The renderer drew the wrong tile" "$RENDERER"
+echo "The map renderer draws a tile, with signature $SIGNATURE."

@@ -11,8 +11,8 @@
 // draw a single card in three turns; four leaves two connections for the rest
 // of the page, though none for a second tab that is drawing too.
 
-// About the bytes the hundred card pictures this replaced were kept to: a tile
-// is half a picture's pixels.
+// Every tile of the maps near the screen many times over, and bounded, so a long
+// scroll through a list does not keep every coast it passed.
 const MAX_TILES = 200;
 export const MAX_TILE_REQUESTS = 4;
 
