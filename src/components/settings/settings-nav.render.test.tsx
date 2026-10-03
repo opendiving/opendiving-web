@@ -161,7 +161,7 @@ describe("SettingsNav", () => {
       registration_mode: "invite",
       project_operated: true,
       join_links: false,
-      map_pictures: false,
+      map_tiles: false,
     };
     render(<SettingsNav />);
 
@@ -181,7 +181,7 @@ describe("SettingsNav", () => {
       registration_mode: "open",
       project_operated: false,
       join_links: false,
-      map_pictures: false,
+      map_tiles: false,
     };
     render(<SettingsNav />);
 

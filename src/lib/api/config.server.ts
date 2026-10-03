@@ -27,14 +27,14 @@ export interface LegalPageConfig {
   projectOperated: boolean;
   /** Whether this instance has any join link - never which. */
   joinLinks: boolean;
-  /** Whether this instance's server draws its cards' map pictures. */
-  mapPictures: boolean;
+  /** Whether this instance's server draws the map tiles its cards and page heads show. */
+  mapTiles: boolean;
 }
 
 const NONE: LegalPageConfig = {
   projectOperated: false,
   joinLinks: false,
-  mapPictures: false,
+  mapTiles: false,
 };
 
 /**
@@ -81,7 +81,7 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
     if (!response.ok) {
       console.warn(
         `[instance-config] GET /config answered ${response.status}; ` +
-          `reading this instance as not project-operated, without join links or map pictures.`,
+          `reading this instance as not project-operated, without join links or map tiles.`,
       );
       return NONE;
     }
@@ -90,12 +90,12 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
     return {
       projectOperated: config.project_operated === true,
       joinLinks: config.join_links === true,
-      mapPictures: config.map_pictures === true,
+      mapTiles: config.map_tiles === true,
     };
   } catch (error: unknown) {
     console.warn(
       "[instance-config] Couldn't read this instance's configuration; " +
-        "reading it as not project-operated, without join links or map pictures.",
+        "reading it as not project-operated, without join links or map tiles.",
       error,
     );
     return NONE;

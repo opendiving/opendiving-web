@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 
 import type { DiveSite } from "@/lib/api/dive-sites";
 import type { SpeciesLifeListEntry } from "@/lib/api/species";
+import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { DiveSiteHero } from "./dive-site-hero";
 import { DiveSiteInfoCard } from "./dive-site-info-card";
 import { DiveSiteSpeciesCard } from "./dive-site-species-card";
@@ -27,12 +28,13 @@ vi.mock("@/lib/api/species", async (importOriginal) => {
 });
 
 // The map is covered where it lives; here it is what the hero hands it.
-vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: vi.fn(() => null),
+vi.mock("@/components/map/map-backdrop", () => ({
+  MapBackdrop: vi.fn(() => null),
+  useMapTiles: () => true,
 }));
 
 const { speciesAPI } = await import("@/lib/api/species");
-const { LocationsMap } = await import("@/components/map/locations-map-lazy");
+const { MapBackdrop } = await import("@/components/map/map-backdrop");
 
 const SITE: DiveSite = {
   uuid: "site-1",
@@ -47,7 +49,7 @@ const row = (label: string) =>
 beforeEach(() => {
   account.user.units = "metric";
   vi.mocked(speciesAPI.getLifeList).mockReset();
-  vi.mocked(LocationsMap).mockClear();
+  vi.mocked(MapBackdrop).mockClear();
 });
 
 describe("DiveSiteInfoCard", () => {
@@ -232,7 +234,7 @@ describe("DiveSiteHero", () => {
     }
   });
 
-  it("hands its map the site's pin, as the card's backdrop", () => {
+  it("hands its map the site's pin, laid out as a hero's", () => {
     render(
       <DiveSiteHero
         back={BACK}
@@ -240,14 +242,11 @@ describe("DiveSiteHero", () => {
       />,
     );
 
-    expect(vi.mocked(LocationsMap).mock.lastCall![0]).toMatchObject({
+    expect(vi.mocked(MapBackdrop).mock.lastCall![0]).toMatchObject({
       locations: [
         { name: "Sunabe Seawall", latitude: 26.33, longitude: 127.74 },
       ],
-      backdrop: true,
-      snapshot: true,
-      sideFade: true,
-      creditElsewhere: true,
+      hero: true,
     });
     // Which the hero credits at its details' foot instead.
     expect(
@@ -258,7 +257,8 @@ describe("DiveSiteHero", () => {
   it("draws the map's water for a site with no position, and credits no map", () => {
     render(<DiveSiteHero back={BACK} site={SITE} />);
 
-    expect(LocationsMap).not.toHaveBeenCalled();
+    const { water } = vi.mocked(MapBackdrop).mock.lastCall![0];
+    expect((water as React.ReactElement).type).toBe(UnplacedBackdrop);
     expect(screen.queryByRole("link", { name: /OpenStreetMap/ })).toBeNull();
   });
 });

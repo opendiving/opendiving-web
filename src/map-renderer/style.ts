@@ -1,6 +1,6 @@
-// The basemap a picture is drawn on: the web's own, resolved from the same
-// variables by the same functions, so on one instance a card's picture and a
-// live map draw the same thing.
+// The basemap a tile is drawn on: the web's own, resolved from the same
+// variables by the same functions, so on one instance a card's tiles and a live
+// map draw the same thing.
 
 import { rasterStyle, type Basemap, type BasemapStyle } from "@/lib/basemap";
 import { readRuntimeConfig } from "@/lib/runtime-config";

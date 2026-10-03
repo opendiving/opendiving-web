@@ -43,9 +43,9 @@ export default async function PrivacyPage() {
   // page that names a person who never touched the reader's machine is the expensive
   // direction to be wrong in. The join-link sentences follow the same rule, so a copy
   // that has set up no join link carries no word about them, and so do the map
-  // pictures: a copy whose server draws none says its cards show no map.
-  const { projectOperated, joinLinks, mapPictures } =
-    await readLegalPageConfig();
+  // tiles: a copy whose server draws none says its cards and page heads show no
+  // map.
+  const { projectOperated, joinLinks, mapTiles } = await readLegalPageConfig();
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
@@ -72,7 +72,7 @@ export default async function PrivacyPage() {
               <OperatorAnswer question="Where this copy runs — §4.3, §8">
                 On Render, in its Frankfurt region, in Germany. Every part of
                 this instance is there: the app, the API, the background worker,
-                {mapPictures && <> the map renderer §4.4 describes,</>} the
+                {mapTiles && <> the map renderer §4.4 describes,</>} the
                 Postgres database and the short-lived counter store §2.2
                 describes. There is no second site and nothing is copied to one.
               </OperatorAnswer>
@@ -83,11 +83,11 @@ export default async function PrivacyPage() {
                 with a dive, certification card images, profile pictures and
                 portraits, and the species photographs §4.6 says this copy
                 downloads.
-                {mapPictures && (
+                {mapTiles && (
                   <>
                     {" "}
-                    The map pictures §4.4 says this copy draws are kept there
-                    too.
+                    So are the map tiles §4.4 says this copy draws, which are
+                    drawn from the map alone and are nobody&rsquo;s.
                   </>
                 )}
               </OperatorAnswer>
@@ -115,7 +115,7 @@ export default async function PrivacyPage() {
                 Yes. TLS terminates at Render&rsquo;s edge and a plain HTTP
                 request is redirected to HTTPS; inside the deployment the app,
                 the API
-                {mapPictures
+                {mapTiles
                   ? ", the worker and the map renderer"
                   : " and the worker"}{" "}
                 reach the database and each other over Render&rsquo;s private
@@ -649,54 +649,69 @@ export default async function PrivacyPage() {
                 4.4 Map Tiles
               </h3>
               <p className="text-foreground mb-4">
-                Several places in the app show a map, and where the page itself
-                draws one, your browser fetches its tiles directly from a
-                third-party basemap provider. That provider therefore sees your
-                IP address and which part of the world the map is showing —
-                which is, roughly, where you dive. It does not receive your
-                account, your dive log, or the name of anything on the map.
+                Two places in the app show a map your browser draws itself, and
+                for those your browser fetches the map&rsquo;s tiles directly
+                from a third-party basemap provider. That provider therefore
+                sees your IP address and which part of the world the map is
+                showing — which is, roughly, where you dive. It does not receive
+                your account, your dive log, or the name of anything on the map.
               </p>
               <p className="text-foreground mb-4">
                 Your browser does this whenever one of those maps is on screen,
                 whether or not you interact with it: the form to add or edit a
                 dive site and the form to add or edit a trip, which load a map
                 as soon as they open — one to place a pin on, one to show you
-                the places you pick — and, at the head of its own page, a dive
-                site with a position, a trip, which shows the whole world until
-                it has a place on it, and a dive that has a position. A dive has
-                a position from the site it was logged at, from the GPS reading
-                in the dive-computer file it was imported from, or from a
-                logbook file that carried the position itself. Where the map
-                shows a recorded position, that is where you actually were
-                rather than only which site you picked. Apart from those, a page
-                with nothing to show loads no map and contacts nobody.
+                the places you pick. Apart from those two, no page has your
+                browser contact the provider.
               </p>
-              {mapPictures ? (
-                <p className="text-foreground mb-4">
-                  The cards that list your dives, trips and dive sites carry a
-                  map too, and on this copy this server draws it rather than
-                  your browser: the first time a card is shown, the server
-                  fetches the tiles for it from the same provider, draws the
-                  card&rsquo;s map as a picture and keeps it, and your browser
-                  fetches the picture from this server. So for those maps the
-                  provider sees this server&rsquo;s address rather than yours,
-                  once for each picture rather than each time you look. That is
-                  every card in the list of your dives, the dashboard&rsquo;s
-                  recent dives and the dives listed on the page of a dive site,
-                  a trip, a piece of gear, a species, a course or a person; in
-                  the list of your trips and the dashboard&rsquo;s recent trips;
-                  and in the list of your dive sites. A dive or a dive site with
-                  no position has no picture, and a trip&rsquo;s shows the whole
-                  world until it has a place on it. Section 7 says how long the
-                  pictures are kept.
-                </p>
+              {mapTiles ? (
+                <>
+                  <p className="text-foreground mb-4">
+                    The cards that list your dives, trips and dive sites carry a
+                    map too, and so does the head of the page of a dive, a trip
+                    and a dive site. On this copy this server draws those maps
+                    rather than your browser, in tiles &mdash; squares of the
+                    world map with nothing of yours in them. The first time
+                    anyone on this copy is shown a part of the world, the server
+                    fetches what that tile needs from the same provider, draws
+                    it and keeps it; your browser fetches the tiles from this
+                    server and puts the pins on them itself. So for those maps
+                    the provider sees this server&rsquo;s address rather than
+                    yours, once for each tile rather than for each picture or
+                    each time you look. That is every card in the list of your
+                    dives, the dashboard&rsquo;s recent dives and the dives
+                    listed on the page of a dive site, a trip, a piece of gear,
+                    a species, a course or a person; in the list of your trips
+                    and the dashboard&rsquo;s recent trips; in the list of your
+                    dive sites; and the head of a dive&rsquo;s, a trip&rsquo;s
+                    and a dive site&rsquo;s own page. A dive or a dive site with
+                    no position shows no map, and a trip&rsquo;s shows the whole
+                    world until it has a place on it. A dive has a position from
+                    the site it was logged at, from the GPS reading in the
+                    dive-computer file it was imported from, or from a logbook
+                    file that carried the position itself; where its map shows a
+                    recorded position, that is where you actually were rather
+                    than only which site you picked.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    The tiles are shared: everyone this copy shows a part of the
+                    world is shown the same tiles, and a tile this server
+                    already keeps reaches a browser sooner than one it still has
+                    to draw. So another member of this copy who timed their own
+                    requests could tell that someone here was shown a region
+                    some tens of kilometres across in the last 30 days &mdash;
+                    though not who, and nothing of what they logged there.
+                    Section 7 says how long the tiles are kept.
+                  </p>
+                </>
               ) : (
                 <p className="text-foreground mb-4">
                   The cards that list your dives, trips and dive sites show no
-                  map on this copy: drawing those maps is this server&rsquo;s
-                  job, and this copy has not been set up to do it. So your
-                  browser fetches no tiles for them, and neither does this
-                  server.
+                  map on this copy, and nor does the head of the page of a dive,
+                  a trip or a dive site: drawing those maps is this
+                  server&rsquo;s job, and this copy has not been set up to do
+                  it. So your browser fetches no tiles for them, and neither
+                  does this server.
                 </p>
               )}
               <p className="text-foreground mb-4">
@@ -1225,20 +1240,18 @@ export default async function PrivacyPage() {
                 The first four need no request: access, correction, deletion and
                 portability are all buttons in Settings or on the Export page,
                 and they act immediately rather than being forwarded to
-                somebody. {mapPictures ? "Three" : "Two"} things sit outside
-                those buttons, and naming them is better than letting that
-                sentence read wider than it is. The list of signed-in devices is
-                in Settings but is not part of the export.
-                {mapPictures && (
+                somebody. {mapTiles ? "Three" : "Two"} things sit outside those
+                buttons, and naming them is better than letting that sentence
+                read wider than it is. The list of signed-in devices is in
+                Settings but is not part of the export.
+                {mapTiles && (
                   <>
                     {" "}
-                    Nor are the map pictures section 4.4 says this copy draws
-                    for your cards, which are drawn from your places rather than
-                    entered; and a deleted dive&rsquo;s, trip&rsquo;s or dive
-                    site&rsquo;s picture outlives it until 30 days pass without
-                    it being shown &mdash; longer only where another of your
-                    records shows the same places and keeps it in use, as a dive
-                    site and a dive there with no recorded fix share one.
+                    Nor are the map tiles section 4.4 says this copy draws, and
+                    deleting your account leaves them too: they are not yours.
+                    Each is drawn from the map alone, with nothing of yours in
+                    it, and is kept while anyone on this copy is shown it and
+                    for 30 days after.
                   </>
                 )}{" "}
                 And the record of account security events in section 2.2 is in
@@ -1408,19 +1421,14 @@ export default async function PrivacyPage() {
                 every hour once it has stopped working: 24 hours after you made
                 it, or sooner if you revoked it or made another.
               </p>
-              {mapPictures && (
+              {mapTiles && (
                 <p className="text-foreground mb-4">
-                  The <strong>map pictures</strong> this copy draws for your
-                  cards, which section 4.4 describes, are kept with your files.
-                  They are drawn from your places rather than entered, so they
-                  expire on their own: a picture this server has not been asked
-                  for in 30 days is deleted, and drawn again if a card asks for
-                  it after that. One picture can serve more than one of your
-                  records where they show exactly the same places &mdash; two
-                  dives at one site with no recorded fix, or a dive site and
-                  such a dive there &mdash; so deleting a dive, trip or dive
-                  site leaves its picture to that same 30 days, longer only
-                  while another of your records keeps it in use.
+                  The <strong>map tiles</strong> this copy draws, which section
+                  4.4 describes, are kept with its files. They are drawn from
+                  the map alone and shared by everyone this copy shows that part
+                  of the world, so they belong to no account and are not deleted
+                  with one: a tile this server has not been asked for in 30 days
+                  is deleted, and drawn again if a map asks for it after that.
                 </p>
               )}
               <p className="text-foreground mb-4">
@@ -1446,11 +1454,8 @@ export default async function PrivacyPage() {
                   The deletion is not a flag or an archive: the account row and
                   everything hanging off it &mdash; dives, sites, trips, gear,
                   courses, certifications, contacts, people, tags &mdash; are
-                  destroyed, and the files you uploaded
-                  {mapPictures && (
-                    <>, and the map pictures drawn of your places,</>
-                  )}{" "}
-                  are unlinked from disk with them
+                  destroyed, and the files you uploaded are unlinked from disk
+                  with them
                 </li>
                 <li>
                   Any invitations you sent go with it, used or not. Somebody you
@@ -1496,12 +1501,13 @@ export default async function PrivacyPage() {
                 servers behind it and no transfer between countries built into
                 the software: one copy of OpenDiving is one database and one
                 files volume, wherever the person running it chose to put them.
-                {mapPictures && (
+                {mapTiles && (
                   <>
                     {" "}
-                    The files volume also holds the map pictures this copy draws
-                    from your places, deleted with your account and once 30 days
-                    pass without one being shown, as section 7 says.
+                    The files volume also holds the map tiles this copy draws,
+                    which are drawn from the map alone and are nobody&rsquo;s,
+                    deleted once 30 days pass without one being shown, as
+                    section 7 says.
                   </>
                 )}
               </p>

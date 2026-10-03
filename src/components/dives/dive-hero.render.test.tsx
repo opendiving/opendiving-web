@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DiveHero } from "./dive-hero";
+import { DiveIcon } from "@/components/logo";
+import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import type { Dive } from "@/lib/api/dives";
 import type { UnitSystem } from "@/lib/units";
 
@@ -14,16 +16,20 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
 }));
 
-vi.mock("@/components/map/locations-map-lazy", () => ({
-  LocationsMap: vi.fn(() => null),
+const tiles = vi.hoisted(() => ({ drawn: true as boolean | undefined }));
+vi.mock("@/components/map/map-backdrop", () => ({
+  MapBackdrop: vi.fn(() => null),
+  useMapTiles: () => tiles.drawn,
 }));
-const { LocationsMap } = await import("@/components/map/locations-map-lazy");
+const { MapBackdrop } = await import("@/components/map/map-backdrop");
+const mapProps = () => vi.mocked(MapBackdrop).mock.lastCall![0];
 
 beforeEach(() => {
-  vi.mocked(LocationsMap).mockClear();
+  vi.mocked(MapBackdrop).mockClear();
 });
 afterEach(() => {
   auth.units = "metric";
+  tiles.drawn = true;
 });
 
 function dive(overrides: Partial<Dive> = {}): Dive {
@@ -223,22 +229,37 @@ describe("DiveHero", () => {
     expect(figure("Avg depth")).toHaveTextContent("0 m");
   });
 
-  it("hands its map the dive's places, as the card's backdrop, and credits it itself", () => {
+  it("hands its map the dive's places, laid out as a hero's, and credits it itself", () => {
     render(<DiveHero back={BACK} dive={dive(EXIT)} />);
 
-    expect(vi.mocked(LocationsMap).mock.lastCall![0]).toMatchObject({
+    expect(mapProps()).toMatchObject({
       locations: [
         { name: "Exit", latitude: 28.4375, longitude: 34.4584, variant: "fix" },
       ],
       subject: "the location of dive #1",
-      backdrop: true,
-      snapshot: true,
-      sideFade: true,
-      creditElsewhere: true,
+      hero: true,
     });
     expect(
       screen.getByRole("link", { name: /OpenStreetMap/ }),
     ).toBeInTheDocument();
+  });
+
+  // The water its unplaced sibling shows, icon and all.
+  it("gives its map the card's water, and credits no map, where this instance draws none", () => {
+    tiles.drawn = false;
+    render(<DiveHero back={BACK} dive={dive(EXIT)} />);
+
+    const { water } = mapProps() as { water: React.ReactElement };
+    expect(water.type).toBe(UnplacedBackdrop);
+    expect(water.props).toMatchObject({ icon: DiveIcon });
+    expect(screen.queryByRole("link", { name: /OpenStreetMap/ })).toBeNull();
+  });
+
+  it("credits no map before the instance has said whether it draws one", () => {
+    tiles.drawn = undefined;
+    render(<DiveHero back={BACK} dive={dive(EXIT)} />);
+
+    expect(screen.queryByRole("link", { name: /OpenStreetMap/ })).toBeNull();
   });
 
   it("tells a recorded fix apart from a placed pin on the map", () => {
@@ -246,7 +267,7 @@ describe("DiveHero", () => {
       <DiveHero back={BACK} dive={dive({ dive_sites: [SITE], ...EXIT })} />,
     );
 
-    expect(vi.mocked(LocationsMap).mock.lastCall![0].locations).toEqual([
+    expect(mapProps().locations).toEqual([
       { name: "Blue Hole", latitude: 28.5721, longitude: 34.5372 },
       { name: "Exit", latitude: 28.4375, longitude: 34.4584, variant: "fix" },
     ]);
@@ -261,7 +282,7 @@ describe("DiveHero", () => {
       />,
     );
 
-    expect(vi.mocked(LocationsMap).mock.lastCall![0].locations).toEqual([
+    expect(mapProps().locations).toEqual([
       { name: "Exit", latitude: 0, longitude: 0, variant: "fix" },
     ]);
   });
@@ -277,7 +298,9 @@ describe("DiveHero", () => {
       />,
     );
 
-    expect(LocationsMap).not.toHaveBeenCalled();
+    expect((mapProps().water as React.ReactElement).type).toBe(
+      UnplacedBackdrop,
+    );
     expect(screen.queryByRole("link", { name: /OpenStreetMap/ })).toBeNull();
   });
 });

@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 // `checked`/`onCheckedChange`, that one `checked`/`onChange`.
 //
 // On is `bg-teal` and not shadcn's `bg-primary`, for the reason `map-picker.tsx` and
-// `locations-map.tsx` already carry: `--primary` is near-black in light and mid-grey in
+// `components/map/marker.ts` already carry: `--primary` is near-black in light and mid-grey in
 // dark, so an accent-free on state would read as another shade of off. Teal is the
 // accent the settled state gets here - the same fill the calendar's selected day and
 // the default button take. Off is `bg-muted-foreground` rather than shadcn's `bg-input`

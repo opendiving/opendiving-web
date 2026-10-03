@@ -47,8 +47,8 @@ describe("resources", () => {
     });
   });
 
-  // In static mode an error fails the whole picture, which is right for a
-  // provider that is down and wrong for a tile with nothing in it.
+  // An error fails the whole render, which is right for a provider that is
+  // down and wrong for a source tile with nothing in it.
   it("reads a 404 or a 204 as no content, not as an error", async () => {
     const resources = createResources({
       siteUrl: SITE_URL,

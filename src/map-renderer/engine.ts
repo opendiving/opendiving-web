@@ -1,21 +1,15 @@
-// The drawing itself: a MapLibre Native map per picture, and the WebP the API
+// The drawing itself: a MapLibre Native map per tile, and the WebP the API
 // stores.
 
 import sharp from "sharp";
 
-import { SNAPSHOT_HEIGHT, SNAPSHOT_WIDTH } from "@/lib/map-picture";
-import { pictureCamera } from "./camera";
-import {
-  payloadFrame,
-  payloadPlaces,
-  type RenderPayload,
-  type Theme,
-} from "./payload";
-import { PINS_SOURCE, pinLayers, pinsSource } from "./pins";
+import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
+import type { Theme, TilePayload } from "./payload";
 import type { Resources } from "./resources";
 import { loadStyle, type RendererConfig } from "./style";
 
-// Ratio 2, so a picture is sharp on the screens that show most of them.
+// Ratio 2, so a tile is sharp on the screens that show most of them: a 512 CSS
+// px square, 1024 pixels across.
 export const PIXEL_RATIO = 2;
 
 // From the moment a draw starts, not from when it was queued. Long past a slow
@@ -24,7 +18,7 @@ export const RENDER_DEADLINE_MS = 30_000;
 
 // A style, and a source's TileJSON, are read again after an hour. OpenFreeMap
 // names each week's tiles by date in its TileJSON, and a renderer holding last
-// month's names would draw empty tiles as if the sea had risen.
+// month's names would draw empty land as if the sea had risen.
 const DESCRIPTOR_MAX_AGE_MS = 60 * 60 * 1000;
 const RETRY_MS = 30_000;
 
@@ -59,7 +53,7 @@ export interface NativeModule {
       callback: (error?: Error | null, response?: { data: Buffer }) => void,
     ) => void;
     ratio: number;
-    mode: "static";
+    mode: "tile";
   }) => NativeMap;
   on(
     event: "message",
@@ -74,10 +68,10 @@ export interface NativeModule {
 export class RenderError extends Error {}
 
 export interface Engine {
-  /** Whether a picture can be drawn: both themes' styles load into a map. */
+  /** Whether a tile can be drawn: both themes' styles load into a map. */
   isReady(): boolean;
-  /** One picture, as WebP - or a thrown error, and never a partial image. */
-  draw(payload: RenderPayload): Promise<Buffer>;
+  /** One tile, as WebP - or a thrown error, and never a partial image. */
+  draw(payload: TilePayload): Promise<Buffer>;
   close(): void;
 }
 
@@ -98,8 +92,8 @@ export function createEngine({
   log,
   deadlineMs = RENDER_DEADLINE_MS,
 }: EngineOptions): Engine {
-  // Encoding one picture at a time is all a render at a time leaves room for,
-  // and libvips' operation cache would only hold pictures nobody asks for twice.
+  // Encoding one tile at a time is all a render at a time leaves room for, and
+  // libvips' operation cache would only hold tiles the API never asks for twice.
   sharp.cache(false);
   sharp.concurrency(1);
 
@@ -132,7 +126,7 @@ export function createEngine({
       )
       .then(
         // No arguments at all is MapLibre's "no content", which draws nothing
-        // for that tile rather than failing the picture.
+        // for that source tile rather than failing the render.
         (data) => (data ? callback(null, { data }) : callback()),
         (error: Error) => callback(error),
       );
@@ -155,17 +149,20 @@ export function createEngine({
     }
   }
 
-  // **A map per picture, released as soon as it is drawn.** MapLibre Native
-  // keeps the tiles of every place a map has drawn, up to a cache sized for a
-  // map that pans, and offers no way to bound it: a map kept for a list of
-  // distinct places grows past a gigabyte. A fresh one costs little once Mesa
-  // has compiled its shaders, which `main.ts` lets it keep on disk, and the
-  // bytes of every tile are in `Resources` anyway.
+  // **A map per tile, released as soon as it is drawn.** MapLibre Native keeps
+  // the source tiles of every place a map has drawn, up to a cache sized for a
+  // map that pans, and offers no way to bound it: a map kept across distinct
+  // places grows past a gigabyte. A fresh one costs little once Mesa has
+  // compiled its shaders, which `main.ts` lets it keep on disk, and the bytes
+  // of every source tile are in `Resources` anyway.
+  //
+  // `tile` mode renders one square of the grid, and places the labels that
+  // cross its edges so that the squares beside it agree.
   //
   // It also means a map whose glyph request once failed - which hangs on its
   // next render (maplibre-native#3169) - is never asked again.
   function newMap(style: object): NativeMap {
-    const map = new native.Map({ request, ratio: PIXEL_RATIO, mode: "static" });
+    const map = new native.Map({ request, ratio: PIXEL_RATIO, mode: "tile" });
     map.load(style);
     return map;
   }
@@ -198,15 +195,11 @@ export function createEngine({
   }
   void warm();
 
-  async function render(payload: RenderPayload): Promise<Uint8Array> {
-    const style = await styleFor(payload.theme);
-    const placed = payloadPlaces(payload);
-    const { center, zoom } = pictureCamera(placed, payloadFrame(payload));
-    const map = newMap({
-      ...style,
-      sources: { ...style.sources, [PINS_SOURCE]: pinsSource(placed) },
-      layers: [...style.layers, ...pinLayers(payload.theme)],
-    });
+  // The square at its own zoom, centred on its middle: exactly one tile of the
+  // vector source, whose tiles are 512 px too.
+  async function render({ theme, z, x, y }: TilePayload): Promise<Uint8Array> {
+    const map = newMap(await styleFor(theme));
+    const center = tileCenter(z, x, y);
     drawing.add(map);
 
     try {
@@ -223,10 +216,10 @@ export function createEngine({
 
         map.render(
           {
-            zoom,
+            zoom: z,
             center: [center.longitude, center.latitude],
-            width: SNAPSHOT_WIDTH,
-            height: SNAPSHOT_HEIGHT,
+            width: TILE_SIZE,
+            height: TILE_SIZE,
           },
           (error, pixels) => {
             clearTimeout(deadline);
@@ -254,8 +247,8 @@ export function createEngine({
         Buffer.from(pixels.buffer, pixels.byteOffset, pixels.byteLength),
         {
           raw: {
-            width: SNAPSHOT_WIDTH * PIXEL_RATIO,
-            height: SNAPSHOT_HEIGHT * PIXEL_RATIO,
+            width: TILE_SIZE * PIXEL_RATIO,
+            height: TILE_SIZE * PIXEL_RATIO,
             channels: 4,
             premultiplied: true,
           },

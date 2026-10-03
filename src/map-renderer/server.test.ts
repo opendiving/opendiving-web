@@ -2,47 +2,23 @@ import type { AddressInfo } from "node:net";
 import { request as httpRequest, type Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { RenderPayload } from "./payload";
+import type { TilePayload } from "./payload";
 import { createRendererServer, QUEUE_LIMIT, type Renderer } from "./server";
 
 // The server driven over real HTTP with the contract's own bodies, and a
 // stand-in for the drawing so the queue can be held full on purpose.
 
 const SIGNATURE = "a".repeat(64);
-const PICTURE = Buffer.from("RIFF....WEBPVP8 ");
+const IMAGE = Buffer.from("RIFF....WEBPVP8 ");
 
-const DIVE = {
-  kind: "dive",
-  theme: "light",
-  dive_sites: [{ latitude: 28.5721, longitude: 34.5372 }],
-  entry_latitude: null,
-  entry_longitude: null,
-  exit_latitude: null,
-  exit_longitude: null,
-};
-const TRIP = {
-  kind: "trip",
-  theme: "dark",
-  parts: [
-    {
-      location: {
-        latitude: -18.14,
-        longitude: 178.44,
-        bbox_south: null,
-        bbox_north: null,
-        bbox_west: null,
-        bbox_east: null,
-      },
-    },
-    { location: null },
-  ],
-};
+const TILE = { kind: "tile", theme: "light", z: 9, x: 300, y: 215 };
+const DARK_TILE = { kind: "tile", theme: "dark", z: 0, x: 0, y: 0 };
 
 interface Stub extends Renderer {
   healthy: boolean;
   /** How many times the server asked, which it does as it admits a draw. */
   checks: number;
-  drawn: RenderPayload[];
+  drawn: TilePayload[];
   /** Holds every draw until `release` is called, when set. */
   hold: boolean;
   release(): void;
@@ -65,7 +41,7 @@ function stubRenderer(): Stub {
       if (stub.hold) await new Promise<void>((done) => waiting.push(done));
       stub.drawn.push(payload);
       if (stub.fail) throw new Error("the provider answered 500");
-      return PICTURE;
+      return IMAGE;
     },
     release() {
       const pending = waiting;
@@ -114,25 +90,42 @@ describe("the renderer's server", () => {
     expect(await response.json()).toEqual({ signature: SIGNATURE });
   });
 
-  it("draws a dive and a trip, naming the signature it drew with", async () => {
+  it("draws a tile in either theme, naming the signature it drew with", async () => {
     const renderer = stubRenderer();
     const base = await serve(renderer);
 
-    for (const body of [DIVE, TRIP]) {
+    for (const body of [TILE, DARK_TILE]) {
       const response = await render(base, body);
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toBe("image/webp");
       expect(response.headers.get("x-map-signature")).toBe(SIGNATURE);
-      expect(Buffer.from(await response.arrayBuffer())).toEqual(PICTURE);
+      expect(Buffer.from(await response.arrayBuffer())).toEqual(IMAGE);
     }
-    expect(renderer.drawn).toEqual([DIVE, TRIP]);
+    expect(renderer.drawn).toEqual([TILE, DARK_TILE]);
+  });
+
+  it("logs each tile it draws by its square", async () => {
+    const lines: string[] = [];
+    server = createRendererServer({
+      renderer: stubRenderer(),
+      signature: SIGNATURE,
+      log: (line) => lines.push(line),
+    });
+    await new Promise<void>((done) => server!.listen(0, "127.0.0.1", done));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+    await render(base, TILE);
+
+    expect(lines).toEqual([
+      expect.stringMatching(/^drew a tile, light 9\/300\/215, in \d+ ms/),
+    ]);
   });
 
   it("takes a JSON content type with a charset", async () => {
     const base = await serve(stubRenderer());
     const response = await render(
       base,
-      DIVE,
+      TILE,
       "application/json; charset=utf-8",
     );
     expect(response.status).toBe(200);
@@ -143,10 +136,25 @@ describe("the renderer's server", () => {
     const base = await serve(renderer);
 
     for (const [body, type] of [
-      [{ ...DIVE, name: "Blue Hole" }, "application/json"],
-      [{ ...TRIP, kind: "site" }, "application/json"],
+      [{ ...TILE, name: "Blue Hole" }, "application/json"],
+      [{ ...TILE, kind: "dive" }, "application/json"],
+      // Past the deepest zoom a map is fitted at, and outside the grid.
+      [{ ...TILE, z: 10, x: 0, y: 0 }, "application/json"],
+      [{ ...TILE, x: 512 }, "application/json"],
+      [
+        {
+          kind: "dive",
+          theme: "light",
+          dive_sites: [{ latitude: 28.5721, longitude: 34.5372 }],
+          entry_latitude: null,
+          entry_longitude: null,
+          exit_latitude: null,
+          exit_longitude: null,
+        },
+        "application/json",
+      ],
       ["{not json", "application/json"],
-      [JSON.stringify(DIVE), "text/plain"],
+      [JSON.stringify(TILE), "text/plain"],
     ] as const) {
       const response = await render(base, body, type);
       expect(response.status).toBe(400);
@@ -159,7 +167,7 @@ describe("the renderer's server", () => {
     const renderer = stubRenderer();
     renderer.healthy = false;
     const base = await serve(renderer);
-    expect((await render(base, DIVE)).status).toBe(503);
+    expect((await render(base, TILE)).status).toBe(503);
     expect(renderer.drawn).toEqual([]);
   });
 
@@ -167,7 +175,7 @@ describe("the renderer's server", () => {
     const renderer = stubRenderer();
     renderer.fail = true;
     const base = await serve(renderer);
-    const response = await render(base, DIVE);
+    const response = await render(base, TILE);
     expect(response.status).toBe(503);
     expect(response.headers.get("content-type")).toBe("application/json");
   });
@@ -178,16 +186,13 @@ describe("the renderer's server", () => {
     const base = await serve(renderer);
 
     const queued = Array.from({ length: QUEUE_LIMIT }, (_, index) =>
-      render(base, {
-        ...DIVE,
-        dive_sites: [{ latitude: index, longitude: index }],
-      }),
+      render(base, { ...TILE, x: index }),
     );
     // Every one of them admitted before the next arrives: the server asks
     // whether it is healthy as it admits each, in the same tick.
     await expect.poll(() => renderer.checks).toBe(QUEUE_LIMIT);
 
-    const turnedAway = await render(base, DIVE);
+    const turnedAway = await render(base, TILE);
     expect(turnedAway.status).toBe(503);
     expect(await turnedAway.json()).toEqual({
       detail: "The renderer's queue is full",
@@ -201,15 +206,13 @@ describe("the renderer's server", () => {
     expect(responses.map((response) => response.status)).toEqual(
       Array(QUEUE_LIMIT).fill(200),
     );
-    expect(
-      renderer.drawn.map((payload) =>
-        payload.kind === "dive" ? payload.dive_sites[0].latitude : null,
-      ),
-    ).toEqual(Array.from({ length: QUEUE_LIMIT }, (_, index) => index));
+    expect(renderer.drawn.map((payload) => payload.x)).toEqual(
+      Array.from({ length: QUEUE_LIMIT }, (_, index) => index),
+    );
 
     // And room again once they are done.
     renderer.hold = false;
-    expect((await render(base, DIVE)).status).toBe(200);
+    expect((await render(base, TILE)).status).toBe(200);
   });
 
   it("skips a queued draw whose client has gone", async () => {
@@ -217,7 +220,7 @@ describe("the renderer's server", () => {
     renderer.hold = true;
     const base = await serve(renderer);
 
-    const first = render(base, DIVE);
+    const first = render(base, TILE);
     await new Promise((done) => setTimeout(done, 50));
     // A second request, abandoned while the first is still drawing.
     await new Promise<void>((done) => {
@@ -230,7 +233,7 @@ describe("the renderer's server", () => {
         headers: { "Content-Type": "application/json" },
       });
       request.on("error", () => {});
-      request.end(JSON.stringify(TRIP), () =>
+      request.end(JSON.stringify(DARK_TILE), () =>
         setTimeout(() => request.destroy(), 50),
       );
       // Long enough for the server to see the connection close.
@@ -241,7 +244,7 @@ describe("the renderer's server", () => {
     renderer.release();
     expect((await first).status).toBe(200);
     await new Promise((done) => setTimeout(done, 50));
-    expect(renderer.drawn).toEqual([DIVE]);
+    expect(renderer.drawn).toEqual([TILE]);
   });
 
   it("answers 404 and 405 for what it does not serve", async () => {

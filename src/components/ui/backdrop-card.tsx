@@ -27,9 +27,9 @@ export function BackdropCardSkeleton() {
   );
 }
 
-// A record with no map to show: the map's open water, where this instance has
-// drawn no picture of it - nowhere on a map yet, no map renderer, or a picture
-// that could not be had - and on a hero, a dive or a site with no position.
+// A record with no map to show: the map's open water, where this instance draws
+// no map of it - nowhere on a map yet, no map renderer, or a tile that could not
+// be had - on a card and on a hero alike.
 // Faded as a map is, and the record's icon centred in what the details leave of
 // it: the colour the map names a sea in, muted as the map's own colours are so
 // it sits in the water rather than on it, and below whatever covers the top.
@@ -89,7 +89,7 @@ export function BackdropCard({
   children,
 }: BackdropCardProps) {
   // How much of the backdrop lies under the details, from the name down, so a
-  // picture's places centre between the credit and the name. Read as the ref
+  // map's places centre between the credit and the name. Read as the ref
   // attaches and followed after that, as `useChartWidth` does: a name that
   // wraps grows the block.
   const [detailsHeight, setDetailsHeight] = useState(0);
@@ -104,10 +104,10 @@ export function BackdropCard({
   }, []);
 
   // The backdrop only while the card is on or near the screen, so a card off
-  // screen asks for nothing: its picture is requested as it comes near, and
-  // the request let go if it leaves first, which keeps a long list's requests
-  // to the cards a diver is looking at. Coming back costs nothing once a
-  // picture has arrived: the page keeps it.
+  // screen asks for nothing: its tiles are requested as it comes near, and the
+  // requests let go if it leaves first, which keeps a long list's requests to
+  // the cards a diver is looking at. Coming back costs nothing once its tiles
+  // have arrived: the page keeps them.
   const [nearRef, isNear] = useNearViewport<HTMLLIElement>({
     rootMargin: "100px",
   });

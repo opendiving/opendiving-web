@@ -47,11 +47,6 @@ export interface Trip {
   // The deepest `max_depth` among those dives, in metres, and `null` when none
   // of them recorded one.
   max_depth: number | null;
-  // The digest naming the trip card's map picture (`lib/api/map-pictures.ts`),
-  // null where this instance draws none. A trip with no place still has one:
-  // its picture is the whole world. Every trip read carries it; a PATCH does
-  // not, so a saved trip is read back rather than assembled.
-  map_picture?: string | null;
 }
 
 // A trip stores no dates of its own. Its span is derived from its parts -

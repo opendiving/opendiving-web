@@ -75,10 +75,8 @@ interface DiveSiteDialogProps {
 
 // The API answers a PATCH with a status message alone, and canonicalizes what it
 // stores - another name the name already says is dropped, a tag takes the spelling
-// the diver already has - so the saved site is read back rather than assembled, as
-// is the digest naming its card's map picture. A failed read is not a failed save:
-// the assembled site stands in for it, without a picture, since the old one may
-// show the old pin.
+// the diver already has - so the saved site is read back rather than assembled.
+// A failed read is not a failed save: the assembled site stands in for it.
 async function readBack(
   site: DiveSite,
   update: Partial<DiveSite>,
@@ -87,7 +85,7 @@ async function readBack(
     return await diveSitesAPI.getDiveSite(site.uuid);
   } catch (error) {
     console.error("Failed to read the saved dive site back:", error);
-    return { ...site, ...update, map_picture: null };
+    return { ...site, ...update };
   }
 }
 

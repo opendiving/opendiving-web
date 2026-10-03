@@ -1,9 +1,9 @@
 import { formatTripLocationNames } from "@/lib/trip-locations";
-import type { PlacedLocation } from "@/lib/map-picture";
+import type { PlacedLocation } from "@/lib/map-frame";
 
 /**
- * What a screen reader is told a map is of: a live map's, and a card's picture,
- * which was drawn from positions alone and so is labelled from the record.
+ * What a screen reader is told a map is of: a live map's, and a card's or a page
+ * head's, whose tiles carry nothing of the record and so are labelled from it.
  *
  * Every place has a name, but nothing stops one being blank, and "Map of "
  * reads as a bug to anyone hearing it - hence the caller's `subject` as the

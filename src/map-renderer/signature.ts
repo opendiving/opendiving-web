@@ -1,14 +1,13 @@
-// The renderer's signature: what changes when this instance would draw a
-// picture differently, and nothing else.
+// The renderer's signature: what changes when this instance would draw a tile
+// differently, and nothing else.
 //
-// The API digests it into every picture's name, so a change is a new URL and a
-// redraw of each picture on its next view. Hence what it covers: the renderer's
-// own code and everything it imports - the place functions, the fit, the pin
-// styles - by the sources it was built from; the installed MapLibre Native; the
-// basemap this environment resolves to for both themes; and, when that is the
-// vendored pair, the style and sprite files themselves. A web merge touching
-// none of those keeps every stored picture, which matters because the web
-// merges several times a day. Upstream tile data, and a remote style edited
+// The API stores every tile under it, so a change is a redraw of each tile on
+// its next showing. Hence what it covers: the renderer's own code and
+// everything it imports, by the sources it was built from; the installed
+// MapLibre Native; the basemap this environment resolves to for both themes;
+// and, when that is the vendored pair, the style and sprite files themselves.
+// A web merge touching none of those keeps every stored tile, which matters
+// because the web merges several times a day. Upstream tile data, and a remote style edited
 // behind an unchanged URL, change pixels without changing this; a backdrop is
 // allowed to lag them.
 
@@ -58,7 +57,7 @@ export async function rendererSignature({
   part("source", sourceDigest);
   part("maplibre-native", nativeVersion);
   // Where each theme is drawn from rather than the whole `Basemap`: its credit
-  // is drawn by the web beside the picture, never into it. The vendored pair is
+  // is drawn by the web beside the tiles, never into them. The vendored pair is
   // named as configured rather than against `SITE_URL`, which moves nothing in
   // it - its files are hashed below instead.
   for (const theme of ["light", "dark"] as const) {

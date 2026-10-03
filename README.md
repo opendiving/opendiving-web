@@ -209,9 +209,9 @@ served rather than taking the bundle's answer: `WEB_HSTS=off` hands `Strict-Tran
 proxy in front, or drops it for a plain-HTTP LAN address, and `WEB_NOINDEX=true` keeps an instance
 that is reachable but private out of search engines.
 
-The same image carries a second program, the map renderer, which draws the map pictures the API
-stores for dive, trip and dive site cards. It is started with its own command and reached by the API
-alone:
+The same image carries a second program, the map renderer, which draws the map tiles the API stores
+once for every account and the dive, trip and dive site cards and page heads are composed from. It
+is started with its own command and reached by the API alone:
 
 ```bash
 docker run -e SITE_URL=https://dives.example.com opendiving-web node map-renderer/index.mjs

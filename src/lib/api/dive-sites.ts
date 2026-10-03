@@ -71,10 +71,6 @@ export interface DiveSite extends Partial<DiveSiteDiveSummary> {
   notes?: string;
   user_uuid: string;
   created_at: string;
-  // The digest naming the site card's map picture (`lib/api/map-pictures.ts`),
-  // null where this instance draws none - no position, or no map renderer. On
-  // the site routes' own responses only, never on a site inside a dive or trip.
-  map_picture?: string | null;
 }
 
 // The members a site write sets beside its name and place. Lists replace the

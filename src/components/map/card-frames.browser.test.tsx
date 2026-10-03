@@ -4,14 +4,7 @@ import { page } from "vitest/browser";
 import type { ComponentProps, ReactNode } from "react";
 
 import { resolveBasemap } from "@/lib/basemap";
-import {
-  bandIn,
-  DIVE_CARD_FRAME,
-  SNAPSHOT_HEIGHT,
-  SNAPSHOT_WIDTH,
-  TRIP_CARD_FRAME,
-  type CardFrame,
-} from "@/lib/map-picture";
+import { bandIn, FIT_PADDING } from "@/lib/map-frame";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import type { Dive } from "@/lib/api/dives";
 import type { DiveSite } from "@/lib/api/dive-sites";
@@ -24,7 +17,6 @@ import { TripsPageFrame } from "@/components/trips/trips-page-frame";
 import { SitesPageFrame } from "@/components/sites/sites-page-frame";
 import { DashboardPageFrame } from "@/components/dashboard/dashboard-page-frame";
 import { DiveSiteDetailPageContent } from "@/components/sites/dive-site-detail-page-content";
-import type { CardMapPicture as RealCardMapPicture } from "./card-map-picture";
 
 // **Load-bearing**: every figure below is a measured box, and without the
 // app's Tailwind none of them is the size it is in the app - see "jsdom answers
@@ -32,79 +24,118 @@ import type { CardMapPicture as RealCardMapPicture } from "./card-map-picture";
 // loaded" in DECISIONS.md.
 import "@/app/globals.css";
 
-// The map renderer draws one picture per record and theme, fitted for a frame
-// and band of its own (`DIVE_CARD_FRAME`, `TRIP_CARD_FRAME`), and every card
-// shows that picture with its middle on its own band's middle. So no card may
-// be narrower, or have a shorter band, than the frame the picture was fitted
-// for - or its outermost pins are cropped, silently. This renders each card
-// where every list puts it, at the narrowest viewport the app supports, and
-// measures it.
-//
-// The band is measured as the card's picture measures it: the frame, the
-// credit over its top edge - the default one, which is what the constants are
-// measured with - and the foot the card says it covers, passed through
-// `bandIn`. The picture is the real component, shown a picture that never
-// reached the network. A site card is drawn as a one-site dive, so it is held
-// to a dive card's frame.
+// A card fits its map for its own frame and floors the zoom to the tiles', so
+// what has to hold is the same at every size: wherever a list puts a card -
+// at the narrowest viewport the app supports, in a list's one column just below
+// `lg` where it is widest, and in two columns above it - every pin's marker
+// lies inside the band between the credit and the topmost thing over the
+// card's foot, and the tiles cover the frame with no gap. Measured off the
+// page, from the credit, the details and a dive's depth outline, rather than
+// read off what the card told its map.
 
 const NARROWEST = 320;
+const ONE_COLUMN = 1023;
+const TWO_COLUMNS = 1280;
 
-const DIVE: Dive = {
-  uuid: "dive-1",
-  dive_number: 128,
-  start_time: "2026-04-18T09:30:00+02:00",
-  duration: 3120,
-  max_depth: 31.4,
-  avg_depth: 17.2,
-  mixtures: [],
-  dive_sites: [
-    {
-      uuid: "site-1",
-      name: "The Canyon",
+const SITE_PIN = { latitude: 28.5721, longitude: 34.5372 };
+
+const dive = (
+  sites: { latitude: number; longitude: number }[],
+  fixes: Partial<Dive> = {},
+): Dive =>
+  ({
+    uuid: "dive-1",
+    dive_number: 128,
+    start_time: "2026-04-18T09:30:00+02:00",
+    duration: 3120,
+    max_depth: 31.4,
+    avg_depth: 17.2,
+    mixtures: [],
+    dive_sites: sites.map((site, index) => ({
+      uuid: `site-${index}`,
+      name: `Site ${index}`,
       location: { name: "Dahab, South Sinai, Egypt" },
-      latitude: 28.5721,
-      longitude: 34.5372,
+      ...site,
+    })),
+    // The outline is what leaves a dive card the least room.
+    depth_outline: {
+      span: 3_120_000,
+      values: [0, 800, 1800, 3140, 2600, 1500, 900, 500, 500, 0],
     },
-  ],
-  exit_latitude: 28.5689,
-  exit_longitude: 34.5355,
-  map_picture: "digest-dive",
-  // The outline is what leaves a dive card the least room.
-  depth_outline: {
-    span: 3_120_000,
-    values: [0, 800, 1800, 3140, 2600, 1500, 900, 500, 500, 0],
-  },
-} as unknown as Dive;
+    ...fixes,
+  }) as unknown as Dive;
 
-const TRIP: Trip = {
+const DIVES: [string, Dive][] = [
+  ["a lone site", dive([SITE_PIN])],
+  [
+    "a site and its entry and exit fixes",
+    dive([SITE_PIN], {
+      entry_latitude: 28.5702,
+      entry_longitude: 34.5391,
+      exit_latitude: 28.5689,
+      exit_longitude: 34.5355,
+    }),
+  ],
+  [
+    "two sites a coast apart",
+    dive([SITE_PIN, { latitude: 27.2579, longitude: 33.8116 }]),
+  ],
+];
+
+const trip = (parts: Trip["parts"]): Trip => ({
   uuid: "trip-1",
   name: "Red Sea, spring",
-  parts: [
-    {
-      start_date: "2026-04-15",
-      end_date: "2026-04-22",
-      location: {
-        name: "Dahab, South Sinai, Egypt",
-        latitude: 28.5,
-        longitude: 34.51,
-      },
-    },
-  ],
+  parts,
   user_uuid: "user-1",
   created_at: "2026-04-01T00:00:00Z",
   dive_count: 12,
   dive_site_count: 7,
   species_count: 48,
   max_depth: 31.4,
-  map_picture: "digest-trip",
-};
+});
+
+const TRIPS: [string, Trip][] = [
+  [
+    "one place",
+    trip([
+      {
+        start_date: "2026-04-15",
+        end_date: "2026-04-22",
+        location: { name: "Dahab", latitude: 28.5, longitude: 34.51 },
+      },
+    ]),
+  ],
+  [
+    "a country-sized part",
+    trip([
+      {
+        location: {
+          name: "Egypt",
+          latitude: 26.82,
+          longitude: 30.8,
+          bbox_south: 22,
+          bbox_north: 31.67,
+          bbox_west: 24.7,
+          bbox_east: 36.9,
+        },
+      },
+    ]),
+  ],
+  [
+    "two places across the antimeridian",
+    trip([
+      { location: { name: "Fiji", latitude: -18.1416, longitude: 178.4419 } },
+      { location: { name: "Samoa", latitude: -13.8333, longitude: -171.7667 } },
+    ]),
+  ],
+  ["no place, which is the whole world", trip([])],
+];
 
 const SITE: DiveSite = {
   uuid: "site-1",
   name: "The Canyon",
   location: { name: "Dahab, South Sinai, Egypt" },
-  latitude: 28.5721,
-  longitude: 34.5372,
+  ...SITE_PIN,
   user_uuid: "user-1",
   created_at: "2026-04-01T00:00:00Z",
   // The most a site card's line and figures carry, which is its least room.
@@ -115,7 +146,6 @@ const SITE: DiveSite = {
   dive_count: 12,
   max_dive_depth: 38.2,
   species_count: 41,
-  map_picture: "digest-site",
 };
 
 const page1 = <T,>(data: T[]) => ({
@@ -177,14 +207,20 @@ vi.mock("@/lib/api/dives", async (original) => {
   const actual = await original<typeof import("@/lib/api/dives")>();
   return {
     ...actual,
-    divesAPI: { ...actual.divesAPI, getDives: async () => page1([DIVE]) },
+    divesAPI: {
+      ...actual.divesAPI,
+      getDives: async () => page1([DIVES[1][1]]),
+    },
   };
 });
 vi.mock("@/lib/api/trips", async (original) => {
   const actual = await original<typeof import("@/lib/api/trips")>();
   return {
     ...actual,
-    tripsAPI: { ...actual.tripsAPI, getTrips: async () => page1([TRIP]) },
+    tripsAPI: {
+      ...actual.tripsAPI,
+      getTrips: async () => page1([TRIPS[0][1]]),
+    },
   };
 });
 vi.mock("@/lib/api/dive-sites", async (original) => {
@@ -197,36 +233,21 @@ vi.mock("@/lib/api/dive-sites", async (original) => {
 vi.mock("next-themes", () => ({
   useTheme: () => ({ resolvedTheme: "light" }),
 }));
-vi.mock("@/lib/api/map-pictures", async (original) => {
-  const actual = await original<typeof import("@/lib/api/map-pictures")>();
-  return {
-    ...actual,
-    mapPicturesAPI: {
-      getMapPicture: async () => new Blob([], { type: "image/webp" }),
-    },
-  };
-});
-// The real picture, under a box-less element that says what foot the card told
-// it it covers.
-vi.mock("./card-map-picture", async (original) => {
-  const { CardMapPicture } =
-    await original<typeof import("./card-map-picture")>();
-  return {
-    CardMapPicture: (props: ComponentProps<typeof RealCardMapPicture>) => (
-      <div
-        style={{ display: "contents" }}
-        data-covered-bottom={props.coveredBottom}
-      >
-        <CardMapPicture {...props} />
-      </div>
-    ),
-  };
-});
+vi.mock("@/hooks/useInstanceConfig", () => ({
+  useInstanceConfig: () => ({ config: { map_tiles: true }, isLoading: false }),
+}));
+// Every tile there at once: what is under test is where they go.
+vi.mock("@/lib/api/map-tiles", async (original) => ({
+  ...(await original<typeof import("@/lib/api/map-tiles")>()),
+  mapTilesAPI: {
+    getMapTile: async () => new Blob([], { type: "image/webp" }),
+  },
+}));
 
 const withConfig = (children: ReactNode) => (
   <ConfigProvider
     config={{
-      // The default credit, which is what the constants are measured with.
+      // The default credit, the longest the app ships.
       basemap: resolveBasemap(),
     }}
   >
@@ -234,190 +255,71 @@ const withConfig = (children: ReactNode) => (
   </ConfigProvider>
 );
 
-interface Measured {
-  width: number;
-  height: number;
-  bandHeight: number;
-}
+const dives = (record: Dive) =>
+  withConfig(
+    <DivesPageFrame
+      isLoading={false}
+      totalCount={1}
+      itemsPerPage={10}
+      cards={[<DiveCard key={record.uuid} dive={record} />]}
+    />,
+  );
+const trips = (record: Trip) =>
+  withConfig(
+    <TripsPageFrame
+      isLoading={false}
+      totalCount={1}
+      itemsPerPage={10}
+      cards={[
+        <TripCard
+          key={record.uuid}
+          trip={record}
+          onEdit={() => {}}
+          onDelete={() => {}}
+          isDeleting={false}
+        />,
+      ]}
+    />,
+  );
+const sites = (record: DiveSite) =>
+  withConfig(
+    <SitesPageFrame
+      isLoading={false}
+      totalCount={1}
+      itemsPerPage={10}
+      cards={[
+        <DiveSiteCard
+          key={record.uuid}
+          site={record}
+          onEdit={() => {}}
+          onDelete={() => {}}
+          isDeleting={false}
+        />,
+      ]}
+    />,
+  );
 
-// Each card's map frame and its band, as the map itself works them out.
-async function measureCards(): Promise<Measured[]> {
-  const probes = await waitFor(() => {
+const contains = (box: DOMRect, x: number, y: number) =>
+  x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+
+// Each card's map, once its tiles are on the page: its markers inside its
+// band, and its frame under tiles to the last pixel. Returns the frames'
+// widths, so a test can say which card it measured.
+async function expectComposed(
+  count: number,
+  { placed = true } = {},
+): Promise<number[]> {
+  const canvases = await waitFor(() => {
     const found = [
-      ...document.querySelectorAll<HTMLElement>("li [data-covered-bottom]"),
-    ];
-    expect(found.length).toBeGreaterThan(0);
-    // The credit, which the band starts under.
-    for (const probe of found) {
-      expect(probe.textContent).toContain("OpenFreeMap");
-    }
-    return found;
-  });
-  return probes.map((probe) => {
-    const frame = probe.firstElementChild as HTMLElement;
-    const credit = [...frame.children].find((child) =>
-      child.textContent?.includes("OpenFreeMap"),
-    ) as HTMLElement;
-    const band = bandIn(
-      frame.clientHeight,
-      credit.offsetTop + credit.offsetHeight,
-      Number(probe.dataset.coveredBottom),
-    );
-    return {
-      width: frame.clientWidth,
-      height: frame.clientHeight,
-      bandHeight: frame.clientHeight - band.top - band.bottom,
-    };
-  });
-}
-
-const bandHeight = (frame: CardFrame) =>
-  frame.height - frame.band.top - frame.band.bottom;
-
-function expectRoomFor(measured: Measured[], frame: CardFrame) {
-  for (const card of measured) {
-    expect(card.width).toBeGreaterThanOrEqual(frame.width);
-    expect(card.bandHeight).toBeGreaterThanOrEqual(bandHeight(frame));
-    // Taller here than in the app, whose web fonts this lane does not load -
-    // which is why the constants' height is the app's and only held as a floor.
-    expect(card.height).toBeGreaterThanOrEqual(frame.height);
-  }
-}
-
-beforeEach(async () => {
-  // Tall, so every card is near enough the screen to draw its backdrop.
-  await page.viewport(NARROWEST, 3000);
-});
-
-describe("the smallest frame a card gives its map", () => {
-  it("holds for a dive card on /dives", async () => {
-    render(
-      withConfig(
-        <DivesPageFrame
-          isLoading={false}
-          totalCount={1}
-          itemsPerPage={10}
-          cards={[<DiveCard key={DIVE.uuid} dive={DIVE} />]}
-        />,
-      ),
-    );
-    expectRoomFor(await measureCards(), DIVE_CARD_FRAME);
-  });
-
-  it("holds for a trip card on /trips", async () => {
-    render(
-      withConfig(
-        <TripsPageFrame
-          isLoading={false}
-          totalCount={1}
-          itemsPerPage={10}
-          cards={[
-            <TripCard
-              key={TRIP.uuid}
-              trip={TRIP}
-              onEdit={() => {}}
-              onDelete={() => {}}
-              isDeleting={false}
-            />,
-          ]}
-        />,
-      ),
-    );
-    expectRoomFor(await measureCards(), TRIP_CARD_FRAME);
-  });
-
-  it("holds for a site card on /sites", async () => {
-    render(
-      withConfig(
-        <SitesPageFrame
-          isLoading={false}
-          totalCount={1}
-          itemsPerPage={10}
-          cards={[
-            <DiveSiteCard
-              key={SITE.uuid}
-              site={SITE}
-              onEdit={() => {}}
-              onDelete={() => {}}
-              isDeleting={false}
-            />,
-          ]}
-        />,
-      ),
-    );
-    expectRoomFor(await measureCards(), DIVE_CARD_FRAME);
-  });
-
-  it("holds for the dashboard's recent dive and trip", async () => {
-    render(
-      withConfig(
-        <DashboardPageFrame
-          stats={
-            { total_dives: 0 } as ComponentProps<
-              typeof DashboardPageFrame
-            >["stats"]
-          }
-        />,
-      ),
-    );
-    await screen.findByText("Red Sea, spring");
-    const [dive, trip] = await measureCards();
-    expectRoomFor([dive], DIVE_CARD_FRAME);
-    expectRoomFor([trip], TRIP_CARD_FRAME);
-  });
-
-  it("holds for a detail page's recent dives", async () => {
-    render(withConfig(<DiveSiteDetailPageContent />));
-    await screen.findByText("Dives at This Site");
-    expectRoomFor(await measureCards(), DIVE_CARD_FRAME);
-  });
-
-  // The constants are the smallest of these, not merely smaller: a picture
-  // fitted for a frame narrower than any card shows less than it could.
-  it("is the narrowest card's, to the pixel", async () => {
-    render(
-      withConfig(
-        <DashboardPageFrame
-          stats={
-            { total_dives: 0 } as ComponentProps<
-              typeof DashboardPageFrame
-            >["stats"]
-          }
-        />,
-      ),
-    );
-    await screen.findByText("Red Sea, spring");
-    const [dive, trip] = await measureCards();
-    expect([dive.width, dive.bandHeight]).toEqual([
-      DIVE_CARD_FRAME.width,
-      bandHeight(DIVE_CARD_FRAME),
-    ]);
-    expect([trip.width, trip.bandHeight]).toEqual([
-      TRIP_CARD_FRAME.width,
-      bandHeight(TRIP_CARD_FRAME),
-    ]);
-  });
-});
-
-// Where each card's picture lands, measured off the page rather than read off
-// what the card told it: its middle on the middle of the band between the
-// credit and the topmost thing over the card's foot - the details, or a dive's
-// depth outline above them - and the whole frame covered.
-async function expectPicturesPlaced(count: number) {
-  const pictures = await waitFor(() => {
-    const found = [
-      ...document.querySelectorAll<HTMLImageElement>(
-        "li img[data-card-map-picture]",
-      ),
+      ...document.querySelectorAll<HTMLElement>("li [data-map-canvas]"),
     ];
     expect(found).toHaveLength(count);
     return found;
   });
   const widths: number[] = [];
-  for (const picture of pictures) {
-    const item = picture.closest("li")!;
-    const frameElement = picture.closest("[data-covered-bottom]")!
-      .firstElementChild as HTMLElement;
+  for (const canvas of canvases) {
+    const item = canvas.closest("li")!;
+    const frameElement = canvas.parentElement!;
     const frame = frameElement.getBoundingClientRect();
     const credit = [...frameElement.children]
       .find((child) => child.textContent?.includes("OpenFreeMap"))!
@@ -433,31 +335,70 @@ async function expectPicturesPlaced(count: number) {
       credit.bottom - frame.top,
       frame.bottom - footTop,
     );
-    const shown = picture.getBoundingClientRect();
 
-    expect([shown.width, shown.height]).toEqual([
-      SNAPSHOT_WIDTH,
-      SNAPSHOT_HEIGHT,
-    ]);
-    expect(shown.left + shown.width / 2).toBeCloseTo(
-      frame.left + frame.width / 2,
-      0,
-    );
-    expect(shown.top + shown.height / 2).toBeCloseTo(
-      frame.top + (band.top + frame.height - band.bottom) / 2,
-      0,
-    );
-    expect(shown.left).toBeLessThanOrEqual(frame.left);
-    expect(shown.right).toBeGreaterThanOrEqual(frame.right);
-    expect(shown.top).toBeLessThanOrEqual(frame.top);
-    expect(shown.bottom).toBeGreaterThanOrEqual(frame.bottom);
+    const markers = [...canvas.querySelectorAll("[data-marker]")];
+    expect(markers.length > 0).toBe(placed);
+    for (const marker of markers) {
+      const box = marker.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const y = box.top + box.height / 2;
+      expect(x).toBeGreaterThanOrEqual(frame.left + FIT_PADDING - 1);
+      expect(x).toBeLessThanOrEqual(frame.right - FIT_PADDING + 1);
+      expect(y).toBeGreaterThanOrEqual(frame.top + band.top - 1);
+      expect(y).toBeLessThanOrEqual(frame.bottom - band.bottom + 1);
+    }
+
+    const tiles = [
+      ...canvas.querySelectorAll<HTMLElement>("img[data-map-tile]"),
+    ].map((tile) => tile.getBoundingClientRect());
+    for (let x = frame.left + 0.5; x < frame.right; x += 6) {
+      for (let y = frame.top + 0.5; y < frame.bottom; y += 6) {
+        expect(tiles.some((tile) => contains(tile, x, y))).toBe(true);
+      }
+    }
     widths.push(frame.width);
   }
   return widths;
 }
 
-describe("where a card's picture lands", () => {
-  it("on the smallest cards, the dashboard's at the narrowest viewport", async () => {
+beforeEach(async () => {
+  // Tall, so every card is near enough the screen to draw its backdrop.
+  await page.viewport(NARROWEST, 3000);
+});
+
+describe("a card's map", () => {
+  describe.each([
+    ["at the narrowest viewport", NARROWEST],
+    ["in a list's one column just below `lg`", ONE_COLUMN],
+    ["in two columns above it", TWO_COLUMNS],
+  ])("%s", (_where, width) => {
+    beforeEach(async () => {
+      await page.viewport(width, 3000);
+    });
+
+    it.each(DIVES)(
+      "keeps a dive card's pins in its band, over tiles, for %s",
+      async (_label, record) => {
+        render(dives(record));
+        await expectComposed(1);
+      },
+    );
+
+    it.each(TRIPS)(
+      "keeps a trip card's pins in its band, over tiles, for %s",
+      async (_label, record) => {
+        render(trips(record));
+        await expectComposed(1, { placed: record.parts.length > 0 });
+      },
+    );
+
+    it("keeps a site card's pin in its band, over tiles", async () => {
+      render(sites(SITE));
+      await expectComposed(1);
+    });
+  });
+
+  it("holds on the dashboard's recent dive and trip, the smallest cards", async () => {
     render(
       withConfig(
         <DashboardPageFrame
@@ -470,65 +411,23 @@ describe("where a card's picture lands", () => {
       ),
     );
     await screen.findByText("Red Sea, spring");
-
-    const widths = await expectPicturesPlaced(2);
-    expect(widths).toEqual([DIVE_CARD_FRAME.width, TRIP_CARD_FRAME.width]);
+    const widths = await expectComposed(2);
+    // Narrower than a list's own cards: a list inside a card.
+    for (const width of widths) expect(width).toBeLessThan(NARROWEST - 48);
   });
 
-  // A list's one column just below `lg`, where the next pixel makes it two.
-  it.each([
-    [
-      "a dive card on /dives",
-      <DivesPageFrame
-        key="dives"
-        isLoading={false}
-        totalCount={1}
-        itemsPerPage={10}
-        cards={[<DiveCard key={DIVE.uuid} dive={DIVE} />]}
-      />,
-    ],
-    [
-      "a trip card on /trips",
-      <TripsPageFrame
-        key="trips"
-        isLoading={false}
-        totalCount={1}
-        itemsPerPage={10}
-        cards={[
-          <TripCard
-            key={TRIP.uuid}
-            trip={TRIP}
-            onEdit={() => {}}
-            onDelete={() => {}}
-            isDeleting={false}
-          />,
-        ]}
-      />,
-    ],
-    [
-      "a site card on /sites",
-      <SitesPageFrame
-        key="sites"
-        isLoading={false}
-        totalCount={1}
-        itemsPerPage={10}
-        cards={[
-          <DiveSiteCard
-            key={SITE.uuid}
-            site={SITE}
-            onEdit={() => {}}
-            onDelete={() => {}}
-            isDeleting={false}
-          />,
-        ]}
-      />,
-    ],
-  ])("on the widest, %s", async (_label, list) => {
-    await page.viewport(1023, 3000);
-    render(withConfig(list));
+  it("holds in a detail page's recent dives", async () => {
+    render(withConfig(<DiveSiteDetailPageContent />));
+    await screen.findByText("Dives at This Site");
+    await expectComposed(1);
+  });
 
-    const [width] = await expectPicturesPlaced(1);
-    // Nearly the picture's own width: one column, not half of two.
-    expect(width).toBeGreaterThan(SNAPSHOT_WIDTH - 100);
+  // The widest a card gets, and a frame wider than a tile: the case where a
+  // card spans three tiles across.
+  it("spans a card just below `lg` nearly as wide as the column", async () => {
+    await page.viewport(ONE_COLUMN, 3000);
+    render(trips(TRIPS[0][1]));
+    const [width] = await expectComposed(1);
+    expect(width).toBeGreaterThan(900);
   });
 });

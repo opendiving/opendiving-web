@@ -3,9 +3,10 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveSiteCard } from "./dive-site-card";
 import type { DiveSite } from "@/lib/api/dive-sites";
+import { giveFramesASize } from "@/test/frame-size";
 import { reveal } from "@/test/intersection";
 
-// A card shows the server's picture of a site's pin and water without one, says
+// A card shows a map of a site's pin and water without one, says
 // where the site is, how high and how divers get in where it records them, and
 // lays out what the diver's dives there add up to.
 
@@ -20,25 +21,33 @@ vi.mock("next-themes", () => ({
   useTheme: () => ({ resolvedTheme: "light" }),
 }));
 
-// The picture's bytes; what matters here is which cards ask for one, of what.
-const { getMapPicture } = vi.hoisted(() => ({ getMapPicture: vi.fn() }));
-vi.mock("@/lib/api/map-pictures", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/api/map-pictures")>()),
-  mapPicturesAPI: { getMapPicture },
+vi.mock("@/hooks/useInstanceConfig", () => ({
+  useInstanceConfig: () => ({ config: { map_tiles: true }, isLoading: false }),
 }));
 
-// jsdom implements neither.
+// The tiles' bytes; what matters here is which cards ask for them, of what.
+const { getMapTile } = vi.hoisted(() => ({ getMapTile: vi.fn() }));
+vi.mock("@/lib/api/map-tiles", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/map-tiles")>()),
+  mapTilesAPI: { getMapTile },
+}));
+
+// jsdom implements neither, and lays nothing out: each card's map is given a
+// card's frame.
 const originalCreate = URL.createObjectURL;
 const originalRevoke = URL.revokeObjectURL;
+let restoreSize: () => void;
 beforeEach(() => {
-  URL.createObjectURL = vi.fn(() => "blob:picture");
+  URL.createObjectURL = vi.fn(() => "blob:tile");
   URL.revokeObjectURL = vi.fn();
-  getMapPicture.mockReset();
-  getMapPicture.mockResolvedValue(new Blob(["webp"]));
+  restoreSize = giveFramesASize({ width: 400, height: 236 });
+  getMapTile.mockReset();
+  getMapTile.mockResolvedValue(new Blob(["webp"]));
 });
 afterEach(() => {
   URL.createObjectURL = originalCreate;
   URL.revokeObjectURL = originalRevoke;
+  restoreSize();
 });
 
 function site(overrides: Partial<DiveSite> = {}): DiveSite {
@@ -81,21 +90,18 @@ const figuresOf = (item: HTMLElement) =>
   ]);
 
 describe("DiveSiteCard", () => {
-  it("shows the server's picture of a site's pin, named by the site", async () => {
+  it("shows a map of a site's pin, named by the site", async () => {
     const item = card({
-      site: site({
-        latitude: 28.5721,
-        longitude: 34.5372,
-        map_picture: "digest-canyon",
-      }),
+      site: site({ latitude: 28.5721, longitude: 34.5372 }),
     });
 
     const map = await within(item).findByRole("img", {
       name: "Map of The Canyon",
     });
-    expect(map.querySelector("img")).toHaveAttribute("src", "blob:picture");
-    expect(getMapPicture).toHaveBeenCalledExactlyOnceWith(
-      "/dive-site/site-1/map-picture?theme=light&v=digest-canyon",
+    expect(map.querySelector("img")).toHaveAttribute("src", "blob:tile");
+    expect(map.querySelectorAll("[data-marker]")).toHaveLength(1);
+    expect(getMapTile).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/map-tiles\/light\/9\/\d+\/\d+$/),
       expect.any(AbortSignal),
     );
   });
@@ -116,7 +122,7 @@ describe("DiveSiteCard", () => {
     expect(
       item.querySelector(".bg-\\[var\\(--map-water\\)\\] svg.lucide-dive-site"),
     ).toBeInTheDocument();
-    expect(getMapPicture).not.toHaveBeenCalled();
+    expect(getMapTile).not.toHaveBeenCalled();
   });
 
   it("names the site and links to its page", () => {

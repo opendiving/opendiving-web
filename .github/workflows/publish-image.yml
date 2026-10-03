@@ -350,7 +350,7 @@ jobs:
 
       # Both programs the image carries, started from the bytes just pushed, before anything
       # is tagged or deployed: the web server serves a page, and the map renderer draws a
-      # picture on a style that needs no network. A failure here stops `merge`, and with it
+      # tile on a style that needs no network. A failure here stops `merge`, and with it
       # `deploy`. See the script for what each check is.
       #
       # Skipped where the checked-out ref has no script: a CVE rebuild of a release cut before

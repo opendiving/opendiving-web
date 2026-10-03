@@ -12,9 +12,10 @@
 // and reading the token back out of the API container's log, so it only works against
 // a local stack whose logs you can read - see DECISIONS.md.
 //
-// The `dive-site` and `gear-item` shots include dive cards, whose maps are pictures the API
-// has the map renderer draw. Without the renderer running and the API pointed at it
-// ("Running the map renderer" in CONTRIBUTING.md), those cards show water instead.
+// The `dive-site`, `dive-detail` and `gear-item` shots include maps - the dive site's and
+// the dive's page heads, and the dive cards - composed from tiles the API has the map
+// renderer draw. Without the renderer running and the API pointed at it ("Running the map
+// renderer" in CONTRIBUTING.md), those show water instead.
 //
 // Chromium comes from CHROME_PATH, or from the usual Chrome install; playwright-core
 // only drives it, so `npm install` never downloads a browser.
@@ -342,8 +343,8 @@ async function pickDive(get) {
 //
 // **A position is the only hard requirement**, unlike every other subject here, where the
 // rank is a preference and nothing is disqualified. The map is what this shot exists for
-// and `LocationsMap` renders nothing at all for a site without coordinates, so a site
-// with none is not a worse picture of the page - it is a picture of a different page.
+// and a site without coordinates has none at the head of its page, so a site with none
+// is not a worse picture of the page - it is a picture of a different page.
 //
 // Dive count is the preference on top of that, because a site somebody keeps going back
 // to is what the page is for. Each site in `/dive-sites` carries its own `dive_count`,
@@ -553,16 +554,27 @@ async function refuseSlicedRow(page, name, height) {
 
 // Waits for the hero's map to be on screen, which nothing else in this script can tell.
 //
-// `networkidle` settles when the tile requests stop arriving, which is before the
-// renderer has put them on screen. The hero shows a picture of its map rather than the
-// map: the page draws it unseen, takes the picture on MapLibre's `idle` - tiles drawn and
-// labels faded in - and fades the picture in. So a decoded picture is a drawn map, and
-// what is left is its fade. The hero's is the first picture in `<main>`.
+// `networkidle` settles when the tile requests stop arriving, which is before the tiles
+// are decoded and painted. The hero shows its map once every tile of it has arrived, and
+// fades them in together. So decoded tiles are a drawn map, and what is left is their
+// fade. The hero's map is the first in `<main>`, and an instance without a renderer has
+// none to wait for.
 async function heroMapPictured(page) {
-  const picture = page.locator("main [role='img'] img").first();
-  await picture.waitFor();
-  await picture.evaluate((image) => image.decode());
-  // Its `duration-300` fade-in.
+  const config = await (await fetch(`${API}/config`)).json();
+  if (config.map_tiles !== true) {
+    console.log("this instance draws no map tiles: the hero shows water");
+    return;
+  }
+  const map = page.locator("main [data-map-canvas]").first();
+  await map.waitFor();
+  await map.evaluate((canvas) =>
+    Promise.all(
+      [...canvas.querySelectorAll("img[data-map-tile]")].map((tile) =>
+        tile.decode(),
+      ),
+    ),
+  );
+  // Their `duration-300` fade-in.
   await page.waitForTimeout(400);
 }
 
@@ -798,8 +810,8 @@ if (wanted("dive-site")) {
   await page
     .getByRole("heading", { name: CUT_AFTER_CARD["dive-site"] })
     .waitFor();
-  // The frame is settled before the picture is checked, rather than leaving it to
-  // `shot()`: a frame narrower than the picture was fitted for has it drawn again.
+  // The frame is settled before the map is checked, rather than leaving it to `shot()`:
+  // a frame of another size is fitted again, and may need other tiles.
   const height = await cutAfterCard(page, CUT_AFTER_CARD["dive-site"]);
   await page.setViewportSize({ width: WIDTH, height });
   await atTop(page);

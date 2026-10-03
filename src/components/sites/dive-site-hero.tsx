@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import type { DiveSite } from "@/lib/api/dive-sites";
-import { LocationsMap } from "@/components/map/locations-map-lazy";
+import { MapBackdrop } from "@/components/map/map-backdrop";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import {
   DiveSiteFacts,
@@ -83,28 +83,28 @@ export function DiveSiteHero({
       subtitle={facts.length > 0 && <DiveSiteFacts facts={facts} />}
       figures={figures}
       mapCredit={isPlaced}
-      // The map's water for a site with no position, as its card draws one.
-      backdrop={({ map, covered }) =>
-        isPlaced ? (
-          <LocationsMap
-            locations={[
-              {
-                name: site.name,
-                latitude: site.latitude,
-                longitude: site.longitude,
-              },
-            ]}
-            subject={`the location of ${site.name}`}
-            {...map}
-          />
-        ) : (
-          <UnplacedBackdrop
-            coveredBottom={covered.bottom}
-            coveredTop={covered.top}
-            icon={DiveSiteIcon}
-          />
-        )
-      }
+      // The map's water for a site with no position, or where this instance
+      // draws no map, as its card draws one.
+      backdrop={({ map, covered }) => (
+        <MapBackdrop
+          locations={[
+            {
+              name: site.name,
+              latitude: site.latitude,
+              longitude: site.longitude,
+            },
+          ]}
+          subject={`the location of ${site.name}`}
+          {...map}
+          water={
+            <UnplacedBackdrop
+              coveredBottom={covered.bottom}
+              coveredTop={covered.top}
+              icon={DiveSiteIcon}
+            />
+          }
+        />
+      )}
     />
   );
 }
