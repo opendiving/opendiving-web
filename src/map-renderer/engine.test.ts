@@ -2,7 +2,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { tileCenter, TILE_SIZE } from "@/lib/map-camera";
+import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
 import { createEngine, PIXEL_RATIO, type NativeModule } from "./engine";
 import { parsePayload } from "./payload";
 import { createResources } from "./resources";

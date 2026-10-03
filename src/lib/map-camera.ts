@@ -1,14 +1,8 @@
-// Where a map looks, and which tiles of the grid show it: a frame's fit as plain
-// Web Mercator arithmetic, and the tiles that cover the frame once its zoom is
-// floored to one the map renderer draws.
-//
-// In GL JS's units throughout - a 512 px tile, which is also the size the
-// renderer draws a tile at, so one of its tiles is one square of this grid.
-// `map-camera.browser.test.ts` holds the fit to what GL JS's own
+// Where a card's or a page head's map looks, and which tiles of the grid
+// (`lib/map-grid.ts`) show it: a frame's fit as plain Web Mercator arithmetic,
+// and the tiles that cover the frame once its zoom is floored to one the map
+// renderer draws. `map-camera.browser.test.ts` holds the fit to what GL JS's own
 // `cameraForBounds` computes for the same places and frame.
-//
-// No browser API and no Node one: the cards and heroes compose their maps with
-// it, and the map renderer finds the middle of the tile it is asked for with it.
 
 import {
   clampLatitude,
@@ -21,25 +15,18 @@ import {
   type LatLonBounds,
 } from "@/lib/basemap";
 import { FIT_PADDING, type PlacedLocation } from "@/lib/map-frame";
-
-export const TILE_SIZE = 512;
+import {
+  latitudeAt,
+  longitudeAt,
+  mercatorX,
+  mercatorY,
+  TILE_SIZE,
+} from "@/lib/map-grid";
 
 export interface Camera {
   center: LatLon;
   zoom: number;
 }
-
-// GL JS's own projection, in its own spelling, so the two agree to the last
-// bit rather than to a rounding.
-const mercatorX = (longitude: number) => (180 + longitude) / 360;
-const mercatorY = (latitude: number) =>
-  (180 -
-    (180 / Math.PI) *
-      Math.log(Math.tan(Math.PI / 4 + (latitude * Math.PI) / 360))) /
-  360;
-const longitudeAt = (x: number) => x * 360 - 180;
-const latitudeAt = (y: number) =>
-  (360 / Math.PI) * Math.atan(Math.exp(((180 - y * 360) * Math.PI) / 180)) - 90;
 
 // The deepest zoom at which `box` fits `width` by `height`, capped at
 // `MAX_FIT_ZOOM` - `cameraForBounds`' arithmetic, which also answers nothing at
@@ -80,10 +67,9 @@ export interface MapFrame {
  * at a zoom its own label does not show at, and the pins fitted into the band -
  * capped at `MAX_FIT_ZOOM`. Not floored: `tileLayout` does that.
  *
- * Nothing placed is the whole world, as a trip card with no place shows it: on
- * the equator rather than at `WORLD_CENTER`'s latitude, since at `MIN_ZOOM` the
- * world is as tall as a card's map ever needed it to be, and was always shown
- * whole.
+ * Nothing placed is the whole world at `MIN_ZOOM`, its middle - the equator,
+ * rather than `WORLD_CENTER`'s latitude - at the band's, so the frame shows as
+ * much of the world north of the band as south of it.
  */
 export function frameCamera(
   placed: readonly PlacedLocation[],
@@ -127,15 +113,6 @@ export function frameCamera(
       ),
     },
     zoom,
-  };
-}
-
-/** The middle of tile `z/x/y`, which the renderer draws the tile around. */
-export function tileCenter(z: number, x: number, y: number): LatLon {
-  const tiles = 2 ** z;
-  return {
-    latitude: latitudeAt((y + 0.5) / tiles),
-    longitude: longitudeAt((x + 0.5) / tiles),
   };
 }
 

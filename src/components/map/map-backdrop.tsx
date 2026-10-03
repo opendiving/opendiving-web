@@ -20,12 +20,7 @@ import {
   mapTileUrl,
   type MapTileTheme,
 } from "@/lib/api/map-tiles";
-import {
-  frameCamera,
-  projectFrom,
-  TILE_SIZE,
-  tileLayout,
-} from "@/lib/map-camera";
+import { frameCamera, projectFrom, tileLayout } from "@/lib/map-camera";
 import {
   bandIn,
   mapCanvas,
@@ -34,6 +29,7 @@ import {
   type MappableLocation,
   type PlacedLocation,
 } from "@/lib/map-frame";
+import { TILE_SIZE } from "@/lib/map-grid";
 import { cn } from "@/lib/utils";
 
 /**

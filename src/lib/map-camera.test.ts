@@ -4,12 +4,11 @@ import { MAX_FIT_ZOOM, MIN_ZOOM } from "@/lib/basemap";
 import {
   frameCamera,
   projectFrom,
-  tileCenter,
   tileLayout,
-  TILE_SIZE,
   type MapFrame,
 } from "@/lib/map-camera";
 import { bandIn, mapCanvas, placedLocations } from "@/lib/map-frame";
+import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
 
 // The arithmetic a card and a hero compose their maps with, short of any
 // layout: which tiles a frame asks for, where they and the pins go, and that

@@ -3,7 +3,7 @@
 
 import sharp from "sharp";
 
-import { tileCenter, TILE_SIZE } from "@/lib/map-camera";
+import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
 import type { Theme, TilePayload } from "./payload";
 import type { Resources } from "./resources";
 import { loadStyle, type RendererConfig } from "./style";
