@@ -1,10 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Shapes, Waves, WavesArrowDown } from "lucide-react";
+import { Shapes, Ship, Waves } from "lucide-react";
 import {
   DIVE_TYPE_LABELS,
-  ENTRY_TYPE_LABELS,
   vocabularyLabel,
   WATER_TYPE_LABELS,
   type Dive,
@@ -47,10 +46,9 @@ export function DiveHero({
   const locations = diveMapLocations(dive);
   const isPlaced = hasMapPosition(locations);
   // Its card's line - when, in the dive's own timezone, and where, since the
-  // title names the site and this says where it is - then the water, the way in
-  // and the kind of dive as a site's page lists its own, the water only where
-  // it is not the sea's and the kind only where it is not open circuit: each
-  // goes without saying.
+  // title names the site and this says where it is - then the water, the boat
+  // and the kind of dive, the water only where it is not the sea's and the kind
+  // only where it is not open circuit: each goes without saying.
   const facts = [
     formatDiveDateTime(dive.start_time),
     dive.dive_sites[0]?.location?.name,
@@ -59,9 +57,9 @@ export function DiveHero({
         {vocabularyLabel(WATER_TYPE_LABELS, dive.water_type)}
       </IconFact>
     ),
-    dive.entry_type != null && (
-      <IconFact icon={WavesArrowDown} label="Entry type">
-        {vocabularyLabel(ENTRY_TYPE_LABELS, dive.entry_type)}
+    dive.boat_name && (
+      <IconFact icon={Ship} label="Boat">
+        {dive.boat_name}
       </IconFact>
     ),
     dive.type != null && dive.type !== "open_circuit" && (

@@ -94,13 +94,14 @@ describe("DiveHero", () => {
     );
   });
 
-  it("adds the water, the entry and the dive's type to its line", () => {
+  it("adds the water, the boat and the dive's type to its line", () => {
     render(
       <DiveHero
         back={BACK}
         dive={dive({
           water_type: "fresh",
           entry_type: "boat",
+          boat_name: "Legend",
           type: "closed_circuit",
         })}
       />,
@@ -109,7 +110,7 @@ describe("DiveHero", () => {
     expect(
       screen.getByRole("heading", { level: 1 }).nextElementSibling,
     ).toHaveTextContent(
-      "Apr 4, 2021, 10:04 · Water type Fresh water · Entry type Boat · Dive type Closed circuit",
+      "Apr 4, 2021, 10:04 · Water type Fresh water · Boat Legend · Dive type Closed circuit",
     );
   });
 
