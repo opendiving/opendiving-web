@@ -163,8 +163,8 @@ export interface PlacedTile {
  * for - there is nothing to draw there - and columns wrap, so a frame across the
  * antimeridian shows both sides of it.
  *
- * The centre is put on a whole pixel of the grid, so every tile, and every pin
- * `projectFrom` places, lands on whole CSS pixels and tiles meet without a seam.
+ * The centre is put on a whole pixel of the grid, so every tile lands on whole
+ * CSS pixels and tiles meet without a seam.
  */
 export function tileLayout(
   camera: Camera,
