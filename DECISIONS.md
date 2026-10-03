@@ -2986,8 +2986,7 @@ is the only unit; the app has no unit preference to consult.
 
 An imported file carries fixes whether or not the diver attached the dive to a site, so the card is
 gated on a trip, a site, either coordinate pair, the entry type or the boat name. The dive's map is
-the hero's, gated on at least one position among sites and fixes, which keeps the `next/dynamic`
-chunk unfetched.
+the hero's, which draws the map's water where no site or fix has a position.
 
 Both gates use `!= null` per coordinate, never truthiness: a dive off West Africa exits at longitude
 0 and one in the Galápagos at latitude 0. `formatCoordinates` and the map's `placedLocations`
