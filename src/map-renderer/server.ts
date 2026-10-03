@@ -18,7 +18,7 @@ import { parsePayload, PayloadError, type TilePayload } from "./payload";
 // on the flagship's plan - counted with the one being drawn, so the last place
 // in a full queue is answered inside the deadline by construction. A first
 // view asking for more is answered 503 past it, which shows water.
-export const QUEUE_LIMIT = 24;
+export const QUEUE_LIMIT = 55;
 
 // Many times a tile's body, which is five short keys.
 const MAX_BODY_BYTES = 4 * 1024;
