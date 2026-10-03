@@ -76,6 +76,10 @@ interface Known {
 // the icon down off the title.
 const HEADING = "flex items-start gap-2.5 md:gap-4";
 
+// Over the title rather than over the icon, which stays level with the title:
+// in by the icon's width and the heading's gap.
+const OVERLINE = "mb-1 pl-11 md:pl-18";
+
 // The kind's icon before the title and the line under it, its drawing reaching
 // from the title's capitals to the line's first baseline at both sizes: the box
 // sits 4px down the title's line and is a little taller than the drawing,
@@ -126,6 +130,8 @@ interface MapHeroProps extends Known {
   title: ReactNode;
   // One line under the title, as the record's card has under its name.
   subtitle?: ReactNode;
+  // A tag above the title, as the record's card has above its name.
+  overline?: ReactNode;
   figures: MapHeroFigure[];
   // Whether the backdrop is a map where this instance draws them, whose credit
   // `map` leaves to the hero's details' corner - unset for a record drawn
@@ -146,6 +152,7 @@ export function MapHero({
   actions,
   title,
   subtitle,
+  overline,
   figures,
   mapCredit,
 }: MapHeroProps) {
@@ -218,6 +225,7 @@ export function MapHero({
           icon={Icon}
           title={title}
           subtitle={subtitle}
+          overline={overline}
           figures={figures}
         >
           {/* A chip as it is over a card's map, so without the details'
@@ -238,14 +246,19 @@ function HeroDetails({
   icon: Icon,
   title,
   subtitle,
+  overline,
   figures,
   children,
-}: Pick<MapHeroProps, "icon" | "title" | "subtitle" | "figures"> & {
+}: Pick<
+  MapHeroProps,
+  "icon" | "title" | "subtitle" | "overline" | "figures"
+> & {
   className?: string;
   children?: ReactNode;
 }) {
   return (
     <div className={cn(COLUMN, className)}>
+      {overline && <div className={OVERLINE}>{overline}</div>}
       <div className={HEADING}>
         <Icon aria-hidden className={ICON} />
         <div className="min-w-0">
@@ -288,6 +301,7 @@ export function PlainHero({
   actions,
   title,
   subtitle,
+  overline,
   figures,
 }: Omit<MapHeroProps, "backdrop" | "mapCredit">) {
   return (
@@ -302,6 +316,7 @@ export function PlainHero({
         icon={icon}
         title={title}
         subtitle={subtitle}
+        overline={overline}
         figures={figures}
       />
     </div>

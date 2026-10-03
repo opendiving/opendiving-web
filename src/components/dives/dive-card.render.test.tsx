@@ -264,7 +264,7 @@ describe("DiveCard", () => {
   });
 
   // The hero's title and line, so a dive reads the same on its page as here.
-  it("marks a training dive and carries the hero's line", () => {
+  it("marks a training dive, tags its kind and carries the hero's line", () => {
     const item = card({
       dive: dive({
         course_uuid: "course-1",
@@ -275,8 +275,9 @@ describe("DiveCard", () => {
     });
 
     expect(item).toHaveTextContent(
-      "Dive #212 (training dive)Apr 4, 2026, 10:04 · Water type Fresh water · Boat Legend · Dive type Closed circuit",
+      "Closed circuitDive #212 (training dive)Apr 4, 2026, 10:04 · Water type Fresh water · Boat Legend",
     );
+    expect(within(item).getByText("CCR")).toHaveAttribute("aria-hidden");
   });
 
   it("opens the dive plainly from the dive list, where its back link goes anyway", () => {

@@ -75,6 +75,17 @@ export const DIVE_TYPE_LABELS: Record<DiveType, string> = {
   surface_supplied: "Surface-supplied",
 };
 
+// What a dive's title is tagged with, for the kinds a diver says by their
+// initials. Open circuit has none: it is the dive that goes without saying.
+// The two without initials anyone uses are spelled short instead.
+export const DIVE_TYPE_ABBREVIATIONS: Partial<Record<DiveType, string>> = {
+  closed_circuit: "CCR",
+  semi_closed: "SCR",
+  surface_supplied: "SSD",
+  freedive: "Freedive",
+  snorkel: "Snorkel",
+};
+
 export const CURRENTS = [
   "none",
   "light",
