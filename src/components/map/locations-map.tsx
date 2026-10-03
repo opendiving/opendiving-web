@@ -483,7 +483,8 @@ export function LocationsMap({
   // the one moment its pixels can still be read. The pins are read off the
   // live markers rather than projected again, which keeps a trip across the
   // antimeridian on the copy of the world MapLibre chose to show. WebP, since
-  // a picture this size as a PNG runs to megabytes and a list keeps dozens.
+  // a picture this size as a PNG runs to megabytes and the page keeps every
+  // hero it has shown (`map-snapshots.ts`).
   useEffect(() => {
     if (!map || !snapshotKey || !frameSignature || !needsDrawing) return;
     const capture = () => {

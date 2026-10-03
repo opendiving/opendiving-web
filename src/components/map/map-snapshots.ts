@@ -1,6 +1,6 @@
 // Pictures of `LocationsMap`s that have finished drawing, kept for the page's
-// lifetime so a map scrolled away and back, or a window resized under it, is
-// shown again rather than drawn again.
+// lifetime so a hero returned to, or a window resized under it, is shown again
+// rather than drawn again.
 
 export interface MapSnapshot {
   url: string;
