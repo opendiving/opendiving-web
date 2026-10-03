@@ -14,10 +14,8 @@ import {
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
 import { MapBackdrop } from "@/components/map/map-backdrop";
-import {
-  DiveSiteFacts,
-  diveSiteFacts,
-} from "@/components/sites/dive-site-facts";
+import { diveSiteFacts } from "@/components/sites/dive-site-facts";
+import { FactsLine } from "@/components/ui/icon-fact";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
 
@@ -93,7 +91,7 @@ export function DiveSiteCard({
       </Link>
       {facts.length > 0 && (
         <div className="text-xs">
-          <DiveSiteFacts facts={facts} />
+          <FactsLine facts={facts} />
         </div>
       )}
       <BackdropCardFigures figures={figures} />

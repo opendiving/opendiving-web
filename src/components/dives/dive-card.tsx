@@ -126,7 +126,11 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
         href={withReturnTo(`/dives/${dive.uuid}`)}
         className={BACKDROP_CARD_LINK}
       >
-        <DiveTitle diveNumber={dive.dive_number} sites={dive.dive_sites} />
+        <DiveTitle
+          diveNumber={dive.dive_number}
+          sites={dive.dive_sites}
+          course={dive.course_uuid != null}
+        />
       </Link>
       <div className="text-xs">
         {formatDiveDateTime(dive.start_time)}

@@ -16,7 +16,6 @@ import { Course } from "@/lib/api/courses";
 import { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
 import { formatWebsite } from "@/lib/contact";
-import { formatDateTime } from "@/lib/date-time";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,7 +90,7 @@ function Reading({
   );
 }
 
-// One row of the Dive Information card, the size of the "Logged on" beside it.
+// One row of the Dive Information card.
 function InfoRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
@@ -114,10 +113,9 @@ function labelOf<T extends string>(
 
 /**
  * The dive detail page's sidebar: where the dive was, what the water was like, what
- * recorded it, and when it was logged.
+ * recorded it, and how the diver classed it.
  *
- * Each card renders only when it has something to show, so a hand-logged dive with no trip
- * or conditions recorded leaves just the metadata card.
+ * Each card renders only when it has something to show.
  */
 export function DiveDetailSidebar({
   dive,
@@ -143,6 +141,8 @@ export function DiveDetailSidebar({
     dive.waves != null ||
     dive.weather != null;
   const tags = dive.tags ?? [];
+  const hasInformation =
+    dive.type != null || dive.rating != null || tags.length > 0;
 
   const entry = fixPoint(dive.entry_latitude, dive.entry_longitude);
   const exit = fixPoint(dive.exit_latitude, dive.exit_longitude);
@@ -389,48 +389,40 @@ export function DiveDetailSidebar({
       {/* What recorded this dive, and what the account still holds from each */}
       <DiveRecordingsCard dive={dive} onChanged={onRecordingsChanged} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Dive Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {/* The diver's own classification of the dive, beside the record's
-              own facts rather than among the readings: none of the three was
-              measured. */}
-          {dive.type != null && (
-            <InfoRow label="Dive type">
-              {labelOf(DIVE_TYPE_LABELS, dive.type)}
-            </InfoRow>
-          )}
-          {dive.rating != null && (
-            <InfoRow label="Rating">
-              <RatingStars rating={dive.rating} />
-            </InfoRow>
-          )}
-          {tags.length > 0 && (
-            <InfoRow label="Tags">
-              <ul className="flex flex-wrap gap-1.5 pt-1">
-                {tags.map((tag) => (
-                  <li key={tag}>
-                    <Badge variant="outline" className="font-medium">
-                      {tag}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </InfoRow>
-          )}
-          <InfoRow label="Logged on">
-            {formatDateTime(dive.created_at, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </InfoRow>
-        </CardContent>
-      </Card>
+      {hasInformation && (
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Dive Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {/* The diver's own classification of the dive, here rather than
+                among the readings: none of the three was measured. */}
+            {dive.type != null && (
+              <InfoRow label="Dive type">
+                {labelOf(DIVE_TYPE_LABELS, dive.type)}
+              </InfoRow>
+            )}
+            {dive.rating != null && (
+              <InfoRow label="Rating">
+                <RatingStars rating={dive.rating} />
+              </InfoRow>
+            )}
+            {tags.length > 0 && (
+              <InfoRow label="Tags">
+                <ul className="flex flex-wrap gap-1.5 pt-1">
+                  {tags.map((tag) => (
+                    <li key={tag}>
+                      <Badge variant="outline" className="font-medium">
+                        {tag}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </InfoRow>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

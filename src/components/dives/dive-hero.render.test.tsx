@@ -94,6 +94,47 @@ describe("DiveHero", () => {
     );
   });
 
+  it("adds the water, the entry and the dive's type to its line", () => {
+    render(
+      <DiveHero
+        back={BACK}
+        dive={dive({
+          water_type: "fresh",
+          entry_type: "boat",
+          type: "closed_circuit",
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).toHaveTextContent(
+      "Apr 4, 2021, 10:04 · Water type Fresh water · Entry type Boat · Dive type Closed circuit",
+    );
+  });
+
+  // Each goes without saying.
+  it("leaves salt water and open circuit off its line", () => {
+    render(
+      <DiveHero
+        back={BACK}
+        dive={dive({ water_type: "salt", type: "open_circuit" })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).toHaveTextContent(/^Apr 4, 2021, 10:04$/);
+  });
+
+  it("marks a training dive's title with the course's icon", () => {
+    render(<DiveHero back={BACK} dive={dive({ course_uuid: "course-1" })} />);
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Dive #1 (training dive)",
+    );
+  });
+
   it("shows the depths in feet for an imperial diver", () => {
     // Whole feet, and the value behind them is still the 30.48 m the API sent.
     auth.units = "imperial";

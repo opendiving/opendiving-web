@@ -1,10 +1,18 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { Dive } from "@/lib/api/dives";
+import { Shapes, Waves, WavesArrowDown } from "lucide-react";
+import {
+  DIVE_TYPE_LABELS,
+  ENTRY_TYPE_LABELS,
+  vocabularyLabel,
+  WATER_TYPE_LABELS,
+  type Dive,
+} from "@/lib/api/dives";
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
+import { FactsLine, IconFact } from "@/components/ui/icon-fact";
 import { DiveTitle } from "@/components/dives/dive-title";
 import {
   diveMapLocations,
@@ -38,8 +46,30 @@ export function DiveHero({
   const units = useUnits();
   const locations = diveMapLocations(dive);
   const isPlaced = hasMapPosition(locations);
-  // The title names the site; this says where it is.
-  const placeName = dive.dive_sites[0]?.location?.name;
+  // Its card's line - when, in the dive's own timezone, and where, since the
+  // title names the site and this says where it is - then the water, the way in
+  // and the kind of dive as a site's page lists its own, the water only where
+  // it is not the sea's and the kind only where it is not open circuit: each
+  // goes without saying.
+  const facts = [
+    formatDiveDateTime(dive.start_time),
+    dive.dive_sites[0]?.location?.name,
+    dive.water_type != null && dive.water_type !== "salt" && (
+      <IconFact icon={Waves} label="Water type">
+        {vocabularyLabel(WATER_TYPE_LABELS, dive.water_type)}
+      </IconFact>
+    ),
+    dive.entry_type != null && (
+      <IconFact icon={WavesArrowDown} label="Entry type">
+        {vocabularyLabel(ENTRY_TYPE_LABELS, dive.entry_type)}
+      </IconFact>
+    ),
+    dive.type != null && dive.type !== "open_circuit" && (
+      <IconFact icon={Shapes} label="Dive type">
+        {vocabularyLabel(DIVE_TYPE_LABELS, dive.type)}
+      </IconFact>
+    ),
+  ].filter(Boolean);
 
   const wholeDepth = (meters: number) =>
     formatDepth(meters, units, { decimals: 0 });
@@ -77,15 +107,13 @@ export function DiveHero({
       icon={DiveIcon}
       actions={actions}
       title={
-        <DiveTitle diveNumber={dive.dive_number} sites={dive.dive_sites} />
+        <DiveTitle
+          diveNumber={dive.dive_number}
+          sites={dive.dive_sites}
+          course={dive.course_uuid != null}
+        />
       }
-      // Its card's line: when, in the dive's own timezone, and where.
-      subtitle={
-        <>
-          {formatDiveDateTime(dive.start_time)}
-          {placeName && ` · ${placeName}`}
-        </>
-      }
+      subtitle={<FactsLine facts={facts} />}
       figures={figures}
       mapCredit={isPlaced}
       // The map's water for a dive with no position, or where this instance
