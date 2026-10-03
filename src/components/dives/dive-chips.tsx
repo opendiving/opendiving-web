@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
 import {
+  HINT_DELAY_MS,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   DIVE_TYPE_ABBREVIATIONS,
   DIVE_TYPE_LABELS,
   vocabularyLabel,
@@ -8,43 +15,51 @@ import {
   type Dive,
 } from "@/lib/api/dives";
 
-// One chip: what it says, and what a screen reader and a hover hear in full.
-// Without the text's glow, as a map's credit chip is: its fill lifts it.
+// One chip, bordered in its text's colour, with what it stands for in full as
+// its hover hint and in a screen reader's words. Without the text's glow, as a
+// map's credit chip is: its fill lifts it.
 function Chip({ text, label }: { text: string; label: string }) {
   return (
-    <span
-      title={label}
-      className="rounded-sm bg-background/80 px-1 text-[10px] font-semibold leading-4 tracking-wide [text-shadow:none] md:text-xs md:leading-5"
-    >
-      <span aria-hidden>{text}</span>
-      <span className="sr-only">{label}</span>
-    </span>
+    <Tooltip>
+      {/* The name is already in the chip's words, so the hint describes
+          nothing a screen reader has not heard: `IconTooltip`'s override. */}
+      <TooltipTrigger asChild aria-describedby={undefined}>
+        <span className="rounded-sm border border-current bg-background/80 px-1 text-[10px] font-semibold leading-4 tracking-wide [text-shadow:none] md:text-xs md:leading-5">
+          <span aria-hidden>{text}</span>
+          <span className="sr-only">{label}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
 /**
  * The chips over a dive's title, on its card and its page's hero alike: the
  * water, then the kind of dive. Salt water and open circuit have none - each
- * goes without saying - and a dive with neither has no row.
+ * goes without saying - and a dive with neither has no row. Lifted over a
+ * card's link, so its hints are reachable.
  */
 export function diveChips(dive: Dive): ReactNode {
   const water = dive.water_type && WATER_TYPE_ABBREVIATIONS[dive.water_type];
   const type = dive.type && DIVE_TYPE_ABBREVIATIONS[dive.type];
   if (!water && !type) return null;
   return (
-    <div className="flex gap-1">
-      {water && (
-        <Chip
-          text={water}
-          label={vocabularyLabel(WATER_TYPE_LABELS, dive.water_type!)}
-        />
-      )}
-      {type && (
-        <Chip
-          text={type}
-          label={vocabularyLabel(DIVE_TYPE_LABELS, dive.type!)}
-        />
-      )}
-    </div>
+    <TooltipProvider delayDuration={HINT_DELAY_MS} disableHoverableContent>
+      <div className="relative z-10 flex w-fit gap-1">
+        {water && (
+          <Chip
+            text={water}
+            label={vocabularyLabel(WATER_TYPE_LABELS, dive.water_type!)}
+          />
+        )}
+        {type && (
+          <Chip
+            text={type}
+            label={vocabularyLabel(DIVE_TYPE_LABELS, dive.type!)}
+          />
+        )}
+      </div>
+    </TooltipProvider>
   );
 }
