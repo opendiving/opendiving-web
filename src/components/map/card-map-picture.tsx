@@ -165,8 +165,9 @@ export function CardMapPicture({
         {/* Nothing until the frame has been measured, which is one
             synchronous re-render: the picture's place in it depends on that. */}
         {frame && band && (
-          // eslint-disable-next-line @next/next/no-img-element -- a blob URL
-          // of a private picture, which `next/image` has nothing to optimise.
+          // A blob URL of a private picture, which `next/image` has nothing
+          // to optimise.
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={shown.src}
             alt=""
