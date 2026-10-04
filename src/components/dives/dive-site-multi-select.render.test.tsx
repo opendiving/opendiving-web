@@ -50,8 +50,13 @@ vi.mock("@/components/sites/dive-site-dialog", async () => {
   };
 });
 
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
+
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const lookupDiveSites = vi.mocked(diveSitesAPI.lookupDiveSites);
+const getDiveSite = vi.mocked(diveSitesAPI.getDiveSite);
 
 const SITE = {
   uuid: "site-1",
@@ -65,6 +70,11 @@ const SECOND_SITE = {
 };
 
 beforeEach(() => {
+  getDiveSite.mockReset();
+  getDiveSite.mockImplementation(
+    async (uuid) =>
+      [SITE, SECOND_SITE].find((site) => site.uuid === uuid) as never,
+  );
   lookupDiveSites.mockReset();
   lookupDiveSites.mockResolvedValue({
     data: [SITE],
@@ -249,6 +259,30 @@ describe("DiveSiteMultiSelect", () => {
         name: /^Reorder Thistlegorm, position 2 of 2\./,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("warns under a site whose water or altitude differs from the first that records one", async () => {
+    const records = {
+      [SITE.uuid]: { ...SITE, water_type: "salt", altitude: 0 },
+      [SECOND_SITE.uuid]: { ...SECOND_SITE, water_type: "fresh", altitude: 0 },
+      "site-3": { uuid: "site-3", name: "Tarn", altitude: 2400 },
+    };
+    getDiveSite.mockImplementation(async (uuid) => records[uuid] as never);
+    render(
+      <DiveSiteMultiSelect
+        value={[SITE.uuid, SECOND_SITE.uuid, "site-3"]}
+        knownSites={[SITE, SECOND_SITE]}
+        onChange={() => {}}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(rows()).toEqual([
+        "Blue Hole, Dahab, Egypt",
+        "Thistlegorm, Red Sea, EgyptFresh water, unlike Blue Hole (salt water)",
+        "TarnAltitude 2400 m, unlike Blue Hole (0 m)",
+      ]),
+    );
   });
 
   it("removes the site whose button was pressed", async () => {

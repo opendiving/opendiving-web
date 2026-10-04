@@ -2929,7 +2929,10 @@ describe("the primary site's water, altitude and entry", () => {
     await waitFor(() => expect(altitude()).toHaveValue(1800));
 
     await pickSite("High Tarn");
-    expect(diveSitesAPI.getDiveSite).not.toHaveBeenCalledWith("site-tarn");
+    // Read for the list's comparison, which is all a second site does.
+    expect(
+      await screen.findByText("Altitude 2400 m, unlike Blue Lake (1800 m)"),
+    ).toBeInTheDocument();
     expect(altitude()).toHaveValue(1800);
 
     screen.getByRole("button", { name: /^Reorder High Tarn/ }).focus();

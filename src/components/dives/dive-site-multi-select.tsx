@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { GripVertical, X } from "lucide-react";
+import { AlertTriangle, GripVertical, X } from "lucide-react";
 import {
   ComboboxSearchResult,
   CreatableCombobox,
@@ -12,6 +12,8 @@ import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { DiveSiteSummary } from "@/lib/api/dives";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
+import { useUnits } from "@/hooks/useUnits";
+import { diveSiteMismatches } from "@/lib/dive-site-mismatches";
 import { cn } from "@/lib/utils";
 
 // How many sites the dropdown asks for at a time. Enough to scroll through
@@ -55,6 +57,11 @@ export function DiveSiteMultiSelect({
   ...slotProps
 }: DiveSiteMultiSelectProps) {
   const [labels, setLabels] = useState<Record<string, DiveSiteSummary>>({});
+  // Whole records, for the water type and altitude neither a lookup row nor a
+  // dive's embedded summary carries. Read only once there is a second site to
+  // compare the first with.
+  const [records, setRecords] = useState<Record<string, DiveSite>>({});
+  const units = useUnits();
   const [showNewDialog, setShowNewDialog] = useState(false);
   // Set by a save in the new-site dialog, so its close doesn't hand focus back
   // to the input - which would reopen the menu `blurOnSelect` just shut.
@@ -75,16 +82,22 @@ export function DiveSiteMultiSelect({
   const labelFor = (uuid: string): DiveSiteSummary | undefined =>
     labels[uuid] ?? knownSites?.find((site) => site.uuid === uuid);
 
+  const rememberRecord = useCallback((site: DiveSite) => {
+    setLabels((prev) => ({ ...prev, [site.uuid]: site }));
+    setRecords((prev) => ({ ...prev, [site.uuid]: site }));
+  }, []);
+
   // Resolve any selected site whose name isn't already known - which is how a
   // site pre-selected by uuid alone (`/dives/new?dive_site_uuid=...`) gets a
   // name, and the safety net that keeps a selection from ever rendering
-  // nameless. A dive has a handful of sites at most, so these are one-off
-  // single-record fetches, not a list scan.
+  // nameless - and, from the second site on, every site's whole record. A dive
+  // has a handful of sites at most, so these are one-off single-record fetches,
+  // not a list scan.
   useEffect(() => {
     const unresolved = value.filter(
       (uuid) =>
-        !labels[uuid] &&
-        !knownSites?.some((site) => site.uuid === uuid) &&
+        ((!labels[uuid] && !knownSites?.some((site) => site.uuid === uuid)) ||
+          (value.length > 1 && !records[uuid])) &&
         !requestedRef.current.has(uuid),
     );
     if (unresolved.length === 0) return;
@@ -102,12 +115,20 @@ export function DiveSiteMultiSelect({
 
     unresolved.forEach(async (uuid) => {
       try {
-        rememberLabel(await diveSitesAPI.getDiveSite(uuid));
+        rememberRecord(await diveSitesAPI.getDiveSite(uuid));
       } catch (error) {
         console.error("Failed to fetch dive site:", error);
       }
     });
-  }, [value, labels, knownSites, rememberLabel]);
+  }, [value, labels, records, knownSites, rememberRecord]);
+
+  // Nothing until every site is read: the first site recording a water type may
+  // be one still on its way.
+  const siteRecords = value.map((uuid) => records[uuid]);
+  const mismatches =
+    value.length > 1 && siteRecords.every(Boolean)
+      ? diveSiteMismatches(siteRecords, units)
+      : [];
 
   const searchDiveSites = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
@@ -150,7 +171,7 @@ export function DiveSiteMultiSelect({
 
   const handleCreated = (newDiveSite: DiveSite) => {
     savedFromDialogRef.current = true;
-    rememberLabel(newDiveSite);
+    rememberRecord(newDiveSite);
     addSite(newDiveSite.uuid);
   };
 
@@ -172,7 +193,7 @@ export function DiveSiteMultiSelect({
                 key={id}
                 ref={setItemRef(index)}
                 className={cn(
-                  "flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm",
+                  "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border bg-background px-2 py-1.5 text-sm",
                   isDragging && "relative z-10 shadow-lg ring-2 ring-ring",
                 )}
                 // The dragged row is translated to follow the pointer; the rest
@@ -224,6 +245,20 @@ export function DiveSiteMultiSelect({
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </IconTooltip>
+                {/* Under the name, past the handle - only a list of two or more
+                    has warnings, and only such a list has handles. */}
+                {mismatches[index]?.map((mismatch) => (
+                  <p
+                    key={mismatch}
+                    className="flex basis-full items-start gap-1.5 pl-6 text-xs text-warning"
+                  >
+                    <AlertTriangle
+                      className="mt-px h-3.5 w-3.5 shrink-0"
+                      aria-hidden
+                    />
+                    <span>{mismatch}</span>
+                  </p>
+                ))}
               </li>
             );
           })}
