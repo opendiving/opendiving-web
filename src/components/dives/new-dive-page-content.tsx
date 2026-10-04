@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,7 +10,7 @@ import { withReturnTo } from "@/lib/return-to";
 import { useSuggestedDiveNumber } from "@/hooks/useSuggestedDiveNumber";
 import { divesAPI } from "@/lib/api/dives";
 import { coursesAPI, type Course } from "@/lib/api/courses";
-import { carriedPeople } from "@/lib/people";
+import { mergePeople } from "@/lib/people";
 import {
   boatNameOrNull,
   diveCreateSchema,
@@ -113,11 +113,6 @@ export function NewDivePageContent() {
     fillsDefaults: true,
   });
   const { prefill, revealNonEmpty, autofill } = visibility;
-  // Read by the prefill below without becoming one of its triggers.
-  const isVisibleRef = useRef(visibility.isVisible);
-  useEffect(() => {
-    isVisibleRef.current = visibility.isVisible;
-  });
 
   // The primary site's water type, altitude and entry type, once the last dive's
   // have landed: a site in the URL is a uuid at mount, its read races the last
@@ -238,15 +233,10 @@ export function NewDivePageContent() {
         // react-hook-form's dirty state - is what "untouched" means afterwards.
         // URL param takes precedence over the last dive's course, as for the trip.
         const courseUuid = initialCourseId ?? lastDive.course_uuid ?? undefined;
-        // The course's instructor and students come along only where the course
-        // does: a field the diver hides is blanked, and its people with it.
-        const people = carriedPeople({
-          lastDive,
-          courseUuid: isVisibleRef.current("course_uuid")
-            ? courseUuid
-            : initialCourseId,
-          coursePeople,
-        });
+        // Everyone on the last dive, whatever their role: the last dive is the
+        // one source, and who stays on a course is the diver's to say. The URL
+        // course's people lead.
+        const people = mergePeople(coursePeople, lastDive.people ?? []);
         const carried: Partial<DiveCreateInput> = {
           // Carried over, unlike the temperature and visibility below: those are
           // readings taken on the day, while the water and its elevation are
@@ -275,9 +265,7 @@ export function NewDivePageContent() {
           // after dive - and, like the trip, behind what the URL asked for: the
           // course's own contact comes first.
           contact_uuid: courseContact ?? lastDive.contact_uuid ?? null,
-          // Carried like the dive center; a course's instructor and students
-          // only with their course - see `carriedPeople`. The course's own
-          // people lead.
+          // Carried like the dive center - see `people` above.
           people,
           dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],

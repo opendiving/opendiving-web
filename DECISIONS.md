@@ -4817,10 +4817,11 @@ A person added from `PeopleMultiSelect` starts with the role its host implies: `
 `student` on a course, none on a trip, where who came along has no common word. The diver changes it
 on the row. The course dialog holds the first `instructor` in a `PersonCombobox` of its own and
 writes it back first, so naming an instructor stays one pick with the role set. A new dive carries
-the last dive's people as it carries the dive center, except an instructor or a student, who stay on
-their course unless the new dive is on the same one (`carriedPeople`). An unmatched name on Enter
-makes a person: a name is a whole person, where a contact would lack its role. Rejected: no default,
-and carrying everyone, which puts last week's instructor on this week's fun dive.
+the last dive's people as it carries the dive center, every role included: the last dive is the one
+source, and who stays on a course is the diver's call, which no rule about roles or the course field
+can read. An unmatched name on Enter makes a person: a name is a whole person, where a contact would
+lack its role. Rejected: no default, and leaving instructors and students behind when the course
+changes.
 
 ## The skills are repo content; what wires up the hook is not
 

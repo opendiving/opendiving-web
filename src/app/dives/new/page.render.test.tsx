@@ -1725,21 +1725,18 @@ describe("the people", () => {
     expect(sent().people).toEqual(onCourse.people);
   });
 
-  it("leaves the course's people on the course where the course is hidden", async () => {
+  it("carries the last dive's people whether or not the course comes too", async () => {
     stable.auth.user.dive_form_hidden_fields = ["course_uuid"];
     lastDiveWith(onCourse);
 
     render(<NewDivePage />);
 
-    expect(await roleOf(BUDDY.name)).toHaveValue("buddy");
-    expect(
-      screen.queryByRole("combobox", { name: `Role of ${INSTRUCTOR.name}` }),
-    ).toBeNull();
+    expect(await roleOf(INSTRUCTOR.name)).toHaveValue("instructor");
     fillRequiredFields();
     await logDive();
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
     expect(sent().course_uuid).toBeUndefined();
-    expect(sent().people).toEqual([{ person_uuid: BUDDY.uuid, role: "buddy" }]);
+    expect(sent().people).toEqual(onCourse.people);
   });
 
   it("arrives with the course's people and their roles from Log a dive for this course", async () => {
