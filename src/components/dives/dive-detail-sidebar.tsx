@@ -19,7 +19,6 @@ import { formatWebsite } from "@/lib/contact";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
@@ -201,23 +200,35 @@ export function DiveDetailSidebar({
             {dive.dive_sites.length > 0 && (
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Dive site
+                  {dive.dive_sites.length > 1 ? "Dive sites" : "Dive site"}
                 </div>
-                <div className="flex items-start gap-2 text-sm">
-                  <DiveSiteIcon className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <DiveSitesLabel
-                      sites={dive.dive_sites}
-                      linked
-                      className="font-medium"
-                    />
-                    {dive.dive_sites[0]?.location?.name && (
-                      <span className="block text-muted-foreground">
-                        {dive.dive_sites[0].location.name}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                {/* Every site, in the order they were visited, as the trip page
+                    lists its parts: the hero and the cards cap the list at the
+                    first with a "+N", and this is the one surface with room to
+                    name the rest. */}
+                <ul className="space-y-1.5">
+                  {dive.dive_sites.map((site) => (
+                    <li
+                      key={site.uuid}
+                      className="flex items-start gap-2 text-sm"
+                    >
+                      <DiveSiteIcon className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <Link
+                          href={withReturnTo(`/sites/${site.uuid}`)}
+                          className="font-medium hover:underline"
+                        >
+                          {site.name}
+                        </Link>
+                        {site.location?.name && (
+                          <span className="block text-muted-foreground">
+                            {site.location.name}
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

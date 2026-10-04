@@ -203,6 +203,35 @@ describe("DiveDetailSidebar locations", () => {
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
+  it("lists every site, in the order visited, each linked with its place", () => {
+    // The hero and the cards show the first with a "+N"; this card names them all.
+    renderSidebar(
+      dive({
+        dive_sites: [
+          site({ location: { name: "Dahab" } }),
+          site({ uuid: "canyon-uuid", name: "The Canyon" }),
+        ],
+      }),
+    );
+
+    expect(screen.getByText("Dive sites")).toBeInTheDocument();
+    const rows = screen.getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "Blue HoleDahab",
+      "The Canyon",
+    ]);
+    expect(
+      within(rows[1]).getByRole("link", { name: "The Canyon" }),
+    ).toHaveAttribute("href", expect.stringContaining("/sites/canyon-uuid"));
+  });
+
+  it("names a lone site in the singular", () => {
+    renderSidebar(dive({ dive_sites: [site()] }));
+
+    expect(screen.getByText("Dive site")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Blue Hole" })).toBeInTheDocument();
+  });
+
   it("renders no card at all for a dive with nothing to place", () => {
     renderSidebar(dive());
 

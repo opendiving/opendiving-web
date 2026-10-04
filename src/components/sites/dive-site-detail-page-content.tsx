@@ -148,6 +148,7 @@ export function DiveSiteDetailPageContent() {
               complete
               enabled={!!user}
               diveSiteId={diveSite.uuid}
+              refreshOn={diveSite}
               title="Dives at This Site"
               description="All dives logged at this dive site"
               viewAllHref={null}
