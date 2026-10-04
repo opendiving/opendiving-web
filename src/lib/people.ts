@@ -26,10 +26,10 @@ export function mergePeople(
  *
  * The last dive's people carry over, as its trip and its dive center do: a week
  * with one buddy is logged with them dive after dive. Its instructor and
- * students do not, unless the new dive is on the same course - a course ends,
- * and last week's instructor on this week's fun dive is the worse default, the
- * reason the course itself is not carried. A course the page was opened for
- * ("Log a dive for this course") puts its own people first, with their roles.
+ * students do not, unless the new dive is on the same course - last week's
+ * instructor on this week's fun dive is the worse default. A course the page
+ * was opened for ("Log a dive for this course") puts its own people first, with
+ * their roles.
  */
 export function carriedPeople({
   lastDive,

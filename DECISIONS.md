@@ -4791,11 +4791,11 @@ The list's search debounces the term that `useInfiniteResource`'s `fetchFn` clos
 changing it discards every loaded page. "No courses match" and "no courses yet" are separate empty
 states; only the second offers create.
 
-`/dives/new` does not inherit the last dive's course; the course page passes `?course_uuid=`. The
-dive page's course is its own Training card, not a Location row. `getDives` takes its filters as one
-`DiveFilters` object, so a new one is a key rather than a position. The resource sweep needs
-`git grep -ni c-card -- src/ README.md` too: `git grep -lni certifications -- src/ README.md` misses
-`components/layout/landing-page.tsx`.
+`/dives/new` carries the last dive's course as it carries the trip; the course page's
+`?course_uuid=` wins over it. The dive page's course is its own Training card, not a Location row.
+`getDives` takes its filters as one `DiveFilters` object, so a new one is a key rather than a
+position. The resource sweep needs `git grep -ni c-card -- src/ README.md` too:
+`git grep -lni certifications -- src/ README.md` misses `components/layout/landing-page.tsx`.
 
 ## A contact picker speaks its host's word and hands the dialog its host's role
 
@@ -5145,8 +5145,7 @@ The edit dialog gets no prefill: `reset(...)` from the stored card makes every v
 `notes` is not copied — a course's notes describe the training, a card's describe the card. `name`
 is, under the same guard: a course name is often longer than the level printed on the card, so a
 diver who types over it keeps what they typed. `lib/api/certifications.ts`'s comment holds: nothing
-derives these at read time. Unlike "A dive's course is not inherited from the last dive", this runs
-only on the diver's own pick.
+derives these at read time.
 
 ## A silently prefilled field is not a clean field
 

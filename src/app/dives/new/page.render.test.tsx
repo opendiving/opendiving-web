@@ -1710,7 +1710,23 @@ describe("the people", () => {
     ],
   };
 
-  it("carries the last dive's buddy over, and leaves its course's people on the course", async () => {
+  it("carries the last dive's course over, with its people", async () => {
+    lastDiveWith(onCourse);
+
+    render(<NewDivePage />);
+
+    expect(await roleOf(INSTRUCTOR.name)).toHaveValue("instructor");
+    expect(await roleOf(CLASSMATE.name)).toHaveValue("student");
+    expect(await roleOf(BUDDY.name)).toHaveValue("buddy");
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().course_uuid).toBe("course-9");
+    expect(sent().people).toEqual(onCourse.people);
+  });
+
+  it("leaves the course's people on the course where the course is hidden", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["course_uuid"];
     lastDiveWith(onCourse);
 
     render(<NewDivePage />);
@@ -1722,6 +1738,7 @@ describe("the people", () => {
     fillRequiredFields();
     await logDive();
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().course_uuid).toBeUndefined();
     expect(sent().people).toEqual([{ person_uuid: BUDDY.uuid, role: "buddy" }]);
   });
 

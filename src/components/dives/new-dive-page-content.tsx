@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -113,6 +113,11 @@ export function NewDivePageContent() {
     fillsDefaults: true,
   });
   const { prefill, revealNonEmpty, autofill } = visibility;
+  // Read by the prefill below without becoming one of its triggers.
+  const isVisibleRef = useRef(visibility.isVisible);
+  useEffect(() => {
+    isVisibleRef.current = visibility.isVisible;
+  });
 
   // The primary site's water type, altitude and entry type, once the last dive's
   // have landed: a site in the URL is a uuid at mount, its read races the last
@@ -231,9 +236,15 @@ export function NewDivePageContent() {
         // one the moment the diver shows it. That is owner decision 1 read forwards
         // and backwards at once, and the layer's record of what it wrote - not
         // react-hook-form's dirty state - is what "untouched" means afterwards.
+        // URL param takes precedence over the last dive's course, as for the trip.
+        const courseUuid = initialCourseId ?? lastDive.course_uuid ?? undefined;
+        // The course's instructor and students come along only where the course
+        // does: a field the diver hides is blanked, and its people with it.
         const people = carriedPeople({
           lastDive,
-          courseUuid: initialCourseId,
+          courseUuid: isVisibleRef.current("course_uuid")
+            ? courseUuid
+            : initialCourseId,
           coursePeople,
         });
         const carried: Partial<DiveCreateInput> = {
@@ -255,20 +266,18 @@ export function NewDivePageContent() {
           weight: lastDive.weight,
           // URL param takes precedence over the last dive's trip.
           trip_uuid: initialTripId ?? lastDive.trip_uuid,
-          // Deliberately *not* inherited from the last dive, unlike the trip
-          // above: a course ends, and silently tagging the first fun dive after
-          // it as training is a worse default than one extra pick. The mid-course
-          // streak is covered by the course page's own "Log a dive for this
-          // course", which arrives here as `initialCourseId` - already revealed at
-          // mount, so hiding `course_uuid` never loses it.
-          course_uuid: initialCourseId,
+          // Carried like the trip: a course runs over several dives in a row. A
+          // course page's "Log a dive for this course" arrives as
+          // `initialCourseId`, already revealed at mount, so hiding `course_uuid`
+          // never loses it.
+          course_uuid: courseUuid,
           // Carried like the trip - a week with one shop is logged with it dive
           // after dive - and, like the trip, behind what the URL asked for: the
           // course's own contact comes first.
           contact_uuid: courseContact ?? lastDive.contact_uuid ?? null,
-          // Carried like the dive center, except a course's instructor and
-          // students, who stay on their course - see `carriedPeople`. The
-          // course's own people lead.
+          // Carried like the dive center; a course's instructor and students
+          // only with their course - see `carriedPeople`. The course's own
+          // people lead.
           people,
           dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
