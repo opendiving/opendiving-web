@@ -40,6 +40,9 @@ export function DiveSiteDetailPageContent() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  // Counted rather than the site itself, which a return to the page re-reads
+  // into a new object: only an edit made here moves what the dive cards show.
+  const [saves, setSaves] = useState(0);
   const back = useReturnTo({ href: "/sites", label: "Back to dive sites" });
   const withReturnTo = useWithReturnTo();
 
@@ -125,7 +128,10 @@ export function DiveSiteDetailPageContent() {
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         diveSite={diveSite}
-        onSaved={setDiveSite}
+        onSaved={(saved) => {
+          setDiveSite(saved);
+          setSaves((count) => count + 1);
+        }}
       />
 
       <DeleteWithReassignDialog
@@ -148,7 +154,7 @@ export function DiveSiteDetailPageContent() {
               complete
               enabled={!!user}
               diveSiteId={diveSite.uuid}
-              refreshOn={diveSite}
+              refreshOn={saves}
               title="Dives at This Site"
               description="All dives logged at this dive site"
               viewAllHref={null}

@@ -64,9 +64,9 @@ export interface RecentDivesCardProps {
   // heading, as the list pages' cards do: the empty state already says what the
   // card is for. The dashboard's preview keeps it beside the trips card.
   complete?: boolean;
-  // Re-read the dives on screen, in place, whenever this changes - the record
-  // they are scoped to, after an edit that shows on their cards: a site's name
-  // is in their titles and its pin is on their maps.
+  // Re-read the dives on screen, in place, whenever this changes - after an
+  // edit to the record they are scoped to that shows on their cards: a site's
+  // name is in their titles and its pin is on their maps.
   refreshOn?: unknown;
   title?: string;
   description?: string;
