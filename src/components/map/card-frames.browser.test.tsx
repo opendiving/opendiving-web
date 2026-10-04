@@ -80,6 +80,14 @@ const DIVES: [string, Dive][] = [
     "two sites a coast apart",
     dive([SITE_PIN, { latitude: 27.2579, longitude: 33.8116 }]),
   ],
+  [
+    "chips and no outline, where the chips are the top of the foot",
+    dive([SITE_PIN], {
+      water_type: "fresh",
+      type: "closed_circuit",
+      depth_outline: null,
+    }),
+  ],
 ];
 
 const trip = (parts: Trip["parts"]): Trip => ({
@@ -326,9 +334,11 @@ async function expectComposed(
       .getBoundingClientRect();
     const details = item.lastElementChild!.getBoundingClientRect();
     const outline = item.querySelector(".inset-x-3.h-14");
+    const chips = item.querySelector(".absolute.bottom-1.left-0");
     const footTop = Math.min(
       details.top,
       outline?.getBoundingClientRect().top ?? Infinity,
+      chips?.getBoundingClientRect().top ?? Infinity,
     );
     const band = bandIn(
       frame.height,
@@ -421,6 +431,31 @@ describe("a card's map", () => {
     await screen.findByText("Dives at This Site");
     await expectComposed(1);
   });
+
+  it.each([
+    ["at the narrowest viewport", NARROWEST],
+    ["in two columns", TWO_COLUMNS],
+  ])(
+    "keeps a dive card as tall with chips as without, %s",
+    async (_where, width) => {
+      await page.viewport(width, 3000);
+      const height = (record: Dive) => {
+        const { container, unmount } = render(dives(record));
+        const value = container.querySelector("li")!.offsetHeight;
+        unmount();
+        return value;
+      };
+      const plain = DIVES[0][1];
+
+      expect(
+        height({
+          ...plain,
+          water_type: "fresh",
+          type: "closed_circuit",
+        } as Dive),
+      ).toBe(height(plain));
+    },
+  );
 
   // The widest a card gets, and a frame wider than a tile: the case where a
   // card spans three tiles across.
