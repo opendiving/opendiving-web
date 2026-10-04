@@ -265,7 +265,7 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   // browser - see `DiveSiteMultiSelect`.
   onSearch?: (query: string) => Promise<ComboboxSearchResult>;
   // How long to wait after the last keystroke before calling `onSearch`.
-  // Defaults to the 250 ms that suits our own list endpoints; raise it for a
+  // Defaults to the 250 ms that suits our own lookup endpoints; raise it for a
   // search that reaches a rate-limited third party.
   searchDebounceMs?: number;
   // Ids to leave out of the menu, e.g. items a multi-select has already picked.
