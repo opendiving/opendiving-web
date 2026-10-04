@@ -16,26 +16,25 @@ vi.mock("@/lib/api/courses", async (importOriginal) => ({
 
 vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
-  contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
+  contactsAPI: { lookupContacts: vi.fn(), getContact: vi.fn() },
 }));
 
 vi.mock("@/lib/api/people", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/people")>()),
   peopleAPI: {
-    getPeople: vi.fn(),
+    lookupPeople: vi.fn(),
     getPerson: vi.fn(),
     createPerson: vi.fn(),
   },
-  fetchAllPeople: vi.fn(),
 }));
 
 const { coursesAPI } = await import("@/lib/api/courses");
 const { contactsAPI } = await import("@/lib/api/contacts");
-const { peopleAPI, fetchAllPeople } = await import("@/lib/api/people");
+const { peopleAPI } = await import("@/lib/api/people");
 const createCourse = vi.mocked(coursesAPI.createCourse);
 const updateCourse = vi.mocked(coursesAPI.updateCourse);
 const getContact = vi.mocked(contactsAPI.getContact);
-const getPeople = vi.mocked(peopleAPI.getPeople);
+const lookupPeople = vi.mocked(peopleAPI.lookupPeople);
 const getPerson = vi.mocked(peopleAPI.getPerson);
 const createPerson = vi.mocked(peopleAPI.createPerson);
 
@@ -96,14 +95,13 @@ beforeEach(() => {
   createCourse.mockResolvedValue(EXISTING);
   updateCourse.mockResolvedValue({ message: "Course updated" });
   getContact.mockImplementation(async () => BLUE_OCEAN);
-  getPeople.mockReset().mockImplementation(async () => page(PEOPLE));
+  lookupPeople.mockReset().mockImplementation(async () => page(PEOPLE));
   getPerson.mockReset().mockImplementation(async (uuid: string) => {
     const found = PEOPLE.find((one) => one.uuid === uuid);
     if (!found) throw new Error("not found");
     return found;
   });
   createPerson.mockReset();
-  vi.mocked(fetchAllPeople).mockReset().mockResolvedValue(PEOPLE);
 });
 
 const instructor = () => screen.getByLabelText("Instructor");
@@ -162,7 +160,7 @@ describe("CourseDialog", () => {
   it("names a new instructor in one step: the name, then Enter", async () => {
     // What typing a name did while the field was text, and no more.
     const created = person("person-new", "Robin Reef");
-    getPeople.mockImplementation(async () => page([]));
+    lookupPeople.mockImplementation(async () => page([]));
     createPerson.mockResolvedValue(created);
     open();
 
@@ -359,5 +357,18 @@ describe("CourseDialog", () => {
       await screen.findByText("End date must be on or after start date"),
     ).toBeInTheDocument();
     expect(updateCourse).not.toHaveBeenCalled();
+  });
+
+  it("ranks its people pickers at the course's start date", async () => {
+    open(EXISTING);
+
+    await userEvent.click(instructor());
+
+    await waitFor(() =>
+      expect(lookupPeople).toHaveBeenCalledWith(1, 25, {
+        search: "",
+        until: EXISTING.start_date,
+      }),
+    );
   });
 });

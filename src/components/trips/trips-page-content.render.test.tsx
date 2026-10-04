@@ -36,7 +36,7 @@ vi.mock("@/components/layout/quick-create", () => ({
 
 vi.mock("@/lib/api/trips", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/trips")>()),
-  tripsAPI: { getTrips: vi.fn(), deleteTrip: vi.fn() },
+  tripsAPI: { getTrips: vi.fn(), lookupTrips: vi.fn(), deleteTrip: vi.fn() },
 }));
 
 const { tripsAPI } = await import("@/lib/api/trips");
@@ -89,10 +89,9 @@ const deleteDahab = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   listed = [DAHAB, CEBU];
-  vi.mocked(tripsAPI.getTrips).mockImplementation(
-    async (_page, _size, search) =>
-      page(search === undefined ? listed : [CEBU]),
-  );
+  // The list reads `getTrips`; the delete dialog's picker reads the lookup.
+  vi.mocked(tripsAPI.getTrips).mockImplementation(async () => page(listed));
+  vi.mocked(tripsAPI.lookupTrips).mockResolvedValue(page([CEBU]));
   vi.mocked(tripsAPI.deleteTrip).mockResolvedValue({ message: "Trip deleted" });
 });
 
@@ -130,9 +129,7 @@ describe("TripsPageContent", () => {
   it("drops only the deleted card when nothing moved", async () => {
     render(<TripsPageContent />);
     await screen.findByRole("link", { name: "Dahab 2026" });
-    const reads = vi
-      .mocked(tripsAPI.getTrips)
-      .mock.calls.filter(([, , search]) => search === undefined).length;
+    const reads = vi.mocked(tripsAPI.getTrips).mock.calls.length;
 
     const dialog = await deleteDahab();
     await userEvent.click(
@@ -142,10 +139,6 @@ describe("TripsPageContent", () => {
     expect(tripsAPI.deleteTrip).toHaveBeenCalledWith("trip-1", undefined);
     await screen.findByRole("link", { name: "Cebu 2026" });
     expect(screen.queryByRole("link", { name: "Dahab 2026" })).toBeNull();
-    expect(
-      vi
-        .mocked(tripsAPI.getTrips)
-        .mock.calls.filter(([, , search]) => search === undefined),
-    ).toHaveLength(reads);
+    expect(tripsAPI.getTrips).toHaveBeenCalledTimes(reads);
   });
 });

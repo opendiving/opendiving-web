@@ -6,7 +6,7 @@ import {
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
 import type { FormControlSlotProps } from "@/components/ui/form";
-import { coursesAPI, Course } from "@/lib/api/courses";
+import { coursesAPI, Course, CourseLookupItem } from "@/lib/api/courses";
 import { CourseDialog } from "@/components/courses/course-dialog";
 
 // How many courses the dropdown asks for at a time. Enough to scroll through
@@ -25,24 +25,28 @@ export interface CourseComboboxProps extends FormControlSlotProps {
   onChange: (courseId: string | null) => void;
   // Fired with the whole course whenever the diver picks one - from the menu,
   // from a committed exact-match, or straight out of the inline "Add course..."
-  // dialog. `onChange` carries only the uuid, which is all the dive form wants;
-  // the certification form prefills its own fields from the course and would
-  // otherwise have to re-fetch a record this component already holds.
+  // dialog. A menu row is only a name, so a pick reads the course first and
+  // fires once that read lands - unless another pick or a clear came first, or
+  // picking A then B would hand B's host A's contact.
   //
   // Not fired for a cleared selection: clearing says "no logged course", not
   // "those facts are wrong". Nor for the lookup of an incoming `value`, which is
   // the form seeding itself rather than the diver choosing.
   onCourseSelected?: (course: Course) => void;
+  // The date of the record being edited - see `TripCombobox.until`.
+  until?: string;
   disabled?: boolean;
 }
 
 // Picks (or creates) the training course a dive was part of, or the one a
-// certification came out of. The dropdown searches server-side rather than
-// fetching the user's whole course list - see DECISIONS.md.
+// certification came out of. The dropdown searches the course lookup
+// server-side rather than fetching the user's whole course list - see
+// DECISIONS.md.
 export function CourseCombobox({
   value,
   onChange,
   onCourseSelected,
+  until,
   disabled,
   ...slotProps
 }: CourseComboboxProps) {
@@ -51,16 +55,16 @@ export function CourseCombobox({
   // created, and a lookup for a `value` that arrived from the form. Without it
   // the input would sit empty on a dive that already has a course, since the
   // browser never holds the full list to look the name up in.
-  //
-  // Whole records rather than the uuid->name map this used to be: every site
-  // that writes here already has the full `Course` in hand, and keeping it is
-  // what lets `onCourseSelected` answer without a request of its own.
-  const [courses, setCourses] = useState<Record<string, Course>>({});
+  const [courses, setCourses] = useState<Record<string, CourseLookupItem>>({});
   // Fired-for uuids, so a failed lookup isn't retried on every render.
   const requestedRef = useRef<Set<string>>(new Set());
+  // Counts picks and clears, so a read landing after a later one fires nothing -
+  // a counter rather than the uuid, since re-picking the same course must not
+  // let the superseded read fire as well.
+  const pickRef = useRef(0);
 
   const remember = useCallback(
-    (course: Course) =>
+    (course: CourseLookupItem) =>
       setCourses((prev) => ({ ...prev, [course.uuid]: course })),
     [],
   );
@@ -82,8 +86,9 @@ export function CourseCombobox({
 
   const searchCourses = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
-      const response = await coursesAPI.getCourses(1, COURSES_PER_SEARCH, {
+      const response = await coursesAPI.lookupCourses(1, COURSES_PER_SEARCH, {
         search: query,
+        until,
       });
       response.data.forEach(remember);
       return {
@@ -94,7 +99,7 @@ export function CourseCombobox({
         hasMore: response.has_more,
       };
     },
-    [remember],
+    [remember, until],
   );
 
   // The picker's one way in: `CreatableCombobox` reports a pick, a committed
@@ -102,12 +107,18 @@ export function CourseCombobox({
   // notification is derived here rather than at four call sites.
   const handleChange = (courseId: string | undefined) => {
     onChange(courseId ?? null);
-    if (!courseId) return;
-    const course = courses[courseId];
-    if (course) onCourseSelected?.(course);
+    const pick = ++pickRef.current;
+    if (!courseId || !onCourseSelected) return;
+    coursesAPI
+      .getCourse(courseId)
+      .then((course) => {
+        if (pickRef.current === pick) onCourseSelected(course);
+      })
+      .catch((error) => console.error("Failed to fetch course:", error));
   };
 
   const handleCreated = (newCourse: Course) => {
+    pickRef.current += 1;
     remember(newCourse);
     onChange(newCourse.uuid);
     onCourseSelected?.(newCourse);

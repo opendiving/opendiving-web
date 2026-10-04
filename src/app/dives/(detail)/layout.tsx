@@ -185,10 +185,9 @@ export default function DiveDetailLayout({
     };
   }, [tripUuid, courseUuid, contactUuid]);
 
-  // The names behind the dive's people, read as a whole list rather than one
-  // request per person. Keyed on uuids rather than on the dive, so a step to a
-  // dive with the same buddy asks for nothing, and one with a new person reads
-  // the list again.
+  // The names behind the dive's people, one read per person. Keyed on uuids
+  // rather than on the dive, so a step to a dive with the same buddy asks for
+  // nothing, and one with a new person reads only them.
   const people = usePeopleByUuid(
     user ? (dive?.people ?? []).map((reference) => reference.person_uuid) : [],
   );

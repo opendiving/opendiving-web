@@ -42,6 +42,7 @@ import type { ContactRole } from "@/lib/api/contacts";
 import { PeopleMultiSelect } from "@/components/people/people-multi-select";
 import type { PersonReference } from "@/lib/api/people";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
+import { useDiveRoster } from "@/components/dives/use-dive-roster";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
 import {
   SpeciesMultiSelect,
@@ -243,6 +244,14 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   });
   const showBoatName =
     isVisible("boat_name") && (entryType === "boat" || Boolean(boatName));
+  // Every picker below ranks its rows by last use at or before the dive's own
+  // start time, sent as the field holds it; an empty field sends no bound.
+  const [startTime, tripUuid, courseUuid] = useWatch({
+    control,
+    name: ["start_time", "trip_uuid", "course_uuid"] as Path<TFieldValues>[],
+  });
+  const until: string | undefined = startTime || undefined;
+  const roster = useDiveRoster(tripUuid, courseUuid);
   const section = (group: DiveFormFieldGroup, children: ReactNode) => (
     <DiveFormSection
       title={group}
@@ -313,6 +322,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                           <TripCombobox
                             value={field.value}
                             onChange={field.onChange}
+                            until={until}
                           />
                         </FormControl>
                         <FormMessage />
@@ -332,6 +342,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                           <CourseCombobox
                             value={field.value}
                             onChange={field.onChange}
+                            until={until}
                             // A dive logged on a course was run by whoever ran the
                             // course, unless the diver has said otherwise - so the pick
                             // fills the dive center, through the one write that can
@@ -376,6 +387,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       <ContactCombobox
                         value={field.value}
                         onChange={field.onChange}
+                        until={until}
+                        pinnedUuids={roster.contacts}
                         initialRoles={DIVE_CENTER}
                         placeholder="Select a dive center..."
                         addNewLabel="Add dive center..."
@@ -401,6 +414,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         value={field.value ?? []}
                         onChange={field.onChange}
                         defaultRole="buddy"
+                        until={until}
+                        pinnedUuids={roster.people}
                       />
                     </FormControl>
                     <FormMessage />
@@ -422,6 +437,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         value={field.value ?? []}
                         knownSites={knownDiveSites}
                         onChange={field.onChange}
+                        until={until}
                       />
                     </FormControl>
                     <FormMessage />
@@ -944,6 +960,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                             value={field.value ?? []}
                             knownItems={knownGearItems}
                             onChange={field.onChange}
+                            until={until}
                             weight={weightField.value ?? null}
                             onWeightChange={weightField.onChange}
                             // One of the moments a value arrives from outside the

@@ -135,23 +135,19 @@ clicks). Read "The species picker resolves a pick into a catalog row before form
 before writing the next wrapper: it is the only one whose pick needs a round trip before it has a
 value, and what follows from that is not visible here.
 
-## Every dive form picker searches server-side
+## Every picker of the diver's records searches its lookup
 
-`DiveSiteMultiSelect`, `TripCombobox` and `GearItemMultiSelect` pass `CreatableCombobox`'s
-`onSearch`: one request on open, one per debounced query. The full list grows without bound and
-never reaches the browser.
+Pickers of trips, sites, contacts, people, courses and gear search `/<plural>/lookup` through
+`CreatableCombobox`'s `onSearch`: thin rows ranked by last use on a dive at or before `until`, the
+edited record's date as its form holds it, or none. Remote rows are never re-filtered or re-sorted.
 
-`CreatableCombobox` takes `items` (local name filter) or `onSearch`. Remote results are never
-re-filtered: the server may match fields a name filter cannot. `excludeIds` hides picked items
-immediately; `selectedItem` backs `value` in remote single-select; `noMatchesLabel` is not
-`noItemsLabel`; `hasMore` shows a keep-typing footer; `onSearch` is ref-held (an inline arrow must
-not restart it); the empty on-open query skips the debounce.
+A label comes from a `known*` prop, a lookup row, or a per-uuid read fired once with no `cancelled`
+flag: under StrictMode the request in flight is the discarded mount's. A host needing the whole
+record reads it on pick.
 
-Selection records live apart from the dropdown, from a `known*` prop (read through, never copied by
-an effect), every `onSearch` result, and last a per-uuid fetch (for `/dives/new?dive_site_uuid=...`
-and archived gear). That fetch fires once per uuid (`requestedRef`) with no `cancelled` flag: under
-StrictMode the in-flight request is the discarded mount's, and map writes are idempotent.
-`fetchAllGearSets` pages everything; sets are few and client-filtered.
+The dive form lists its trip's and course's people, and the course's contact, first and unlabelled:
+a heading would teach the combobox unselectable rows. A pin the lookup matched by username or city
+stays where the lookup put it.
 
 ## Duration is a free-typed, regex-validated "MM" or "MM:SS" string in the form
 
@@ -551,10 +547,10 @@ alongside "Create a new set".
 
 `GearItemMultiSelect` renders archived items — an old dive or an older set can reference retired kit
 — with an "Archived" badge, removable but never offered for a new selection. The dropdown searches
-server-side with `include_archived=false`, so retired kit does not eat into the page of matches; an
-archived selection reaches the list through the same per-uuid lookup as any other unknown uuid.
-New-dive prefill (`new-dive-page-content.tsx`) carries the previous dive's gear over but skips
-archived items, since the picker would not offer them either.
+the gear lookup, which never lists archived items, so retired kit does not eat into the page of
+matches; an archived selection reaches the list through the same per-uuid lookup as any other
+unknown uuid. New-dive prefill (`new-dive-page-content.tsx`) carries the previous dive's gear over
+but skips archived items, since the picker would not offer them either.
 
 ## Gear is created and edited in dialogs, not on `new`/`edit` pages
 
@@ -2650,7 +2646,7 @@ error at `locations.0.name` makes `errors.locations` an array and `FormMessage` 
 ## The picker types more slowly than the rest of the app, on purpose
 
 `searchDelayMs` takes an optional override and `CreatableCombobox` a `searchDebounceMs` prop so the
-trip picker waits 450 ms where every other remote combobox waits 250. Our list endpoints tolerate
+trip picker waits 450 ms where every other remote combobox waits 250. Our own endpoints tolerate
 four requests a second; the geocoder sits behind a proxy enforcing one request a second to each
 provider across the instance and answers `[]` rather than queueing, so a fast debounce turns
 keystrokes into empty menus. The empty query fired on menu-open skips the debounce, there being no
@@ -3137,7 +3133,7 @@ Radix focuses the first tabbable descendant of `DialogContent` on open. With a f
 `ConfirmDialog`'s `children` slot that field is first, `CreatableCombobox` opens its menu `onFocus`,
 and the menu is `absolute z-50` — it paints over the footer rather than pushing it down, so the trip
 list covers Cancel and Delete, a click aimed at Delete picks a destination the diver never chose,
-and every confirmation fires a `getTrips`/`getDiveSites` search, plain deletes included.
+and every confirmation fires a trip or dive-site lookup, plain deletes included.
 
 `onOpenAutoFocus` calls `preventDefault` and focuses `cancelRef.current` explicitly. Cancel is the
 right target on its own terms: Enter should not be the destructive key. A slot component inherits
@@ -4907,7 +4903,7 @@ effect and the reset re-renders. Nothing fails; the loop competes with every `wa
 time out at random under `npm run ci`. The pin is "reads the last dive once, not once per render",
 asserting the `getDives` call count.
 
-Same file: `gearAPI.getGearItem` is mocked as well as `getGearItems`, or the gear picker's lookup
+Same file: `gearAPI.getGearItem` is mocked as well as `lookupGearItems`, or the gear picker's read
 hits a real `/api/v1` on jsdom's `localhost:3000`. `fireEvent.change` sets a controlled `FormField`
 in ~3ms where `userEvent.type` costs ~60ms per field, from re-renders rather than the inter-key
 delay, so `userEvent.setup({ delay: null })` does not help; type only where keystrokes are the

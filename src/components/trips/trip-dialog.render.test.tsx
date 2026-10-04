@@ -15,18 +15,21 @@ vi.mock("@/lib/api/trips", () => ({
 
 vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
-  contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
+  contactsAPI: { lookupContacts: vi.fn(), getContact: vi.fn() },
 }));
 
 vi.mock("@/lib/api/people", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/people")>()),
-  peopleAPI: { getPeople: vi.fn(), getPerson: vi.fn(), createPerson: vi.fn() },
-  fetchAllPeople: vi.fn(),
+  peopleAPI: {
+    lookupPeople: vi.fn(),
+    getPerson: vi.fn(),
+    createPerson: vi.fn(),
+  },
 }));
 
 const { tripsAPI } = await import("@/lib/api/trips");
 const { contactsAPI } = await import("@/lib/api/contacts");
-const { peopleAPI, fetchAllPeople } = await import("@/lib/api/people");
+const { peopleAPI } = await import("@/lib/api/people");
 const updateTrip = vi.mocked(tripsAPI.updateTrip);
 const createTrip = vi.mocked(tripsAPI.createTrip);
 
@@ -181,7 +184,7 @@ describe("TripDialog", () => {
   });
 
   it("adds a person with no role, since a trip has no word for who came", async () => {
-    vi.mocked(peopleAPI.getPeople).mockResolvedValue({
+    vi.mocked(peopleAPI.lookupPeople).mockResolvedValue({
       data: [SAM],
       total_count: 1,
       has_more: false,
@@ -218,7 +221,7 @@ describe("TripDialog", () => {
   });
 
   it("keeps the trip's people, roles and all, through an edit that never touched them", async () => {
-    vi.mocked(fetchAllPeople).mockResolvedValue([SAM]);
+    vi.mocked(peopleAPI.getPerson).mockResolvedValue(SAM);
     updateTrip.mockResolvedValue({ message: "Trip updated" });
     const people = [{ person_uuid: SAM.uuid, role: "companion" }];
     render(
@@ -295,5 +298,49 @@ describe("TripDialog", () => {
     expect(
       updateTrip.mock.calls[0][1].parts?.map((part) => part.accommodation_uuid),
     ).toEqual([null, "contact-coral"]);
+  });
+
+  it("ranks the people picker at the trip's earliest dated day, not its first part's", async () => {
+    vi.mocked(peopleAPI.lookupPeople).mockResolvedValue({
+      data: [SAM],
+      total_count: 1,
+      has_more: false,
+      page: 1,
+      items_per_page: 25,
+    });
+    const trip: Trip = {
+      uuid: "trip-1",
+      name: "Egypt, spring",
+      // In the diver's drag order: an undated part, then a later one first.
+      parts: [
+        { location: { name: "Cairo" } },
+        { location: { name: "Sharm" }, start_date: "2026-04-25" },
+        { location: { name: "Dahab" }, start_date: "2026-04-18" },
+      ],
+      notes: "",
+      user_uuid: "user-1",
+      created_at: "2026-04-01T09:00:00Z",
+      dive_count: 0,
+      dive_site_count: 0,
+      species_count: 0,
+      max_depth: null,
+    };
+    render(
+      <TripDialog
+        open
+        onOpenChange={() => {}}
+        trip={trip}
+        onSaved={() => {}}
+      />,
+    );
+
+    await userEvent.click(screen.getByLabelText("People"));
+
+    await waitFor(() =>
+      expect(peopleAPI.lookupPeople).toHaveBeenCalledWith(1, 25, {
+        search: "",
+        until: "2026-04-18",
+      }),
+    );
   });
 });

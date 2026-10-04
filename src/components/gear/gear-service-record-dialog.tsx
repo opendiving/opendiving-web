@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { FormApiError } from "@/components/ui/form-api-error";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Save } from "lucide-react";
 import {
@@ -104,6 +104,10 @@ export function GearServiceRecordDialog({
       notes: "",
     },
   });
+
+  // The shop picker ranks by last use on a dive at or before the service date.
+  const until =
+    useWatch({ control: form.control, name: "serviced_on" }) || undefined;
 
   const { reset } = form;
   useEffectOnChange(() => {
@@ -237,6 +241,7 @@ export function GearServiceRecordDialog({
                     <ContactCombobox
                       value={field.value}
                       onChange={field.onChange}
+                      until={until}
                       initialRoles={SHOP}
                       placeholder="Select a shop..."
                       addNewLabel="Add shop..."

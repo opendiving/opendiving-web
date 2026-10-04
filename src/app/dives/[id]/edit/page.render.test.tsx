@@ -72,14 +72,14 @@ vi.mock("@/lib/api/dive-form-presets", async (importOriginal) => {
 
 vi.mock("@/lib/api/trips", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/trips")>();
-  return { ...actual, tripsAPI: { ...actual.tripsAPI, getTrips: vi.fn() } };
+  return { ...actual, tripsAPI: { ...actual.tripsAPI, lookupTrips: vi.fn() } };
 });
 
 vi.mock("@/lib/api/dive-sites", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/dive-sites")>();
   return {
     ...actual,
-    diveSitesAPI: { ...actual.diveSitesAPI, getDiveSites: vi.fn() },
+    diveSitesAPI: { ...actual.diveSitesAPI, lookupDiveSites: vi.fn() },
   };
 });
 
@@ -101,7 +101,11 @@ vi.mock("@/lib/api/gear", async (importOriginal) => {
   return {
     ...actual,
     fetchAllGearSets: vi.fn(),
-    gearAPI: { ...actual.gearAPI, getGearItems: vi.fn(), getGearItem: vi.fn() },
+    gearAPI: {
+      ...actual.gearAPI,
+      lookupGearItems: vi.fn(),
+      getGearItem: vi.fn(),
+    },
   };
 });
 
@@ -151,10 +155,10 @@ beforeEach(() => {
   vi.mocked(divesAPI.deleteDiveFile).mockResolvedValue(undefined);
   vi.mocked(authAPI.updateProfile).mockResolvedValue(undefined);
   vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([]);
-  vi.mocked(tripsAPI.getTrips).mockResolvedValue(emptyPage());
-  vi.mocked(diveSitesAPI.getDiveSites).mockResolvedValue(emptyPage());
+  vi.mocked(tripsAPI.lookupTrips).mockResolvedValue(emptyPage());
+  vi.mocked(diveSitesAPI.lookupDiveSites).mockResolvedValue(emptyPage());
   vi.mocked(gear.fetchAllGearSets).mockResolvedValue([]);
-  vi.mocked(gear.gearAPI.getGearItems).mockResolvedValue(emptyPage());
+  vi.mocked(gear.gearAPI.lookupGearItems).mockResolvedValue(emptyPage());
   vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
     results: [],
     has_more: false,

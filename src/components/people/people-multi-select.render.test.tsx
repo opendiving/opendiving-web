@@ -12,8 +12,12 @@ import type { Person, PersonReference, PersonRole } from "@/lib/api/people";
 
 vi.mock("@/lib/api/people", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/people")>()),
-  peopleAPI: { getPeople: vi.fn(), getPerson: vi.fn(), createPerson: vi.fn() },
-  fetchAllPeople: vi.fn(),
+  peopleAPI: {
+    lookupPeople: vi.fn(),
+    getPeople: vi.fn(),
+    getPerson: vi.fn(),
+    createPerson: vi.fn(),
+  },
 }));
 
 const toast = vi.fn();
@@ -21,8 +25,10 @@ vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast }),
 }));
 
-const { peopleAPI, fetchAllPeople } = await import("@/lib/api/people");
+const { peopleAPI } = await import("@/lib/api/people");
+const lookupPeople = vi.mocked(peopleAPI.lookupPeople);
 const getPeople = vi.mocked(peopleAPI.getPeople);
+const getPerson = vi.mocked(peopleAPI.getPerson);
 const createPerson = vi.mocked(peopleAPI.createPerson);
 
 const person = (
@@ -40,6 +46,9 @@ const person = (
 
 const ALEX = person("person-alex", "Alex M.", "alexm");
 const SAM = person("person-sam", "Sam");
+// On the trip, and never on a dive: the lookup ranks them last.
+const KIM = person("person-kim", "Kim", "samkim");
+const EVERYONE = [ALEX, SAM, KIM];
 
 const page = (items: Person[]) => ({
   data: items,
@@ -53,9 +62,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   // A server search: the name *or* the linked username. The combobox must not
   // filter what comes back a second time.
-  getPeople.mockImplementation(async (_page, _perPage, search) =>
+  lookupPeople.mockImplementation(async (_page, _perPage, { search } = {}) =>
     page(
-      [ALEX, SAM].filter(
+      EVERYONE.filter(
         (one) =>
           !search ||
           one.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -63,17 +72,25 @@ beforeEach(() => {
       ),
     ),
   );
-  vi.mocked(fetchAllPeople).mockResolvedValue([ALEX, SAM]);
+  getPerson.mockImplementation(async (uuid) => {
+    const found = EVERYONE.find((one) => one.uuid === uuid);
+    if (!found) throw new Error("404");
+    return found;
+  });
 });
 
 function Field({
   defaultRole = "buddy",
   initial = [],
   onChange,
+  until,
+  pinnedUuids,
 }: {
   defaultRole?: PersonRole | null;
   initial?: PersonReference[];
   onChange?: (value: PersonReference[]) => void;
+  until?: string;
+  pinnedUuids?: string[];
 }) {
   const [value, setValue] = useState<PersonReference[]>(initial);
   return (
@@ -85,6 +102,8 @@ function Field({
         onChange?.(next);
       }}
       defaultRole={defaultRole}
+      until={until}
+      pinnedUuids={pinnedUuids}
     />
   );
 }
@@ -104,7 +123,10 @@ describe("PeopleMultiSelect", () => {
     await waitFor(() =>
       expect(screen.queryByRole("option", { name: "Sam" })).toBeNull(),
     );
-    expect(getPeople).toHaveBeenLastCalledWith(1, 25, "alexm");
+    expect(lookupPeople).toHaveBeenLastCalledWith(1, 25, {
+      search: "alexm",
+      until: undefined,
+    });
     expect(
       screen.getByRole("option", { name: "Alex M., @alexm" }),
     ).toBeInTheDocument();
@@ -159,6 +181,8 @@ describe("PeopleMultiSelect", () => {
   it("takes the person already called that when the name is refused as taken", async () => {
     // Enter inside the search's debounce: the person exists, the search had not
     // said so yet, and the API refuses a second of the name.
+    lookupPeople.mockResolvedValue(page([]));
+    // Read from the list, whose name order leads with the exact match.
     getPeople.mockImplementation(async (_page, _perPage, search) =>
       page(search === "sam" ? [SAM] : []),
     );
@@ -256,5 +280,83 @@ describe("PeopleMultiSelect", () => {
     );
     expect(dialog).toBeInTheDocument();
     expect(createPerson).not.toHaveBeenCalled();
+  });
+});
+
+describe("PeopleMultiSelect, ranked and pinned", () => {
+  const options = () =>
+    screen
+      .getAllByRole("option")
+      .map((option) => option.textContent)
+      .filter((text) => text !== "Add person...");
+
+  it("sends the record's date to the lookup as until", async () => {
+    render(<Field until="2019-06-01T09:00:00+02:00" />);
+
+    await userEvent.click(combobox());
+
+    await waitFor(() =>
+      expect(lookupPeople).toHaveBeenCalledWith(1, 25, {
+        search: "",
+        until: "2019-06-01T09:00:00+02:00",
+      }),
+    );
+  });
+
+  it("lists the pinned people first, in their order, each once", async () => {
+    render(<Field pinnedUuids={[KIM.uuid, SAM.uuid, KIM.uuid]} />);
+    // The pins' reads land before the menu opens, or the first search runs
+    // without them.
+    await waitFor(() => expect(getPerson).toHaveBeenCalledTimes(2));
+
+    await userEvent.click(combobox());
+
+    await screen.findByRole("option", { name: "Kim, @samkim" });
+    expect(options().slice(0, 3)).toEqual([
+      "Kim, @samkim",
+      "Sam",
+      "Alex M., @alexm",
+    ]);
+  });
+
+  it("keeps a pin first for a query its name holds", async () => {
+    render(<Field pinnedUuids={[KIM.uuid]} />);
+    await waitFor(() => expect(getPerson).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(combobox());
+    await userEvent.type(combobox(), "k");
+
+    await waitFor(() =>
+      expect(screen.queryByRole("option", { name: "Sam" })).toBeNull(),
+    );
+    expect(options()[0]).toBe("Kim, @samkim");
+  });
+
+  it("leaves a pin the lookup found by username where the lookup put it", async () => {
+    render(<Field pinnedUuids={[KIM.uuid]} />);
+    await waitFor(() => expect(getPerson).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(combobox());
+    await userEvent.type(combobox(), "samk");
+
+    expect(
+      await screen.findByRole("option", { name: "Kim, @samkim" }),
+    ).toBeInTheDocument();
+    expect(options().filter((text) => text === "Kim, @samkim")).toHaveLength(1);
+  });
+
+  it("leaves a pinned person already on the record out of the menu", async () => {
+    render(
+      <Field
+        initial={[{ person_uuid: KIM.uuid, role: "buddy" }]}
+        pinnedUuids={[KIM.uuid]}
+      />,
+    );
+    await roleOf("Kim");
+
+    await userEvent.click(combobox());
+
+    await screen.findByRole("option", { name: "Sam" });
+    expect(screen.queryByRole("option", { name: "Kim, @samkim" })).toBeNull();
   });
 });

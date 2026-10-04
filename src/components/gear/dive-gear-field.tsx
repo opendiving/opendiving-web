@@ -35,6 +35,8 @@ export interface DiveGearFieldProps extends FormControlSlotProps {
   // screen when the diver has them hidden; nothing here needs to know that, which is
   // why what is handed over is the set rather than a list of field names.
   onSetApplied?: (set: GearSet) => void;
+  // The dive's start time, for the item picker's lookup - see `TripCombobox.until`.
+  until?: string;
   disabled?: boolean;
 }
 
@@ -53,6 +55,7 @@ export function DiveGearField({
   weight,
   onWeightChange,
   onSetApplied,
+  until,
   disabled,
   // The field's value is the *item list*, so the label belongs to the item picker
   // rather than the gear-set switcher above it - loading a set is a shortcut for
@@ -168,6 +171,7 @@ export function DiveGearField({
         value={value}
         knownItems={knownItems}
         onChange={onChange}
+        until={until}
         disabled={disabled}
         onManualChange={() => setLoadedSetUuid(undefined)}
       />

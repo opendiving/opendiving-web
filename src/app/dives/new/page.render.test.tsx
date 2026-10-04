@@ -119,7 +119,7 @@ vi.mock("@/lib/api/trips", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/trips")>();
   return {
     ...actual,
-    tripsAPI: { ...actual.tripsAPI, getTrips: vi.fn(), getTrip: vi.fn() },
+    tripsAPI: { ...actual.tripsAPI, lookupTrips: vi.fn(), getTrip: vi.fn() },
   };
 });
 
@@ -129,7 +129,7 @@ vi.mock("@/lib/api/dive-sites", async (importOriginal) => {
     ...actual,
     diveSitesAPI: {
       ...actual.diveSitesAPI,
-      getDiveSites: vi.fn(),
+      lookupDiveSites: vi.fn(),
       getDiveSite: vi.fn(),
     },
   };
@@ -185,7 +185,11 @@ vi.mock("@/lib/api/gear", async (importOriginal) => {
     // real this test file put an actual XHR on the wire - resolved against
     // jsdom's `localhost:3000`, so it answered from whatever dev server
     // happened to be up, at whatever speed it happened to be compiling at.
-    gearAPI: { ...actual.gearAPI, getGearItems: vi.fn(), getGearItem: vi.fn() },
+    gearAPI: {
+      ...actual.gearAPI,
+      lookupGearItems: vi.fn(),
+      getGearItem: vi.fn(),
+    },
   };
 });
 
@@ -198,7 +202,7 @@ vi.mock("@/lib/api/courses", async (importOriginal) => {
     ...actual,
     coursesAPI: {
       ...actual.coursesAPI,
-      getCourses: vi.fn(),
+      lookupCourses: vi.fn(),
       getCourse: vi.fn(),
     },
   };
@@ -210,20 +214,23 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => {
     ...actual,
     contactsAPI: {
       ...actual.contactsAPI,
-      getContacts: vi.fn(),
+      lookupContacts: vi.fn(),
       getContact: vi.fn(),
     },
   };
 });
 
-// The people picker names what it holds from one read of the whole list, and
-// searches as its menu opens.
+// The people picker names what it holds one read per person, and searches as
+// its menu opens.
 vi.mock("@/lib/api/people", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/people")>();
   return {
     ...actual,
-    fetchAllPeople: vi.fn(),
-    peopleAPI: { ...actual.peopleAPI, getPeople: vi.fn(), getPerson: vi.fn() },
+    peopleAPI: {
+      ...actual.peopleAPI,
+      lookupPeople: vi.fn(),
+      getPerson: vi.fn(),
+    },
   };
 });
 
@@ -340,16 +347,16 @@ beforeEach(() => {
     is_taken: false,
   });
   vi.mocked(divesAPI.createDive).mockResolvedValue(storedDive());
-  vi.mocked(tripsAPI.getTrips).mockResolvedValue(emptyPage());
+  vi.mocked(tripsAPI.lookupTrips).mockResolvedValue(emptyPage());
   vi.mocked(tripsAPI.getTrip).mockImplementation(
     async (uuid) =>
       ({ uuid, name: "Red Sea Week" }) as Awaited<
         ReturnType<typeof tripsAPI.getTrip>
       >,
   );
-  vi.mocked(diveSitesAPI.getDiveSites).mockResolvedValue(emptyPage());
+  vi.mocked(diveSitesAPI.lookupDiveSites).mockResolvedValue(emptyPage());
   vi.mocked(gear.fetchAllGearSets).mockResolvedValue([]);
-  vi.mocked(gear.gearAPI.getGearItems).mockResolvedValue(emptyPage());
+  vi.mocked(gear.gearAPI.lookupGearItems).mockResolvedValue(emptyPage());
   vi.mocked(gear.gearAPI.getGearItem).mockImplementation(
     async (uuid) =>
       ({
@@ -362,7 +369,7 @@ beforeEach(() => {
     results: [],
     has_more: false,
   });
-  vi.mocked(coursesAPI.getCourses).mockResolvedValue({
+  vi.mocked(coursesAPI.lookupCourses).mockResolvedValue({
     ...emptyPage<Course>(),
     data: COURSES,
     total_count: COURSES.length,
@@ -371,7 +378,7 @@ beforeEach(() => {
     async (uuid) =>
       COURSES.find((course) => course.uuid === uuid) ?? COURSES[0],
   );
-  vi.mocked(contactsAPI.getContacts).mockResolvedValue({
+  vi.mocked(contactsAPI.lookupContacts).mockResolvedValue({
     ...emptyPage<Contact>(),
     data: CONTACTS,
     total_count: CONTACTS.length,
@@ -381,9 +388,13 @@ beforeEach(() => {
     if (!found) throw new Error("not found");
     return found;
   });
-  vi.mocked(people.fetchAllPeople).mockResolvedValue(PEOPLE);
+  vi.mocked(people.peopleAPI.getPerson).mockImplementation(async (uuid) => {
+    const found = PEOPLE.find((person) => person.uuid === uuid);
+    if (!found) throw new Error("not found");
+    return found;
+  });
   vi.mocked(tags.fetchAllTags).mockResolvedValue(TAGS);
-  vi.mocked(people.peopleAPI.getPeople).mockResolvedValue({
+  vi.mocked(people.peopleAPI.lookupPeople).mockResolvedValue({
     ...emptyPage<Person>(),
     data: PEOPLE,
     total_count: PEOPLE.length,
@@ -1739,6 +1750,71 @@ describe("the people", () => {
   });
 });
 
+describe("the pickers", () => {
+  const optionNames = () =>
+    within(screen.getByRole("listbox"))
+      .getAllByRole("option")
+      .map((option) => option.textContent)
+      .filter((text) => !text?.startsWith("Add "));
+
+  it("rank every lookup at the dive's start time", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await userEvent.click(screen.getByRole("combobox", { name: /^people$/i }));
+
+    await waitFor(() =>
+      expect(people.peopleAPI.lookupPeople).toHaveBeenCalledWith(1, 25, {
+        search: "",
+        until: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/),
+      }),
+    );
+  });
+
+  it("list the trip's people first, with no pick of the trip", async () => {
+    stable.searchParams = new URLSearchParams("trip_uuid=trip-7");
+    vi.mocked(tripsAPI.getTrip).mockResolvedValue({
+      uuid: "trip-7",
+      name: "Red Sea Week",
+      people: [{ person_uuid: CLASSMATE.uuid, role: null }],
+    } as Awaited<ReturnType<typeof tripsAPI.getTrip>>);
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    // The pin's own read lands before the menu opens.
+    await waitFor(() =>
+      expect(people.peopleAPI.getPerson).toHaveBeenCalledWith(CLASSMATE.uuid),
+    );
+
+    await userEvent.click(screen.getByRole("combobox", { name: /^people$/i }));
+
+    await screen.findByRole("option", { name: BUDDY.name });
+    expect(optionNames()).toEqual([
+      CLASSMATE.name,
+      BUDDY.name,
+      INSTRUCTOR.name,
+    ]);
+  });
+
+  it("list the course's contact first in the dive center picker", async () => {
+    stable.searchParams = new URLSearchParams("course_uuid=course-10");
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await waitFor(() =>
+      expect(contactsAPI.getContact).toHaveBeenCalledWith(OTHER_SHOP.uuid),
+    );
+
+    await userEvent.click(
+      screen.getByRole("combobox", { name: /^dive center$/i }),
+    );
+
+    await screen.findByRole("option", { name: LAST_SHOP.name });
+    expect(optionNames()[0]).toBe(OTHER_SHOP.name);
+    expect(
+      optionNames().filter((name) => name === OTHER_SHOP.name),
+    ).toHaveLength(1);
+  });
+});
+
 describe("the form's sections", () => {
   const heading = (name: RegExp) => screen.getByRole("button", { name });
 
@@ -2619,7 +2695,7 @@ describe("the primary site's water, altitude and entry", () => {
   };
 
   beforeEach(() => {
-    vi.mocked(diveSitesAPI.getDiveSites).mockResolvedValue({
+    vi.mocked(diveSitesAPI.lookupDiveSites).mockResolvedValue({
       ...emptyPage<DiveSite>(),
       data: SITES,
       total_count: SITES.length,

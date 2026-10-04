@@ -1,5 +1,5 @@
-import { apiClient, fetchAllPages } from "./client";
-import type { PaginatedResponse } from "./client";
+import { apiClient, fetchAllPages, lookupParams } from "./client";
+import type { LookupQuery, PaginatedResponse } from "./client";
 // Type-only, so it erases at compile time - `gear-service.ts` has no import back to
 // here, but keeping this one type-only means the pair can never become a real cycle.
 import type { GearServiceScheduleSummary } from "./gear-service";
@@ -164,6 +164,12 @@ export interface GearSetUpdate {
 
 export type PaginatedGearItemsResponse = PaginatedResponse<GearItem>;
 
+/**
+ * One row of `GET /gear-items/lookup`: the members of `GearItemSummary`, which a
+ * picker stores for its label and its Rented and Archived badges.
+ */
+export type GearItemLookupItem = GearItemSummary;
+
 export type PaginatedGearSetsResponse = PaginatedResponse<GearSet>;
 
 /**
@@ -178,7 +184,7 @@ export const gearAPI = {
   },
 
   // Get a user's gear (paginated). Archived items are excluded unless
-  // `includeArchived` is true, so pickers only ever offer gear still in service.
+  // `includeArchived` is true.
   // `search` narrows to items whose name *or* brand contains it, case-insensitively -
   // the API caps `items_per_page` at 100, so this is a page of matches, never the
   // whole set.
@@ -195,6 +201,22 @@ export const gearAPI = {
         include_archived: includeArchived,
         ...(search ? { search } : {}),
       },
+    });
+    return response.data;
+  },
+
+  /**
+   * A page of the diver's gear as a picker lists it, the item last on a dive at or
+   * before `until` first, then items on no such dive, newest first. Archived gear
+   * is never listed. `search` matches what `getGearItems` matches.
+   */
+  async lookupGearItems(
+    page: number,
+    items_per_page: number,
+    query: LookupQuery = {},
+  ): Promise<PaginatedResponse<GearItemLookupItem>> {
+    const response = await apiClient.get(`/gear-items/lookup`, {
+      params: lookupParams(page, items_per_page, query),
     });
     return response.data;
   },

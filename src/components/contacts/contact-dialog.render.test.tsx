@@ -11,7 +11,7 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   contactsAPI: {
     createContact: vi.fn(),
     updateContact: vi.fn(),
-    getContacts: vi.fn(),
+    lookupContacts: vi.fn(),
     getContact: vi.fn(),
   },
 }));
@@ -19,7 +19,7 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
 const { contactsAPI } = await import("@/lib/api/contacts");
 const createContact = vi.mocked(contactsAPI.createContact);
 const updateContact = vi.mocked(contactsAPI.updateContact);
-const getContacts = vi.mocked(contactsAPI.getContacts);
+const lookupContacts = vi.mocked(contactsAPI.lookupContacts);
 const getContact = vi.mocked(contactsAPI.getContact);
 
 const EXISTING: Contact = {
@@ -51,7 +51,7 @@ beforeEach(() => {
     notes: body.notes ?? "",
   }));
   updateContact.mockResolvedValue({ message: "Contact updated" });
-  getContacts.mockResolvedValue({
+  lookupContacts.mockResolvedValue({
     data: [EXISTING],
     total_count: 1,
     has_more: false,
@@ -230,15 +230,13 @@ describe("ContactCombobox", () => {
     expect(within(dialog).getByLabelText("Name *")).toHaveValue("");
   });
 
-  it("selects the contact the dialog made, and hands the whole record over", async () => {
+  it("selects the contact the dialog made", async () => {
     const onChange = vi.fn();
-    const onContactSelected = vi.fn();
     render(
       <ContactCombobox
         aria-label="Dive center"
         value={null}
         onChange={onChange}
-        onContactSelected={onContactSelected}
         initialRoles={["dive_center"]}
         addNewLabel="Add dive center..."
       />,
@@ -255,8 +253,45 @@ describe("ContactCombobox", () => {
     );
 
     await waitFor(() => expect(onChange).toHaveBeenCalledWith("contact-new"));
-    expect(onContactSelected).toHaveBeenCalledWith(
-      expect.objectContaining({ uuid: "contact-new", name: "Sea Dragon" }),
+  });
+
+  it("asks the lookup at the record's date, and lists a pin first", async () => {
+    const pinned: Contact = {
+      ...EXISTING,
+      uuid: "contact-pin",
+      name: "Sea Dragon",
+    };
+    getContact.mockResolvedValue(pinned);
+    lookupContacts.mockResolvedValue({
+      data: [EXISTING, pinned],
+      total_count: 2,
+      has_more: false,
+      page: 1,
+      items_per_page: 25,
+    });
+    render(
+      <ContactCombobox
+        aria-label="Dive center"
+        value={null}
+        onChange={vi.fn()}
+        until="2024-05-01"
+        pinnedUuids={[pinned.uuid]}
+      />,
     );
+    await waitFor(() => expect(getContact).toHaveBeenCalledWith(pinned.uuid));
+
+    await userEvent.click(screen.getByRole("combobox"));
+
+    await screen.findByRole("option", { name: /Blue Ocean/ });
+    expect(lookupContacts).toHaveBeenCalledWith(1, 25, {
+      search: "",
+      until: "2024-05-01",
+    });
+    expect(
+      within(screen.getByRole("listbox"))
+        .getAllByRole("option")
+        .map((option) => option.textContent)
+        .filter((text) => !text?.startsWith("Add ")),
+    ).toEqual(["Sea Dragon, Dahab, Egypt", "Blue Ocean, Dahab, Egypt"]);
   });
 });

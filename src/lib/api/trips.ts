@@ -1,5 +1,5 @@
-import { apiClient } from "./client";
-import type { PaginatedResponse } from "./client";
+import { apiClient, lookupParams } from "./client";
+import type { LookupQuery, PaginatedResponse } from "./client";
 import type { Location } from "./location";
 import type { PersonReference } from "./people";
 
@@ -70,6 +70,12 @@ export interface TripUpdate {
 
 export type PaginatedTripsResponse = PaginatedResponse<Trip>;
 
+/** One row of `GET /trips/lookup`: a trip's name usually carries its year. */
+export interface TripLookupItem {
+  uuid: string;
+  name: string;
+}
+
 /** Trip CRUD. Every call is scoped to the signed-in user by the API. */
 export const tripsAPI = {
   // Create a new trip, owned by the signed-in user.
@@ -93,6 +99,22 @@ export const tripsAPI = {
         items_per_page,
         ...(search ? { search } : {}),
       },
+    });
+    return response.data;
+  },
+
+  /**
+   * A page of the diver's trips as a picker lists them, the trip last dived on at
+   * or before `until` first, then never-dived trips newest first. `search` matches
+   * what `getTrips` matches.
+   */
+  async lookupTrips(
+    page: number,
+    items_per_page: number,
+    query: LookupQuery = {},
+  ): Promise<PaginatedResponse<TripLookupItem>> {
+    const response = await apiClient.get(`/trips/lookup`, {
+      params: lookupParams(page, items_per_page, query),
     });
     return response.data;
   },

@@ -12,7 +12,7 @@ import { DiveSiteMultiSelect } from "./dive-site-multi-select";
 // gone. What is left, and what these assert, is a click or Enter.
 
 vi.mock("@/lib/api/dive-sites", () => ({
-  diveSitesAPI: { getDiveSites: vi.fn(), getDiveSite: vi.fn() },
+  diveSitesAPI: { lookupDiveSites: vi.fn(), getDiveSite: vi.fn() },
 }));
 
 // The real dialog's form is beside the point; what matters is that it closes
@@ -51,7 +51,7 @@ vi.mock("@/components/sites/dive-site-dialog", async () => {
 });
 
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
-const getDiveSites = vi.mocked(diveSitesAPI.getDiveSites);
+const lookupDiveSites = vi.mocked(diveSitesAPI.lookupDiveSites);
 
 const SITE = {
   uuid: "site-1",
@@ -65,8 +65,8 @@ const SECOND_SITE = {
 };
 
 beforeEach(() => {
-  getDiveSites.mockReset();
-  getDiveSites.mockResolvedValue({
+  lookupDiveSites.mockReset();
+  lookupDiveSites.mockResolvedValue({
     data: [SITE],
     total_count: 1,
     has_more: false,
@@ -75,9 +75,11 @@ beforeEach(() => {
   } as never);
 });
 
-function Field() {
+function Field({ until }: { until?: string }) {
   const [value, setValue] = useState<string[]>([]);
-  return <DiveSiteMultiSelect value={value} onChange={setValue} />;
+  return (
+    <DiveSiteMultiSelect value={value} onChange={setValue} until={until} />
+  );
 }
 
 const rows = () =>
@@ -94,6 +96,16 @@ const openMenu = async () => {
 };
 
 describe("DiveSiteMultiSelect", () => {
+  it("asks the lookup for sites ranked at the dive's own date", async () => {
+    render(<Field until="2019-06-01" />);
+    await openMenu();
+
+    expect(lookupDiveSites).toHaveBeenCalledWith(1, 25, {
+      search: "",
+      until: "2019-06-01",
+    });
+  });
+
   it("adds a site when its row is picked", async () => {
     render(<Field />);
     await openMenu();
@@ -181,7 +193,7 @@ describe("DiveSiteMultiSelect", () => {
     await openMenu();
 
     await userEvent.paste("Blue Hole");
-    await waitFor(() => expect(getDiveSites).toHaveBeenCalled());
+    await waitFor(() => expect(lookupDiveSites).toHaveBeenCalled());
 
     expect(rows()).toEqual([]);
   });
@@ -190,7 +202,7 @@ describe("DiveSiteMultiSelect", () => {
     // The field's opening query is a real request, and "No dive sites yet." is
     // a claim about the diver's whole catalogue - the worst possible thing to
     // say while still waiting to hear.
-    getDiveSites.mockReturnValue(new Promise(() => {}) as never);
+    lookupDiveSites.mockReturnValue(new Promise(() => {}) as never);
     render(<Field />);
 
     await userEvent.click(screen.getByRole("combobox"));
@@ -200,7 +212,7 @@ describe("DiveSiteMultiSelect", () => {
   });
 
   it("says the search is down when the opening query fails", async () => {
-    getDiveSites.mockRejectedValue(new Error("500"));
+    lookupDiveSites.mockRejectedValue(new Error("500"));
     render(<Field />);
 
     await userEvent.click(screen.getByRole("combobox"));

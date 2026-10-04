@@ -32,7 +32,7 @@ vi.mock("@/lib/api/gear", async (importOriginal) => {
       updateGearSet: vi.fn(),
       getGearSet: vi.fn(),
       createGearSet: vi.fn(),
-      getGearItems: vi.fn(),
+      lookupGearItems: vi.fn(),
       getGearItem: vi.fn(),
     },
   };

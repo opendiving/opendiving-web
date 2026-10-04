@@ -64,7 +64,7 @@ vi.mock("@/components/ui/use-toast", () => ({
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/courses")>()),
   coursesAPI: {
-    getCourses: vi.fn(),
+    lookupCourses: vi.fn(),
     getCourse: vi.fn(),
     createCourse: vi.fn(),
   },
@@ -73,7 +73,7 @@ vi.mock("@/lib/api/courses", async (importOriginal) => ({
 vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
   contactsAPI: {
-    getContacts: vi.fn(),
+    lookupContacts: vi.fn(),
     getContact: vi.fn(),
     createContact: vi.fn(),
   },
@@ -82,7 +82,7 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
 vi.mock("@/lib/api/people", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/people")>()),
   peopleAPI: {
-    getPeople: vi.fn(),
+    lookupPeople: vi.fn(),
     getPerson: vi.fn(),
     createPerson: vi.fn(),
   },
@@ -101,13 +101,13 @@ const deleteFile = vi.mocked(certificationsAPI.deleteCertificationFile);
 const crop = vi.mocked(cropToBlob);
 const decode = vi.mocked(decodeImage);
 const CROPPED = new Blob(["cropped"], { type: "image/webp" });
-const getCourses = vi.mocked(coursesAPI.getCourses);
+const lookupCourses = vi.mocked(coursesAPI.lookupCourses);
 const getCourse = vi.mocked(coursesAPI.getCourse);
 const createCourse = vi.mocked(coursesAPI.createCourse);
-const getContacts = vi.mocked(contactsAPI.getContacts);
+const lookupContacts = vi.mocked(contactsAPI.lookupContacts);
 const getContact = vi.mocked(contactsAPI.getContact);
 const createContact = vi.mocked(contactsAPI.createContact);
-const getPeople = vi.mocked(peopleAPI.getPeople);
+const lookupPeople = vi.mocked(peopleAPI.lookupPeople);
 const getPerson = vi.mocked(peopleAPI.getPerson);
 const createPerson = vi.mocked(peopleAPI.createPerson);
 
@@ -242,26 +242,34 @@ beforeEach(() => {
   crop.mockResolvedValue(CROPPED);
   // The server filters by `search`; the stub answers every query with both
   // courses, so a second pick doesn't depend on re-typing the exact name.
-  getCourses.mockImplementation(async () => page([COURSE, OTHER_COURSE]));
-  getCourse.mockImplementation(async (uuid: string) =>
-    uuid === OTHER_COURSE.uuid ? OTHER_COURSE : COURSE,
-  );
+  listCourses([COURSE, OTHER_COURSE]);
   // The picker shows a contact's name once it has looked the uuid up, which is
   // what these tests read the field's value off.
-  getContacts.mockImplementation(async () => page(CONTACTS));
+  lookupContacts.mockImplementation(async () => page(CONTACTS));
   getContact.mockImplementation(async (uuid: string) => {
     const found = CONTACTS.find((one) => one.uuid === uuid);
     if (!found) throw new Error("not found");
     return found;
   });
   // And the instructor's, the same way.
-  getPeople.mockImplementation(async () => page(PEOPLE));
+  lookupPeople.mockImplementation(async () => page(PEOPLE));
   getPerson.mockImplementation(async (uuid: string) => {
     const found = PEOPLE.find((one) => one.uuid === uuid);
     if (!found) throw new Error("not found");
     return found;
   });
 });
+
+// The menu lists thin rows, and a pick reads the whole course - so both answer
+// from the one list a test sets up.
+function listCourses(courses: Course[]) {
+  lookupCourses.mockImplementation(async () => page(courses));
+  getCourse.mockImplementation(async (uuid: string) => {
+    const found = courses.find((one) => one.uuid === uuid);
+    if (!found) throw new Error("not found");
+    return found;
+  });
+}
 
 function open({
   certification,
@@ -399,9 +407,7 @@ describe("picking a course fills the card's own fields in", () => {
   it("takes back a dive center it copied when the next course names none", async () => {
     // What the dialog wrote is the course's, and a course naming nobody has no
     // contact to leave behind - course A's must not be filed under course B.
-    getCourses.mockImplementation(async () =>
-      page([COURSE, CONTACTLESS_COURSE]),
-    );
+    listCourses([COURSE, CONTACTLESS_COURSE]);
     open();
 
     await pickCourse(COURSE.name);
@@ -463,12 +469,10 @@ describe("picking a course fills the card's own fields in", () => {
   });
 
   it("takes back an instructor it copied when the next course names none", async () => {
-    getCourses.mockImplementation(async () =>
-      page([
-        COURSE,
-        course({ uuid: "course-6", name: "Self-study", people: [] }),
-      ]),
-    );
+    listCourses([
+      COURSE,
+      course({ uuid: "course-6", name: "Self-study", people: [] }),
+    ]);
     open();
 
     await pickCourse(COURSE.name);
@@ -516,7 +520,7 @@ describe("picking a course fills the card's own fields in", () => {
   it("leaves the card's own agency alone for a course that names none", async () => {
     // A course's agency is optional and a certification's is required, so the
     // one field the prefill must not empty is this one.
-    getCourses.mockImplementation(async () => page([AGENCYLESS_COURSE]));
+    listCourses([AGENCYLESS_COURSE]);
 
     open();
     await pickCourse(AGENCYLESS_COURSE.name);
@@ -540,9 +544,7 @@ describe("picking a course fills the card's own fields in", () => {
   it("keeps an agency it copied itself when the next course names none", async () => {
     // The one exception to "switching A -> B empties what B lacks": neither
     // half of the pair is blanked, because the result would be unsubmittable.
-    getCourses.mockImplementation(async () =>
-      page([COURSE, AGENCYLESS_COURSE]),
-    );
+    listCourses([COURSE, AGENCYLESS_COURSE]);
 
     open();
     await pickCourse(COURSE.name);
@@ -564,7 +566,7 @@ describe("picking a course fills the card's own fields in", () => {
       agency: "other",
       agency_other: "FFESSM",
     });
-    getCourses.mockImplementation(async () => page([namedOther]));
+    listCourses([namedOther]);
 
     open();
     await pickCourse(namedOther.name);
@@ -705,7 +707,7 @@ describe("the instructor is a person", () => {
     // Naming a new instructor takes the steps typing one did: the name, then
     // Enter - no dialog.
     const created = person("person-new", "Robin Reef");
-    getPeople.mockImplementation(async () => page([]));
+    lookupPeople.mockImplementation(async () => page([]));
     createPerson.mockResolvedValue(created);
     open();
 
@@ -725,7 +727,7 @@ describe("the instructor is a person", () => {
   });
 
   it("files no half-typed name on the way out of the field", async () => {
-    getPeople.mockImplementation(async () => page([]));
+    lookupPeople.mockImplementation(async () => page([]));
     open();
 
     await userEvent.click(instructor());

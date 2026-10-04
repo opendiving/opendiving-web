@@ -622,6 +622,8 @@ function TripPartRow({
           onChange={(accommodation_uuid) =>
             onChange(index, { accommodation_uuid })
           }
+          // Ranked by last use on a dive at or before this part's own start.
+          until={part.start_date || undefined}
           initialRoles={ACCOMMODATION}
           placeholder="Select accommodation..."
           addNewLabel="Add accommodation..."

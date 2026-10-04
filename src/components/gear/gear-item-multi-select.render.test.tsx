@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GearItemMultiSelect } from "./gear-item-multi-select";
 import type { GearItemSummary } from "@/lib/api/gear";
@@ -13,7 +13,7 @@ vi.mock("@/lib/api/gear", async (importOriginal) => {
     ...actual,
     gearAPI: {
       ...actual.gearAPI,
-      getGearItems: vi.fn(),
+      lookupGearItems: vi.fn(),
       getGearItem: vi.fn(),
     },
   };
@@ -89,5 +89,32 @@ describe("GearItemMultiSelect", () => {
     );
 
     expect(onChange).toHaveBeenCalledWith([REGULATOR.uuid]);
+  });
+
+  it("asks the lookup for gear ranked at the record's date", async () => {
+    vi.mocked(gearAPI.lookupGearItems).mockResolvedValue({
+      data: [REGULATOR],
+      total_count: 1,
+      has_more: false,
+      page: 1,
+      items_per_page: 25,
+    });
+    render(
+      <GearItemMultiSelect
+        aria-label="Gear"
+        value={[]}
+        onChange={() => {}}
+        until="2019-06-01T09:00:00"
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("combobox"));
+
+    await waitFor(() =>
+      expect(gearAPI.lookupGearItems).toHaveBeenCalledWith(1, 25, {
+        search: "",
+        until: "2019-06-01T09:00:00",
+      }),
+    );
   });
 });
