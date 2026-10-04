@@ -1,5 +1,5 @@
-import { apiClient } from "./client";
-import type { PaginatedResponse } from "./client";
+import { apiClient, lookupParams } from "./client";
+import type { LookupQuery, PaginatedResponse } from "./client";
 import type { EntryType, WaterType } from "./dives";
 import type { Location } from "./location";
 
@@ -140,10 +140,17 @@ export interface DiveSiteFilters {
 
 export type PaginatedDiveSitesResponse = PaginatedResponse<DiveSite>;
 
+/** One row of `GET /dive-sites/lookup`: the name and the locality a picker shows under it. */
+export interface DiveSiteLookupItem {
+  uuid: string;
+  name: string;
+  location?: Location | null;
+}
+
 /**
- * Dive-site CRUD. `getDiveSites` takes a `search` the API matches server-side against
- * the site's name, its other names and its locality's name, which is what lets the dive
- * form's picker narrow as you type instead of loading a diver's whole site list.
+ * Dive-site CRUD. `getDiveSites` and `lookupDiveSites` take a `search` the API matches
+ * server-side against the site's name, its other names and its locality's name, which is
+ * what lets the pickers narrow as you type instead of loading a diver's whole site list.
  */
 export const diveSitesAPI = {
   // Create a new dive site, owned by the signed-in user.
@@ -168,6 +175,22 @@ export const diveSitesAPI = {
         ...(tagUuid ? { tag_uuid: tagUuid } : {}),
         ...(sort && sort !== "name" ? { sort } : {}),
       },
+    });
+    return response.data;
+  },
+
+  /**
+   * A page of the diver's sites as a picker lists them, the site last dived at on
+   * or before `until` first, then never-dived sites newest first. `search` matches
+   * what `getDiveSites` matches.
+   */
+  async lookupDiveSites(
+    page: number,
+    items_per_page: number,
+    query: LookupQuery = {},
+  ): Promise<PaginatedResponse<DiveSiteLookupItem>> {
+    const response = await apiClient.get(`/dive-sites/lookup`, {
+      params: lookupParams(page, items_per_page, query),
     });
     return response.data;
   },

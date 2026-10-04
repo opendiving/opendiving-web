@@ -22,15 +22,18 @@ export interface TripComboboxProps extends FormControlSlotProps {
   // the save. `CreatableCombobox` speaks `undefined`, so it's normalized here
   // rather than changing that shared component for its other consumers.
   onChange: (tripId: string | null) => void;
+  // The date of the record being edited, as its form holds it - the lookup ranks
+  // trips by their last dive at or before it. Left off, every dive counts.
+  until?: string;
   disabled?: boolean;
 }
 
-// The dropdown searches server-side rather than fetching the user's whole trip
-// list - see DECISIONS.md. It used to request a single page of 100 and drop the
-// rest silently, so a 101st trip simply couldn't be selected.
+// The dropdown searches the trip lookup server-side rather than fetching the
+// user's whole trip list - see DECISIONS.md.
 export function TripCombobox({
   value,
   onChange,
+  until,
   disabled,
   ...slotProps
 }: TripComboboxProps) {
@@ -66,12 +69,12 @@ export function TripCombobox({
 
   const searchTrips = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
-      const response = await tripsAPI.getTrips(1, TRIPS_PER_SEARCH, query);
+      const response = await tripsAPI.lookupTrips(1, TRIPS_PER_SEARCH, {
+        search: query,
+        until,
+      });
       response.data.forEach(remember);
       return {
-        // Trips carry the places their parts went to, but unlike dive sites
-        // those aren't shown here - mapped to a bare `{id, name}` so the hint
-        // slot stays empty.
         items: response.data.map((trip) => ({
           id: trip.uuid,
           name: trip.name,
@@ -79,7 +82,7 @@ export function TripCombobox({
         hasMore: response.has_more,
       };
     },
-    [remember],
+    [remember, until],
   );
 
   const handleCreated = (newTrip: Trip) => {

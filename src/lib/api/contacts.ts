@@ -1,5 +1,5 @@
-import { apiClient, fetchAllPages } from "./client";
-import type { PaginatedResponse } from "./client";
+import { apiClient, fetchAllPages, lookupParams } from "./client";
+import type { LookupQuery, PaginatedResponse } from "./client";
 
 /**
  * What a contact is to the diver. Mirrors the API's `ContactRole`, value for value
@@ -97,6 +97,13 @@ export type ContactUpdate = Partial<ContactCreate>;
 
 export type PaginatedContactsResponse = PaginatedResponse<Contact>;
 
+/** One row of `GET /contacts/lookup`: the name, and the address the picker's hint reads. */
+export interface ContactLookupItem {
+  uuid: string;
+  name: string;
+  address?: ContactAddress | null;
+}
+
 /** Contact CRUD. Every call is scoped to the signed-in user by the API. */
 export const contactsAPI = {
   /**
@@ -124,6 +131,22 @@ export const contactsAPI = {
         items_per_page,
         ...(search ? { search } : {}),
       },
+    });
+    return response.data;
+  },
+
+  /**
+   * A page of the diver's contacts as a picker lists them, the one a dive at or
+   * before `until` last named first, then contacts no such dive names, newest
+   * first. `search` matches what `getContacts` matches.
+   */
+  async lookupContacts(
+    page: number,
+    items_per_page: number,
+    query: LookupQuery = {},
+  ): Promise<PaginatedResponse<ContactLookupItem>> {
+    const response = await apiClient.get(`/contacts/lookup`, {
+      params: lookupParams(page, items_per_page, query),
     });
     return response.data;
   },

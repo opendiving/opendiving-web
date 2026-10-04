@@ -15,14 +15,16 @@ export interface PersonComboboxProps extends FormControlSlotProps {
   // `null`, not `undefined`, for "nobody", for the reason `TripCombobox` gives:
   // an edit form sends every field, and a cleared picker has to be a value.
   onChange: (personUuid: string | null) => void;
+  // The date of the record being edited - see `TripCombobox.until`.
+  until?: string;
   placeholder?: string;
   addNewLabel?: string;
   disabled?: boolean;
 }
 
 // Picks (or creates) one of the diver's people for a field that names one - a
-// course's or a certification's instructor. The dropdown searches server-side
-// over name and username.
+// course's or a certification's instructor. The dropdown searches the people
+// lookup server-side over name and username.
 //
 // A typed name nobody has becomes a person on Enter, so naming a new instructor
 // is still type and Enter, as it was while the field was text. Leaving the field
@@ -30,12 +32,13 @@ export interface PersonComboboxProps extends FormControlSlotProps {
 export function PersonCombobox({
   value,
   onChange,
+  until,
   placeholder = "Select a person...",
   addNewLabel = "Add person...",
   disabled,
   ...slotProps
 }: PersonComboboxProps) {
-  const { people, remember, search, createNamed } = usePersonPicker();
+  const { people, remember, search, createNamed } = usePersonPicker(until);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newName, setNewName] = useState("");
   const textRef = useRef("");

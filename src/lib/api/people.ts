@@ -1,5 +1,5 @@
-import { apiClient, fetchAllPages } from "./client";
-import type { PaginatedResponse } from "./client";
+import { apiClient, fetchAllPages, lookupParams } from "./client";
+import type { LookupQuery, PaginatedResponse } from "./client";
 
 /**
  * What a person was on one occasion - a dive, a trip, a course. Mirrors the API's
@@ -97,6 +97,13 @@ export type PersonUpdate = Partial<PersonCreate>;
 
 export type PaginatedPeopleResponse = PaginatedResponse<Person>;
 
+/** One row of `GET /people/lookup`: the name and the linked account's current username. */
+export interface PersonLookupItem {
+  uuid: string;
+  name: string;
+  username?: string | null;
+}
+
 /** Person CRUD. Every call is scoped to the signed-in user by the API. */
 export const peopleAPI = {
   /**
@@ -126,6 +133,22 @@ export const peopleAPI = {
         items_per_page,
         ...(search ? { search } : {}),
       },
+    });
+    return response.data;
+  },
+
+  /**
+   * A page of the diver's people as a picker lists them, whoever was last on a
+   * dive at or before `until` first, then people on no such dive, newest first.
+   * `search` matches what `getPeople` matches.
+   */
+  async lookupPeople(
+    page: number,
+    items_per_page: number,
+    query: LookupQuery = {},
+  ): Promise<PaginatedResponse<PersonLookupItem>> {
+    const response = await apiClient.get(`/people/lookup`, {
+      params: lookupParams(page, items_per_page, query),
     });
     return response.data;
   },

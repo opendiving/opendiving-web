@@ -73,14 +73,14 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
 }));
 vi.mock("@/lib/api/people", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/people")>()),
-  fetchAllPeople: vi.fn(),
+  peopleAPI: { getPerson: vi.fn() },
 }));
 
 const { tripsAPI } = await import("@/lib/api/trips");
 const { MapBackdrop } = await import("@/components/map/map-backdrop");
 const { divesAPI } = await import("@/lib/api/dives");
 const { fetchAllContacts } = await import("@/lib/api/contacts");
-const { fetchAllPeople } = await import("@/lib/api/people");
+const { peopleAPI } = await import("@/lib/api/people");
 
 const contact = (uuid: string, name: string): Contact => ({
   uuid,
@@ -154,10 +154,12 @@ beforeEach(() => {
     contact("red", "Red Sea Divers"),
     contact("blue", "Blue Ocean"),
   ]);
-  vi.mocked(fetchAllPeople).mockResolvedValue([
-    person("alex", "Alex M.", "alexm"),
-    person("sam", "Sam"),
-  ]);
+  const people = [person("alex", "Alex M.", "alexm"), person("sam", "Sam")];
+  vi.mocked(peopleAPI.getPerson).mockImplementation(async (uuid) => {
+    const found = people.find((one) => one.uuid === uuid);
+    if (!found) throw new Error("404");
+    return found;
+  });
 });
 
 describe("TripDetailPage", () => {

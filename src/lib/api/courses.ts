@@ -1,5 +1,5 @@
-import { apiClient, fetchAllPages } from "./client";
-import type { PaginatedResponse } from "./client";
+import { apiClient, fetchAllPages, lookupParams } from "./client";
+import type { LookupQuery, PaginatedResponse } from "./client";
 import type { CertificationAgency } from "./certifications";
 import type { PersonReference } from "./people";
 
@@ -90,6 +90,15 @@ export type CourseUpdate = Partial<CourseCreate>;
 export type PaginatedCoursesResponse = PaginatedResponse<Course>;
 
 /**
+ * One row of `GET /courses/lookup`. A host needing the course's contact or
+ * people reads `getCourse` on pick.
+ */
+export interface CourseLookupItem {
+  uuid: string;
+  name: string;
+}
+
+/**
  * What narrows a course list. Every field set is AND-ed with the others, so a
  * name and a status answer the intersection rather than the union.
  *
@@ -156,6 +165,22 @@ export const coursesAPI = {
         ...(agency ? { agency } : {}),
         ...(status ? { status } : {}),
       },
+    });
+    return response.data;
+  },
+
+  /**
+   * A page of the diver's courses as a picker lists them, the course a dive at or
+   * before `until` was last on first, then courses no such dive is on, newest
+   * first. `search` matches what `getCourses` matches; no other filter applies.
+   */
+  async lookupCourses(
+    page: number,
+    items_per_page: number,
+    query: LookupQuery = {},
+  ): Promise<PaginatedResponse<CourseLookupItem>> {
+    const response = await apiClient.get(`/courses/lookup`, {
+      params: lookupParams(page, items_per_page, query),
     });
     return response.data;
   },

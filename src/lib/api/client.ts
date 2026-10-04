@@ -302,6 +302,33 @@ export interface PaginatedResponse<T> {
   items_per_page: number;
 }
 
+/**
+ * What a picker sends to a `/<plural>/lookup` route besides the page.
+ *
+ * `until` is the date of the record being edited, sent as the form holds it - an
+ * ISO start time with or without an offset, or a bare `YYYY-MM-DD` - and the API
+ * ranks each row by its last use on a dive at or before it. Left off, every dive
+ * counts.
+ */
+export interface LookupQuery {
+  search?: string;
+  until?: string;
+}
+
+/** A lookup's query string: empty `search` and `until` are left off, not sent. */
+export function lookupParams(
+  page: number,
+  items_per_page: number,
+  { search, until }: LookupQuery = {},
+) {
+  return {
+    page,
+    items_per_page,
+    ...(search ? { search } : {}),
+    ...(until ? { until } : {}),
+  };
+}
+
 export interface FetchAllPagesOptions<T> {
   // Ceiling on requests, not on items. 20 pages x 100 items is far past what any
   // of the "fetch everything" call sites are actually sized for.

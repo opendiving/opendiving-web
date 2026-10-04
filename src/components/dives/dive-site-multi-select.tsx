@@ -28,6 +28,8 @@ export interface DiveSiteMultiSelectProps extends FormControlSlotProps {
   // site on the form that always has selections.
   knownSites?: DiveSiteSummary[];
   onChange: (diveSiteUuids: string[]) => void;
+  // The dive's start time, as the form holds it - see `TripCombobox.until`.
+  until?: string;
   disabled?: boolean;
 }
 
@@ -45,6 +47,7 @@ export function DiveSiteMultiSelect({
   value,
   knownSites,
   onChange,
+  until,
   disabled,
   // Forwarded to the "add a site" combobox - the field's one focusable control.
   // The selected-sites list above it is a `<ul>` of remove buttons, which the
@@ -108,8 +111,9 @@ export function DiveSiteMultiSelect({
 
   const searchDiveSites = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
-      const response = await diveSitesAPI.getDiveSites(1, SITES_PER_SEARCH, {
+      const response = await diveSitesAPI.lookupDiveSites(1, SITES_PER_SEARCH, {
         search: query,
+        until,
       });
       // Every site the dropdown shows is remembered, so picking one never needs
       // the record fetched straight back just to label its row.
@@ -123,7 +127,7 @@ export function DiveSiteMultiSelect({
         hasMore: response.has_more,
       };
     },
-    [rememberLabel],
+    [rememberLabel, until],
   );
 
   const addSite = (id: string | undefined) => {

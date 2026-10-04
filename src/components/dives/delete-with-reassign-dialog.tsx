@@ -52,7 +52,10 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
     unresolvedHint:
       "Pick a trip from the list, or clear the field to delete without moving.",
     search: async (query) => {
-      const response = await tripsAPI.getTrips(1, OPTIONS_PER_SEARCH, query);
+      // No record date to bound the ranking by, so every dive counts.
+      const response = await tripsAPI.lookupTrips(1, OPTIONS_PER_SEARCH, {
+        search: query,
+      });
       return {
         items: response.data.map((trip) => ({
           id: trip.uuid,
@@ -73,9 +76,11 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
     unresolvedHint:
       "Pick a dive site from the list, or clear the field to delete without moving.",
     search: async (query) => {
-      const response = await diveSitesAPI.getDiveSites(1, OPTIONS_PER_SEARCH, {
-        search: query,
-      });
+      const response = await diveSitesAPI.lookupDiveSites(
+        1,
+        OPTIONS_PER_SEARCH,
+        { search: query },
+      );
       return {
         items: response.data.map((site) => ({
           id: site.uuid,

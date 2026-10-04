@@ -19,17 +19,17 @@ vi.mock("@/lib/api/certifications", async (importOriginal) => ({
 
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/courses")>()),
-  coursesAPI: { getCourses: vi.fn(), getCourse: vi.fn() },
+  coursesAPI: { lookupCourses: vi.fn(), getCourse: vi.fn() },
 }));
 
 vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
-  contactsAPI: { getContacts: vi.fn(), getContact: vi.fn() },
+  contactsAPI: { lookupContacts: vi.fn(), getContact: vi.fn() },
 }));
 
 vi.mock("@/lib/api/people", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/people")>()),
-  peopleAPI: { getPeople: vi.fn(), getPerson: vi.fn() },
+  peopleAPI: { lookupPeople: vi.fn(), getPerson: vi.fn() },
 }));
 
 const { certificationsAPI } = await import("@/lib/api/certifications");

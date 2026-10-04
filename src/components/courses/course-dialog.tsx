@@ -119,6 +119,9 @@ export function CourseDialog({
     control: form.control,
     name: "instructor_uuid",
   });
+  // The pickers rank by last use on a dive at or before the course's start.
+  const until =
+    useWatch({ control: form.control, name: "start_date" }) || undefined;
 
   // Reload the form whenever the dialog opens, so it shows the course being
   // edited rather than whatever the previous invocation left behind.
@@ -394,6 +397,7 @@ export function CourseDialog({
                     <ContactCombobox
                       value={field.value}
                       onChange={field.onChange}
+                      until={until}
                       initialRoles={SCHOOL}
                       placeholder="Select a dive center..."
                       addNewLabel="Add dive center..."
@@ -418,6 +422,7 @@ export function CourseDialog({
                       <PersonCombobox
                         value={field.value}
                         onChange={pickInstructor}
+                        until={until}
                         placeholder="Select an instructor..."
                         addNewLabel="Add instructor..."
                       />
@@ -456,6 +461,7 @@ export function CourseDialog({
                       value={field.value ?? []}
                       onChange={field.onChange}
                       defaultRole="student"
+                      until={until}
                       excludeIds={instructorUuid ? [instructorUuid] : undefined}
                     />
                   </FormControl>

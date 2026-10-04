@@ -4,17 +4,17 @@ import userEvent from "@testing-library/user-event";
 import { DeleteWithReassignDialog } from "./delete-with-reassign-dialog";
 
 vi.mock("@/lib/api/trips", () => ({
-  tripsAPI: { getTrips: vi.fn() },
+  tripsAPI: { lookupTrips: vi.fn() },
 }));
 
 vi.mock("@/lib/api/dive-sites", () => ({
-  diveSitesAPI: { getDiveSites: vi.fn() },
+  diveSitesAPI: { lookupDiveSites: vi.fn() },
 }));
 
 const { tripsAPI } = await import("@/lib/api/trips");
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
-const getTrips = vi.mocked(tripsAPI.getTrips);
-const getDiveSites = vi.mocked(diveSitesAPI.getDiveSites);
+const lookupTrips = vi.mocked(tripsAPI.lookupTrips);
+const lookupDiveSites = vi.mocked(diveSitesAPI.lookupDiveSites);
 
 const OTHER_TRIP = { uuid: "trip-2", name: "Cebu 2026" };
 const OTHER_SITE = {
@@ -33,10 +33,10 @@ const onePageOf = (data: unknown[]) =>
   }) as never;
 
 beforeEach(() => {
-  getTrips.mockReset();
-  getDiveSites.mockReset();
-  getTrips.mockResolvedValue(onePageOf([OTHER_TRIP]));
-  getDiveSites.mockResolvedValue(onePageOf([OTHER_SITE]));
+  lookupTrips.mockReset();
+  lookupDiveSites.mockReset();
+  lookupTrips.mockResolvedValue(onePageOf([OTHER_TRIP]));
+  lookupDiveSites.mockResolvedValue(onePageOf([OTHER_SITE]));
 });
 
 function Dialog({
@@ -103,7 +103,7 @@ describe("DeleteWithReassignDialog", () => {
       expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
     );
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(getTrips).not.toHaveBeenCalled();
+    expect(lookupTrips).not.toHaveBeenCalled();
   });
 
   it("refuses to delete while a destination is half-typed", async () => {
@@ -163,7 +163,7 @@ describe("DeleteWithReassignDialog", () => {
     // menu. Before the target was filtered out of the results, typing the shared
     // name here picked the trip being deleted: the request went out with
     // `move_dives_to` equal to the uuid being deleted - a 422.
-    getTrips.mockResolvedValue(
+    lookupTrips.mockResolvedValue(
       onePageOf([
         { uuid: "trip-1", name: "Cebu 2026" },
         { uuid: "trip-2", name: "Cebu 2026" },
@@ -183,7 +183,7 @@ describe("DeleteWithReassignDialog", () => {
   });
 
   it("offers only one option when a duplicate name is the target's own", async () => {
-    getTrips.mockResolvedValue(
+    lookupTrips.mockResolvedValue(
       onePageOf([
         { uuid: "trip-1", name: "Cebu 2026" },
         { uuid: "trip-2", name: "Cebu 2026" },
@@ -246,7 +246,7 @@ describe("DeleteWithReassignDialog, deleting a dive site", () => {
     await waitFor(() =>
       expect(onConfirm).toHaveBeenCalledWith("site-2", "Blue Hole"),
     );
-    expect(getDiveSites).toHaveBeenCalledWith(1, 25, { search: "" });
-    expect(getTrips).not.toHaveBeenCalled();
+    expect(lookupDiveSites).toHaveBeenCalledWith(1, 25, { search: "" });
+    expect(lookupTrips).not.toHaveBeenCalled();
   });
 });

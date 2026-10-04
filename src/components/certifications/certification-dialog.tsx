@@ -172,6 +172,9 @@ export function CertificationDialog({
   // `useWatch` rather than `form.watch()`: the latter returns a fresh function
   // every render that can't be memoized, which the react-hooks lint rules reject.
   const agency = useWatch({ control: form.control, name: "agency" });
+  // The pickers rank by last use on a dive at or before the card's date.
+  const until =
+    useWatch({ control: form.control, name: "certified_on" }) || undefined;
 
   // What this dialog last put in those fields itself: the values
   // it opened with, and then whatever each course selection wrote. A field still
@@ -428,6 +431,7 @@ export function CertificationDialog({
                       value={field.value}
                       onChange={field.onChange}
                       onCourseSelected={prefillFromCourse}
+                      until={until}
                     />
                   </FormControl>
                   <FormDescription>
@@ -582,6 +586,7 @@ export function CertificationDialog({
                     <ContactCombobox
                       value={field.value}
                       onChange={field.onChange}
+                      until={until}
                       initialRoles={SCHOOL}
                       placeholder="Select a dive center..."
                       addNewLabel="Add dive center..."
@@ -605,6 +610,7 @@ export function CertificationDialog({
                       <PersonCombobox
                         value={field.value}
                         onChange={field.onChange}
+                        until={until}
                         placeholder="Select an instructor..."
                         addNewLabel="Add instructor..."
                       />

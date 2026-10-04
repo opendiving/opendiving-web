@@ -40,6 +40,7 @@ import {
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { PeopleMultiSelect } from "@/components/people/people-multi-select";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
+import { tripSpan } from "@/lib/trip-parts";
 
 interface TripDialogProps {
   open: boolean;
@@ -81,6 +82,9 @@ export function TripDialog({
   // would re-render the whole dialog - every keystroke in the notes field
   // included.
   const parts = useWatch({ control: form.control, name: "parts" });
+  // The people picker ranks by last use on a dive at or before the trip's first
+  // dated day - parts sit in drag order and may carry no dates at all.
+  const until = tripSpan(parts).start;
 
   // A part need not have a place at all, and a place typed in by hand has no
   // position, so only the geocoded ones reach the map - the rows themselves are
@@ -268,6 +272,7 @@ export function TripDialog({
                       value={field.value ?? []}
                       onChange={field.onChange}
                       defaultRole={null}
+                      until={until}
                     />
                   </FormControl>
                   <FormMessage />

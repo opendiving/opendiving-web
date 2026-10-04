@@ -3,19 +3,26 @@
 import { useCallback, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { CreatableCombobox } from "@/components/ui/creatable-combobox";
+import {
+  CreatableCombobox,
+  type ComboboxSearchResult,
+} from "@/components/ui/creatable-combobox";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import {
   PERSON_ROLES,
   personRoleLabel,
   type Person,
+  type PersonLookupItem,
   type PersonReference,
   type PersonRole,
 } from "@/lib/api/people";
 import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { PersonDialog } from "@/components/people/person-dialog";
-import { usePersonPicker } from "@/components/people/use-person-picker";
+import {
+  personItem,
+  usePersonPicker,
+} from "@/components/people/use-person-picker";
 
 // The role control's option for a reference with no role, which means "was
 // there". `""` because an `<option>` has to carry a string.
@@ -32,6 +39,12 @@ export interface PeopleMultiSelectProps extends FormControlSlotProps {
   // People to leave out of the menu because the host names them elsewhere - a
   // course's instructor, picked in a field of its own.
   excludeIds?: string[];
+  // The date of the record being edited - see `TripCombobox.until`.
+  until?: string;
+  // People listed ahead of the lookup's rows, in this order - the dive form's
+  // trip's and course's people. Each is read by uuid, and shown while their
+  // name contains the query.
+  pinnedUuids?: readonly string[];
   placeholder?: string;
   disabled?: boolean;
 }
@@ -49,13 +62,15 @@ export function PeopleMultiSelect({
   onChange,
   defaultRole,
   excludeIds,
+  until,
+  pinnedUuids,
   placeholder,
   disabled,
   // Forwarded to the "add a person" combobox - the field's one control a label
   // can name. The rows above it name their own controls.
   ...slotProps
 }: PeopleMultiSelectProps) {
-  const { people, remember, search, createNamed } = usePersonPicker();
+  const { people, remember, search, createNamed } = usePersonPicker(until);
   const [showNewDialog, setShowNewDialog] = useState(false);
   // What the field held when "Add..." was pressed, frozen for the dialog - the
   // shape `ContactCombobox` has, and for its reason.
@@ -65,17 +80,44 @@ export function PeopleMultiSelect({
     textRef.current = text;
   }, []);
 
-  // Names for the people already on the record that this picker has not seen in
-  // a search - an edit form's, or a course's carried onto a new dive. One read
-  // of the whole list for all of them rather than one per row, and only for the
-  // uuids nothing here answers yet, so picking a row fetches nothing.
+  // Names for the people already on the record, and for the pins, that this
+  // picker has not seen in a search - an edit form's, or a course's carried onto
+  // a new dive. Read only for the uuids nothing here answers yet, so picking a
+  // row fetches nothing.
   const resolved = usePeopleByUuid(
-    value
-      .map((reference) => reference.person_uuid)
-      .filter((uuid) => !people[uuid]),
+    [
+      ...value.map((reference) => reference.person_uuid),
+      ...(pinnedUuids ?? []),
+    ].filter((uuid) => !people[uuid]),
   );
-  const personFor = (uuid: string): Person | undefined =>
+  const personFor = (uuid: string): PersonLookupItem | undefined =>
     people[uuid] ?? resolved[uuid];
+
+  // The pins whose name holds the query go first, each once; a pin the lookup
+  // found by its username alone stays where the lookup put it. A pin not read
+  // yet is left out until the next search.
+  const pinnedKey = (pinnedUuids ?? []).join(",");
+  const searchWithPins = useCallback(
+    async (query: string): Promise<ComboboxSearchResult> => {
+      const result = await search(query);
+      const needle = query.trim().toLowerCase();
+      const pinned = [...new Set(pinnedKey ? pinnedKey.split(",") : [])]
+        .map((uuid) => people[uuid] ?? resolved[uuid])
+        .filter(
+          (person): person is PersonLookupItem =>
+            !!person && person.name.toLowerCase().includes(needle),
+        );
+      const shown = new Set(pinned.map((person) => person.uuid));
+      return {
+        items: [
+          ...pinned.map(personItem),
+          ...result.items.filter((item) => !shown.has(item.id)),
+        ],
+        hasMore: result.hasMore,
+      };
+    },
+    [search, pinnedKey, people, resolved],
+  );
 
   const addPerson = (uuid: string | undefined) => {
     if (
@@ -176,7 +218,7 @@ export function PeopleMultiSelect({
 
       <CreatableCombobox
         {...slotProps}
-        onSearch={search}
+        onSearch={searchWithPins}
         // Already-listed people are hidden from the menu so nobody is added
         // twice - after the search rather than in it, as the site picker does,
         // so `has_more` keeps its meaning.

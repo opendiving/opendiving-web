@@ -32,6 +32,8 @@ export interface GearItemMultiSelectProps extends FormControlSlotProps {
   // Purely an optimization - anything not covered here is fetched individually.
   knownItems?: GearItemSummary[];
   onChange: (gearItemUuids: string[]) => void;
+  // The date of the record being edited - see `TripCombobox.until`.
+  until?: string;
   disabled?: boolean;
   // Called whenever the user adds or removes an item by hand, as opposed to the
   // whole list being swapped out programmatically (e.g. by loading a gear set).
@@ -47,6 +49,7 @@ export function GearItemMultiSelect({
   value,
   knownItems,
   onChange,
+  until,
   disabled,
   onManualChange,
   ...slotProps
@@ -102,15 +105,13 @@ export function GearItemMultiSelect({
 
   const searchGear = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
-      // Archived gear is excluded at the source rather than filtered out here:
+      // The lookup never lists archived gear, rather than this filtering it out:
       // retired kit shouldn't be offered for a new dive, and leaving it in would
       // eat into the page of matches the user can actually pick from.
-      const response = await gearAPI.getGearItems(
-        1,
-        GEAR_PER_SEARCH,
-        false,
-        query,
-      );
+      const response = await gearAPI.lookupGearItems(1, GEAR_PER_SEARCH, {
+        search: query,
+        until,
+      });
       response.data.forEach(remember);
       return {
         items: response.data.map((item) => ({
@@ -123,7 +124,7 @@ export function GearItemMultiSelect({
         hasMore: response.has_more,
       };
     },
-    [remember],
+    [remember, until],
   );
 
   const addItem = (id: string | undefined) => {
