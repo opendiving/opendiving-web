@@ -29,6 +29,10 @@ import { Edit } from "lucide-react";
 // `h-14` below.
 const SILHOUETTE_HEIGHT = 56;
 const SILHOUETTE_GAP = 4;
+// The chips' row, over the band's foot: a chip at its widest breakpoint and the
+// `bottom-1` it stands on. Lower than the profile's band, which covers it where
+// a dive has both.
+const CHIPS_HEIGHT = 26;
 
 interface DiveCardProps {
   dive: Dive;
@@ -68,6 +72,8 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
     figures.push({ label: "Avg depth", value: depth(dive.avg_depth) });
   }
 
+  const chips = diveChips(dive);
+
   return (
     <BackdropCard
       actionsLabel={`Actions for dive #${dive.dive_number}`}
@@ -86,10 +92,12 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
       }
       backdrop={(coveredBottom) => {
         // The map's places and the water's bubbles centre above the profile
-        // rather than behind it.
+        // and the chips rather than behind them.
         const aboveProfile = outline
           ? coveredBottom + SILHOUETTE_GAP + SILHOUETTE_HEIGHT
-          : coveredBottom;
+          : chips
+            ? coveredBottom + CHIPS_HEIGHT
+            : coveredBottom;
         return (
           <>
             <MapBackdrop
@@ -120,7 +128,14 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
         );
       }}
     >
-      {diveChips(dive)}
+      {chips && (
+        // Over the foot of the backdrop's band rather than above the name in
+        // the flow, so a dive with chips is as tall as one without. Lifted over
+        // the card's link, so their hints are reachable.
+        <div className="relative z-10 h-0">
+          <div className="absolute bottom-1 left-0">{chips}</div>
+        </div>
+      )}
       <Link
         href={withReturnTo(`/dives/${dive.uuid}`)}
         className={BACKDROP_CARD_LINK}

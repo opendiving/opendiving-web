@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
@@ -64,6 +64,10 @@ export interface RecentDivesCardProps {
   // heading, as the list pages' cards do: the empty state already says what the
   // card is for. The dashboard's preview keeps it beside the trips card.
   complete?: boolean;
+  // Re-read the dives on screen, in place, whenever this changes - after an
+  // edit to the record they are scoped to that shows on their cards: a site's
+  // name is in their titles and its pin is on their maps.
+  refreshOn?: unknown;
   title?: string;
   description?: string;
   // Href/label for the header's "view all" button. Pass `null` to hide it
@@ -89,6 +93,7 @@ export function RecentDivesCard({
   speciesId,
   personId,
   complete = false,
+  refreshOn,
   title = "Recent Dives",
   description = "Your latest underwater adventures",
   viewAllHref = "/dives",
@@ -125,12 +130,22 @@ export function RecentDivesCard({
     hasMore,
     loadFailed,
     loadMore,
+    revalidate,
   } = useInfiniteResource<Dive>(fetchDives, {
     keyOf: (dive) => dive.uuid,
     enabled,
     itemsPerPage: complete ? DIVES_PER_PAGE : RECENT_DIVES_COUNT,
     errorMessage: "Failed to load dives. Please try again.",
   });
+
+  // Against the value last refreshed for rather than on every run, so the first
+  // render and a hidden route shown again read nothing extra.
+  const refreshedFor = useRef(refreshOn);
+  useEffect(() => {
+    if (Object.is(refreshedFor.current, refreshOn)) return;
+    refreshedFor.current = refreshOn;
+    void revalidate();
+  }, [refreshOn, revalidate]);
 
   const isEmpty = !isLoadingDives && recentDives.length === 0;
   const isHeaderless = complete && isEmpty;

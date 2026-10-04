@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { RecentDivesCard } from "./recent-dives-card";
 import type { Dive } from "@/lib/api/dives";
 
@@ -98,5 +98,36 @@ describe("RecentDivesCard's header", () => {
     expect(
       screen.getByRole("link", { name: "View all dives" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("RecentDivesCard's refreshOn", () => {
+  const siteCard = (refreshOn: number) => (
+    <RecentDivesCard
+      complete
+      enabled
+      diveSiteId="site-1"
+      refreshOn={refreshOn}
+    />
+  );
+
+  it("re-reads the dives on screen when it changes, and not before", async () => {
+    // A site's edit moves the pin on every card below it, so the page counts
+    // its saves and the cards are read again on each one.
+    getDives.mockImplementation(async () =>
+      page([{ uuid: "dive-1", dive_number: 7 } as Dive]),
+    );
+    const { rerender } = render(siteCard(0));
+    await screen.findByText("Dive 7");
+    rerender(siteCard(0));
+    expect(getDives).toHaveBeenCalledTimes(1);
+
+    getDives.mockImplementation(async () =>
+      page([{ uuid: "dive-1", dive_number: 8 } as Dive]),
+    );
+    rerender(siteCard(1));
+
+    await screen.findByText("Dive 8");
+    await waitFor(() => expect(getDives).toHaveBeenCalledTimes(2));
   });
 });
