@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -8,13 +8,11 @@ import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
 import { tripsAPI, Trip } from "@/lib/api/trips";
-import { divesAPI } from "@/lib/api/dives";
+import { divesAPI, Dive } from "@/lib/api/dives";
 import { fetchAllPages, isAbortError } from "@/lib/api/client";
 import { distinctContactUuids } from "@/lib/contact";
 import { useContactsByUuid } from "@/hooks/useContactsByUuid";
 import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
-import { formatTripDateRange } from "@/lib/date-time";
-import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
@@ -25,6 +23,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripHero } from "@/components/trips/trip-hero";
+import { TripDiveSections } from "@/components/trips/trip-dive-sections";
+import { useToast } from "@/components/ui/use-toast";
+import { formatTripPartDates } from "@/lib/trip-parts";
 import {
   HERO_BODY,
   HERO_CONTROL,
@@ -42,6 +43,7 @@ const DELETED_MESSAGE = "Trip deleted successfully.";
 
 export function TripDetailPageContent() {
   const router = useRouter();
+  const { toast } = useToast();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const back = useReturnTo({ href: "/trips", label: "Back to trips" });
@@ -65,15 +67,15 @@ export function TripDetailPageContent() {
   });
   const isDeleting = del.deletingId !== null;
 
-  // The dive centers that ran this trip's dives: the contacts its dives name,
-  // derived here rather than stored on the trip, so it can never disagree with
-  // them - a week split between two shops lists both. The dives card below loads
-  // ten at a time as the reader scrolls, so the line reads every dive of the trip
-  // itself, once, keyed on the trip it was read for.
+  // Every dive of the trip, read once and keyed on the trip it was read for:
+  // the dives column groups them under the parts they were made on, which needs
+  // all of them at once, and the dive centers line is read off them - derived
+  // rather than stored on the trip, so it can never disagree with them; a week
+  // split between two shops lists both.
   const tripUuid = trip?.uuid;
-  const [diveCenters, setDiveCenters] = useState<{
+  const [tripDives, setTripDives] = useState<{
     tripUuid: string;
-    contactUuids: string[];
+    dives: Dive[] | null;
   } | null>(null);
   useEffect(() => {
     if (!tripUuid) return;
@@ -86,22 +88,26 @@ export function TripDetailPageContent() {
         keyOf: (dive) => dive.uuid,
       },
     )
-      .then((dives) =>
-        setDiveCenters({ tripUuid, contactUuids: distinctContactUuids(dives) }),
-      )
+      .then((dives) => setTripDives({ tripUuid, dives }))
       .catch((error) => {
-        // Non-fatal: the line is left off, as a failed trip lookup leaves the
-        // dive page's trip link off.
-        if (!isAbortError(error)) {
-          console.error("Failed to fetch the trip's dives:", error);
-        }
+        if (isAbortError(error)) return;
+        console.error("Failed to fetch the trip's dives:", error);
+        setTripDives({ tripUuid, dives: null });
+        toast({
+          title: "Error",
+          description: "Failed to load dives. Please try again.",
+          variant: "destructive",
+        });
       });
     return () => controller.abort();
-  }, [tripUuid]);
-  const diveCenterUuids =
-    diveCenters && diveCenters.tripUuid === tripUuid
-      ? diveCenters.contactUuids
-      : [];
+  }, [tripUuid, toast]);
+  const isCurrentTripDives = !!tripDives && tripDives.tripUuid === tripUuid;
+  const dives = isCurrentTripDives ? tripDives.dives : null;
+  const divesFailed = isCurrentTripDives && tripDives.dives === null;
+  const diveCenterUuids = useMemo(
+    () => (dives ? distinctContactUuids(dives) : []),
+    [dives],
+  );
 
   const contacts = useContactsByUuid([
     ...(trip?.parts ?? []).map((part) => part.accommodation_uuid),
@@ -202,19 +208,11 @@ export function TripDetailPageContent() {
       <div className={HERO_BODY}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <RecentDivesCard
-              complete
-              enabled={!!user}
-              tripId={trip.uuid}
-              title="Dives in This Trip"
-              // Not "logged as part of this trip": a part is a noun here now, and
-              // that sentence reads as a claim about which stretch a dive was on.
-              description="Every dive logged on this trip"
-              viewAllHref={null}
-              emptyTitle="No dives logged for this trip yet"
-              emptyDescription="Log a dive and assign it to this trip to see it here."
+            <TripDiveSections
+              dives={dives}
+              loadFailed={divesFailed}
+              parts={tripParts}
               newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
-              newDiveLabel="Log a dive for this trip"
             />
           </div>
 
@@ -246,10 +244,7 @@ export function TripDetailPageContent() {
                       and dropping it would renumber the rest. */}
                       <ul className="space-y-1.5">
                         {tripParts.map((part, index) => {
-                          const dates = formatTripDateRange(
-                            part.start_date ?? undefined,
-                            part.end_date ?? undefined,
-                          );
+                          const dates = formatTripPartDates(part);
                           const accommodation = part.accommodation_uuid
                             ? contacts[part.accommodation_uuid]
                             : undefined;

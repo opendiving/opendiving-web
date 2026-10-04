@@ -34,9 +34,6 @@ export interface RecentDivesCardProps {
   // False until there's a signed-in user - the list reads the caller's own log
   // and takes no user uuid, so the page has to say when the session is known.
   enabled: boolean;
-  // Only show dives belonging to this trip. When omitted, shows the user's
-  // most recent dives across all trips.
-  tripId?: string;
   // Only show dives made at this dive site. When omitted, shows dives
   // regardless of dive site.
   diveSiteId?: string;
@@ -82,11 +79,10 @@ export interface RecentDivesCardProps {
 
 // Shows a list of dives for a user, each as a `DiveCard`.
 // Used on the dashboard (the most recent few) and on the detail pages that
-// scope dives to one record - a trip, a dive site, a gear item, a course, a
-// species, a person - so they all stay in sync.
+// scope dives to one record - a dive site, a gear item, a course, a species, a
+// person - so they all stay in sync.
 export function RecentDivesCard({
   enabled,
-  tripId,
   diveSiteId,
   gearItemId,
   courseId,
@@ -107,14 +103,13 @@ export function RecentDivesCard({
   const fetchDives = useCallback(
     (page: number, perPage: number) =>
       divesAPI.getDives(page, perPage, {
-        tripUuid: tripId,
         diveSiteUuid: diveSiteId,
         gearItemUuid: gearItemId,
         courseUuid: courseId,
         speciesUuid: speciesId,
         personUuid: personId,
       }),
-    [tripId, diveSiteId, gearItemId, courseId, speciesId, personId],
+    [diveSiteId, gearItemId, courseId, speciesId, personId],
   );
 
   // The preview asks for its few rows once and stops; a complete list pages
