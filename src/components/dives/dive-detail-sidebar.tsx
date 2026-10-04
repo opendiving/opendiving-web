@@ -15,7 +15,7 @@ import { Trip } from "@/lib/api/trips";
 import { Course } from "@/lib/api/courses";
 import { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
-import { formatWebsite } from "@/lib/contact";
+import { formatContactAddress, formatWebsite } from "@/lib/contact";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -139,6 +139,11 @@ export function DiveDetailSidebar({
     dive.current != null ||
     dive.waves != null ||
     dive.weather != null;
+  const contactPlace = formatContactAddress({
+    city: contact?.address?.city,
+    region: contact?.address?.region,
+    country: contact?.address?.country,
+  });
   const tags = dive.tags ?? [];
   const hasInformation =
     dive.type != null || dive.rating != null || tags.length > 0;
@@ -158,6 +163,7 @@ export function DiveDetailSidebar({
   return (
     <div className="space-y-6">
       {(trip ||
+        contact ||
         dive.dive_sites.length > 0 ||
         dive.entry_type != null ||
         dive.boat_name != null ||
@@ -195,6 +201,49 @@ export function DiveDetailSidebar({
                     />
                   </div>
                 </div>
+              </div>
+            )}
+            {contact && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Dive center
+                </div>
+                {/* The two ways to reach it sit under the name at a finger's
+                    height, since a dive page on a phone is where a diver goes
+                    looking for the shop's number. */}
+                <div className="flex items-start gap-2 text-sm">
+                  <Building2 className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <div className="font-medium">{contact.name}</div>
+                    {contactPlace && (
+                      <span className="block text-muted-foreground">
+                        {contactPlace}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {contact.phone && (
+                  <a
+                    href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`}
+                    className="flex min-h-11 items-center gap-2 text-sm hover:underline"
+                  >
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    {contact.phone}
+                  </a>
+                )}
+                {contact.website && (
+                  <a
+                    href={contact.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-11 items-center gap-2 text-sm hover:underline"
+                  >
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <span className="min-w-0 truncate">
+                      {formatWebsite(contact.website)}
+                    </span>
+                  </a>
+                )}
               </div>
             )}
             {dive.dive_sites.length > 0 && (
@@ -302,50 +351,9 @@ export function DiveDetailSidebar({
         </Card>
       )}
 
-      {/* Its own card rather than a row on "Training", which renders only on a
-          course: a fun dive has a dive center and no course, and would show it
-          nowhere. The two ways to reach it sit under the name at a finger's
-          height, since a dive page on a phone is where a diver goes looking for
-          the shop's number. */}
-      {contact && (
-        <Card>
-          <CardHeader>
-            <CardTitle as="h2">Dive Center</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              {contact.name}
-            </div>
-            {contact.phone && (
-              <a
-                href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`}
-                className="flex min-h-11 items-center gap-2 text-sm hover:underline"
-              >
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                {contact.phone}
-              </a>
-            )}
-            {contact.website && (
-              <a
-                href={contact.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex min-h-11 items-center gap-2 text-sm hover:underline"
-              >
-                <Globe className="h-4 w-4 text-muted-foreground" />
-                <span className="min-w-0 truncate">
-                  {formatWebsite(contact.website)}
-                </span>
-              </a>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Beside the dive center, and its own card for the reason that one is:
-          who the diver was with is a fact about the dive whether or not a shop
-          ran it. */}
+      {/* Its own card rather than a row on "Training" or "Location": who the
+          diver was with is a fact about the dive whether or not a shop ran it
+          or a course taught it. */}
       {hasPeople && (
         <Card>
           <CardHeader>
