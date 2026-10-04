@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import type { Dive } from "@/lib/api/dives";
 import type { TripPart } from "@/lib/api/trips";
+import userEvent from "@testing-library/user-event";
 import { TripDiveSections } from "./trip-dive-sections";
 
 // Which part a dive lands in is `tripDiveSections`', tested beside it. What a
@@ -86,6 +87,26 @@ describe("TripDiveSections", () => {
     expect(
       screen.getByText("No dives logged for this part yet"),
     ).toBeInTheDocument();
+  });
+
+  it("folds a part's card to its header from its title, and opens it again", async () => {
+    const user = userEvent.setup();
+    renderSections([dive("dahab", "2026-04-04T09:00:00Z")]);
+    const toggle = screen.getByRole("button", { name: "Dahab" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("dahab")).toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("dahab")).not.toBeInTheDocument();
+    // The dates under the title stay, and so does the other part.
+    expect(screen.getByText("Apr 3 - Apr 8, 2026")).toBeInTheDocument();
+    expect(
+      screen.getByText("No dives logged for this part yet"),
+    ).toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(screen.getByText("dahab")).toBeInTheDocument();
   });
 
   it("keeps the one card of every dive on a trip with no parts", () => {
