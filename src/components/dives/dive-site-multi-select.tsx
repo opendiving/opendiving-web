@@ -8,7 +8,11 @@ import {
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
 import type { FormControlSlotProps } from "@/components/ui/form";
-import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import {
+  diveSitesAPI,
+  DiveSite,
+  type DiveSiteLookupItem,
+} from "@/lib/api/dive-sites";
 import { DiveSiteSummary } from "@/lib/api/dives";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
@@ -57,23 +61,18 @@ export function DiveSiteMultiSelect({
   ...slotProps
 }: DiveSiteMultiSelectProps) {
   const [labels, setLabels] = useState<Record<string, DiveSiteSummary>>({});
-  // Whole records, for the water type and altitude neither a lookup row nor a
-  // dive's embedded summary carries. Read only once there is a second site to
-  // compare the first with.
-  const [records, setRecords] = useState<Record<string, DiveSite>>({});
+  // Lookup rows, for the water type and altitude a dive's embedded summary does
+  // not carry. Needed only once there is a second site to compare the first with.
+  const [records, setRecords] = useState<Record<string, DiveSiteLookupItem>>(
+    {},
+  );
   const units = useUnits();
   const [showNewDialog, setShowNewDialog] = useState(false);
   // Set by a save in the new-site dialog, so its close doesn't hand focus back
   // to the input - which would reopen the menu `blurOnSelect` just shut.
   const savedFromDialogRef = useRef(false);
-  // Every uuid a single-site lookup has already been fired for, successful or not.
+  // Every uuid a lookup by uuid has already been fired for, successful or not.
   const requestedRef = useRef<Set<string>>(new Set());
-
-  const rememberLabel = useCallback(
-    (site: DiveSiteSummary) =>
-      setLabels((prev) => ({ ...prev, [site.uuid]: site })),
-    [],
-  );
 
   // Read through the `knownSites` prop rather than copying it into `labels` via
   // an effect: the copy wouldn't have landed yet on the render that first sees a
@@ -82,7 +81,7 @@ export function DiveSiteMultiSelect({
   const labelFor = (uuid: string): DiveSiteSummary | undefined =>
     labels[uuid] ?? knownSites?.find((site) => site.uuid === uuid);
 
-  const rememberRecord = useCallback((site: DiveSite) => {
+  const rememberRecord = useCallback((site: DiveSiteLookupItem) => {
     setLabels((prev) => ({ ...prev, [site.uuid]: site }));
     setRecords((prev) => ({ ...prev, [site.uuid]: site }));
   }, []);
@@ -90,9 +89,8 @@ export function DiveSiteMultiSelect({
   // Resolve any selected site whose name isn't already known - which is how a
   // site pre-selected by uuid alone (`/dives/new?dive_site_uuid=...`) gets a
   // name, and the safety net that keeps a selection from ever rendering
-  // nameless - and, from the second site on, every site's whole record. A dive
-  // has a handful of sites at most, so these are one-off single-record fetches,
-  // not a list scan.
+  // nameless - and, from the second site on, every site's lookup row. One
+  // lookup narrowed to those uuids, not a list scan.
   useEffect(() => {
     const unresolved = value.filter(
       (uuid) =>
@@ -113,13 +111,10 @@ export function DiveSiteMultiSelect({
     // idempotent, so a late arrival is always safe to apply.
     unresolved.forEach((uuid) => requestedRef.current.add(uuid));
 
-    unresolved.forEach(async (uuid) => {
-      try {
-        rememberRecord(await diveSitesAPI.getDiveSite(uuid));
-      } catch (error) {
-        console.error("Failed to fetch dive site:", error);
-      }
-    });
+    diveSitesAPI
+      .lookupDiveSitesByUuid(unresolved)
+      .then((sites) => sites.forEach(rememberRecord))
+      .catch((error) => console.error("Failed to fetch dive sites:", error));
   }, [value, labels, records, knownSites, rememberRecord]);
 
   // Nothing until every site is read: the first site recording a water type may
@@ -138,7 +133,7 @@ export function DiveSiteMultiSelect({
       });
       // Every site the dropdown shows is remembered, so picking one never needs
       // the record fetched straight back just to label its row.
-      response.data.forEach(rememberLabel);
+      response.data.forEach(rememberRecord);
       return {
         items: response.data.map((site) => ({
           id: site.uuid,
@@ -148,7 +143,7 @@ export function DiveSiteMultiSelect({
         hasMore: response.has_more,
       };
     },
-    [rememberLabel, until],
+    [rememberRecord, until],
   );
 
   const addSite = (id: string | undefined) => {

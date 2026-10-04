@@ -1,6 +1,11 @@
-import type { DiveSite } from "@/lib/api/dive-sites";
+import type { DiveSiteLookupItem } from "@/lib/api/dive-sites";
 import { vocabularyLabel, WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { formatAltitude, type UnitSystem } from "@/lib/units";
+
+type ComparedSite = Pick<
+  DiveSiteLookupItem,
+  "name" | "water_type" | "altitude"
+>;
 
 /**
  * Per site of one dive, in order, what sets it apart from the first site that
@@ -9,12 +14,12 @@ import { formatAltitude, type UnitSystem } from "@/lib/units";
  * and never differs from itself; a site recording neither has nothing to say.
  */
 export function diveSiteMismatches(
-  sites: readonly DiveSite[],
+  sites: readonly ComparedSite[],
   units: UnitSystem,
 ): string[][] {
   const water = sites.find((site) => site.water_type);
   const altitude = sites.find((site) => site.altitude != null);
-  const waterLabel = (site: DiveSite) =>
+  const waterLabel = (site: ComparedSite) =>
     vocabularyLabel(WATER_TYPE_LABELS, site.water_type ?? "");
 
   return sites.map((site) => {

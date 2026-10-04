@@ -1,5 +1,5 @@
-import { apiClient, lookupParams } from "./client";
-import type { LookupQuery, PaginatedResponse } from "./client";
+import { apiClient, lookupRequest } from "./client";
+import type { PaginatedResponse, UuidLookupQuery } from "./client";
 import type { Location } from "./location";
 import type { PersonReference } from "./people";
 
@@ -70,10 +70,14 @@ export interface TripUpdate {
 
 export type PaginatedTripsResponse = PaginatedResponse<Trip>;
 
-/** One row of `GET /trips/lookup`: a trip's name usually carries its year. */
+/**
+ * One row of `GET /trips/lookup`: the name, which usually carries its year, and the
+ * people a dive form fills in from the pick.
+ */
 export interface TripLookupItem {
   uuid: string;
   name: string;
+  people?: PersonReference[];
 }
 
 /** Trip CRUD. Every call is scoped to the signed-in user by the API. */
@@ -111,12 +115,19 @@ export const tripsAPI = {
   async lookupTrips(
     page: number,
     items_per_page: number,
-    query: LookupQuery = {},
+    query: UuidLookupQuery = {},
   ): Promise<PaginatedResponse<TripLookupItem>> {
-    const response = await apiClient.get(`/trips/lookup`, {
-      params: lookupParams(page, items_per_page, query),
-    });
+    const response = await apiClient.get(
+      `/trips/lookup`,
+      lookupRequest(page, items_per_page, query),
+    );
     return response.data;
+  },
+
+  /** The lookup rows of trips a form holds, in no particular order. */
+  async lookupTripsByUuid(uuids: readonly string[]): Promise<TripLookupItem[]> {
+    if (uuids.length === 0) return [];
+    return (await this.lookupTrips(1, uuids.length, { uuids })).data;
   },
 
   // Get a specific trip by uuid

@@ -12,7 +12,7 @@ import { DiveSiteMultiSelect } from "./dive-site-multi-select";
 // gone. What is left, and what these assert, is a click or Enter.
 
 vi.mock("@/lib/api/dive-sites", () => ({
-  diveSitesAPI: { lookupDiveSites: vi.fn(), getDiveSite: vi.fn() },
+  diveSitesAPI: { lookupDiveSites: vi.fn(), lookupDiveSitesByUuid: vi.fn() },
 }));
 
 // The real dialog's form is beside the point; what matters is that it closes
@@ -56,7 +56,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const lookupDiveSites = vi.mocked(diveSitesAPI.lookupDiveSites);
-const getDiveSite = vi.mocked(diveSitesAPI.getDiveSite);
+const lookupDiveSitesByUuid = vi.mocked(diveSitesAPI.lookupDiveSitesByUuid);
 
 const SITE = {
   uuid: "site-1",
@@ -70,10 +70,9 @@ const SECOND_SITE = {
 };
 
 beforeEach(() => {
-  getDiveSite.mockReset();
-  getDiveSite.mockImplementation(
-    async (uuid) =>
-      [SITE, SECOND_SITE].find((site) => site.uuid === uuid) as never,
+  lookupDiveSitesByUuid.mockReset();
+  lookupDiveSitesByUuid.mockImplementation(async (uuids) =>
+    [SITE, SECOND_SITE].filter((site) => uuids.includes(site.uuid)),
   );
   lookupDiveSites.mockReset();
   lookupDiveSites.mockResolvedValue({
@@ -267,7 +266,9 @@ describe("DiveSiteMultiSelect", () => {
       [SECOND_SITE.uuid]: { ...SECOND_SITE, water_type: "fresh", altitude: 0 },
       "site-3": { uuid: "site-3", name: "Tarn", altitude: 2400 },
     };
-    getDiveSite.mockImplementation(async (uuid) => records[uuid] as never);
+    lookupDiveSitesByUuid.mockImplementation(
+      async (uuids) => uuids.map((uuid) => records[uuid]) as never,
+    );
     render(
       <DiveSiteMultiSelect
         value={[SITE.uuid, SECOND_SITE.uuid, "site-3"]}

@@ -1,5 +1,5 @@
-import { apiClient, lookupParams } from "./client";
-import type { LookupQuery, PaginatedResponse } from "./client";
+import { apiClient, lookupRequest } from "./client";
+import type { PaginatedResponse, UuidLookupQuery } from "./client";
 import type { EntryType, WaterType } from "./dives";
 import type { Location } from "./location";
 
@@ -140,11 +140,18 @@ export interface DiveSiteFilters {
 
 export type PaginatedDiveSitesResponse = PaginatedResponse<DiveSite>;
 
-/** One row of `GET /dive-sites/lookup`: the name and the locality a picker shows under it. */
+/**
+ * One row of `GET /dive-sites/lookup`: the name and the locality a picker shows
+ * under it, and the place's water, altitude and entries a dive form fills in from
+ * the pick - as `DiveSite` reads them.
+ */
 export interface DiveSiteLookupItem {
   uuid: string;
   name: string;
   location?: Location | null;
+  water_type?: string | null;
+  altitude?: number | null;
+  entry_types?: string[];
 }
 
 /**
@@ -187,12 +194,21 @@ export const diveSitesAPI = {
   async lookupDiveSites(
     page: number,
     items_per_page: number,
-    query: LookupQuery = {},
+    query: UuidLookupQuery = {},
   ): Promise<PaginatedResponse<DiveSiteLookupItem>> {
-    const response = await apiClient.get(`/dive-sites/lookup`, {
-      params: lookupParams(page, items_per_page, query),
-    });
+    const response = await apiClient.get(
+      `/dive-sites/lookup`,
+      lookupRequest(page, items_per_page, query),
+    );
     return response.data;
+  },
+
+  /** The lookup rows of sites a form holds, in no particular order. */
+  async lookupDiveSitesByUuid(
+    uuids: readonly string[],
+  ): Promise<DiveSiteLookupItem[]> {
+    if (uuids.length === 0) return [];
+    return (await this.lookupDiveSites(1, uuids.length, { uuids })).data;
   },
 
   // Get a specific dive site by uuid

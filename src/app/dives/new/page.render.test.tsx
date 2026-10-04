@@ -119,7 +119,11 @@ vi.mock("@/lib/api/trips", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/trips")>();
   return {
     ...actual,
-    tripsAPI: { ...actual.tripsAPI, lookupTrips: vi.fn(), getTrip: vi.fn() },
+    tripsAPI: {
+      ...actual.tripsAPI,
+      lookupTrips: vi.fn(),
+      lookupTripsByUuid: vi.fn(),
+    },
   };
 });
 
@@ -130,6 +134,7 @@ vi.mock("@/lib/api/dive-sites", async (importOriginal) => {
     diveSitesAPI: {
       ...actual.diveSitesAPI,
       lookupDiveSites: vi.fn(),
+      lookupDiveSitesByUuid: vi.fn(),
       getDiveSite: vi.fn(),
     },
   };
@@ -203,7 +208,7 @@ vi.mock("@/lib/api/courses", async (importOriginal) => {
     coursesAPI: {
       ...actual.coursesAPI,
       lookupCourses: vi.fn(),
-      getCourse: vi.fn(),
+      lookupCoursesByUuid: vi.fn(),
     },
   };
 });
@@ -348,11 +353,8 @@ beforeEach(() => {
   });
   vi.mocked(divesAPI.createDive).mockResolvedValue(storedDive());
   vi.mocked(tripsAPI.lookupTrips).mockResolvedValue(emptyPage());
-  vi.mocked(tripsAPI.getTrip).mockImplementation(
-    async (uuid) =>
-      ({ uuid, name: "Red Sea Week" }) as Awaited<
-        ReturnType<typeof tripsAPI.getTrip>
-      >,
+  vi.mocked(tripsAPI.lookupTripsByUuid).mockImplementation(async (uuids) =>
+    uuids.map((uuid) => ({ uuid, name: "Red Sea Week" })),
   );
   vi.mocked(diveSitesAPI.lookupDiveSites).mockResolvedValue(emptyPage());
   vi.mocked(gear.fetchAllGearSets).mockResolvedValue([]);
@@ -374,9 +376,8 @@ beforeEach(() => {
     data: COURSES,
     total_count: COURSES.length,
   });
-  vi.mocked(coursesAPI.getCourse).mockImplementation(
-    async (uuid) =>
-      COURSES.find((course) => course.uuid === uuid) ?? COURSES[0],
+  vi.mocked(coursesAPI.lookupCoursesByUuid).mockImplementation(async (uuids) =>
+    COURSES.filter((course) => uuids.includes(course.uuid)),
   );
   vi.mocked(contactsAPI.lookupContacts).mockResolvedValue({
     ...emptyPage<Contact>(),
@@ -1790,10 +1791,13 @@ describe("the people", () => {
     await userEvent.click(await screen.findByRole("option", { name }));
   };
   const coursePeople = (people: Record<string, PersonReference[]>) =>
-    vi.mocked(coursesAPI.getCourse).mockImplementation(async (uuid) => ({
-      ...(COURSES.find((course) => course.uuid === uuid) ?? COURSES[0]),
-      people: people[uuid] ?? [],
-    }));
+    vi
+      .mocked(coursesAPI.lookupCoursesByUuid)
+      .mockImplementation(async (uuids) =>
+        COURSES.filter((course) => uuids.includes(course.uuid)).map(
+          (course) => ({ ...course, people: people[course.uuid] ?? [] }),
+        ),
+      );
 
   it("merges a picked course's people, then a picked trip's, then the last dive's", async () => {
     lastDiveWith({ people: [{ person_uuid: BUDDY.uuid, role: "buddy" }] });
@@ -1804,13 +1808,13 @@ describe("the people", () => {
       uuid: "trip-3",
       name: "Red Sea Week",
       people: [{ person_uuid: CLASSMATE.uuid, role: null }],
-    } as Awaited<ReturnType<typeof tripsAPI.getTrip>>;
+    } as Awaited<ReturnType<typeof tripsAPI.lookupTripsByUuid>>[number];
     vi.mocked(tripsAPI.lookupTrips).mockResolvedValue({
       ...emptyPage<typeof trip>(),
       data: [trip],
       total_count: 1,
     });
-    vi.mocked(tripsAPI.getTrip).mockResolvedValue(trip);
+    vi.mocked(tripsAPI.lookupTripsByUuid).mockResolvedValue([trip]);
 
     render(<NewDivePage />);
     await roleOf(BUDDY.name);
@@ -1870,13 +1874,15 @@ describe("the people", () => {
 
   it("arrives with the course's people and their roles from Log a dive for this course", async () => {
     stable.searchParams = new URLSearchParams("course_uuid=course-9");
-    vi.mocked(coursesAPI.getCourse).mockResolvedValue({
-      ...COURSES[0],
-      people: [
-        { person_uuid: INSTRUCTOR.uuid, role: "instructor" },
-        { person_uuid: CLASSMATE.uuid, role: "student" },
-      ],
-    });
+    vi.mocked(coursesAPI.lookupCoursesByUuid).mockResolvedValue([
+      {
+        ...COURSES[0],
+        people: [
+          { person_uuid: INSTRUCTOR.uuid, role: "instructor" },
+          { person_uuid: CLASSMATE.uuid, role: "student" },
+        ],
+      },
+    ]);
     lastDiveWith({ people: [{ person_uuid: BUDDY.uuid, role: "buddy" }] });
 
     render(<NewDivePage />);
@@ -1896,11 +1902,13 @@ describe("the people", () => {
 
   it("arrives with the trip's people from a trip's page", async () => {
     stable.searchParams = new URLSearchParams("trip_uuid=trip-3");
-    vi.mocked(tripsAPI.getTrip).mockResolvedValue({
-      uuid: "trip-3",
-      name: "Red Sea Week",
-      people: [{ person_uuid: CLASSMATE.uuid, role: null }],
-    } as Awaited<ReturnType<typeof tripsAPI.getTrip>>);
+    vi.mocked(tripsAPI.lookupTripsByUuid).mockResolvedValue([
+      {
+        uuid: "trip-3",
+        name: "Red Sea Week",
+        people: [{ person_uuid: CLASSMATE.uuid, role: null }],
+      },
+    ]);
     lastDiveWith({ people: [{ person_uuid: BUDDY.uuid, role: "buddy" }] });
 
     render(<NewDivePage />);
@@ -1920,10 +1928,12 @@ describe("the people", () => {
     // asked for its people too, and a value nobody can see is not sent unseen.
     stable.searchParams = new URLSearchParams("course_uuid=course-9");
     stable.auth.user.dive_form_hidden_fields = ["people"];
-    vi.mocked(coursesAPI.getCourse).mockResolvedValue({
-      ...COURSES[0],
-      people: [{ person_uuid: INSTRUCTOR.uuid, role: "instructor" }],
-    });
+    vi.mocked(coursesAPI.lookupCoursesByUuid).mockResolvedValue([
+      {
+        ...COURSES[0],
+        people: [{ person_uuid: INSTRUCTOR.uuid, role: "instructor" }],
+      },
+    ]);
 
     render(<NewDivePage />);
 
@@ -1972,11 +1982,13 @@ describe("the pickers", () => {
 
   it("list the trip's people first, with no pick of the trip", async () => {
     stable.searchParams = new URLSearchParams("trip_uuid=trip-7");
-    vi.mocked(tripsAPI.getTrip).mockResolvedValue({
-      uuid: "trip-7",
-      name: "Red Sea Week",
-      people: [{ person_uuid: CLASSMATE.uuid, role: null }],
-    } as Awaited<ReturnType<typeof tripsAPI.getTrip>>);
+    vi.mocked(tripsAPI.lookupTripsByUuid).mockResolvedValue([
+      {
+        uuid: "trip-7",
+        name: "Red Sea Week",
+        people: [{ person_uuid: CLASSMATE.uuid, role: null }],
+      },
+    ]);
     render(<NewDivePage />);
     // The trip's people arrive on the dive; taken back off, they stay pinned.
     await userEvent.click(
@@ -2898,11 +2910,10 @@ describe("the primary site's water, altitude and entry", () => {
       data: SITES,
       total_count: SITES.length,
     });
-    vi.mocked(diveSitesAPI.getDiveSite).mockImplementation(async (uuid) => {
-      const found = SITES.find((candidate) => candidate.uuid === uuid);
-      if (!found) throw new Error("not found");
-      return found;
-    });
+    vi.mocked(diveSitesAPI.lookupDiveSitesByUuid).mockImplementation(
+      async (uuids) =>
+        SITES.filter((candidate) => uuids.includes(candidate.uuid)),
+    );
   });
 
   it("takes the site's values, and the boat name goes with the boat", async () => {
@@ -2934,7 +2945,9 @@ describe("the primary site's water, altitude and entry", () => {
     await removeSite("Blue Lake");
     await pickSite("Plain Reef");
     await waitFor(() =>
-      expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-plain"),
+      expect(diveSitesAPI.lookupDiveSitesByUuid).toHaveBeenCalledWith([
+        "site-plain",
+      ]),
     );
 
     expect(waterType()).toHaveValue("fresh");
@@ -2979,7 +2992,9 @@ describe("the primary site's water, altitude and entry", () => {
     await removeSite("Blue Lake");
     await pickSite("High Tarn");
     await waitFor(() =>
-      expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-tarn"),
+      expect(diveSitesAPI.lookupDiveSitesByUuid).toHaveBeenCalledWith([
+        "site-tarn",
+      ]),
     );
 
     expect(altitude()).toHaveValue(1700);
@@ -2992,7 +3007,9 @@ describe("the primary site's water, altitude and entry", () => {
 
     await pickSite("Either Way");
     await waitFor(() =>
-      expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-either"),
+      expect(diveSitesAPI.lookupDiveSitesByUuid).toHaveBeenCalledWith([
+        "site-either",
+      ]),
     );
 
     expect(entryType()).toHaveValue("boat");
@@ -3022,7 +3039,9 @@ describe("the primary site's water, altitude and entry", () => {
 
     await pickSite("Plain Reef");
     await waitFor(() =>
-      expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-plain"),
+      expect(diveSitesAPI.lookupDiveSitesByUuid).toHaveBeenCalledWith([
+        "site-plain",
+      ]),
     );
 
     expect(waterType()).not.toBeInTheDocument();
@@ -3058,10 +3077,12 @@ describe("the primary site's water, altitude and entry", () => {
           trip_uuid: "trip-1",
         });
       });
-      vi.mocked(diveSitesAPI.getDiveSite).mockImplementation(async () => {
-        await siteRead.opened;
-        return LAKE;
-      });
+      vi.mocked(diveSitesAPI.lookupDiveSitesByUuid).mockImplementation(
+        async () => {
+          await siteRead.opened;
+          return [LAKE];
+        },
+      );
 
       render(<NewDivePage />);
       await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());

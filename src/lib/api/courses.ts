@@ -1,5 +1,5 @@
-import { apiClient, fetchAllPages, lookupParams } from "./client";
-import type { LookupQuery, PaginatedResponse } from "./client";
+import { apiClient, fetchAllPages, lookupRequest } from "./client";
+import type { PaginatedResponse, UuidLookupQuery } from "./client";
 import type { CertificationAgency } from "./certifications";
 import type { PersonReference } from "./people";
 
@@ -90,12 +90,14 @@ export type CourseUpdate = Partial<CourseCreate>;
 export type PaginatedCoursesResponse = PaginatedResponse<Course>;
 
 /**
- * One row of `GET /courses/lookup`. A host needing the course's contact or
- * people reads `getCourse` on pick.
+ * One row of `GET /courses/lookup`: the name, and the contact and people a dive
+ * form fills in from the pick.
  */
 export interface CourseLookupItem {
   uuid: string;
   name: string;
+  contact_uuid?: string | null;
+  people?: PersonReference[];
 }
 
 /**
@@ -177,12 +179,21 @@ export const coursesAPI = {
   async lookupCourses(
     page: number,
     items_per_page: number,
-    query: LookupQuery = {},
+    query: UuidLookupQuery = {},
   ): Promise<PaginatedResponse<CourseLookupItem>> {
-    const response = await apiClient.get(`/courses/lookup`, {
-      params: lookupParams(page, items_per_page, query),
-    });
+    const response = await apiClient.get(
+      `/courses/lookup`,
+      lookupRequest(page, items_per_page, query),
+    );
     return response.data;
+  },
+
+  /** The lookup rows of courses a form holds, in no particular order. */
+  async lookupCoursesByUuid(
+    uuids: readonly string[],
+  ): Promise<CourseLookupItem[]> {
+    if (uuids.length === 0) return [];
+    return (await this.lookupCourses(1, uuids.length, { uuids })).data;
   },
 
   async getCourse(courseUuid: string): Promise<Course> {

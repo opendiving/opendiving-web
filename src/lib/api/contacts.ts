@@ -1,4 +1,4 @@
-import { apiClient, fetchAllPages, lookupParams } from "./client";
+import { apiClient, fetchAllPages, lookupRequest } from "./client";
 import type { LookupQuery, PaginatedResponse } from "./client";
 
 /**
@@ -145,9 +145,10 @@ export const contactsAPI = {
     items_per_page: number,
     query: LookupQuery = {},
   ): Promise<PaginatedResponse<ContactLookupItem>> {
-    const response = await apiClient.get(`/contacts/lookup`, {
-      params: lookupParams(page, items_per_page, query),
-    });
+    const response = await apiClient.get(
+      `/contacts/lookup`,
+      lookupRequest(page, items_per_page, query),
+    );
     return response.data;
   },
 

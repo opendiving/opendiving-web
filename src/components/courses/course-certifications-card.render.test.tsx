@@ -19,7 +19,11 @@ vi.mock("@/lib/api/certifications", async (importOriginal) => ({
 
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/courses")>()),
-  coursesAPI: { lookupCourses: vi.fn(), getCourse: vi.fn() },
+  coursesAPI: {
+    lookupCourses: vi.fn(),
+    lookupCoursesByUuid: vi.fn(),
+    getCourse: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/api/contacts", async (importOriginal) => ({
@@ -110,6 +114,9 @@ beforeEach(() => {
   getCertifications.mockImplementation(async () => page<Certification>([]));
   createCertification.mockImplementation(async () => CREATED);
   getCourse.mockImplementation(async () => COURSE);
+  vi.mocked(coursesAPI.lookupCoursesByUuid).mockImplementation(async () => [
+    COURSE,
+  ]);
   getContact.mockImplementation(async () => BLUE_OCEAN);
   getPerson.mockImplementation(async () => ALEX);
 });

@@ -4,6 +4,7 @@ import {
   apiClient,
   fetchAllPages,
   isAbortError,
+  lookupRequest,
   unwrapBlobErrorBody,
   type PaginatedResponse,
 } from "./client";
@@ -206,6 +207,24 @@ describe("fetchAllPages", () => {
     });
 
     await expect(fetchAllPages(fetchPage)).rejects.toThrow("500");
+  });
+});
+
+describe("lookupRequest", () => {
+  it("repeats `uuid` once per value, as FastAPI reads a list", () => {
+    const url = apiClient.getUri({
+      url: "/trips/lookup",
+      ...lookupRequest(1, 2, { uuids: ["a", "b"] }),
+    });
+
+    expect(url).toContain("?page=1&items_per_page=2&uuid=a&uuid=b");
+  });
+
+  it("leaves an empty search, date and uuid list off", () => {
+    expect(lookupRequest(1, 25, { search: "", uuids: [] }).params).toEqual({
+      page: 1,
+      items_per_page: 25,
+    });
   });
 });
 

@@ -1,4 +1,4 @@
-import { apiClient, fetchAllPages, lookupParams } from "./client";
+import { apiClient, fetchAllPages, lookupRequest } from "./client";
 import type { LookupQuery, PaginatedResponse } from "./client";
 // Type-only, so it erases at compile time - `gear-service.ts` has no import back to
 // here, but keeping this one type-only means the pair can never become a real cycle.
@@ -215,9 +215,10 @@ export const gearAPI = {
     items_per_page: number,
     query: LookupQuery = {},
   ): Promise<PaginatedResponse<GearItemLookupItem>> {
-    const response = await apiClient.get(`/gear-items/lookup`, {
-      params: lookupParams(page, items_per_page, query),
-    });
+    const response = await apiClient.get(
+      `/gear-items/lookup`,
+      lookupRequest(page, items_per_page, query),
+    );
     return response.data;
   },
 

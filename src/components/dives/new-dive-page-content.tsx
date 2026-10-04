@@ -9,8 +9,8 @@ import { useReturnTo } from "@/hooks/useReturnTo";
 import { withReturnTo } from "@/lib/return-to";
 import { useSuggestedDiveNumber } from "@/hooks/useSuggestedDiveNumber";
 import { divesAPI } from "@/lib/api/dives";
-import { coursesAPI, type Course } from "@/lib/api/courses";
-import { tripsAPI, type Trip } from "@/lib/api/trips";
+import { coursesAPI, type CourseLookupItem } from "@/lib/api/courses";
+import { tripsAPI, type TripLookupItem } from "@/lib/api/trips";
 import { mergePeople } from "@/lib/people";
 import type { PersonReference } from "@/lib/api/people";
 import {
@@ -188,10 +188,13 @@ export function NewDivePageContent() {
     // people were on it unless the diver says otherwise. Looked up beside the
     // last dive rather than after it, and non-fatal: a failed lookup leaves both
     // fields to the last dive, as though the course named nobody.
-    const urlCourse = async (): Promise<Course | null> => {
+    const urlCourse = async (): Promise<CourseLookupItem | null> => {
       if (!initialCourseId) return null;
       try {
-        return await coursesAPI.getCourse(initialCourseId);
+        const [course] = await coursesAPI.lookupCoursesByUuid([
+          initialCourseId,
+        ]);
+        return course ?? null;
       } catch (error) {
         console.error("Failed to fetch the course:", error);
         return null;
@@ -199,10 +202,11 @@ export function NewDivePageContent() {
     };
 
     // The same for a trip a page passed in the URL, whose people came along.
-    const urlTrip = async (): Promise<Trip | null> => {
+    const urlTrip = async (): Promise<TripLookupItem | null> => {
       if (!initialTripId) return null;
       try {
-        return await tripsAPI.getTrip(initialTripId);
+        const [trip] = await tripsAPI.lookupTripsByUuid([initialTripId]);
+        return trip ?? null;
       } catch (error) {
         console.error("Failed to fetch the trip:", error);
         return null;

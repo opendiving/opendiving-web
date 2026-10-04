@@ -16,14 +16,14 @@ export interface UseDivePickPrefillOptions {
   lastDivePeople: readonly PersonReference[];
 }
 
-/** A record by uuid, or null for none or a failed read - the pick still lands. */
+/** A picked row by uuid, or null for none or a failed read - the pick still lands. */
 async function read<T>(
   uuid: string | null | undefined,
-  get: (uuid: string) => Promise<T>,
+  lookup: (uuids: readonly string[]) => Promise<T[]>,
 ): Promise<T | null> {
   if (!uuid) return null;
   try {
-    return await get(uuid);
+    return (await lookup([uuid]))[0] ?? null;
   } catch (error) {
     console.error("Failed to read a pick for the prefill:", error);
     return null;
@@ -86,8 +86,8 @@ export function useDivePickPrefill({
       const request = ++latest;
       const { course_uuid, trip_uuid } = form.getValues();
       const [course, trip] = await Promise.all([
-        read(course_uuid, coursesAPI.getCourse),
-        read(trip_uuid, tripsAPI.getTrip),
+        read(course_uuid, (uuids) => coursesAPI.lookupCoursesByUuid(uuids)),
+        read(trip_uuid, (uuids) => tripsAPI.lookupTripsByUuid(uuids)),
       ]);
       if (cancelled || request !== latest) return;
       const { autofill, overwrite } = visibilityRef.current;

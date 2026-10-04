@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useWatch, type Control } from "react-hook-form";
-import { diveSitesAPI, type DiveSite } from "@/lib/api/dive-sites";
+import { diveSitesAPI, type DiveSiteLookupItem } from "@/lib/api/dive-sites";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { siteEntryTypes, siteWaterType } from "@/lib/validations/dive-site";
 import type { DiveCreateInput } from "@/lib/validations/dive";
@@ -62,8 +62,8 @@ export function useDiveSitePrefill({
       return;
     }
 
-    const apply = (site: DiveSite) => {
-      if (request !== requestRef.current) return;
+    const apply = (site: DiveSiteLookupItem | undefined) => {
+      if (request !== requestRef.current || !site) return;
       appliedRef.current = primary;
       const { autofill } = visibilityRef.current;
 
@@ -79,8 +79,11 @@ export function useDiveSitePrefill({
       }
     };
 
-    diveSitesAPI.getDiveSite(primary).then(apply, (error) => {
-      console.error("Failed to read the dive site for the prefill:", error);
-    });
+    diveSitesAPI.lookupDiveSitesByUuid([primary]).then(
+      ([site]) => apply(site),
+      (error) => {
+        console.error("Failed to read the dive site for the prefill:", error);
+      },
+    );
   }, [enabled, primary]);
 }

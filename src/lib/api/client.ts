@@ -315,17 +315,34 @@ export interface LookupQuery {
   until?: string;
 }
 
-/** A lookup's query string: empty `search` and `until` are left off, not sent. */
-export function lookupParams(
+/**
+ * A lookup that also narrows to given rows: the trip, course and site lookups,
+ * whose rows a form resolves by uuid when it holds one it never searched for - a
+ * page link's, the last dive's, or a stored dive's.
+ */
+export interface UuidLookupQuery extends LookupQuery {
+  uuids?: readonly string[];
+}
+
+/**
+ * A lookup's request config: empty `search` and `until` are left off, not sent,
+ * and `uuid` repeats once per value - FastAPI's list form, where axios would
+ * otherwise send `uuid[]`.
+ */
+export function lookupRequest(
   page: number,
   items_per_page: number,
-  { search, until }: LookupQuery = {},
+  { search, until, uuids }: UuidLookupQuery = {},
 ) {
   return {
-    page,
-    items_per_page,
-    ...(search ? { search } : {}),
-    ...(until ? { until } : {}),
+    params: {
+      page,
+      items_per_page,
+      ...(search ? { search } : {}),
+      ...(until ? { until } : {}),
+      ...(uuids?.length ? { uuid: [...uuids] } : {}),
+    },
+    paramsSerializer: { indexes: null },
   };
 }
 
