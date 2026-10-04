@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Dive } from "@/lib/api/dives";
 import type { TripPart } from "@/lib/api/trips";
-import { tripDiveSections } from "./trip-dive-sections";
+import { tripDiveSections, tripPartForDay } from "./trip-dive-sections";
 
 const dive = (uuid: string, start_time: string) =>
   ({ uuid, start_time }) as Dive;
@@ -61,23 +61,24 @@ describe("tripDiveSections", () => {
     ]);
   });
 
-  it("gives a part with one date that day alone, and a part with none no day", () => {
+  it("runs a part with only a start on from it, and one with only an end back to it", () => {
     const parts: TripPart[] = [
       { location: { name: "Nowhen" } },
-      { start_date: "2026-04-05" },
-      { end_date: "2026-04-07" },
+      { start_date: "2026-09-01" },
     ];
     const dives = [
-      dive("d7", "2026-04-07T09:00:00Z"),
-      dive("d6", "2026-04-06T09:00:00Z"),
-      dive("d5", "2026-04-05T09:00:00Z"),
+      dive("oct", "2026-10-03T09:00:00Z"),
+      dive("sep", "2026-09-07T09:00:00Z"),
+      dive("aug", "2026-08-18T09:00:00Z"),
     ];
     expect(uuids(tripDiveSections(dives, parts))).toEqual([
-      { part: 2, dives: ["d7"] },
-      { loose: ["d6"] },
-      { part: 1, dives: ["d5"] },
+      { part: 1, dives: ["oct", "sep"] },
       { part: 0, dives: [] },
+      { loose: ["aug"] },
     ]);
+    expect(
+      uuids(tripDiveSections(dives, [{ end_date: "2026-09-07" }])),
+    ).toEqual([{ loose: ["oct"] }, { part: 0, dives: ["sep", "aug"] }]);
   });
 
   it("gives a day two parts cover to the first of them, and keeps one section per part", () => {
@@ -149,5 +150,36 @@ describe("tripDiveSections", () => {
       { part: 1, dives: [] },
       { part: 0, dives: [] },
     ]);
+  });
+});
+
+describe("tripPartForDay", () => {
+  it("meets in the middle between a part dated from its start and one dated to its end", () => {
+    const parts: TripPart[] = [
+      { start_date: "2021-03-20" },
+      { end_date: "2021-04-06" },
+    ];
+    expect(tripPartForDay(parts, "2021-03-25")).toBe(0);
+    expect(tripPartForDay(parts, "2021-04-02")).toBe(1);
+    // Past the other's date, each is the only one reaching the day.
+    expect(tripPartForDay(parts, "2021-03-19")).toBe(1);
+    expect(tripPartForDay(parts, "2021-04-07")).toBe(0);
+  });
+
+  it("gives a part with both dates its days over an open-ended one", () => {
+    const parts: TripPart[] = [
+      { start_date: "2026-09-01" },
+      { start_date: "2026-09-10", end_date: "2026-09-12" },
+    ];
+    expect(tripPartForDay(parts, "2026-09-11")).toBe(1);
+    expect(tripPartForDay(parts, "2026-09-13")).toBe(0);
+  });
+
+  it("gives a day two parts reach equally to the first of them", () => {
+    const parts: TripPart[] = [
+      { start_date: "2026-04-03", end_date: "2026-04-08" },
+      { start_date: "2026-04-08", end_date: "2026-04-12" },
+    ];
+    expect(tripPartForDay(parts, "2026-04-08")).toBe(0);
   });
 });

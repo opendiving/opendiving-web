@@ -13,7 +13,6 @@ import { fetchAllPages, isAbortError } from "@/lib/api/client";
 import { distinctContactUuids } from "@/lib/contact";
 import { useContactsByUuid } from "@/hooks/useContactsByUuid";
 import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
-import { formatTripDateRange } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
@@ -26,6 +25,7 @@ import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripHero } from "@/components/trips/trip-hero";
 import { TripDiveSections } from "@/components/trips/trip-dive-sections";
 import { useToast } from "@/components/ui/use-toast";
+import { formatTripPartDates } from "@/lib/trip-parts";
 import {
   HERO_BODY,
   HERO_CONTROL,
@@ -244,10 +244,7 @@ export function TripDetailPageContent() {
                       and dropping it would renumber the rest. */}
                       <ul className="space-y-1.5">
                         {tripParts.map((part, index) => {
-                          const dates = formatTripDateRange(
-                            part.start_date ?? undefined,
-                            part.end_date ?? undefined,
-                          );
+                          const dates = formatTripPartDates(part);
                           const accommodation = part.accommodation_uuid
                             ? contacts[part.accommodation_uuid]
                             : undefined;

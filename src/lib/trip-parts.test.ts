@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatTripSpan, tripPartLocations, tripSpan } from "./trip-parts";
+import {
+  formatTripPartDates,
+  formatTripSpan,
+  tripPartLocations,
+  tripSpan,
+} from "./trip-parts";
 
 describe("tripSpan", () => {
   it("has nothing to say about a trip with no parts", () => {
@@ -102,5 +107,25 @@ describe("tripPartLocations", () => {
   it("answers an absent list with an empty one", () => {
     expect(tripPartLocations(undefined)).toEqual([]);
     expect(tripPartLocations([{ location: null }])).toEqual([]);
+  });
+});
+
+describe("formatTripPartDates", () => {
+  it("reads a part with one date as running from or to it", () => {
+    expect(formatTripPartDates({ start_date: "2026-09-01" })).toBe(
+      "From Sep 1, 2026",
+    );
+    expect(
+      formatTripPartDates({ end_date: "2021-04-06", start_date: null }),
+    ).toBe("Until Apr 6, 2021");
+  });
+
+  it("formats a part with both dates as a range, and one with none as nothing", () => {
+    expect(
+      formatTripPartDates({ start_date: "2026-04-03", end_date: "2026-04-08" }),
+    ).toBe("Apr 3 - Apr 8, 2026");
+    expect(
+      formatTripPartDates({ location: { name: "Dahab" } }),
+    ).toBeUndefined();
   });
 });

@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Dive } from "@/lib/api/dives";
 import type { TripPart } from "@/lib/api/trips";
-import { formatTripDateRange } from "@/lib/date-time";
 import { tripDiveSections } from "@/lib/trip-dive-sections";
+import { formatTripPartDates } from "@/lib/trip-parts";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import {
   Card,
@@ -154,10 +154,7 @@ export function TripDiveSections({
         const { part } = section;
         // A part with no place is headed by its dates alone, as the trip's
         // information card lists it by them.
-        const dates = formatTripDateRange(
-          part.start_date ?? undefined,
-          part.end_date ?? undefined,
-        );
+        const dates = formatTripPartDates(part);
         const place = part.location?.name;
         return (
           <DivesCard

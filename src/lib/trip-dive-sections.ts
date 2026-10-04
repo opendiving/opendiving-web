@@ -10,13 +10,53 @@ export type TripDiveSection =
   | { kind: "part"; part: TripPart; partIndex: number; dives: Dive[] }
   | { kind: "loose"; dives: Dive[] };
 
-// A part with one date covers that day alone, which is how its dates read on
-// the page (`formatTripDateRange` prints the one date); a part with none covers
-// no day.
-function partCovers(part: TripPart, day: string): boolean {
-  const start = part.start_date ?? part.end_date;
-  const end = part.end_date ?? part.start_date;
-  return !!start && !!end && start <= day && day <= end;
+// Whole days from `from` to `to`, both bare `YYYY-MM-DD`. Built with
+// `Date.UTC` from the digits, never `new Date(dateString)` (DECISIONS.md, "Bare
+// `YYYY-MM-DD` dates must not go through `new Date(dateString)`").
+function daysBetween(from: string, to: string): number {
+  const utc = (date: string) => {
+    const [year, month, day] = date.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
+}
+
+/**
+ * The index of the part a day falls in, or -1 when none does.
+ *
+ * A part with both dates covers the days between them, and beats any part with
+ * one: a side trip dated inside an open-ended stay is the side trip's. A part
+ * with only a start runs on from it - the stretch the diver is still on - and
+ * one with only an end runs back to it. Where two such parts both reach a day,
+ * the one whose date is nearer has it, so a trip's first part dated from its
+ * start and last part dated to its end meet in the middle. A part with no dates
+ * covers no day. Ties go to the first part in the diver's order.
+ */
+export function tripPartForDay(parts: TripPart[], day: string): number {
+  let best = -1;
+  let bestDistance = Infinity;
+  parts.forEach((part, index) => {
+    const start = part.start_date;
+    const end = part.end_date;
+    let distance: number;
+    if (start && end) {
+      if (start > day || day > end) return;
+      distance = -1;
+    } else if (start) {
+      if (start > day) return;
+      distance = daysBetween(start, day);
+    } else if (end) {
+      if (day > end) return;
+      distance = daysBetween(day, end);
+    } else {
+      return;
+    }
+    if (distance < bestDistance) {
+      best = index;
+      bestDistance = distance;
+    }
+  });
+  return best;
 }
 
 function diveDay(dive: Dive): string {
@@ -28,8 +68,8 @@ function diveDay(dive: Dive): string {
  * come: a section for every part, and the dives no part's dates cover between
  * them, a run of neighbours to one section.
  *
- * A dive is the first part's, in the diver's order, whose dates cover the dive's
- * own wall-clock day - the day the diver was there, not the viewer's. A part
+ * A dive is the part's whose dates cover its own wall-clock day - the day the
+ * diver was there, not the viewer's - by `tripPartForDay`. A part
  * sits where its first dive falls; one holding none, where its last day falls
  * among the dives; and one with no dates either, just above the part it follows
  * in the diver's order - below the one it precedes when it leads.
@@ -57,7 +97,7 @@ export function tripDiveSections(
 
   for (const dive of dives) {
     const day = diveDay(dive);
-    const partIndex = parts.findIndex((part) => partCovers(part, day));
+    const partIndex = tripPartForDay(parts, day);
     if (partIndex !== -1) {
       partSections[partIndex].dives.push(dive);
       if (!placed.has(partIndex)) {
