@@ -1765,6 +1765,27 @@ describe("the people", () => {
     ]);
   });
 
+  it("arrives with the trip's people from a trip's page", async () => {
+    stable.searchParams = new URLSearchParams("trip_uuid=trip-3");
+    vi.mocked(tripsAPI.getTrip).mockResolvedValue({
+      uuid: "trip-3",
+      name: "Red Sea Week",
+      people: [{ person_uuid: CLASSMATE.uuid, role: null }],
+    } as Awaited<ReturnType<typeof tripsAPI.getTrip>>);
+    lastDiveWith({ people: [{ person_uuid: BUDDY.uuid, role: "buddy" }] });
+
+    render(<NewDivePage />);
+
+    expect(await roleOf(BUDDY.name)).toHaveValue("buddy");
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().people).toEqual([
+      { person_uuid: CLASSMATE.uuid, role: null },
+      { person_uuid: BUDDY.uuid, role: "buddy" },
+    ]);
+  });
+
   it("shows a URL course's people under a set that hides the field", async () => {
     // Basic hides the people; the diver who asked to log a dive for the course
     // asked for its people too, and a value nobody can see is not sent unseen.
@@ -1828,10 +1849,9 @@ describe("the pickers", () => {
       people: [{ person_uuid: CLASSMATE.uuid, role: null }],
     } as Awaited<ReturnType<typeof tripsAPI.getTrip>>);
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
-    // The pin's own read lands before the menu opens.
-    await waitFor(() =>
-      expect(people.peopleAPI.getPerson).toHaveBeenCalledWith(CLASSMATE.uuid),
+    // The trip's people arrive on the dive; taken back off, they stay pinned.
+    await userEvent.click(
+      await screen.findByRole("button", { name: `Remove ${CLASSMATE.name}` }),
     );
 
     await userEvent.click(screen.getByRole("combobox", { name: /^people$/i }));

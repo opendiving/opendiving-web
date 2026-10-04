@@ -10,6 +10,7 @@ import { withReturnTo } from "@/lib/return-to";
 import { useSuggestedDiveNumber } from "@/hooks/useSuggestedDiveNumber";
 import { divesAPI } from "@/lib/api/dives";
 import { coursesAPI, type Course } from "@/lib/api/courses";
+import { tripsAPI, type Trip } from "@/lib/api/trips";
 import { mergePeople } from "@/lib/people";
 import {
   boatNameOrNull,
@@ -194,28 +195,42 @@ export function NewDivePageContent() {
       }
     };
 
+    // The same for a trip a page passed in the URL, whose people came along.
+    const urlTrip = async (): Promise<Trip | null> => {
+      if (!initialTripId) return null;
+      try {
+        return await tripsAPI.getTrip(initialTripId);
+      } catch (error) {
+        console.error("Failed to fetch the trip:", error);
+        return null;
+      }
+    };
+
     const prefillFromLastDive = async () => {
       try {
-        const [response, course] = await Promise.all([
+        const [response, course, trip] = await Promise.all([
           divesAPI.getDives(1, 1),
           urlCourse(),
+          urlTrip(),
         ]);
         if (cancelled || form.formState.isDirty) return;
         const courseContact = course?.contact_uuid ?? null;
-        const coursePeople = course?.people ?? [];
+        // The people of whatever the dive is being logged for, ahead of the
+        // last dive's.
+        const urlPeople = mergePeople(course?.people ?? [], trip?.people ?? []);
 
-        // The course's contact and people are written through `autofill` in both
-        // branches, rather than only carried. That records each as the layer's
-        // write - so a course picked later can still replace the contact - and it
-        // shows the field: `prefill` blanks a key the stored set hides, and only
-        // the course itself was revealed at mount, while the diver who asked to
-        // log a dive for this course asked for its people too. Called only past
-        // the last of the dirty checks, since the write dirties the form they
-        // read.
+        // The URL course's contact and the URL people are written through
+        // `autofill` in both branches, rather than only carried. That records each
+        // as the layer's write - so a course picked later can still replace the
+        // contact - and it shows the field: `prefill` blanks a key the stored set
+        // hides, and only the course or trip itself was revealed at mount, while
+        // the diver who asked to log a dive for it asked for its people too.
+        // Called only past the last of the dirty checks, since the write dirties
+        // the form they read.
         const lastDiveSummary = response.data[0];
         if (!lastDiveSummary) {
           if (courseContact) autofill("contact_uuid", courseContact);
-          if (coursePeople.length > 0) autofill("people", coursePeople);
+          if (urlPeople.length > 0) autofill("people", urlPeople);
           return;
         }
 
@@ -235,8 +250,8 @@ export function NewDivePageContent() {
         const courseUuid = initialCourseId ?? lastDive.course_uuid ?? undefined;
         // Everyone on the last dive, whatever their role: the last dive is the
         // one source, and who stays on a course is the diver's to say. The URL
-        // course's people lead.
-        const people = mergePeople(coursePeople, lastDive.people ?? []);
+        // course's or trip's people lead.
+        const people = mergePeople(urlPeople, lastDive.people ?? []);
         const carried: Partial<DiveCreateInput> = {
           // Carried over, unlike the temperature and visibility below: those are
           // readings taken on the day, while the water and its elevation are
@@ -312,7 +327,7 @@ export function NewDivePageContent() {
         };
 
         if (courseContact) autofill("contact_uuid", courseContact);
-        if (coursePeople.length > 0) autofill("people", people);
+        if (urlPeople.length > 0) autofill("people", people);
         form.reset(
           prefill(
             {
