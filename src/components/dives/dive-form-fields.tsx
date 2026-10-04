@@ -343,25 +343,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                             value={field.value}
                             onChange={field.onChange}
                             until={until}
-                            // A dive logged on a course was run by whoever ran the
-                            // course, unless the diver has said otherwise - so the pick
-                            // fills the dive center, through the one write that can
-                            // show a hidden field without handing it to the diver. A
-                            // course naming none leaves the field alone. New dives
-                            // only: relinking a stored dive corrects the link, not
-                            // the dive.
-                            onCourseSelected={
-                              mode === "create"
-                                ? (course) => {
-                                    if (course.contact_uuid) {
-                                      visibility.autofill(
-                                        "contact_uuid",
-                                        course.contact_uuid,
-                                      );
-                                    }
-                                  }
-                                : undefined
-                            }
                           />
                         </FormControl>
                         <FormMessage />

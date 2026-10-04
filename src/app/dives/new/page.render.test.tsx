@@ -28,7 +28,7 @@ import type { DiveSite } from "@/lib/api/dive-sites";
 import type { Species } from "@/lib/api/species";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
-import type { Person } from "@/lib/api/people";
+import type { Person, PersonReference } from "@/lib/api/people";
 import {
   DIVE_FORM_ALWAYS_ON_FIELDS,
   DIVE_FORM_FIELDS,
@@ -1637,6 +1637,26 @@ describe("the dive center", () => {
     expect(diveCenter()).toHaveValue(MY_SHOP.name);
   });
 
+  it("keeps the course's dive center when the course is cleared", async () => {
+    lastDiveWith({ contact_uuid: LAST_SHOP.uuid });
+    render(<NewDivePage />);
+    await waitFor(() => expect(diveCenter()).toHaveValue(LAST_SHOP.name));
+    await pickCourse("Advanced Open Water");
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+
+    const course = screen.getByRole("combobox", { name: /^course$/i });
+    await userEvent.click(
+      within(course.parentElement!).getByRole("button", { name: "Clear" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: /^course$/i })).toHaveValue(
+        "",
+      ),
+    );
+    expect(diveCenter()).toHaveValue(COURSE_SHOP.name);
+  });
+
   it("leaves the dive center alone for a course that names none", async () => {
     lastDiveWith({ contact_uuid: LAST_SHOP.uuid });
     render(<NewDivePage />);
@@ -1737,6 +1757,89 @@ describe("the people", () => {
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
     expect(sent().course_uuid).toBeUndefined();
     expect(sent().people).toEqual(onCourse.people);
+  });
+
+  const pickCourse = async (name: string) => {
+    await userEvent.click(screen.getByRole("combobox", { name: /^course$/i }));
+    await userEvent.click(await screen.findByRole("option", { name }));
+  };
+  const coursePeople = (people: Record<string, PersonReference[]>) =>
+    vi.mocked(coursesAPI.getCourse).mockImplementation(async (uuid) => ({
+      ...(COURSES.find((course) => course.uuid === uuid) ?? COURSES[0]),
+      people: people[uuid] ?? [],
+    }));
+
+  it("merges a picked course's people, then a picked trip's, then the last dive's", async () => {
+    lastDiveWith({ people: [{ person_uuid: BUDDY.uuid, role: "buddy" }] });
+    coursePeople({
+      "course-10": [{ person_uuid: INSTRUCTOR.uuid, role: "instructor" }],
+    });
+    const trip = {
+      uuid: "trip-3",
+      name: "Red Sea Week",
+      people: [{ person_uuid: CLASSMATE.uuid, role: null }],
+    } as Awaited<ReturnType<typeof tripsAPI.getTrip>>;
+    vi.mocked(tripsAPI.lookupTrips).mockResolvedValue({
+      ...emptyPage<typeof trip>(),
+      data: [trip],
+      total_count: 1,
+    });
+    vi.mocked(tripsAPI.getTrip).mockResolvedValue(trip);
+
+    render(<NewDivePage />);
+    await roleOf(BUDDY.name);
+
+    await pickCourse("Rescue Diver");
+    expect(await roleOf(INSTRUCTOR.name)).toHaveValue("instructor");
+    await userEvent.click(screen.getByRole("combobox", { name: /^trip$/i }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Red Sea Week" }),
+    );
+    await roleOf(CLASSMATE.name);
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().people).toEqual([
+      { person_uuid: INSTRUCTOR.uuid, role: "instructor" },
+      { person_uuid: CLASSMATE.uuid, role: null },
+      { person_uuid: BUDDY.uuid, role: "buddy" },
+    ]);
+  });
+
+  it("keeps whoever the diver took off or put on through a later pick", async () => {
+    coursePeople({
+      "course-9": [
+        { person_uuid: INSTRUCTOR.uuid, role: "instructor" },
+        { person_uuid: CLASSMATE.uuid, role: "student" },
+      ],
+      "course-10": [{ person_uuid: CLASSMATE.uuid, role: "student" }],
+    });
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await pickCourse("Advanced Open Water");
+    await roleOf(CLASSMATE.name);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: `Remove ${CLASSMATE.name}` }),
+    );
+    await userEvent.click(screen.getByRole("combobox", { name: /^people$/i }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: BUDDY.name }),
+    );
+    await roleOf(BUDDY.name);
+
+    await pickCourse("Rescue Diver");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("combobox", { name: `Role of ${INSTRUCTOR.name}` }),
+      ).toBeNull(),
+    );
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().people).toEqual([{ person_uuid: BUDDY.uuid, role: "buddy" }]);
   });
 
   it("arrives with the course's people and their roles from Log a dive for this course", async () => {
@@ -2795,7 +2898,7 @@ describe("the primary site's water, altitude and entry", () => {
     expect(sent.boat_name).toBeUndefined();
   });
 
-  it("goes back to the last dive's when the site goes, or one that records none takes its place", async () => {
+  it("keeps the site's values when it goes, and through a site that records none", async () => {
     boatDive();
     render(<NewDivePage />);
     await prefilled();
@@ -2803,18 +2906,37 @@ describe("the primary site's water, altitude and entry", () => {
     await waitFor(() => expect(waterType()).toHaveValue("fresh"));
 
     await removeSite("Blue Lake");
-
-    await waitFor(() => expect(waterType()).toHaveValue("salt"));
-    expect(altitude()).toHaveValue(10);
-    expect(entryType()).toHaveValue("boat");
-    expect(boatName()).toHaveValue("Legend");
-
     await pickSite("Plain Reef");
     await waitFor(() =>
       expect(diveSitesAPI.getDiveSite).toHaveBeenCalledWith("site-plain"),
     );
-    expect(waterType()).toHaveValue("salt");
-    expect(boatName()).toHaveValue("Legend");
+
+    expect(waterType()).toHaveValue("fresh");
+    expect(altitude()).toHaveValue(1800);
+    expect(entryType()).toHaveValue("shore");
+
+    await pickSite("High Tarn");
+    await removeSite("Plain Reef");
+    await waitFor(() => expect(altitude()).toHaveValue(2400));
+    expect(waterType()).toHaveValue("fresh");
+  });
+
+  it("takes nothing from a second site until it is moved first", async () => {
+    boatDive();
+    render(<NewDivePage />);
+    await prefilled();
+    await pickSite("Blue Lake");
+    await waitFor(() => expect(altitude()).toHaveValue(1800));
+
+    await pickSite("High Tarn");
+    expect(diveSitesAPI.getDiveSite).not.toHaveBeenCalledWith("site-tarn");
+    expect(altitude()).toHaveValue(1800);
+
+    screen.getByRole("button", { name: /^Reorder High Tarn/ }).focus();
+    await userEvent.keyboard("{ArrowUp}");
+
+    await waitFor(() => expect(altitude()).toHaveValue(2400));
+    expect(waterType()).toHaveValue("fresh");
   });
 
   it("leaves a value the diver typed, whatever site follows", async () => {

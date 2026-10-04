@@ -9,7 +9,7 @@ import type { DiveCreateInput } from "@/lib/validations/dive";
 
 export interface UseDiveSitePrefillOptions {
   control: Control<DiveCreateInput>;
-  visibility: Pick<DiveFormVisibility, "autofill" | "restore">;
+  visibility: Pick<DiveFormVisibility, "autofill">;
   /**
    * Whether the last-dive prefill has settled - landed, given up or failed. Until
    * then nothing is written: that prefill gives up on a dirty form, and a site's
@@ -22,14 +22,14 @@ export interface UseDiveSitePrefillOptions {
 /**
  * Gives the new-dive form the primary site's water type, altitude and entry type,
  * each where the diver has not typed one - the entry only where the site names
- * exactly one. Whenever the primary site changes - picked, replaced, removed or
- * reordered, or arriving in the URL - a field the new site gives no value goes back
- * to what the form carried from the last dive.
+ * exactly one. Whenever another site becomes primary - picked, reordered, or
+ * arriving in the URL - it replaces what it has a value for. A field it gives
+ * nothing keeps what it holds, and so does every field when the last site goes.
  *
- * Through the visibility layer's `autofill` and `restore`, so each write is the
- * layer's own and the next site may replace it, and a hidden field the site gives a
- * value is put on screen for this form and saved. The boat name follows the entry
- * type, or a shore site picked after a boat dive would save the last boat's name.
+ * Through the visibility layer's `autofill`, so each write is the layer's own and
+ * the next site may replace it, and a hidden field the site gives a value is put
+ * on screen for this form and saved. The boat name follows a shore entry, or a
+ * shore site picked after a boat dive would save the last boat's name.
  *
  * The new form only: the edit form never changes a stored value on a pick.
  */
@@ -57,37 +57,30 @@ export function useDiveSitePrefill({
     // its way: the bump above is what stops that reply landing.
     if (primary === appliedRef.current) return;
 
-    const apply = (site: DiveSite | null) => {
-      if (request !== requestRef.current) return;
-      appliedRef.current = primary;
-      const { autofill, restore } = visibilityRef.current;
-
-      const water = site && siteWaterType(site);
-      if (water) autofill("water_type", water);
-      else restore("water_type");
-
-      if (site?.altitude != null) autofill("altitude", site.altitude);
-      else restore("altitude");
-
-      const entries = site ? siteEntryTypes(site) : [];
-      const entry = entries.length === 1 ? entries[0] : null;
-      const entryWritten = entry
-        ? autofill("entry_type", entry)
-        : restore("entry_type");
-      if (!entryWritten) return;
-      if (entry && entry !== "boat") autofill("boat_name", "");
-      else restore("boat_name");
-    };
-
     if (primary === null) {
-      apply(null);
+      appliedRef.current = null;
       return;
     }
+
+    const apply = (site: DiveSite) => {
+      if (request !== requestRef.current) return;
+      appliedRef.current = primary;
+      const { autofill } = visibilityRef.current;
+
+      const water = siteWaterType(site);
+      if (water) autofill("water_type", water);
+      if (site.altitude != null) autofill("altitude", site.altitude);
+
+      const entries = siteEntryTypes(site);
+      if (entries.length !== 1) return;
+      const entry = entries[0];
+      if (autofill("entry_type", entry) && entry !== "boat") {
+        autofill("boat_name", "");
+      }
+    };
+
     diveSitesAPI.getDiveSite(primary).then(apply, (error) => {
-      // As though the site named nothing: the fields go back to the last dive's
-      // rather than keep a previous site's.
       console.error("Failed to read the dive site for the prefill:", error);
-      apply(null);
     });
   }, [enabled, primary]);
 }

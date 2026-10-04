@@ -4819,9 +4819,11 @@ on the row. The course dialog holds the first `instructor` in a `PersonCombobox`
 writes it back first, so naming an instructor stays one pick with the role set. A new dive carries
 the last dive's people as it carries the dive center, every role included: the last dive is the one
 source, and who stays on a course is the diver's call, which no rule about roles or the course field
-can read. An unmatched name on Enter makes a person: a name is a whole person, where a contact would
-lack its role. Rejected: no default, and leaving instructors and students behind when the course
-changes.
+can read. A course or trip picked later merges the course's, the trip's and the last dive's people
+in that order, judging the diver's edits per person rather than per field: whoever they added,
+removed or gave another role stays so (`useDivePickPrefill`). An unmatched name on Enter makes a
+person: a name is a whole person, where a contact would lack its role. Rejected: no default, and
+leaving instructors and students behind when the course changes.
 
 ## The skills are repo content; what wires up the hook is not
 
@@ -5817,11 +5819,12 @@ A value from outside the diver's typing reveals its field for that form only, ne
 set: the edit form's load, a parsed dive file (`DiveFileImport`'s `onValuesApplied`), a gear set
 with a weight (`DiveGearField`'s `onSetApplied`), the new form's mount for a URL trip, site or
 course. Each ends in `revealNonEmpty` or `reveal`, making the key the diver's, so hiding keeps its
-value — except a course's contact and a picked site's water type, altitude and entry type, which
-`autofill` reveals as the layer's own write.
+value — except a course's contact, the people a course or trip pick merges, and the first site's
+water type, altitude and entry type, which `autofill` and `overwrite` reveal as the layer's own
+write. A pick replaces only the layer's own values; clearing the pick puts nothing back.
 
-Non-empty means not `undefined`, `null`, `""` or `[]`; `0` is a value. The last-dive prefill, and
-`restore` putting it back after a site, touch only visible keys.
+Non-empty means not `undefined`, `null`, `""` or `[]`; `0` is a value. The last-dive prefill touches
+only visible keys.
 
 A failed submit reveals too: the resolver validates hidden fields, so `handleSubmit`'s invalid
 branch reveals every erroring key and focuses the first hidden one, else the save blocks with no

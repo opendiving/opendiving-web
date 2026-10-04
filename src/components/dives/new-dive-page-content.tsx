@@ -12,6 +12,7 @@ import { divesAPI } from "@/lib/api/dives";
 import { coursesAPI, type Course } from "@/lib/api/courses";
 import { tripsAPI, type Trip } from "@/lib/api/trips";
 import { mergePeople } from "@/lib/people";
+import type { PersonReference } from "@/lib/api/people";
 import {
   boatNameOrNull,
   diveCreateSchema,
@@ -21,6 +22,7 @@ import {
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { useDiveSitePrefill } from "@/hooks/useDiveSitePrefill";
+import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
 import { AutofilledMarks } from "@/components/dives/autofilled-marks";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
@@ -45,6 +47,8 @@ export function NewDivePageContent() {
   // Whether the last-dive prefill below has landed, given up or failed - the
   // moment the primary site's values may be written over it.
   const [prefillSettled, setPrefillSettled] = useState(false);
+  // What a course or trip picked later merges its people with.
+  const [lastDivePeople, setLastDivePeople] = useState<PersonReference[]>([]);
 
   // Allow pre-selecting a trip/dive site/course via ?trip_uuid=... /
   // ?dive_site_uuid=... / ?course_uuid=..., e.g. when logging a dive from a
@@ -124,6 +128,7 @@ export function NewDivePageContent() {
     visibility,
     enabled: prefillSettled,
   });
+  useDivePickPrefill({ form, visibility, lastDivePeople });
 
   // The moment a value arrives from outside the diver's typing at mount: a trip,
   // dive site or course a page passed in the URL. A diver who clicked "Log a dive
@@ -252,6 +257,7 @@ export function NewDivePageContent() {
         // one source, and who stays on a course is the diver's to say. The URL
         // course's or trip's people lead.
         const people = mergePeople(urlPeople, lastDive.people ?? []);
+        setLastDivePeople(lastDive.people ?? []);
         const carried: Partial<DiveCreateInput> = {
           // Carried over, unlike the temperature and visibility below: those are
           // readings taken on the day, while the water and its elevation are
