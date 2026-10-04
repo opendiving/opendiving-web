@@ -49,10 +49,10 @@ vi.mock("@/components/ui/use-toast", () => {
   return { useToast: () => ({ toast }) };
 });
 
-// The dives card and the map are covered where they live, and each would make
+// The dives column and the map are covered where they live, and each would make
 // requests of its own here.
-vi.mock("@/components/dives/recent-dives-card", () => ({
-  RecentDivesCard: () => null,
+vi.mock("@/components/trips/trip-dive-sections", () => ({
+  TripDiveSections: () => null,
 }));
 vi.mock("@/components/map/map-backdrop", () => ({
   MapBackdrop: vi.fn(() => null),

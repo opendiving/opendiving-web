@@ -71,3 +71,17 @@ export function tripPartLocations(parts?: TripPart[] | null): Location[] {
     .map((part) => part.location)
     .filter((location): location is Location => !!location);
 }
+
+/**
+ * One part's dates as the trip page shows them, or `undefined` when it has
+ * none. A part with one date reads "From" or "Until" it, rather than as a
+ * single day: a part with only a start runs on from it, and the trip page
+ * groups dives that way (`tripPartForDay`).
+ */
+export function formatTripPartDates(part: TripPart): string | undefined {
+  const start = part.start_date ?? undefined;
+  const end = part.end_date ?? undefined;
+  if (start && !end) return `From ${formatTripDateRange(start)}`;
+  if (end && !start) return `Until ${formatTripDateRange(undefined, end)}`;
+  return formatTripDateRange(start, end);
+}
