@@ -255,6 +255,30 @@ describe("PeopleMultiSelect", () => {
     expect(screen.getByText("@alexm")).toBeInTheDocument();
   });
 
+  it("reorders a row from its handle with the arrow keys, keeping the roles", async () => {
+    const onChange = vi.fn();
+    render(
+      <Field
+        initial={[
+          { person_uuid: ALEX.uuid, role: "buddy" },
+          { person_uuid: SAM.uuid, role: "guide" },
+        ]}
+        onChange={onChange}
+      />,
+    );
+
+    const handle = await screen.findByRole("button", {
+      name: /^Reorder Sam\./,
+    });
+    handle.focus();
+    await userEvent.keyboard("{ArrowUp}");
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      { person_uuid: SAM.uuid, role: "guide" },
+      { person_uuid: ALEX.uuid, role: "buddy" },
+    ]);
+  });
+
   it("offers nobody twice", async () => {
     render(<Field initial={[{ person_uuid: SAM.uuid, role: "buddy" }]} />);
     await roleOf("Sam");

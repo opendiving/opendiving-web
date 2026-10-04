@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
 import { IconTooltip } from "@/components/ui/tooltip";
 import {
   CreatableCombobox,
   type ComboboxSearchResult,
 } from "@/components/ui/creatable-combobox";
+import { moveItem, useDragSort } from "@/hooks/useDragSort";
+import { cn } from "@/lib/utils";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import {
@@ -49,7 +51,7 @@ export interface PeopleMultiSelectProps extends FormControlSlotProps {
   disabled?: boolean;
 }
 
-// Picks the people on a dive, a trip or a course: an append-only list of rows,
+// Picks the people on a dive, a trip or a course: a list of rows the diver can drag into order,
 // each carrying the person's name, their linked `@username` and a role control,
 // above the one combobox that adds to it. The dropdown searches server-side
 // over name and username, so typing either lists the person.
@@ -139,6 +141,17 @@ export function PeopleMultiSelect({
   const removePerson = (uuid: string) =>
     onChange(value.filter((reference) => reference.person_uuid !== uuid));
 
+  const reorder = useCallback(
+    (from: number, to: number) => onChange(moveItem(value, from, to)),
+    [value, onChange],
+  );
+
+  const { draggingIndex, dragOffset, setItemRef, handleProps } = useDragSort({
+    itemCount: value.length,
+    onReorder: reorder,
+    disabled,
+  });
+
   const handleCreated = (person: Person) => {
     remember(person);
     addPerson(person.uuid);
@@ -147,8 +160,11 @@ export function PeopleMultiSelect({
   return (
     <div className="space-y-2">
       {value.length > 0 && (
-        <ul className="space-y-1">
-          {value.map((reference) => {
+        // Text selection would otherwise sweep across the rows mid-drag.
+        <ul
+          className={cn("space-y-1", draggingIndex !== null && "select-none")}
+        >
+          {value.map((reference, index) => {
             const person = personFor(reference.person_uuid);
             // The fallback is only ever visible for the moment between a person
             // being on the list and their name being read.
@@ -157,11 +173,35 @@ export function PeopleMultiSelect({
             const knownRole = (PERSON_ROLES as readonly string[]).includes(
               role,
             );
+            const isDragging = draggingIndex === index;
             return (
               <li
                 key={reference.person_uuid}
-                className="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm"
+                ref={setItemRef(index)}
+                className={cn(
+                  "flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm",
+                  isDragging && "relative z-10 shadow-lg ring-2 ring-ring",
+                )}
+                style={
+                  isDragging
+                    ? { transform: `translateY(${dragOffset}px)` }
+                    : undefined
+                }
               >
+                {value.length > 1 && (
+                  <IconTooltip
+                    label={`Reorder ${label}. Use arrow up and arrow down to move it.`}
+                  >
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+                      {...handleProps(index)}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                  </IconTooltip>
+                )}
                 <span className="min-w-0 flex-1 truncate">
                   {label}
                   {person?.username && (
