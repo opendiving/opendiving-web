@@ -145,7 +145,11 @@ export function NewDivePageContent() {
   // The dive number tracks the start time (including a start time an imported
   // file rewrote), rather than being prefilled once from the last dive - see the
   // hook. It stops as soon as the diver edits the field themselves.
-  const numberSuggestion = useSuggestedDiveNumber(form, Boolean(user));
+  const numberSuggestion = useSuggestedDiveNumber(
+    form,
+    Boolean(user),
+    (before, after) => visibility.noteAutofill("dive_number", before, after),
+  );
 
   // Attached to the suggested value rather than rendered outright: the field
   // stops showing that number the moment the diver types their own, and a note
@@ -160,12 +164,6 @@ export function NewDivePageContent() {
           "numbering from the dive list once everything is in.",
       }
     : null;
-
-  // The suggested number is filled in too, by its own hook rather than the layer.
-  const isAutofilled = (name: string, value: unknown) =>
-    name === "dive_number"
-      ? numberSuggestion !== null && value === numberSuggestion.dive_number
-      : visibility.isAutofilled(name, value);
 
   // Pre-fill trip, gas mixture and gear defaults from the most recent dive so
   // the user doesn't have to re-enter recurring values for every new log entry.
@@ -509,7 +507,10 @@ export function NewDivePageContent() {
         subtitle="Record the details of your dive"
       />
 
-      <AutofilledMarks control={form.control} isAutofilled={isAutofilled}>
+      <AutofilledMarks
+        control={form.control}
+        isAutofilled={visibility.isAutofilled}
+      >
         <DiveFormCard
           form={form}
           mixtureFieldArray={mixtureFieldArray}

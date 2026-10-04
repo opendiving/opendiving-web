@@ -687,6 +687,32 @@ describe("the last-dive prefill", () => {
     expect(isMarked(screen.getByLabelText(/water type/i))).toBe(true);
   });
 
+  it("marks nothing the prefill left as it was", async () => {
+    // The trip the page was opened for is the last dive's too.
+    stable.searchParams = new URLSearchParams("trip_uuid=trip-1");
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      ...emptyPage<Dive>(),
+      data: [storedDive()],
+      total_count: 1,
+    });
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ water_type: "brackish", trip_uuid: "trip-1" }),
+    );
+    const mark = (field: HTMLElement) =>
+      (field as HTMLInputElement).labels?.[0]?.querySelector(
+        '[title="Filled in for you"]',
+      );
+
+    render(<NewDivePage />);
+
+    await waitFor(() =>
+      expect(mark(screen.getByLabelText(/water type/i))).toBeTruthy(),
+    );
+    const trip = screen.getByRole("combobox", { name: /^trip$/i });
+    expect((trip as HTMLInputElement).labels).toHaveLength(1);
+    expect(mark(trip)).toBeFalsy();
+  });
+
   it("reads the last dive once, not once per render", async () => {
     // The prefill's own effect writes the form it depends on, so anything that
     // gives it a new identity every render puts it in a loop with its own
