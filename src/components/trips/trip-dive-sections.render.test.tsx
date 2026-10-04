@@ -78,16 +78,26 @@ describe("TripDiveSections", () => {
     ).toHaveLength(0);
   });
 
-  it("keeps the one card of every dive when no part covers any of them", () => {
-    renderSections([dive("gap", "2026-04-09T09:00:00Z")]);
+  it("says so in the card of a part holding no dive", () => {
+    renderSections([dive("dahab", "2026-04-04T09:00:00Z")]);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Apr 10 - Apr 12, 2026" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No dives logged for this part yet"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the one card of every dive on a trip with no parts", () => {
+    renderSections([dive("gap", "2026-04-09T09:00:00Z")], []);
     expect(
       screen.getByRole("heading", { level: 2, name: "Dives in This Trip" }),
     ).toBeInTheDocument();
     expect(screen.getByText("gap")).toBeInTheDocument();
   });
 
-  it("offers to log a dive on a trip with none", () => {
-    renderSections([]);
+  it("offers to log a dive on a trip with neither dives nor parts", () => {
+    renderSections([], []);
     expect(
       screen.getByRole("link", { name: "Log a dive for this trip" }),
     ).toHaveAttribute(

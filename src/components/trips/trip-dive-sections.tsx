@@ -67,10 +67,10 @@ function DivesCard({
   );
 }
 
-// The trip's dives, a card for each part they were made on, headed by the
-// part's place and dates. The dives no part's dates cover sit between those
-// cards, where their days put them. A trip whose dives fall in no part - or
-// that has no parts - keeps the one card of every dive.
+// The trip's dives, a card for each of its parts headed by the part's place and
+// dates, holding the dives made on it. The dives no part's dates cover sit
+// between those cards, where their days put them. A trip with no parts keeps
+// the one card of every dive.
 export function TripDiveSections({
   dives,
   loadFailed,
@@ -106,7 +106,7 @@ export function TripDiveSections({
       </ul>,
     );
   }
-  if (dives.length === 0) {
+  if (parts.length === 0 && dives.length === 0) {
     return (
       <Card>
         <CardHeader className="p-0">
@@ -133,14 +133,13 @@ export function TripDiveSections({
     );
   }
 
-  const sections = tripDiveSections(dives, parts);
-  if (!sections.some((section) => section.kind === "part")) {
+  if (parts.length === 0) {
     return allDivesCard(<DiveList dives={dives} />);
   }
 
   return (
     <div className="space-y-6">
-      {sections.map((section) => {
+      {tripDiveSections(dives, parts).map((section) => {
         if (section.kind === "loose") {
           return (
             <DiveList
@@ -153,8 +152,8 @@ export function TripDiveSections({
           );
         }
         const { part } = section;
-        // Only a dated part holds dives, so there is always a date line; a part
-        // with no place is headed by its dates alone.
+        // A part with no place is headed by its dates alone, as the trip's
+        // information card lists it by them.
         const dates = formatTripDateRange(
           part.start_date ?? undefined,
           part.end_date ?? undefined,
@@ -164,10 +163,17 @@ export function TripDiveSections({
           <DivesCard
             key={`part-${section.partIndex}`}
             icon={<MapPin className="h-5 w-5" />}
-            title={place ?? dates}
+            title={place ?? dates ?? "No place recorded"}
             description={place ? dates : undefined}
           >
-            <DiveList dives={section.dives} />
+            {section.dives.length > 0 ? (
+              <DiveList dives={section.dives} />
+            ) : (
+              <EmptyState
+                icon={DiveIcon}
+                title="No dives logged for this part yet"
+              />
+            )}
           </DivesCard>
         );
       })}

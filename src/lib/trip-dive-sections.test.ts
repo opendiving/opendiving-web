@@ -76,6 +76,7 @@ describe("tripDiveSections", () => {
       { part: 2, dives: ["d7"] },
       { loose: ["d6"] },
       { part: 1, dives: ["d5"] },
+      { part: 0, dives: [] },
     ]);
   });
 
@@ -96,10 +97,57 @@ describe("tripDiveSections", () => {
     ]);
   });
 
-  it("leaves out the parts that hold no dive", () => {
-    const dives = [dive("dahab", "2026-04-04T09:00:00Z")];
-    expect(uuids(tripDiveSections(dives, [DAHAB, SHARM]))).toEqual([
+  it("slots a part holding no dive in where its last day falls, splitting the dives around it", () => {
+    const empty: TripPart = {
+      location: { name: "Safaga" },
+      start_date: "2026-04-12",
+      end_date: "2026-04-13",
+    };
+    const dives = [
+      dive("after", "2026-04-15T09:00:00Z"),
+      dive("gap-newer", "2026-04-14T09:00:00Z"),
+      dive("gap-older", "2026-04-09T09:00:00Z"),
+      dive("dahab", "2026-04-04T09:00:00Z"),
+    ];
+    expect(uuids(tripDiveSections(dives, [DAHAB, empty]))).toEqual([
+      { loose: ["after", "gap-newer"] },
+      { part: 1, dives: [] },
+      { loose: ["gap-older"] },
       { part: 0, dives: ["dahab"] },
+    ]);
+    // Between two parts' cards, with no loose dive to split.
+    expect(
+      uuids(tripDiveSections([dives[0], dives[3]], [DAHAB, empty])),
+    ).toEqual([
+      { loose: ["after"] },
+      { part: 1, dives: [] },
+      { part: 0, dives: ["dahab"] },
+    ]);
+  });
+
+  it("puts a part with no dates just above the part it follows", () => {
+    const nowhen: TripPart = { location: { name: "Nowhen" } };
+    const dives = [
+      dive("sharm", "2026-04-11T09:00:00Z"),
+      dive("dahab", "2026-04-04T09:00:00Z"),
+    ];
+    expect(uuids(tripDiveSections(dives, [DAHAB, nowhen, SHARM]))).toEqual([
+      { part: 2, dives: ["sharm"] },
+      { part: 1, dives: [] },
+      { part: 0, dives: ["dahab"] },
+    ]);
+    // Leading the trip, it goes below the part it precedes.
+    expect(uuids(tripDiveSections(dives, [nowhen, DAHAB, SHARM]))).toEqual([
+      { part: 2, dives: ["sharm"] },
+      { part: 1, dives: ["dahab"] },
+      { part: 0, dives: [] },
+    ]);
+  });
+
+  it("lists every part of a trip with no dives, newest first", () => {
+    expect(uuids(tripDiveSections([], [DAHAB, SHARM]))).toEqual([
+      { part: 1, dives: [] },
+      { part: 0, dives: [] },
     ]);
   });
 });
