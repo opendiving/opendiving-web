@@ -410,8 +410,11 @@ describe("DiveDetailSidebar dive center", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Dive Center" }),
+      screen.getByRole("heading", { name: "Location" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Dive Center" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Blue Ocean Dive Center")).toBeInTheDocument();
     expect(screen.queryByText("Training")).not.toBeInTheDocument();
     // Dialled as digits, shown as typed.
@@ -430,11 +433,30 @@ describe("DiveDetailSidebar dive center", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("shows no card for a dive with no contact", () => {
+  it("names the city, province and country where they are set", () => {
+    renderSidebar(
+      dive(),
+      null,
+      contact({
+        address: {
+          street: "1 Harbour Rd",
+          city: "Dahab",
+          region: "South Sinai",
+          country: "Egypt",
+        },
+      }),
+    );
+
+    expect(screen.getByText("Dahab, South Sinai, Egypt")).toBeInTheDocument();
+    expect(screen.queryByText(/Harbour/)).not.toBeInTheDocument();
+  });
+
+  it("shows no dive center row for a dive with no contact", () => {
     renderSidebar(dive(), course());
 
+    expect(screen.queryByText("Dive center")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "Dive Center" }),
+      screen.queryByRole("heading", { name: "Location" }),
     ).not.toBeInTheDocument();
   });
 });
