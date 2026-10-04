@@ -20,6 +20,7 @@ import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 import { DiveCard } from "@/components/dives/dive-card";
 import { DiveIcon } from "@/components/logo";
 import { MapPin, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const SKELETON_COUNT = 5;
 
@@ -31,9 +32,9 @@ interface TripDiveSectionsProps {
   newDiveHref: string;
 }
 
-function DiveList({ dives }: { dives: Dive[] }) {
+function DiveList({ dives, className }: { dives: Dive[]; className?: string }) {
   return (
-    <ul className="space-y-3">
+    <ul className={cn("space-y-3", className)}>
       {dives.map((dive) => (
         <DiveCard key={dive.uuid} dive={dive} />
       ))}
@@ -144,6 +145,9 @@ export function TripDiveSections({
           return (
             <DiveList
               key={`loose-${section.dives[0].uuid}`}
+              // Inset as a card's content is - its border and its padding - so
+              // these cards line up with the ones inside the part cards.
+              className="border border-transparent px-6 max-sm:px-4"
               dives={section.dives}
             />
           );
