@@ -652,6 +652,41 @@ describe("the last-dive prefill", () => {
     expect(screen.getByLabelText(/bottom temperature/i)).toHaveValue(null);
   });
 
+  it("marks what it filled in, until the diver changes it", async () => {
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      ...emptyPage<Dive>(),
+      data: [storedDive()],
+      total_count: 1,
+    });
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ water_type: "brackish", altitude: 372 }),
+    );
+    const isMarked = (field: HTMLElement) =>
+      Boolean(
+        (field as HTMLInputElement).labels?.[0]?.querySelector(
+          '[title="Filled in for you"]',
+        ),
+      );
+
+    render(<NewDivePage />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^altitude/i)).toHaveValue(372),
+    );
+    const altitude = screen.getByLabelText(/^altitude/i);
+    await waitFor(() => expect(isMarked(altitude)).toBe(true));
+    expect(isMarked(screen.getByLabelText(/water type/i))).toBe(true);
+    expect(isMarked(screen.getByLabelText(/bottom temperature/i))).toBe(false);
+
+    // Typed back to the same value, it is still the diver's.
+    const user = userEvent.setup();
+    await user.clear(altitude);
+    await user.type(altitude, "372");
+
+    expect(isMarked(altitude)).toBe(false);
+    expect(isMarked(screen.getByLabelText(/water type/i))).toBe(true);
+  });
+
   it("reads the last dive once, not once per render", async () => {
     // The prefill's own effect writes the form it depends on, so anything that
     // gives it a new identity every render puts it in a loop with its own
