@@ -102,7 +102,7 @@ describe("RecentDivesCard's header", () => {
 });
 
 describe("RecentDivesCard's refreshOn", () => {
-  const siteCard = (refreshOn: unknown) => (
+  const siteCard = (refreshOn: number) => (
     <RecentDivesCard
       complete
       enabled
@@ -112,22 +112,20 @@ describe("RecentDivesCard's refreshOn", () => {
   );
 
   it("re-reads the dives on screen when it changes, and not before", async () => {
-    // A site's edit moves the pin on every card below it, so the page hands the
-    // saved site down and the cards are read again.
+    // A site's edit moves the pin on every card below it, so the page counts
+    // its saves and the cards are read again on each one.
     getDives.mockImplementation(async () =>
       page([{ uuid: "dive-1", dive_number: 7 } as Dive]),
     );
-    const before = { uuid: "site-1" };
-
-    const { rerender } = render(siteCard(before));
+    const { rerender } = render(siteCard(0));
     await screen.findByText("Dive 7");
-    rerender(siteCard(before));
+    rerender(siteCard(0));
     expect(getDives).toHaveBeenCalledTimes(1);
 
     getDives.mockImplementation(async () =>
       page([{ uuid: "dive-1", dive_number: 8 } as Dive]),
     );
-    rerender(siteCard({ uuid: "site-1" }));
+    rerender(siteCard(1));
 
     await screen.findByText("Dive 8");
     await waitFor(() => expect(getDives).toHaveBeenCalledTimes(2));
