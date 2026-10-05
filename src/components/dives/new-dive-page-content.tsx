@@ -32,7 +32,20 @@ import { useToast } from "@/components/ui/use-toast";
 import { nowStartTime, parseFormDuration } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
+// Each "Log a dive" starts a new form from the last dive and whatever the URL
+// names. The router keeps this route mounted under `<Activity>` after the diver
+// leaves it, so without the key a later visit would show the earlier visit's form
+// - a site's values on a dive logged for a trip, and the prefill giving up on the
+// dirty form before the trip lands. `bfcacheId` changes on every push or replace
+// but not on back/forward, which still restores the draft; it stays put across a
+// search-param-only change, hence the parameters in the key.
 export function NewDivePageContent() {
+  const { bfcacheId } = useRouter();
+  const searchParams = useSearchParams();
+  return <NewDiveForm key={`${bfcacheId}?${searchParams.toString()}`} />;
+}
+
+function NewDiveForm() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const searchParams = useSearchParams();
