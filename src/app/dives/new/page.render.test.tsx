@@ -753,7 +753,7 @@ describe("opening the form again", () => {
       total_count: 1,
     });
     vi.mocked(divesAPI.getDive).mockResolvedValue(
-      storedDive({ water_type: "brackish", trip_uuid: null }),
+      storedDive({ water_type: "brackish" }),
     );
   };
 
