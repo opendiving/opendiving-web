@@ -1837,6 +1837,29 @@ describe("the people", () => {
     ]);
   });
 
+  it("brings back none of the last dive's people a hidden field withheld", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["people"];
+    lastDiveWith({ people: [{ person_uuid: BUDDY.uuid, role: "buddy" }] });
+    coursePeople({});
+    render(<NewDivePage />);
+    await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
+
+    await pickCourse("Rescue Diver");
+    await waitFor(() =>
+      expect(coursesAPI.lookupCoursesByUuid).toHaveBeenCalledWith([
+        "course-10",
+      ]),
+    );
+
+    expect(
+      screen.queryByRole("combobox", { name: /^people$/i }),
+    ).not.toBeInTheDocument();
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().people ?? []).toEqual([]);
+  });
+
   it("keeps whoever the diver took off or put on through a later pick", async () => {
     coursePeople({
       "course-9": [

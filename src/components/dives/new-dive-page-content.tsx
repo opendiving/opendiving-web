@@ -259,7 +259,6 @@ export function NewDivePageContent() {
         // one source, and who stays on a course is the diver's to say. The URL
         // course's or trip's people lead.
         const people = mergePeople(urlPeople, lastDive.people ?? []);
-        setLastDivePeople(lastDive.people ?? []);
         const carried: Partial<DiveCreateInput> = {
           // Carried over, unlike the temperature and visibility below: those are
           // readings taken on the day, while the water and its elevation are
@@ -336,47 +335,50 @@ export function NewDivePageContent() {
 
         if (courseContact) autofill("contact_uuid", courseContact);
         if (urlPeople.length > 0) autofill("people", people);
-        form.reset(
-          prefill(
-            {
-              // Kept, not recomputed: `useSuggestedDiveNumber` owns this field and
-              // may already have filled it in by the time this prefill lands. The
-              // two run concurrently, and whichever finishes second must not undo
-              // the other - hence reading the current value back rather than
-              // deriving one from `lastDive`, which would also be the wrong number
-              // for a back-dated dive.
-              dive_number: form.getValues("dive_number"),
-              start_time: nowStartTime(),
-              duration: "",
-              max_depth: undefined,
-              avg_depth: undefined,
-              bottom_temperature: undefined,
-              visibility: undefined,
-              // The day's, like the temperature and visibility above: a new dive
-              // gets its own air, current, waves and weather, and its own rating
-              // and tags, which are the diver's word on this dive and no other.
-              air_temperature: undefined,
-              current: "",
-              waves: "",
-              weather: "",
-              rating: null,
-              tags: [],
-              // Deliberately *not* carried over, unlike the gear above: gear is
-              // habitual, sightings are observations. Copying yesterday's turtle
-              // into today's dive would fabricate a record of seeing it. Listed
-              // rather than omitted because this `reset` enumerates every field, and
-              // a field left out of it comes back `undefined`.
-              sightings: [],
-              notes: "",
-              // Spread so this object still enumerates every field, for the reason
-              // directly above. `prefill` rewrites each of these keys against the
-              // visibility rules, so the spread is the shape and the second argument
-              // is the meaning.
-              ...carried,
-            },
-            carried,
-          ),
+        const seeded = prefill<DiveCreateInput>(
+          {
+            // Kept, not recomputed: `useSuggestedDiveNumber` owns this field and
+            // may already have filled it in by the time this prefill lands. The
+            // two run concurrently, and whichever finishes second must not undo
+            // the other - hence reading the current value back rather than
+            // deriving one from `lastDive`, which would also be the wrong number
+            // for a back-dated dive.
+            dive_number: form.getValues("dive_number"),
+            start_time: nowStartTime(),
+            duration: "",
+            max_depth: undefined,
+            avg_depth: undefined,
+            bottom_temperature: undefined,
+            visibility: undefined,
+            // The day's, like the temperature and visibility above: a new dive
+            // gets its own air, current, waves and weather, and its own rating
+            // and tags, which are the diver's word on this dive and no other.
+            air_temperature: undefined,
+            current: "",
+            waves: "",
+            weather: "",
+            rating: null,
+            tags: [],
+            // Deliberately *not* carried over, unlike the gear above: gear is
+            // habitual, sightings are observations. Copying yesterday's turtle
+            // into today's dive would fabricate a record of seeing it. Listed
+            // rather than omitted because this `reset` enumerates every field, and
+            // a field left out of it comes back `undefined`.
+            sightings: [],
+            notes: "",
+            // Spread so this object still enumerates every field, for the reason
+            // directly above. `prefill` rewrites each of these keys against the
+            // visibility rules, so the spread is the shape and the second argument
+            // is the meaning.
+            ...carried,
+          },
+          carried,
         );
+        form.reset(seeded);
+        // Merged into a later course or trip pick only where they reached the
+        // form: a hidden People field is blanked, and a pick must not bring back
+        // what the prefill withheld.
+        if (seeded.people?.length) setLastDivePeople(lastDive.people ?? []);
       } catch (error) {
         console.error("Failed to fetch last dive for pre-fill:", error);
       } finally {
