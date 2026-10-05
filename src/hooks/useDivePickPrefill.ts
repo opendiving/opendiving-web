@@ -11,7 +11,7 @@ import type { DiveCreateInput } from "@/lib/validations/dive";
 
 export interface UseDivePickPrefillOptions {
   form: UseFormReturn<DiveCreateInput>;
-  visibility: Pick<DiveFormVisibility, "autofill" | "overwrite">;
+  visibility: Pick<DiveFormVisibility, "autofill" | "overwrite" | "isVisible">;
   /** The last dive's people, once the last-dive prefill has read them. */
   lastDivePeople: readonly PersonReference[];
 }
@@ -90,7 +90,7 @@ export function useDivePickPrefill({
         read(trip_uuid, (uuids) => tripsAPI.lookupTripsByUuid(uuids)),
       ]);
       if (cancelled || request !== latest) return;
-      const { autofill, overwrite } = visibilityRef.current;
+      const { autofill, overwrite, isVisible } = visibilityRef.current;
 
       if (course && course.uuid === pendingContactCourse) {
         pendingContactCourse = null;
@@ -99,7 +99,9 @@ export function useDivePickPrefill({
 
       const merged = mergePeople(
         mergePeople(course?.people ?? [], trip?.people ?? []),
-        lastDivePeopleRef.current,
+        // Only while People is on screen: a hidden field holds none of them, and
+        // a pick must not bring back what the prefill or a hide withheld.
+        isVisible("people") ? lastDivePeopleRef.current : [],
       )
         .filter((ref) => !removed.has(ref.person_uuid))
         .map((ref) => chosen.get(ref.person_uuid) ?? ref);

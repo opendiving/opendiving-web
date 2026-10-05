@@ -375,10 +375,7 @@ export function NewDivePageContent() {
           carried,
         );
         form.reset(seeded);
-        // Merged into a later course or trip pick only where they reached the
-        // form: a hidden People field is blanked, and a pick must not bring back
-        // what the prefill withheld.
-        if (seeded.people?.length) setLastDivePeople(lastDive.people ?? []);
+        setLastDivePeople(lastDive.people ?? []);
       } catch (error) {
         console.error("Failed to fetch last dive for pre-fill:", error);
       } finally {

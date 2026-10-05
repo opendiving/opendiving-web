@@ -1860,6 +1860,51 @@ describe("the people", () => {
     expect(sent().people ?? []).toEqual([]);
   });
 
+  it("brings back none of the last dive's people once the field is hidden", async () => {
+    lastDiveWith({ people: [{ person_uuid: BUDDY.uuid, role: "buddy" }] });
+    coursePeople({});
+    render(<NewDivePage />);
+    await roleOf(BUDDY.name);
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("switch", { name: /^people$/i }));
+    await closeFieldsPanel();
+    await pickCourse("Rescue Diver");
+    await waitFor(() =>
+      expect(coursesAPI.lookupCoursesByUuid).toHaveBeenCalledWith([
+        "course-10",
+      ]),
+    );
+
+    expect(
+      screen.queryByRole("combobox", { name: /^people$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the last dive's people a shown field brought back through a pick", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["people"];
+    lastDiveWith({ people: [{ person_uuid: BUDDY.uuid, role: "buddy" }] });
+    coursePeople({});
+    render(<NewDivePage />);
+    await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("switch", { name: /^people$/i }));
+    await closeFieldsPanel();
+    await roleOf(BUDDY.name);
+    await pickCourse("Rescue Diver");
+    await waitFor(() =>
+      expect(coursesAPI.lookupCoursesByUuid).toHaveBeenCalledWith([
+        "course-10",
+      ]),
+    );
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().people).toEqual([{ person_uuid: BUDDY.uuid, role: "buddy" }]);
+  });
+
   it("keeps whoever the diver took off or put on through a later pick", async () => {
     coursePeople({
       "course-9": [
