@@ -4003,12 +4003,12 @@ questions: whether there is a picture, which version, and what to append as `?v=
 its crop, or without one the rendition, redrawn as a PNG and saved as a replacement. There is
 deliberately no URL: the bytes are owner-only and the access token lives in memory
 (`lib/api/client.ts`), so an `<img src>` could never load them. `UserAvatar` and `PortraitImage`
-fetch through `hooks/useAuthedBlobUrl.ts` and render from an object URL. The portrait's one
-`<img src>` is a check-in link's, at `/checkin/{token}/portrait`, where the token in the path is the
-credential. Radix's `AvatarFallback` renders until `AvatarImage` has loaded, so in-flight, failed
-and no-picture are one state drawn as initials, with no broken-image glyph. Staleness is handled by
-the URL: `?v={sha}` changes with the picture, and after a save the form calls `refreshUser()`, which
-repaints every mounted picture in the same paint.
+fetch through `hooks/useAuthedBlobUrl.ts` and render from an object URL. A check-in link's portrait,
+at `/checkin/{token}/portrait`, is fetched with the token in the path as its only credential and
+drawn from an object URL the same way. Radix's `AvatarFallback` renders until `AvatarImage` has
+loaded, so in-flight, failed and no-picture are one state drawn as initials, with no broken-image
+glyph. Staleness is handled by the URL: `?v={sha}` changes with the picture, and after a save the
+form calls `refreshUser()`, which repaints every mounted picture in the same paint.
 
 ## The crop dialog's three traps
 

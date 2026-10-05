@@ -848,9 +848,6 @@ function CertificationSummary({
   );
 }
 
-// Every section's edit control, and the one on the name row: an icon button whose
-// hover hint is also its accessible name, and which never reaches the page a diver
-// hands over.
 // A link's picture, drawn from a blob for the same reason the diver's own are: so it
 // can be shrunk before the page prints it.
 function LinkPicture({
@@ -871,6 +868,9 @@ function LinkPicture({
   return url && <img src={url} alt={alt} className={className} />;
 }
 
+// Every section's edit control, and the one on the name row: an icon button whose
+// hover hint is also its accessible name, and which never reaches the page a diver
+// hands over.
 function EditControl({
   label,
   onClick,
