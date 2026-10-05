@@ -4,6 +4,7 @@ import { useCallback, type HTMLAttributes } from "react";
 
 import { authAPI } from "@/lib/api/auth";
 import { useAuthedBlobUrl } from "@/hooks/useAuthedBlobUrl";
+import { shrinkPicture } from "@/lib/shrink-picture";
 import { cn } from "@/lib/utils";
 
 interface PortraitFrameProps extends HTMLAttributes<HTMLDivElement> {
@@ -49,16 +50,22 @@ export function PortraitImage({
   name,
   portraitSha,
   className,
+  maxEdge,
 }: {
   name: string;
   /** `User.portrait_sha256`: whether there is one, and which version. */
   portraitSha?: string | null;
   className?: string;
+  /** Redraws the picture at no more than this many pixels on its long edge - see `shrinkPicture`. */
+  maxEdge?: number;
 }) {
-  const fetchBlob = useCallback(
-    () => authAPI.getPictureBlob("portrait", portraitSha ?? undefined),
-    [portraitSha],
-  );
+  const fetchBlob = useCallback(async () => {
+    const blob = await authAPI.getPictureBlob(
+      "portrait",
+      portraitSha ?? undefined,
+    );
+    return maxEdge ? shrinkPicture(blob, maxEdge) : blob;
+  }, [portraitSha, maxEdge]);
   const { url } = useAuthedBlobUrl(portraitSha ? fetchBlob : null);
 
   return (

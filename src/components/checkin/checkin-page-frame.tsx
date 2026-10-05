@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   AlertTriangle,
   FileText,
@@ -17,6 +23,7 @@ import {
   type Certification,
 } from "@/lib/api/certifications";
 import {
+  fetchSharedPicture,
   sharedCardFrontUrl,
   sharedPortraitUrl,
   type SharedCheckInCertification,
@@ -36,7 +43,9 @@ import {
   EMERGENCY_CONTACT_FIELDS,
   INSURANCE_FIELDS,
 } from "@/lib/validations/user-fields";
+import { shrinkPicture } from "@/lib/shrink-picture";
 import { cn } from "@/lib/utils";
+import { useAuthedBlobUrl } from "@/hooks/useAuthedBlobUrl";
 import {
   CertificationCardFrame,
   CertificationCardImage,
@@ -73,6 +82,10 @@ const MUTED = `text-sm text-muted-foreground ${INK}`;
 // or a browser scaling one down, would otherwise drop the picture to its phone size
 // on paper alone.
 const SLOT = "w-16 shrink-0 sm:w-24 print:w-24";
+
+// The pixels a picture in `SLOT` is redrawn to on its long edge: about 300 dpi across
+// the inch it prints at, and three device pixels to each of its 96 on screen.
+const PICTURE_EDGE = 384;
 
 // What separates a picture from the name beside it, and it is a derived number
 // rather than a chosen one: `SLOT` plus this has to come to `DetailList`'s label
@@ -412,8 +425,7 @@ export function CheckInPageFrame({
                   {link ? (
                     diver.portrait_sha256 && (
                       <PortraitFrame className="w-full">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <LinkPicture
                           src={sharedPortraitUrl(link.token)}
                           alt={`Portrait of ${diver.name}`}
                           className="h-full w-full object-cover"
@@ -424,6 +436,7 @@ export function CheckInPageFrame({
                     <PortraitImage
                       name={diver.name}
                       portraitSha={diver.portrait_sha256}
+                      maxEdge={PICTURE_EDGE}
                       className="w-full"
                     />
                   ) : (
@@ -787,14 +800,14 @@ function CertificationSummary({
               side="front"
               file={ownFront}
               compact
+              maxEdge={PICTURE_EDGE}
               className="w-full"
             />
           ) : (
             frontType &&
             linkToken && (
               <CertificationCardFrame className="w-full">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <LinkPicture
                   src={sharedCardFrontUrl(linkToken, certification.uuid)}
                   alt="front of certification card"
                 />
@@ -838,6 +851,26 @@ function CertificationSummary({
 // Every section's edit control, and the one on the name row: an icon button whose
 // hover hint is also its accessible name, and which never reaches the page a diver
 // hands over.
+// A link's picture, drawn from a blob for the same reason the diver's own are: so it
+// can be shrunk before the page prints it.
+function LinkPicture({
+  src,
+  alt,
+  className,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
+  const fetchBlob = useCallback(
+    async () => shrinkPicture(await fetchSharedPicture(src), PICTURE_EDGE),
+    [src],
+  );
+  const { url } = useAuthedBlobUrl(fetchBlob);
+  // eslint-disable-next-line @next/next/no-img-element
+  return url && <img src={url} alt={alt} className={className} />;
+}
+
 function EditControl({
   label,
   onClick,

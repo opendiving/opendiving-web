@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { SharedCheckInPage } from "./shared-checkin-page";
@@ -7,20 +7,16 @@ import { API_BASE_URL } from "@/lib/api-base";
 import type { SharedCheckIn } from "@/lib/api/checkin-links";
 
 // The page a desk opens. What it may never do is reach for the session: no signed-in
-// client, no blob fetch, no auth guard - the token in the URL is the only credential,
-// and a desk's phone has no account to offer anyway.
+// client, no auth guard - the token in the URL is the only credential, and a desk's
+// phone has no account to offer anyway.
 const spies = vi.hoisted(() => ({
   apiGet: vi.fn(),
-  blobUrl: vi.fn(),
   useAuth: vi.fn(),
   useAuthGuard: vi.fn(),
 }));
 vi.mock("@/lib/api/client", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   apiClient: { get: spies.apiGet, post: spies.apiGet, delete: spies.apiGet },
-}));
-vi.mock("@/hooks/useAuthedBlobUrl", () => ({
-  useAuthedBlobUrl: spies.blobUrl,
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: spies.useAuth }));
 vi.mock("@/hooks/useAuthGuard", () => ({ useAuthGuard: spies.useAuthGuard }));
@@ -54,8 +50,12 @@ const SUMMARY: SharedCheckIn = {
 };
 
 const fetchMock = vi.fn();
+const originalCreate = URL.createObjectURL;
+const originalRevoke = URL.revokeObjectURL;
 
 beforeEach(() => {
+  URL.createObjectURL = vi.fn(() => "blob:link");
+  URL.revokeObjectURL = vi.fn();
   vi.spyOn(console, "error").mockImplementation(() => {});
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
@@ -63,6 +63,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  URL.createObjectURL = originalCreate;
+  URL.revokeObjectURL = originalRevoke;
   vi.unstubAllGlobals();
 });
 
@@ -71,7 +73,7 @@ const answer = (status: number, body: unknown) =>
 
 describe("SharedCheckInPage", () => {
   it("draws the diver's sheet from the summary, read-only", async () => {
-    fetchMock.mockResolvedValue(answer(200, SUMMARY));
+    fetchMock.mockImplementation(async () => answer(200, SUMMARY));
     const { container } = render(<SharedCheckInPage token="tok" />);
 
     expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
@@ -86,16 +88,19 @@ describe("SharedCheckInPage", () => {
     expect(
       screen.getAllByRole("button").map((button) => button.textContent),
     ).toEqual(["Print"]);
-    for (const img of container.querySelectorAll("img")) {
-      expect(img.getAttribute("src")).toMatch(
-        new RegExp(`^${API_BASE_URL}/checkin/tok/`),
-      );
-    }
-    expect(container.querySelectorAll("img")).toHaveLength(2);
+    await waitFor(() =>
+      expect(container.querySelectorAll("img")).toHaveLength(2),
+    );
 
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`${API_BASE_URL}/checkin/tok`);
-    expect(init.credentials).toBe("omit");
+    // The summary and both pictures, every one of them read with the token alone.
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      `${API_BASE_URL}/checkin/tok`,
+      `${API_BASE_URL}/checkin/tok/portrait`,
+      `${API_BASE_URL}/checkin/tok/certification/cert-1/front`,
+    ]);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init.credentials).toBe("omit");
+    }
     for (const spy of Object.values(spies)) {
       expect(spy).not.toHaveBeenCalled();
     }
