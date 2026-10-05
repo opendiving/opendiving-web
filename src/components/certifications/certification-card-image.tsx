@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/certifications";
 import { useAuthedBlobUrl } from "@/hooks/useAuthedBlobUrl";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { shrinkPicture } from "@/lib/shrink-picture";
 import {
   CERTIFICATION_CARD_ASPECT_CLASS,
   certificationFileVersion,
@@ -85,6 +86,9 @@ interface CertificationCardImageProps {
   // Renders the "no image" state as a compact placeholder instead of a full
   // dashed panel, for the list view's small thumbnails.
   compact?: boolean;
+  // Redraws the picture at no more than this many pixels on its long edge - see
+  // `shrinkPicture`. The stored file as it is when unset.
+  maxEdge?: number;
 }
 
 // Renders one side of a stored certification card.
@@ -105,6 +109,7 @@ export function CertificationCardImage({
   file,
   className,
   compact = false,
+  maxEdge,
 }: CertificationCardImageProps) {
   const isPdf = file?.content_type === "application/pdf";
 
@@ -114,13 +119,14 @@ export function CertificationCardImage({
 
   // Stable per file version so the hook doesn't refetch every render. Null when
   // there's nothing to fetch, which also covers the PDF case.
-  const fetchBlob = useCallback(() => {
-    return certificationsAPI.getCertificationFileBlob(
+  const fetchBlob = useCallback(async () => {
+    const blob = await certificationsAPI.getCertificationFileBlob(
       certificationUuid,
       side,
       version ?? undefined,
     );
-  }, [certificationUuid, side, version]);
+    return maxEdge ? shrinkPicture(blob, maxEdge) : blob;
+  }, [certificationUuid, side, version, maxEdge]);
 
   const { url, isLoading, hasError, error } = useAuthedBlobUrl(
     file && !isPdf ? fetchBlob : null,

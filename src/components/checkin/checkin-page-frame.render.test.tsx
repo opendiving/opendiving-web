@@ -1136,20 +1136,30 @@ describe("on a link's page", () => {
     expect(screen.queryByRole("region", { name: "Check-in link" })).toBeNull();
   });
 
-  it("points every picture at the link's own routes, and fetches none through the session", () => {
+  it("reads every picture from the link's own routes, and none through the session", async () => {
     Object.assign(auth.user, COMPLETE, { portrait_sha256: PORTRAIT });
     blobUrl.mockClear();
     vi.mocked(authAPI.getPictureBlob).mockClear();
+    const fetchMock = vi.fn(async () => new Response("png"));
+    vi.stubGlobal("fetch", fetchMock);
     const { container } = render(shared());
 
-    const images = [...container.querySelectorAll("img")];
-    expect(images.map((img) => img.getAttribute("src"))).toEqual([
-      `${API_BASE_URL}/checkin/tok/portrait`,
-      `${API_BASE_URL}/checkin/tok/certification/cert-1/front`,
+    expect(container.querySelectorAll("img")).toHaveLength(2);
+    await Promise.all(
+      blobUrl.mock.calls.map(([fetchBlob]) =>
+        (fetchBlob as () => Promise<Blob>)(),
+      ),
+    );
+    expect(fetchMock.mock.calls).toEqual([
+      [`${API_BASE_URL}/checkin/tok/portrait`, { credentials: "omit" }],
+      [
+        `${API_BASE_URL}/checkin/tok/certification/cert-1/front`,
+        { credentials: "omit" },
+      ],
     ]);
+    vi.unstubAllGlobals();
     // The PDF front is named, never fetched.
     expect(screen.getByText("card on file as PDF")).toBeInTheDocument();
-    expect(blobUrl).not.toHaveBeenCalled();
     expect(authAPI.getPictureBlob).not.toHaveBeenCalled();
     expect(updateProfile).not.toHaveBeenCalled();
   });

@@ -110,13 +110,20 @@ export async function fetchSharedCheckIn(
   return (await response.json()) as SharedCheckIn;
 }
 
-// Plain `<img src>`s at the API, like a species photo and unlike every other picture of
-// the diver's: an `<img>` carries no bearer token, and here none is needed.
+// The token in the path is the credential, so these need no bearer token - read them with
+// `fetchSharedPicture`, as the summary is read.
 export const sharedPortraitUrl = (token: string) =>
   `${sharedBase(token)}/portrait`;
 
 export const sharedCardFrontUrl = (token: string, certificationUuid: string) =>
   `${sharedBase(token)}/certification/${encodeURIComponent(certificationUuid)}/front`;
+
+/** One of a link's pictures, read the way `fetchSharedCheckIn` reads its summary. */
+export async function fetchSharedPicture(url: string): Promise<Blob> {
+  const response = await fetch(url, { credentials: "omit" });
+  if (!response.ok) throw new Error(`GET ${url} answered ${response.status}`);
+  return response.blob();
+}
 
 /** The address a desk opens: this origin's page for the token, not the API's route. */
 export function checkinLinkUrl(origin: string, token: string): string {
