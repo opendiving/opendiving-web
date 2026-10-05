@@ -65,6 +65,7 @@ vi.mock("@/lib/api/courses", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/courses")>()),
   coursesAPI: {
     lookupCourses: vi.fn(),
+    lookupCoursesByUuid: vi.fn(),
     getCourse: vi.fn(),
     createCourse: vi.fn(),
   },
@@ -260,10 +261,13 @@ beforeEach(() => {
   });
 });
 
-// The menu lists thin rows, and a pick reads the whole course - so both answer
-// from the one list a test sets up.
+// The menu lists lookup rows, a held uuid resolves through the lookup, and a pick
+// reads the whole course - so all three answer from the one list a test sets up.
 function listCourses(courses: Course[]) {
   lookupCourses.mockImplementation(async () => page(courses));
+  vi.mocked(coursesAPI.lookupCoursesByUuid).mockImplementation(async (uuids) =>
+    courses.filter((one) => uuids.includes(one.uuid)),
+  );
   getCourse.mockImplementation(async (uuid: string) => {
     const found = courses.find((one) => one.uuid === uuid);
     if (!found) throw new Error("not found");

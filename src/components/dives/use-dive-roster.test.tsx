@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useDiveRoster } from "./use-dive-roster";
-import type { Course } from "@/lib/api/courses";
-import type { Trip } from "@/lib/api/trips";
+import type { CourseLookupItem } from "@/lib/api/courses";
+import type { TripLookupItem } from "@/lib/api/trips";
 
 vi.mock("@/lib/api/trips", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/trips")>()),
-  tripsAPI: { getTrip: vi.fn() },
+  tripsAPI: { lookupTripsByUuid: vi.fn() },
 }));
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/courses")>()),
-  coursesAPI: { getCourse: vi.fn() },
+  coursesAPI: { lookupCoursesByUuid: vi.fn() },
 }));
 
 const { tripsAPI } = await import("@/lib/api/trips");
@@ -23,7 +23,7 @@ const TRIP = {
     { person_uuid: "person-sam", role: null },
     { person_uuid: "person-ana", role: "companion" },
   ],
-} as Trip;
+} as TripLookupItem;
 const COURSE = {
   uuid: "course-1",
   name: "Rescue Diver",
@@ -32,12 +32,14 @@ const COURSE = {
     { person_uuid: "person-kim", role: "instructor" },
     { person_uuid: "person-ana", role: "student" },
   ],
-} as Course;
+} as CourseLookupItem;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(tripsAPI.getTrip).mockResolvedValue(TRIP);
-  vi.mocked(coursesAPI.getCourse).mockResolvedValue(COURSE);
+  vi.mocked(tripsAPI.lookupTripsByUuid).mockImplementation(async () => [TRIP]);
+  vi.mocked(coursesAPI.lookupCoursesByUuid).mockImplementation(async () => [
+    COURSE,
+  ]);
 });
 
 describe("useDiveRoster", () => {
@@ -52,7 +54,7 @@ describe("useDiveRoster", () => {
     );
   });
 
-  it("drops a cleared trip's people at once, and reads a record once per uuid", async () => {
+  it("drops a cleared trip's people at once, and reads a row once per uuid", async () => {
     const { result, rerender } = renderHook(
       ({ trip }: { trip: string | null }) => useDiveRoster(trip, null),
       { initialProps: { trip: TRIP.uuid as string | null } },
@@ -64,6 +66,6 @@ describe("useDiveRoster", () => {
 
     rerender({ trip: TRIP.uuid });
     expect(result.current.people).toEqual(["person-sam", "person-ana"]);
-    expect(tripsAPI.getTrip).toHaveBeenCalledTimes(1);
+    expect(tripsAPI.lookupTripsByUuid).toHaveBeenCalledTimes(1);
   });
 });

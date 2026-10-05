@@ -4791,11 +4791,11 @@ The list's search debounces the term that `useInfiniteResource`'s `fetchFn` clos
 changing it discards every loaded page. "No courses match" and "no courses yet" are separate empty
 states; only the second offers create.
 
-`/dives/new` does not inherit the last dive's course; the course page passes `?course_uuid=`. The
-dive page's course is its own Training card, not a Location row. `getDives` takes its filters as one
-`DiveFilters` object, so a new one is a key rather than a position. The resource sweep needs
-`git grep -ni c-card -- src/ README.md` too: `git grep -lni certifications -- src/ README.md` misses
-`components/layout/landing-page.tsx`.
+`/dives/new` carries the last dive's course as it carries the trip; the course page's
+`?course_uuid=` wins over it. The dive page's course is its own Training card, not a Location row.
+`getDives` takes its filters as one `DiveFilters` object, so a new one is a key rather than a
+position. The resource sweep needs `git grep -ni c-card -- src/ README.md` too:
+`git grep -lni certifications -- src/ README.md` misses `components/layout/landing-page.tsx`.
 
 ## A contact picker speaks its host's word and hands the dialog its host's role
 
@@ -4814,13 +4814,14 @@ innermost save out.
 ## People take their host's role, and a course's instructor has a field of its own
 
 A person added from `PeopleMultiSelect` starts with the role its host implies: `buddy` on a dive,
-`student` on a course, none on a trip, where who came along has no common word. The diver changes it
+`student` on a course, none on a trip, where who came along has no common word; the diver changes it
 on the row. The course dialog holds the first `instructor` in a `PersonCombobox` of its own and
-writes it back first, so naming an instructor stays one pick with the role set. A new dive carries
-the last dive's people as it carries the dive center, except an instructor or a student, who stay on
-their course unless the new dive is on the same one (`carriedPeople`). An unmatched name on Enter
-makes a person: a name is a whole person, where a contact would lack its role. Rejected: no default,
-and carrying everyone, which puts last week's instructor on this week's fun dive.
+writes it back first, so naming an instructor is one pick with the role set. A new dive carries the
+last dive's people with every role: who stays on a course is the diver's call, which no rule can
+read. A later course or trip pick merges its people ahead of them and keeps the diver's per-person
+edits (`useDivePickPrefill`). An unmatched name on Enter makes a person: a name is a whole person,
+where a contact would lack its role. Rejected: no default, and leaving instructors and students
+behind when the course changes.
 
 ## The skills are repo content; what wires up the hook is not
 
@@ -5145,8 +5146,7 @@ The edit dialog gets no prefill: `reset(...)` from the stored card makes every v
 `notes` is not copied — a course's notes describe the training, a card's describe the card. `name`
 is, under the same guard: a course name is often longer than the level printed on the card, so a
 diver who types over it keeps what they typed. `lib/api/certifications.ts`'s comment holds: nothing
-derives these at read time. Unlike "A dive's course is not inherited from the last dive", this runs
-only on the diver's own pick.
+derives these at read time.
 
 ## A silently prefilled field is not a clean field
 
@@ -5817,11 +5817,12 @@ A value from outside the diver's typing reveals its field for that form only, ne
 set: the edit form's load, a parsed dive file (`DiveFileImport`'s `onValuesApplied`), a gear set
 with a weight (`DiveGearField`'s `onSetApplied`), the new form's mount for a URL trip, site or
 course. Each ends in `revealNonEmpty` or `reveal`, making the key the diver's, so hiding keeps its
-value — except a course's contact and a picked site's water type, altitude and entry type, which
-`autofill` reveals as the layer's own write.
+value — except a course's contact, the people a course or trip pick merges, and the first site's
+water type, altitude and entry type, which `autofill` and `overwrite` reveal as the layer's own
+write. A pick replaces only the layer's own values; clearing the pick puts nothing back.
 
-Non-empty means not `undefined`, `null`, `""` or `[]`; `0` is a value. The last-dive prefill, and
-`restore` putting it back after a site, touch only visible keys.
+Non-empty means not `undefined`, `null`, `""` or `[]`; `0` is a value. The last-dive prefill touches
+only visible keys.
 
 A failed submit reveals too: the resolver validates hidden fields, so `handleSubmit`'s invalid
 branch reveals every erroring key and focuses the first hidden one, else the save blocks with no

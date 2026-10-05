@@ -103,12 +103,16 @@ const isEntryType = (value: unknown): value is EntryType =>
   ENTRY_TYPES.includes(value as EntryType);
 
 /** The site's water type, where it is one the web knows; a stored value it does not is read as absent. */
-export function siteWaterType(site: DiveSite): WaterType | null {
+export function siteWaterType(
+  site: Pick<DiveSite, "water_type">,
+): WaterType | null {
   return isWaterType(site.water_type) ? site.water_type : null;
 }
 
 /** The site's entry types the web knows, in the vocabulary's order. */
-export function siteEntryTypes(site: DiveSite): EntryType[] {
+export function siteEntryTypes(
+  site: Pick<DiveSite, "entry_types">,
+): EntryType[] {
   return ENTRY_TYPES.filter((entry) => site.entry_types?.includes(entry));
 }
 

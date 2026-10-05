@@ -86,11 +86,19 @@ const FormItem = React.forwardRef<
 });
 FormItem.displayName = "FormItem";
 
+// What a form renders after each of its labels, given the field the label names - the
+// new dive form's mark on a value it filled in itself. Usually a component of its own,
+// so it can subscribe to that field, which only the forms that provide one pay for.
+const FormLabelMarkContext = React.createContext<
+  ((name: string) => React.ReactNode) | null
+>(null);
+
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
-  const { error, formItemId } = useFormField();
+>(({ className, children, ...props }, ref) => {
+  const { error, formItemId, name } = useFormField();
+  const mark = React.useContext(FormLabelMarkContext);
 
   return (
     <Label
@@ -98,7 +106,10 @@ const FormLabel = React.forwardRef<
       className={cn(error && "text-destructive", className)}
       htmlFor={formItemId}
       {...props}
-    />
+    >
+      {children}
+      {mark?.(name)}
+    </Label>
   );
 });
 FormLabel.displayName = "FormLabel";
@@ -191,6 +202,7 @@ export {
   Form,
   FormItem,
   FormLabel,
+  FormLabelMarkContext,
   FormControl,
   FormDescription,
   FormMessage,

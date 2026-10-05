@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
 import { authAPI } from "@/lib/api/auth";
+import { useAutofillMarks, type AutofillMarks } from "@/hooks/useAutofillMarks";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
   DIVE_FORM_FIELDS,
@@ -90,15 +91,11 @@ export interface DiveFormVisibility {
    */
   autofill: (key: DiveFormFieldKey, value: unknown) => boolean;
   /**
-   * The undo of an `autofill` whose source went away - a site replaced by one that
-   * names no water type: puts back what the prefill carried, where the diver has not
-   * touched the field, and reports whether it did.
-   *
-   * Recorded as this layer's write, as `autofill`'s is. Where the key is not on
-   * screen it is emptied instead, and stays off screen: only a value from outside the
-   * diver's typing puts a field back, and the last dive's value is not one.
+   * `autofill` whatever the field holds, handing it back to this layer. Only for a
+   * value that already carries the diver's own edits - the people a course or trip
+   * pick merges keep whoever the diver added, removed or gave a role.
    */
-  restore: (key: DiveFormFieldKey) => boolean;
+  overwrite: (key: DiveFormFieldKey, value: unknown) => void;
   /**
    * Applies the new form's prefill through the visibility rules.
    *
@@ -112,6 +109,14 @@ export interface DiveFormVisibility {
     base: T,
     carried: Partial<Record<DiveFormFieldKey, unknown>>,
   ) => T;
+  /**
+   * Whether the field at `name` - a key, or one cylinder's `mixtures.<i>.<column>` -
+   * was changed by the prefill, a derived pick or a show, and not by the diver since.
+   * What the new form marks.
+   */
+  isAutofilled: (name: string) => boolean;
+  /** `AutofillMarks.note`, for a field filled in outside this layer - the dive number. */
+  noteAutofill: AutofillMarks["note"];
   /** True while a toggle is in flight. */
   isSaving: boolean;
   /** The API's own wording when a toggle could not be saved, or null. */
@@ -184,6 +189,8 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const marks = useAutofillMarks(form);
+  const { note } = marks;
 
   const hidden = override ?? stored;
 
@@ -203,9 +210,6 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   // than state: nothing renders from them, and they must be readable synchronously
   // inside the write that consults them.
   const carriedRef = useRef<Partial<Record<DiveFormFieldKey, unknown>>>({});
-  // What the prefill itself carried, which `autofill` never overwrites - `restore`
-  // goes back to it.
-  const prefilledRef = useRef<Partial<Record<DiveFormFieldKey, unknown>>>({});
   const writtenRef = useRef<Partial<Record<DiveFormFieldKey, unknown>>>({});
   const touchedRef = useRef<Set<DiveFormFieldKey>>(new Set());
 
@@ -375,8 +379,10 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
         const target = isNowVisible(key)
           ? (carriedRef.current[key] ?? EMPTY_DIVE_FORM_VALUES[key])
           : EMPTY_DIVE_FORM_VALUES[key];
-        if (sameValue(readValue(key), target)) continue;
+        const before = readValue(key);
+        if (sameValue(before, target)) continue;
 
+        note(key, before, target);
         formRef.current.setValue(
           key as unknown as Path<TFieldValues>,
           target as PathValue<TFieldValues, Path<TFieldValues>>,
@@ -400,10 +406,11 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
       // `desiredMixtures` builds rows by key rather than by shape - it has to, since a
       // per-cylinder column is named by a `mixture.` key - so the cast is where that
       // loose typing is handed back to the field array.
+      note("mixtures", current, desired);
       replaceMixturesRef.current(desired as unknown as DiveMixtureInput[]);
       writtenRef.current.mixtures = desired;
     },
-    [desiredMixtures, isUntouched, readMixtures, readValue],
+    [desiredMixtures, isUntouched, note, readMixtures, readValue],
   );
 
   // ---- the surface -------------------------------------------------------
@@ -483,11 +490,11 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     [reveal],
   );
 
-  const autofill = useCallback(
-    (key: DiveFormFieldKey, value: unknown): boolean => {
-      if (!isUntouched(key)) return false;
-
-      if (!sameValue(readValue(key), value)) {
+  const write = useCallback(
+    (key: DiveFormFieldKey, value: unknown) => {
+      const before = readValue(key);
+      note(key, before, value);
+      if (!sameValue(before, value)) {
         formRef.current.setValue(
           key as unknown as Path<TFieldValues>,
           value as PathValue<TFieldValues, Path<TFieldValues>>,
@@ -505,41 +512,30 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
         revealedRef.current = next;
         setRevealed(next);
       }
-      return true;
     },
-    [isUntouched, readValue],
+    [note, readValue],
   );
 
-  const restore = useCallback(
-    (key: DiveFormFieldKey): boolean => {
+  const autofill = useCallback(
+    (key: DiveFormFieldKey, value: unknown): boolean => {
       if (!isUntouched(key)) return false;
-
-      const carried =
-        key in prefilledRef.current
-          ? prefilledRef.current[key]
-          : EMPTY_DIVE_FORM_VALUES[key];
-      const onScreen =
-        !hiddenRef.current.includes(key) || revealedRef.current.has(key);
-      const target = onScreen ? carried : EMPTY_DIVE_FORM_VALUES[key];
-
-      if (!sameValue(readValue(key), target)) {
-        formRef.current.setValue(
-          key as unknown as Path<TFieldValues>,
-          target as PathValue<TFieldValues, Path<TFieldValues>>,
-          { shouldValidate: true, shouldDirty: true },
-        );
-      }
-      writtenRef.current[key] = target;
-      carriedRef.current[key] = carried;
+      write(key, value);
       return true;
     },
-    [isUntouched, readValue],
+    [isUntouched, write],
+  );
+
+  const overwrite = useCallback(
+    (key: DiveFormFieldKey, value: unknown) => {
+      touchedRef.current.delete(key);
+      write(key, value);
+    },
+    [write],
   );
 
   const prefill = useCallback(
     <T>(base: T, carried: Partial<Record<DiveFormFieldKey, unknown>>): T => {
       carriedRef.current = { ...carried };
-      prefilledRef.current = { ...carried };
 
       const hiddenNow = new Set(hiddenRef.current);
       const visible = (key: DiveFormFieldKey) =>
@@ -564,9 +560,19 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
       }
       writtenRef.current = written;
 
+      // Against what the form holds before the page's `reset` lands, so a key the
+      // carried map only repeats - a URL parameter's - is not marked.
+      for (const key of Object.keys(carried) as DiveFormFieldKey[]) {
+        if (key === "mixtures" || isMixtureField(key)) continue;
+        note(key, readValue(key), seeded[key]);
+      }
+      if ("mixtures" in carried) {
+        note("mixtures", readMixtures(), seeded.mixtures);
+      }
+
       return seeded as T;
     },
-    [desiredMixtures],
+    [desiredMixtures, note, readMixtures, readValue],
   );
 
   return {
@@ -578,8 +584,10 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     reveal,
     revealNonEmpty,
     autofill,
-    restore,
+    overwrite,
     prefill,
+    isAutofilled: marks.isMarked,
+    noteAutofill: note,
     isSaving,
     saveError,
   };

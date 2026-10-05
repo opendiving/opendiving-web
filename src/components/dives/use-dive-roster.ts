@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { coursesAPI, type Course } from "@/lib/api/courses";
-import { tripsAPI, type Trip } from "@/lib/api/trips";
+import { coursesAPI, type CourseLookupItem } from "@/lib/api/courses";
+import { tripsAPI, type TripLookupItem } from "@/lib/api/trips";
 
 export interface DiveRoster {
   // The trip's people, then the course's, each once.
@@ -14,14 +14,14 @@ export interface DiveRoster {
 // Who the dive form's pickers list first: the people on the dive's trip and
 // course, and the course's contact. Derived from the uuids the form holds rather
 // than from a pick, since a trip also arrives by the last-dive prefill, a URL or
-// the dive being edited. Each record is read once per uuid; a cleared field
+// the dive being edited. Each lookup row is read once per uuid; a cleared field
 // drops its share of the roster at once.
 export function useDiveRoster(
   tripUuid: string | null | undefined,
   courseUuid: string | null | undefined,
 ): DiveRoster {
-  const [trips, setTrips] = useState<Record<string, Trip>>({});
-  const [courses, setCourses] = useState<Record<string, Course>>({});
+  const [trips, setTrips] = useState<Record<string, TripLookupItem>>({});
+  const [courses, setCourses] = useState<Record<string, CourseLookupItem>>({});
   // No cancellation, for the reason `TripCombobox` gives: each read fires once
   // per uuid, and a uuid-keyed map takes a late arrival safely.
   const requestedTripsRef = useRef<Set<string>>(new Set());
@@ -31,8 +31,10 @@ export function useDiveRoster(
     if (!tripUuid || requestedTripsRef.current.has(tripUuid)) return;
     requestedTripsRef.current.add(tripUuid);
     tripsAPI
-      .getTrip(tripUuid)
-      .then((trip) => setTrips((prev) => ({ ...prev, [trip.uuid]: trip })))
+      .lookupTripsByUuid([tripUuid])
+      .then(([trip]) => {
+        if (trip) setTrips((prev) => ({ ...prev, [trip.uuid]: trip }));
+      })
       .catch((error) => console.error("Failed to fetch trip:", error));
   }, [tripUuid]);
 
@@ -40,10 +42,10 @@ export function useDiveRoster(
     if (!courseUuid || requestedCoursesRef.current.has(courseUuid)) return;
     requestedCoursesRef.current.add(courseUuid);
     coursesAPI
-      .getCourse(courseUuid)
-      .then((course) =>
-        setCourses((prev) => ({ ...prev, [course.uuid]: course })),
-      )
+      .lookupCoursesByUuid([courseUuid])
+      .then(([course]) => {
+        if (course) setCourses((prev) => ({ ...prev, [course.uuid]: course }));
+      })
       .catch((error) => console.error("Failed to fetch course:", error));
   }, [courseUuid]);
 

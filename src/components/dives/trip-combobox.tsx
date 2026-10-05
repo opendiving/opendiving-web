@@ -62,8 +62,8 @@ export function TripCombobox({
     requestedRef.current.add(value);
 
     tripsAPI
-      .getTrip(value)
-      .then(remember)
+      .lookupTripsByUuid([value])
+      .then((trips) => trips.forEach(remember))
       .catch((error) => console.error("Failed to fetch trip:", error));
   }, [value, names, remember]);
 

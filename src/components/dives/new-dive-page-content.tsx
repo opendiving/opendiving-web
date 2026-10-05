@@ -9,8 +9,10 @@ import { useReturnTo } from "@/hooks/useReturnTo";
 import { withReturnTo } from "@/lib/return-to";
 import { useSuggestedDiveNumber } from "@/hooks/useSuggestedDiveNumber";
 import { divesAPI } from "@/lib/api/dives";
-import { coursesAPI, type Course } from "@/lib/api/courses";
-import { carriedPeople } from "@/lib/people";
+import { coursesAPI, type CourseLookupItem } from "@/lib/api/courses";
+import { tripsAPI, type TripLookupItem } from "@/lib/api/trips";
+import { mergePeople } from "@/lib/people";
+import type { PersonReference } from "@/lib/api/people";
 import {
   boatNameOrNull,
   diveCreateSchema,
@@ -20,7 +22,9 @@ import {
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { useDiveSitePrefill } from "@/hooks/useDiveSitePrefill";
+import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
+import { AutofilledMarks } from "@/components/dives/autofilled-marks";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -43,6 +47,8 @@ export function NewDivePageContent() {
   // Whether the last-dive prefill below has landed, given up or failed - the
   // moment the primary site's values may be written over it.
   const [prefillSettled, setPrefillSettled] = useState(false);
+  // What a course or trip picked later merges its people with.
+  const [lastDivePeople, setLastDivePeople] = useState<PersonReference[]>([]);
 
   // Allow pre-selecting a trip/dive site/course via ?trip_uuid=... /
   // ?dive_site_uuid=... / ?course_uuid=..., e.g. when logging a dive from a
@@ -122,6 +128,7 @@ export function NewDivePageContent() {
     visibility,
     enabled: prefillSettled,
   });
+  useDivePickPrefill({ form, visibility, lastDivePeople });
 
   // The moment a value arrives from outside the diver's typing at mount: a trip,
   // dive site or course a page passed in the URL. A diver who clicked "Log a dive
@@ -138,7 +145,11 @@ export function NewDivePageContent() {
   // The dive number tracks the start time (including a start time an imported
   // file rewrote), rather than being prefilled once from the last dive - see the
   // hook. It stops as soon as the diver edits the field themselves.
-  const numberSuggestion = useSuggestedDiveNumber(form, Boolean(user));
+  const numberSuggestion = useSuggestedDiveNumber(
+    form,
+    Boolean(user),
+    (before, after) => visibility.noteAutofill("dive_number", before, after),
+  );
 
   // Attached to the suggested value rather than rendered outright: the field
   // stops showing that number the moment the diver types their own, and a note
@@ -177,38 +188,56 @@ export function NewDivePageContent() {
     // people were on it unless the diver says otherwise. Looked up beside the
     // last dive rather than after it, and non-fatal: a failed lookup leaves both
     // fields to the last dive, as though the course named nobody.
-    const urlCourse = async (): Promise<Course | null> => {
+    const urlCourse = async (): Promise<CourseLookupItem | null> => {
       if (!initialCourseId) return null;
       try {
-        return await coursesAPI.getCourse(initialCourseId);
+        const [course] = await coursesAPI.lookupCoursesByUuid([
+          initialCourseId,
+        ]);
+        return course ?? null;
       } catch (error) {
         console.error("Failed to fetch the course:", error);
         return null;
       }
     };
 
+    // The same for a trip a page passed in the URL, whose people came along.
+    const urlTrip = async (): Promise<TripLookupItem | null> => {
+      if (!initialTripId) return null;
+      try {
+        const [trip] = await tripsAPI.lookupTripsByUuid([initialTripId]);
+        return trip ?? null;
+      } catch (error) {
+        console.error("Failed to fetch the trip:", error);
+        return null;
+      }
+    };
+
     const prefillFromLastDive = async () => {
       try {
-        const [response, course] = await Promise.all([
+        const [response, course, trip] = await Promise.all([
           divesAPI.getDives(1, 1),
           urlCourse(),
+          urlTrip(),
         ]);
         if (cancelled || form.formState.isDirty) return;
         const courseContact = course?.contact_uuid ?? null;
-        const coursePeople = course?.people ?? [];
+        // The people of whatever the dive is being logged for, ahead of the
+        // last dive's.
+        const urlPeople = mergePeople(course?.people ?? [], trip?.people ?? []);
 
-        // The course's contact and people are written through `autofill` in both
-        // branches, rather than only carried. That records each as the layer's
-        // write - so a course picked later can still replace the contact - and it
-        // shows the field: `prefill` blanks a key the stored set hides, and only
-        // the course itself was revealed at mount, while the diver who asked to
-        // log a dive for this course asked for its people too. Called only past
-        // the last of the dirty checks, since the write dirties the form they
-        // read.
+        // The URL course's contact and the URL people are written through
+        // `autofill` in both branches, rather than only carried. That records each
+        // as the layer's write - so a course picked later can still replace the
+        // contact - and it shows the field: `prefill` blanks a key the stored set
+        // hides, and only the course or trip itself was revealed at mount, while
+        // the diver who asked to log a dive for it asked for its people too.
+        // Called only past the last of the dirty checks, since the write dirties
+        // the form they read.
         const lastDiveSummary = response.data[0];
         if (!lastDiveSummary) {
           if (courseContact) autofill("contact_uuid", courseContact);
-          if (coursePeople.length > 0) autofill("people", coursePeople);
+          if (urlPeople.length > 0) autofill("people", urlPeople);
           return;
         }
 
@@ -224,11 +253,12 @@ export function NewDivePageContent() {
         // one the moment the diver shows it. That is owner decision 1 read forwards
         // and backwards at once, and the layer's record of what it wrote - not
         // react-hook-form's dirty state - is what "untouched" means afterwards.
-        const people = carriedPeople({
-          lastDive,
-          courseUuid: initialCourseId,
-          coursePeople,
-        });
+        // URL param takes precedence over the last dive's course, as for the trip.
+        const courseUuid = initialCourseId ?? lastDive.course_uuid ?? undefined;
+        // Everyone on the last dive, whatever their role: the last dive is the
+        // one source, and who stays on a course is the diver's to say. The URL
+        // course's or trip's people lead.
+        const people = mergePeople(urlPeople, lastDive.people ?? []);
         const carried: Partial<DiveCreateInput> = {
           // Carried over, unlike the temperature and visibility below: those are
           // readings taken on the day, while the water and its elevation are
@@ -248,20 +278,16 @@ export function NewDivePageContent() {
           weight: lastDive.weight,
           // URL param takes precedence over the last dive's trip.
           trip_uuid: initialTripId ?? lastDive.trip_uuid,
-          // Deliberately *not* inherited from the last dive, unlike the trip
-          // above: a course ends, and silently tagging the first fun dive after
-          // it as training is a worse default than one extra pick. The mid-course
-          // streak is covered by the course page's own "Log a dive for this
-          // course", which arrives here as `initialCourseId` - already revealed at
-          // mount, so hiding `course_uuid` never loses it.
-          course_uuid: initialCourseId,
+          // Carried like the trip: a course runs over several dives in a row. A
+          // course page's "Log a dive for this course" arrives as
+          // `initialCourseId`, already revealed at mount, so hiding `course_uuid`
+          // never loses it.
+          course_uuid: courseUuid,
           // Carried like the trip - a week with one shop is logged with it dive
           // after dive - and, like the trip, behind what the URL asked for: the
           // course's own contact comes first.
           contact_uuid: courseContact ?? lastDive.contact_uuid ?? null,
-          // Carried like the dive center, except a course's instructor and
-          // students, who stay on their course - see `carriedPeople`. The
-          // course's own people lead.
+          // Carried like the dive center - see `people` above.
           people,
           dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
@@ -308,48 +334,48 @@ export function NewDivePageContent() {
         };
 
         if (courseContact) autofill("contact_uuid", courseContact);
-        if (coursePeople.length > 0) autofill("people", people);
-        form.reset(
-          prefill(
-            {
-              // Kept, not recomputed: `useSuggestedDiveNumber` owns this field and
-              // may already have filled it in by the time this prefill lands. The
-              // two run concurrently, and whichever finishes second must not undo
-              // the other - hence reading the current value back rather than
-              // deriving one from `lastDive`, which would also be the wrong number
-              // for a back-dated dive.
-              dive_number: form.getValues("dive_number"),
-              start_time: nowStartTime(),
-              duration: "",
-              max_depth: undefined,
-              avg_depth: undefined,
-              bottom_temperature: undefined,
-              visibility: undefined,
-              // The day's, like the temperature and visibility above: a new dive
-              // gets its own air, current, waves and weather, and its own rating
-              // and tags, which are the diver's word on this dive and no other.
-              air_temperature: undefined,
-              current: "",
-              waves: "",
-              weather: "",
-              rating: null,
-              tags: [],
-              // Deliberately *not* carried over, unlike the gear above: gear is
-              // habitual, sightings are observations. Copying yesterday's turtle
-              // into today's dive would fabricate a record of seeing it. Listed
-              // rather than omitted because this `reset` enumerates every field, and
-              // a field left out of it comes back `undefined`.
-              sightings: [],
-              notes: "",
-              // Spread so this object still enumerates every field, for the reason
-              // directly above. `prefill` rewrites each of these keys against the
-              // visibility rules, so the spread is the shape and the second argument
-              // is the meaning.
-              ...carried,
-            },
-            carried,
-          ),
+        if (urlPeople.length > 0) autofill("people", people);
+        const seeded = prefill<DiveCreateInput>(
+          {
+            // Kept, not recomputed: `useSuggestedDiveNumber` owns this field and
+            // may already have filled it in by the time this prefill lands. The
+            // two run concurrently, and whichever finishes second must not undo
+            // the other - hence reading the current value back rather than
+            // deriving one from `lastDive`, which would also be the wrong number
+            // for a back-dated dive.
+            dive_number: form.getValues("dive_number"),
+            start_time: nowStartTime(),
+            duration: "",
+            max_depth: undefined,
+            avg_depth: undefined,
+            bottom_temperature: undefined,
+            visibility: undefined,
+            // The day's, like the temperature and visibility above: a new dive
+            // gets its own air, current, waves and weather, and its own rating
+            // and tags, which are the diver's word on this dive and no other.
+            air_temperature: undefined,
+            current: "",
+            waves: "",
+            weather: "",
+            rating: null,
+            tags: [],
+            // Deliberately *not* carried over, unlike the gear above: gear is
+            // habitual, sightings are observations. Copying yesterday's turtle
+            // into today's dive would fabricate a record of seeing it. Listed
+            // rather than omitted because this `reset` enumerates every field, and
+            // a field left out of it comes back `undefined`.
+            sightings: [],
+            notes: "",
+            // Spread so this object still enumerates every field, for the reason
+            // directly above. `prefill` rewrites each of these keys against the
+            // visibility rules, so the spread is the shape and the second argument
+            // is the meaning.
+            ...carried,
+          },
+          carried,
         );
+        form.reset(seeded);
+        setLastDivePeople(lastDive.people ?? []);
       } catch (error) {
         console.error("Failed to fetch last dive for pre-fill:", error);
       } finally {
@@ -484,23 +510,28 @@ export function NewDivePageContent() {
         subtitle="Record the details of your dive"
       />
 
-      <DiveFormCard
-        form={form}
-        mixtureFieldArray={mixtureFieldArray}
-        visibility={visibility}
-        mode="create"
-        onSubmit={onSubmit}
-        isSubmitting={isSubmitting}
-        cancelHref={returnTo.href}
-        submittingLabel="Logging dive..."
-        submitLabel="Log dive"
-        onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
-        pendingFiles={pendingFiles}
-        onRemovePendingFile={(id) =>
-          setPendingFiles((files) => files.filter((item) => item.id !== id))
-        }
-        diveNumberNotice={diveNumberNotice}
-      />
+      <AutofilledMarks
+        control={form.control}
+        isAutofilled={visibility.isAutofilled}
+      >
+        <DiveFormCard
+          form={form}
+          mixtureFieldArray={mixtureFieldArray}
+          visibility={visibility}
+          mode="create"
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+          cancelHref={returnTo.href}
+          submittingLabel="Logging dive..."
+          submitLabel="Log dive"
+          onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
+          pendingFiles={pendingFiles}
+          onRemovePendingFile={(id) =>
+            setPendingFiles((files) => files.filter((item) => item.id !== id))
+          }
+          diveNumberNotice={diveNumberNotice}
+        />
+      </AutofilledMarks>
     </div>
   );
 }

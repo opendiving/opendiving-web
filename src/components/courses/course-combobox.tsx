@@ -79,8 +79,8 @@ export function CourseCombobox({
     requestedRef.current.add(value);
 
     coursesAPI
-      .getCourse(value)
-      .then(remember)
+      .lookupCoursesByUuid([value])
+      .then((rows) => rows.forEach(remember))
       .catch((error) => console.error("Failed to fetch course:", error));
   }, [value, courses, remember]);
 

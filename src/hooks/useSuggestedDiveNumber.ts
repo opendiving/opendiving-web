@@ -32,6 +32,8 @@ export function useSuggestedDiveNumber(
   // False while the page has no signed-in user yet; the endpoint is
   // authenticated and reads the caller's own log.
   enabled: boolean,
+  // Told of each suggestion as it is written, with the number it replaces.
+  onFilled?: (before: unknown, after: number) => void,
 ): DiveNumberSuggestion | null {
   const [suggestion, setSuggestion] = useState<DiveNumberSuggestion | null>(
     null,
@@ -40,6 +42,10 @@ export function useSuggestedDiveNumber(
   // Bumped per request so a slow response for an earlier date can't land on top
   // of the one the diver is actually looking at.
   const latestRequest = useRef(0);
+  const onFilledRef = useRef(onFilled);
+  useEffect(() => {
+    onFilledRef.current = onFilled;
+  });
 
   useEffect(() => {
     if (!enabled || !startTime) return;
@@ -60,6 +66,7 @@ export function useSuggestedDiveNumber(
         if (form.getFieldState("dive_number").isDirty) return;
 
         setSuggestion(next);
+        onFilledRef.current?.(form.getValues("dive_number"), next.dive_number);
         // `resetField` rather than `setValue`, so the suggestion lands as the
         // field's new *default* rather than as an edit of the old one.
         //
