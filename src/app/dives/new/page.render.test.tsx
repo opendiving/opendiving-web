@@ -79,7 +79,7 @@ const stable = vi.hoisted(() => ({
       Object.assign(stable.auth.user, fields);
     }),
   },
-  router: { push: vi.fn(), replace: vi.fn() },
+  router: { push: vi.fn(), replace: vi.fn(), bfcacheId: "visit-1" },
   searchParams: new URLSearchParams(),
   toast: { toast: vi.fn() },
 }));
@@ -344,6 +344,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   stable.auth.user.dive_form_hidden_fields = [];
   stable.searchParams = new URLSearchParams();
+  stable.router.bfcacheId = "visit-1";
   vi.mocked(authAPI.updateProfile).mockResolvedValue(undefined);
   vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([]);
   vi.mocked(divesAPI.getDives).mockResolvedValue(emptyPage());
@@ -737,6 +738,67 @@ describe("the last-dive prefill", () => {
       expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
     );
     expect(divesAPI.getDives).toHaveBeenCalledTimes(1);
+    expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
+  });
+});
+
+// The router keeps the page mounted after the diver leaves it, and hands it back
+// with its state on the next visit; the router mock stands in for that by
+// re-rendering the same tree under a new `bfcacheId`.
+describe("opening the form again", () => {
+  const lastDive = () => {
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      ...emptyPage<Dive>(),
+      data: [storedDive()],
+      total_count: 1,
+    });
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ water_type: "brackish", trip_uuid: null }),
+    );
+  };
+
+  it("starts from the last dive and the new URL, not the earlier visit", async () => {
+    lastDive();
+    const { rerender } = render(<NewDivePage />);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
+    );
+    fireEvent.change(screen.getByLabelText(/water type/i), {
+      target: { value: "salt" },
+    });
+    fillRequiredFields();
+
+    stable.router.bfcacheId = "visit-2";
+    stable.searchParams = new URLSearchParams("trip_uuid=trip-1");
+    rerender(<NewDivePage />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
+    );
+    expect(screen.getByRole("textbox", { name: /duration/i })).toHaveValue("");
+    expect(divesAPI.getDive).toHaveBeenCalledTimes(2);
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].trip_uuid).toBe(
+      "trip-1",
+    );
+  });
+
+  it("keeps the draft on a return by back or forward", async () => {
+    lastDive();
+    const { rerender } = render(<NewDivePage />);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
+    );
+    fillRequiredFields();
+
+    rerender(<NewDivePage />);
+
+    expect(screen.getByRole("textbox", { name: /duration/i })).toHaveValue(
+      "45:00",
+    );
     expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
   });
 });
