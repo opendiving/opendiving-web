@@ -76,8 +76,10 @@ interface BackdropCardProps {
   // A control of the caller's own in the corner, in place of the menu.
   corner?: ReactNode;
   // Draws the record as one that is shown but not yet the list's own: the
-  // backdrop faded towards the card's colour, and the border dashed. The text
-  // keeps its colours, so it keeps its contrast.
+  // backdrop faded towards the card's colour, the border dashed, and the text -
+  // the link's included - in `text-muted-foreground`, which clears AA on the
+  // card's colour in both themes, hovered or not. A colour step rather than an
+  // opacity: see "The unit toggle's off half" in DECISIONS.md.
   muted?: boolean;
   // The details, from a link styled `BACKDROP_CARD_LINK` down. Anything in them
   // that has to stay reachable past that link is lifted with `relative z-10`.
@@ -190,7 +192,10 @@ export function BackdropCard({
           wider ones - drew each layer's edge as a visible ring. */}
       <div
         ref={detailsRef}
-        className="z-[1] px-3 pb-3 [text-shadow:0_0_2px_var(--backdrop-card),0_0_5px_var(--backdrop-card)]"
+        className={cn(
+          "z-[1] px-3 pb-3 [text-shadow:0_0_2px_var(--backdrop-card),0_0_5px_var(--backdrop-card)]",
+          muted && "text-muted-foreground [&_a]:text-muted-foreground",
+        )}
       >
         {children}
       </div>

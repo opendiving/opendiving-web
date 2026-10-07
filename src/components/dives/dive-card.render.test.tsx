@@ -335,6 +335,10 @@ describe("DiveCard", () => {
       within(item).queryByRole("button", { name: "Actions for dive #212" }),
     ).not.toBeInTheDocument();
     expect(item).toHaveClass("border-dashed");
+    // Its text is muted by colour, never by opacity.
+    expect(within(item).getByRole("link").parentElement).toHaveClass(
+      "text-muted-foreground",
+    );
   });
 
   it("changes nothing without the control", () => {
@@ -347,5 +351,8 @@ describe("DiveCard", () => {
       within(item).queryByText(/Not in this trip/),
     ).not.toBeInTheDocument();
     expect(item).not.toHaveClass("border-dashed");
+    expect(within(item).getByRole("link").parentElement).not.toHaveClass(
+      "text-muted-foreground",
+    );
   });
 });

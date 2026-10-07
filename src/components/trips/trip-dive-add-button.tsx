@@ -68,7 +68,7 @@ export function TripDiveAddButton({
         </DropdownMenuItem>
         {offersPart && (
           <DropdownMenuItem onSelect={() => onAdd("part")}>
-            Add {partCount} dives from this part
+            Add all {partCount} dives from this part
           </DropdownMenuItem>
         )}
         {offersTrip && (

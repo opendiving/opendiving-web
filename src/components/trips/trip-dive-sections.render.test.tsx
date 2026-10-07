@@ -192,7 +192,7 @@ describe("TripDiveSections", () => {
       renderSections([listed[2]], counted, { candidateCount: 9 });
       expect(await menuItems("Add to trip: dive #400")).toEqual([
         "Add this dive",
-        "Add 4 dives from this part",
+        "Add all 4 dives from this part",
         "Add all 9 unassigned dives",
       ]);
     });
@@ -209,7 +209,7 @@ describe("TripDiveSections", () => {
       renderSections([listed[2]], counted, { candidateCount: 4 });
       expect(await menuItems("Add to trip: dive #400")).toEqual([
         "Add this dive",
-        "Add 4 dives from this part",
+        "Add all 4 dives from this part",
       ]);
     });
 
@@ -240,7 +240,7 @@ describe("TripDiveSections", () => {
 
       await pick("Add this dive");
       expect(onAdd).toHaveBeenLastCalledWith({ dive_uuids: ["dahab"] }, 1);
-      await pick("Add 4 dives from this part");
+      await pick("Add all 4 dives from this part");
       expect(onAdd).toHaveBeenLastCalledWith(
         { part: { start_date: "2026-04-03", end_date: "2026-04-08" } },
         4,
@@ -305,7 +305,9 @@ describe("TripDiveSections", () => {
         screen.getByRole("button", { name: "Add to trip: dive #400" }),
       );
       await userEvent.click(
-        screen.getByRole("menuitem", { name: "Add 4 dives from this part" }),
+        screen.getByRole("menuitem", {
+          name: "Add all 4 dives from this part",
+        }),
       );
       await waitFor(() =>
         expect(screen.getByRole("button", { name: "Dahab" })).toHaveFocus(),
