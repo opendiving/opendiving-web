@@ -605,6 +605,23 @@ describe("labels and values line up", () => {
     }
   });
 
+  it("starts the diver's details level with the diving figures, edit buttons or not", () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded());
+
+    // The edit buttons are off the paper and off a link's page, so neither row may
+    // take its height from one: the name's line is taller than the heading's, and
+    // the lists under them would start apart.
+    const nameRow = screen.getByRole("heading", {
+      name: "Sam Reef",
+    }).parentElement!;
+    const divingRow = screen.getByRole("heading", {
+      name: "Diving",
+    }).parentElement!;
+    expect(nameRow).toHaveClass("min-h-9");
+    expect(divingRow).toHaveClass("min-h-9");
+  });
+
   it("holds the picture's column for a diver who stored none", () => {
     Object.assign(auth.user, COMPLETE);
     render(loaded({ certifications: [certification()] }));

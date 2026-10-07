@@ -120,6 +120,12 @@ const TWO_COLUMNS =
 // unit is the individual card, which carries this itself.
 const KEEP_TOGETHER = "break-inside-avoid";
 
+// The height of the diver's name row and of the Diving heading beside it, so the
+// rows under each start level. The edit button would set it on the diver's own
+// screen, but it is off the paper and off a link's page, where the name's line and
+// the heading's would otherwise leave the two lists 12px apart.
+const NAME_ROW = "min-h-9";
+
 /**
  * What the browser offers as the filename when this page is saved as a PDF.
  *
@@ -448,10 +454,7 @@ export function CheckInPageFrame({
                   )}
                 </div>
                 <div className="min-w-0 flex-1 space-y-2">
-                  {/* The button sets this row's height, as it does a section
-                      heading's, so the name and its control sit level with the
-                      Diving heading and its control across the row. */}
-                  <div className="flex items-center gap-2">
+                  <div className={cn("flex items-center gap-2", NAME_ROW)}>
                     <h2
                       className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}
                     >
@@ -495,6 +498,7 @@ export function CheckInPageFrame({
             <Section
               title="Diving"
               busy={isLoading}
+              headingClassName={NAME_ROW}
               // A diver who cleared every figure has said to leave the diving off the
               // sheet, and the sheet obeys - heading and all. The section stays on
               // screen regardless, because the control that emptied it is the only
@@ -911,6 +915,7 @@ function Section({
   busy = false,
   action,
   className,
+  headingClassName,
   children,
 }: {
   title: string;
@@ -918,6 +923,7 @@ function Section({
   /** The control this section is edited through. On screen only. */
   action?: ReactNode;
   className?: string;
+  headingClassName?: string;
   children: ReactNode;
 }) {
   return (
@@ -927,7 +933,12 @@ function Section({
     >
       {/* A heading stranded at the foot of a page, with its rows over the fold, is
           the one break a reader has to work around. */}
-      <div className="flex items-center justify-between gap-2 break-after-avoid">
+      <div
+        className={cn(
+          "flex items-center justify-between gap-2 break-after-avoid",
+          headingClassName,
+        )}
+      >
         <h3
           className={`text-sm font-semibold uppercase tracking-wide ${MUTED}`}
         >
