@@ -115,6 +115,24 @@ describe("DiveHero", () => {
     ).toHaveTextContent("FreshFresh waterCCRClosed circuit");
   });
 
+  it("ends its line with a paperclip where the dive holds a recording", () => {
+    const { unmount } = render(
+      <DiveHero
+        back={BACK}
+        dive={dive({ recordings: [{ uuid: "rec-1", ordinal: 0, files: [] }] })}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).toHaveTextContent("Apr 4, 2021, 10:04 · Recording attached");
+    unmount();
+
+    render(<DiveHero back={BACK} dive={dive({ recordings: [] })} />);
+    expect(
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).not.toHaveTextContent("Recording attached");
+  });
+
   // Each goes without saying.
   it("tags neither salt water nor open circuit", () => {
     render(

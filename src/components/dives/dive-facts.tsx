@@ -1,14 +1,15 @@
 import type { ReactNode } from "react";
-import { Ship } from "lucide-react";
+import { Paperclip, Ship } from "lucide-react";
 import type { Dive } from "@/lib/api/dives";
 import { IconFact } from "@/components/ui/icon-fact";
 import { formatDiveDateTime } from "@/lib/date-time";
+import { hasRecording } from "@/lib/dive-recordings";
 
 /**
  * The line under a dive's title, on its card and its page's hero alike: when,
  * in the dive's own timezone, and where - the title names the site, this says
- * where it is - then the boat. The water and the kind of dive are its title's
- * chips.
+ * where it is - then the boat, and a paperclip where a recording is
+ * attached. The water and the kind of dive are its title's chips.
  */
 export function diveFacts(dive: Dive): ReactNode[] {
   return [
@@ -18,6 +19,9 @@ export function diveFacts(dive: Dive): ReactNode[] {
       <IconFact icon={Ship} label="Boat">
         {dive.boat_name}
       </IconFact>
+    ),
+    hasRecording(dive) && (
+      <IconFact icon={Paperclip} label="Recording attached" />
     ),
   ].filter(Boolean);
 }

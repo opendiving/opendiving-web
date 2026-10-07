@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Trash2, Undo2 } from "lucide-react";
+import { Paperclip, Trash2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -209,7 +209,7 @@ function Row({
       className="flex items-start justify-between gap-2 rounded-md border px-3 py-2"
     >
       <div className="flex min-w-0 items-start gap-2">
-        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <Paperclip className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">{children}</div>
       </div>
       {action}

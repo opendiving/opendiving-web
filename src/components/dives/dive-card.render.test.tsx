@@ -280,6 +280,18 @@ describe("DiveCard", () => {
     expect(within(item).getByText("CCR")).toHaveAttribute("aria-hidden");
   });
 
+  it("ends its line with a paperclip where the dive holds a recording", () => {
+    expect(card({ dive: dive({ recording_count: 1 }) })).toHaveTextContent(
+      "Apr 4, 2026, 10:04 · Recording attached",
+    );
+  });
+
+  it("draws no paperclip for a dive with no recording", () => {
+    expect(card({ dive: dive({ recording_count: 0 }) })).not.toHaveTextContent(
+      "Recording attached",
+    );
+  });
+
   it("opens the dive plainly from the dive list, where its back link goes anyway", () => {
     at.pathname = "/dives";
     expect(

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileText, Loader2, Star, Trash2 } from "lucide-react";
+import { Download, Loader2, Paperclip, Star, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -258,7 +258,7 @@ export function DiveRecordingsCard({
                         className="flex items-start justify-between gap-2 rounded-md border px-3 py-2"
                       >
                         <div className="flex min-w-0 items-start gap-2">
-                          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                          <Paperclip className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                           <div className="min-w-0">
                             <div className="text-sm font-medium break-all">
                               {file.original_filename}

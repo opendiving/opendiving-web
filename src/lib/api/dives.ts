@@ -516,6 +516,9 @@ export interface Dive {
   // A list-response field: absent on the detail response, and null on a row
   // with no curve to draw.
   depth_outline?: DepthOutline | null;
+  // How many recordings the dive holds. A list-response field, standing in for
+  // `recordings` where the list doesn't send them; absent on the detail response.
+  recording_count?: number;
 }
 
 /** A recording's depth curve at a dive card's resolution. */
