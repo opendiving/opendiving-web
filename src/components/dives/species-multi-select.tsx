@@ -27,8 +27,9 @@ import {
   MAX_SPECIES_QUERY_LENGTH,
   MIN_SPECIES_QUERY_LENGTH,
   speciesAPI,
-  SpeciesSearchResponse,
   SpeciesSearchResult,
+  SpeciesSuggestion,
+  SpeciesSuggestResponse,
   SpeciesSummary,
 } from "@/lib/api/species";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -37,6 +38,7 @@ import {
   speciesDisplayName,
   speciesRankLabel,
   speciesSecondaryName,
+  speciesSeenOn,
 } from "@/lib/species";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import { cn } from "@/lib/utils";
@@ -69,7 +71,7 @@ export function parsePendingSpeciesId(id: string): number | null {
 }
 
 export interface MappedSpecies {
-  // Menu rows, in the order the API merged and ranked them.
+  // Menu rows, in the order the API tiered and ranked them.
   items: ComboboxItem[];
   // What each of those rows came from, by row id. The pending row a remote pick
   // creates is labelled from this, since the resolve it is waiting on is the
@@ -85,7 +87,7 @@ export interface MappedSpecies {
 }
 
 /**
- * Turns a page of search results into what the menu and the picker need.
+ * Turns a page of suggestions into what the menu and the picker need.
  *
  * Pure, and separate from the component, because this is the whole of the
  * mapping - everything else here is list plumbing and the resolve dance.
@@ -93,16 +95,19 @@ export interface MappedSpecies {
  * The hint carries whichever fact the name doesn't. A row shown by its common
  * name is disambiguated by its binomial; a row shown by its binomial already is
  * one, so the rank is the useful thing to add ("Genus" tells the diver they are
- * about to log a whole genus). `matched_name` is appended on top of either
- * whenever it was some *other* name that matched, because otherwise a search for
- * "Manta birostris" returns a row reading *Mobula birostris* and nothing on
- * screen explains why - the accepted-taxon rule is invisible from the outside.
+ * about to log a whole genus). Then why the row sits where it does: how many of
+ * the diver's dives at the form's sites logged it, else when they last logged it
+ * anywhere - the API orders the page by exactly those, and a list of twenty
+ * reads as rows, not as an order. `matched_name` is appended on top whenever it
+ * was some *other* name that matched, because otherwise a search for "Manta
+ * birostris" returns a row reading *Mobula birostris* and nothing on screen
+ * explains why - the accepted-taxon rule is invisible from the outside.
  *
  * Results sharing a row id are collapsed: two menu rows with the same React key
  * are both a warning and a row that can't be excluded once picked.
  */
 export function mapSpeciesResults(
-  response: SpeciesSearchResponse,
+  response: SpeciesSuggestResponse,
 ): MappedSpecies {
   const items: ComboboxItem[] = [];
   const results = new Map<string, SpeciesSearchResult>();
@@ -141,12 +146,18 @@ export function mapSpeciesResults(
   };
 }
 
-function hintFor(result: SpeciesSearchResult): string | undefined {
+function hintFor(result: SpeciesSuggestion): string | undefined {
   const parts: string[] = [];
   const context = result.common_name
     ? result.scientific_name
     : speciesRankLabel(result.rank);
   if (context) parts.push(context);
+  const dives = result.dive_count_at_sites;
+  if (dives > 0) {
+    parts.push(`${dives} ${dives === 1 ? "dive" : "dives"} here`);
+  } else if (result.last_seen) {
+    parts.push(`last seen ${speciesSeenOn(result.last_seen)}`);
+  }
   const matched = result.matched_name?.trim();
   // Only when it says something the row doesn't already. The API nulls a hint
   // wherever a visible name already accounts for the *query*, which covers this
@@ -202,6 +213,8 @@ export interface SpeciesMultiSelectProps extends FormControlSlotProps {
   // not covered here is fetched individually - but it saves a request per row on
   // the form that always has selections.
   knownSpecies?: SpeciesSummary[];
+  // The dive's sites, whose species the menu lists first.
+  diveSiteUuids?: readonly string[];
   onChange: (sightings: SightingWrite[]) => void;
   // What the form refused on each row, by position in `value`.
   errors?: readonly (SightingErrors | undefined)[];
@@ -215,7 +228,8 @@ export interface SpeciesMultiSelectProps extends FormControlSlotProps {
 }
 
 /**
- * Lets the diver record what they saw, by searching a global catalog that is
+ * Lets the diver record what they saw: the species they logged at the dive's
+ * sites first, then the rest they have logged, then a global catalog that is
  * backed live by WoRMS and Wikidata.
  *
  * Wraps the generic `CreatableCombobox` the way `DiveSiteMultiSelect` does (see
@@ -244,6 +258,7 @@ export interface SpeciesMultiSelectProps extends FormControlSlotProps {
 export function SpeciesMultiSelect({
   value,
   knownSpecies,
+  diveSiteUuids,
   onChange,
   errors,
   onPendingChange,
@@ -362,13 +377,24 @@ export function SpeciesMultiSelect({
 
   const searchSpecies = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
+      // The held species go up so the server leaves them out before it cuts the
+      // page, which is what lets the menu refill after a pick rather than lose a
+      // row. Through `valueRef`, so the search the combobox re-runs right after a
+      // pick already carries it. A pick still resolving has no uuid to send;
+      // `excludeIds` hides that one.
+      const response = await speciesAPI.suggestSpecies(query, {
+        diveSiteUuids,
+        excludeSpeciesUuids: valueRef.current.map(
+          (sighting) => sighting.species_uuid,
+        ),
+      });
       const {
         items,
         results,
         summaries,
         attributions: credits,
         hasMore,
-      } = mapSpeciesResults(await speciesAPI.searchSpecies(query));
+      } = mapSpeciesResults(response);
       // Accumulated across queries rather than replaced: the menu can hand back
       // a row from a list the next keystroke has already superseded.
       results.forEach((result, id) => resultsRef.current.set(id, result));
@@ -376,7 +402,7 @@ export function SpeciesMultiSelect({
       rememberAttributions(credits);
       return { items, hasMore };
     },
-    [rememberLabels, rememberAttributions],
+    [diveSiteUuids, rememberLabels, rememberAttributions],
   );
 
   // Appends a sighting of the species alone, claiming it in `valueRef` first so a
@@ -624,6 +650,8 @@ export function SpeciesMultiSelect({
         // behind this one - see DECISIONS.md ("The picker types more slowly than
         // the rest of the app, on purpose").
         searchDebounceMs={450}
+        // Gates only what an empty menu says: one letter is already searched,
+        // and the diver's own species answer it.
         minSearchLength={MIN_SPECIES_QUERY_LENGTH}
         maxSearchLength={MAX_SPECIES_QUERY_LENGTH}
         queryTooLongLabel="That's too long to search for - try just the name."

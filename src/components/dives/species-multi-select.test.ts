@@ -5,8 +5,8 @@ import {
   pendingSpeciesId,
 } from "./species-multi-select";
 import type {
-  SpeciesSearchResponse,
-  SpeciesSearchResult,
+  SpeciesSuggestion,
+  SpeciesSuggestResponse,
 } from "@/lib/api/species";
 
 // Pinned to what the API actually sends. The WoRMS credit carries a markdown
@@ -17,7 +17,7 @@ const WORMS =
   "[World Register of Marine Species](https://www.marinespecies.org) (CC BY)";
 const WIKIDATA = "Wikidata (CC0)";
 
-function result(overrides: Partial<SpeciesSearchResult> = {}) {
+function result(overrides: Partial<SpeciesSuggestion> = {}) {
   return {
     aphia_id: 278400,
     uuid: null,
@@ -28,14 +28,16 @@ function result(overrides: Partial<SpeciesSearchResult> = {}) {
     matched_name: null,
     source: "wikidata",
     attribution: WIKIDATA,
+    dive_count_at_sites: 0,
+    last_seen: null,
     ...overrides,
-  } as SpeciesSearchResult;
+  } as SpeciesSuggestion;
 }
 
 function response(
-  results: SpeciesSearchResult[],
+  results: SpeciesSuggestion[],
   has_more = false,
-): SpeciesSearchResponse {
+): SpeciesSuggestResponse {
   return { results, has_more };
 }
 
@@ -165,6 +167,42 @@ describe("mapSpeciesResults", () => {
         response([result({ matched_name: "Amphiprion ocellaris" })]),
       ).items[0].hint,
     ).toBe("Amphiprion ocellaris");
+  });
+
+  it("counts the dives at the form's sites on a site row", () => {
+    // The count wins over the date: the row is first for its dives here, and
+    // carries a last-seen instant only because every logged species does.
+    const hints = mapSpeciesResults(
+      response([
+        result({
+          uuid: "species-1",
+          dive_count_at_sites: 3,
+          last_seen: "2026-03-12T09:00:00+02:00",
+        }),
+        result({ uuid: "species-2", aphia_id: 105857, dive_count_at_sites: 1 }),
+      ]),
+    ).items.map((item) => item.hint);
+    expect(hints).toEqual([
+      "Amphiprion ocellaris · 3 dives here",
+      "Amphiprion ocellaris · 1 dive here",
+    ]);
+  });
+
+  it("dates a row the diver logged elsewhere, in that dive's own zone", () => {
+    // 01:30 at +10:00 is the 12th there and the 11th in UTC; the diver's day is
+    // the 12th.
+    const [item] = mapSpeciesResults(
+      response([
+        result({
+          uuid: "species-1",
+          last_seen: "2026-03-12T01:30:00+10:00",
+          matched_name: "Clown anemonefish",
+        }),
+      ]),
+    ).items;
+    expect(item.hint).toBe(
+      'Amphiprion ocellaris · last seen Mar 12, 2026 · matched "Clown anemonefish"',
+    );
   });
 
   it("returns summaries only for rows that are already catalog rows", () => {

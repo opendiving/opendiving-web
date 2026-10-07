@@ -244,11 +244,18 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   });
   const showBoatName =
     isVisible("boat_name") && (entryType === "boat" || Boolean(boatName));
-  // Every picker below ranks its rows by last use at or before the dive's own
-  // start time, sent as the field holds it; an empty field sends no bound.
-  const [startTime, tripUuid, courseUuid] = useWatch({
+  // The lookup pickers below rank their rows by last use at or before the dive's
+  // own start time, sent as the field holds it; an empty field sends no bound.
+  // The species picker takes no bound - a site's species belong to the place, not
+  // to the date - and lists the species logged at the dive's sites first.
+  const [startTime, tripUuid, courseUuid, diveSiteUuids] = useWatch({
     control,
-    name: ["start_time", "trip_uuid", "course_uuid"] as Path<TFieldValues>[],
+    name: [
+      "start_time",
+      "trip_uuid",
+      "course_uuid",
+      "dive_site_uuids",
+    ] as Path<TFieldValues>[],
   });
   const until: string | undefined = startTime || undefined;
   const roster = useDiveRoster(tripUuid, courseUuid);
@@ -1024,6 +1031,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   <SpeciesMultiSelect
                     value={field.value ?? []}
                     knownSpecies={knownSpecies}
+                    diveSiteUuids={diveSiteUuids}
                     onChange={field.onChange}
                     errors={sightingErrors(fieldState.error)}
                     onPendingChange={onSpeciesPendingChange}

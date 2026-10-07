@@ -688,6 +688,12 @@ name is right. `DiveSiteMultiSelect` adds `blurOnSelect`, which closes the menu 
 after a pick: most dives have one site, and an open menu would cover the fields below. Its new-site
 dialog skips the focus return after a save for the same reason.
 
+A pick that keeps the menu open runs the search once more for the current query, the empty one after
+an untyped pick: neither the query nor the open state changed, and a feed that leaves out what the
+field holds would otherwise lose a row per pick instead of refilling. The gear and people pickers
+make one extra request per pick; the sites picker closes and the tags picker filters locally, so
+neither re-asks.
+
 ## Dropdowns are navigable with Up/Down and Enter
 
 `CreatableCombobox` (dive sites, trips, gear) and `VolumeCombobox` (cylinder presets) highlight rows
@@ -3407,6 +3413,17 @@ verbatim, any language. `"unknown"` is the API's rank sentinel from both `_wikid
 "Species") keeps a live guard. Ranks vary by register; never key on one. The picker keeps the API's
 order (`visibleItems`, no `sort`) and `hintFor`'s row-relative redundancy check.
 
+## The species picker reads the diver's suggestions, and says why a row is first
+
+The picker reads `GET /user/species/suggest` with the form's sites and held species: the species
+logged at those sites by dives there, then the diver's others by last seen, then the catalog
+search's rows. The tiers are merged on the API, so one request answers each query and the held
+species are left out before the page is cut, which is what refills it after a pick. Every query is
+asked, one letter included, since the diver's own species filter from the first; `minSearchLength`
+stays 2 so a one-letter miss says "type a species name". `hintFor` appends `3 dives here` or
+`last seen <date>`, since a diver reads rows rather than an order. Section headings were rejected
+for the reason the people pins record: they would teach the combobox unselectable rows.
+
 ## The Species Seen tile shows the derived `species_seen`, one of four figures in one `Card`
 
 The API derives `species_seen` as the distinct species over a diver's live dives, recomputed on
@@ -3422,16 +3439,18 @@ per-width measurements live in the component's comment. The cell component is `S
 
 `/privacy` §4.6 discloses the species picker's two providers. `search_species` runs `_local_search`
 and `_remote_search` every time; a catalog hit changes what is offered (a `uuid` row), never whether
-providers are asked. The shared cache stops a search leaving: `_cache_key("search", query)` is keyed
-on the normalized query alone, so instance-wide, and a complete answer is held thirty days
-(`_HIT_TTL_SECONDS`), a partial fan-out one hour, hence "a month", not "always". The shared catalog
-stops a resolve leaving: `resolve_species` returns early on `_species_by_aphia_id`. Resolving
-contacts both providers, `AphiaRecordByAphiaID` then `_wikidata_by_aphia_id`
-(`haswbstatement:P850=<aphia_id>`, source of `wikidata_qid` and the common name), so the AphiaID
-leaves only at pick time; `_wikidata_search` sends the typed query with a bare
-`haswbstatement:P850`. Emptying `WORMS_API_URL`/`WIKIDATA_API_URL` is not the escape hatch §4.4
-offers for tiles: search degrades to the catalog and resolving a new species fails. WoRMS is the
-taxonomy, Wikidata the common names; the section mirrors §4.5's three points.
+providers are asked. What the picker's route skips is the search itself: a query under two
+characters, or one the diver's own species fill a page with, never reaches `search_species`. The
+shared cache stops a search leaving: `_cache_key("search", query)` is keyed on the normalized query
+alone, so instance-wide, and a complete answer is held thirty days (`_HIT_TTL_SECONDS`), a partial
+fan-out one hour, hence "a month", not "always". The shared catalog stops a resolve leaving:
+`resolve_species` returns early on `_species_by_aphia_id`. Resolving contacts both providers,
+`AphiaRecordByAphiaID` then `_wikidata_by_aphia_id` (`haswbstatement:P850=<aphia_id>`, source of
+`wikidata_qid` and the common name), so the AphiaID leaves only at pick time; `_wikidata_search`
+sends the typed query with a bare `haswbstatement:P850`. Emptying `WORMS_API_URL`/`WIKIDATA_API_URL`
+is not the escape hatch §4.4 offers for tiles: search degrades to the catalog and resolving a new
+species fails. WoRMS is the taxonomy, Wikidata the common names; the section mirrors §4.5's three
+points.
 
 ## Web config is read at runtime, and the browser is handed it
 

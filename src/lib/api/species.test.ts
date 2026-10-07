@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import axios from "axios";
 
 import { DEFAULT_API_BASE_URL } from "@/lib/api-base";
 import { speciesAPI, speciesPhotoUrl } from "./species";
@@ -95,5 +96,55 @@ describe("getLifeListEntry", () => {
     get.mockRejectedValue(failure);
 
     await expect(speciesAPI.getLifeListEntry(UUID)).rejects.toBe(failure);
+  });
+});
+
+describe("suggestSpecies", () => {
+  // The query string the request would carry, serialized by real axios from the
+  // config the module handed its (mocked) client.
+  async function sentQuery(
+    ...args: Parameters<typeof speciesAPI.suggestSpecies>
+  ): Promise<string> {
+    get.mockResolvedValue({ data: { results: [], has_more: false } });
+    await speciesAPI.suggestSpecies(...args);
+    const [url, config] = get.mock.calls[0];
+    return decodeURIComponent(
+      new URL(axios.getUri({ url, ...config }), "https://example.test").search,
+    );
+  }
+
+  it("repeats each site and each held species once, as FastAPI reads a list", async () => {
+    expect(
+      await sentQuery(" wra ", {
+        diveSiteUuids: ["site-a", "site-b"],
+        excludeSpeciesUuids: ["species-1", "species-2"],
+      }),
+    ).toBe(
+      "?q=wra&dive_site_uuid=site-a&dive_site_uuid=site-b" +
+        "&exclude_species_uuid=species-1&exclude_species_uuid=species-2",
+    );
+    expect(get.mock.calls[0][0]).toBe("/user/species/suggest");
+  });
+
+  it("sends no q for an empty query, and nothing for empty lists", async () => {
+    expect(
+      await sentQuery("  ", { diveSiteUuids: [], excludeSpeciesUuids: [] }),
+    ).toBe("");
+  });
+
+  it("sends the first 100 held species, the most the route takes", async () => {
+    const held = Array.from({ length: 101 }, (_, i) => `species-${i}`);
+    const query = await sentQuery("", { excludeSpeciesUuids: held });
+    const sent = new URLSearchParams(query).getAll("exclude_species_uuid");
+
+    expect(sent).toEqual(held.slice(0, 100));
+  });
+
+  it("answers a query the route would refuse without asking it", async () => {
+    await expect(speciesAPI.suggestSpecies("x".repeat(256))).resolves.toEqual({
+      results: [],
+      has_more: false,
+    });
+    expect(get).not.toHaveBeenCalled();
   });
 });

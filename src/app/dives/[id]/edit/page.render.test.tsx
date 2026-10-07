@@ -89,7 +89,7 @@ vi.mock("@/lib/api/species", async (importOriginal) => {
     ...actual,
     speciesAPI: {
       ...actual.speciesAPI,
-      searchSpecies: vi.fn(),
+      suggestSpecies: vi.fn(),
       resolveSpecies: vi.fn(),
       getSpecies: vi.fn(),
     },
@@ -159,7 +159,7 @@ beforeEach(() => {
   vi.mocked(diveSitesAPI.lookupDiveSites).mockResolvedValue(emptyPage());
   vi.mocked(gear.fetchAllGearSets).mockResolvedValue([]);
   vi.mocked(gear.gearAPI.lookupGearItems).mockResolvedValue(emptyPage());
-  vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
+  vi.mocked(speciesAPI.suggestSpecies).mockResolvedValue({
     results: [],
     has_more: false,
   });

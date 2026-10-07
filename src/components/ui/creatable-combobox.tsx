@@ -261,8 +261,10 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   items?: ComboboxItem[];
   // Remote mode: called with the typed text (debounced, and once with "" when the
   // menu opens) to fetch matching options from the server, instead of filtering
-  // `items` locally. Use this wherever the full list is too big to ship to the
-  // browser - see `DiveSiteMultiSelect`.
+  // `items` locally. Under `keepOpenOnSelect` it is also called once more after
+  // each pick that leaves the menu open, so a server that leaves out what the
+  // field already holds can fill the slot the pick vacated. Use this wherever the
+  // full list is too big to ship to the browser - see `DiveSiteMultiSelect`.
   onSearch?: (query: string) => Promise<ComboboxSearchResult>;
   // How long to wait after the last keystroke before calling `onSearch`.
   // Defaults to the 250 ms that suits our own lookup endpoints; raise it for a
@@ -424,6 +426,10 @@ export function CreatableCombobox({
   // query nobody had tried yet, and letting Enter file a name-only location on
   // the strength of it.
   const [failedQuery, setFailedQuery] = useState<string | null>(null);
+  // Bumped by a pick that keeps the menu open, which changes neither the query
+  // nor `isOpen` when nothing was typed, so the search effect would otherwise
+  // leave the page it answered before the pick on screen.
+  const [searchRun, setSearchRun] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   // Remembers what was picked, so remote mode can still show the selected item's
@@ -455,7 +461,8 @@ export function CreatableCombobox({
 
   // Ask the server for matches while the menu is open, restarting the timer on
   // every keystroke. Opening the menu runs it once with an empty query, which is
-  // what fills the initial (unfiltered, server-truncated) list.
+  // what fills the initial (unfiltered, server-truncated) list, and a pick that
+  // keeps the menu open runs it once more for whatever the query is then.
   useEffect(() => {
     if (!isRemote || !isOpen) return;
 
@@ -491,7 +498,7 @@ export function CreatableCombobox({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [isRemote, isOpen, query, searchDebounceMs]);
+  }, [isRemote, isOpen, query, searchDebounceMs, searchRun]);
 
   // Keep the displayed text in sync with the selected id whenever it changes
   // from outside (e.g. loading an existing record into the form), as long as
@@ -659,6 +666,7 @@ export function CreatableCombobox({
         return;
       }
       setIsOpen(true);
+      setSearchRun((run) => run + 1);
       inputRef.current?.focus();
       return;
     }

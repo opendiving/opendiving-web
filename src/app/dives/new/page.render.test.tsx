@@ -146,7 +146,7 @@ vi.mock("@/lib/api/species", async (importOriginal) => {
     ...actual,
     speciesAPI: {
       ...actual.speciesAPI,
-      searchSpecies: vi.fn(),
+      suggestSpecies: vi.fn(),
       resolveSpecies: vi.fn(),
       getSpecies: vi.fn(),
     },
@@ -368,7 +368,7 @@ beforeEach(() => {
         is_archived: false,
       }) as Awaited<ReturnType<typeof gear.gearAPI.getGearItem>>,
   );
-  vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
+  vi.mocked(speciesAPI.suggestSpecies).mockResolvedValue({
     results: [],
     has_more: false,
   });
@@ -1101,7 +1101,7 @@ describe("saving while a species pick is still resolving", () => {
     // and the loss inside it would be silent: the pick lives in the picker's
     // local state until its uuid comes back, so a save that beat it would write
     // the dive without the sighting and say nothing.
-    vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
+    vi.mocked(speciesAPI.suggestSpecies).mockResolvedValue({
       results: [
         {
           aphia_id: 278400,
@@ -1113,6 +1113,8 @@ describe("saving while a species pick is still resolving", () => {
           matched_name: null,
           source: "wikidata",
           attribution: "Wikidata (CC0)",
+          dive_count_at_sites: 0,
+          last_seen: null,
         },
       ],
       has_more: false,
@@ -2110,6 +2112,43 @@ describe("the pickers", () => {
     );
   });
 
+  it("list the species logged at the dive's sites, and none once they go", async () => {
+    stable.searchParams = new URLSearchParams("dive_site_uuid=site-shark");
+    vi.mocked(diveSitesAPI.lookupDiveSitesByUuid).mockResolvedValue([
+      {
+        uuid: "site-shark",
+        name: "Shark Reef",
+        user_uuid: "user-1",
+        created_at: "2026-01-01T00:00:00Z",
+      } as DiveSite,
+    ]);
+    render(<NewDivePage />);
+    await screen.findByRole("button", { name: "Remove Shark Reef" });
+    const speciesBox = () =>
+      screen.getByRole("combobox", { name: /^species spotted$/i });
+
+    await userEvent.click(speciesBox());
+
+    await waitFor(() => expect(speciesAPI.suggestSpecies).toHaveBeenCalled());
+    expect(speciesAPI.suggestSpecies).toHaveBeenLastCalledWith("", {
+      diveSiteUuids: ["site-shark"],
+      excludeSpeciesUuids: [],
+    });
+
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Shark Reef" }),
+    );
+    vi.mocked(speciesAPI.suggestSpecies).mockClear();
+    await userEvent.click(speciesBox());
+
+    await waitFor(() => expect(speciesAPI.suggestSpecies).toHaveBeenCalled());
+    expect(speciesAPI.suggestSpecies).toHaveBeenLastCalledWith("", {
+      diveSiteUuids: [],
+      excludeSpeciesUuids: [],
+    });
+  });
+
   it("list the trip's people first, with no pick of the trip", async () => {
     stable.searchParams = new URLSearchParams("trip_uuid=trip-7");
     vi.mocked(tripsAPI.lookupTripsByUuid).mockResolvedValue([
@@ -2919,7 +2958,7 @@ describe("hiding the species picker while it is still resolving a pick", () => {
     // disables the submit on it. Unmounting it - by switching Species off, or by
     // applying a preset that hides it - used to leave that report stuck at true and
     // the button on "Adding species..." until a reload: a form wedged by a switch.
-    vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
+    vi.mocked(speciesAPI.suggestSpecies).mockResolvedValue({
       results: [
         {
           aphia_id: 278400,
@@ -2931,6 +2970,8 @@ describe("hiding the species picker while it is still resolving a pick", () => {
           matched_name: null,
           source: "wikidata",
           attribution: "Wikidata (CC0)",
+          dive_count_at_sites: 0,
+          last_seen: null,
         },
       ],
       has_more: false,

@@ -6,8 +6,8 @@ import { SpeciesMultiSelect } from "./species-multi-select";
 import type { SightingWrite } from "@/lib/api/dives";
 import type {
   Species,
-  SpeciesSearchResponse,
-  SpeciesSearchResult,
+  SpeciesSuggestion,
+  SpeciesSuggestResponse,
   SpeciesSummary,
 } from "@/lib/api/species";
 
@@ -23,7 +23,7 @@ vi.mock("@/lib/api/species", () => ({
   MIN_SPECIES_QUERY_LENGTH: 2,
   MAX_SPECIES_QUERY_LENGTH: 255,
   speciesAPI: {
-    searchSpecies: vi.fn(),
+    suggestSpecies: vi.fn(),
     resolveSpecies: vi.fn(),
     getSpecies: vi.fn(),
   },
@@ -34,12 +34,12 @@ vi.mock("@/components/ui/use-toast", () => ({
 }));
 
 const { speciesAPI } = await import("@/lib/api/species");
-const searchSpecies = vi.mocked(speciesAPI.searchSpecies);
+const suggestSpecies = vi.mocked(speciesAPI.suggestSpecies);
 const resolveSpecies = vi.mocked(speciesAPI.resolveSpecies);
 const getSpecies = vi.mocked(speciesAPI.getSpecies);
 
 // Already in the catalog, so picking it appends straight away.
-const LOCAL: SpeciesSearchResult = {
+const LOCAL: SpeciesSuggestion = {
   aphia_id: 105857,
   uuid: "species-manta",
   scientific_name: "Mobula birostris",
@@ -50,10 +50,12 @@ const LOCAL: SpeciesSearchResult = {
   source: "catalog",
   attribution:
     "[World Register of Marine Species](https://www.marinespecies.org) (CC BY)",
+  dive_count_at_sites: 0,
+  last_seen: null,
 };
 
 // Upstream only, so picking it has to resolve first.
-const REMOTE: SpeciesSearchResult = {
+const REMOTE: SpeciesSuggestion = {
   aphia_id: 278400,
   uuid: null,
   scientific_name: "Amphiprion ocellaris",
@@ -63,6 +65,8 @@ const REMOTE: SpeciesSearchResult = {
   matched_name: null,
   source: "wikidata",
   attribution: "Wikidata (CC0)",
+  dive_count_at_sites: 0,
+  last_seen: null,
 };
 
 const RESOLVED: Species = {
@@ -112,16 +116,16 @@ const CLOWNFISH_SUMMARY: SpeciesSummary = {
 };
 
 const found = (
-  results: SpeciesSearchResult[],
+  results: SpeciesSuggestion[],
   has_more = false,
-): SpeciesSearchResponse => ({ results, has_more });
+): SpeciesSuggestResponse => ({ results, has_more });
 
 beforeEach(() => {
   toast.mockReset();
-  searchSpecies.mockReset();
+  suggestSpecies.mockReset();
   resolveSpecies.mockReset();
   getSpecies.mockReset();
-  searchSpecies.mockResolvedValue(found([LOCAL, REMOTE]));
+  suggestSpecies.mockResolvedValue(found([LOCAL, REMOTE]));
 });
 
 // The last list the field handed back, so a test can assert what would be
@@ -134,15 +138,18 @@ let submitted: SightingWrite[] = [];
 function Field({
   initial = [] as SightingWrite[],
   known,
+  sites,
 }: {
   initial?: SightingWrite[];
   known?: SpeciesSummary[];
+  sites?: string[];
 }) {
   const [value, setValue] = useState<SightingWrite[]>(initial);
   return (
     <SpeciesMultiSelect
       value={value}
       knownSpecies={known}
+      diveSiteUuids={sites}
       onChange={(next) => {
         submitted = next;
         setValue(next);
@@ -206,13 +213,13 @@ describe("SpeciesMultiSelect", () => {
     await openMenu();
 
     await userEvent.paste("Giant manta ray");
-    await waitFor(() => expect(searchSpecies).toHaveBeenCalled());
+    await waitFor(() => expect(suggestSpecies).toHaveBeenCalled());
 
     expect(rows()).toEqual([]);
   });
 
   it("says it is searching while the list is loading, not that there is none", async () => {
-    searchSpecies.mockReturnValue(new Promise(() => {}));
+    suggestSpecies.mockReturnValue(new Promise(() => {}));
     render(<Field />);
 
     await userEvent.click(screen.getByRole("combobox"));
@@ -222,7 +229,7 @@ describe("SpeciesMultiSelect", () => {
   });
 
   it("says the search is down when the opening query fails", async () => {
-    searchSpecies.mockRejectedValue(new Error("500"));
+    suggestSpecies.mockRejectedValue(new Error("500"));
     render(<Field />);
 
     await userEvent.click(screen.getByRole("combobox"));
@@ -419,7 +426,7 @@ describe("SpeciesMultiSelect", () => {
           );
         }),
     );
-    searchSpecies.mockResolvedValue(
+    suggestSpecies.mockResolvedValue(
       found([REMOTE, { ...REMOTE, aphia_id: 127405, uuid: null }]),
     );
     render(<Field />);
@@ -466,6 +473,115 @@ describe("SpeciesMultiSelect", () => {
     // splitting them.
     expect(screen.getByText(/\(CC BY\)/)).toBeInTheDocument();
     expect(screen.getByText(/Wikidata \(CC0\)/)).toBeInTheDocument();
+  });
+
+  it("asks with the form's sites and held species, from the empty query on", async () => {
+    render(
+      <Field
+        initial={[{ species_uuid: "species-turtle" }]}
+        known={[
+          {
+            uuid: "species-turtle",
+            scientific_name: "Chelonia mydas",
+            common_name: "Green turtle",
+            rank: "Species",
+          },
+        ]}
+        sites={["site-a", "site-b"]}
+      />,
+    );
+    await openMenu();
+
+    expect(suggestSpecies).toHaveBeenCalledTimes(1);
+    expect(suggestSpecies).toHaveBeenCalledWith("", {
+      diveSiteUuids: ["site-a", "site-b"],
+      excludeSpeciesUuids: ["species-turtle"],
+    });
+  });
+
+  it("answers one typed letter with the rows that came back", async () => {
+    // The diver's own species filter from the first letter. `minSearchLength`
+    // still reads 2, but it only decides what an empty menu says.
+    suggestSpecies.mockImplementation(async (query) =>
+      found(query ? [LOCAL] : [LOCAL, REMOTE], query !== ""),
+    );
+    render(<Field />);
+    await openMenu();
+
+    await userEvent.keyboard("g");
+
+    await waitFor(() =>
+      expect(suggestSpecies).toHaveBeenLastCalledWith("g", {
+        diveSiteUuids: undefined,
+        excludeSpeciesUuids: [],
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("option", { name: /Ocellaris clownfish/ }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("option", { name: /Giant manta ray/ }),
+    ).toBeVisible();
+    // The one letter never reached the catalog search, which the API says.
+    expect(
+      screen.getByText("More matches than shown - keep typing to narrow."),
+    ).toBeInTheDocument();
+  });
+
+  it("says why a row is near the top", async () => {
+    suggestSpecies.mockResolvedValue(
+      found([
+        { ...LOCAL, dive_count_at_sites: 3, last_seen: "2026-03-12T09:00:00Z" },
+        {
+          ...REMOTE,
+          uuid: "species-clownfish",
+          source: "catalog",
+          last_seen: "2026-03-12T09:00:00Z",
+        },
+      ]),
+    );
+    render(<Field sites={["site-a"]} />);
+    await openMenu();
+
+    expect(
+      screen.getByRole("option", { name: /Giant manta ray/ }),
+    ).toHaveTextContent("Mobula birostris · 3 dives here");
+    expect(
+      screen.getByRole("option", { name: /Ocellaris clownfish/ }),
+    ).toHaveTextContent("Amphiprion ocellaris · last seen Mar 12, 2026");
+  });
+
+  it("asks again after a pick, without what was just picked", async () => {
+    // The server leaves the held species out before it cuts the page, so the
+    // refetch is what fills the slot the pick vacated. `excludeIds` would hide
+    // the picked row either way; the call's arguments are what pin the refill.
+    const NEXT: SpeciesSuggestion = {
+      ...LOCAL,
+      aphia_id: 137117,
+      uuid: "species-turtle",
+      scientific_name: "Chelonia mydas",
+      common_name: "Green turtle",
+    };
+    suggestSpecies
+      .mockResolvedValueOnce(found([LOCAL, REMOTE]))
+      .mockResolvedValueOnce(found([REMOTE, NEXT]));
+    render(<Field sites={["site-a"]} />);
+    await openMenu();
+
+    await userEvent.click(
+      screen.getByRole("option", { name: /Giant manta ray/ }),
+    );
+
+    await waitFor(() => expect(suggestSpecies).toHaveBeenCalledTimes(2));
+    expect(suggestSpecies).toHaveBeenLastCalledWith("", {
+      diveSiteUuids: ["site-a"],
+      excludeSpeciesUuids: ["species-manta"],
+    });
+    expect(
+      await screen.findByRole("option", { name: /Green turtle/ }),
+    ).toBeVisible();
   });
 
   it("labels a selection it was handed the names for without a lookup", async () => {
