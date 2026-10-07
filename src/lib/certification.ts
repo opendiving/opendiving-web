@@ -1,4 +1,4 @@
-import type { User } from "@/lib/api/auth";
+import type { InsurancePolicy } from "@/lib/api/checkin-details";
 import {
   certificationAgencyLabel,
   type CertificationExpiringEntry,
@@ -123,7 +123,7 @@ export function certificationRenewals<T extends { expires_on?: string | null }>(
 // One line of the renewals list, whatever it is a renewal of: what runs out, what kind
 // of thing it is, where it is kept, and the date it runs out on.
 export interface Renewable {
-  // A certification's uuid, or "dive-insurance".
+  // A certification's uuid, or "insurance-" and the policy's position in the list.
   key: string;
   // Which form renews it: the certification's own dialog, or the check-in details'
   // insurance group.
@@ -135,17 +135,19 @@ export interface Renewable {
 }
 
 // Everything with an expiry date a diver might have to renew: the dated certifications,
-// and the dive insurance beside them, since a lapsed policy stops a dive at the desk
-// exactly as a lapsed rescue card does. Unfiltered - `certificationRenewals` picks the
-// ones worth flagging, and sorts them into one list so the soonest leads whichever kind
-// it is.
+// and every dated insurance policy beside them, since a lapsed policy stops a dive at
+// the desk exactly as a lapsed rescue card does. Unfiltered - `certificationRenewals`
+// picks the ones worth flagging, and sorts them into one list so the soonest leads
+// whichever kind it is.
 //
 // Certification rows link to `/certifications`: certifications are edited in dialogs on
-// that one page, so there is no per-certification URL. The insurance row links to
-// `/settings/checkin`, where the policy is kept.
+// that one page, so there is no per-certification URL. A policy links to
+// `/settings/checkin`, where the policies are kept. Policies have no id of their own on
+// the wire, so a row is keyed by its place in the diver's list and named by its
+// provider, which every policy has.
 export function renewables(
   certifications: CertificationExpiringEntry[],
-  user: Pick<User, "insurance_provider" | "insurance_expires_on"> | null,
+  policies: readonly InsurancePolicy[],
 ): Renewable[] {
   const rows: Renewable[] = certifications.map((certification) => ({
     key: certification.uuid,
@@ -159,19 +161,17 @@ export function renewables(
     expires_on: certification.expires_on,
   }));
 
-  // A policy with a date on it and no provider named is still a policy running out,
-  // so the row falls back to saying what it is.
-  const provider = user?.insurance_provider?.trim();
-  if (user?.insurance_expires_on) {
+  policies.forEach((policy, index) => {
+    if (!policy.expires_on) return;
     rows.push({
-      key: "dive-insurance",
+      key: `insurance-${index}`,
       kind: "insurance",
-      title: provider || "Dive insurance",
-      detail: provider ? "Dive insurance" : null,
+      title: policy.provider,
+      detail: "Dive insurance",
       href: "/settings/checkin",
-      expires_on: user.insurance_expires_on,
+      expires_on: policy.expires_on,
     });
-  }
+  });
 
   return rows;
 }

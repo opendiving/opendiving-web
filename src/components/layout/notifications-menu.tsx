@@ -20,7 +20,6 @@ import {
 } from "@/lib/api/gear-service";
 import type { Renewable } from "@/lib/certification";
 import { announceSavedElsewhere } from "@/lib/saved-elsewhere";
-import { INSURANCE_FIELDS } from "@/lib/validations/user-fields";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,14 +30,13 @@ import {
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
+import { CheckinDetailsDialog } from "@/components/checkin/checkin-details-dialog";
 import { RenewalsList } from "@/components/certifications/renewals-list";
 import { GearServiceRecordDialog } from "@/components/gear/gear-service-record-dialog";
 import {
   ServiceDueList,
   dueItemLabel,
 } from "@/components/gear/service-due-list";
-import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
-import { CHECK_IN_GROUP_HEADINGS } from "@/components/user/user-fields-form";
 
 // A section's header bar, its rows, and a line under them when the read behind them
 // failed. The failure is said out loud because the panel is opened to ask "is anything
@@ -239,8 +237,8 @@ export function NotificationsMenu() {
                   )}
                 </Section>
               )}
-              {/* A failed certifications read can still leave the insurance row,
-                  which comes from the account rather than from that request. */}
+              {/* A failed certifications read can still leave the policies' rows,
+                  which come from the check-in details rather than that request. */}
               {hasRenewals && (
                 <Section
                   title="Renewals"
@@ -295,13 +293,13 @@ export function NotificationsMenu() {
           }}
         />
       )}
-      {/* The check-in page's insurance form. Saving refreshes the signed-in user, which
-          the insurance row is derived from, so nothing needs reading again. */}
-      <UserFieldsDialog
+      {/* The check-in page's policies form. Saving replaces the shared check-in
+          details, which the policies' rows and any sheet underneath are drawn from,
+          so nothing needs reading again. */}
+      <CheckinDetailsDialog
         open={editing?.kind === "insurance"}
         onOpenChange={stopEditing}
-        {...CHECK_IN_GROUP_HEADINGS.insurance}
-        groups={[{ fields: [...INSURANCE_FIELDS] }]}
+        group="insurance"
       />
     </>
   );

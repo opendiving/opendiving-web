@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useCheckinDetails } from "@/contexts/CheckinDetailsContext";
 import {
   certificationsAPI,
   type CertificationExpiringEntry,
@@ -35,7 +35,7 @@ export interface NotificationsState {
   isLoaded: boolean;
   /** Gear schedules due soon or overdue, in the API's order. */
   serviceDue: NotificationFeed<GearServiceDueEntry>;
-  /** Certifications and the dive insurance running out or run out, soonest first. */
+  /** Certifications and insurance policies running out or run out, soonest first. */
   renewals: NotificationFeed<CertificationRenewal<Renewable>>;
   /** How many rows the two hold between them. */
   count: number;
@@ -70,18 +70,18 @@ function feedFrom<T>(
 }
 
 /**
- * What the diver has to act on: gear due a service, and certifications or dive
- * insurance about to run out. Both endpoints return every dated row with no
+ * What the diver has to act on: gear due a service, and certifications or insurance
+ * policies about to run out. Both endpoints return every dated row with no
  * horizon, so the bucketing into "worth saying" happens here.
  *
  * Read again on every navigation. The header that asks for this outlives the
  * pages, and those pages are where a service gets logged or an expiry date
  * moves; both reads are cached by the API, so the repeat is cheap. The
- * insurance row is derived from the signed-in user during render, so an edit to
- * the policy shows without a read at all.
+ * policies' rows are derived during render from the shared check-in details, so a
+ * policy saved anywhere shows here without a read at all.
  */
 export function useNotifications(): NotificationsState {
-  const { user } = useAuth();
+  const { details } = useCheckinDetails();
   const pathname = usePathname();
   const [reads, setReads] = useState<Reads | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -123,7 +123,10 @@ export function useNotifications(): NotificationsState {
     ? {
         ...reads.certifications,
         rows: certificationRenewals(
-          renewables(reads.certifications.rows, user),
+          renewables(
+            reads.certifications.rows,
+            details?.insurance_policies ?? [],
+          ),
         ),
       }
     : EMPTY;

@@ -1,22 +1,38 @@
+import type { User } from "@/lib/api/auth";
+import type {
+  CheckinDetails,
+  EmergencyContact,
+  InsurancePolicy,
+} from "@/lib/api/checkin-details";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 import { splitStartTime } from "@/lib/date-time";
 
 /**
- * What the summary prints about the diver, named as `User` names it. The signed-in
- * page hands over the session's own record and a shared link's page the summary the
- * link answers with, so both are this shape and neither is the other.
+ * What the summary prints about the diver: the name and portrait the account carries,
+ * and the check-in details. The signed-in page builds it from the session and the
+ * shared copy (`ownCheckInDiver`), and a shared link's page takes the summary the link
+ * answers with, so both are this shape and neither is the other.
  */
 export interface CheckInDiver {
   name: string;
   portrait_sha256?: string | null;
-  date_of_birth?: string | null;
+  email?: string | null;
   phone?: string | null;
-  insurance_provider?: string | null;
-  insurance_policy_number?: string | null;
-  insurance_expires_on?: string | null;
-  emergency_contact_name?: string | null;
-  emergency_contact_phone?: string | null;
-  emergency_contact_relationship?: string | null;
+  date_of_birth?: string | null;
+  emergency_contacts?: EmergencyContact[];
+  insurance_policies?: InsurancePolicy[];
+}
+
+/** The signed-in diver's own sheet: the details, once the shared copy has them. */
+export function ownCheckInDiver(
+  user: Pick<User, "name" | "portrait_sha256">,
+  details: CheckinDetails | null,
+): CheckInDiver {
+  return {
+    name: user.name,
+    portrait_sha256: user.portrait_sha256,
+    ...details,
+  };
 }
 
 /**

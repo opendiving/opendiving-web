@@ -9,12 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import {
-  ABOUT_YOU_FIELDS,
-  EMERGENCY_CONTACT_FIELDS,
-  INSURANCE_FIELDS,
-  type UserFieldKey,
-} from "@/lib/validations/user-fields";
+import type { CheckinGroup } from "@/lib/validations/checkin-details";
 import { Button } from "@/components/ui/button";
 import {
   CARD_TITLE_ACTION,
@@ -27,33 +22,30 @@ import {
 } from "@/components/ui/card";
 import {
   CHECK_IN_GROUP_HEADINGS,
-  UserFieldsForm,
-  UserFieldsSubmitButton,
-} from "@/components/user/user-fields-form";
+  CheckinDetailsForm,
+} from "@/components/checkin/checkin-details-form";
+import { UserFieldsSubmitButton } from "@/components/user/user-fields-form";
 import type { PictureKind } from "@/lib/picture";
 
-interface CheckInFieldsCardProps {
+interface CheckInGroupCardProps {
   icon: LucideIcon;
-  title: string;
-  description: string;
-  fields: readonly UserFieldKey[];
+  group: CheckinGroup;
   picture?: PictureKind;
   savedMessage: string;
 }
 
 // The settings home for the check-in details: one card and one save per group, the
 // groups `/checkin` opens one at a time in dialogs beside the sections that print
-// them - `UserFieldsForm` is both, and `CHECK_IN_GROUP_HEADINGS` heads both.
-// Each group's cross-field rules stay inside the group, so saving one never trips
-// over another left half-filled.
-function CheckInFieldsCard({
+// them - `CheckinDetailsForm` is both, and `CHECK_IN_GROUP_HEADINGS` heads both. Each
+// card sends its own group and no other key, so a save here never touches another
+// card's members, and every card shows the one shared copy the save replaced.
+function CheckInGroupCard({
   icon: Icon,
-  title,
-  description,
-  fields,
+  group,
   picture,
   savedMessage,
-}: CheckInFieldsCardProps) {
+}: CheckInGroupCardProps) {
+  const { title, description } = CHECK_IN_GROUP_HEADINGS[group];
   return (
     <Card>
       <CardHeader>
@@ -64,13 +56,13 @@ function CheckInFieldsCard({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <UserFieldsForm
-          groups={[{ fields: [...fields] }]}
+        <CheckinDetailsForm
+          group={group}
           picture={picture}
           savedMessage={savedMessage}
         >
           <UserFieldsSubmitButton className="w-full mt-4" />
-        </UserFieldsForm>
+        </CheckinDetailsForm>
       </CardContent>
     </Card>
   );
@@ -108,10 +100,9 @@ export function CheckInDetailsCard() {
 
 export function AboutYouCard() {
   return (
-    <CheckInFieldsCard
+    <CheckInGroupCard
       icon={IdCard}
-      {...CHECK_IN_GROUP_HEADINGS.about}
-      fields={ABOUT_YOU_FIELDS}
+      group="about"
       picture="portrait"
       savedMessage="Your details are up to date."
     />
@@ -120,22 +111,20 @@ export function AboutYouCard() {
 
 export function DiveInsuranceCard() {
   return (
-    <CheckInFieldsCard
+    <CheckInGroupCard
       icon={ShieldCheck}
-      {...CHECK_IN_GROUP_HEADINGS.insurance}
-      fields={INSURANCE_FIELDS}
-      savedMessage="Your dive insurance is up to date."
+      group="insurance"
+      savedMessage="Your insurance policies are up to date."
     />
   );
 }
 
-export function EmergencyContactCard() {
+export function EmergencyContactsCard() {
   return (
-    <CheckInFieldsCard
+    <CheckInGroupCard
       icon={PhoneCall}
-      {...CHECK_IN_GROUP_HEADINGS.emergency}
-      fields={EMERGENCY_CONTACT_FIELDS}
-      savedMessage="Your emergency contact is up to date."
+      group="emergency"
+      savedMessage="Your emergency contacts are up to date."
     />
   );
 }

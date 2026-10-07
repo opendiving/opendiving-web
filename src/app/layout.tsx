@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import { headers } from "next/headers";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CheckinDetailsProvider } from "@/contexts/CheckinDetailsContext";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
@@ -115,7 +116,9 @@ export default async function RootLayout({
               nonce={nonce}
             >
               <AuthProvider>
-                <AppShell>{children}</AppShell>
+                <CheckinDetailsProvider>
+                  <AppShell>{children}</AppShell>
+                </CheckinDetailsProvider>
                 <Toaster />
               </AuthProvider>
             </ThemeProvider>

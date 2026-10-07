@@ -4,7 +4,7 @@ import {
   AboutYouCard,
   CheckInDetailsCard,
   DiveInsuranceCard,
-  EmergencyContactCard,
+  EmergencyContactsCard,
 } from "@/components/settings/check-in-details-cards";
 import { pageTitle } from "@/lib/page-title";
 
@@ -21,7 +21,7 @@ export default function CheckInSettingsPage() {
       <CheckInDetailsCard />
       <AboutYouCard />
       <DiveInsuranceCard />
-      <EmergencyContactCard />
+      <EmergencyContactsCard />
     </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useCheckinDetails } from "@/contexts/CheckinDetailsContext";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useCheckinLink } from "@/hooks/useCheckinLink";
 import { useUnits } from "@/hooks/useUnits";
@@ -15,14 +16,17 @@ import { diveStatsAPI, type UserDiveStats } from "@/lib/api/dive-stats";
 import { divesAPI } from "@/lib/api/dives";
 import { fetchAllContacts, type Contact } from "@/lib/api/contacts";
 import { fetchAllPeople, type Person } from "@/lib/api/people";
+import { ownCheckInDiver } from "@/lib/checkin";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The summary a diver hands to a dive shop. `CheckInPageFrame` draws it; this reads
-// what the page does not already hold, the profile itself arriving with the
-// signed-in user, so the name is on screen at the click without waiting on anything
-// fetched here.
+// what the page does not already hold. The name and portrait arrive with the
+// signed-in user, so they are on screen at the click; the check-in details come from
+// the shared copy, which on a full load of this page is still in flight, and their
+// sections hold their shape until it lands.
 export function CheckInPageContent() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
+  const checkin = useCheckinDetails();
   const units = useUnits();
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -150,7 +154,10 @@ export function CheckInPageContent() {
 
   return (
     <CheckInPageFrame
-      diver={user}
+      diver={ownCheckInDiver(user, checkin.details)}
+      details={
+        checkin.details ? undefined : checkin.loadFailed ? "failed" : "loading"
+      }
       units={units}
       certifications={certifications}
       contactNames={contactNames}
@@ -158,11 +165,12 @@ export function CheckInPageContent() {
       stats={stats}
       lastDiveAt={lastDiveAt}
       isLoading={isSummaryLoading}
-      loadFailed={loadFailed}
+      loadFailed={loadFailed || checkin.loadFailed}
       figuresFailed={figuresFailed}
       onCertificationsChanged={refreshCertifications}
       sharing={sharing}
       onRetry={() => {
+        if (checkin.loadFailed) checkin.reload();
         setIsSummaryLoading(true);
         setLoadFailed(false);
         setFiguresFailed(false);

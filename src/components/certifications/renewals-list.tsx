@@ -22,7 +22,7 @@ interface RenewalsListProps {
 }
 
 // What a diver has to renew - certifications that have run out or are about to, and
-// the dive insurance among them.
+// the insurance policies among them.
 export function RenewalsList({
   renewals,
   truncated,
@@ -51,7 +51,7 @@ export function RenewalsList({
           qualifier={`on ${formatDateOnly(expiresOn)}`}
           actionLabel={
             row.kind === "insurance"
-              ? "Edit your dive insurance"
+              ? `Edit your ${row.title} policy`
               : `Edit ${row.title}`
           }
           onAction={() => onRenew(row)}

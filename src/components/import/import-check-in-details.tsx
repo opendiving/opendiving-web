@@ -7,7 +7,7 @@ import { UserSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { UserField } from "@/components/user/user-fields-form";
+import { CheckinMemberField } from "@/components/checkin/checkin-details-form";
 import { PortraitFrame, PortraitImage } from "@/components/user/portrait-image";
 import { useAuth } from "@/contexts/AuthContext";
 import type {
@@ -18,7 +18,6 @@ import type {
   ImportPortraitOffer,
 } from "@/lib/api/logbook-import";
 import {
-  CHECK_IN_DETAIL_FIELDS,
   CHECK_IN_DETAIL_LABELS,
   checkInAccountSummary,
   checkInProposalValues,
@@ -27,9 +26,9 @@ import {
 } from "@/lib/import-check-in";
 import { cn } from "@/lib/utils";
 import {
-  userFieldsSchema,
-  type UserFieldValues,
-} from "@/lib/validations/user-fields";
+  checkinDetailsSchema,
+  type CheckinDetailsFormValues,
+} from "@/lib/validations/checkin-details";
 
 /** What the apply sends beside the files and the token; each part omitted when empty. */
 export interface ImportCheckInChoices {
@@ -39,7 +38,7 @@ export interface ImportCheckInChoices {
 
 export interface ImportCheckIn {
   details: readonly ImportCheckInDetail[];
-  form: UseFormReturn<UserFieldValues>;
+  form: UseFormReturn<CheckinDetailsFormValues>;
   kept: ReadonlySet<ImportCheckInDetailKey>;
   toggleKept: (detail: ImportCheckInDetailKey) => void;
   portrait: ImportPortraitOffer | null;
@@ -53,12 +52,12 @@ export interface ImportCheckIn {
 }
 
 /**
- * The editable half of an import preview: one form over the check-in facts the
+ * The editable half of an import preview: one form over the check-in details the
  * document carries, seeded with the API's proposal, and the archive's portrait,
  * taken unless kept.
  *
  * Seeded once, so the host mounts it per preview (keyed on the token). The resolver
- * covers only the facts not kept, so a kept fact's proposal cannot block the apply.
+ * covers only the details not kept, so a kept detail's proposal cannot block the apply.
  */
 export function useImportCheckIn(
   details: readonly ImportCheckInDetail[],
@@ -70,23 +69,22 @@ export function useImportCheckIn(
   const [portraitKept, setPortraitKept] = useState(false);
 
   const resolver = useMemo(() => {
-    const fields = details
-      .filter(({ detail }) => !kept.has(detail))
-      .flatMap(({ detail }) => CHECK_IN_DETAIL_FIELDS[detail]);
-    // Through `unknown` for the reason `UserFieldsForm` gives: a schema built from
-    // a runtime list infers an index signature.
+    const members = details
+      .map(({ detail }) => detail)
+      .filter((detail) => !kept.has(detail));
+    // Through `unknown`: a schema built from a runtime list infers an index signature.
     return zodResolver(
-      userFieldsSchema(fields),
-    ) as unknown as Resolver<UserFieldValues>;
+      checkinDetailsSchema(members),
+    ) as unknown as Resolver<CheckinDetailsFormValues>;
   }, [details, kept]);
 
-  const form = useForm<UserFieldValues>({
+  const form = useForm<CheckinDetailsFormValues>({
     resolver,
     defaultValues: checkInProposalValues(details),
   });
 
   const toggleKept = (detail: ImportCheckInDetailKey) => {
-    form.clearErrors([...CHECK_IN_DETAIL_FIELDS[detail]]);
+    form.clearErrors(detail);
     setKept((current) => {
       const next = new Set(current);
       if (!next.delete(detail)) next.add(detail);
@@ -216,7 +214,6 @@ export function ImportCheckInDetails({ checkIn }: { checkIn: ImportCheckIn }) {
             />
           )}
           {details.map((entry) => {
-            const fields = CHECK_IN_DETAIL_FIELDS[entry.detail];
             const mine = checkInAccountSummary(entry);
             const isKept = kept.has(entry.detail);
             return (
@@ -237,14 +234,12 @@ export function ImportCheckInDetails({ checkIn }: { checkIn: ImportCheckIn }) {
                       : "Left unset; nothing from the import is saved."}
                   </p>
                 ) : (
-                  fields.map((field) => (
-                    <UserField
-                      key={field}
-                      name={field}
-                      control={form.control}
-                      hideLabel={fields.length === 1}
-                    />
-                  ))
+                  // The legend already names the detail.
+                  <CheckinMemberField
+                    member={entry.detail}
+                    control={form.control}
+                    hideLabel
+                  />
                 )}
                 <Button
                   type="button"

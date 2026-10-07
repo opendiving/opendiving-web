@@ -1,3 +1,8 @@
+import type {
+  CheckinDetailsUpdate,
+  EmergencyContact,
+  InsurancePolicy,
+} from "./checkin-details";
 import { apiClient } from "./client";
 import type { RecordingDevice } from "./dives";
 
@@ -413,51 +418,37 @@ export interface ImportGenerator {
   version: string | null;
 }
 
-/** An emergency contact as the preview shows it and as the apply takes it back. */
-export interface ImportCheckInEmergencyContact {
-  name: string | null;
-  phone: string | null;
-  relationship: string | null;
-}
-
-/** A dive insurance, on the same terms. `expires_on` is a bare `YYYY-MM-DD`. */
-export interface ImportCheckInInsurance {
-  provider: string | null;
-  number: string | null;
-  expires_on: string | null;
-}
-
 /**
- * One check-in fact the document carries: what the account holds beside what the
- * API proposes. An object is proposed whole - the account's own when the document's
- * agrees with it on every member it carries, otherwise the document's alone.
+ * One check-in detail the document carries: what the account holds beside what the API
+ * proposes, keyed by the member of the check-in details it is. A list is proposed whole,
+ * each document row that matches an account row on every member it carries standing as
+ * that account row, so this app's own UDDF - which has no slot for a policy number -
+ * proposes the account's policies with theirs. The email is never the account's sign-in
+ * address, unless that is already its check-in email.
  */
 export type ImportCheckInDetail =
-  | { detail: "born_on"; account: string | null; proposed: string }
+  | { detail: "email"; account: string | null; proposed: string }
   | { detail: "phone"; account: string | null; proposed: string }
+  | { detail: "date_of_birth"; account: string | null; proposed: string }
   | {
-      detail: "emergency_contact";
-      account: ImportCheckInEmergencyContact | null;
-      proposed: ImportCheckInEmergencyContact;
+      detail: "emergency_contacts";
+      account: EmergencyContact[];
+      proposed: EmergencyContact[];
     }
   | {
-      detail: "insurance";
-      account: ImportCheckInInsurance | null;
-      proposed: ImportCheckInInsurance;
+      detail: "insurance_policies";
+      account: InsurancePolicy[];
+      proposed: InsurancePolicy[];
     };
 
 export type ImportCheckInDetailKey = ImportCheckInDetail["detail"];
 
 /**
- * The facts the diver confirmed, sent beside the token. A key left out is not
- * written, `null` clears the fact, and an object replaces all of the account's.
+ * The details the diver confirmed, sent beside the token, keyed and bounded as
+ * `PATCH /user/checkin-details` keys and bounds them: a key left out is not written,
+ * `null` clears a scalar, and a list replaces the account's whole.
  */
-export interface ImportCheckInSubmission {
-  born_on?: string | null;
-  phone?: string | null;
-  emergency_contact?: ImportCheckInEmergencyContact | null;
-  insurance?: ImportCheckInInsurance | null;
-}
+export type ImportCheckInSubmission = CheckinDetailsUpdate;
 
 /**
  * The archive's portrait beside the account's, for the diver to take or keep.

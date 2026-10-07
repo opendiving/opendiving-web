@@ -80,5 +80,14 @@ export async function drawFrame(
 ): Promise<ReturnType<typeof render>> {
   frameMocks.at.pathname = path;
   const Component = (await load()).default as Drawable;
-  return render(<Component {...props} />);
+  // The root layout's provider, which every page in the chrome renders under. Imported
+  // here rather than at the top: it imports the auth context, whose mock factory
+  // imports this module, and a static import would have the two wait on each other.
+  const { CheckinDetailsProvider } =
+    await import("@/contexts/CheckinDetailsContext");
+  return render(
+    <CheckinDetailsProvider>
+      <Component {...props} />
+    </CheckinDetailsProvider>,
+  );
 }
