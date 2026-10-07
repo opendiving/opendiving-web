@@ -112,7 +112,7 @@ export function DivesPageFrame({
                 Import
               </Link>
             </Button>
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild size="sm">
               <Link href="/dives/new">
                 <Plus className="h-4 w-4 mr-2" />
                 Log new dive

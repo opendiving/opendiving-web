@@ -108,7 +108,7 @@ export function SitesPageFrame({
         title="Dive Sites"
         subtitle="Keep track of the dive sites you've visited"
         actions={
-          <Button variant="ghost" size="sm" onClick={onNew}>
+          <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New dive site
           </Button>

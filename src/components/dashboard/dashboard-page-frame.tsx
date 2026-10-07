@@ -147,7 +147,7 @@ export function DashboardPageFrame({
         title={user.name}
         subtitle="Your logbook, your trips and your stats, at a glance"
         actions={
-          <Button asChild variant="ghost" size="sm">
+          <Button asChild size="sm">
             <Link href="/dives/new?from=/dashboard">
               <Plus className="h-4 w-4 mr-2" />
               Log a dive

@@ -80,7 +80,7 @@ export function GearPageFrame({
         title="Gear"
         subtitle="Track the equipment you dive with, and group it into sets you can load into a dive in one click"
         actions={
-          <Button variant="ghost" size="sm" onClick={onNew}>
+          <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New gear
           </Button>

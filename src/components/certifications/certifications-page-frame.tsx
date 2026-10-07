@@ -66,7 +66,7 @@ export function CertificationsPageFrame({
         title="Certifications"
         subtitle="Keep photos of your c-cards here, so they're on hand at the dive shop without digging out the plastic"
         actions={
-          <Button variant="ghost" size="sm" onClick={onNew}>
+          <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New certification
           </Button>

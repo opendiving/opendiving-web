@@ -78,7 +78,7 @@ export function ContactsPageFrame({
         title="Contacts"
         subtitle="The dive centers, schools, shops and places you stayed, kept once"
         actions={
-          <Button variant="ghost" size="sm" onClick={onNew}>
+          <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New contact
           </Button>

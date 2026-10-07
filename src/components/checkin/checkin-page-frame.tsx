@@ -364,12 +364,7 @@ export function CheckInPageFrame({
             )}
             {/* The browser's own print, which is also its save-as-PDF: no generator in
               either repo, and nothing is uploaded to produce it. */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => window.print()}
-            >
+            <Button type="button" size="sm" onClick={() => window.print()}>
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>

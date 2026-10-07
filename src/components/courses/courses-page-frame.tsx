@@ -120,7 +120,7 @@ export function CoursesPageFrame({
         title="Courses"
         subtitle="The training you did, with the dives and cards it produced"
         actions={
-          <Button variant="ghost" size="sm" onClick={onNew}>
+          <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New course
           </Button>

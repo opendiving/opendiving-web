@@ -73,7 +73,7 @@ export function TripsPageFrame({
         title="Trips"
         subtitle="Group your dives into trips and liveaboards"
         actions={
-          <Button variant="ghost" size="sm" onClick={onNew}>
+          <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New trip
           </Button>
