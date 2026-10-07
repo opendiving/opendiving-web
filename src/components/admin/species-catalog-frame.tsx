@@ -2,7 +2,7 @@
 
 import { type ReactNode } from "react";
 import { Fish } from "lucide-react";
-import type { AdminSpeciesFilter } from "@/lib/api/admin";
+import { SPECIES_PHOTO_FLOOR, type AdminSpeciesFilter } from "@/lib/api/admin";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
@@ -25,7 +25,7 @@ export const SPECIES_FILTERS: { value: AdminSpeciesFilter; label: string }[] = [
   { value: "without_photo", label: "Without photo" },
   { value: "hidden", label: "Hidden" },
   { value: "pinned", label: "Pinned" },
-  { value: "narrow", label: "Below 500 px" },
+  { value: "narrow", label: `Below ${SPECIES_PHOTO_FLOOR} px` },
 ];
 
 export interface SpeciesCatalogFrameProps {
