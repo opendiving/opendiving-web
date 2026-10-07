@@ -251,6 +251,37 @@ describe("the bell's count", () => {
 });
 
 describe("a failed read", () => {
+  it("says the policies could not be checked rather than that nothing is due, and tries again on the next page", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(checkinDetailsAPI.get).mockRejectedValue(new Error("offline"));
+
+    const { rerender } = render(<NotificationsMenu />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Notifications/ }),
+    );
+    const panel = await screen.findByRole("dialog", { name: "Notifications" });
+
+    expect(
+      await within(panel).findByText(/Couldn't check your insurance policies/),
+    ).toBeInTheDocument();
+    expect(panel).not.toHaveTextContent("Nothing needs your attention");
+    const reads = vi.mocked(checkinDetailsAPI.get).mock.calls.length;
+
+    vi.mocked(checkinDetailsAPI.get).mockImplementation(async () =>
+      structuredClone(server),
+    );
+    server.insurance_policies = [policy("DAN Europe", soon())];
+    stable.pathname = "/gear";
+    rerender(<NotificationsMenu />);
+
+    expect(
+      await screen.findByRole("button", { name: "Notifications (1)" }),
+    ).toBeInTheDocument();
+    expect(vi.mocked(checkinDetailsAPI.get).mock.calls.length).toBeGreaterThan(
+      reads,
+    );
+  });
+
   it("says so rather than claiming nothing is due", async () => {
     getDue.mockRejectedValue(new Error("offline"));
     vi.spyOn(console, "error").mockImplementation(() => {});

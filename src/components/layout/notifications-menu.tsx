@@ -92,7 +92,8 @@ type Editing =
  * title goes to the item's page.
  */
 export function NotificationsMenu() {
-  const { isLoaded, serviceDue, renewals, count, reload } = useNotifications();
+  const { isLoaded, serviceDue, renewals, policiesFailed, count, reload } =
+    useNotifications();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -144,7 +145,12 @@ export function NotificationsMenu() {
   };
 
   const hasService = serviceDue.rows.length > 0 || serviceDue.failed;
-  const hasRenewals = renewals.rows.length > 0 || renewals.failed;
+  const hasRenewals =
+    renewals.rows.length > 0 || renewals.failed || policiesFailed;
+  const renewalsFailed = [
+    renewals.failed && "your certifications",
+    policiesFailed && "your insurance policies",
+  ].filter(Boolean);
 
   return (
     <>
@@ -237,15 +243,15 @@ export function NotificationsMenu() {
                   )}
                 </Section>
               )}
-              {/* A failed certifications read can still leave the policies' rows,
-                  which come from the check-in details rather than that request. */}
+              {/* Either source failing leaves the other's rows: the policies come
+                  from the check-in details rather than the certifications read. */}
               {hasRenewals && (
                 <Section
                   title="Renewals"
                   icon={BadgeCheck}
                   failedMessage={
-                    renewals.failed
-                      ? "Couldn't check your certifications. Try again in a moment."
+                    renewalsFailed.length > 0
+                      ? `Couldn't check ${renewalsFailed.join(" or ")}. Try again in a moment.`
                       : null
                   }
                 >
