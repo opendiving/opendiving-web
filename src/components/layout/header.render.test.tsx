@@ -102,17 +102,17 @@ describe("the account menu's Admin entry", () => {
     );
   });
 
-  it("puts it directly beneath Settings", async () => {
-    // The entry is the only way into the section, and the account menu is where
-    // an operator goes looking - one row below the other account destination.
+  it("puts it first, ruled off from the rest", async () => {
     stable.auth.user = diver({ is_superuser: true });
 
     const menu = await openAccountMenu();
 
-    const labels = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(
-      (item) => item.textContent,
-    );
-    expect(labels.indexOf("Admin")).toBe(labels.indexOf("Settings") + 1);
+    expect(menuRows(menu).slice(0, 4)).toEqual([
+      "---",
+      "Admin",
+      "---",
+      "Import",
+    ]);
   });
 
   it("does not offer it to an ordinary diver", async () => {
