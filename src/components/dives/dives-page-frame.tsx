@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode, type Ref } from "react";
 import Link from "next/link";
-import { ChevronDown, Funnel, Plus, Upload, X } from "lucide-react";
+import { ChevronDown, CloudUpload, Funnel, Plus, X } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -108,7 +108,7 @@ export function DivesPageFrame({
           <>
             <Button asChild variant="ghost" size="sm">
               <Link href="/import">
-                <Upload className="h-4 w-4 mr-2" />
+                <CloudUpload className="h-4 w-4 mr-2" />
                 Import
               </Link>
             </Button>
