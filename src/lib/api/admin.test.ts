@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { adminAPI, type AdminInviteRequest } from "./admin";
 
 vi.mock("./client", () => ({
-  apiClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+  apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
 const { apiClient } = await import("./client");
 const get = vi.mocked(apiClient.get);
 const post = vi.mocked(apiClient.post);
+const put = vi.mocked(apiClient.put);
 const del = vi.mocked(apiClient.delete);
 
 const request = (
@@ -105,5 +106,74 @@ describe("adminAPI.removeInviteRequests", () => {
       data: { emails: ["a@example.com", "b@example.com"] },
     });
     expect(response.removed).toBe(2);
+  });
+});
+
+describe("the species catalog routes", () => {
+  const UUID = "01a073b4-2235-7b48-8ee7-68d0d99b9808";
+  const row = { uuid: UUID, photo_curation: "pinned" };
+
+  it("lists a page with neither search nor filter when none is given", async () => {
+    get.mockResolvedValue({ data: { data: [], total_count: 0 } });
+
+    await adminAPI.listSpecies(1, 24);
+
+    expect(get).toHaveBeenCalledWith("/admin/species", {
+      params: { page: 1, items_per_page: 24 },
+    });
+  });
+
+  it("sends the search and the chip in the API's own names", async () => {
+    get.mockResolvedValue({ data: { data: [], total_count: 0 } });
+
+    await adminAPI.listSpecies(2, 24, { search: "queen", filter: "narrow" });
+
+    expect(get).toHaveBeenCalledWith("/admin/species", {
+      params: {
+        page: 2,
+        items_per_page: 24,
+        search: "queen",
+        filter: "narrow",
+      },
+    });
+  });
+
+  it("reads one species' candidates", async () => {
+    get.mockResolvedValue({ data: { category: null, candidates: [] } });
+
+    const response = await adminAPI.speciesPhotoCandidates(UUID);
+
+    expect(get).toHaveBeenCalledWith(`/admin/species/${UUID}/photo-candidates`);
+    expect(response).toEqual({ category: null, candidates: [] });
+  });
+
+  it("pins a file with a PUT carrying it as `file`", async () => {
+    put.mockResolvedValue({ data: row });
+
+    const response = await adminAPI.pinSpeciesPhoto(
+      UUID,
+      "Seriphus politus.jpg",
+    );
+
+    expect(put).toHaveBeenCalledWith(`/admin/species/${UUID}/photo`, {
+      file: "Seriphus politus.jpg",
+    });
+    expect(response).toEqual(row);
+  });
+
+  it("hides with a DELETE on the photo", async () => {
+    del.mockResolvedValue({ data: row });
+
+    await adminAPI.hideSpeciesPhoto(UUID);
+
+    expect(del).toHaveBeenCalledWith(`/admin/species/${UUID}/photo`);
+  });
+
+  it("re-fetches with a bodiless POST", async () => {
+    post.mockResolvedValue({ data: row });
+
+    await adminAPI.refetchSpeciesPhoto(UUID);
+
+    expect(post).toHaveBeenCalledWith(`/admin/species/${UUID}/photo/refetch`);
   });
 });

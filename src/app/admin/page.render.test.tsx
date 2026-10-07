@@ -14,5 +14,9 @@ describe("the admin section's landing", () => {
       "href",
       "/admin/stats",
     );
+    expect(screen.getByRole("link", { name: /Species/ })).toHaveAttribute(
+      "href",
+      "/admin/species",
+    );
   });
 });

@@ -30,9 +30,9 @@ const FRAMES = {
   "people-page-frame": PeoplePageFrame,
 };
 
-// The admin queue's copy is checked in its own directory, since nothing out here may
+// The admin frames are checked in their own directories, since nothing out here may
 // import that section (`lib/admin-isolation.test.ts`).
-const CHECKED_INSIDE_ADMIN = "invite-queue-frame";
+const CHECKED_INSIDE_ADMIN = ["invite-queue-frame", "species-catalog-frame"];
 
 const COMPONENTS = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -61,7 +61,7 @@ const countingFrames = () =>
 describe("a one-list page's card keeps a heading nobody sees", () => {
   it("covers every frame that counts a list", () => {
     expect([...countingFrames()].sort()).toEqual(
-      [...Object.keys(FRAMES), CHECKED_INSIDE_ADMIN].sort(),
+      [...Object.keys(FRAMES), ...CHECKED_INSIDE_ADMIN].sort(),
     );
   });
 
