@@ -9,11 +9,14 @@ import {
 } from "react";
 import {
   AlertTriangle,
+  Cake,
   FileText,
+  Phone,
   Printer,
   Share2,
   SquarePen,
   UserSquare,
+  type LucideIcon,
 } from "lucide-react";
 
 import type { CheckinLinkControls } from "@/hooks/useCheckinLink";
@@ -116,6 +119,12 @@ const TWO_COLUMNS =
 // something that cannot fit only moves the break to the top and wastes the page. Its
 // unit is the individual card, which carries this itself.
 const KEEP_TOGETHER = "break-inside-avoid";
+
+// The height of every heading row - each section's and the diver's name - so the
+// gap from a heading to its rows is one gap, and the lists either side of a row
+// start level. The edit button would set it on the diver's own screen, but it is
+// off the paper and off a link's page, where each row would shrink to its own text.
+const HEADING_ROW = "min-h-9";
 
 /**
  * What the browser offers as the filename when this page is saved as a PDF.
@@ -401,25 +410,15 @@ export function CheckInPageFrame({
             {/* Headed by the diver's own name rather than by a label: the name is
                 what the sheet is about, and "Personal information" written above
                 somebody's name tells a desk nothing the name did not. */}
-            <section className={cn("space-y-2", KEEP_TOGETHER)}>
-              {/* `-my-1` pulls the control's margin box inside the name's line, as a
-                  certification row does with its own: left to set the row height the
-                  button is taller than the text, and the gap under the name would
-                  come out short of every section's by those two pixels. */}
-              <div
-                className={cn(
-                  "flex items-center break-after-avoid",
-                  NAME_BESIDE_PICTURE,
-                )}
-              >
+            <section className={KEEP_TOGETHER}>
+              <div className={cn("flex items-start", NAME_BESIDE_PICTURE)}>
                 {/* The portrait, never the avatar: a desk is looking at the diver's
                     face, and the avatar is whatever the diver shows the app. With none
                     stored, nothing prints - no initials, which identify nobody - and
                     the screen offers the place to add one.
 
                     The column stays either way, so the name meets the same edge as
-                    every certification's - and its own two values, which is what
-                    would give it away. A link's page has the column and no offer,
+                    every certification's. A link's page has the column and no offer,
                     the offer being the diver's own control. */}
                 <div className={SLOT}>
                   {link ? (
@@ -454,34 +453,45 @@ export function CheckInPageFrame({
                     </PortraitFrame>
                   )}
                 </div>
-                <h2 className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}>
-                  {diver.name}
-                </h2>
-                {editControl(
-                  "Edit your name, portrait, date of birth and phone number",
-                  () => setEditing("about"),
-                  "-my-1",
-                )}
-              </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className={cn("flex items-center gap-2", HEADING_ROW)}>
+                    <h2
+                      className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}
+                    >
+                      {diver.name}
+                    </h2>
+                    {editControl(
+                      "Edit your name, portrait, date of birth and phone number",
+                      () => setEditing("about"),
+                    )}
+                  </div>
 
-              {/* Always on screen, so the control beside the name is always there,
-                  and dropped from the print when it holds nothing: a `<dl>` with
-                  every row absent is blank page on a sheet handed to somebody. */}
-              <div className={cn(!hasAboutYou && offSheet)}>
-                {hasAboutYou ? (
-                  <DetailList>
-                    <Detail
-                      label="Date of birth"
-                      value={
-                        diver.date_of_birth &&
-                        formatDateOnly(diver.date_of_birth)
-                      }
-                    />
-                    <Detail label="Phone" value={diver.phone} />
-                  </DetailList>
-                ) : (
-                  emptyNote("Not filled in yet.")
-                )}
+                  {/* Always on screen, so the diver sees what is missing beside the
+                      control that fills it, and dropped from the print when it
+                      holds nothing: a `<dl>` with every row absent is blank page on
+                      a sheet handed to somebody. */}
+                  <div className={cn(!hasAboutYou && offSheet)}>
+                    {hasAboutYou ? (
+                      <dl className="space-y-1">
+                        <IconDetail
+                          icon={Cake}
+                          label="Date of birth"
+                          value={
+                            diver.date_of_birth &&
+                            formatDateOnly(diver.date_of_birth)
+                          }
+                        />
+                        <IconDetail
+                          icon={Phone}
+                          label="Phone"
+                          value={diver.phone}
+                        />
+                      </dl>
+                    ) : (
+                      emptyNote("Not filled in yet.")
+                    )}
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -767,19 +777,14 @@ function CertificationSummary({
     // Keeps a card off a page boundary: the alternative is a printed summary whose
     // last certification is cut in half, which is the one thing a desk cannot read.
     <div className="space-y-2 break-inside-avoid">
-      {/* The shape the diver's own block has at the top of the sheet: the picture
-          and the name on one line, and the list under it at the cell's full width -
-          which is what lines these values up with the ones in the sections above,
-          and what keeps a date off a second line in half a row of A4. */}
-      <div
-        className={cn(
-          "flex items-center break-after-avoid",
-          NAME_BESIDE_PICTURE,
-        )}
-      >
-        {/* The column stands even for a card whose picture the diver never stored,
-            for the same reason it stands beside a diver with no portrait: the name
-            beside it has to meet the same edge as the values underneath it. */}
+      {/* The picture and the name on one line, and the list under it at the cell's
+          full width - which is what lines these values up with the ones in the
+          sections above, and what keeps a date off a second line in half a row of
+          A4. */}
+      <div className={cn("flex items-center", NAME_BESIDE_PICTURE)}>
+        {/* The column stands even for a card whose picture the diver never stored:
+            the name beside it has to meet the same edge as the values underneath
+            it. */}
         <div className={SLOT}>
           {isPdf ? (
             <CertificationCardFrame
@@ -925,7 +930,12 @@ function Section({
     >
       {/* A heading stranded at the foot of a page, with its rows over the fold, is
           the one break a reader has to work around. */}
-      <div className="flex items-center justify-between gap-2 break-after-avoid">
+      <div
+        className={cn(
+          "flex items-center justify-between gap-2 break-after-avoid",
+          HEADING_ROW,
+        )}
+      >
         <h3
           className={`text-sm font-semibold uppercase tracking-wide ${MUTED}`}
         >
@@ -997,5 +1007,29 @@ function Detail({
         {value ?? <Skeleton className="h-4 w-16" />}
       </dd>
     </>
+  );
+}
+
+// A `Detail` under the diver's name, where a label track would push the value off
+// the name's edge: the icon stands for the label, and a screen reader hears the label.
+function IconDetail({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value?: string | null;
+}) {
+  if (!value) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      <dt className={MUTED}>
+        <Icon aria-hidden className="h-4 w-4" />
+        <span className="sr-only">{label}</span>
+      </dt>
+      <dd className={`text-sm font-medium ${INK}`}>{value}</dd>
+    </div>
   );
 }
