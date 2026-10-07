@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { StatusMessage } from "@/components/ui/status-message";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCheckinDetails } from "@/contexts/CheckinDetailsContext";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { divesAPI, type DiveNumberingSummary } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -88,6 +89,7 @@ function UploadProgress({ transfer }: { transfer: Transfer }) {
 function ImportFlow() {
   const { toast } = useToast();
   const { refreshUser } = useAuth();
+  const { reload: reloadCheckinDetails } = useCheckinDetails();
   const nextId = useRef(0);
 
   const [files, setFiles] = useState<SelectedImportFile[]>([]);
@@ -208,10 +210,13 @@ function ImportFlow() {
         portrait,
         trackTransfer,
       );
-      // Only when a fact or the portrait changed: the check-in cards seed from
-      // the signed-in user, and a card saved from a stale copy would send the
-      // imported facts back as nulls.
-      if (checkInWasWritten(applied)) await refreshUser();
+      // Only when a detail or the portrait changed: the check-in surfaces show the
+      // shared copy, and the portrait's digest rides on the signed-in user - one
+      // note marks both.
+      if (checkInWasWritten(applied)) {
+        reloadCheckinDetails();
+        await refreshUser();
+      }
       setResult(applied);
       setNumberingBefore(plan.numbering);
       setPlan(null);

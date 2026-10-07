@@ -39,6 +39,7 @@ vi.mock("@/hooks/useNotifications", () => ({
     isLoaded: true,
     serviceDue: { rows: [], truncated: false, failed: false },
     renewals: { rows: [], truncated: false, failed: false },
+    policiesFailed: false,
     count: 0,
     reload: vi.fn(),
   }),

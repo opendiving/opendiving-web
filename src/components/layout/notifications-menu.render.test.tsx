@@ -1,8 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render as rtlRender, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NotificationsMenu } from "./notifications-menu";
+import { CheckInPageFrame } from "@/components/checkin/checkin-page-frame";
+import {
+  CheckinDetailsProvider,
+  useCheckinDetails,
+} from "@/contexts/CheckinDetailsContext";
 import type { User } from "@/lib/api/auth";
+import {
+  checkinDetailsAPI,
+  type CheckinDetails,
+  type CheckinDetailsUpdate,
+  type InsurancePolicy,
+} from "@/lib/api/checkin-details";
+import { ownCheckInDiver } from "@/lib/checkin";
 import {
   certificationsAPI,
   type CertificationExpiringEntry,
@@ -15,7 +27,7 @@ import { onSavedElsewhere } from "@/lib/saved-elsewhere";
 import { isoDaysFromNow } from "@/test/local-day";
 
 // The bell holds two lists behind one count: gear due a service, and anything about to
-// run out - certifications, and the dive insurance among them, since a lapsed policy
+// run out - certifications, and the insurance policies among them, since a lapsed policy
 // stops a dive at the desk exactly as a lapsed rescue card does. What a render reaches
 // is the count on the bell, which rows the panel holds and where each sends the diver,
 // and what it says on the ordinary day when nothing is due.
@@ -58,6 +70,13 @@ vi.mock("@/lib/api/gear-service", async (importOriginal) => {
   };
 });
 
+// The policies come from the shared check-in details, which `update` writes as the API
+// does.
+vi.mock("@/lib/api/checkin-details", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  checkinDetailsAPI: { get: vi.fn(), update: vi.fn() },
+}));
+
 vi.mock("@/lib/api/certifications", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   certificationsAPI: { getExpiring: vi.fn(), getCertification: vi.fn() },
@@ -67,20 +86,24 @@ vi.mock("@/lib/api/certifications", async (importOriginal) => ({
 // brings its course, contact and people pickers with it. What this file owns is which
 // card the row hands it, and what happens once it is saved.
 vi.mock("@/components/certifications/certification-dialog", () => ({
+  // Closed - as the sheet keeps its own - it draws nothing.
   CertificationDialog: ({
+    open,
     certification,
     onSaved,
   }: {
-    certification: { name: string; expires_on: string };
+    open: boolean;
+    certification: { name: string; expires_on: string } | null;
     onSaved: (saved: unknown) => void;
-  }) => (
-    <div role="dialog" aria-label="Edit Certification">
-      {certification.name} expires {certification.expires_on}
-      <button type="button" onClick={() => onSaved(certification)}>
-        Save
-      </button>
-    </div>
-  ),
+  }) =>
+    open && certification ? (
+      <div role="dialog" aria-label="Edit Certification">
+        {certification.name} expires {certification.expires_on}
+        <button type="button" onClick={() => onSaved(certification)}>
+          Save
+        </button>
+      </div>
+    ) : null,
 }));
 
 const getDue = vi.mocked(gearServiceAPI.getDue);
@@ -117,9 +140,21 @@ const certification = (
 const soon = () => isoDaysFromNow(30);
 const later = () => isoDaysFromNow(400);
 
+let server: CheckinDetails;
+const policy = (provider: string, expires_on: string): InsurancePolicy => ({
+  provider,
+  number: null,
+  expires_on,
+});
+
+// Under the root layout's provider, as the header is.
+const render = (ui: React.ReactElement) =>
+  rtlRender(ui, { wrapper: CheckinDetailsProvider });
+
 // Renders the bell, opens the panel, and waits for both reads to land in it.
 const openPanel = async () => {
   render(<NotificationsMenu />);
+  await vi.waitFor(() => expect(checkinDetailsAPI.get).toHaveBeenCalled());
   await userEvent.click(screen.getByRole("button", { name: /^Notifications/ }));
   const panel = await screen.findByRole("dialog", { name: "Notifications" });
   await vi.waitFor(() =>
@@ -131,10 +166,22 @@ const openPanel = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   stable.pathname = "/home";
-  Object.assign(stable.auth.user, {
-    insurance_provider: null,
-    insurance_expires_on: null,
-  });
+  server = {
+    email: null,
+    phone: null,
+    date_of_birth: null,
+    emergency_contacts: [],
+    insurance_policies: [],
+  };
+  vi.mocked(checkinDetailsAPI.get).mockImplementation(async () =>
+    structuredClone(server),
+  );
+  vi.mocked(checkinDetailsAPI.update).mockImplementation(
+    async (patch: CheckinDetailsUpdate) => {
+      server = { ...server, ...patch };
+      return structuredClone(server);
+    },
+  );
   getDue.mockResolvedValue({ data: [] });
   getExpiring.mockResolvedValue({ data: [] });
 });
@@ -149,7 +196,7 @@ describe("the bell's count", () => {
       ],
     });
     getExpiring.mockResolvedValue({ data: [certification()] });
-    Object.assign(stable.auth.user, { insurance_expires_on: soon() });
+    server.insurance_policies = [policy("DAN Europe", soon())];
 
     render(<NotificationsMenu />);
 
@@ -204,6 +251,36 @@ describe("the bell's count", () => {
 });
 
 describe("a failed read", () => {
+  it("says the policies could not be checked rather than that nothing is due, and tries again on the next page", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(checkinDetailsAPI.get).mockRejectedValue(new Error("offline"));
+
+    const { rerender } = render(<NotificationsMenu />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Notifications/ }),
+    );
+    const panel = await screen.findByRole("dialog", { name: "Notifications" });
+
+    expect(
+      await within(panel).findByText(/Couldn't check your insurance policies/),
+    ).toBeInTheDocument();
+    expect(panel).not.toHaveTextContent("Nothing needs your attention");
+    // Not again at once: the failure itself is no reason to ask a second time.
+    expect(checkinDetailsAPI.get).toHaveBeenCalledTimes(1);
+
+    vi.mocked(checkinDetailsAPI.get).mockImplementation(async () =>
+      structuredClone(server),
+    );
+    server.insurance_policies = [policy("DAN Europe", soon())];
+    stable.pathname = "/gear";
+    rerender(<NotificationsMenu />);
+
+    expect(
+      await screen.findByRole("button", { name: "Notifications (1)" }),
+    ).toBeInTheDocument();
+    expect(checkinDetailsAPI.get).toHaveBeenCalledTimes(2);
+  });
+
   it("says so rather than claiming nothing is due", async () => {
     getDue.mockRejectedValue(new Error("offline"));
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -214,17 +291,14 @@ describe("a failed read", () => {
     expect(panel).not.toHaveTextContent("Nothing needs your attention");
   });
 
-  it("still shows the insurance, which the certifications read does not carry", async () => {
+  it("still shows the policies, which the certifications read does not carry", async () => {
     getExpiring.mockRejectedValue(new Error("offline"));
     vi.spyOn(console, "error").mockImplementation(() => {});
-    Object.assign(stable.auth.user, {
-      insurance_provider: "DAN Europe",
-      insurance_expires_on: soon(),
-    });
+    server.insurance_policies = [policy("DAN Europe", soon())];
 
     const panel = await openPanel();
 
-    expect(within(panel).getByText("DAN Europe")).toBeInTheDocument();
+    expect(await within(panel).findByText("DAN Europe")).toBeInTheDocument();
     expect(panel).toHaveTextContent("Couldn't check your certifications");
   });
 });
@@ -338,14 +412,13 @@ describe("the service-due rows", () => {
 
 describe("the renewals rows", () => {
   it("shows a policy inside the horizon, named by the provider", async () => {
-    Object.assign(stable.auth.user, {
-      insurance_provider: "DAN Europe",
-      insurance_expires_on: soon(),
-    });
+    server.insurance_policies = [policy("DAN Europe", soon())];
 
     const panel = await openPanel();
 
-    expect(within(panel).getByText("Dive insurance")).toBeInTheDocument();
+    expect(
+      await within(panel).findByText("Dive insurance"),
+    ).toBeInTheDocument();
     // `/settings/checkin` is where the policy is entered; certifications go to their
     // own page.
     expect(
@@ -356,24 +429,36 @@ describe("the renewals rows", () => {
     ).toBeInTheDocument();
   });
 
-  it("says what is running out when no provider was named", async () => {
-    Object.assign(stable.auth.user, { insurance_expires_on: soon() });
+  it("shows one row per expiring policy, each action naming its provider", async () => {
+    server.insurance_policies = [
+      policy("DAN Europe", soon()),
+      policy("Not yet", later()),
+      policy("DiveAssure", isoDaysFromNow(5)),
+    ];
 
     const panel = await openPanel();
 
-    expect(within(panel).getByText("Dive insurance")).toBeInTheDocument();
+    expect(
+      await within(panel).findByRole("button", {
+        name: "Edit your DAN Europe policy",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByRole("button", {
+        name: "Edit your DiveAssure policy",
+      }),
+    ).toBeInTheDocument();
+    expect(within(panel).queryByText("Not yet")).toBeNull();
   });
 
   it("puts the policy in one list with the cards, soonest first", async () => {
     getExpiring.mockResolvedValue({
       data: [certification({ expires_on: isoDaysFromNow(60) })],
     });
-    Object.assign(stable.auth.user, {
-      insurance_provider: "DAN Europe",
-      insurance_expires_on: isoDaysFromNow(10),
-    });
+    server.insurance_policies = [policy("DAN Europe", isoDaysFromNow(10))];
 
     const panel = await openPanel();
+    await within(panel).findByText("DAN Europe");
 
     const text = panel.textContent ?? "";
     expect(text.indexOf("DAN Europe")).toBeLessThan(
@@ -448,22 +533,62 @@ describe("the renewals rows", () => {
     stop();
   });
 
-  it("opens the check-in page's insurance form for the policy", async () => {
+  it("opens the check-in page's policies form, and a save there shows on a mounted sheet", async () => {
     const expiresOn = soon();
-    Object.assign(stable.auth.user, {
-      insurance_provider: "DAN Europe",
-      insurance_expires_on: expiresOn,
-    });
+    server.insurance_policies = [policy("DAN Europe", expiresOn)];
 
-    const panel = await openPanel();
+    // The sheet the bell sits over, drawn from the same shared copy.
+    function Sheet() {
+      const { details } = useCheckinDetails();
+      return (
+        <CheckInPageFrame
+          diver={ownCheckInDiver(stable.auth.user, details)}
+          details={details ? undefined : "loading"}
+          units="metric"
+          isLoading={false}
+        />
+      );
+    }
+    render(
+      <>
+        <NotificationsMenu />
+        <Sheet />
+      </>,
+    );
     await userEvent.click(
-      within(panel).getByRole("button", { name: "Edit your dive insurance" }),
+      screen.getByRole("button", { name: /^Notifications/ }),
+    );
+    const panel = await screen.findByRole("dialog", { name: "Notifications" });
+    await userEvent.click(
+      await within(panel).findByRole("button", {
+        name: "Edit your DAN Europe policy",
+      }),
     );
 
     const dialog = await screen.findByRole("dialog", {
       name: "Dive Insurance",
     });
-    expect(within(dialog).getByDisplayValue("DAN Europe")).toBeInTheDocument();
+    expect(
+      await within(dialog).findByDisplayValue("DAN Europe"),
+    ).toBeInTheDocument();
     expect(within(dialog).getByDisplayValue(expiresOn)).toBeInTheDocument();
+
+    await userEvent.type(
+      within(dialog).getByRole("textbox", {
+        name: "Policy number policy 1 of 1",
+      }),
+      "P-42",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /save changes/i }),
+    );
+
+    expect(await screen.findByText("P-42")).toBeInTheDocument();
+    expect(checkinDetailsAPI.update).toHaveBeenCalledWith({
+      insurance_policies: [
+        { provider: "DAN Europe", number: "P-42", expires_on: expiresOn },
+      ],
+    });
+    expect(checkinDetailsAPI.get).toHaveBeenCalledTimes(1);
   });
 });

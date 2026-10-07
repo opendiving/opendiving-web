@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Cake,
   FileText,
+  Mail,
   Phone,
   Printer,
   Share2,
@@ -41,11 +42,6 @@ import {
 import { formatDateOnly, formatDateTime } from "@/lib/date-time";
 import { todayIsoDate } from "@/lib/gear-service";
 import { formatDepth, type UnitSystem } from "@/lib/units";
-import {
-  ABOUT_YOU_FIELDS,
-  EMERGENCY_CONTACT_FIELDS,
-  INSURANCE_FIELDS,
-} from "@/lib/validations/user-fields";
 import { shrinkPicture } from "@/lib/shrink-picture";
 import { cn } from "@/lib/utils";
 import { useAuthedBlobUrl } from "@/hooks/useAuthedBlobUrl";
@@ -54,11 +50,10 @@ import {
   CertificationCardImage,
 } from "@/components/certifications/certification-card-image";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
+import { CheckinDetailsDialog } from "@/components/checkin/checkin-details-dialog";
 import { CheckInLinkPanel } from "@/components/checkin/checkin-share";
 import { DivingFiguresDialog } from "@/components/checkin/diving-figures-dialog";
 import { Logo } from "@/components/logo";
-import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
-import { CHECK_IN_GROUP_HEADINGS } from "@/components/user/user-fields-form";
 import { PortraitFrame, PortraitImage } from "@/components/user/portrait-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -164,10 +159,18 @@ export interface CheckInLinkView {
 
 export interface CheckInPageFrameProps {
   /**
-   * Whose sheet this is: the session's own record on the diver's page, the summary's
-   * on a link's. Handed in, so the frame reads no session of its own.
+   * Whose sheet this is: the session's name and portrait with the shared check-in
+   * details on the diver's page, the summary's on a link's. Handed in, so the frame
+   * reads no session of its own.
    */
   diver: CheckInDiver;
+  /**
+   * Where the diver's own page has got to with the check-in details, which arrive
+   * after the name: `"loading"` holds their sections' shape with placeholders, and
+   * `"failed"` leaves them unclaimed rather than calling them empty. Absent once they
+   * are in hand, and always on a link's page, whose summary carries them.
+   */
+  details?: "loading" | "failed";
   /** The system the depth prints in - the diver's own, whoever is reading. */
   units: UnitSystem;
   /** Every card the diver holds, in the list endpoint's own order. */
@@ -238,6 +241,7 @@ export function CheckInPageFrame({
   onCertificationsChanged = noop,
   sharing,
   link,
+  details,
 }: CheckInPageFrameProps) {
   // The diver's own correction to the three diving figures, held for this visit - and
   // sent with a check-in link made while it stands, which keeps it for its day. See
@@ -286,16 +290,18 @@ export function CheckInPageFrame({
   // Neither page draws this before a client-side effect has settled - the diver's
   // waits on the auth check, a link's on its summary - so it never renders
   // server-side, and the print date below has no hydration to disagree with.
-  const hasEmergencyContact =
-    !!diver.emergency_contact_name ||
-    !!diver.emergency_contact_phone ||
-    !!diver.emergency_contact_relationship;
-  const hasInsurance =
-    !!diver.insurance_provider ||
-    !!diver.insurance_policy_number ||
-    !!diver.insurance_expires_on;
-
-  const hasAboutYou = !!diver.date_of_birth || !!diver.phone;
+  const contacts = diver.emergency_contacts ?? [];
+  const policies = diver.insurance_policies ?? [];
+  // The three sections the check-in details fill. While those are on their way, each
+  // holds its shape on screen and on paper; when they failed, none of them claims to
+  // be empty. Neither offers an edit: a dialog seeded from a copy that never arrived
+  // would save its group empty.
+  const detailsPending = details === "loading";
+  const detailsReady = details === undefined;
+  const hasEmergencyContact = detailsPending || contacts.length > 0;
+  const hasInsurance = detailsPending || policies.length > 0;
+  const hasAboutYou =
+    detailsPending || !!diver.date_of_birth || !!diver.phone || !!diver.email;
   const diving = link ? link.diving : (corrected ?? logged);
   const hasFigures = isLoading || hasDivingFigures(diving);
 
@@ -305,6 +311,8 @@ export function CheckInPageFrame({
   const offSheet = link ? "hidden" : "print:hidden";
   const emptyNote = (text: string) =>
     link ? null : <EmptyNote>{text}</EmptyNote>;
+  const detailsEmptyNote = () =>
+    detailsReady ? emptyNote("Not filled in yet.") : null;
   const editControl = (
     label: string,
     onClick: () => void,
@@ -444,6 +452,7 @@ export function CheckInPageFrame({
                             type="button"
                             variant="ghost"
                             className="h-full w-full rounded-none"
+                            disabled={!detailsReady}
                             onClick={() => setEditing("about")}
                           >
                             <UserSquare className="h-6 w-6 text-muted-foreground" />
@@ -459,18 +468,27 @@ export function CheckInPageFrame({
                       >
                         {diver.name}
                       </h2>
-                      {editControl(
-                        "Edit your name, portrait, date of birth and phone number",
-                        () => setEditing("about"),
-                      )}
+                      {detailsReady &&
+                        editControl(
+                          "Edit your name, portrait, date of birth, phone number and email",
+                          () => setEditing("about"),
+                        )}
                     </div>
 
                     {/* Always on screen, so the diver sees what is missing beside the
                         control that fills it, and dropped from the print when it
                         holds nothing: a `<dl>` with every row absent is blank page on
                         a sheet handed to somebody. */}
-                    <div className={cn(!hasAboutYou && offSheet)}>
-                      {hasAboutYou ? (
+                    <div
+                      aria-busy={detailsPending || undefined}
+                      className={cn(!hasAboutYou && offSheet)}
+                    >
+                      {detailsPending ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-40" />
+                        </div>
+                      ) : hasAboutYou ? (
                         <dl className="space-y-1">
                           <IconDetail
                             icon={Cake}
@@ -485,9 +503,14 @@ export function CheckInPageFrame({
                             label="Phone"
                             value={diver.phone}
                           />
+                          <IconDetail
+                            icon={Mail}
+                            label="Email"
+                            value={diver.email}
+                          />
                         </dl>
                       ) : (
-                        emptyNote("Not filled in yet.")
+                        detailsEmptyNote()
                       )}
                     </div>
                   </div>
@@ -554,58 +577,85 @@ export function CheckInPageFrame({
                 )}
               </Section>
 
-              {/* Insurance and the emergency contact make the second row rather than
-                  the first: a desk works down who the diver is and what they have
-                  actually dived, and reaches for the policy to quote and the person to
-                  call only if something goes wrong. */}
+              {/* Insurance and the emergency contacts make the second row rather
+                  than the first: a desk works down who the diver is and what they
+                  have actually dived, and reaches for the policy to quote and the
+                  person to call only if something goes wrong. Each policy and each
+                  contact is kept off a fold rather than the section, which can run
+                  to several of them. */}
               <Section
                 title="Dive Insurance"
-                className={cn(KEEP_TOGETHER, !hasInsurance && offSheet)}
-                action={editControl("Edit your dive insurance", () =>
-                  setEditing("insurance"),
-                )}
+                busy={detailsPending}
+                className={cn(!hasInsurance && offSheet)}
+                action={
+                  detailsReady &&
+                  editControl("Edit your insurance policies", () =>
+                    setEditing("insurance"),
+                  )
+                }
               >
-                {hasInsurance ? (
+                {detailsPending ? (
                   <DetailList>
-                    <Detail label="Provider" value={diver.insurance_provider} />
-                    <Detail
-                      label="Policy number"
-                      value={diver.insurance_policy_number}
-                    />
-                    <Detail
-                      label="Expires"
-                      value={
-                        diver.insurance_expires_on &&
-                        formatDateOnly(diver.insurance_expires_on)
-                      }
-                    />
+                    <Detail label="Provider" pending />
+                    <Detail label="Policy number" pending />
                   </DetailList>
+                ) : hasInsurance ? (
+                  <div className="space-y-3">
+                    {policies.map((policy, index) => (
+                      <div key={index} className={KEEP_TOGETHER}>
+                        <DetailList>
+                          <Detail label="Provider" value={policy.provider} />
+                          <Detail label="Policy number" value={policy.number} />
+                          <Detail
+                            label="Expires"
+                            value={
+                              policy.expires_on &&
+                              formatDateOnly(policy.expires_on)
+                            }
+                          />
+                        </DetailList>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  emptyNote("Not filled in yet.")
+                  detailsEmptyNote()
                 )}
               </Section>
 
               <Section
-                title="Emergency Contact"
-                className={cn(KEEP_TOGETHER, !hasEmergencyContact && offSheet)}
-                action={editControl("Edit your emergency contact", () =>
-                  setEditing("emergency"),
-                )}
+                title="Emergency Contacts"
+                busy={detailsPending}
+                className={cn(!hasEmergencyContact && offSheet)}
+                action={
+                  detailsReady &&
+                  editControl("Edit your emergency contacts", () =>
+                    setEditing("emergency"),
+                  )
+                }
               >
-                {hasEmergencyContact ? (
+                {detailsPending ? (
                   <DetailList>
-                    <Detail label="Name" value={diver.emergency_contact_name} />
-                    <Detail
-                      label="Phone"
-                      value={diver.emergency_contact_phone}
-                    />
-                    <Detail
-                      label="Relationship"
-                      value={diver.emergency_contact_relationship}
-                    />
+                    <Detail label="Name" pending />
+                    <Detail label="Phone" pending />
                   </DetailList>
+                ) : hasEmergencyContact ? (
+                  // In call order: the first is the one to ring first.
+                  <div className="space-y-3">
+                    {contacts.map((contact, index) => (
+                      <div key={index} className={KEEP_TOGETHER}>
+                        <DetailList>
+                          <Detail label="Name" value={contact.name} />
+                          <Detail label="Phone" value={contact.phone} />
+                          <Detail
+                            label="Relationship"
+                            value={contact.relationship}
+                          />
+                        </DetailList>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  emptyNote("Not filled in yet.")
+                  detailsEmptyNote()
                 )}
               </Section>
             </div>
@@ -711,24 +761,22 @@ export function CheckInPageFrame({
             a link's page, which only shows. */}
         {!link && (
           <>
-            <UserFieldsDialog
+            <CheckinDetailsDialog
               open={editing === "about"}
               onOpenChange={(open) => setEditing(open ? "about" : null)}
-              {...CHECK_IN_GROUP_HEADINGS.about}
-              groups={[{ fields: ["name", ...ABOUT_YOU_FIELDS] }]}
+              group="about"
+              withName
               picture="portrait"
             />
-            <UserFieldsDialog
+            <CheckinDetailsDialog
               open={editing === "insurance"}
               onOpenChange={(open) => setEditing(open ? "insurance" : null)}
-              {...CHECK_IN_GROUP_HEADINGS.insurance}
-              groups={[{ fields: [...INSURANCE_FIELDS] }]}
+              group="insurance"
             />
-            <UserFieldsDialog
+            <CheckinDetailsDialog
               open={editing === "emergency"}
               onOpenChange={(open) => setEditing(open ? "emergency" : null)}
-              {...CHECK_IN_GROUP_HEADINGS.emergency}
-              groups={[{ fields: [...EMERGENCY_CONTACT_FIELDS] }]}
+              group="emergency"
             />
             <DivingFiguresDialog
               open={editing === "diving"}

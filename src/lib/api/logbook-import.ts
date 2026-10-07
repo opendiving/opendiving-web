@@ -1,3 +1,8 @@
+import type {
+  CheckinDetailsUpdate,
+  EmergencyContact,
+  InsurancePolicy,
+} from "./checkin-details";
 import { apiClient } from "./client";
 import type { RecordingDevice } from "./dives";
 
@@ -171,11 +176,12 @@ export type ImportNoteCode =
   | "recording_attached"
   | "recording_filled"
   | "diver_not_applied"
-  // An emergency contact or insurance the document carries but the preview does not
-  // offer: it names nobody, or it is not the first. A warning.
+  // A check-in detail the document carries but the preview does not offer: a contact
+  // naming nobody, a policy naming no provider, a row past the cap, an address this
+  // app cannot store, or this account's own sign-in address. A warning.
   | "check_in_detail_dropped"
-  // Only when a fact or the portrait actually changed, which is what tells the card
-  // to re-read the signed-in user.
+  // Only when a check-in detail or the portrait actually changed, which is what tells
+  // the import page to re-read the shared check-in details and the signed-in user.
   | "check_in_detail_written"
   // The archive's portrait was taken, and the account's had changed since the
   // preview, so the account's stayed. Information: nothing was lost.
@@ -413,51 +419,37 @@ export interface ImportGenerator {
   version: string | null;
 }
 
-/** An emergency contact as the preview shows it and as the apply takes it back. */
-export interface ImportCheckInEmergencyContact {
-  name: string | null;
-  phone: string | null;
-  relationship: string | null;
-}
-
-/** A dive insurance, on the same terms. `expires_on` is a bare `YYYY-MM-DD`. */
-export interface ImportCheckInInsurance {
-  provider: string | null;
-  number: string | null;
-  expires_on: string | null;
-}
-
 /**
- * One check-in fact the document carries: what the account holds beside what the
- * API proposes. An object is proposed whole - the account's own when the document's
- * agrees with it on every member it carries, otherwise the document's alone.
+ * One check-in detail the document carries: what the account holds beside what the API
+ * proposes, keyed by the member of the check-in details it is. A list is proposed whole,
+ * each document row that matches an account row on every member it carries standing as
+ * that account row, so this app's own UDDF - which has no slot for a policy number -
+ * proposes the account's policies with theirs. The email is never the account's sign-in
+ * address, unless that is already its check-in email.
  */
 export type ImportCheckInDetail =
-  | { detail: "born_on"; account: string | null; proposed: string }
+  | { detail: "email"; account: string | null; proposed: string }
   | { detail: "phone"; account: string | null; proposed: string }
+  | { detail: "date_of_birth"; account: string | null; proposed: string }
   | {
-      detail: "emergency_contact";
-      account: ImportCheckInEmergencyContact | null;
-      proposed: ImportCheckInEmergencyContact;
+      detail: "emergency_contacts";
+      account: EmergencyContact[];
+      proposed: EmergencyContact[];
     }
   | {
-      detail: "insurance";
-      account: ImportCheckInInsurance | null;
-      proposed: ImportCheckInInsurance;
+      detail: "insurance_policies";
+      account: InsurancePolicy[];
+      proposed: InsurancePolicy[];
     };
 
 export type ImportCheckInDetailKey = ImportCheckInDetail["detail"];
 
 /**
- * The facts the diver confirmed, sent beside the token. A key left out is not
- * written, `null` clears the fact, and an object replaces all of the account's.
+ * The details the diver confirmed, sent beside the token, keyed and bounded as
+ * `PATCH /user/checkin-details` keys and bounds them: a key left out is not written,
+ * `null` clears a scalar, and a list replaces the account's whole.
  */
-export interface ImportCheckInSubmission {
-  born_on?: string | null;
-  phone?: string | null;
-  emergency_contact?: ImportCheckInEmergencyContact | null;
-  insurance?: ImportCheckInInsurance | null;
-}
+export type ImportCheckInSubmission = CheckinDetailsUpdate;
 
 /**
  * The archive's portrait beside the account's, for the diver to take or keep.
@@ -508,8 +500,8 @@ export interface ImportPreview extends ImportReport {
    */
   token: string;
   /**
-   * One entry per check-in fact the documents carry, in the order date of birth,
-   * phone, emergency contact, insurance. Empty when they carry none.
+   * One entry per check-in detail the documents carry, in the order email, phone,
+   * date of birth, emergency contacts, insurance policies. Empty when they carry none.
    */
   check_in_details: ImportCheckInDetail[];
   /**
@@ -599,7 +591,8 @@ export const logbookImportAPI = {
    * different set, which is what stops a diver approving one plan and
    * uploading another.
    *
-   * `checkIn` is the facts to write, as a JSON field; omitted, none is written.
+   * `checkIn` is the check-in details to write, as a JSON field; omitted, none is
+   * written.
    * `portrait` is the choice for the preview's `portrait`; omitted, the account
    * keeps its own.
    */

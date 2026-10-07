@@ -1,55 +1,28 @@
 import { z } from "zod";
 
 import type { UpdateProfileData, User } from "@/lib/api/auth";
-import { todayIsoDate } from "@/lib/gear-service";
 
 /**
- * Every plain field of the signed-in diver's own record that a form here can edit,
- * in the order they are rendered.
+ * Every plain field of the signed-in diver's account that a form here can edit, in the
+ * order they are rendered.
  *
- * One list rather than a schema per surface: `/settings` shows them in cards and
- * `/checkin` in dialogs, and both are subsets of this. The bounds and the
- * messages therefore exist once - `PATCH /user` is `extra="forbid"` with those
- * lengths declared, so an over-long value is a 422 rather than a truncation, and a
- * second copy of a bound is a second thing to keep in step with the column.
+ * `PATCH /user` is `extra="forbid"` with these lengths declared, so an over-long value
+ * is a 422 rather than a truncation, and the bounds and messages exist here once.
  *
  * Absent on purpose: `email`, which needs the new address confirmed first
- * (`emailChangeSchema`), and `units`, the three email switches
- * (`gear_service_emails`, `renewal_reminder_emails`, `year_in_review_emails`) and
- * `dive_form_hidden_fields`, which are not text boxes.
+ * (`emailChangeSchema`); `units`, the three email switches and
+ * `dive_form_hidden_fields`, which are not text boxes; and the check-in details, which
+ * are an object of their own (`validations/checkin-details.ts`).
  */
-export const USER_FIELDS = [
-  "name",
-  "username",
-  "date_of_birth",
-  "phone",
-  "insurance_provider",
-  "insurance_policy_number",
-  "insurance_expires_on",
-  "emergency_contact_name",
-  "emergency_contact_phone",
-  "emergency_contact_relationship",
-] as const;
+export const USER_FIELDS = ["name", "username"] as const;
 
 export type UserFieldKey = (typeof USER_FIELDS)[number];
 
-/**
- * Every field is a string in form state, `""` being "not set".
- *
- * Not `string | null`: react-hook-form re-displays a field's default the moment its
- * value resolves to `undefined`, and `""` is the one empty a text box and a
- * `DatePicker` both already speak. `userFieldsUpdate` turns it back into the `null`
- * the API clears a column with.
- */
+/** Every field is a string in form state. */
 export type UserFieldValues = Record<UserFieldKey, string>;
 
-// Bare "YYYY-MM-DD", with `""` for a cleared field - a union rather than a
-// `z.preprocess()`/`.transform()`, which would change what `z.input<>` infers and
-// break the form's field types (see DECISIONS.md).
-const optionalDate = (message: string) =>
-  z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message)]);
-
-const FIELD_SCHEMAS: Record<UserFieldKey, z.ZodTypeAny> = {
+/** Each field's schema, which the sheet's About You dialog borrows for the name. */
+export const USER_FIELD_SCHEMAS: Record<UserFieldKey, z.ZodString> = {
   name: z
     .string()
     .min(2, "Name must be at least 2 characters")
@@ -62,109 +35,15 @@ const FIELD_SCHEMAS: Record<UserFieldKey, z.ZodTypeAny> = {
       /^[a-z0-9]+$/,
       "Username can only contain lowercase letters and numbers",
     ),
-  date_of_birth: optionalDate("Use a valid date"),
-  phone: z.string().max(32, "Phone number cannot exceed 32 characters"),
-  insurance_provider: z
-    .string()
-    .max(255, "Provider cannot exceed 255 characters"),
-  insurance_policy_number: z
-    .string()
-    .max(64, "Policy number cannot exceed 64 characters"),
-  insurance_expires_on: optionalDate("Use a valid date"),
-  emergency_contact_name: z
-    .string()
-    .max(255, "Name cannot exceed 255 characters"),
-  emergency_contact_phone: z
-    .string()
-    .max(32, "Phone number cannot exceed 32 characters"),
-  emergency_contact_relationship: z
-    .string()
-    .max(64, "Relationship cannot exceed 64 characters"),
 };
 
-/**
- * The three groups both surfaces show, named once so a dialog on `/checkin` and a
- * card on `/settings` cannot disagree about which fields are "insurance". The sheet's
- * own sections are these too, which is what makes each section's edit control open
- * exactly what it sits beside.
- */
-export const ABOUT_YOU_FIELDS = ["date_of_birth", "phone"] as const;
-export const INSURANCE_FIELDS = [
-  "insurance_provider",
-  "insurance_policy_number",
-  "insurance_expires_on",
-] as const;
-export const EMERGENCY_CONTACT_FIELDS = [
-  "emergency_contact_name",
-  "emergency_contact_phone",
-  "emergency_contact_relationship",
-] as const;
-
-/**
- * The member each group is named by, first in its list, and what `PATCH /user` says
- * when a group holds anything else without it - the API's own sentences, so the
- * field reads the same whether the form or the server caught it.
- */
-const ANCHORED_GROUPS = [
-  {
-    fields: EMERGENCY_CONTACT_FIELDS,
-    message:
-      "Required while the emergency contact has a phone or a relationship",
-  },
-  {
-    fields: INSURANCE_FIELDS,
-    message:
-      "Required while the insurance has a policy number or an expiry date",
-  },
-] as const;
-
-/** Which fields are required, and so cannot be cleared. */
-const REQUIRED: ReadonlySet<UserFieldKey> = new Set(["name", "username"]);
-
-/**
- * A resolver schema for exactly the fields a form is showing.
- *
- * Built per form rather than validating the whole record, because the form seeds
- * every field from the account and only renders some: a schema covering all of them
- * would fail a dialog about insurance on a stored name it never showed and the diver
- * cannot reach from there.
- */
+/** A resolver schema for exactly the fields a form is showing. */
 export function userFieldsSchema(fields: readonly UserFieldKey[]) {
-  const shape = Object.fromEntries(
-    fields.map((field) => [field, FIELD_SCHEMAS[field]]),
+  return z.object(
+    Object.fromEntries(
+      fields.map((field) => [field, USER_FIELD_SCHEMAS[field]]),
+    ),
   );
-  const text = (data: Record<string, unknown>, field: UserFieldKey) =>
-    String(data[field] ?? "").trim();
-
-  // Both rules mirror the API's, so each is caught in the field rather than coming
-  // back as a 422. An object-level refine, unlike a field-level transform, leaves
-  // what `z.input<>` infers untouched.
-  return z.object(shape).superRefine((data, ctx) => {
-    // Today itself is accepted, as it is there.
-    if (
-      fields.includes("date_of_birth") &&
-      text(data, "date_of_birth") > todayIsoDate()
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Date of birth cannot be in the future",
-        path: ["date_of_birth"],
-      });
-    }
-    // Every host shows a group whole, so the fields shown are the row after the save.
-    for (const {
-      fields: [anchor, ...members],
-      message,
-    } of ANCHORED_GROUPS) {
-      if (
-        fields.includes(anchor) &&
-        !text(data, anchor) &&
-        members.some((member) => text(data, member))
-      ) {
-        ctx.addIssue({ code: "custom", message, path: [anchor] });
-      }
-    }
-  });
 }
 
 /** The stored record as a form holds it: `null` and absent both become `""`. */
@@ -172,45 +51,22 @@ export function userFieldsFromUser(user: User): UserFieldValues {
   return {
     name: user.name ?? "",
     username: user.username ?? "",
-    date_of_birth: user.date_of_birth ?? "",
-    phone: user.phone ?? "",
-    insurance_provider: user.insurance_provider ?? "",
-    insurance_policy_number: user.insurance_policy_number ?? "",
-    insurance_expires_on: user.insurance_expires_on ?? "",
-    emergency_contact_name: user.emergency_contact_name ?? "",
-    emergency_contact_phone: user.emergency_contact_phone ?? "",
-    emergency_contact_relationship: user.emergency_contact_relationship ?? "",
   };
 }
 
-/** What a diver who has filled none of this in sees. */
-export const EMPTY_USER_FIELDS: UserFieldValues = Object.fromEntries(
-  USER_FIELDS.map((field) => [field, ""]),
-) as UserFieldValues;
+/** What a form holds before the account has loaded. */
+export const EMPTY_USER_FIELDS: UserFieldValues = { name: "", username: "" };
 
 /**
- * The `PATCH /user` body for a form showing `fields`: those keys and no others, with
- * `""` sent as an explicit `null` so a group the diver emptied is actually cleared.
- *
- * Only the fields shown, because a body carrying a key the form never displayed
- * would have this dialog saving a value from somewhere else - and `PATCH /user` is
- * `extra="forbid"`, so the set has to be exact either way.
+ * The `PATCH /user` body for a form showing `fields`: those keys and no others, trimmed.
+ * Both are required, so neither has a null to clear it to, and the schema has already
+ * refused an empty one by the time this runs.
  */
 export function userFieldsUpdate(
   fields: readonly UserFieldKey[],
   values: UserFieldValues,
 ): UpdateProfileData {
   const update: UpdateProfileData = {};
-  for (const field of fields) {
-    const trimmed = values[field].trim();
-    if (REQUIRED.has(field)) {
-      // A required column has no null to clear it to; the schema has already
-      // refused an empty one by the time this runs.
-      update[field as "name" | "username"] = trimmed;
-    } else {
-      update[field as Exclude<UserFieldKey, "name" | "username">] =
-        trimmed || null;
-    }
-  }
+  for (const field of fields) update[field] = values[field].trim();
   return update;
 }

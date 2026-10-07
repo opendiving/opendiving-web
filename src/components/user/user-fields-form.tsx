@@ -28,7 +28,6 @@ import {
 } from "@/lib/validations/user-fields";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { DatePicker } from "@/components/ui/date-picker";
 import {
   Form,
   FormControl,
@@ -48,66 +47,22 @@ import { PictureField } from "@/components/user/picture-field";
 // rather than a box with no label.
 const FIELD_SPECS: Record<
   UserFieldKey,
-  {
-    label: string;
-    kind: "text" | "tel" | "date";
-    placeholder?: string;
-    description?: string;
-  }
+  { label: string; placeholder?: string; description?: string }
 > = {
   name: {
     label: "Full name",
-    kind: "text",
     placeholder: "Enter your full name",
   },
   username: {
     label: "Username",
-    kind: "text",
     placeholder: "Choose a username",
     description: "Lowercase letters and numbers, unique across OpenDiving.",
   },
-  date_of_birth: { label: "Date of birth", kind: "date" },
-  phone: { label: "Phone number", kind: "tel" },
-  insurance_provider: {
-    label: "Provider",
-    kind: "text",
-    placeholder: "DAN Europe, DiveAssure…",
-  },
-  insurance_policy_number: { label: "Policy number", kind: "text" },
-  insurance_expires_on: { label: "Expires on", kind: "date" },
-  emergency_contact_name: { label: "Name", kind: "text" },
-  emergency_contact_phone: { label: "Phone number", kind: "tel" },
-  emergency_contact_relationship: {
-    label: "Relationship to you",
-    kind: "text",
-    placeholder: "Partner, parent, friend…",
-  },
 };
-
-/**
- * What each check-in group is called, and the line under it, on every surface that
- * gives a group a heading of its own: a `/checkin` dialog, a `/settings` card.
- */
-export const CHECK_IN_GROUP_HEADINGS = {
-  about: {
-    title: "About You",
-    description: "Your own details, as a desk asks for them.",
-  },
-  insurance: {
-    title: "Dive Insurance",
-    description:
-      "The provider and policy number a shop takes down, and when the cover runs out.",
-  },
-  emergency: {
-    title: "Emergency Contact",
-    description:
-      "Who a shop calls if something goes wrong, and how they know you.",
-  },
-} as const;
 
 /** A run of fields under one optional legend. */
 export interface UserFieldGroup {
-  /** Omitted by a form whose whole subject is already its heading - every dialog. */
+  /** Omitted by a form whose heading already names it. */
   legend?: string;
   fields: UserFieldKey[];
 }
@@ -124,25 +79,15 @@ export interface UserFieldsFormProps {
   onSaved?: () => void;
   /** What the toast says on success. */
   savedMessage?: string;
-  /**
-   * One of the diver's pictures, edited above the fields and sent after them - the
-   * avatar with the profile, the portrait with the check-in details.
-   */
+  /** One of the diver's pictures, edited above the fields and sent after them. */
   picture?: PictureKind;
 }
 
 /**
- * One form over any subset of the signed-in diver's own fields.
+ * One form over any subset of the signed-in diver's account fields - the name and the
+ * username, which `ProfileCard` shows beside the avatar.
  *
- * `/settings` shows them in cards and `/checkin` in dialogs over the summary that
- * prints them - a diver stood at a dive-shop desk has just been asked for the thing
- * that is missing, and sending them to `/settings` and back is two navigations away
- * from the page they are about to hand over. Both surfaces are this component with a
- * different `groups`, so a field cannot be worded, bounded or cleared differently
- * depending on where it was edited.
- *
- * Only the fields in `groups` are sent (`userFieldsUpdate`), and an emptied optional
- * one goes as an explicit `null` so clearing it actually clears it.
+ * Only the fields in `groups` are sent (`userFieldsUpdate`).
  *
  * A `picture` rides on the same Save, the way a certification's card images ride on
  * its form: the fields go first, then the one request the picture's pending edit
@@ -305,15 +250,7 @@ export function UserField({
             {spec.label}
           </FormLabel>
           <FormControl>
-            {spec.kind === "date" ? (
-              <DatePicker value={field.value} onChange={field.onChange} />
-            ) : (
-              <Input
-                type={spec.kind === "tel" ? "tel" : "text"}
-                placeholder={spec.placeholder}
-                {...field}
-              />
-            )}
+            <Input type="text" placeholder={spec.placeholder} {...field} />
           </FormControl>
           {spec.description && (
             <FormDescription>{spec.description}</FormDescription>

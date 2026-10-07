@@ -5,21 +5,28 @@ import {
   AboutYouCard,
   CheckInDetailsCard,
   DiveInsuranceCard,
-  EmergencyContactCard,
+  EmergencyContactsCard,
 } from "./check-in-details-cards";
+import { CheckInPageFrame } from "@/components/checkin/checkin-page-frame";
+import {
+  CheckinDetailsProvider,
+  useCheckinDetails,
+} from "@/contexts/CheckinDetailsContext";
 import type { User } from "@/lib/api/auth";
+import type {
+  CheckinDetails,
+  CheckinDetailsUpdate,
+} from "@/lib/api/checkin-details";
+import { ownCheckInDiver } from "@/lib/checkin";
 import { isoDaysFromNow } from "@/test/local-day";
 
 // What a render reaches here is the wiring: that each card's save sends its own group
-// and nothing of the other two, that clearing a group sends nulls rather than leaving
-// the row as it was, and that a birth date in the future or a policy with no provider
-// never becomes a request at all.
+// and no other key, whatever the shared copy holds; that a save on one card is what
+// every other surface shows at once; and that nothing offers a Save before the copy
+// has arrived.
 
-// The whole value is hoisted and returned by identity, `user` included, as the real
-// `AuthContext` holds it in state and keeps one identity across renders. Varying a
-// field means writing to `auth.user`; replacing it is what a re-read does, which
-// `reread()` below does on purpose. See "The new-dive render test was in a loop with
-// itself" in DECISIONS.md.
+// Hoisted and returned by identity, as the real `AuthContext` holds it in state. See
+// "The new-dive render test was in a loop with itself" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
   user: {
     uuid: "user-1",
@@ -40,30 +47,61 @@ vi.mock("@/lib/api/auth", () => ({
   authAPI: { updateProfile: vi.fn() },
 }));
 
+vi.mock("@/lib/api/checkin-details", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  checkinDetailsAPI: { get: vi.fn(), update: vi.fn() },
+}));
+
+vi.mock("@/hooks/useAuthedBlobUrl", () => ({
+  useAuthedBlobUrl: () => ({
+    url: null,
+    isLoading: false,
+    hasError: false,
+    error: null,
+  }),
+}));
+
 vi.mock("@/components/ui/use-toast", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useToast: () => ({ toast: vi.fn(), dismiss: vi.fn(), toasts: [] }),
 }));
 
 const { authAPI } = await import("@/lib/api/auth");
-const updateProfile = vi.mocked(authAPI.updateProfile);
+const { checkinDetailsAPI } = await import("@/lib/api/checkin-details");
+const get = vi.mocked(checkinDetailsAPI.get);
+const update = vi.mocked(checkinDetailsAPI.update);
 
-beforeEach(() => {
-  Object.assign(auth.user, {
-    date_of_birth: null,
-    phone: null,
-    emergency_contact_name: null,
-    emergency_contact_phone: null,
-    emergency_contact_relationship: null,
-    insurance_provider: null,
-    insurance_policy_number: null,
-    insurance_expires_on: null,
-  });
-  auth.refreshUser.mockReset().mockResolvedValue(undefined);
-  updateProfile.mockReset().mockResolvedValue(undefined);
+// The account's stored object, which `update` writes the way the API does - each key
+// present replacing its member - and answers whole.
+let server: CheckinDetails;
+const empty = (): CheckinDetails => ({
+  email: null,
+  phone: null,
+  date_of_birth: null,
+  emergency_contacts: [],
+  insurance_policies: [],
 });
 
-const save = () => screen.getByRole("button", { name: /save changes/i });
+beforeEach(() => {
+  server = empty();
+  get.mockReset().mockImplementation(async () => structuredClone(server));
+  update.mockReset().mockImplementation(async (patch: CheckinDetailsUpdate) => {
+    server = { ...server, ...patch };
+    return structuredClone(server);
+  });
+  auth.refreshUser.mockReset().mockResolvedValue(undefined);
+  vi.mocked(authAPI.updateProfile).mockReset().mockResolvedValue(undefined);
+});
+
+const withCopy = (ui: React.ReactNode) =>
+  render(<CheckinDetailsProvider>{ui}</CheckinDetailsProvider>);
+
+const saveButtons = () =>
+  screen.queryAllByRole("button", { name: /save changes/i });
+const save = async (index = 0) =>
+  userEvent.click(
+    (await screen.findAllByRole("button", { name: /save changes/i }))[index],
+  );
 
 describe("CheckInDetailsCard", () => {
   it("leads to the check-in page, from beside its heading", () => {
@@ -73,61 +111,118 @@ describe("CheckInDetailsCard", () => {
       "href",
       "/checkin",
     );
-    // Beside rather than inside, so the heading is named by its title alone.
     expect(
       screen.getByRole("heading", { name: "Check-in Details" }),
     ).toBeInTheDocument();
   });
 });
 
-describe("AboutYouCard", () => {
-  it("shows what the account already holds", () => {
-    auth.user.phone = "+44 7700 900000";
-    render(<AboutYouCard />);
+describe("before the shared copy has arrived", () => {
+  it("offers no Save while it is on its way", async () => {
+    get.mockReturnValue(new Promise(() => {}));
+    withCopy(<AboutYouCard />);
 
-    expect(screen.getByLabelText("Phone number")).toHaveValue(
+    expect(
+      screen.getByRole("status", { name: "Loading your check-in details" }),
+    ).toBeInTheDocument();
+    expect(saveButtons()).toHaveLength(0);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("says so when it failed, sends nothing, and reads it again on Try again", async () => {
+    get.mockRejectedValueOnce(new Error("down"));
+    withCopy(<DiveInsuranceCard />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /save changes/i }),
+    ).toBeInTheDocument();
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("is read once, however many surfaces show it", async () => {
+    withCopy(
+      <>
+        <AboutYouCard />
+        <DiveInsuranceCard />
+        <EmergencyContactsCard />
+      </>,
+    );
+
+    await waitFor(() => expect(saveButtons()).toHaveLength(3));
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AboutYouCard", () => {
+  it("sends its own members and no other key", async () => {
+    server.phone = "+44 7700 900000";
+    withCopy(<AboutYouCard />);
+
+    expect(await screen.findByLabelText("Phone number")).toHaveValue(
       "+44 7700 900000",
     );
-  });
+    await userEvent.type(screen.getByLabelText("Email"), "desk@example.org");
+    await save();
 
-  it("sends its own fields and no others, then re-reads the user", async () => {
-    render(<AboutYouCard />);
-
-    await userEvent.type(screen.getByLabelText("Phone number"), "0123");
-    await userEvent.click(save());
-
-    // Exactly the group's keys: `PATCH /user` is `extra="forbid"`, and a key from a
-    // group this card does not show would overwrite whatever that card holds.
     await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith({
+      expect(update).toHaveBeenCalledWith({
         date_of_birth: null,
-        phone: "0123",
+        phone: "+44 7700 900000",
+        email: "desk@example.org",
       }),
     );
-    // The re-read is what repaints the card from the row rather than from the boxes.
-    expect(auth.refreshUser).toHaveBeenCalled();
+    // Nothing on the user record changed, so it is not read again.
+    expect(auth.refreshUser).not.toHaveBeenCalled();
   });
 
-  it("refuses a birth date in the future before any request", async () => {
-    render(<AboutYouCard />);
+  it("fills the sign-in email with one click, and sends nothing until Save", async () => {
+    withCopy(<AboutYouCard />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Use my sign-in email" }),
+    );
+
+    expect(screen.getByLabelText("Email")).toHaveValue("sam@example.com");
+    expect(update).not.toHaveBeenCalled();
+
+    await save();
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ email: "sam@example.com" }),
+      ),
+    );
+  });
+
+  it("refuses a birth date in the future, and an email that is not one, before any request", async () => {
+    withCopy(<AboutYouCard />);
 
     await userEvent.type(
-      screen.getByLabelText("Date of birth"),
+      await screen.findByLabelText("Date of birth"),
       isoDaysFromNow(1),
     );
-    await userEvent.click(save());
+    // An address the browser's own check lets through, and the API would not take.
+    await userEvent.type(screen.getByLabelText("Email"), "desk@example");
+    await save();
 
     expect(
       await screen.findByText("Date of birth cannot be in the future"),
     ).toBeInTheDocument();
-    expect(updateProfile).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Please enter a valid email address"),
+    ).toBeInTheDocument();
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("says so when the save fails", async () => {
-    updateProfile.mockRejectedValue(new Error("nope"));
-    render(<AboutYouCard />);
+    update.mockRejectedValue(new Error("nope"));
+    withCopy(<AboutYouCard />);
 
-    await userEvent.click(save());
+    await save();
 
     expect(
       await screen.findByText("Failed to save. Please try again."),
@@ -135,124 +230,197 @@ describe("AboutYouCard", () => {
   });
 });
 
-describe("the cards side by side", () => {
-  // What the page's context does on every save: a re-read hands every consumer a new
-  // `user` object, whichever card asked for it.
-  const reread = () =>
-    auth.refreshUser.mockImplementation(async () => {
-      auth.user = { ...auth.user, ...updateProfile.mock.lastCall?.[0] };
-    });
-
-  it("leaves what is typed in one card alone when another saves", async () => {
-    reread();
-    const page = () => (
-      <>
-        <AboutYouCard />
-        <DiveInsuranceCard />
-      </>
-    );
-    const { rerender } = render(page());
-
-    await userEvent.type(screen.getByLabelText("Provider"), "DAN Europe");
-    await userEvent.type(screen.getByLabelText("Phone number"), "0123");
-    await userEvent.click(
-      screen.getAllByRole("button", { name: /save changes/i })[0],
-    );
-    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalled());
-    rerender(page());
-
-    expect(screen.getByLabelText("Provider")).toHaveValue("DAN Europe");
-    expect(screen.getByLabelText("Phone number")).toHaveValue("0123");
-  });
-
-  it("repaints the card that saved even when the row did not change", async () => {
-    auth.user.phone = "0123";
-    reread();
-    render(<AboutYouCard />);
-
-    // Sent trimmed, so the stored value is the one already there.
-    await userEvent.type(screen.getByLabelText("Phone number"), " ");
-    await userEvent.click(save());
-
-    await waitFor(() =>
-      expect(screen.getByLabelText("Phone number")).toHaveValue("0123"),
-    );
-  });
-});
-
 describe("DiveInsuranceCard", () => {
-  it("sends its own fields and no others", async () => {
-    auth.user.insurance_provider = "DAN Europe";
-    render(<DiveInsuranceCard />);
+  it("sends the policies and no other key, even from a copy gone stale", async () => {
+    server.insurance_policies = [
+      { provider: "DAN Europe", number: null, expires_on: null },
+    ];
+    withCopy(<DiveInsuranceCard />);
+    await screen.findByRole("button", { name: /save changes/i });
 
-    expect(screen.getByLabelText("Provider")).toHaveValue("DAN Europe");
-    await userEvent.type(screen.getByLabelText("Policy number"), "P-42");
-    await userEvent.click(save());
+    // Another device saved a phone after this copy was read.
+    server.phone = "0999";
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Policy number policy 1 of 1" }),
+      "P-42",
+    );
+    await save();
 
     await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith({
-        insurance_provider: "DAN Europe",
-        insurance_policy_number: "P-42",
-        insurance_expires_on: null,
+      expect(update).toHaveBeenCalledWith({
+        insurance_policies: [
+          { provider: "DAN Europe", number: "P-42", expires_on: null },
+        ],
       }),
     );
+    expect(server.phone).toBe("0999");
   });
 
   it("refuses a policy with no provider before any request", async () => {
-    render(<DiveInsuranceCard />);
+    withCopy(<DiveInsuranceCard />);
 
-    await userEvent.type(screen.getByLabelText("Policy number"), "P-42");
-    await userEvent.click(save());
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add a policy" }),
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Policy number policy 1 of 1" }),
+      "P-42",
+    );
+    await save();
 
-    expect(
-      await screen.findByText(
-        "Required while the insurance has a policy number or an expiry date",
-      ),
-    ).toBeInTheDocument();
-    expect(updateProfile).not.toHaveBeenCalled();
+    expect(await screen.findByText("Enter the provider")).toBeInTheDocument();
+    expect(update).not.toHaveBeenCalled();
   });
 });
 
-describe("EmergencyContactCard", () => {
-  it("sends its own fields and no others", async () => {
-    render(<EmergencyContactCard />);
+describe("EmergencyContactsCard", () => {
+  it("sends a second contact moved first, first", async () => {
+    server.emergency_contacts = [
+      { name: "Alex", phone: "0456", relationship: "Partner" },
+    ];
+    withCopy(<EmergencyContactsCard />);
 
-    await userEvent.type(screen.getByLabelText("Name"), "Alex");
-    await userEvent.type(screen.getByLabelText("Phone number"), "0456");
-    await userEvent.type(
-      screen.getByLabelText("Relationship to you"),
-      "Partner",
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add a contact" }),
     );
-    await userEvent.click(save());
+    // Focus lands on the row just added.
+    expect(
+      screen.getByRole("textbox", { name: "Name contact 2 of 2" }),
+    ).toHaveFocus();
+    await userEvent.keyboard("Robin");
+    screen
+      .getByRole("button", { name: /^Reorder Robin, position 2 of 2/ })
+      .focus();
+    await userEvent.keyboard("{ArrowUp}");
+    await save();
 
     await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith({
-        emergency_contact_name: "Alex",
-        emergency_contact_phone: "0456",
-        emergency_contact_relationship: "Partner",
+      expect(update).toHaveBeenCalledWith({
+        emergency_contacts: [
+          { name: "Robin", phone: null, relationship: null },
+          { name: "Alex", phone: "0456", relationship: "Partner" },
+        ],
       }),
     );
   });
 
-  it("clears the group with explicit nulls rather than leaving it behind", async () => {
-    Object.assign(auth.user, {
-      emergency_contact_name: "Alex",
-      emergency_contact_phone: "0456",
-      emergency_contact_relationship: "Partner",
-    });
-    render(<EmergencyContactCard />);
+  it("clears the list with an empty one rather than leaving it behind", async () => {
+    server.emergency_contacts = [
+      { name: "Alex", phone: null, relationship: null },
+    ];
+    withCopy(<EmergencyContactsCard />);
 
-    await userEvent.clear(screen.getByLabelText("Name"));
-    await userEvent.clear(screen.getByLabelText("Phone number"));
-    await userEvent.clear(screen.getByLabelText("Relationship to you"));
-    await userEvent.click(save());
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Remove Alex" }),
+    );
+    await save();
 
     await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith({
-        emergency_contact_name: null,
-        emergency_contact_phone: null,
-        emergency_contact_relationship: null,
-      }),
+      expect(update).toHaveBeenCalledWith({ emergency_contacts: [] }),
+    );
+  });
+
+  it("holds Add at the cap", async () => {
+    server.emergency_contacts = Array.from({ length: 5 }, (_, i) => ({
+      name: `Contact ${i}`,
+      phone: null,
+      relationship: null,
+    }));
+    withCopy(<EmergencyContactsCard />);
+
+    expect(
+      await screen.findByRole("button", { name: "Add a contact" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText("5 contacts at most - remove one to add another."),
+    ).toBeInTheDocument();
+  });
+});
+
+// The signed-in sheet as `CheckInPageContent` builds it, beside the cards.
+function Sheet() {
+  const { details } = useCheckinDetails();
+  return (
+    <CheckInPageFrame
+      diver={ownCheckInDiver(auth.user, details)}
+      details={details ? undefined : "loading"}
+      units="metric"
+      isLoading={false}
+    />
+  );
+}
+
+describe("the cards side by side", () => {
+  it("leaves both of two saves standing, on the copy and on the sheet", async () => {
+    withCopy(
+      <>
+        <AboutYouCard />
+        <DiveInsuranceCard />
+        <Sheet />
+      </>,
+    );
+
+    await userEvent.type(
+      await screen.findByLabelText("Email"),
+      "desk@example.org",
+    );
+    await save(0);
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByRole("button", { name: "Add a policy" }));
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Provider policy 1 of 1" }),
+      "DAN Europe",
+    );
+    await save(1);
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2));
+
+    // The second body carried the policies alone, so the email stands.
+    expect(update.mock.lastCall?.[0]).toEqual({
+      insurance_policies: [
+        { provider: "DAN Europe", number: null, expires_on: null },
+      ],
+    });
+    expect(await screen.findByText("desk@example.org")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toHaveValue("desk@example.org");
+    expect(screen.getAllByText("DAN Europe").length).toBeGreaterThan(0);
+  });
+
+  it("leaves what is typed in one card alone when another saves", async () => {
+    withCopy(
+      <>
+        <AboutYouCard />
+        <DiveInsuranceCard />
+      </>,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add a policy" }),
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Provider policy 1 of 1" }),
+      "DAN Europe",
+    );
+    await userEvent.type(screen.getByLabelText("Phone number"), "0123");
+    await save(0);
+    await waitFor(() => expect(update).toHaveBeenCalled());
+
+    expect(
+      screen.getByRole("textbox", { name: "Provider policy 1 of 1" }),
+    ).toHaveValue("DAN Europe");
+    expect(screen.getByLabelText("Phone number")).toHaveValue("0123");
+  });
+
+  it("repaints the card that saved even when the stored value did not change", async () => {
+    server.phone = "0123";
+    withCopy(<AboutYouCard />);
+
+    // Sent trimmed, so the stored value is the one already there.
+    await userEvent.type(await screen.findByLabelText("Phone number"), " ");
+    await save();
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Phone number")).toHaveValue("0123"),
     );
   });
 });

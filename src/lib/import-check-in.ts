@@ -8,140 +8,103 @@ import type {
 } from "@/lib/api/logbook-import";
 import { formatDateOnly } from "@/lib/date-time";
 import {
-  EMERGENCY_CONTACT_FIELDS,
-  EMPTY_USER_FIELDS,
-  INSURANCE_FIELDS,
-  userFieldsUpdate,
-  type UserFieldKey,
-  type UserFieldValues,
-} from "@/lib/validations/user-fields";
+  checkinDetailsPatch,
+  contactFormValue,
+  EMPTY_CHECKIN_FORM_VALUES,
+  policyFormValue,
+  type CheckinDetailsFormValues,
+} from "@/lib/validations/checkin-details";
 
-/**
- * The form module's fields each check-in fact is held in.
- *
- * The import preview edits a fact in the same fields `/settings` does, so a value
- * is bounded, anchored and cleared by one set of rules wherever it is typed.
- */
-export const CHECK_IN_DETAIL_FIELDS: Record<
-  ImportCheckInDetailKey,
-  readonly UserFieldKey[]
-> = {
-  born_on: ["date_of_birth"],
-  phone: ["phone"],
-  emergency_contact: EMERGENCY_CONTACT_FIELDS,
-  insurance: INSURANCE_FIELDS,
-};
-
+// Each detail is keyed by the member of the check-in details it is, so the preview
+// edits it in the field `/settings` edits it in, bounded and cleared by one set of
+// rules wherever it is typed.
 export const CHECK_IN_DETAIL_LABELS: Record<ImportCheckInDetailKey, string> = {
-  born_on: "Date of birth",
+  email: "Email",
   phone: "Phone number",
-  emergency_contact: "Emergency contact",
-  insurance: "Dive insurance",
+  date_of_birth: "Date of birth",
+  emergency_contacts: "Emergency contacts",
+  insurance_policies: "Insurance policies",
 };
 
-// One side of a fact as the form's fields hold it, `""` for anything unset.
-function asFields(
+// One side of a detail as the form holds it, `""` for anything unset.
+function asFormValue(
   entry: ImportCheckInDetail,
   side: "account" | "proposed",
-): Partial<UserFieldValues> {
+): Partial<CheckinDetailsFormValues> {
   switch (entry.detail) {
-    case "born_on":
-      return { date_of_birth: entry[side] ?? "" };
+    case "email":
     case "phone":
-      return { phone: entry[side] ?? "" };
-    case "emergency_contact": {
-      const contact = entry[side];
-      return {
-        emergency_contact_name: contact?.name ?? "",
-        emergency_contact_phone: contact?.phone ?? "",
-        emergency_contact_relationship: contact?.relationship ?? "",
-      };
-    }
-    case "insurance": {
-      const insurance = entry[side];
-      return {
-        insurance_provider: insurance?.provider ?? "",
-        insurance_policy_number: insurance?.number ?? "",
-        insurance_expires_on: insurance?.expires_on ?? "",
-      };
-    }
+    case "date_of_birth":
+      return { [entry.detail]: entry[side] ?? "" };
+    case "emergency_contacts":
+      return { emergency_contacts: entry[side].map(contactFormValue) };
+    case "insurance_policies":
+      return { insurance_policies: entry[side].map(policyFormValue) };
   }
 }
 
-/** The form's starting values: every fact the document carries, as proposed. */
+/** The form's starting values: every detail the document carries, as proposed. */
 export function checkInProposalValues(
   details: readonly ImportCheckInDetail[],
-): UserFieldValues {
+): CheckinDetailsFormValues {
   return Object.assign(
-    { ...EMPTY_USER_FIELDS },
-    ...details.map((entry) => asFields(entry, "proposed")),
+    { ...EMPTY_CHECKIN_FORM_VALUES },
+    ...details.map((entry) => asFormValue(entry, "proposed")),
   );
 }
 
-/** What the account holds of one fact, as one line, or `null` when it holds none. */
+const joined = (parts: (string | null | undefined)[]) =>
+  parts.filter(Boolean).join(" · ");
+
+/** What the account holds of one detail, as one line, or `null` when it holds none. */
 export function checkInAccountSummary(
   entry: ImportCheckInDetail,
 ): string | null {
-  const values = asFields(entry, "account");
-  const parts = CHECK_IN_DETAIL_FIELDS[entry.detail].flatMap((field) => {
-    const value = values[field]?.trim();
-    if (!value) return [];
-    if (field === "date_of_birth") return [formatDateOnly(value)];
-    if (field === "insurance_expires_on")
-      return [`expires ${formatDateOnly(value)}`];
-    return [value];
-  });
-  return parts.length > 0 ? parts.join(" · ") : null;
+  switch (entry.detail) {
+    case "email":
+    case "phone":
+      return entry.account || null;
+    case "date_of_birth":
+      return entry.account ? formatDateOnly(entry.account) : null;
+    case "emergency_contacts":
+      return (
+        entry.account
+          .map((contact) =>
+            joined([contact.name, contact.phone, contact.relationship]),
+          )
+          .join("; ") || null
+      );
+    case "insurance_policies":
+      return (
+        entry.account
+          .map((policy) =>
+            joined([
+              policy.provider,
+              policy.number,
+              policy.expires_on &&
+                `expires ${formatDateOnly(policy.expires_on)}`,
+            ]),
+          )
+          .join("; ") || null
+      );
+  }
 }
 
 /**
- * The apply's `check_in_details` body: every fact not in `kept`, as the form holds it.
- *
- * A kept fact is left out, which is what makes the API leave it alone. An emptied
- * one goes as `null`, which clears it - trimmed and nulled by `userFieldsUpdate`, the
- * same rule a `/settings` save follows.
+ * The apply's `check_in_details` body: every detail not in `kept`, as the form holds
+ * it. A kept detail is left out, which is what makes the API leave it alone; an
+ * emptied scalar goes as `null` and an emptied list as `[]`, which clear it - the
+ * same rule a `/settings` save follows, through the same `checkinDetailsPatch`.
  */
 export function checkInSubmission(
   details: readonly ImportCheckInDetail[],
   kept: ReadonlySet<ImportCheckInDetailKey>,
-  values: UserFieldValues,
+  values: CheckinDetailsFormValues,
 ): ImportCheckInSubmission {
-  const submission: ImportCheckInSubmission = {};
-  for (const { detail } of details) {
-    if (kept.has(detail)) continue;
-    const update = userFieldsUpdate(CHECK_IN_DETAIL_FIELDS[detail], values);
-    switch (detail) {
-      case "born_on":
-        submission.born_on = update.date_of_birth ?? null;
-        break;
-      case "phone":
-        submission.phone = update.phone ?? null;
-        break;
-      case "emergency_contact": {
-        const contact = {
-          name: update.emergency_contact_name ?? null,
-          phone: update.emergency_contact_phone ?? null,
-          relationship: update.emergency_contact_relationship ?? null,
-        };
-        submission.emergency_contact = Object.values(contact).some(Boolean)
-          ? contact
-          : null;
-        break;
-      }
-      case "insurance": {
-        const insurance = {
-          provider: update.insurance_provider ?? null,
-          number: update.insurance_policy_number ?? null,
-          expires_on: update.insurance_expires_on ?? null,
-        };
-        submission.insurance = Object.values(insurance).some(Boolean)
-          ? insurance
-          : null;
-        break;
-      }
-    }
-  }
-  return submission;
+  return checkinDetailsPatch(
+    details.map(({ detail }) => detail).filter((detail) => !kept.has(detail)),
+    values,
+  );
 }
 
 /**
@@ -159,7 +122,7 @@ export function portraitChoice(
   };
 }
 
-/** Whether an apply changed any of the account's check-in facts or its portrait. */
+/** Whether an apply changed any of the account's check-in details or its portrait. */
 export function checkInWasWritten(report: ImportReport): boolean {
   return report.notes.some((note) => note.code === "check_in_detail_written");
 }

@@ -20,7 +20,6 @@ import {
 } from "@/lib/api/gear-service";
 import type { Renewable } from "@/lib/certification";
 import { announceSavedElsewhere } from "@/lib/saved-elsewhere";
-import { INSURANCE_FIELDS } from "@/lib/validations/user-fields";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,14 +30,13 @@ import {
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
+import { CheckinDetailsDialog } from "@/components/checkin/checkin-details-dialog";
 import { RenewalsList } from "@/components/certifications/renewals-list";
 import { GearServiceRecordDialog } from "@/components/gear/gear-service-record-dialog";
 import {
   ServiceDueList,
   dueItemLabel,
 } from "@/components/gear/service-due-list";
-import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
-import { CHECK_IN_GROUP_HEADINGS } from "@/components/user/user-fields-form";
 
 // A section's header bar, its rows, and a line under them when the read behind them
 // failed. The failure is said out loud because the panel is opened to ask "is anything
@@ -94,7 +92,8 @@ type Editing =
  * title goes to the item's page.
  */
 export function NotificationsMenu() {
-  const { isLoaded, serviceDue, renewals, count, reload } = useNotifications();
+  const { isLoaded, serviceDue, renewals, policiesFailed, count, reload } =
+    useNotifications();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -146,7 +145,12 @@ export function NotificationsMenu() {
   };
 
   const hasService = serviceDue.rows.length > 0 || serviceDue.failed;
-  const hasRenewals = renewals.rows.length > 0 || renewals.failed;
+  const hasRenewals =
+    renewals.rows.length > 0 || renewals.failed || policiesFailed;
+  const renewalsFailed = [
+    renewals.failed && "your certifications",
+    policiesFailed && "your insurance policies",
+  ].filter(Boolean);
 
   return (
     <>
@@ -239,15 +243,15 @@ export function NotificationsMenu() {
                   )}
                 </Section>
               )}
-              {/* A failed certifications read can still leave the insurance row,
-                  which comes from the account rather than from that request. */}
+              {/* Either source failing leaves the other's rows: the policies come
+                  from the check-in details rather than the certifications read. */}
               {hasRenewals && (
                 <Section
                   title="Renewals"
                   icon={BadgeCheck}
                   failedMessage={
-                    renewals.failed
-                      ? "Couldn't check your certifications. Try again in a moment."
+                    renewalsFailed.length > 0
+                      ? `Couldn't check ${renewalsFailed.join(" or ")}. Try again in a moment.`
                       : null
                   }
                 >
@@ -295,13 +299,13 @@ export function NotificationsMenu() {
           }}
         />
       )}
-      {/* The check-in page's insurance form. Saving refreshes the signed-in user, which
-          the insurance row is derived from, so nothing needs reading again. */}
-      <UserFieldsDialog
+      {/* The check-in page's policies form. Saving replaces the shared check-in
+          details, which the policies' rows and any sheet underneath are drawn from,
+          so nothing needs reading again. */}
+      <CheckinDetailsDialog
         open={editing?.kind === "insurance"}
         onOpenChange={stopEditing}
-        {...CHECK_IN_GROUP_HEADINGS.insurance}
-        groups={[{ fields: [...INSURANCE_FIELDS] }]}
+        group="insurance"
       />
     </>
   );

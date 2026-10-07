@@ -45,7 +45,7 @@ const ROWS: EmailPreferenceRow[] = [
     key: "renewal_reminder_emails",
     id: "renewal-reminder-emails",
     label: "Remind me when a certification or my insurance is expiring",
-    description: `A single email listing every card, and your dive insurance, within ${CERTIFICATION_EXPIRING_SOON_DAYS} days of its expiry date. One as it enters that window, one when it expires.`,
+    description: `A single email listing every card and insurance policy within ${CERTIFICATION_EXPIRING_SOON_DAYS} days of its expiry date. One as it enters that window, one when it expires.`,
   },
   {
     key: "year_in_review_emails",

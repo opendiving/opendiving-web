@@ -27,14 +27,17 @@ const SUMMARY: SharedCheckIn = {
     name: "Sam Reef",
     portrait_sha256: "portrait1",
     units: "imperial",
+    email: "desk@example.org",
     date_of_birth: "1988-04-02",
     phone: "+44 7700 900000",
-    insurance_provider: "DAN Europe",
-    insurance_policy_number: "P-42",
-    insurance_expires_on: null,
-    emergency_contact_name: "Alex Reef",
-    emergency_contact_phone: "+44 7700 900111",
-    emergency_contact_relationship: null,
+    insurance_policies: [
+      { provider: "DAN Europe", number: "P-42", expires_on: null },
+      { provider: "DiveAssure", number: "D-7", expires_on: "2027-03-01" },
+    ],
+    emergency_contacts: [
+      { name: "Alex Reef", phone: "+44 7700 900111", relationship: null },
+      { name: "Robin Reef", phone: "+44 7700 900222", relationship: "Parent" },
+    ],
   },
   diving: { total_dives: 310, max_depth: 39.6, last_dive_on: "2026-08-14" },
   certifications: [
@@ -84,6 +87,14 @@ describe("SharedCheckInPage", () => {
     expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
     expect(screen.getByText("Alex Diver")).toBeInTheDocument();
     expect(screen.getByText(/This link stops working on/)).toBeInTheDocument();
+    // The email the diver gives out, and every policy and contact in their order.
+    expect(screen.getByText("desk@example.org")).toBeInTheDocument();
+    const text = container.textContent ?? "";
+    const order = ["DAN Europe", "DiveAssure", "Alex Reef", "Robin Reef"].map(
+      (value) => text.indexOf(value),
+    );
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
 
     expect(
       screen.getAllByRole("button").map((button) => button.textContent),

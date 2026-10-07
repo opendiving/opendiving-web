@@ -1,8 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CheckInPageFrame } from "./checkin-page-frame";
 import type { User } from "@/lib/api/auth";
+import type {
+  CheckinDetails,
+  CheckinDetailsUpdate,
+} from "@/lib/api/checkin-details";
+import { ownCheckInDiver } from "@/lib/checkin";
+import { CheckinDetailsProvider } from "@/contexts/CheckinDetailsContext";
 import type { Certification } from "@/lib/api/certifications";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 import type { SharedCheckInCertification } from "@/lib/api/checkin-links";
@@ -37,6 +48,12 @@ vi.mock("@/lib/api/auth", async (importOriginal) => ({
   authAPI: { updateProfile: vi.fn(), getPictureBlob: vi.fn() },
 }));
 
+// The dialogs read and save the shared copy; `update` writes it the way the API does.
+vi.mock("@/lib/api/checkin-details", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  checkinDetailsAPI: { get: vi.fn(), update: vi.fn() },
+}));
+
 vi.mock("@/lib/api/certifications", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/certifications")>()),
   certificationsAPI: {
@@ -56,6 +73,8 @@ vi.mock("@/components/ui/use-toast", async (importOriginal) => ({
 }));
 
 const { authAPI } = await import("@/lib/api/auth");
+const { checkinDetailsAPI } = await import("@/lib/api/checkin-details");
+const updateDetails = vi.mocked(checkinDetailsAPI.update);
 const { coursesAPI } = await import("@/lib/api/courses");
 const updateProfile = vi.mocked(authAPI.updateProfile);
 
@@ -91,9 +110,19 @@ const stats: UserDiveStats = {
 
 type FrameProps = Parameters<typeof CheckInPageFrame>[0];
 
-// What the signed-in page hands over from the session, read at render time so a test
-// that changes the diver first draws the change.
-const session = () => ({ diver: auth.user, units: auth.user.units });
+// The diver's check-in details, as the shared copy holds them.
+let details: CheckinDetails;
+
+// Under the root layout's provider, which every dialog here saves through.
+const render = (ui: React.ReactElement) =>
+  rtlRender(ui, { wrapper: CheckinDetailsProvider });
+
+// What the signed-in page hands over from the session and the shared copy, read at
+// render time so a test that changes the diver first draws the change.
+const session = () => ({
+  diver: ownCheckInDiver(auth.user, details),
+  units: auth.user.units,
+});
 
 const loaded = (over: Partial<FrameProps> = {}) => (
   <CheckInPageFrame {...session()} isLoading={false} stats={stats} {...over} />
@@ -101,13 +130,16 @@ const loaded = (over: Partial<FrameProps> = {}) => (
 
 // Everything a desk asks for. Most tests here are about something other than an empty
 // group, and this is what keeps every section's "Not filled in yet." out of their way.
-const COMPLETE: Partial<User> = {
+const COMPLETE: CheckinDetails = {
+  email: null,
   date_of_birth: "1988-04-02",
   phone: "+44 7700 900000",
-  emergency_contact_name: "Alex Reef",
-  emergency_contact_phone: "+44 7700 900111",
-  insurance_provider: "DAN Europe",
-  insurance_policy_number: "P-42",
+  emergency_contacts: [
+    { name: "Alex Reef", phone: "+44 7700 900111", relationship: null },
+  ],
+  insurance_policies: [
+    { provider: "DAN Europe", number: "P-42", expires_on: null },
+  ],
 };
 
 beforeEach(() => {
@@ -115,15 +147,23 @@ beforeEach(() => {
     units: "metric",
     avatar_sha256: null,
     portrait_sha256: null,
-    date_of_birth: null,
-    phone: null,
-    emergency_contact_name: null,
-    emergency_contact_phone: null,
-    emergency_contact_relationship: null,
-    insurance_provider: null,
-    insurance_policy_number: null,
-    insurance_expires_on: null,
   });
+  details = {
+    email: null,
+    phone: null,
+    date_of_birth: null,
+    emergency_contacts: [],
+    insurance_policies: [],
+  };
+  vi.mocked(checkinDetailsAPI.get)
+    .mockReset()
+    .mockImplementation(async () => structuredClone(details));
+  updateDetails
+    .mockReset()
+    .mockImplementation(async (patch: CheckinDetailsUpdate) => {
+      details = { ...details, ...patch };
+      return structuredClone(details);
+    });
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
   updateProfile.mockReset().mockResolvedValue(undefined);
   vi.mocked(coursesAPI.getCourses).mockReset().mockResolvedValue({
@@ -151,12 +191,15 @@ function labelledLists(container: HTMLElement): HTMLDListElement[] {
 
 describe("what the summary prints", () => {
   it("runs from the diver down to the cards, in the order a desk reads it", () => {
-    Object.assign(auth.user, {
+    Object.assign(details, {
       date_of_birth: "1988-04-02",
       phone: "+44 7700 900000",
-      emergency_contact_name: "Alex Reef",
-      insurance_provider: "DAN Europe",
-      insurance_expires_on: "2027-03-01",
+      emergency_contacts: [
+        { name: "Alex Reef", phone: null, relationship: null },
+      ],
+      insurance_policies: [
+        { provider: "DAN Europe", number: null, expires_on: "2027-03-01" },
+      ],
     });
     const { container } = render(
       loaded({
@@ -175,7 +218,7 @@ describe("what the summary prints", () => {
       "Phone",
       "Diving",
       "Dive Insurance",
-      "Emergency Contact",
+      "Emergency Contacts",
       "Certifications",
     ].map((label) => text.indexOf(label));
 
@@ -184,7 +227,7 @@ describe("what the summary prints", () => {
   });
 
   it("pairs the sections up on paper, however narrow the sheet", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const { container } = render(
       loaded({ certifications: [certification(), certification()] }),
     );
@@ -207,7 +250,7 @@ describe("what the summary prints", () => {
   });
 
   it("leaves out a field the diver never filled in, rather than labelling a blank", () => {
-    Object.assign(auth.user, { phone: "+44 7700 900000" });
+    details.phone = "+44 7700 900000";
     render(loaded());
 
     expect(screen.getByText("Phone")).toBeInTheDocument();
@@ -216,13 +259,13 @@ describe("what the summary prints", () => {
     expect(screen.queryByText("Date of birth")).toBeNull();
   });
 
-  it("puts the date of birth and phone under the name, each marked by an icon", () => {
-    Object.assign(auth.user, COMPLETE);
+  it("puts the date of birth, phone and email under the name, each marked by an icon", () => {
+    Object.assign(details, COMPLETE, { email: "desk@example.org" });
     render(loaded());
 
     const nameColumn = screen.getByRole("heading", { name: "Sam Reef" })
       .parentElement!.parentElement!;
-    for (const label of ["Date of birth", "Phone"]) {
+    for (const label of ["Date of birth", "Phone", "Email"]) {
       const term = within(nameColumn).getByText(label);
       // Heard by a screen reader, drawn as the icon beside it.
       expect(term).toHaveClass("sr-only");
@@ -231,6 +274,48 @@ describe("what the summary prints", () => {
       );
     }
     expect(within(nameColumn).getByText("+44 7700 900000")).toBeInTheDocument();
+    expect(
+      within(nameColumn).getByText("desk@example.org"),
+    ).toBeInTheDocument();
+    // The address the diver gives out, never the one they sign in with.
+    expect(screen.queryByText(auth.user.email)).toBeNull();
+  });
+
+  it("prints every policy and every contact, in the diver's order", () => {
+    Object.assign(details, COMPLETE, {
+      emergency_contacts: [
+        { name: "First Call", phone: "0111", relationship: "Partner" },
+        { name: "Second Call", phone: "0222", relationship: "Parent" },
+      ],
+      insurance_policies: [
+        { provider: "DAN Europe", number: "P-42", expires_on: null },
+        { provider: "DiveAssure", number: "D-7", expires_on: "2027-03-01" },
+      ],
+    });
+    const { container } = render(loaded());
+
+    const text = container.textContent ?? "";
+    const order = [
+      "DAN Europe",
+      "P-42",
+      "DiveAssure",
+      "D-7",
+      "First Call",
+      "Second Call",
+    ].map((value) => text.indexOf(value));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("prints nothing of the details for a diver who has saved none", () => {
+    const { container } = render(loaded());
+
+    for (const title of ["Dive Insurance", "Emergency Contacts"]) {
+      expect(screen.getByText(title).closest("section")).toHaveClass(
+        "print:hidden",
+      );
+    }
+    expect(container.querySelector("dt svg")).toBeNull();
   });
 
   it("prints a card's dive center from what it is handed, and no row without one", () => {
@@ -251,11 +336,7 @@ describe("what the summary prints", () => {
   });
 
   it("keeps every section on screen, and takes the empty ones off the print", () => {
-    Object.assign(auth.user, {
-      ...COMPLETE,
-      emergency_contact_name: null,
-      emergency_contact_phone: null,
-    });
+    Object.assign(details, { ...COMPLETE, emergency_contacts: [] });
     render(loaded({ certifications: [certification()] }));
 
     // Every heading is there with its own control, however little is under it -
@@ -269,18 +350,18 @@ describe("what the summary prints", () => {
 
     // A group the diver never filled in says so on screen and is gone from the
     // sheet: a heading with nothing under it is the labelled blank in another form.
-    const emergency = screen.getByText("Emergency Contact").closest("section");
+    const emergency = screen.getByText("Emergency Contacts").closest("section");
     expect(emergency).toHaveClass("print:hidden");
     expect(
       within(emergency as HTMLElement).getByText("Not filled in yet."),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Edit your emergency contact" }),
+      screen.getByRole("button", { name: "Edit your emergency contacts" }),
     ).toBeInTheDocument();
   });
 
   it("never reads a failed fetch as an empty account", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     // A rejected list leaves the same empty array a diver with no cards has, and a
     // rejected `/user/dive-stats` the same null - so neither section may claim
     // emptiness here. The banner above says what happened and offers the retry.
@@ -294,7 +375,7 @@ describe("what the summary prints", () => {
   });
 
   it("says so where a diver holds no cards at all", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(loaded());
 
     const cards = screen.getByText("Certifications").closest("section");
@@ -380,7 +461,7 @@ describe("what the summary prints", () => {
 
 describe("what the print leaves behind", () => {
   it("names the saved PDF after the diver and the day, and gives the tab back", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const tabTitle = "OpenDiving";
     document.title = tabTitle;
     render(loaded({ certifications: [certification()] }));
@@ -398,7 +479,7 @@ describe("what the print leaves behind", () => {
   });
 
   it("marks the sheet without vouching for it", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const { container } = render(loaded({ certifications: [certification()] }));
 
     // The one page of this app that leaves it on paper, so it says where it came
@@ -441,13 +522,17 @@ describe("what the print leaves behind", () => {
   });
 
   it("keeps each block a reader takes as one thing off a page boundary", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const { container } = render(loaded({ certifications: [certification()] }));
 
     // An emergency contact split over a fold is a name on one sheet and the number
-    // to ring on another.
-    for (const title of ["Diving", "Dive Insurance", "Emergency Contact"]) {
-      expect(screen.getByText(title).closest("section")).toHaveClass(
+    // to ring on another. The policies and the contacts are kept whole one by one,
+    // their sections running to several of them.
+    expect(screen.getByText("Diving").closest("section")).toHaveClass(
+      "break-inside-avoid",
+    );
+    for (const value of ["DAN Europe", "Alex Reef"]) {
+      expect(screen.getByText(value).closest("dl")!.parentElement).toHaveClass(
         "break-inside-avoid",
       );
     }
@@ -499,19 +584,49 @@ describe("before the requests land", () => {
     bars.forEach((bar) => expect(bar).toHaveAttribute("aria-hidden", "true"));
   });
 
-  it("draws the profile straight away, it having arrived with the session", () => {
-    Object.assign(auth.user, { phone: "+44 7700 900000" });
-    render(<CheckInPageFrame {...session()} />);
+  it("draws the name straight away, and holds the details' shape until they land", () => {
+    render(
+      <CheckInPageFrame
+        diver={ownCheckInDiver(auth.user, null)}
+        units="metric"
+        details="loading"
+      />,
+    );
 
     expect(screen.getByText("Sam Reef")).toBeInTheDocument();
-    expect(screen.getByText("+44 7700 900000")).toBeInTheDocument();
+    for (const title of ["Dive Insurance", "Emergency Contacts"]) {
+      const section = screen.getByText(title).closest("section")!;
+      expect(section).toHaveAttribute("aria-busy", "true");
+      expect(section).not.toHaveClass("print:hidden");
+    }
+    expect(screen.queryByText("Not filled in yet.")).toBeNull();
+    // Nothing opens a form over a copy that has not arrived.
+    expect(screen.queryByRole("button", { name: /^Edit your/ })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Add a portrait" }),
+    ).toBeDisabled();
+  });
+
+  it("claims nothing about the details when they failed to load", () => {
+    render(
+      <CheckInPageFrame
+        diver={ownCheckInDiver(auth.user, null)}
+        units="metric"
+        isLoading={false}
+        loadFailed
+        details="failed"
+      />,
+    );
+
+    expect(screen.queryByText("Not filled in yet.")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Edit your/ })).toBeNull();
   });
 });
 
 describe("the picture at the top", () => {
   it("draws the portrait, and never the avatar", () => {
+    Object.assign(details, COMPLETE);
     Object.assign(auth.user, {
-      ...COMPLETE,
       avatar_sha256: "avatar1",
       portrait_sha256: "portrait1",
     });
@@ -531,7 +646,8 @@ describe("the picture at the top", () => {
     // The avatar does not stand in: a desk is looking for the diver's face, and the
     // avatar is whatever the diver shows the app. Nor do initials, which identify
     // nobody.
-    Object.assign(auth.user, { ...COMPLETE, avatar_sha256: "avatar1" });
+    Object.assign(details, COMPLETE);
+    auth.user.avatar_sha256 = "avatar1";
     render(loaded({ certifications: [certification()] }));
 
     expect(screen.queryByRole("img")).toBeNull();
@@ -542,7 +658,7 @@ describe("the picture at the top", () => {
   });
 
   it("opens About You, portrait and all, from the empty frame", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
     await userEvent.click(
@@ -551,7 +667,7 @@ describe("the picture at the top", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "About You" });
     expect(
-      within(dialog).getByLabelText("Choose a portrait"),
+      await within(dialog).findByLabelText("Choose a portrait"),
     ).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Phone number")).toBeInTheDocument();
   });
@@ -559,7 +675,7 @@ describe("the picture at the top", () => {
 
 describe("labels and values line up", () => {
   it("puts both halves of every pair straight into the list's own grid", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const { container } = render(
       loaded({
         certifications: [certification({ certification_number: "12345" })],
@@ -580,7 +696,8 @@ describe("labels and values line up", () => {
     }
   });
   it("starts a name and the values under it on one edge", () => {
-    Object.assign(auth.user, { ...COMPLETE, portrait_sha256: "abc123" });
+    Object.assign(details, COMPLETE);
+    auth.user.portrait_sha256 = "abc123";
     const { container } = render(
       loaded({
         certifications: [certification({ certification_number: "1" })],
@@ -616,7 +733,7 @@ describe("labels and values line up", () => {
   });
 
   it("holds every heading row to one height, edit buttons or not", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(loaded());
 
     // The edit buttons are off the paper and off a link's page, so no row may take
@@ -626,7 +743,7 @@ describe("labels and values line up", () => {
       "Sam Reef",
       "Diving",
       "Dive Insurance",
-      "Emergency Contact",
+      "Emergency Contacts",
       "Certifications",
     ]) {
       expect(screen.getByRole("heading", { name }).parentElement).toHaveClass(
@@ -636,7 +753,7 @@ describe("labels and values line up", () => {
   });
 
   it("holds the picture's column for a diver who stored none", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
     // Nothing in it prints, but the column stays - the name meets the same edge as
@@ -651,20 +768,21 @@ describe("labels and values line up", () => {
 
 describe("editing from the sheet", () => {
   it("opens the settings form over the summary, and gives the summary back on save", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Edit your name, portrait, date of birth and phone number",
+        name: "Edit your name, portrait, date of birth, phone number and email",
       }),
     );
 
     const dialog = await screen.findByRole("dialog", { name: "About You" });
     // The very fields `/settings` shows, because they are the same component.
-    expect(within(dialog).getByLabelText("Phone number")).toHaveValue(
+    expect(await within(dialog).findByLabelText("Phone number")).toHaveValue(
       "+44 7700 900000",
     );
+    expect(within(dialog).getByLabelText("Full name")).toHaveValue("Sam Reef");
 
     await userEvent.clear(within(dialog).getByLabelText("Phone number"));
     await userEvent.type(within(dialog).getByLabelText("Phone number"), "0123");
@@ -672,49 +790,84 @@ describe("editing from the sheet", () => {
       within(dialog).getByRole("button", { name: /save changes/i }),
     );
 
+    // The name is the account's and did not change, so only the object is sent:
+    // its About You members and no other.
     await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith(
-        expect.objectContaining({ phone: "0123" }),
-      ),
+      expect(updateDetails).toHaveBeenCalledWith({
+        date_of_birth: "1988-04-02",
+        phone: "0123",
+        email: null,
+      }),
     );
+    expect(updateProfile).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(screen.queryByRole("dialog", { name: "About You" })).toBeNull(),
     );
   });
 
+  it("sends a changed name to the account first, then the object, and re-reads the user", async () => {
+    Object.assign(details, COMPLETE);
+    const sent: string[] = [];
+    updateProfile.mockImplementation(async () => void sent.push("user"));
+    updateDetails.mockImplementation(async (patch) => {
+      sent.push("checkin-details");
+      return { ...details, ...patch };
+    });
+    render(loaded());
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Edit your name, portrait, date of birth, phone number and email",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "About You" });
+    const name = await within(dialog).findByLabelText("Full name");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Sam Coral");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /save changes/i }),
+    );
+
+    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalled());
+    expect(updateProfile).toHaveBeenCalledWith({ name: "Sam Coral" });
+    expect(sent).toEqual(["user", "checkin-details"]);
+  });
+
   it("gives each section a control that opens that group and nothing else", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Edit your dive insurance" }),
+      screen.getByRole("button", { name: "Edit your insurance policies" }),
     );
     const insurance = await screen.findByRole("dialog", {
       name: "Dive Insurance",
     });
-    expect(within(insurance).getByLabelText("Provider")).toHaveValue(
-      "DAN Europe",
-    );
-    // The emergency contact has its own control and its own dialog, so a diver
+    expect(
+      await within(insurance).findByRole("textbox", {
+        name: "Provider policy 1 of 1",
+      }),
+    ).toHaveValue("DAN Europe");
+    // The emergency contacts have their own control and their own dialog, so a diver
     // correcting one group is never handed the other two to scroll past.
     expect(
-      within(insurance).queryByLabelText("Relationship to you"),
+      within(insurance).queryByRole("textbox", { name: /^Relationship/ }),
     ).toBeNull();
 
     await userEvent.click(
       within(insurance).getByRole("button", { name: /save changes/i }),
     );
     await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith({
-        insurance_provider: "DAN Europe",
-        insurance_policy_number: "P-42",
-        insurance_expires_on: null,
+      expect(updateDetails).toHaveBeenCalledWith({
+        insurance_policies: [
+          { provider: "DAN Europe", number: "P-42", expires_on: null },
+        ],
       }),
     );
   });
 
   it("opens a card in the certification form it is edited in everywhere else", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
     await userEvent.click(
@@ -730,7 +883,7 @@ describe("editing from the sheet", () => {
   });
 
   it("re-reads the list rather than editing the card it holds", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const onCertificationsChanged = vi.fn();
     render(
       loaded({ certifications: [certification()], onCertificationsChanged }),
@@ -758,7 +911,7 @@ describe("editing from the sheet", () => {
   });
 
   it("offers no way to add a card, cards being kept where cards are kept", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
     expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
@@ -773,7 +926,7 @@ describe("correcting the diving figures", () => {
     });
 
   it("prints what the diver typed, and says it went nowhere", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(withDiving());
     expect(screen.getByText("142")).toBeInTheDocument();
 
@@ -799,7 +952,7 @@ describe("correcting the diving figures", () => {
   });
 
   it("hands the log's own figures back", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(withDiving());
 
     await userEvent.click(
@@ -834,7 +987,7 @@ describe("correcting the diving figures", () => {
   });
 
   it("lets a diver whose log has nothing in it correct the count", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     // What `/user/dive-stats` answers for a diver with nothing logged, which is the
     // diver this dialog is for: the box opens on that zero, and a schema refusing it
     // would block the submit on a field nobody touched.
@@ -865,7 +1018,7 @@ describe("correcting the diving figures", () => {
   });
 
   it("keeps the way back when every figure is cleared, and drops the heading from the sheet", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(withDiving());
 
     await userEvent.click(
@@ -917,7 +1070,7 @@ describe("correcting the diving figures", () => {
   });
 
   it("keeps the correction off the sheet's own ink", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(withDiving());
 
     await userEvent.click(
@@ -951,7 +1104,7 @@ describe("sharing it as a link", () => {
   });
 
   it("waits for the figures, then sends the ones the page shows", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const sharing = controls();
     const { rerender } = render(
       <CheckInPageFrame {...session()} sharing={sharing} />,
@@ -991,7 +1144,7 @@ describe("sharing it as a link", () => {
   });
 
   it("holds Share after a failed read, until the diver types the figures in", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const sharing = controls();
     // A rejected `/user/dive-stats` leaves the same nulls as one still in flight,
     // and a link made then would show no diving for its whole day.
@@ -1020,14 +1173,14 @@ describe("sharing it as a link", () => {
   // The cards and their dive centers are read by the server whenever the link is
   // opened, so a failure there costs the link nothing it keeps.
   it("shares when only the cards failed to load", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     render(loaded({ sharing: controls(), loadFailed: true }));
 
     expect(screen.getByRole("button", { name: /share/i })).toBeEnabled();
   });
 
   it("shows a link made now as a QR code and an address, and keeps both off the sheet", () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const url = "https://dive.example/checkin/tok";
     render(
       loaded({
@@ -1052,7 +1205,7 @@ describe("sharing it as a link", () => {
   });
 
   it("says in one sentence why a link found on a later visit has no QR code", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const sharing = controls({
       live: { expiresAt: "2026-09-27T10:00:00Z", url: null },
     });
@@ -1074,7 +1227,7 @@ describe("sharing it as a link", () => {
   });
 
   it("copies the address", async () => {
-    Object.assign(auth.user, COMPLETE);
+    Object.assign(details, COMPLETE);
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText },
@@ -1146,7 +1299,11 @@ describe("on a link's page", () => {
   };
   const shared = (over: Partial<FrameProps> = {}) => (
     <CheckInPageFrame
-      diver={{ ...auth.user }}
+      diver={{
+        ...details,
+        name: auth.user.name,
+        portrait_sha256: auth.user.portrait_sha256,
+      }}
       units={auth.user.units}
       certifications={sharedCards()}
       contactNames={{ "cert-1": "Blue Ocean" }}
@@ -1163,7 +1320,8 @@ describe("on a link's page", () => {
     );
 
   it("prints the same sheet from a link's summary as from the session", () => {
-    Object.assign(auth.user, COMPLETE, { portrait_sha256: PORTRAIT });
+    Object.assign(details, COMPLETE);
+    auth.user.portrait_sha256 = PORTRAIT;
     const { container, unmount } = render(
       loaded({
         certifications: ownCards(),
@@ -1183,7 +1341,8 @@ describe("on a link's page", () => {
   });
 
   it("offers no control that edits, and no dialog", () => {
-    Object.assign(auth.user, COMPLETE, { portrait_sha256: PORTRAIT });
+    Object.assign(details, COMPLETE);
+    auth.user.portrait_sha256 = PORTRAIT;
     render(shared());
 
     // Print is the one control a desk gets.
@@ -1195,7 +1354,8 @@ describe("on a link's page", () => {
   });
 
   it("reads every picture from the link's own routes, and none through the session", async () => {
-    Object.assign(auth.user, COMPLETE, { portrait_sha256: PORTRAIT });
+    Object.assign(details, COMPLETE);
+    auth.user.portrait_sha256 = PORTRAIT;
     blobUrl.mockClear();
     vi.mocked(authAPI.getPictureBlob).mockClear();
     const fetchMock = vi.fn(async () => new Response("png"));
@@ -1230,7 +1390,7 @@ describe("on a link's page", () => {
     expect(screen.queryByText("No certifications yet.")).toBeNull();
     for (const title of [
       "Dive Insurance",
-      "Emergency Contact",
+      "Emergency Contacts",
       "Certifications",
     ]) {
       expect(screen.getByText(title).closest("section")).toHaveClass("hidden");

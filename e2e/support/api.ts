@@ -1,6 +1,7 @@
 import { expect, test as base, type Page, type Route } from "@playwright/test";
 
 import type { User } from "@/lib/api/auth";
+import type { CheckinDetails } from "@/lib/api/checkin-details";
 import type { InstanceConfig } from "@/lib/api/config";
 import type {
   Dive,
@@ -104,6 +105,14 @@ const CONFIG: InstanceConfig = {
   map_tiles: false,
 };
 
+const CHECKIN_DETAILS: CheckinDetails = {
+  email: null,
+  phone: null,
+  date_of_birth: null,
+  emergency_contacts: [],
+  insurance_policies: [],
+};
+
 const NUMBERING: DiveNumberingSummary = {
   total_dives: 2,
   lowest: DIVE_B.dive_number,
@@ -168,9 +177,11 @@ function respond(method: string, path: string): unknown | undefined {
   if (path === "/dives") return page1([DIVE_A, DIVE_B]);
   if (path === "/gear-items") return page1([GEAR_ITEM]);
   if (path === "/gear-sets") return page1([GEAR_SET]);
-  // The header's notifications bell reads both on every page; nothing is due.
+  // The header's notifications bell reads both on every page, and the check-in
+  // details once per session for the policies; nothing is due.
   if (path === "/gear-service-due") return { data: [] };
   if (path === "/certifications-expiring") return { data: [] };
+  if (path === "/user/checkin-details") return CHECKIN_DETAILS;
 
   const neighbors = /^\/dive\/([0-9a-f-]+)\/neighbors$/.exec(path);
   if (neighbors) return NEIGHBORS[neighbors[1]];

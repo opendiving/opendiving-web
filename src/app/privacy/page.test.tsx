@@ -236,6 +236,20 @@ describe.each([
     );
   });
 
+  // The link shows the address the diver entered for check-in, which is not the one
+  // they sign in with, and every contact and policy rather than one of each.
+  it("says a check-in link shows the check-in email, the contacts and the policies", async () => {
+    await renderPage({ google });
+
+    const shows = screen.getByText(/What a link shows:/).parentElement!;
+    expect(shows).toHaveTextContent(
+      /the email address you entered\s+for check-in/,
+    );
+    expect(shows).toHaveTextContent(
+      /your insurance policies, your emergency contacts/,
+    );
+  });
+
   // Linking a person to an account is the third thing shown across accounts, and
   // the first that runs towards the diver doing it. It owes a section of its own,
   // a line in the exceptions count, and the four facts the section exists to state:

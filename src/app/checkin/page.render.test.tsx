@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CheckInPage from "./page";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
+import { CheckinDetailsProvider } from "@/contexts/CheckinDetailsContext";
 
 // The page reads several unrelated endpoints, and what is worth pinning is that they
 // stay unrelated: a summary handed across a desk missing its c-cards because the
@@ -57,6 +63,11 @@ vi.mock("@/lib/api/checkin-links", async (importOriginal) => ({
   checkinLinkAPI: { mint: vi.fn(), live: vi.fn(), revoke: vi.fn() },
 }));
 
+vi.mock("@/lib/api/checkin-details", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  checkinDetailsAPI: { get: vi.fn(), update: vi.fn() },
+}));
+
 vi.mock("@/hooks/useAuthedBlobUrl", () => ({
   useAuthedBlobUrl: () => ({
     url: null,
@@ -72,6 +83,12 @@ const { divesAPI } = await import("@/lib/api/dives");
 const { fetchAllContacts } = await import("@/lib/api/contacts");
 const { fetchAllPeople } = await import("@/lib/api/people");
 const { checkinLinkAPI } = await import("@/lib/api/checkin-links");
+const { checkinDetailsAPI } = await import("@/lib/api/checkin-details");
+const getDetails = vi.mocked(checkinDetailsAPI.get);
+
+// Under the root layout's provider, which holds the check-in details.
+const render = (ui: React.ReactElement) =>
+  rtlRender(ui, { wrapper: CheckinDetailsProvider });
 
 const getCertifications = vi.mocked(fetchAllCertifications);
 const getDiveStats = vi.mocked(diveStatsAPI.getDiveStats);
@@ -146,6 +163,15 @@ beforeEach(() => {
   });
   liveLink.mockReset().mockResolvedValue(null);
   revokeLink.mockReset().mockResolvedValue(undefined);
+  getDetails.mockReset().mockResolvedValue({
+    email: "desk@example.org",
+    phone: null,
+    date_of_birth: null,
+    emergency_contacts: [
+      { name: "Alex Reef", phone: null, relationship: null },
+    ],
+    insurance_policies: [],
+  });
 });
 
 // Keyed on the retry control rather than on the banner's prose: the sentence carries
@@ -163,7 +189,24 @@ describe("CheckInPage", () => {
     // their uuids.
     expect(screen.getByText("Blue Ocean")).toBeInTheDocument();
     expect(screen.getByText("Alex Diver")).toBeInTheDocument();
+    // The check-in details, from the shared copy rather than the session.
+    expect(screen.getByText("desk@example.org")).toBeInTheDocument();
+    expect(screen.getByText("Alex Reef")).toBeInTheDocument();
     expect(retry()).toBeNull();
+  });
+
+  it("says the summary is short when the check-in details fail, and reads them again", async () => {
+    getDetails.mockRejectedValueOnce(new Error("500"));
+    render(<CheckInPage />);
+
+    expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
+    await waitFor(() => expect(retry()).not.toBeNull());
+    expect(screen.queryByText("Not filled in yet.")).toBeNull();
+
+    await userEvent.click(retry()!);
+
+    expect(await screen.findByText("desk@example.org")).toBeInTheDocument();
+    expect(getDetails).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the cards when the people fail, and leaves their instructors off", async () => {

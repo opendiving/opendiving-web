@@ -33,7 +33,7 @@ export interface User {
   portrait_original_sha256?: string | null;
   portrait_crop?: PictureCrop | null;
   // Whether to send this user each scheduled email: gear coming due for service, a
-  // certification or the dive insurance nearing or passing its expiry, and the year in
+  // certification or an insurance policy nearing or passing its expiry, and the year in
   // review each January. Opt-out, so each defaults to true server-side; optional here
   // so a response from an API that predates the field still type-checks.
   gear_service_emails?: boolean;
@@ -55,29 +55,6 @@ export interface User {
   // fetch of its own, which is what lets the form's *first paint* already omit the
   // hidden fields instead of showing them and taking them away.
   dive_form_hidden_fields: DiveFormFieldKey[];
-  // What a dive shop asks for at the desk, kept once instead of written out on
-  // arrival: the diver's own details, somebody to call, and the insurance a desk
-  // wants the name and number of. All eight are nullable columns and a diver who
-  // has filled none of them is the ordinary state, so `null` here means "not
-  // filled in" rather than "unknown" - a reader prints nothing for it rather than
-  // a labelled blank.
-  //
-  // Optional as well as nullable, unlike `units` and `dive_form_hidden_fields`
-  // above: those are `NOT NULL` with a server default, so their absence could only
-  // mean an API this build cannot talk to. These carry no default, so absent and
-  // null say the same thing, and a response from an API that predates them still
-  // type-checks.
-  //
-  // The two dates are bare `YYYY-MM-DD` strings and must be read with
-  // `formatDateOnly` rather than `new Date(...)` - see DECISIONS.md.
-  date_of_birth?: string | null;
-  phone?: string | null;
-  emergency_contact_name?: string | null;
-  emergency_contact_phone?: string | null;
-  emergency_contact_relationship?: string | null;
-  insurance_provider?: string | null;
-  insurance_policy_number?: string | null;
-  insurance_expires_on?: string | null;
   // Whether this account holds the operator's rights - the caller's own record on
   // `GET /user` (the backend's `UserRead.is_superuser`), never a disclosure about
   // anybody else. It is what the header uses to offer the `/admin` section at all.
@@ -142,21 +119,6 @@ export interface UpdateProfileData {
   // this client sends the canonical form anyway so what it holds and what came back
   // cannot differ. An explicit `null` is a 422.
   dive_form_hidden_fields?: DiveFormFieldKey[];
-  // The check-in details. An explicit `null` clears one, unlike
-  // `dive_form_hidden_fields` above, and a form sends every field it showed on
-  // every save - so a group the diver emptied arrives as nulls rather than being
-  // left behind. The string bounds are the columns' own, and `PATCH /user` is
-  // `extra="forbid"`, so an over-long value is a 422, as is a contact with no name
-  // or an insurance with no provider while anything else of it is set;
-  // `validations/user-fields.ts` mirrors both.
-  date_of_birth?: string | null;
-  phone?: string | null;
-  emergency_contact_name?: string | null;
-  emergency_contact_phone?: string | null;
-  emergency_contact_relationship?: string | null;
-  insurance_provider?: string | null;
-  insurance_policy_number?: string | null;
-  insurance_expires_on?: string | null;
 }
 
 /**

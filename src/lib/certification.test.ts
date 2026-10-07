@@ -8,6 +8,7 @@ import {
   certificationExpiryStatus,
   certificationFileVersion,
   certificationRenewals,
+  renewables,
 } from "./certification";
 import type { CertificationFileInfo } from "./api/certifications";
 
@@ -201,6 +202,37 @@ describe("certificationRenewals", () => {
     const [renewal] = certificationRenewals([card("EFR", "2026-09-01")], TODAY);
 
     expect(renewal.expiresOn).toBe("2026-09-01");
+  });
+});
+
+describe("renewables", () => {
+  it("lists every dated policy beside the cards, keyed by place and named by provider", () => {
+    const rows = renewables(
+      [
+        {
+          uuid: "cert-1",
+          agency: "padi",
+          name: "Rescue Diver",
+          expires_on: "2026-09-01",
+        },
+      ],
+      [
+        { provider: "DAN Europe", number: "P-1", expires_on: "2026-08-20" },
+        { provider: "Never expires", number: null, expires_on: null },
+        { provider: "DiveAssure", number: null, expires_on: "2026-08-30" },
+      ],
+    );
+
+    expect(rows.map(({ key, kind, title }) => [key, kind, title])).toEqual([
+      ["cert-1", "certification", "Rescue Diver"],
+      ["insurance-0", "insurance", "DAN Europe"],
+      ["insurance-2", "insurance", "DiveAssure"],
+    ]);
+    expect(rows[1]).toMatchObject({
+      detail: "Dive insurance",
+      href: "/settings/checkin",
+      expires_on: "2026-08-20",
+    });
   });
 });
 

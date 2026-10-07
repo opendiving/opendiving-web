@@ -819,8 +819,9 @@ The gear list needs no extra request: `GET /gear-items` embeds each item's sched
 ## A bell row opens the form that deals with it, and its title goes to the item
 
 A certification row reads the card with `getCertification` before opening `CertificationDialog`,
-which edits every field; the renewals read carries five. The insurance row opens the check-in page's
-`UserFieldsDialog` on `INSURANCE_FIELDS`.
+which edits every field; the renewals read carries five. A policy's row opens the check-in page's
+`CheckinDetailsDialog` on the insurance group, which saves through the shared check-in details, so
+the rows and a sheet underneath show the save without an announcement.
 
 A save from the bell is announced through `lib/saved-elsewhere.ts`, and what shows that data reads
 again — the gear card and list, `/certifications`, `/checkin`, a course's certifications card —
@@ -910,8 +911,8 @@ a new card has only once `createCertification` resolves. `CertificationCardFiles
 add/replace/delete per side and `applyCertificationCardEdits` sends them serially, in
 `CERTIFICATION_SIDES` order. The avatar (Profile Information) and the portrait (Check-in Details,
 About You) each hold one `PictureEdit` — replace, adjust, remove, or the portrait's copy — which
-`applyPictureEdit` sends after `PATCH /user`. Rejected: a picture card saving on pick beside forms
-that wait for Save.
+`applyPictureEdit` sends after the form's own `PATCH`. Rejected: a picture card saving on pick
+beside forms that wait for Save.
 
 A failed image does not fail the save: the fields are written, and refilling the form to retry one
 picture costs more than the picture. One toast names the side or the picture. A certification is
@@ -5828,16 +5829,19 @@ reading `onPendingChange` via a ref), else hiding Species mid-resolve sticks the
 
 ## Persisting a Fields toggle must not reset the form, and `refreshUser` would have
 
-Settings cards persist by `updateProfile` then `refreshUser()`, which replaces the context's `user`
-object. Wired that way, a Fields switch re-runs the new-dive prefill, refetching the last dive and
-re-stamping `start_time` with `nowStartTime()` under a diver mid-edit.
+The profile card persists by `updateProfile` then `refreshUser()`, which replaces the context's
+`user` object. Wired that way, a Fields switch re-runs the new-dive prefill, refetching the last
+dive and re-stamping `start_time` with `nowStartTime()` under a diver mid-edit. The check-in cards
+save through the shared check-in details instead, and call `refreshUser()` only for a changed
+portrait or name.
 
 Two changes, both needed: the prefill effect is keyed on `user.uuid`, not the `user` object, and
 `AuthContext`'s `mergeUser` folds what a successful `PATCH /user` stored into the cached user with
 no request. `refreshUser` stays right for a settings card: `UserFieldsForm` repaints on its own
-fields' stored values, not on the `user` object, so a sibling card mid-edit keeps what is typed. The
-suite pins the invariant: persisting a toggle never resets the form, re-runs the prefill or
-refetches the last dive; anything added to that dependency list must be a value, not an object.
+fields' stored values, not on the `user` object, and `CheckinDetailsForm` on its own group's, so a
+sibling card mid-edit keeps what is typed. The suite pins the invariant: persisting a toggle never
+resets the form, re-runs the prefill or refetches the last dive; anything added to that dependency
+list must be a value, not an object.
 
 The write is debounced and flushed on unmount, so three switches are one request and a
 flip-then-leave still saves. `SAVE_DEBOUNCE_MS` in the hook is the figure's only home.
@@ -6806,13 +6810,13 @@ flag both buttons set.
 
 ## The check-in summary is a list the diver hands over, and it carries no agency marks
 
-`/checkin` prints what a dive shop asks for, two to a row: date of birth and phone beside the dive
-count, then insurance beside an emergency contact — who the diver is and what they have done before
-what is needed only if something goes wrong. The c-cards come last and across both columns, being
-the one part that runs to any length, so the fold falls in them rather than in a pair of columns
-above them. Each card's stored front sits beside it, but no agency artwork is drawn: those marks are
-licensed to members and centres rather than to divers, and a card-shaped tile carrying one reads as
-agency-issued. A PDF card prints as a placeholder, never rasterised.
+`/checkin` prints what a dive shop asks for, two to a row: date of birth, phone and check-in email
+beside the dive count, then the policies beside the emergency contacts — who the diver is and what
+they have done before what is needed only if something goes wrong. The c-cards come last and across
+both columns, being the one part that runs to any length, so the fold falls in them rather than in a
+pair of columns above them. Each card's stored front sits beside it, but no agency artwork is drawn:
+those marks are licensed to members and centres rather than to divers, and a card-shaped tile
+carrying one reads as agency-issued. A PDF card prints as a placeholder, never rasterised.
 
 Printing is the browser's, through Tailwind's `print:` variant on the chrome and the page's own
 controls — no PDF library, no `@media print` block. Handing that print to a shop is the diver
@@ -6835,15 +6839,14 @@ mint, which sends what the page shows, corrected or logged, and the link row kee
 never travels to an image service or a third party to become a picture. The rejected alternative,
 hand-writing the encoder, is Reed-Solomon and masking code kept for one control.
 
-## One form module for every field of the diver's own record
+## One form module for each record the diver edits
 
-`UserFieldsForm` renders any subset of `USER_FIELDS`, and both surfaces are it: `/settings` shows
-them in cards, `/checkin` in a dialog per section of the sheet that prints them, so a diver at a
-desk corrects the group they were just asked for without leaving the page. Bounds, labels and the
-`"" -> null` clearing rule therefore exist once — `PATCH /user` is `extra="forbid"`, so a second
-copy of a bound is a second thing to keep in step with the column. The resolver is built from the
-fields shown, not the whole record: a dialog about insurance must not fail on a stored name it never
-displayed.
+`UserFieldsForm` owns the account's name and username; `CheckinDetailsForm` owns the check-in
+details, and every surface that edits a group of them is it — a `/settings` card, a `/checkin`
+dialog beside the section that prints it, the bell's policies dialog — so a member is bounded,
+labelled and cleared one way wherever it is typed. Each resolver is built from the members shown,
+and each save sends its own group's keys and no other, so a copy gone stale elsewhere can revert
+nothing outside the group on screen.
 
 The sheet keeps every section's heading and edit control on screen however little is under it, and
 drops an empty section from the print — a heading with nothing beneath it is the labelled blank this
