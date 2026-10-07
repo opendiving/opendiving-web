@@ -135,6 +135,20 @@ beforeEach(() => {
   });
 });
 
+// The column the diver's portrait sits in, beside the one their name heads.
+function portraitColumn(name: string): Element {
+  return screen.getByRole("heading", { name }).parentElement!.parentElement!
+    .previousElementSibling!;
+}
+
+// Every list read label-then-value. The diver's own, under the name, marks each
+// value with an icon instead and has no label track to line up.
+function labelledLists(container: HTMLElement): HTMLDListElement[] {
+  return [...container.querySelectorAll("dl")].filter(
+    (list) => !list.querySelector("dt svg"),
+  );
+}
+
 describe("what the summary prints", () => {
   it("runs from the diver down to the cards, in the order a desk reads it", () => {
     Object.assign(auth.user, {
@@ -200,6 +214,23 @@ describe("what the summary prints", () => {
     // Not "Date of birth: —": a blank line on a page handed to a stranger reads as
     // something withheld rather than something not held.
     expect(screen.queryByText("Date of birth")).toBeNull();
+  });
+
+  it("puts the date of birth and phone under the name, each marked by an icon", () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded());
+
+    const nameColumn = screen.getByRole("heading", { name: "Sam Reef" })
+      .parentElement!.parentElement!;
+    for (const label of ["Date of birth", "Phone"]) {
+      const term = within(nameColumn).getByText(label);
+      // Heard by a screen reader, drawn as the icon beside it.
+      expect(term).toHaveClass("sr-only");
+      expect(term.closest("dt")!.querySelector("svg")).toHaveAttribute(
+        "aria-hidden",
+      );
+    }
+    expect(within(nameColumn).getByText("+44 7700 900000")).toBeInTheDocument();
   });
 
   it("prints a card's dive center from what it is handed, and no row without one", () => {
@@ -479,9 +510,7 @@ describe("the picture at the top", () => {
     const portrait = screen.getByAltText("Portrait of Sam Reef");
     expect(portrait).toHaveAttribute("src", "blob:card");
     // In the name's own column, at 7:9.
-    const slot = screen.getByRole("heading", {
-      name: "Sam Reef",
-    }).previousElementSibling!;
+    const slot = portraitColumn("Sam Reef");
     expect(slot).toContainElement(portrait);
     expect(portrait.parentElement).toHaveClass("aspect-[7/9]");
     expect(screen.queryByAltText(/avatar/i)).toBeNull();
@@ -527,7 +556,7 @@ describe("labels and values line up", () => {
       }),
     );
 
-    const lists = [...container.querySelectorAll("dl")];
+    const lists = labelledLists(container);
     expect(lists.length).toBeGreaterThan(0);
     for (const list of lists) {
       expect(list.className).toContain("grid-cols-[auto_1fr]");
@@ -567,7 +596,7 @@ describe("labels and values line up", () => {
       expect(picture.parentElement?.firstElementChild).toBe(picture);
     }
 
-    for (const list of container.querySelectorAll("dl")) {
+    for (const list of labelledLists(container)) {
       expect(list.className).toContain("sm:grid-cols-[minmax(6rem,auto)_1fr]");
       expect(list.className).toContain(
         "print:grid-cols-[minmax(6rem,auto)_1fr]",
@@ -576,14 +605,33 @@ describe("labels and values line up", () => {
     }
   });
 
+  it("holds every heading row to one height, edit buttons or not", () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded());
+
+    // The edit buttons are off the paper and off a link's page, so no row may take
+    // its height from one: the name's line is taller than a heading's, and each
+    // heading would sit a different distance above its rows.
+    for (const name of [
+      "Sam Reef",
+      "Diving",
+      "Dive Insurance",
+      "Emergency Contact",
+      "Certifications",
+    ]) {
+      expect(screen.getByRole("heading", { name }).parentElement).toHaveClass(
+        "min-h-9",
+      );
+    }
+  });
+
   it("holds the picture's column for a diver who stored none", () => {
     Object.assign(auth.user, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
     // Nothing in it prints, but the column stays - the name meets the same edge as
-    // its own two values either way.
-    const diverName = screen.getByRole("heading", { name: "Sam Reef" });
-    const slot = diverName.previousElementSibling!;
+    // every certification's either way.
+    const slot = portraitColumn("Sam Reef");
     expect(slot).toHaveClass("sm:w-24");
     for (const child of slot.children) {
       expect(child).toHaveClass("print:hidden");
@@ -1184,9 +1232,7 @@ describe("on a link's page", () => {
       "print:hidden",
     );
     // The portrait's column stands, empty, with no dashed offer in it.
-    const slot = screen.getByRole("heading", {
-      name: auth.user.name,
-    }).previousElementSibling!;
+    const slot = portraitColumn(auth.user.name);
     expect(slot).toHaveClass("sm:w-24");
     expect(slot.children).toHaveLength(0);
   });
