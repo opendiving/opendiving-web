@@ -183,8 +183,10 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo and Navigation. The gap is the nav's, so it goes with the nav
-              below `md` - at 320px those 32px are what the four controls need. */}
-          <div className="flex items-center md:space-x-8">
+              below `md` - at 320px that room is what the four controls need.
+              Both gaps stay narrow until `lg`: at 768px the bar's six items fit
+              only that way. */}
+          <div className="flex items-center md:space-x-4 lg:space-x-8">
             <Link
               href={isAuthenticated ? "/home" : "/"}
               className="flex flex-shrink-0 items-center space-x-2"
@@ -200,7 +202,7 @@ export function Header() {
             </Link>
 
             {/* Desktop Navigation - Show different nav based on auth status */}
-            <nav className="hidden md:flex flex-shrink-0 items-center space-x-6">
+            <nav className="hidden md:flex flex-shrink-0 items-center space-x-4 lg:space-x-6">
               {isAuthenticated ? (
                 <>
                   {BAR_ITEMS.map((item) => {
