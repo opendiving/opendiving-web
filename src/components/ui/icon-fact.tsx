@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 export const LINE_ICON =
   "inline-block size-[1em] align-[-0.125em] [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
 
-// A fact marked by an icon, which a screen reader hears as its label.
+// A fact marked by an icon, which a screen reader hears as its label. Without
+// children the icon is the whole fact.
 export function IconFact({
   icon: Icon,
   label,
@@ -15,8 +16,16 @@ export function IconFact({
 }: {
   icon: LucideIcon;
   label: string;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
+  if (children == null) {
+    return (
+      <span className="whitespace-nowrap">
+        <Icon aria-hidden className={LINE_ICON} />
+        <span className="sr-only">{label}</span>
+      </span>
+    );
+  }
   return (
     <span className="whitespace-nowrap">
       <Icon aria-hidden className={cn("mr-0.5", LINE_ICON)} />

@@ -228,6 +228,14 @@ export function diveRecordings(dive: Dive): Recording[] {
 }
 
 /**
+ * Whether anything recorded the dive: the list row's count, or the detail
+ * response's recordings.
+ */
+export function hasRecording(dive: Dive): boolean {
+  return (dive.recording_count ?? dive.recordings?.length ?? 0) > 0;
+}
+
+/**
  * The recording whose readouts the exposure card shows and whose profile a
  * single-profile consumer takes — ordinal 0 — or `null` for a dive logged by
  * hand.
