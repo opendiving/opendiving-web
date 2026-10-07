@@ -447,11 +447,10 @@ export function CheckInPageFrame({
                     </PortraitFrame>
                   )}
                 </div>
-                <div className="min-w-0 flex-1 space-y-1">
-                  {/* `-my-1` pulls the control's margin box inside the name's line,
-                      as a certification row does with its own: left to set the row
-                      height the button is taller than the text, and pushes the
-                      details under the name down by those two pixels. */}
+                <div className="min-w-0 flex-1 space-y-2">
+                  {/* The button sets this row's height, as it does a section
+                      heading's, so the name and its control sit level with the
+                      Diving heading and its control across the row. */}
                   <div className="flex items-center gap-2">
                     <h2
                       className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}
@@ -461,7 +460,6 @@ export function CheckInPageFrame({
                     {editControl(
                       "Edit your name, portrait, date of birth and phone number",
                       () => setEditing("about"),
-                      "-my-1",
                     )}
                   </div>
 
