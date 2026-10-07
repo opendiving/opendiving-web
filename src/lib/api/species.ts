@@ -1,15 +1,21 @@
 import { API_BASE_URL } from "@/lib/api-base";
 import { apiClient, PaginatedResponse } from "./client";
 
-// The bounds `GET /species/search` declares on its own `q`. Mirrored rather than
-// discovered, for the same reason `MIN_PLACE_QUERY_LENGTH` is: a query outside
-// them is a 422, and a 422 is an exception - which the picker's error story
-// ("an empty list is survivable, a thrown error is not") has no answer for.
-//
-// Both are exported because a field that searches has to say something while the
-// query is outside them, and "no species found" is not it: nothing was looked for.
-export const MIN_SPECIES_QUERY_LENGTH = 2;
+// The longest `q` the species routes accept. Mirrored rather than discovered,
+// for the same reason `MIN_PLACE_QUERY_LENGTH` is: a longer one is a 422, and a
+// 422 is an exception - which the picker's error story ("an empty list is
+// survivable, a thrown error is not") has no answer for.
 export const MAX_SPECIES_QUERY_LENGTH = 255;
+
+// A query shorter than this never reaches the registers. The diver's own species
+// answer from the first letter, but under this the menu still says "type a
+// species name" when none of them match, rather than "no species found" about a
+// catalog nobody searched.
+export const MIN_SPECIES_QUERY_LENGTH = 2;
+
+// How many uuids `GET /user/species/suggest` takes in each repeated parameter;
+// one more is a 422.
+const MAX_SUGGEST_UUIDS = 100;
 
 /**
  * A species as it rides on a dive - just enough to render a row.
@@ -128,8 +134,8 @@ export interface SpeciesLifeListDetail extends SpeciesLifeListEntry {
 }
 
 /**
- * One row of the picker's feed, merged by the API from the local catalog, WoRMS
- * and Wikidata.
+ * One species the catalog search found, merged by the API from the local
+ * catalog, WoRMS and Wikidata.
  *
  * `uuid` is the fork in the road: set means the species is already a catalog row
  * and can be added to a dive as-is; `null` means it exists only upstream and has
@@ -160,15 +166,32 @@ export interface SpeciesSearchResult {
 }
 
 /**
- * A capped page of picker results.
+ * One row of the dive form's species menu: a search result, plus the diver's
+ * history with it that put it where it is on the page.
+ *
+ * `dive_count_at_sites` is how many of the diver's dives at the request's sites
+ * logged it, and `last_seen` the start of their latest dive that did, anywhere -
+ * in that dive's own zone, as `SpeciesLifeListEntry.last_seen` is. A row the
+ * catalog search supplied carries `0` and `null`.
+ */
+export interface SpeciesSuggestion extends SpeciesSearchResult {
+  dive_count_at_sites: number;
+  last_seen: string | null;
+}
+
+/**
+ * A capped page of suggestions, in the order the menu shows them: the species
+ * the diver logged at the sites, then the rest they have logged, then the
+ * catalog search's.
  *
  * A plain list rather than the paginated envelope the app's collections use:
  * this is a picker feed like `GET /geocode/search`, capped at 25, and `has_more`
  * only exists so the menu can say "keep typing to narrow" instead of letting a
- * truncated list read as "that's everything".
+ * truncated list read as "that's everything" - which is also why it is true when
+ * a typed query never reached the catalog search.
  */
-export interface SpeciesSearchResponse {
-  results: SpeciesSearchResult[];
+export interface SpeciesSuggestResponse {
+  results: SpeciesSuggestion[];
   has_more: boolean;
 }
 
@@ -223,31 +246,51 @@ export function speciesPhotoUrl(
  */
 export const speciesAPI = {
   /**
-   * Find species by common name, scientific name, synonym or alias.
+   * The dive form's species menu for `query`: the species the diver logged at
+   * `diveSiteUuids` first, then the rest they have logged, then the catalog and
+   * register matches, with none of `excludeSpeciesUuids` anywhere on the page.
    *
-   * A query outside the endpoint's own `2..255` length is answered here without
-   * a request, since asking would be a 422 - which is a *rejection*, and so the
-   * one failure mode this function's callers can't treat as "no match". A
-   * combobox probes with `""` the moment its menu opens, which is what makes
-   * this guard load-bearing rather than defensive.
+   * An empty query is asked too - it is what fills the menu on open - and is
+   * sent without `q`. One letter filters the diver's own species; the registers
+   * are asked from two. A query over the endpoint's 255 characters is answered
+   * here without a request, since asking would be a 422 - a *rejection*, and so
+   * the one failure this function's callers can't treat as "no match".
    *
-   * Everything else the API already degrades: a provider being down, throttled
-   * or slow returns whatever the other sources found, so an empty `results` here
-   * means "nothing matched" *or* "nothing was reachable", and callers that can't
-   * act on the difference shouldn't try. Only a thrown error - the per-user 429,
-   * a network failure - is exceptional.
+   * Each list is sent up to the endpoint's cap of 100 and the rest dropped, so a
+   * dive holding more species than that has its later ones hidden by the menu
+   * rather than turned into a 422 by the request.
+   *
+   * Everything else the API degrades: a register being down, throttled or slow
+   * leaves the diver's rows and the catalog's in the answer. Only a thrown error
+   * - the per-user 429, a network failure - is exceptional.
    */
-  async searchSpecies(query: string): Promise<SpeciesSearchResponse> {
+  async suggestSpecies(
+    query: string,
+    {
+      diveSiteUuids = [],
+      excludeSpeciesUuids = [],
+    }: {
+      diveSiteUuids?: readonly string[];
+      excludeSpeciesUuids?: readonly string[];
+    } = {},
+  ): Promise<SpeciesSuggestResponse> {
     const q = query.trim();
-    if (
-      q.length < MIN_SPECIES_QUERY_LENGTH ||
-      q.length > MAX_SPECIES_QUERY_LENGTH
-    ) {
+    if (q.length > MAX_SPECIES_QUERY_LENGTH) {
       return { results: [], has_more: false };
     }
-    const response = await apiClient.get<SpeciesSearchResponse>(
-      `/species/search`,
-      { params: { q } },
+    const sites = diveSiteUuids.slice(0, MAX_SUGGEST_UUIDS);
+    const excluded = excludeSpeciesUuids.slice(0, MAX_SUGGEST_UUIDS);
+    const response = await apiClient.get<SpeciesSuggestResponse>(
+      `/user/species/suggest`,
+      {
+        params: {
+          ...(q ? { q } : {}),
+          ...(sites.length ? { dive_site_uuid: sites } : {}),
+          ...(excluded.length ? { exclude_species_uuid: excluded } : {}),
+        },
+        // FastAPI's list form: axios would otherwise send `dive_site_uuid[]`.
+        paramsSerializer: { indexes: null },
+      },
     );
     return response.data;
   },

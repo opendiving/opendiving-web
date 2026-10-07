@@ -185,6 +185,50 @@ describe("CreatableCombobox with nothing chosen", () => {
 });
 
 describe("CreatableCombobox in an append-only field", () => {
+  it("asks again once after a pick that keeps the menu open", async () => {
+    // Nothing was typed, so neither the query nor the open state changes: only
+    // the pick itself can tell a server that leaves picked rows out to refill.
+    render(
+      <CreatableCombobox
+        value={undefined}
+        onSearch={onSearch}
+        onChange={vi.fn()}
+        keepOpenOnSelect
+        noItemsLabel="No sites yet."
+      />,
+    );
+    await userEvent.click(box());
+    await waitFor(() => expect(rowNames()).toHaveLength(3));
+    expect(onSearch).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByRole("option", { name: "Bohol 2024" }));
+
+    await waitFor(() => expect(onSearch).toHaveBeenCalledTimes(2));
+    expect(onSearch).toHaveBeenLastCalledWith("");
+  });
+
+  it("does not ask again after a pick that closes the menu", async () => {
+    render(
+      <CreatableCombobox
+        value={undefined}
+        onSearch={onSearch}
+        onChange={vi.fn()}
+        keepOpenOnSelect
+        blurOnSelect
+        noItemsLabel="No sites yet."
+      />,
+    );
+    await userEvent.click(box());
+    await waitFor(() => expect(rowNames()).toHaveLength(3));
+
+    await userEvent.click(screen.getByRole("option", { name: "Bohol 2024" }));
+
+    await waitFor(() =>
+      expect(screen.queryAllByRole("option")).toHaveLength(0),
+    );
+    expect(onSearch).toHaveBeenCalledTimes(1);
+  });
+
   it("leaves the empty input alone on focus", async () => {
     // `keepOpenOnSelect` clears the input after every pick, so there is nothing
     // to select - and a select() on an empty field is a no-op that still raises
