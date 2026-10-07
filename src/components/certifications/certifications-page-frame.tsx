@@ -5,7 +5,8 @@ import { BadgeCheck, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { IndexPageHeader } from "@/components/ui/page-header";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import {
@@ -60,79 +61,81 @@ export function CertificationsPageFrame({
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
-      <IndexPageHeader
+    <div>
+      <IndexHero
         title="Certifications"
-        description="Keep photos of your c-cards here, so they're on hand at the dive shop without digging out the plastic"
-        action={
-          <Button onClick={onNew}>
+        subtitle="Keep photos of your c-cards here, so they're on hand at the dive shop without digging out the plastic"
+        actions={
+          <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New certification
           </Button>
         }
       />
 
-      <Card>
-        <ListCardHeader title="Your Certifications" isEmpty={isEmptyList}>
-          <CountBadge
-            count={totalCount}
-            isLoading={isLoading}
-            label="certification"
-          />
-        </ListCardHeader>
-        <CardContent>
-          {!isLoading && rows.length === 0 ? (
-            <EmptyState
-              icon={BadgeCheck}
-              title="No certifications yet"
-              description="Add your c-cards so you always have them on hand at the dive shop."
-              action={
-                <Button onClick={onNew}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add your first certification
-                </Button>
-              }
+      <div className={cn(HERO_BODY, "space-y-6")}>
+        <Card>
+          <ListCardHeader title="Your Certifications" isEmpty={isEmptyList}>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="certification"
             />
-          ) : (
-            <Table
-              // Busy on the outside, hidden on each placeholder row within - the
-              // split `ListRowsSkeleton` documents, applied here because the rows
-              // themselves are `aria-hidden` and would otherwise leave a reader
-              // with a table that is silently empty rather than one that is
-              // loading.
-              aria-busy={rows.length === 0 || undefined}
-            >
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Card</TableHead>
-                  <TableHead>Certification</TableHead>
-                  <TableHead>Agency</TableHead>
-                  <TableHead>Number</TableHead>
-                  <TableHead>Certified</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRowsSkeleton columns={6} rows={itemsPerPage} />
-                )}
-                {rows}
-              </TableBody>
-            </Table>
-          )}
+          </ListCardHeader>
+          <CardContent>
+            {!isLoading && rows.length === 0 ? (
+              <EmptyState
+                icon={BadgeCheck}
+                title="No certifications yet"
+                description="Add your c-cards so you always have them on hand at the dive shop."
+                action={
+                  <Button onClick={onNew}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add your first certification
+                  </Button>
+                }
+              />
+            ) : (
+              <Table
+                // Busy on the outside, hidden on each placeholder row within - the
+                // split `ListRowsSkeleton` documents, applied here because the rows
+                // themselves are `aria-hidden` and would otherwise leave a reader
+                // with a table that is silently empty rather than one that is
+                // loading.
+                aria-busy={rows.length === 0 || undefined}
+              >
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Card</TableHead>
+                    <TableHead>Certification</TableHead>
+                    <TableHead>Agency</TableHead>
+                    <TableHead>Number</TableHead>
+                    <TableHead>Certified</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.length === 0 && (
+                    <TableRowsSkeleton columns={6} rows={itemsPerPage} />
+                  )}
+                  {rows}
+                </TableBody>
+              </Table>
+            )}
 
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={rows.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="certifications"
-            onLoadMore={onLoadMore}
-          />
-        </CardContent>
-      </Card>
+            <LoadMoreTrigger
+              hasMore={hasMore}
+              isLoading={isLoadingMore}
+              hasFailed={loadFailed}
+              loadedCount={rows.length}
+              totalCount={totalCount}
+              itemsPerPage={itemsPerPage}
+              itemLabel="certifications"
+              onLoadMore={onLoadMore}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

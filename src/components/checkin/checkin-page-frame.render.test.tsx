@@ -422,12 +422,22 @@ describe("what the print leaves behind", () => {
     }
   });
 
+  // `md:` measures the sheet in print, and A4 or Letter falls short of it, so the
+  // one line naming the document needs a size of its own there.
+  it("prints its heading at the page's size", () => {
+    render(loaded());
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass(
+      "print:text-3xl",
+    );
+  });
+
   it("hides its own controls, keeping the summary", () => {
     render(loaded());
 
-    expect(screen.getByRole("button", { name: /print/i })).toHaveClass(
-      "print:hidden",
-    );
+    expect(
+      screen.getByRole("button", { name: /print/i }).closest(".print\\:hidden"),
+    ).not.toBeNull();
   });
 
   it("keeps each block a reader takes as one thing off a page boundary", () => {

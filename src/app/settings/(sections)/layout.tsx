@@ -3,6 +3,7 @@
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { SettingsNav } from "@/components/settings/settings-nav";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 // A route group rather than `app/settings/layout.tsx`, so the menu and the auth gate
 // stay off `/settings/confirm-email`: that page is opened from an email, often signed
@@ -23,17 +24,14 @@ export default function SettingsLayout({
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account information.
-        </p>
-      </div>
+    <div>
+      <IndexHero title="Settings" subtitle="Manage your account information." />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
-        <SettingsNav />
-        <div className="min-w-0 space-y-6">{children}</div>
+      <div className={HERO_BODY}>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
+          <SettingsNav />
+          <div className="min-w-0 space-y-6">{children}</div>
+        </div>
       </div>
     </div>
   );

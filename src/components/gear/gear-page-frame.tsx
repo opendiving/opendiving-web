@@ -4,7 +4,8 @@ import { type Ref } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { IndexPageHeader } from "@/components/ui/page-header";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
+import { cn } from "@/lib/utils";
 import {
   GearItemsCard,
   type GearItemsCardProps,
@@ -74,22 +75,24 @@ export function GearPageFrame({
   setsCardRef,
 }: GearPageFrameProps) {
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
-      <IndexPageHeader
+    <div>
+      <IndexHero
         title="Gear"
-        description="Track the equipment you dive with, and group it into sets you can load into a dive in one click"
-        action={
-          <Button onClick={onNew}>
+        subtitle="Track the equipment you dive with, and group it into sets you can load into a dive in one click"
+        actions={
+          <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New gear
           </Button>
         }
       />
 
-      <GearItemsCard {...items} />
+      <div className={cn(HERO_BODY, "space-y-6")}>
+        <GearItemsCard {...items} />
 
-      <div ref={setsCardRef}>
-        <GearSetsCard {...sets} />
+        <div ref={setsCardRef}>
+          <GearSetsCard {...sets} />
+        </div>
       </div>
     </div>
   );

@@ -27,6 +27,7 @@ import {
   monthRange,
   stepMonth,
 } from "@/components/admin/daily-stats";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 type Loaded =
   | { month: StatsMonth; stats: AdminStats }
@@ -81,65 +82,64 @@ export function AdminStatsScreen() {
   const label = monthLabel(month);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Stats</h1>
-        <p className="text-muted-foreground mt-2">
-          Daily totals of accounts created, sign-ins and active accounts. Days
-          are UTC.
-        </p>
-      </div>
+    <div>
+      <IndexHero
+        title="Stats"
+        subtitle="Daily totals of accounts created, sign-ins and active accounts. Days are UTC."
+      />
 
-      <div className="mb-4 flex items-center gap-1">
-        <IconTooltip label="Previous month">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => setMonth(stepMonth(month, -1))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </IconTooltip>
-        <span
-          className="w-40 text-center text-sm font-medium"
-          aria-live="polite"
-        >
-          {label}
-        </span>
-        {/* Nothing has happened after this month yet. */}
-        <IconTooltip label="Next month">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            disabled={month >= thisMonth}
-            onClick={() => setMonth(stepMonth(month, 1))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </IconTooltip>
-      </div>
-
-      {shown && "error" in shown ? (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm">{shown.error}</p>
+      <div className={HERO_BODY}>
+        <div className="mb-4 flex items-center gap-1">
+          <IconTooltip label="Previous month">
             <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => {
-                setLoaded(null);
-                setAttempt((count) => count + 1);
-              }}
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setMonth(stepMonth(month, -1))}
             >
-              Try again
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <StatsCards stats={shown?.stats ?? null} label={label} />
-      )}
+          </IconTooltip>
+          <span
+            className="w-40 text-center text-sm font-medium"
+            aria-live="polite"
+          >
+            {label}
+          </span>
+          {/* Nothing has happened after this month yet. */}
+          <IconTooltip label="Next month">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              disabled={month >= thisMonth}
+              onClick={() => setMonth(stepMonth(month, 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
+        </div>
+
+        {shown && "error" in shown ? (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm">{shown.error}</p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => {
+                  setLoaded(null);
+                  setAttempt((count) => count + 1);
+                }}
+              >
+                Try again
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <StatsCards stats={shown?.stats ?? null} label={label} />
+        )}
+      </div>
     </div>
   );
 }

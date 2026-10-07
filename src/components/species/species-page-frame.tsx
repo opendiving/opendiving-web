@@ -15,6 +15,7 @@ import {
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export interface SpeciesPageFrameProps {
   isLoading: boolean;
@@ -97,94 +98,94 @@ export function SpeciesPageFrame({
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Marine Life</h1>
-        <p className="text-muted-foreground mt-2">
-          Everything you have logged seeing, and when you saw it
-        </p>
-      </div>
+    <div>
+      <IndexHero
+        title="Marine Life"
+        subtitle="Everything you have logged seeing, and when you saw it"
+      />
 
-      <Card>
-        {/* The count and the box that changes it, on one line, as every other
-            list card draws them - and under `sm`, where they do not both fit,
-            the count and the button the box folds behind. */}
-        <ListCardHeader title="Life List" isEmpty={isEmptyList}>
-          <CountBadge
-            count={totalCount}
-            isLoading={isLoading}
-            label="species"
-            plural="species"
-            isNarrowed={isCountNarrowed}
-          />
-          <ListSearch
-            id="species-search"
-            label="Search your species by name"
-            toggleLabel="Search your species"
-            placeholder="Search by name..."
-            value={search}
-            onChange={onSearchChange}
-          />
-        </ListCardHeader>
-        <CardContent>
-          {!isLoading && cards.length === 0 ? (
-            // A filtered list with nothing in it is a different statement from
-            // an empty life list, so it keeps its one line: no icon, no
-            // heading, and pointedly no "log your first dive", which would be
-            // answering a question nobody asked.
-            isSearching ? (
-              <div className="text-center py-12 text-muted-foreground">
-                No species match that name.
-              </div>
+      <div className={HERO_BODY}>
+        <Card>
+          {/* The count and the box that changes it, on one line, as every other
+              list card draws them - and under `sm`, where they do not both fit,
+              the count and the button the box folds behind. */}
+          <ListCardHeader title="Life List" isEmpty={isEmptyList}>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="species"
+              plural="species"
+              isNarrowed={isCountNarrowed}
+            />
+            <ListSearch
+              id="species-search"
+              label="Search your species by name"
+              toggleLabel="Search your species"
+              placeholder="Search by name..."
+              value={search}
+              onChange={onSearchChange}
+            />
+          </ListCardHeader>
+          <CardContent>
+            {!isLoading && cards.length === 0 ? (
+              // A filtered list with nothing in it is a different statement from
+              // an empty life list, so it keeps its one line: no icon, no
+              // heading, and pointedly no "log your first dive", which would be
+              // answering a question nobody asked.
+              isSearching ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No species match that name.
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Fish}
+                  title="No species yet"
+                  description="Record what you saw on a dive and it will appear here."
+                  action={
+                    <Button asChild>
+                      <Link href="/dives">
+                        <Fish className="h-4 w-4 mr-2" />
+                        Go to your dives
+                      </Link>
+                    </Button>
+                  }
+                />
+              )
             ) : (
-              <EmptyState
-                icon={Fish}
-                title="No species yet"
-                description="Record what you saw on a dive and it will appear here."
-                action={
-                  <Button asChild>
-                    <Link href="/dives">
-                      <Fish className="h-4 w-4 mr-2" />
-                      Go to your dives
-                    </Link>
-                  </Button>
-                }
-              />
-            )
-          ) : (
-            // Placeholders inside the real grid rather than a spinner in place
-            // of it, and chosen by the card count inside the container the way
-            // the list pages pick their skeleton rows - one layout, not three.
-            // `itemsPerPage` rather than a fixed number: the page size is known
-            // before the first response, so the grid can be drawn at the size it
-            // is about to be.
-            <div
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
-              // Busy on the outside, hidden on each placeholder within - the
-              // split `ListRowsSkeleton` documents. Announcing two dozen empty
-              // boxes tells a screen reader nothing.
-              aria-busy={cards.length === 0 || undefined}
-            >
-              {cards.length === 0
-                ? Array.from({ length: itemsPerPage }, (_, card) => (
-                    <LifeListCardSkeleton key={card} />
-                  ))
-                : cards}
-            </div>
-          )}
+              // Placeholders inside the real grid rather than a spinner in place
+              // of it, and chosen by the card count inside the container the way
+              // the list pages pick their skeleton rows - one layout, not three.
+              // `itemsPerPage` rather than a fixed number: the page size is known
+              // before the first response, so the grid can be drawn at the size it
+              // is about to be.
+              <div
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                // Busy on the outside, hidden on each placeholder within - the
+                // split `ListRowsSkeleton` documents. Announcing two dozen empty
+                // boxes tells a screen reader nothing.
+                aria-busy={cards.length === 0 || undefined}
+              >
+                {cards.length === 0
+                  ? Array.from({ length: itemsPerPage }, (_, card) => (
+                      <LifeListCardSkeleton key={card} />
+                    ))
+                  : cards}
+              </div>
+            )}
 
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={cards.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="species"
-            onLoadMore={onLoadMore}
-          />
-        </CardContent>
-      </Card>
+            <LoadMoreTrigger
+              hasMore={hasMore}
+              isLoading={isLoadingMore}
+              hasFailed={loadFailed}
+              loadedCount={cards.length}
+              totalCount={totalCount}
+              itemsPerPage={itemsPerPage}
+              itemLabel="species"
+              onLoadMore={onLoadMore}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

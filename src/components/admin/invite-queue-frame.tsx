@@ -13,6 +13,7 @@ import {
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { InviteRequestsTable } from "@/components/admin/invite-requests-table";
 import { DEFAULT_ITEMS_PER_PAGE } from "@/hooks/useInfiniteResource";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 /**
  * Mirrors `MAX_ADDRESSES_PER_BATCH` in the API's invitation schema, which both
@@ -73,88 +74,88 @@ export function InviteQueueFrame({
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Invite Queue</h1>
-        <p className="text-muted-foreground mt-2">
-          Addresses that have asked for an invitation to this instance.
-        </p>
+    <div>
+      <IndexHero
+        title="Invite Queue"
+        subtitle="Addresses that have asked for an invitation to this instance."
+      />
+
+      <div className={HERO_BODY}>
+        <Card>
+          <ListCardHeader title="Requests" isEmpty={isEmptyList}>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="pending request"
+            />
+          </ListCardHeader>
+          <CardContent>
+            {/* Goes with the count: a Send and a Remove that can only ever be
+                disabled are furniture over "Nobody is waiting", and the live
+                region has nothing left to announce. */}
+            {!isEmptyList && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button
+                  onClick={() => onAct("invite")}
+                  disabled={count === 0 || isActing}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send invitations
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => onAct("remove")}
+                  disabled={count === 0 || isActing}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove
+                </Button>
+                <span
+                  className="text-sm text-muted-foreground self-center"
+                  // Ticking a row is a pointer gesture with no announcement of its
+                  // own, so the running total is spoken as it changes. The select-all's
+                  // `indeterminate` dash carries the same news, and a screen reader does
+                  // read it - a native checkbox exposes the mixed state - but only to
+                  // someone who goes back to the header box for it. This region is the
+                  // half that arrives unasked.
+                  aria-live="polite"
+                >
+                  {count === 0
+                    ? "Nothing selected"
+                    : count >= MAX_SELECTED
+                      ? `${addresses} selected - the most one batch can hold`
+                      : `${addresses} selected`}
+                </span>
+              </div>
+            )}
+
+            <InviteRequestsTable
+              requests={requests}
+              isLoading={isLoading}
+              itemsPerPage={itemsPerPage}
+              selected={selected}
+              onToggle={onToggle}
+              onToggleAll={onToggleAll}
+            />
+
+            {/* No selection reset here, unlike the Previous/Next footer this
+                replaced: that cleared the ticks because a page turn carried the
+                selected addresses off screen, and sending invitations the operator
+                can no longer see is the thing it was guarding against. Loading
+                more only appends, so everything ticked stays visible. */}
+            <LoadMoreTrigger
+              hasMore={hasMore}
+              isLoading={isLoadingMore}
+              hasFailed={loadFailed}
+              loadedCount={requests.length}
+              totalCount={totalCount}
+              itemsPerPage={itemsPerPage}
+              itemLabel="requests"
+              onLoadMore={onLoadMore}
+            />
+          </CardContent>
+        </Card>
       </div>
-
-      <Card>
-        <ListCardHeader title="Requests" isEmpty={isEmptyList}>
-          <CountBadge
-            count={totalCount}
-            isLoading={isLoading}
-            label="pending request"
-          />
-        </ListCardHeader>
-        <CardContent>
-          {/* Goes with the count: a Send and a Remove that can only ever be
-              disabled are furniture over "Nobody is waiting", and the live
-              region has nothing left to announce. */}
-          {!isEmptyList && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Button
-                onClick={() => onAct("invite")}
-                disabled={count === 0 || isActing}
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Send invitations
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => onAct("remove")}
-                disabled={count === 0 || isActing}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remove
-              </Button>
-              <span
-                className="text-sm text-muted-foreground self-center"
-                // Ticking a row is a pointer gesture with no announcement of its
-                // own, so the running total is spoken as it changes. The select-all's
-                // `indeterminate` dash carries the same news, and a screen reader does
-                // read it - a native checkbox exposes the mixed state - but only to
-                // someone who goes back to the header box for it. This region is the
-                // half that arrives unasked.
-                aria-live="polite"
-              >
-                {count === 0
-                  ? "Nothing selected"
-                  : count >= MAX_SELECTED
-                    ? `${addresses} selected - the most one batch can hold`
-                    : `${addresses} selected`}
-              </span>
-            </div>
-          )}
-
-          <InviteRequestsTable
-            requests={requests}
-            isLoading={isLoading}
-            itemsPerPage={itemsPerPage}
-            selected={selected}
-            onToggle={onToggle}
-            onToggleAll={onToggleAll}
-          />
-
-          {/* No selection reset here, unlike the Previous/Next footer this
-              replaced: that cleared the ticks because a page turn carried the
-              selected addresses off screen, and sending invitations the operator
-              can no longer see is the thing it was guarding against. Loading
-              more only appends, so everything ticked stays visible. */}
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={requests.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="requests"
-            onLoadMore={onLoadMore}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }

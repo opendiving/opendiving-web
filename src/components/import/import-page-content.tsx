@@ -39,6 +39,7 @@ import {
   isHiddenImportPath,
   isZipFile,
 } from "@/lib/logbook-import";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 // The files a read was sent, in the order sent - a `members` row's `part` is an
 // index into it - held beside the token because the apply sends them again and
@@ -388,16 +389,15 @@ export function ImportPageContent() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Import</h1>
-        <p className="text-muted-foreground">
-          Bring dives in from your dive computer, another logbook or an
-          OpenDiving archive. You see what each file becomes before anything is
-          written.
-        </p>
+    <div>
+      <IndexHero
+        title="Import"
+        subtitle="Bring dives in from your dive computer, another logbook or an OpenDiving archive. You see what each file becomes before anything is written."
+      />
+
+      <div className={HERO_BODY}>
+        <ImportFlow />
       </div>
-      <ImportFlow />
     </div>
   );
 }

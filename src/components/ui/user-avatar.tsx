@@ -14,8 +14,12 @@ interface UserAvatarProps {
   // the fetch a new URL, so the browser cannot serve the previous picture from its
   // own cache.
   avatarSha?: string | null;
+  // In pixels, the initials scaled to match. Unset, `className` sizes the circle
+  // and the initials both.
   size?: number;
   className?: string;
+  // For a picture beside the name it would only repeat.
+  "aria-hidden"?: React.AriaAttributes["aria-hidden"];
 }
 
 /**
@@ -34,8 +38,9 @@ interface UserAvatarProps {
 export function UserAvatar({
   name,
   avatarSha,
-  size = 80,
+  size,
   className,
+  "aria-hidden": ariaHidden,
 }: UserAvatarProps) {
   const initials = getUserInitials(name);
 
@@ -50,12 +55,16 @@ export function UserAvatar({
   const { url } = useAuthedBlobUrl(avatarSha ? fetchBlob : null);
 
   return (
-    <Avatar className={className} style={{ width: size, height: size }}>
+    <Avatar
+      className={className}
+      style={size ? { width: size, height: size } : undefined}
+      aria-hidden={ariaHidden}
+    >
       {url && <AvatarImage src={url} alt={`${name}'s avatar`} />}
       {/* The initials scale with the circle: `text-sm` at the header's 36px. */}
       <AvatarFallback
         className="bg-primary/10 text-primary font-medium"
-        style={{ fontSize: size * 0.4 }}
+        style={size ? { fontSize: size * 0.4 } : undefined}
       >
         {initials.length >= 2 ? initials : <User className="h-1/2 w-1/2" />}
       </AvatarFallback>

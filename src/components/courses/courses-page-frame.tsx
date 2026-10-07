@@ -5,7 +5,7 @@ import { ChevronDown, GraduationCap, Plus, Search, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { IndexPageHeader } from "@/components/ui/page-header";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import {
@@ -115,153 +115,154 @@ export function CoursesPageFrame({
   }, [isPanelOpen]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <IndexPageHeader
-        className="mb-6"
+    <div>
+      <IndexHero
         title="Courses"
-        description="The training you did, with the dives and cards it produced"
-        action={
-          <Button onClick={onNew}>
+        subtitle="The training you did, with the dives and cards it produced"
+        actions={
+          <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New course
           </Button>
         }
       />
 
-      <Card>
-        <ListCardHeader title="Course List" isEmpty={isEmptyList}>
-          <CountBadge
-            count={totalCount}
-            isLoading={isLoading}
-            label="course"
-            total
-            isNarrowed={isCountNarrowed}
-          />
-          {/* Shutting the panel takes the search and the filters with it, so
-              the button says so once it is open - a collapsed row that
-              silently kept narrowing the list would be the one failure this
-              costs, and clearing is what rules it out rather than a dot. */}
-          <IconTooltip
-            label={
-              !isPanelOpen
-                ? "Search and filter courses"
-                : isNarrowed
-                  ? "Close search and filters, clearing them"
-                  : "Close search and filters"
-            }
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              aria-expanded={isPanelOpen}
-              aria-controls="course-filters"
-              onClick={() => {
-                if (isPanelOpen) {
-                  onSearchChange("");
-                  onFiltersChange(NO_COURSE_FILTERS);
-                } else {
-                  onFiltersOpened();
-                }
-                setPanelOpen((open) => !open);
-              }}
+      <div className={HERO_BODY}>
+        <Card>
+          <ListCardHeader title="Course List" isEmpty={isEmptyList}>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="course"
+              total
+              isNarrowed={isCountNarrowed}
+            />
+            {/* Shutting the panel takes the search and the filters with it, so
+                the button says so once it is open - a collapsed row that
+                silently kept narrowing the list would be the one failure this
+                costs, and clearing is what rules it out rather than a dot. */}
+            <IconTooltip
+              label={
+                !isPanelOpen
+                  ? "Search and filter courses"
+                  : isNarrowed
+                    ? "Close search and filters, clearing them"
+                    : "Close search and filters"
+              }
             >
-              <Search className="h-4 w-4" />
-              {/* Which way the panel will move, which the magnifier alone
-                  cannot say: a chevron pointing down at the row it is about to
-                  open, an X because shutting it is also what empties it. */}
-              {isPanelOpen ? (
-                <X className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </IconTooltip>
-        </ListCardHeader>
-        <CardContent>
-          {/* Hidden rather than unmounted, so `aria-controls` points at
-              something - nothing in here has to survive a shut, which is what
-              empties it. But it goes entirely with the button that opens it,
-              since an empty list leaves nothing to open it with. */}
-          {!isEmptyList && (
-            <div id="course-filters" hidden={!isPanelOpen}>
-              <CoursesFilters
-                search={search}
-                onSearchChange={onSearchChange}
-                filters={filters}
-                onFiltersChange={onFiltersChange}
-                agencies={agencies}
-                statuses={statuses}
-                searchRef={searchRef}
-              />
-            </div>
-          )}
-
-          {!isLoading && rows.length === 0 ? (
-            // A narrowed list with nothing in it is a different statement from
-            // an empty logbook, so it keeps its one line: no icon, no heading,
-            // and pointedly no "add your first course", which would be
-            // answering a question nobody asked. Which sentence depends on what
-            // is narrowing it: a diver who only typed a name is told about the
-            // name.
-            isSearching || hasCourseFilters(filters) ? (
-              <div className="text-center py-12 text-muted-foreground">
-                {hasCourseFilters(filters)
-                  ? "No courses match those filters."
-                  : "No courses match that name."}
-              </div>
-            ) : (
-              <EmptyState
-                icon={GraduationCap}
-                title="No courses yet"
-                description="Add the training you have done to group its dives and cards."
-                action={
-                  <Button onClick={onNew}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add your first course
-                  </Button>
-                }
-              />
-            )
-          ) : (
-            <Table
-              // Busy on the outside, hidden on each placeholder row within - the
-              // split `ListRowsSkeleton` documents, applied here because the rows
-              // themselves are `aria-hidden` and would otherwise leave a reader
-              // with a table that is silently empty rather than one that is
-              // loading.
-              aria-busy={rows.length === 0 || undefined}
-            >
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Agency</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRowsSkeleton columns={5} rows={itemsPerPage} />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                aria-expanded={isPanelOpen}
+                aria-controls="course-filters"
+                onClick={() => {
+                  if (isPanelOpen) {
+                    onSearchChange("");
+                    onFiltersChange(NO_COURSE_FILTERS);
+                  } else {
+                    onFiltersOpened();
+                  }
+                  setPanelOpen((open) => !open);
+                }}
+              >
+                <Search className="h-4 w-4" />
+                {/* Which way the panel will move, which the magnifier alone
+                    cannot say: a chevron pointing down at the row it is about to
+                    open, an X because shutting it is also what empties it. */}
+                {isPanelOpen ? (
+                  <X className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
                 )}
-                {rows}
-              </TableBody>
-            </Table>
-          )}
+              </Button>
+            </IconTooltip>
+          </ListCardHeader>
+          <CardContent>
+            {/* Hidden rather than unmounted, so `aria-controls` points at
+                something - nothing in here has to survive a shut, which is what
+                empties it. But it goes entirely with the button that opens it,
+                since an empty list leaves nothing to open it with. */}
+            {!isEmptyList && (
+              <div id="course-filters" hidden={!isPanelOpen}>
+                <CoursesFilters
+                  search={search}
+                  onSearchChange={onSearchChange}
+                  filters={filters}
+                  onFiltersChange={onFiltersChange}
+                  agencies={agencies}
+                  statuses={statuses}
+                  searchRef={searchRef}
+                />
+              </div>
+            )}
 
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={rows.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="courses"
-            onLoadMore={onLoadMore}
-          />
-        </CardContent>
-      </Card>
+            {!isLoading && rows.length === 0 ? (
+              // A narrowed list with nothing in it is a different statement from
+              // an empty logbook, so it keeps its one line: no icon, no heading,
+              // and pointedly no "add your first course", which would be
+              // answering a question nobody asked. Which sentence depends on what
+              // is narrowing it: a diver who only typed a name is told about the
+              // name.
+              isSearching || hasCourseFilters(filters) ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  {hasCourseFilters(filters)
+                    ? "No courses match those filters."
+                    : "No courses match that name."}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={GraduationCap}
+                  title="No courses yet"
+                  description="Add the training you have done to group its dives and cards."
+                  action={
+                    <Button onClick={onNew}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add your first course
+                    </Button>
+                  }
+                />
+              )
+            ) : (
+              <Table
+                // Busy on the outside, hidden on each placeholder row within - the
+                // split `ListRowsSkeleton` documents, applied here because the rows
+                // themselves are `aria-hidden` and would otherwise leave a reader
+                // with a table that is silently empty rather than one that is
+                // loading.
+                aria-busy={rows.length === 0 || undefined}
+              >
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Agency</TableHead>
+                    <TableHead>Dates</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.length === 0 && (
+                    <TableRowsSkeleton columns={5} rows={itemsPerPage} />
+                  )}
+                  {rows}
+                </TableBody>
+              </Table>
+            )}
+
+            <LoadMoreTrigger
+              hasMore={hasMore}
+              isLoading={isLoadingMore}
+              hasFailed={loadFailed}
+              loadedCount={rows.length}
+              totalCount={totalCount}
+              itemsPerPage={itemsPerPage}
+              itemLabel="courses"
+              onLoadMore={onLoadMore}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
