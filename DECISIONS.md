@@ -212,13 +212,27 @@ Rendering them per page duplicates the chrome JSX and unmounts/remounts `Header`
 navigation (visible jank, header-local state reset), so pages never import them.
 
 `Header` takes no `currentPage`/`showDashboardActions` props; it calls `usePathname()` and derives
-the active nav item from the `NAV_SECTIONS` prefix table in `header.tsx`. A new top-level nav item
-is a `{ prefix, page }` entry there.
+the active nav item by matching the path against each `href` in `NAV_ITEMS` in `header.tsx`. A new
+top-level destination is an entry there, with its tier.
 
 A route that needs no chrome goes into `NO_CHROME_ROUTES` in `app-shell.tsx` — there is no per-page
 opt-out — and renders `layout/standalone-shell.tsx` rather than a hand-rolled centered card:
 `AppShell` holds the app's `<main>`, and that component holds the chrome-free half's. See "The
 chrome-free routes had no `<main>`" at the end of this file.
+
+## The header sorts its destinations by use
+
+The bar carries the most used record pages, in usage order. `More ▾`, last in the row, carries the
+other record pages and Dashboard, which the brand link already reaches. The account menu carries
+only the account; "+" carries creation, import included. Below `md` the burger lists everything.
+
+Tiers are breakpoints, not measurement: an `lg` item is `hidden lg:inline-flex` in the bar and
+`lg:hidden` in More, so the row needs no `ResizeObserver` and never reflows after paint. More stays
+at every width rather than giving way to a tier where everything fits, so the bar's set changes only
+at `lg`.
+
+More rather than the burger is the overflow at `md` and up because a burger beside a visible row
+hides which pages are missing from it; a labelled dropdown in the row says so.
 
 ## Shared list-page pattern: `useAuthGuard` + `useInfiniteResource` + `useDeleteResource`
 
@@ -4760,14 +4774,14 @@ a new kind extends anyway (`layout/header.tsx`, `layout/quick-create.tsx`'s `Qui
 `lib/return-to.ts`, `dashboard/setup-checklist-card.tsx`). The second grep is suggestive only:
 comment prose wraps, so a multi-word pattern misses a match split across a line break.
 
-## Courses nest a dialog inside a dialog, and sit in the user menu rather than the nav
+## Courses nest a dialog inside a dialog
 
 `CourseCombobox` mounts its own `CourseDialog`, so in the certification dialog "Add course..." nests
 a dialog in a dialog, safely: `dialogFormSubmit` stops the inner submit propagating and Radix
 portals both to `document.body`.
 
 Courses mirror Certifications, per `git grep -n '/certifications' src/components/layout/`: a
-`NAV_SECTIONS` entry and the user-dropdown item, nowhere else. No dashboard card or checklist step.
+`NAV_ITEMS` entry, nowhere else. No dashboard card or checklist step.
 
 The list's search debounces the term that `useInfiniteResource`'s `fetchFn` closes over, because
 changing it discards every loaded page. "No courses match" and "no courses yet" are separate empty

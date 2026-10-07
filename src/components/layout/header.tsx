@@ -35,6 +35,8 @@ import {
   CloudUpload,
   CloudDownload,
   Shield,
+  ChevronDown,
+  LayoutDashboard,
 } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { useEffect, useRef, useState } from "react";
@@ -44,11 +46,11 @@ import {
 } from "@/components/layout/quick-create";
 import { NotificationsMenu } from "@/components/layout/notifications-menu";
 
-// Everything the "+" menu can start. It's the single way to create from the
-// chrome at every width - the mobile menu deliberately doesn't repeat these, so
-// the hamburger is navigation and "+" is creation. A dive is the only form big
-// enough to warrant its own page; the rest open a dialog over whatever the
-// diver is looking at.
+// Everything the "+" menu can start. It's the one way to create or bring dives
+// in from the chrome at every width - the mobile menu deliberately doesn't repeat
+// these, so the hamburger is navigation and "+" is creation. A dive is the only
+// form big enough to warrant its own page; the rest open a dialog over whatever
+// the diver is looking at. Import follows them, ruled off, as the last entry.
 // `icon` is typed by what this menu actually renders - a component taking a
 // `className` - rather than as `LucideIcon`: "New dive" carries the brand mark,
 // which is a plain function component and not one of lucide's forward-ref
@@ -67,33 +69,67 @@ const CREATE_ACTIONS: CreateAction[] = [
   { label: "New course", icon: GraduationCap, kind: "course" },
 ];
 
-// Maps URL path prefixes to the nav item that should be highlighted as active.
-const NAV_SECTIONS: { prefix: string; page: string }[] = [
-  { prefix: "/dashboard", page: "dashboard" },
-  { prefix: "/trips", page: "trips" },
-  { prefix: "/dives", page: "dives" },
-  { prefix: "/sites", page: "sites" },
-  { prefix: "/gear", page: "gear" },
-  { prefix: "/certifications", page: "certifications" },
-  { prefix: "/checkin", page: "checkin" },
-  { prefix: "/courses", page: "courses" },
-  { prefix: "/contacts", page: "contacts" },
-  { prefix: "/people", page: "people" },
-  { prefix: "/species", page: "species" },
+// Every signed-in destination, in the order all three consumers list them: the
+// bar takes `primary` and `lg`, More takes `lg` and `more`, the burger takes
+// all. `lg` items sit in the bar from `lg` and in More below it. `href` doubles
+// as the path prefix that marks the item active. See "The header sorts its
+// destinations by use" in DECISIONS.md.
+type NavTier = "primary" | "lg" | "more";
+
+type NavItem = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tier: NavTier;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { label: "Trips", href: "/trips", icon: Luggage, tier: "primary" },
+  { label: "Dives", href: "/dives", icon: DiveIcon, tier: "primary" },
+  { label: "Dive Sites", href: "/sites", icon: DiveSiteIcon, tier: "primary" },
+  { label: "Marine Life", href: "/species", icon: Fish, tier: "primary" },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    tier: "more",
+  },
+  { label: "Gear", href: "/gear", icon: Backpack, tier: "lg" },
+  {
+    label: "Certifications",
+    href: "/certifications",
+    icon: BadgeCheck,
+    tier: "lg",
+  },
+  { label: "Courses", href: "/courses", icon: GraduationCap, tier: "more" },
+  { label: "Contacts", href: "/contacts", icon: BookUser, tier: "more" },
+  { label: "People", href: "/people", icon: Users, tier: "more" },
+  { label: "Check-in", href: "/checkin", icon: ClipboardList, tier: "more" },
 ];
 
-function getCurrentPage(pathname: string | null): string | undefined {
+const BAR_ITEMS = NAV_ITEMS.filter((item) => item.tier !== "more");
+const MORE_ITEMS = NAV_ITEMS.filter((item) => item.tier !== "primary");
+
+function getCurrentItem(pathname: string | null): NavItem | undefined {
   if (!pathname) return undefined;
-  return NAV_SECTIONS.find(
-    ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  )?.page;
+  return NAV_ITEMS.find(
+    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
+  );
 }
+
+// More turns coral when the current page is one of its rows at this width.
+// `lg:hover:` restores the hover the `lg:` reset would otherwise outrank.
+const MORE_ACTIVE: Record<NavTier, string> = {
+  primary: "text-foreground",
+  lg: "text-coral lg:text-foreground lg:hover:text-coral",
+  more: "text-coral",
+};
 
 export function Header() {
   const { user, isAuthenticated, signOut, isLoading } = useAuth();
   const openCreate = useQuickCreate();
   const pathname = usePathname();
-  const currentPage = getCurrentPage(pathname);
+  const currentItem = getCurrentItem(pathname);
   // The create menu is reachable from every page, so the form it opens is told
   // where it was launched from - otherwise its Back/Cancel would guess.
   const withReturnTo = useWithReturnTo();
@@ -155,7 +191,7 @@ export function Header() {
               below `md` - at 320px those 32px are what the four controls need. */}
           <div className="flex items-center md:space-x-8">
             <Link
-              href="/"
+              href={isAuthenticated ? "/dashboard" : "/"}
               className="flex flex-shrink-0 items-center space-x-2"
             >
               <Logo className="h-7 w-7 sm:h-8 sm:w-8 text-coral flex-shrink-0" />
@@ -172,48 +208,65 @@ export function Header() {
             <nav className="hidden md:flex flex-shrink-0 items-center space-x-6">
               {isAuthenticated ? (
                 <>
-                  <Link
-                    href="/dashboard"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
-                      currentPage === "dashboard"
-                        ? "text-coral"
-                        : "text-foreground"
-                    }`}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    href="/trips"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
-                      currentPage === "trips" ? "text-coral" : "text-foreground"
-                    }`}
-                  >
-                    Trips
-                  </Link>
-                  <Link
-                    href="/dives"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
-                      currentPage === "dives" ? "text-coral" : "text-foreground"
-                    }`}
-                  >
-                    Dives
-                  </Link>
-                  <Link
-                    href="/sites"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
-                      currentPage === "sites" ? "text-coral" : "text-foreground"
-                    }`}
-                  >
-                    Dive Sites
-                  </Link>
-                  <Link
-                    href="/gear"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
-                      currentPage === "gear" ? "text-coral" : "text-foreground"
-                    }`}
-                  >
-                    Gear
-                  </Link>
+                  {BAR_ITEMS.map((item) => {
+                    const isCurrent = item === currentItem;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={isCurrent ? "page" : undefined}
+                        className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                          item.tier === "lg" ? "hidden lg:inline-flex" : ""
+                        } ${isCurrent ? "text-coral" : "text-foreground"}`}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      className={`group inline-flex items-center whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                        currentItem
+                          ? MORE_ACTIVE[currentItem.tier]
+                          : "text-foreground"
+                      }`}
+                    >
+                      More
+                      <ChevronDown className="ml-1 h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      {MORE_ITEMS.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <React.Fragment key={item.href}>
+                            {/* `lg:hidden` leaves a `display:none` row that
+                                Radix's focusFirst loop skips: `.focus()` on it
+                                does not move `document.activeElement`. */}
+                            <DropdownMenuItem
+                              asChild
+                              className={
+                                item.tier === "lg" ? "lg:hidden" : undefined
+                              }
+                            >
+                              <Link
+                                href={item.href}
+                                aria-current={
+                                  item === currentItem ? "page" : undefined
+                                }
+                                className="flex items-center"
+                              >
+                                <Icon className="mr-2 h-4 w-4" />
+                                {item.label}
+                              </Link>
+                            </DropdownMenuItem>
+                            {item.href === "/dashboard" && (
+                              <DropdownMenuSeparator />
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </>
               ) : (
                 <>
@@ -285,6 +338,16 @@ export function Header() {
                       </DropdownMenuItem>
                     );
                   })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={withReturnTo("/import")}
+                      className="flex items-center"
+                    >
+                      <CloudUpload className="mr-2 h-4 w-4" />
+                      Import dives
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -322,76 +385,6 @@ export function Header() {
                       @{user.username}
                     </div>
                     <DropdownMenuSeparator />
-                    {/* First, and above Certifications, which it is mostly made
-                        of: this is the one row opened under time pressure, at a
-                        desk with somebody waiting, and the card list is a page a
-                        diver browses. Out of the main nav for the same reason the
-                        rest of this group is - it is not a destination on every
-                        visit. */}
-                    <DropdownMenuItem asChild>
-                      <Link href="/checkin" className="flex items-center">
-                        <ClipboardList className="mr-2 h-4 w-4" />
-                        Check-in
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href="/certifications"
-                        className="flex items-center"
-                      >
-                        <BadgeCheck className="mr-2 h-4 w-4" />
-                        Certifications
-                      </Link>
-                    </DropdownMenuItem>
-                    {/* Beside Certifications rather than in the main nav: both
-                        are training records, and the main nav's five slots are
-                        for the destinations a diver goes to on every visit. */}
-                    <DropdownMenuItem asChild>
-                      <Link href="/courses" className="flex items-center">
-                        <GraduationCap className="mr-2 h-4 w-4" />
-                        Courses
-                      </Link>
-                    </DropdownMenuItem>
-                    {/* Under the training records, which name contacts most, and
-                        for the same reason they sit here: the dive centers and
-                        places a diver keeps are looked up, not visited every time.
-                        No create action in the "+" menu - a contact is made where
-                        it is needed, from the picker that names it. */}
-                    <DropdownMenuItem asChild>
-                      <Link href="/contacts" className="flex items-center">
-                        <BookUser className="mr-2 h-4 w-4" />
-                        Contacts
-                      </Link>
-                    </DropdownMenuItem>
-                    {/* Beside Contacts, being its other half: the parties a
-                        diver dealt with there, the individuals they were with
-                        here - and made the same way, from the picker. */}
-                    <DropdownMenuItem asChild>
-                      <Link href="/people" className="flex items-center">
-                        <Users className="mr-2 h-4 w-4" />
-                        People
-                      </Link>
-                    </DropdownMenuItem>
-                    {/* Here for the same reason, by a different argument: the
-                        life list is a look-at-my-collection page rather than a
-                        working destination, so it does not earn one of those
-                        five slots either. */}
-                    <DropdownMenuItem asChild>
-                      <Link href="/species" className="flex items-center">
-                        <Fish className="mr-2 h-4 w-4" />
-                        Marine Life
-                      </Link>
-                    </DropdownMenuItem>
-                    {/* The rule above the account rows: everything over it is a
-                        record a diver keeps, everything under it is the account
-                        itself. */}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/import" className="flex items-center">
-                        <CloudUpload className="mr-2 h-4 w-4" />
-                        Import
-                      </Link>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/data" className="flex items-center">
                         <CloudDownload className="mr-2 h-4 w-4" />
@@ -472,41 +465,26 @@ export function Header() {
             <nav className="flex flex-col space-y-3">
               {isAuthenticated ? (
                 <>
-                  <Link
-                    href="/dashboard"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "dashboard" ? "text-coral" : "text-foreground"}`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    href="/trips"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "trips" ? "text-coral" : "text-foreground"}`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Trips
-                  </Link>
-                  <Link
-                    href="/dives"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "dives" ? "text-coral" : "text-foreground"}`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Dives
-                  </Link>
-                  <Link
-                    href="/sites"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "sites" ? "text-coral" : "text-foreground"}`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Dive Sites
-                  </Link>
-                  <Link
-                    href="/gear"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "gear" ? "text-coral" : "text-foreground"}`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Gear
-                  </Link>
+                  {NAV_ITEMS.map((item, index) => {
+                    const isCurrent = item === currentItem;
+                    // The rule falls between the bar's items and the rest.
+                    const startsRest =
+                      item.tier !== "primary" &&
+                      NAV_ITEMS[index - 1]?.tier === "primary";
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={isCurrent ? "page" : undefined}
+                        className={`text-sm font-medium hover:text-coral py-2 ${
+                          startsRest ? "border-t pt-5" : ""
+                        } ${isCurrent ? "text-coral" : "text-foreground"}`}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
                 </>
               ) : (
                 <>

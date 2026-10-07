@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Header } from "./header";
 import type { User } from "@/lib/api/auth";
@@ -152,46 +152,180 @@ describe("the account menu's Settings entry", () => {
   });
 });
 
-describe("the account menu's Import and Export entries", () => {
-  it("links Import to its page and Export to the page that kept the old URL", async () => {
-    await openAccountMenu();
+// Every row of an open menu, with each separator as "---".
+const menuRows = (menu: HTMLElement) =>
+  Array.from(
+    menu.querySelectorAll('[role="menuitem"], [role="separator"]'),
+  ).map((row) =>
+    row.getAttribute("role") === "separator" ? "---" : (row.textContent ?? ""),
+  );
 
-    expect(screen.getByRole("menuitem", { name: "Import" })).toHaveAttribute(
-      "href",
-      "/import",
+describe("Import and Export", () => {
+  it("puts Import last in the create menu and Export directly above Settings", async () => {
+    render(<Header />);
+    await userEvent.click(screen.getByRole("button", { name: "Create new" }));
+    const createMenu = await screen.findByRole("menu");
+
+    const createRows = menuRows(createMenu);
+    expect(createRows.slice(-2)).toEqual(["---", "Import dives"]);
+    expect(
+      within(createMenu).getByRole("menuitem", { name: "Import dives" }),
+    ).toHaveAttribute("href", expect.stringMatching(/^\/import/));
+
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const accountMenu = await screen.findByRole("menu");
+
+    expect(
+      within(accountMenu).getByRole("menuitem", { name: "Export" }),
+    ).toHaveAttribute("href", "/data");
+    const accountRows = menuRows(accountMenu);
+    expect(accountRows.indexOf("Settings")).toBe(
+      accountRows.indexOf("Export") + 1,
     );
-    expect(screen.getByRole("menuitem", { name: "Export" })).toHaveAttribute(
-      "href",
-      "/data",
-    );
+    expect(accountRows).not.toContain("Import");
   });
 });
 
 describe("the account menu's grouping", () => {
-  it("rules off the records from the account itself", async () => {
-    // Marine Life is the last of the records a diver keeps; Import is the first row
-    // that is about the account, and Export follows it. Exactly one rule between
-    // the records and them.
+  it("holds the account and none of the record pages", async () => {
     const menu = await openAccountMenu();
 
-    const rows = Array.from(
-      menu.querySelectorAll('[role="menuitem"], [role="separator"]'),
-    ).map((row) =>
-      row.getAttribute("role") === "separator"
-        ? "---"
-        : (row.textContent ?? ""),
-    );
-
-    const marineLifeToSettings = rows.slice(
-      rows.indexOf("Marine Life"),
-      rows.indexOf("Settings") + 1,
-    );
-    expect(marineLifeToSettings).toEqual([
-      "Marine Life",
+    const rows = menuRows(menu);
+    expect(rows.slice(0, rows.indexOf("Settings") + 1)).toEqual([
       "---",
-      "Import",
       "Export",
       "Settings",
     ]);
+    for (const page of [
+      "Dashboard",
+      "Trips",
+      "Dives",
+      "Dive Sites",
+      "Marine Life",
+      "Gear",
+      "Certifications",
+      "Courses",
+      "Contacts",
+      "People",
+      "Check-in",
+    ]) {
+      expect(rows).not.toContain(page);
+    }
+  });
+});
+
+describe("the bar", () => {
+  it("lists the most used pages in order, then More", () => {
+    render(<Header />);
+
+    const nav = screen.getByRole("navigation");
+    const links = within(nav).getAllByRole("link");
+    expect(links.map((link) => link.textContent)).toEqual([
+      "Trips",
+      "Dives",
+      "Dive Sites",
+      "Marine Life",
+      "Gear",
+      "Certifications",
+    ]);
+    // Gear and Certifications join the bar from `lg` only.
+    for (const link of links.slice(0, 4))
+      expect(link).not.toHaveClass("hidden");
+    for (const link of links.slice(4)) expect(link).toHaveClass("hidden");
+    expect(
+      within(nav).getByRole("button", { name: "More" }),
+    ).toBeInTheDocument();
+  });
+
+  it("marks the current page", () => {
+    render(<Header />);
+
+    // The mocked path is /dashboard, which is not in the bar but in More.
+    const nav = screen.getByRole("navigation");
+    for (const link of within(nav).getAllByRole("link")) {
+      expect(link).not.toHaveAttribute("aria-current");
+    }
+    expect(within(nav).getByRole("button", { name: "More" })).toHaveClass(
+      "text-coral",
+    );
+  });
+});
+
+describe("the More menu", () => {
+  it("lists Dashboard first, ruled off, then the other record pages", async () => {
+    render(<Header />);
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    const menu = await screen.findByRole("menu");
+
+    expect(menuRows(menu)).toEqual([
+      "Dashboard",
+      "---",
+      "Gear",
+      "Certifications",
+      "Courses",
+      "Contacts",
+      "People",
+      "Check-in",
+    ]);
+    // Gear and Certifications are in the bar from `lg`, so More drops them there.
+    expect(within(menu).getByRole("menuitem", { name: "Gear" })).toHaveClass(
+      "lg:hidden",
+    );
+    expect(
+      within(menu).getByRole("menuitem", { name: "Courses" }),
+    ).not.toHaveClass("lg:hidden");
+  });
+});
+
+describe("the brand link", () => {
+  it("goes to the dashboard when signed in", () => {
+    render(<Header />);
+
+    expect(screen.getByRole("link", { name: "OpenDiving" })).toHaveAttribute(
+      "href",
+      "/dashboard",
+    );
+  });
+
+  it("goes to the landing page when signed out", () => {
+    stable.auth.isAuthenticated = false;
+    stable.auth.user = null;
+
+    render(<Header />);
+
+    expect(screen.getByRole("link", { name: "OpenDiving" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+});
+
+describe("the mobile menu", () => {
+  it("lists every destination", async () => {
+    const { container } = render(<Header />);
+    await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
+
+    const menu = container.querySelector<HTMLElement>("#mobile-menu")!;
+    expect(
+      within(menu)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual([
+      "Trips",
+      "Dives",
+      "Dive Sites",
+      "Marine Life",
+      "Dashboard",
+      "Gear",
+      "Certifications",
+      "Courses",
+      "Contacts",
+      "People",
+      "Check-in",
+    ]);
+    expect(
+      within(menu).getByRole("link", { name: "Dashboard" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 });
