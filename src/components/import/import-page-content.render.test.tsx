@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   apply: vi.fn(),
   toast: vi.fn(),
   refreshUser: vi.fn(),
+  reloadCheckinDetails: vi.fn(),
   getDiveNumbering: vi.fn(),
   getNextDiveNumber: vi.fn(),
   renumberDives: vi.fn(),
@@ -46,6 +47,16 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     user: { name: "Alex", units: "metric" },
     refreshUser: mocks.refreshUser,
+  }),
+}));
+
+// The shared check-in details, which an apply that wrote one has read again.
+vi.mock("@/contexts/CheckinDetailsContext", () => ({
+  useCheckinDetails: () => ({
+    details: null,
+    loadFailed: false,
+    reload: mocks.reloadCheckinDetails,
+    save: vi.fn(),
   }),
 }));
 
@@ -916,6 +927,56 @@ describe("the check-in details and the portrait", () => {
     expect(mocks.apply.mock.calls[0][2]).toEqual({ phone: "+44 2" });
   });
 
+  it("proposes a list whole, edits it as a list, and sends it whole", async () => {
+    mocks.apply.mockResolvedValueOnce(report());
+    await readWith(
+      preview({
+        archive: false,
+        check_in_details: [
+          {
+            detail: "emergency_contacts",
+            account: [{ name: "Alex", phone: null, relationship: null }],
+            proposed: [
+              { name: "Robin", phone: "0222", relationship: "Parent" },
+              { name: "Alex", phone: null, relationship: null },
+            ],
+          },
+          {
+            detail: "insurance_policies",
+            account: [
+              { provider: "DAN", number: "P-1", expires_on: "2027-03-01" },
+            ],
+            proposed: [
+              { provider: "DAN", number: "P-1", expires_on: "2027-03-01" },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const contacts = screen.getByRole("group", { name: "Emergency contacts" });
+    expect(within(contacts).getByText(/yours now: alex/i)).toBeVisible();
+    expect(
+      within(contacts).getByRole("textbox", { name: "Name contact 1 of 2" }),
+    ).toHaveValue("Robin");
+    await userEvent.click(
+      within(contacts).getByRole("button", { name: "Remove Alex" }),
+    );
+    const policies = screen.getByRole("group", { name: "Insurance policies" });
+    await userEvent.click(
+      within(policies).getByRole("button", { name: "Keep mine" }),
+    );
+    await userEvent.click(importButton());
+
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
+    // The edited list whole; the kept one left out, which leaves the account's.
+    expect(mocks.apply.mock.calls[0][2]).toEqual({
+      emergency_contacts: [
+        { name: "Robin", phone: "0222", relationship: "Parent" },
+      ],
+    });
+  });
+
   it("offers the archive's portrait beside the account's, and sends keep after Keep mine", async () => {
     mocks.apply.mockResolvedValueOnce(report());
     await readWith(
@@ -939,7 +1000,7 @@ describe("the check-in details and the portrait", () => {
     });
   });
 
-  it("re-reads the signed-in user only when a fact was written", async () => {
+  it("re-reads the check-in details and the signed-in user only when a detail was written", async () => {
     mocks.apply.mockResolvedValueOnce(
       report({
         notes: [
@@ -956,6 +1017,9 @@ describe("the check-in details and the portrait", () => {
     await userEvent.click(importButton());
 
     await screen.findByRole("heading", { name: "Imported" });
+    // The shared copy every check-in surface shows, and the user record that carries
+    // the portrait's digest - one note marks both.
+    expect(mocks.reloadCheckinDetails).toHaveBeenCalledTimes(1);
     expect(mocks.refreshUser).toHaveBeenCalledTimes(1);
   });
 });

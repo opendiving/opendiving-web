@@ -12,82 +12,107 @@ import type {
   ImportReport,
 } from "@/lib/api/logbook-import";
 import { formatDateOnly } from "@/lib/date-time";
-import { EMPTY_USER_FIELDS } from "@/lib/validations/user-fields";
+import { EMPTY_CHECKIN_FORM_VALUES } from "@/lib/validations/checkin-details";
 
 const details: ImportCheckInDetail[] = [
-  { detail: "born_on", account: null, proposed: "1988-04-02" },
+  { detail: "email", account: null, proposed: "desk@example.org" },
   { detail: "phone", account: "+44 1", proposed: "+44 2" },
+  { detail: "date_of_birth", account: null, proposed: "1988-04-02" },
   {
-    detail: "emergency_contact",
-    account: null,
-    proposed: { name: "Alex", phone: "0456", relationship: null },
+    detail: "emergency_contacts",
+    account: [],
+    proposed: [
+      { name: "Alex", phone: "0456", relationship: null },
+      { name: "Sam", phone: null, relationship: "Parent" },
+    ],
   },
   {
-    detail: "insurance",
-    account: { provider: "DAN", number: "P-1", expires_on: "2027-03-01" },
-    proposed: { provider: "Aqua", number: null, expires_on: null },
+    detail: "insurance_policies",
+    account: [{ provider: "DAN", number: "P-1", expires_on: "2027-03-01" }],
+    proposed: [
+      { provider: "DAN", number: "P-1", expires_on: "2027-03-01" },
+      { provider: "Aqua", number: null, expires_on: null },
+    ],
   },
 ];
 
 describe("checkInProposalValues", () => {
-  it("seeds every field a carried fact holds with the proposal, and nothing else", () => {
+  it("seeds every member a carried detail holds with the proposal, lists whole", () => {
     expect(checkInProposalValues(details)).toEqual({
-      ...EMPTY_USER_FIELDS,
+      ...EMPTY_CHECKIN_FORM_VALUES,
+      email: "desk@example.org",
       date_of_birth: "1988-04-02",
       phone: "+44 2",
-      emergency_contact_name: "Alex",
-      emergency_contact_phone: "0456",
-      insurance_provider: "Aqua",
+      emergency_contacts: [
+        { name: "Alex", phone: "0456", relationship: "" },
+        { name: "Sam", phone: "", relationship: "Parent" },
+      ],
+      insurance_policies: [
+        { provider: "DAN", number: "P-1", expires_on: "2027-03-01" },
+        { provider: "Aqua", number: "", expires_on: "" },
+      ],
     });
   });
 });
 
 describe("checkInAccountSummary", () => {
-  it("reads the account's side as one line, dates formatted", () => {
+  it("reads the account's side as one line, dates formatted, rows apart", () => {
     expect(checkInAccountSummary(details[1])).toBe("+44 1");
-    expect(checkInAccountSummary(details[3])).toBe(
+    expect(checkInAccountSummary(details[4])).toBe(
       `DAN · P-1 · expires ${formatDateOnly("2027-03-01")}`,
     );
-  });
-
-  it("is null where the account holds nothing of the fact", () => {
-    expect(checkInAccountSummary(details[0])).toBeNull();
-    expect(checkInAccountSummary(details[2])).toBeNull();
     expect(
       checkInAccountSummary({
-        detail: "insurance",
-        account: { provider: " ", number: null, expires_on: null },
-        proposed: { provider: "Aqua", number: null, expires_on: null },
-      }),
-    ).toBeNull();
+        ...details[3],
+        account: [
+          { name: "Alex", phone: "0456", relationship: null },
+          { name: "Sam", phone: null, relationship: "Parent" },
+        ],
+      } as ImportCheckInDetail),
+    ).toBe("Alex · 0456; Sam · Parent");
+  });
+
+  it("is null where the account holds nothing of the detail", () => {
+    expect(checkInAccountSummary(details[0])).toBeNull();
+    expect(checkInAccountSummary(details[2])).toBeNull();
+    expect(checkInAccountSummary(details[3])).toBeNull();
   });
 });
 
 describe("checkInSubmission", () => {
-  it("sends every fact not kept, trimmed, with an emptied one as null", () => {
+  it("sends every detail not kept, keyed by its member, trimmed, an emptied one cleared", () => {
     const values = {
       ...checkInProposalValues(details),
       phone: "  +44 3 ",
-      insurance_provider: "",
+      insurance_policies: [],
     };
     expect(checkInSubmission(details, new Set(), values)).toEqual({
-      born_on: "1988-04-02",
+      email: "desk@example.org",
       phone: "+44 3",
-      emergency_contact: { name: "Alex", phone: "0456", relationship: null },
-      insurance: null,
+      date_of_birth: "1988-04-02",
+      emergency_contacts: [
+        { name: "Alex", phone: "0456", relationship: null },
+        { name: "Sam", phone: null, relationship: "Parent" },
+      ],
+      // `[]`, never `null`: the API refuses a list sent as null.
+      insurance_policies: [],
     });
   });
 
-  it("leaves a kept fact out altogether, which is what keeps the account's", () => {
+  it("leaves a kept detail out altogether, which is what keeps the account's", () => {
     const submission = checkInSubmission(
       details,
-      new Set(["phone", "insurance"] as const),
+      new Set(["phone", "insurance_policies"] as const),
       checkInProposalValues(details),
     );
-    expect(Object.keys(submission)).toEqual(["born_on", "emergency_contact"]);
+    expect(Object.keys(submission)).toEqual([
+      "email",
+      "date_of_birth",
+      "emergency_contacts",
+    ]);
   });
 
-  it("sends nothing for a fact the document does not carry", () => {
+  it("sends nothing for a detail the document does not carry", () => {
     expect(
       checkInSubmission(
         [details[1]],
