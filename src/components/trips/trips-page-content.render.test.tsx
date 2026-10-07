@@ -53,6 +53,8 @@ const trip = (uuid: string, name: string, dives: number): Trip => ({
   dive_site_count: 0,
   species_count: 0,
   max_depth: null,
+  candidate_count: 0,
+  contact_uuids: [],
 });
 
 const DAHAB = trip("trip-1", "Dahab 2026", 12);

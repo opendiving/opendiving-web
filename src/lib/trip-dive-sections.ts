@@ -31,6 +31,10 @@ function daysBetween(from: string, to: string): number {
  * the one whose date is nearer has it, so a trip's first part dated from its
  * start and last part dated to its end meet in the middle. A part with no dates
  * covers no day. Ties go to the first part in the diver's order.
+ *
+ * `opendiving-api` mirrors this rule in `part_for_day` (`crud_dives.py`), for
+ * the per-part `candidate_count` on a trip read and the part scope of
+ * `POST /trip/{uuid}/dives`, so a change here is owed there.
  */
 export function tripPartForDay(parts: TripPart[], day: string): number {
   let best = -1;
@@ -73,10 +77,17 @@ function diveDay(dive: Dive): string {
  * sits where its first dive falls; one holding none, where its last day falls
  * among the dives; and one with no dates either, just above the part it follows
  * in the diver's order - below the one it precedes when it leads.
+ *
+ * `complete: false` is a list with pages still to load. A dated part holding
+ * no loaded dive is then left out unless every day it covers is later than the
+ * oldest loaded dive's - its dives may be on the next page, and a part drawn
+ * empty and then filled says the wrong thing first. A part with only an end
+ * runs back without limit, so it waits for the list to end.
  */
 export function tripDiveSections(
   dives: Dive[],
   parts: TripPart[],
+  { complete = true }: { complete?: boolean } = {},
 ): TripDiveSection[] {
   const partSections = parts.map((part, partIndex) => ({
     kind: "part" as const,
@@ -111,10 +122,24 @@ export function tripDiveSections(
     else sections.push({ kind: "loose", dives: [dive] });
   }
 
+  const oldest = dives.length > 0 ? diveDay(dives[dives.length - 1]) : null;
+  const unsettled = new Set(
+    complete
+      ? []
+      : pending
+          .filter(({ section }) => {
+            const start = section.part.start_date;
+            return !start || oldest === null || start <= oldest;
+          })
+          .map(({ section }) => section.partIndex),
+  );
+
   // A dive-less dated part goes above the first section that is wholly older
   // than its last day, splitting a run of loose dives where it falls inside one.
   for (const { section, day } of pending) {
-    if (placed.has(section.partIndex)) continue;
+    if (placed.has(section.partIndex) || unsettled.has(section.partIndex)) {
+      continue;
+    }
     let at = sections.length;
     for (let i = 0; i < sections.length; i += 1) {
       const current = sections[i];
@@ -149,7 +174,9 @@ export function tripDiveSections(
   // Dateless parts, by their neighbours in the diver's order. Shown newest
   // first, the part a dateless one follows sits below it.
   for (const section of partSections) {
-    if (placed.has(section.partIndex)) continue;
+    if (placed.has(section.partIndex) || unsettled.has(section.partIndex)) {
+      continue;
+    }
     const sectionAt = (partIndex: number) =>
       sections.findIndex((s) => s.kind === "part" && s.partIndex === partIndex);
     let at = -1;

@@ -138,7 +138,7 @@ export default function DiveDetailLayout({
   // is: held in the page, a step would reset both to null while the outgoing
   // dive is still on screen, and the sidebar would blank the two rows it fills
   // from them under a card grid that is otherwise intact.
-  const tripUuid = user ? dive?.trip_uuid : undefined;
+  const tripUuid = user ? (dive?.trip_uuid ?? undefined) : undefined;
   const courseUuid = user ? dive?.course_uuid : undefined;
   const contactUuid = user ? dive?.contact_uuid : undefined;
 

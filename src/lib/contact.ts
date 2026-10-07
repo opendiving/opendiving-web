@@ -58,18 +58,3 @@ export function formatWebsite(website: string): string {
     return website;
   }
 }
-
-/**
- * The contacts a list of records names, each once, in the order the records first
- * name them - what a trip's "Dive centers" line is made of, read off its dives in
- * the order the trip lists them. A record naming none contributes nothing.
- */
-export function distinctContactUuids(
-  records: readonly { contact_uuid?: string | null }[],
-): string[] {
-  const seen = new Set<string>();
-  for (const record of records) {
-    if (record.contact_uuid) seen.add(record.contact_uuid);
-  }
-  return [...seen];
-}

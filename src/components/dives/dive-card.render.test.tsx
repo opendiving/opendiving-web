@@ -316,4 +316,36 @@ describe("DiveCard", () => {
       screen.queryByRole("menuitem", { name: "Delete" }),
     ).not.toBeInTheDocument();
   });
+
+  it("draws a dive the trip does not hold yet muted, saying so, with the caller's control in place of the menu", () => {
+    const item = card({
+      addToTrip: <button type="button">Add to trip</button>,
+    });
+
+    expect(
+      // jsdom's name computation drops the space a browser keeps.
+      within(item).getByRole("link", {
+        name: /^Dive #212 ?\(Not in this trip\)$/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(item).getByRole("button", { name: "Add to trip" }),
+    ).toBeInTheDocument();
+    expect(
+      within(item).queryByRole("button", { name: "Actions for dive #212" }),
+    ).not.toBeInTheDocument();
+    expect(item).toHaveClass("border-dashed");
+  });
+
+  it("changes nothing without the control", () => {
+    const item = card();
+
+    expect(
+      within(item).getByRole("link", { name: "Dive #212" }),
+    ).toBeInTheDocument();
+    expect(
+      within(item).queryByText(/Not in this trip/),
+    ).not.toBeInTheDocument();
+    expect(item).not.toHaveClass("border-dashed");
+  });
 });

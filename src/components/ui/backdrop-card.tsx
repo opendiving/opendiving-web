@@ -73,6 +73,12 @@ interface BackdropCardProps {
   actions?: ReactNode;
   // Names the menu after its card, as every list's row actions are.
   actionsLabel: string;
+  // A control of the caller's own in the corner, in place of the menu.
+  corner?: ReactNode;
+  // Draws the record as one that is shown but not yet the list's own: the
+  // backdrop faded towards the card's colour, and the border dashed. The text
+  // keeps its colours, so it keeps its contrast.
+  muted?: boolean;
   // The details, from a link styled `BACKDROP_CARD_LINK` down. Anything in them
   // that has to stay reachable past that link is lifted with `relative z-10`.
   children: ReactNode;
@@ -86,6 +92,8 @@ export function BackdropCard({
   backdrop,
   actions,
   actionsLabel,
+  corner,
+  muted = false,
   children,
 }: BackdropCardProps) {
   // How much of the backdrop lies under the details, from the name down, so a
@@ -136,12 +144,18 @@ export function BackdropCard({
         // itself, at every width. The details' own top padding is part of the
         // band, so what they measure starts at the name.
         "pt-33",
+        muted && "border-dashed",
       )}
     >
       {isNear && (
         // Out of flow, under the details. The radius is the card's less the
         // border it sits inside, which the backdrop clips itself to.
-        <div className="absolute inset-0 rounded-[calc(var(--radius)-1px)]">
+        <div
+          className={cn(
+            "absolute inset-0 rounded-[calc(var(--radius)-1px)]",
+            muted && "opacity-40 saturate-50",
+          )}
+        >
           {backdrop(detailsHeight)}
         </div>
       )}
@@ -151,17 +165,21 @@ export function BackdropCard({
           `text-shadow` stops at an SVG. Two close layers, as the text's:
           `drop-shadow`s chain, each blurring the last one's 8-bit output, and
           more of them drew the halo in visible rings. */}
-      {actions && (
-        <div className="absolute right-1 top-1 z-10">
-          <ItemActionsMenu
-            label={actionsLabel}
-            variant="ghost"
-            size="sm"
-            className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
-          >
-            {actions}
-          </ItemActionsMenu>
-        </div>
+      {corner ? (
+        <div className="absolute right-1 top-1 z-10">{corner}</div>
+      ) : (
+        actions && (
+          <div className="absolute right-1 top-1 z-10">
+            <ItemActionsMenu
+              label={actionsLabel}
+              variant="ghost"
+              size="sm"
+              className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
+            >
+              {actions}
+            </ItemActionsMenu>
+          </div>
+        )
       )}
       {/* Above the backdrop by a flex item's z-index rather than by
           `relative`, which would make this the box the link's overlay
