@@ -1,9 +1,9 @@
 // Where a form's or a record page's "back" link, a form's Cancel button, and
 // (where it makes sense) a save or a delete should send someone.
 //
-// The dive form is reachable from at least six places - the dashboard, the dive
+// The dive form is reachable from at least six places - the Home page, the dive
 // list, the header's create menu, and the "log a dive here" buttons on a trip or
-// a dive site - and a dive from a trip, a site, the dashboard and more, so a
+// a dive site - and a dive from a trip, a site, the Home page and more, so a
 // hardcoded `/dives` is wrong for most of them. Rather than each caller
 // threading its own href through the page, the destination is read off the URL,
 // which means it also survives a reload or a shared link.
@@ -24,7 +24,7 @@ export interface ReturnTarget {
 // the chrome needs one, since the header's create menu opens the dive form from
 // any of them - `app/page-frames.render.test.tsx` derives that set and checks it.
 const SECTIONS: Record<string, { index: string; item: string }> = {
-  dashboard: { index: "dashboard", item: "dashboard" },
+  home: { index: "home", item: "home" },
   dives: { index: "dives", item: "dive" },
   trips: { index: "trips", item: "trip" },
   sites: { index: "dive sites", item: "dive site" },
@@ -67,7 +67,7 @@ const FROM_MAX_LENGTH = 1000;
 // `href` with a `?from=` naming the page it is followed from, so the page it
 // opens can send the diver back there: a dive opened from a trip says "Back to
 // trip". `from` is that page's path *and* query, so a trip opened from the
-// dashboard still says "Back to dashboard" once the diver comes back to it from
+// Home page still says "Back to home" once the diver comes back to it from
 // one of its dives.
 //
 // Nothing is added where the opened page's back link already points - its

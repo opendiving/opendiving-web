@@ -28,7 +28,7 @@ describe("Strict-Transport-Security", () => {
     const proxy = await loadProxy();
 
     const response = proxy(
-      request("http://dives.example.com/dashboard", {
+      request("http://dives.example.com/home", {
         "x-forwarded-proto": "https",
       }),
     );
@@ -43,7 +43,7 @@ describe("Strict-Transport-Security", () => {
   it("is not sent over plain HTTP", async () => {
     const proxy = await loadProxy();
 
-    const response = proxy(request("http://dives.local:3000/dashboard"));
+    const response = proxy(request("http://dives.local:3000/home"));
 
     expect(response.headers.get("Strict-Transport-Security")).toBeNull();
   });
@@ -52,12 +52,12 @@ describe("Strict-Transport-Security", () => {
     const proxy = await loadProxy();
 
     const plain = proxy(
-      request("http://dives.example.com/dashboard", {
+      request("http://dives.example.com/home", {
         "x-forwarded-proto": "http, https",
       }),
     );
     const secure = proxy(
-      request("http://dives.example.com/dashboard", {
+      request("http://dives.example.com/home", {
         "x-forwarded-proto": "https, http",
       }),
     );
@@ -69,7 +69,7 @@ describe("Strict-Transport-Security", () => {
   it("falls back to the request's own scheme when nothing forwarded one", async () => {
     const proxy = await loadProxy();
 
-    const response = proxy(request("https://dives.example.com/dashboard"));
+    const response = proxy(request("https://dives.example.com/home"));
 
     expect(response.headers.get("Strict-Transport-Security")).not.toBeNull();
   });
@@ -78,7 +78,7 @@ describe("Strict-Transport-Security", () => {
     const proxy = await loadProxy();
 
     const response = proxy(
-      request("https://dives.example.com/dashboard", {
+      request("https://dives.example.com/home", {
         "x-forwarded-proto": "https",
       }),
     );
@@ -92,7 +92,7 @@ describe("Strict-Transport-Security", () => {
     const proxy = await loadProxy({ WEB_HSTS: "off" });
 
     const response = proxy(
-      request("https://dives.example.com/dashboard", {
+      request("https://dives.example.com/home", {
         "x-forwarded-proto": "https",
       }),
     );

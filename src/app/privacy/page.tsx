@@ -681,13 +681,13 @@ export default async function PrivacyPage() {
                     the provider sees this server&rsquo;s address rather than
                     yours, once for each tile rather than for each picture or
                     each time you look. That is every card in the list of your
-                    dives, the dashboard&rsquo;s recent dives and the dives
-                    listed on the page of a dive site, a trip, a piece of gear,
-                    a species, a course or a person; in the list of your trips
-                    and the dashboard&rsquo;s recent trips; in the list of your
-                    dive sites; and the head of a dive&rsquo;s, a trip&rsquo;s
-                    and a dive site&rsquo;s own page. A dive or a dive site with
-                    no position shows no map, and a trip&rsquo;s shows the whole
+                    dives, Home&rsquo;s recent dives and the dives listed on the
+                    page of a dive site, a trip, a piece of gear, a species, a
+                    course or a person; in the list of your trips and
+                    Home&rsquo;s recent trips; in the list of your dive sites;
+                    and the head of a dive&rsquo;s, a trip&rsquo;s and a dive
+                    site&rsquo;s own page. A dive or a dive site with no
+                    position shows no map, and a trip&rsquo;s shows the whole
                     world until it has a place on it. A dive has a position from
                     the site it was logged at, from the GPS reading in the
                     dive-computer file it was imported from, or from a logbook
@@ -1672,11 +1672,11 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   <StorageKey name="opendiving:dive-activity-view" /> &mdash;
-                  which period the dashboard&rsquo;s activity chart is showing.
-                  Along with the period it holds a date to anchor it, worked out
-                  from the dates of your own dives, so this one is derived from
-                  your data rather than being only a setting. Kept until you
-                  change it
+                  which period Home&rsquo;s activity chart is showing. Along
+                  with the period it holds a date to anchor it, worked out from
+                  the dates of your own dives, so this one is derived from your
+                  data rather than being only a setting. Kept until you change
+                  it
                 </li>
                 <li>
                   <StorageKey name="opendiving:gas-use-view" /> &mdash; the same

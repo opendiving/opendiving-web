@@ -322,7 +322,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // blacklists the token pair and deletes the refresh cookie, so after a failed
   // one the cookie is still live - and a reload would hand it straight to
   // `initAuth`, which re-derives a session, sets a user, and lets `/` bounce the
-  // diver to `/dashboard`. Signed in, on their dashboard, one click after asking
+  // diver to `/home`. Signed in, on their Home page, one click after asking
   // to leave.
   //
   // Nor is the user cleared in that case. It reads as the cautious choice, but

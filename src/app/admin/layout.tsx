@@ -44,8 +44,8 @@ export default function AdminLayout({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Page not found."
-          backHref="/dashboard"
-          backLabel="Back to dashboard"
+          backHref="/home"
+          backLabel="Back to home"
         />
       </div>
     );

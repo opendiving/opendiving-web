@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { DashboardPageFrame } from "@/components/dashboard/dashboard-page-frame";
+import { HomePageFrame } from "@/components/home/home-page-frame";
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
-// The signed-in home page. `DashboardPageFrame` draws it; this reads the one
+// The signed-in home page. `HomePageFrame` draws it; this reads the one
 // figure the page itself owns, the headline stats, and hands them over.
-export function DashboardPageContent() {
+export function HomePageContent() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
   const [stats, setStats] = useState<UserDiveStats | null>(null);
   // A failed stats fetch used to only `console.error`, leaving all three tiles on
@@ -54,7 +54,7 @@ export function DashboardPageContent() {
   }
 
   return (
-    <DashboardPageFrame
+    <HomePageFrame
       stats={stats}
       statsError={statsError}
       onRetryStats={() => setAttempt((n) => n + 1)}

@@ -247,7 +247,7 @@ function Totals({ stats }: { stats: AdminStats }) {
 }
 
 // The row above, before it arrives: four label-and-figure pairs, the shape
-// `ChartSkeleton` draws for the dashboard's stat rows.
+// `ChartSkeleton` draws for Home's stat rows.
 function TotalsSkeleton() {
   return (
     <div aria-busy className="flex flex-wrap items-end gap-x-8 gap-y-3">

@@ -232,7 +232,7 @@ describe("usePasskeySignIn explicit ceremony", () => {
     expect(mocks.startAuthentication).toHaveBeenCalledWith({
       optionsJSON: FLOW.options,
     });
-    expect(mocks.router.push).toHaveBeenCalledWith("/dashboard");
+    expect(mocks.router.push).toHaveBeenCalledWith("/home");
   });
 
   it("honours where the visitor was headed", async () => {
@@ -253,7 +253,7 @@ describe("usePasskeySignIn explicit ceremony", () => {
 
     await act(() => result.current.signIn());
 
-    expect(mocks.router.push).toHaveBeenCalledWith("/dashboard");
+    expect(mocks.router.push).toHaveBeenCalledWith("/home");
   });
 
   // A passkey always belongs to an existing account, so the onboarding branch is

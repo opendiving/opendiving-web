@@ -48,7 +48,7 @@ const POINTS = [
 
 const ANCHOR = diveWallClockTime("2025-08-10T10:00:00+02:00");
 
-// The chart's width on the dashboard at a 375 px and a 320 px viewport, and at
+// The chart's width on the Home page at a 375 px and a 320 px viewport, and at
 // 1024 px.
 const WIDTHS = { phone: 293, smallPhone: 238, desktop: 910 };
 const SCOPES: ChartScope[] = ["all", "year", "month"];

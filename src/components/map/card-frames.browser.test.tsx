@@ -15,7 +15,7 @@ import { DiveSiteCard } from "@/components/sites/dive-site-card";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import { TripsPageFrame } from "@/components/trips/trips-page-frame";
 import { SitesPageFrame } from "@/components/sites/sites-page-frame";
-import { DashboardPageFrame } from "@/components/dashboard/dashboard-page-frame";
+import { HomePageFrame } from "@/components/home/home-page-frame";
 import { DiveSiteDetailPageContent } from "@/components/sites/dive-site-detail-page-content";
 
 // **Load-bearing**: every figure below is a measured box, and without the
@@ -195,7 +195,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/components/layout/quick-create", () => ({
   useQuickCreate: () => () => {},
 }));
-// The dashboard's setup checklist, which asks for two counts of its own.
+// The Home page's setup checklist, which asks for two counts of its own.
 vi.mock("@/lib/api/gear", async (original) => {
   const actual = await original<typeof import("@/lib/api/gear")>();
   return {
@@ -410,14 +410,12 @@ describe("a card's map", () => {
     });
   });
 
-  it("holds on the dashboard's recent dive and trip, the smallest cards", async () => {
+  it("holds on Home's recent dive and trip, the smallest cards", async () => {
     render(
       withConfig(
-        <DashboardPageFrame
+        <HomePageFrame
           stats={
-            { total_dives: 0 } as ComponentProps<
-              typeof DashboardPageFrame
-            >["stats"]
+            { total_dives: 0 } as ComponentProps<typeof HomePageFrame>["stats"]
           }
         />,
       ),

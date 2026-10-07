@@ -71,9 +71,9 @@ vi.mock("@/lib/api/client", async (importOriginal) => {
 // nobody has said what to draw for.
 const DESTINATIONS = [
   {
-    route: "/dashboard",
-    path: "/dashboard",
-    page: () => import("./dashboard/page"),
+    route: "/home",
+    path: "/home",
+    page: () => import("./home/page"),
   },
   { route: "/dives", path: "/dives", page: () => import("./dives/page") },
   {
@@ -302,7 +302,7 @@ const backLink = (container: HTMLElement) => {
   return { href: link?.getAttribute("href"), label: link?.textContent };
 };
 
-// A record is opened from all over - a dive from a trip, a trip from the dashboard - so
+// A record is opened from all over - a dive from a trip, a trip from the Home page - so
 // each record page's back link, drawn before its record arrives, goes where it was
 // opened from.
 describe("a record page's back link", () => {
@@ -312,7 +312,7 @@ describe("a record page's back link", () => {
     ),
   )("%s", async (route, destination) => {
     stable.params = destination.params ?? {};
-    stable.searchParams = new URLSearchParams("from=/dashboard");
+    stable.searchParams = new URLSearchParams("from=/home");
 
     const { container } = await drawFrame(
       route,
@@ -321,8 +321,8 @@ describe("a record page's back link", () => {
     );
 
     expect(backLink(container)).toEqual({
-      href: "/dashboard",
-      label: "Back to dashboard",
+      href: "/home",
+      label: "Back to home",
     });
   });
 });
@@ -330,12 +330,7 @@ describe("a record page's back link", () => {
 describe("/dives/new", () => {
   it.each([
     ["nothing in the URL", new URLSearchParams(), "/dives", "Back to dives"],
-    [
-      "?from=/dashboard",
-      new URLSearchParams("from=/dashboard"),
-      "/dashboard",
-      "Back to dashboard",
-    ],
+    ["?from=/home", new URLSearchParams("from=/home"), "/home", "Back to home"],
     [
       "?from=/people",
       new URLSearchParams("from=/people"),

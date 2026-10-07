@@ -93,9 +93,7 @@ describe("a callback that matches an attempt this browser started", () => {
 
     renderCallback(`code=real-code&state=${state}`);
 
-    await waitFor(() =>
-      expect(router.replace).toHaveBeenCalledWith("/dashboard"),
-    );
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/home"));
     expect(router.push).not.toHaveBeenCalled();
   });
 

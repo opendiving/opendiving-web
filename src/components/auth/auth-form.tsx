@@ -27,7 +27,7 @@ interface AuthFormProps {
   className?: string;
   // Where to send the visitor once they're signed in, when they were headed
   // somewhere specific before being bounced to `/signin` (see `useAuthGuard`).
-  // Defaults to `/dashboard` at each of the entry points that consume it.
+  // Defaults to `/home` at each of the entry points that consume it.
   redirectTo?: string | null;
   // The card's own heading, for a page whose whole content this form *is* -
   // `/signin`. Omitted on the landing page, where the hero already introduces it

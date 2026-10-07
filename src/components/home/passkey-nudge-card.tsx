@@ -21,7 +21,7 @@ import {
 } from "@/lib/passkey-nudge";
 
 /**
- * "Sign in faster next time" with a passkey, on the dashboard, once.
+ * "Sign in faster next time" with a passkey, on the Home page, once.
  *
  * Passkeys are worth almost nothing to a diver who never finds them, and the
  * settings card only reaches people already looking. This is the other half: an
@@ -34,7 +34,7 @@ import {
  *
  * Adding runs the ceremony straight from the click, which is the user gesture
  * Safari requires for `credentials.create()`. Nothing here fires on its own; an
- * unprompted biometric prompt on a dashboard would be alarming, not helpful.
+ * unprompted biometric prompt on the Home page would be alarming, not helpful.
  */
 export function PasskeyNudgeCard() {
   const { toast } = useToast();
@@ -65,7 +65,7 @@ export function PasskeyNudgeCard() {
   useEffect(() => {
     // The two free checks first: the account is only asked about its passkeys
     // where the answer could lead somewhere, so a diver who dismissed this makes
-    // no request on any later dashboard visit.
+    // no request on any later Home visit.
     if (!supported || isPasskeyNudgeDismissed()) return;
 
     let cancelled = false;
@@ -74,7 +74,7 @@ export function PasskeyNudgeCard() {
       .then((passkeys) => {
         if (!cancelled && passkeys.length === 0) setOffer(true);
       })
-      // A supplementary card, like the rest of the dashboard's: an API with no
+      // A supplementary card, like the rest of Home's: an API with no
       // passkey routes at all 404s here, and neither that nor a failed request
       // is worth turning into an error the diver can do nothing with. The card
       // simply stays away.

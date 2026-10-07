@@ -85,7 +85,7 @@ export function CheckInPageContent() {
         setLastDiveAt(recent.value.data[0]?.start_time ?? null);
       }
 
-      // Said out loud rather than swallowed the way the dashboard's supplementary
+      // Said out loud rather than swallowed the way Home's supplementary
       // cards swallow theirs: this page is handed to somebody else, and a summary
       // quietly missing its certifications is worse than one that says so. What
       // did arrive stays on screen regardless.

@@ -223,7 +223,7 @@ export function useInfiniteResource<T>(
     try {
       // No larger than what is on screen: the same one request at every depth a
       // list actually reaches, and five rows asked for where five are shown rather
-      // than a hundred to refresh the dashboard's recent dives.
+      // than a hundred to refresh Home's recent dives.
       const batch = Math.min(loaded, REVALIDATE_PAGE_SIZE);
       const identify = keyOfRef.current;
       const seen = new Set<string>();

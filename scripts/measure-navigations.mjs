@@ -223,10 +223,10 @@ const NAVIGATIONS = [
     target: (page) => pagerStep(page),
   },
   {
-    id: "dashboard-dive",
-    label: "Dashboard → dive detail",
+    id: "home-dive",
+    label: "Home → dive detail",
     drawsFrame: true,
-    from: () => "/dashboard",
+    from: () => "/home",
     target: (page) => diveLink(page),
   },
   {
@@ -326,11 +326,11 @@ async function magicLink() {
 
 // --------------------------------------------------------------- what to press
 // The first dive on whatever page is open, by its own href rather than by its position on
-// the page: the dives list and the dashboard's recent dives lay their cards out
+// the page: the dives list and Home's recent dives lay their cards out
 // differently, and a uuid-shaped path is the one thing both have in common - and the one
 // thing that tells a dive apart from `/dives/new`.
 //
-// Anchors inside an `<svg>` are excluded, which is not tidiness: the dashboard's activity
+// Anchors inside an `<svg>` are excluded, which is not tidiness: Home's activity
 // chart is hand-written SVG and links each bar to the dive it counts, so the first dive
 // link on that page is a few pixels of chart rather than the row a diver clicks.
 async function diveLink(page) {
@@ -774,7 +774,7 @@ function table(rows) {
 //
 // **Where the destination was *not* prefetched, nothing can paint**, and that is a note
 // rather than a failure. `<Link>` prefetches what is in the viewport, so a link below the
-// fold - the dashboard's Recent Dives card at this window size - is first asked for at
+// fold - Home's Recent Dives card at this window size - is first asked for at
 // the click, and the browser holds no shell to draw from until the response arrives.
 // Scrolling to the card first, which is what a diver does before pressing it, puts the
 // row back on the budget. `partialPrefetching` does not lift this: it changes what a

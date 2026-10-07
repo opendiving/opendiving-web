@@ -337,8 +337,8 @@ export function CheckInPageFrame({
           line under the heading is `print:hidden`, so the heading is the only thing
           naming the document a shop is handed, and "Check-in" alone above a
           stranger's name and card numbers leaves them to infer what it is. The
-          account menu stays "Check-in" - there the reader is the diver, and "Diver"
-          would be telling them whose page it is. */}
+          nav stays "Check-in" - there the reader is the diver, and "Diver" would
+          be telling them whose page it is. */}
       <IndexHero
         title="Diver Check-in"
         className={cn(INK, "print:px-0")}

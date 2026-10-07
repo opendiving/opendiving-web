@@ -86,7 +86,7 @@ export function ProfileCompletionForm() {
           variant: "destructive",
         });
       }
-      router.push("/dashboard");
+      router.push("/home");
     } catch (err) {
       setError(getApiErrorMessage(err, "Could not complete your profile."));
     }

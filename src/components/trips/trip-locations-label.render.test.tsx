@@ -43,7 +43,7 @@ describe("TripLocationsLabel", () => {
   });
 
   it("carries the caller's classes on the element holding the hint", () => {
-    // The dashboard's copy needs `block` and its own type scale, and losing either
+    // The Home page's copy needs `block` and its own type scale, and losing either
     // to the hint's wrapper would be a silent layout change.
     render(
       <TripLocationsLabel

@@ -24,7 +24,7 @@ export function RestorePageContent() {
   useEffect(() => {
     if (isLoading) return;
     if (isAuthenticated) {
-      router.replace("/dashboard");
+      router.replace("/home");
       return;
     }
     if (!restore) {

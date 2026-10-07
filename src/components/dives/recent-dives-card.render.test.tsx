@@ -4,7 +4,7 @@ import { RecentDivesCard } from "./recent-dives-card";
 import type { Dive } from "@/lib/api/dives";
 
 // A detail page's dive list that holds nothing drops its header to its hidden
-// heading, as the list pages' cards do; the dashboard's preview keeps its own
+// heading, as the list pages' cards do; Home's preview keeps its own
 // beside the trips card.
 
 vi.mock("@/lib/api/dives", async (importOriginal) => ({
@@ -90,7 +90,7 @@ describe("RecentDivesCard's header", () => {
     ).toBeInTheDocument();
   });
 
-  it("stays on the dashboard's empty preview", async () => {
+  it("stays on Home's empty preview", async () => {
     render(<RecentDivesCard enabled />);
     await screen.findByText("No dives logged yet");
 

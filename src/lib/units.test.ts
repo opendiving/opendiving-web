@@ -129,7 +129,7 @@ describe("imperial display", () => {
 });
 
 describe("the metric decimals override", () => {
-  // The dashboard's Recent Dives row wants a whole metre; the END and EAD strings
+  // The Home page's Recent Dives row wants a whole metre; the END and EAD strings
   // want one decimal.
   it("fixes the metric decimals", () => {
     expect(formatDepth(30.52, "metric", { decimals: 0 })).toBe("31 m");

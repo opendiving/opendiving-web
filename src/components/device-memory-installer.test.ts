@@ -9,7 +9,7 @@ import { memoryStorage, useStorage } from "@/test/memory-storage";
 // that line has no runtime consequence anything else in this suite would miss:
 // `/privacy` and `/settings` pull `lib/device-memory.ts` in through the control
 // itself, so deleting the layout's `<DeviceMemoryInstaller />` leaves every
-// other test here green while `/dashboard` - the one route with mount-effect
+// other test here green while `/home` - the one route with mount-effect
 // writers and no switch on it - silently starts storing view keys again for a
 // diver who objected. That is the exact failure the component's own comment
 // describes, and it needs a test rather than a comment.
@@ -41,7 +41,7 @@ describe("the device-memory installer", () => {
 
     // No render, no call - the import is the whole of it. React runs child
     // effects before parent effects, so anything that waited for this
-    // component to render would land after the two dashboard cards have
+    // component to render would land after the two Home cards have
     // already written their view keys.
     window.localStorage.setItem("theme", "dark");
     expect(window.localStorage.getItem("theme")).toBeNull();

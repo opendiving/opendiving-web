@@ -23,7 +23,7 @@ const QuickCreateContext = createContext<
 
 // Opens the create dialog for `kind` from anywhere under the app shell - the
 // header's "+" menu, a list page's "New" button, an empty-state button on the
-// dashboard, and so on.
+// Home page, and so on.
 export function useQuickCreate() {
   const openCreate = useContext(QuickCreateContext);
   if (!openCreate) {

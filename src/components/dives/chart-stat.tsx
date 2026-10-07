@@ -4,7 +4,7 @@
 // Moved here, unchanged, from `gas-use-card.tsx` once a second card wanted the
 // same row - the same move `niceDomain`/`axisTicks` and `subscribeToNothing`
 // made, and for the same reason. These two cards sit one above the other on the
-// dashboard, so "the same shape" is not a nicety here: a stat row whose label
+// Home page, so "the same shape" is not a nicety here: a stat row whose label
 // size or baseline gap drifted by a couple of pixels between them would read as
 // a rendering fault.
 //

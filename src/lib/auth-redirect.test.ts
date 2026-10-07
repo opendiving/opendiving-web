@@ -16,14 +16,14 @@ describe("destinationForOutcome", () => {
     expect(destinationForOutcome("authenticated", "/dives/abc")).toBe(
       "/dives/abc",
     );
-    expect(destinationForOutcome("authenticated", null)).toBe("/dashboard");
+    expect(destinationForOutcome("authenticated", null)).toBe("/home");
   });
 
   it("sanitizes the destination on the way through", () => {
     // The same guard every call site used to apply itself: a crafted `?next=`
     // reaches three of the four as a prop.
     expect(destinationForOutcome("authenticated", "//evil.example")).toBe(
-      "/dashboard",
+      "/home",
     );
   });
 

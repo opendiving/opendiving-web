@@ -151,9 +151,7 @@ describe("the magic-link landing page", () => {
     render(<VerifyMagicLinkPage />);
     await user.click(await screen.findByRole("button", { name: /^sign in$/i }));
 
-    await waitFor(() =>
-      expect(router.replace).toHaveBeenCalledWith("/dashboard"),
-    );
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/home"));
     expect(restoreAccount).not.toHaveBeenCalled();
   });
 

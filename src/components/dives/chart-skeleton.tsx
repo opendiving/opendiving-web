@@ -1,11 +1,11 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * The loading state for the dashboard's two chart cards. Both are a row of
+ * The loading state for Home's two chart cards. Both are a row of
  * summary figures over a `720 x 240` SVG drawn at `w-full h-auto`, so the
  * placeholder reserves the same `3:1` box - a card that collapsed to a spinner
  * and then grew back to chart height was most of what made arriving at the
- * dashboard feel jumpy. Below 560px the charts keep the height they have there
+ * Home page feel jumpy. Below 560px the charts keep the height they have there
  * (see `fittedChartWidth`), and so does this.
  *
  * `legend` covers the one difference between them: the gas chart carries a
