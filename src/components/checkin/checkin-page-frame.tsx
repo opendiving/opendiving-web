@@ -405,7 +405,7 @@ export function CheckInPageFrame({
                 what the sheet is about, and "Personal information" written above
                 somebody's name tells a desk nothing the name did not. */}
             <section className={KEEP_TOGETHER}>
-              <div className={cn("flex items-center", NAME_BESIDE_PICTURE)}>
+              <div className={cn("flex items-start", NAME_BESIDE_PICTURE)}>
                 {/* The portrait, never the avatar: a desk is looking at the diver's
                     face, and the avatar is whatever the diver shows the app. With none
                     stored, nothing prints - no initials, which identify nobody - and
