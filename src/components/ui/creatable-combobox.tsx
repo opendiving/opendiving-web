@@ -348,6 +348,11 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   // fields want the same rule and get it from `keepOpenOnSelect`; this is the
   // half of it that a field showing its chosen value can take on its own.
   commitOnEnterOnly?: boolean;
+  // Text the field opens with as though it had been typed: the menu is up and
+  // searching for it from the first render. Read on mount only, for a field that
+  // opens on a question asked elsewhere - the location search, seeded with the
+  // name the site form already holds.
+  initialQuery?: string;
   // For a combobox that repeats down a list and so cannot be named by one
   // `FormLabel`: twenty identically-named comboboxes tell a screen reader's
   // controls list nothing about which row they belong to. Same rule as the
@@ -383,6 +388,7 @@ export function CreatableCombobox({
   keepOpenOnSelect = false,
   blurOnSelect = false,
   commitOnEnterOnly = false,
+  initialQuery,
   // Forwarded to the text input rather than the wrapper, so `FormLabel`'s
   // `htmlFor` lands on the thing that actually takes focus.
   id,
@@ -390,11 +396,11 @@ export function CreatableCombobox({
   "aria-invalid": ariaInvalid,
   "aria-label": ariaLabel,
 }: CreatableComboboxProps) {
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState(initialQuery ?? "");
   // Whether the text in the field is the diver's own rather than something this
   // component wrote there. See `menuQuery`, which is the only thing that reads it.
-  const [typed, setTyped] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+  const [typed, setTyped] = useState(!!initialQuery);
+  const [isOpen, setIsOpen] = useState(!!initialQuery);
   const [isSaving, setIsSaving] = useState(false);
   // Index of the keyboard-highlighted option, or -1 for none. Counts the
   // "Add new..." entry as option 0 when present, since it's a row in the menu

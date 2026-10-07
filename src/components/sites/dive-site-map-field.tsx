@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { LatLon } from "@/lib/basemap";
 import {
@@ -8,7 +7,6 @@ import {
   parseFormPosition,
 } from "@/lib/validations/dive-site";
 import { Attribution } from "@/components/attribution";
-import { PlaceSearch, PlacePick } from "@/components/sites/place-search";
 
 // Still `next/dynamic` although the map is always shown: MapLibre is around
 // 250 KB gzipped, and it lives in its own chunk, fetched when this dialog opens
@@ -36,41 +34,27 @@ interface DiveSiteMapFieldProps {
   longitude?: string;
   // Called with a position placed on the map, as the form's own strings.
   onPick: (position: { latitude: string; longitude: string }) => void;
-  // Called with a row picked from the search, whole and tagged with the source
-  // it came from: both kinds carry a name as well as a position, so the caller
-  // has more fields to fill than `onPick` does - and a catalog row fills one
-  // more again, since it names the dive site itself rather than the place it is
-  // in. The tag is what lets the caller tell them apart without picking the id
-  // string back apart.
-  onPickPlace: (pick: PlacePick) => void;
   // The licence credit for the name currently in the Location field, while that
   // name still describes the position on screen.
   credit?: string;
   // What to say out loud about the Location field having written itself.
   announcement: string;
-  // Under the search, about the row just picked from it - which is where the
-  // diver's eyes are when it appears.
-  pickNotice?: ReactNode;
 }
 
 /**
- * The map half of the dive site form: a place search, the lazily loaded picker,
- * and the credit for whatever named the point that was placed.
+ * The lazily loaded picker and the credit for whatever named the point that was
+ * placed - in the dive site form, and again in its location search dialog.
  *
- * Split out of `DiveSiteDialog` because the dialog was already at the length
- * where a reviewer starts asking. What it does *not* own is the geocoding -
- * `useGeocodedLocation` does, from the dialog, because a coordinate pair pasted
- * into the latitude field has to reach the same lookup and never comes through
- * here.
+ * What it does *not* own is the geocoding - `useGeocodedLocation` does, from
+ * whichever dialog holds it, because a coordinate pair pasted into the latitude
+ * field has to reach the same lookup and never comes through here.
  */
 export function DiveSiteMapField({
   latitude,
   longitude,
   onPick,
-  onPickPlace,
   credit,
   announcement,
-  pickNotice,
 }: DiveSiteMapFieldProps) {
   const position = parseFormPosition(latitude, longitude);
 
@@ -82,17 +66,6 @@ export function DiveSiteMapField({
 
   return (
     <div className="space-y-2">
-      {/* Above the map, because it is the coarse half of the same question:
-          search puts the pin in the right bay, and the map does the last hundred
-          metres.
-
-          The position goes down with it: a form that already has one gets
-          catalog suggestions ranked nearest first, which is the only thing that
-          separates a same-name cluster. Already parsed here for the map, so this
-          costs nothing and there is one parse rather than two. */}
-      <PlaceSearch onPick={onPickPlace} position={position} />
-      {pickNotice}
-
       <MapPicker
         latitude={position?.latitude ?? null}
         longitude={position?.longitude ?? null}
