@@ -78,6 +78,7 @@ beforeEach(() => {
   localStorage.clear();
   reverseGeocode.mockReset();
   reverseGeocode.mockResolvedValue({ status: "unknown" });
+  vi.mocked(geocodingAPI.searchPlaces).mockResolvedValue([]);
   suggestDiveSites.mockReset();
   suggestDiveSites.mockResolvedValue({ results: [], has_more: false });
   createDiveSite.mockReset();
@@ -115,6 +116,36 @@ const pasteInto = (input: HTMLElement, text: string) => {
   fireEvent(input, event);
   return event;
 };
+
+// Opens the location search from beside the Location field, picks a row from it
+// and - unless told not to - takes it back into the form with "Use location".
+const searchLocation = async (
+  query: string,
+  name: RegExp,
+  { use = true }: { use?: boolean } = {},
+) => {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Search location" }));
+  const dialog = within(
+    await screen.findByRole("dialog", { name: "Search location" }),
+  );
+  const search = dialog.getByRole("combobox");
+  await user.clear(search);
+  await user.click(search);
+  await user.paste(query);
+  await user.click(
+    await dialog.findByRole("option", { name }, { timeout: 2000 }),
+  );
+  if (use) await clickUseLocation();
+};
+
+const clickUseLocation = () =>
+  userEvent.click(
+    within(screen.getByRole("dialog", { name: "Search location" })).getByRole(
+      "button",
+      { name: "Use location" },
+    ),
+  );
 
 describe("DiveSiteDialog coordinate paste", () => {
   it("splits a pasted pair across both fields", () => {
@@ -237,20 +268,8 @@ describe("DiveSiteDialog coordinate accessibility", () => {
 // under test is the whole chain: a tagged pick coming back from a menu row, and
 // which of the form's fields each kind of row writes.
 describe("DiveSiteDialog catalog picks", () => {
-  const pickFirstSuggestion = async () => {
-    const user = userEvent.setup();
-    await user.click(screen.getByLabelText("Search for a dive site or place"));
-    await user.paste("thistlegorm");
-    await user.click(
-      await screen.findByRole(
-        "option",
-        { name: /SS Thistlegorm/ },
-        {
-          timeout: 2000,
-        },
-      ),
-    );
-  };
+  const pickFirstSuggestion = () =>
+    searchLocation("thistlegorm", /SS Thistlegorm/);
 
   it("fills the name, the location and the coordinate pair", async () => {
     // `region, country`, in English, and never an ISO code: this field is an
@@ -355,6 +374,107 @@ describe("DiveSiteDialog catalog picks", () => {
     await pickFirstSuggestion();
 
     expect(screen.queryByText(/Location from/)).not.toBeInTheDocument();
+  });
+});
+
+describe("DiveSiteDialog location search", () => {
+  const DAHAB = {
+    latitude: 28.4954,
+    longitude: 34.5197,
+    location: "Dahab, South Sinai, Egypt",
+    name: "Dahab",
+    attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
+  };
+  const searchDialog = () =>
+    within(screen.getByRole("dialog", { name: "Search location" }));
+  const openSearch = async () => {
+    await userEvent.click(
+      screen.getByRole("button", { name: "Search location" }),
+    );
+    await screen.findByRole("dialog", { name: "Search location" });
+  };
+
+  it("names the form's position on opening, as though its pin had just been placed", async () => {
+    reverseGeocode.mockResolvedValue({ status: "named", result: DAHAB });
+    renderDialog();
+    pasteInto(latitude(), "28.5717, 34.5372");
+    fireEvent.change(screen.getByLabelText("Location"), {
+      target: { value: "Somewhere else" },
+    });
+    reverseGeocode.mockClear();
+
+    await openSearch();
+
+    expect(reverseGeocode).toHaveBeenCalledWith(28.5717, 34.5372);
+    await waitFor(() =>
+      expect(searchDialog().getByRole("combobox")).toHaveValue(
+        "Dahab, South Sinai, Egypt",
+      ),
+    );
+    expect(searchDialog().getByLabelText("Latitude")).toHaveValue("28.5717");
+  });
+
+  it("searches for the form's location when it has no position", async () => {
+    renderDialog();
+    fireEvent.change(screen.getByLabelText("Location"), {
+      target: { value: "Thistlegorm" },
+    });
+
+    await openSearch();
+
+    expect(searchDialog().getByRole("combobox")).toHaveValue("Thistlegorm");
+    await waitFor(
+      () => expect(suggestDiveSites).toHaveBeenCalledWith("Thistlegorm", null),
+      { timeout: 2000 },
+    );
+    expect(reverseGeocode).not.toHaveBeenCalled();
+  });
+
+  it("writes a picked place's position and name into the form, and leaves Name alone", async () => {
+    vi.mocked(geocodingAPI.searchPlaces).mockResolvedValue([DAHAB]);
+    renderDialog();
+    fireEvent.change(screen.getByLabelText("Name *"), {
+      target: { value: "Lighthouse" },
+    });
+
+    await searchLocation("dahab", /Dahab/);
+
+    expect(
+      screen.queryByRole("dialog", { name: "Search location" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Location")).toHaveValue(
+      "Dahab, South Sinai, Egypt",
+    );
+    expect(latitude()).toHaveValue("28.4954");
+    expect(longitude()).toHaveValue("34.5197");
+    expect(screen.getByLabelText("Name *")).toHaveValue("Lighthouse");
+    expect(screen.getByText(/Location from/)).toBeInTheDocument();
+  });
+
+  it("leaves the form as it was when cancelled", async () => {
+    vi.mocked(geocodingAPI.searchPlaces).mockResolvedValue([DAHAB]);
+    renderDialog();
+
+    await searchLocation("dahab", /Dahab/, { use: false });
+    await userEvent.click(
+      searchDialog().getByRole("button", { name: "Cancel" }),
+    );
+
+    expect(screen.getByLabelText("Location")).toHaveValue("");
+    expect(latitude()).toHaveValue("");
+  });
+
+  it("will not hand back half a position", async () => {
+    renderDialog();
+    await openSearch();
+
+    fireEvent.change(searchDialog().getByLabelText("Latitude"), {
+      target: { value: "28.5" },
+    });
+
+    expect(
+      searchDialog().getByRole("button", { name: "Use location" }),
+    ).toBeDisabled();
   });
 });
 
@@ -640,16 +760,7 @@ describe("DiveSiteDialog registry entries", () => {
     created_at: "2026-01-01T00:00:00Z",
   };
 
-  const pick = async (query: string, name: RegExp) => {
-    const user = userEvent.setup();
-    const search = screen.getByLabelText("Search for a dive site or place");
-    await user.clear(search);
-    await user.click(search);
-    await user.paste(query);
-    await user.click(
-      await screen.findByRole("option", { name }, { timeout: 2000 }),
-    );
-  };
+  const pick = searchLocation;
 
   const registries = () =>
     within(screen.getByRole("group", { name: "In other registries" }));
@@ -780,7 +891,7 @@ describe("DiveSiteDialog registry entries", () => {
     it("offers the held site and fills nothing until answered", async () => {
       renderDialog();
 
-      await pick("thistlegorm", /SS Thistlegorm/);
+      await pick("thistlegorm", /SS Thistlegorm/, { use: false });
 
       // In a live region that was already there, so it is announced.
       const offer = (await screen.findByText(/You already have/)).closest(
@@ -801,7 +912,7 @@ describe("DiveSiteDialog registry entries", () => {
         <DiveSiteDialog open onOpenChange={onOpenChange} onSaved={onSaved} />,
       );
 
-      await pick("thistlegorm", /SS Thistlegorm/);
+      await pick("thistlegorm", /SS Thistlegorm/, { use: false });
       await userEvent.click(
         await screen.findByRole("button", { name: "Use Thistlegorm wreck" }),
       );
@@ -815,13 +926,14 @@ describe("DiveSiteDialog registry entries", () => {
     it("fills the form from the row, entry and all, when it is declined", async () => {
       renderDialog();
 
-      await pick("thistlegorm", /SS Thistlegorm/);
+      await pick("thistlegorm", /SS Thistlegorm/, { use: false });
       await userEvent.click(
         await screen.findByRole("button", { name: "Make a new site" }),
       );
+      expect(screen.queryByText(/You already have/)).not.toBeInTheDocument();
+      await clickUseLocation();
 
       expect(screen.getByLabelText("Name *")).toHaveValue("SS Thistlegorm");
-      expect(screen.queryByText(/You already have/)).not.toBeInTheDocument();
       await userEvent.click(
         screen.getByRole("button", { name: /Create dive site/ }),
       );
