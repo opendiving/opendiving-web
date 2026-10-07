@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VolumeCombobox } from "./volume-combobox";
 import type { UnitSystem } from "@/lib/units";
+import { divesAPI } from "@/lib/api/dives";
 
 // `vi.hoisted` because a `vi.mock` factory is lifted above every other statement
 // in the file, so it cannot close over a plain `let` declared here. The box is
@@ -14,8 +15,19 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: account.units } }),
 }));
 
+vi.mock("@/lib/api/dives", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/dives")>();
+  return {
+    ...actual,
+    divesAPI: { ...actual.divesAPI, getRecentVolumes: vi.fn() },
+  };
+});
+const getRecentVolumes = vi.mocked(divesAPI.getRecentVolumes);
+
 beforeEach(() => {
   account.units = "metric";
+  getRecentVolumes.mockReset();
+  getRecentVolumes.mockResolvedValue([]);
 });
 
 // The field is a text input wearing `role="combobox"`, and it used to be a number
@@ -24,7 +36,13 @@ beforeEach(() => {
 // `number` the form holds, so that is what these pin: a decimal has to survive
 // being typed, and the committed value has to win once typing stops.
 
-function Harness({ initial }: { initial?: number | "" }) {
+function Harness({
+  initial,
+  until,
+}: {
+  initial?: number | "";
+  until?: string;
+}) {
   // `number | ""`, which is what the mixture form field holds: `""` is the cleared
   // state a cylinder with no recorded size sits in, and `undefined` is the one
   // spelling that cannot be used - react-hook-form re-displays a field's default the
@@ -32,7 +50,7 @@ function Harness({ initial }: { initial?: number | "" }) {
   const [value, setValue] = useState<number | "" | undefined>(initial);
   return (
     <>
-      <VolumeCombobox value={value} onChange={setValue} />
+      <VolumeCombobox value={value} onChange={setValue} until={until} />
       <button type="button">elsewhere</button>
       <output data-testid="committed">
         {typeof value === "number" ? value : "-"}
@@ -276,5 +294,67 @@ describe("VolumeCombobox", () => {
     expect(screen.getByRole("option", { selected: true })).toHaveTextContent(
       "5.7 L (AL40)",
     );
+  });
+
+  it("lists the diver's recent volumes first, and still under their presets", async () => {
+    getRecentVolumes.mockResolvedValue([11.1, 12, 15]);
+    const user = userEvent.setup();
+    render(<Harness until="2026-10-01T09:00:00+02:00" />);
+
+    await user.click(field());
+
+    await waitFor(() => expect(groupNames()[0]).toBe("Recently used"));
+    expect(getRecentVolumes).toHaveBeenCalledWith("2026-10-01T09:00:00+02:00");
+    const recent = screen.getByRole("group", { name: "Recently used" });
+    expect(
+      Array.from(recent.querySelectorAll('[role="option"]')).map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(["11.1 L", "12 L", "15 L"]);
+    // Not moved out of their own groups, only repeated above them.
+    expect(optionNames()).toContain("11.1 L (AL80)");
+    expect(optionNames()).toContain("12 L");
+    expect(optionNames()).toContain("15 L (HP117)");
+    expect(optionNames()).toHaveLength(27 + 3);
+  });
+
+  it("commits a recent volume picked from its group", async () => {
+    getRecentVolumes.mockResolvedValue([13.5]);
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(field());
+    await user.click(await screen.findByRole("option", { name: "13.5 L" }));
+
+    expect(field()).toHaveValue("13.5");
+    expect(committed()).toBe("13.5");
+  });
+
+  it("puts the recent volumes first under the arrow keys too", async () => {
+    getRecentVolumes.mockResolvedValue([13.5]);
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(field());
+    await screen.findByRole("option", { name: "13.5 L" });
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+
+    expect(screen.getByRole("option", { selected: true })).toHaveTextContent(
+      "3 L",
+    );
+  });
+
+  it("offers the presets alone when the recent volumes cannot be fetched", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    getRecentVolumes.mockRejectedValue(new Error("404"));
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(field());
+
+    await waitFor(() => expect(error).toHaveBeenCalled());
+    expect(groupNames()).not.toContain("Recently used");
+    expect(optionNames()).toHaveLength(27);
+    error.mockRestore();
   });
 });
