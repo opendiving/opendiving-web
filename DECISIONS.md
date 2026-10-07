@@ -1129,8 +1129,8 @@ mailbox.
 `supportSchema` duplicates the API's length bounds to fail before a round-trip.
 
 The form prefills empty fields from `useAuth()`; `defaultValues` cannot, since the user arrives
-after the auth bootstrap resolves. The page is a Server Component for `metadata`; only the form is
-`"use client"`.
+after the auth bootstrap resolves. The page is a Server Component for `metadata`; the form and its
+`IndexHero` heading are its only `"use client"` parts.
 
 ## `/signin` is a dedicated sign-in page, and carries where the visitor was headed
 

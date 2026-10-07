@@ -40,9 +40,11 @@ const FIGURES = "flex flex-wrap gap-x-3 gap-y-3";
 // The details at a card's sizes below `md`, where a phone's width would
 // otherwise wrap the title and put a figure on a line of its own, and at the
 // dive page's above it. The title stays bold at every width: it heads a page,
-// not a card. In the text's own colour at every width, as a card's are: the
-// glow behind them is what lifts them off the map.
-const TITLE = "text-base font-bold md:text-3xl";
+// not a card - and on paper, where `md:` measures the sheet rather than the
+// window and a printed page falls short of it, at the page's size. In the
+// text's own colour at every width, as a card's are: the glow behind them is
+// what lifts them off the map.
+const TITLE = "text-base font-bold md:text-3xl print:text-3xl";
 const SUBTITLE = "text-xs md:mt-1 md:text-base";
 const LABEL = "text-xs md:mb-1 md:text-sm md:font-medium";
 const VALUE = "text-base md:text-2xl";
