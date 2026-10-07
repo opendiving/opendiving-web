@@ -1,5 +1,6 @@
 import { apiClient, lookupRequest } from "./client";
 import type { PaginatedResponse, UuidLookupQuery } from "./client";
+import type { Dive } from "./dives";
 import type { Location } from "./location";
 import type { PersonReference } from "./people";
 
@@ -19,12 +20,21 @@ export interface TripPart {
   // The contact the diver stayed at during the part, by uuid. One per part: a
   // change of hotel is a new part, which is what parts are for.
   accommodation_uuid?: string | null;
+  // Read off the diver's dives on no trip: how many of them the trip page shows
+  // in this part's card. Absent on the parts a save hands back, which the form
+  // assembled, until the trip is read again.
+  candidate_count?: number;
 }
 
-// What a write sends. Identical in shape to `TripPart` - parts are replaced
-// wholesale rather than patched, so there is nothing extra to send and nothing
-// read-only to strip.
-export type TripPartInput = TripPart;
+// What a write sends: a part without what the API reads off the dives. Its own
+// interface rather than `TripPart`, because the API forbids unknown members on a
+// part, so a write that echoed `candidate_count` would be refused.
+export interface TripPartInput {
+  start_date?: string | null;
+  end_date?: string | null;
+  location?: Location | null;
+  accommodation_uuid?: string | null;
+}
 
 export interface Trip {
   uuid: string;
@@ -47,6 +57,13 @@ export interface Trip {
   // The deepest `max_depth` among those dives, in metres, and `null` when none
   // of them recorded one.
   max_depth: number | null;
+  // Read off the diver's dives on no trip whose own day one of the parts covers:
+  // the candidates the trip page shows muted, each counted once. The parts'
+  // counts add up to it.
+  candidate_count: number;
+  // Read off the trip's own dives: the contacts they name, each once, the newest
+  // dive's first.
+  contact_uuids: string[];
 }
 
 // A trip stores no dates of its own. Its span is derived from its parts -
@@ -69,6 +86,16 @@ export interface TripUpdate {
 }
 
 export type PaginatedTripsResponse = PaginatedResponse<Trip>;
+
+/**
+ * Which of a trip's candidates `addTripDives` puts on it: the dives named (one to
+ * a hundred), the ones a part takes - named by its dates exactly as the trip read
+ * carries them, since parts have no id - or, as `{}`, every one.
+ */
+export type TripDiveAddScope =
+  | { dive_uuids: string[] }
+  | { part: { start_date?: string; end_date?: string } }
+  | Record<string, never>;
 
 /**
  * One row of `GET /trips/lookup`: the name, which usually carries its year, and the
@@ -133,6 +160,38 @@ export const tripsAPI = {
   // Get a specific trip by uuid
   async getTrip(tripUuid: string): Promise<Trip> {
     const response = await apiClient.get(`/trip/${tripUuid}`);
+    return response.data;
+  },
+
+  /**
+   * A page of the trip's dives together with its candidates - the diver's dives
+   * on no trip whose own day one of its parts covers - newest first. A candidate
+   * is a row whose `trip_uuid` is `null`.
+   */
+  async getTripDives(
+    tripUuid: string,
+    page: number,
+    items_per_page: number,
+  ): Promise<PaginatedResponse<Dive>> {
+    const response = await apiClient.get(`/trip/${tripUuid}/dives`, {
+      params: { page, items_per_page },
+    });
+    return response.data;
+  },
+
+  /**
+   * Put some of a trip's candidates on it, in one request whatever their number.
+   *
+   * Answers how many were added. A dive that stopped being a candidate since the
+   * page read it - moved to another trip, or deleted - is skipped rather than
+   * refused, so a count short of what was asked for is how that shows. A part
+   * named by dates no part of the trip carries any more is a 422.
+   */
+  async addTripDives(
+    tripUuid: string,
+    scope: TripDiveAddScope,
+  ): Promise<{ added: number }> {
+    const response = await apiClient.post(`/trip/${tripUuid}/dives`, scope);
     return response.data;
   },
 

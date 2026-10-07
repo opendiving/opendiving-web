@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TripDetailPage from "./page";
 import type { Trip } from "@/lib/api/trips";
@@ -8,12 +8,12 @@ import type { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
 
 // What only a render reaches on this page is where the contacts and the people
-// land: each part's accommodation under its place, the "Dive centers" line the page
-// derives from the trip's dives rather than reading off the trip, and the people
-// the trip itself records. The derivation's order is `distinctContactUuids`',
-// tested beside it. And the hero over it all: the trip's name as the heading, its
-// dates and places, its figures, and what its map is handed - the map itself is
-// covered where it lives.
+// land: each part's accommodation under its place, the "Dive centers" line the trip
+// read carries, and the people the trip itself records. The hero over it all: the
+// trip's name as the heading, its dates and places, its figures, and what its map is
+// handed - the map itself is covered where it lives. And what the page does around
+// the dives column: which list it reads, and what it reads again after an add and
+// after a save.
 
 // Returned by identity, for the reason the other page tests give: the effects here
 // are keyed on values read off these objects.
@@ -52,7 +52,10 @@ vi.mock("@/components/ui/use-toast", () => {
 // The dives column and the map are covered where they live, and each would make
 // requests of its own here.
 vi.mock("@/components/trips/trip-dive-sections", () => ({
-  TripDiveSections: () => null,
+  TripDiveSections: vi.fn(() => null),
+}));
+vi.mock("@/components/trips/trip-dialog", () => ({
+  TripDialog: vi.fn(() => null),
 }));
 vi.mock("@/components/map/map-backdrop", () => ({
   MapBackdrop: vi.fn(() => null),
@@ -61,11 +64,12 @@ vi.mock("@/components/map/map-backdrop", () => ({
 
 vi.mock("@/lib/api/trips", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/trips")>()),
-  tripsAPI: { getTrip: vi.fn(), deleteTrip: vi.fn() },
-}));
-vi.mock("@/lib/api/dives", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/api/dives")>()),
-  divesAPI: { getDives: vi.fn() },
+  tripsAPI: {
+    getTrip: vi.fn(),
+    deleteTrip: vi.fn(),
+    getTripDives: vi.fn(),
+    addTripDives: vi.fn(),
+  },
 }));
 vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/contacts")>()),
@@ -78,7 +82,10 @@ vi.mock("@/lib/api/people", async (importOriginal) => ({
 
 const { tripsAPI } = await import("@/lib/api/trips");
 const { MapBackdrop } = await import("@/components/map/map-backdrop");
-const { divesAPI } = await import("@/lib/api/dives");
+const { TripDiveSections } =
+  await import("@/components/trips/trip-dive-sections");
+const { TripDialog } = await import("@/components/trips/trip-dialog");
+const { useToast } = await import("@/components/ui/use-toast");
 const { fetchAllContacts } = await import("@/lib/api/contacts");
 const { peopleAPI } = await import("@/lib/api/people");
 
@@ -127,28 +134,33 @@ const TRIP: Trip = {
   dive_site_count: 0,
   species_count: 0,
   max_depth: null,
+  candidate_count: 0,
+  // The trip's own dives as the API reads them: newest first, one shop twice.
+  contact_uuids: ["red", "blue"],
 };
 
-const dive = (uuid: string, contact_uuid: string | null) =>
-  ({ uuid, contact_uuid }) as Dive;
+const dive = (uuid: string, trip_uuid: string | null = "trip-1") =>
+  ({ uuid, trip_uuid }) as Dive;
+
+const page = (data: Dive[]) => ({
+  data,
+  total_count: data.length,
+  has_more: false,
+  page: 1,
+  items_per_page: 10,
+});
+
+// The props the page last handed the dives column.
+const sectionsProps = () => vi.mocked(TripDiveSections).mock.lastCall![0];
 
 beforeEach(() => {
   vi.clearAllMocks();
   stable.searchParams = new URLSearchParams();
   vi.mocked(tripsAPI.getTrip).mockResolvedValue(TRIP);
-  // As the trip lists them: newest first, one with no contact, one shop twice.
-  vi.mocked(divesAPI.getDives).mockResolvedValue({
-    data: [
-      dive("d3", "red"),
-      dive("d2", null),
-      dive("d1", "blue"),
-      dive("d0", "red"),
-    ],
-    total_count: 4,
-    has_more: false,
-    page: 1,
-    items_per_page: 100,
-  });
+  // Two of the trip's dives and a candidate between them.
+  vi.mocked(tripsAPI.getTripDives).mockResolvedValue(
+    page([dive("d3"), dive("d2", null), dive("d1")]),
+  );
   vi.mocked(fetchAllContacts).mockResolvedValue([
     contact("coral", "Coral Hotel"),
     contact("red", "Red Sea Divers"),
@@ -267,14 +279,9 @@ describe("TripDetailPage", () => {
       ...TRIP,
       parts: [],
       people: [],
+      contact_uuids: [],
     });
-    vi.mocked(divesAPI.getDives).mockResolvedValue({
-      data: [],
-      total_count: 0,
-      has_more: false,
-      page: 1,
-      items_per_page: 100,
-    });
+    vi.mocked(tripsAPI.getTripDives).mockResolvedValue(page([]));
     render(<TripDetailPage />);
 
     await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
@@ -292,26 +299,19 @@ describe("TripDetailPage", () => {
     expect(within(sharm).queryByText("Coral Hotel")).toBeNull();
   });
 
-  it("names the dive centers the trip's dives name, each once, in the dives' order", async () => {
+  it("names the dive centers the trip read carries, in its order", async () => {
     render(<TripDetailPage />);
 
     const label = await screen.findByText("Dive centers");
     expect(label.nextElementSibling).toHaveTextContent(
       "Red Sea Divers, Blue Ocean",
     );
-    // Every dive of the trip, filtered by it - not the page the dives card shows.
-    expect(divesAPI.getDives).toHaveBeenCalledWith(1, 100, {
-      tripUuid: "trip-1",
-    });
   });
 
   it("leaves the line off a trip whose dives name nobody", async () => {
-    vi.mocked(divesAPI.getDives).mockResolvedValue({
-      data: [dive("d1", null)],
-      total_count: 1,
-      has_more: false,
-      page: 1,
-      items_per_page: 100,
+    vi.mocked(tripsAPI.getTrip).mockResolvedValue({
+      ...TRIP,
+      contact_uuids: [],
     });
     render(<TripDetailPage />);
 
@@ -331,5 +331,118 @@ describe("TripDetailPage", () => {
       "href",
       "/people/sam?from=%2Ftrips%2Ftrip-1",
     );
+  });
+
+  it("reads the first page of the trip's list, candidates and all, into the dives column", async () => {
+    render(<TripDetailPage />);
+
+    await waitFor(() =>
+      expect(sectionsProps().dives?.map((one) => one.uuid)).toEqual([
+        "d3",
+        "d2",
+        "d1",
+      ]),
+    );
+    expect(tripsAPI.getTripDives).toHaveBeenCalledWith("trip-1", 1, 10);
+    expect(sectionsProps()).toMatchObject({
+      hasMore: false,
+      loadFailed: false,
+    });
+  });
+
+  // Each re-read is told apart by the page size it asks for: the rows on screen
+  // (3) re-read in place, the first page (10) from the start.
+  const settled = async () => {
+    render(<TripDetailPage />);
+    await waitFor(() => expect(sectionsProps().dives).toHaveLength(3));
+    vi.mocked(tripsAPI.getTripDives).mockClear();
+    vi.mocked(tripsAPI.getTrip).mockClear();
+  };
+
+  it("re-reads the loaded rows in place and the trip after an add, and says how many were added", async () => {
+    await settled();
+    vi.mocked(tripsAPI.addTripDives).mockResolvedValue({ added: 1 });
+
+    let added: boolean | undefined;
+    await act(async () => {
+      added = await sectionsProps().onAdd({ dive_uuids: ["d2"] }, 1);
+    });
+
+    expect(added).toBe(true);
+    expect(tripsAPI.addTripDives).toHaveBeenCalledWith("trip-1", {
+      dive_uuids: ["d2"],
+    });
+    expect(tripsAPI.getTripDives).toHaveBeenCalledWith("trip-1", 1, 3);
+    expect(tripsAPI.getTripDives).not.toHaveBeenCalledWith("trip-1", 1, 10);
+    expect(tripsAPI.getTrip).toHaveBeenCalledWith("trip-1");
+    expect(useToast().toast).toHaveBeenLastCalledWith({
+      description: "1 dive added to the trip.",
+    });
+  });
+
+  it("says the rest could not be added when the count comes back short", async () => {
+    await settled();
+    vi.mocked(tripsAPI.addTripDives).mockResolvedValue({ added: 3 });
+
+    await act(async () => {
+      await sectionsProps().onAdd({}, 4);
+    });
+
+    expect(useToast().toast).toHaveBeenLastCalledWith({
+      description:
+        "3 dives of 4 added to the trip. The rest were moved to another trip or deleted since the page loaded.",
+    });
+  });
+
+  it("re-reads the same way after a 422, and says the trip has changed", async () => {
+    await settled();
+    vi.mocked(tripsAPI.addTripDives).mockRejectedValue({
+      response: { status: 422 },
+    });
+
+    let added: boolean | undefined;
+    await act(async () => {
+      added = await sectionsProps().onAdd(
+        { part: { start_date: "2026-04-03", end_date: "2026-04-08" } },
+        2,
+      );
+    });
+
+    expect(added).toBe(false);
+    expect(tripsAPI.getTripDives).toHaveBeenCalledWith("trip-1", 1, 3);
+    expect(tripsAPI.getTrip).toHaveBeenCalledWith("trip-1");
+    expect(useToast().toast).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "This trip has changed" }),
+    );
+  });
+
+  it("re-reads nothing after any other failure", async () => {
+    await settled();
+    vi.mocked(tripsAPI.addTripDives).mockRejectedValue(new Error("offline"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await act(async () => {
+      await sectionsProps().onAdd({}, 4);
+    });
+
+    expect(tripsAPI.getTripDives).not.toHaveBeenCalled();
+    expect(tripsAPI.getTrip).not.toHaveBeenCalled();
+    expect(useToast().toast).toHaveBeenLastCalledWith(
+      expect.objectContaining({ variant: "destructive" }),
+    );
+  });
+
+  it("reads the list again from the start and the trip after a save, since a part's dates decide the candidates", async () => {
+    await settled();
+
+    const { onSaved } = vi.mocked(TripDialog).mock.lastCall![0];
+    await act(async () => {
+      onSaved({ ...TRIP, name: "Egypt, summer" });
+    });
+
+    await waitFor(() =>
+      expect(tripsAPI.getTripDives).toHaveBeenCalledWith("trip-1", 1, 10),
+    );
+    expect(tripsAPI.getTrip).toHaveBeenCalledWith("trip-1");
   });
 });

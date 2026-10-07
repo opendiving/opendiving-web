@@ -1,9 +1,9 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { Dive } from "@/lib/api/dives";
-import type { TripPart } from "@/lib/api/trips";
+import type { TripDiveAddScope, TripPart } from "@/lib/api/trips";
 import { tripDiveSections } from "@/lib/trip-dive-sections";
 import { formatTripPartDates } from "@/lib/trip-parts";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
@@ -18,6 +18,10 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 import { DiveCard } from "@/components/dives/dive-card";
+import {
+  TripDiveAddButton,
+  type TripDiveAddExtent,
+} from "@/components/trips/trip-dive-add-button";
 import { DiveIcon } from "@/components/logo";
 import { ChevronDown, MapPin, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,18 +29,48 @@ import { cn } from "@/lib/utils";
 const SKELETON_COUNT = 5;
 
 interface TripDiveSectionsProps {
-  // Every dive of the trip, newest first; `null` until they have loaded.
+  // The trip's dives and its candidates as far as they have loaded, newest
+  // first; `null` until the first page has.
   dives: Dive[] | null;
+  // More pages to come, so a part with nothing loaded yet may still fill.
+  hasMore: boolean;
   loadFailed: boolean;
   parts: TripPart[];
+  // Every candidate of the trip, loaded or not, as the trip read counts them.
+  candidateCount: number;
   newDiveHref: string;
+  // Adds the candidates a scope names - `expected` of them, as far as the page
+  // knows - and resolves once the page shows the outcome: `true` when any were
+  // added.
+  onAdd: (scope: TripDiveAddScope, expected: number) => Promise<boolean>;
 }
 
-function DiveList({ dives, className }: { dives: Dive[]; className?: string }) {
+// A dive in the trip's list that is not the trip's yet: a candidate, which the
+// API marks by giving it no trip.
+const isCandidate = (dive: Dive) => dive.trip_uuid == null;
+
+// Where focus goes once an add has landed: the card that turned ordinary - its
+// menu, which now stands where the Add control did - or, for more than one
+// dive, the heading of the part the add was made from.
+type FocusTarget = { diveUuid: string | null; partIndex: number | null };
+
+function DiveList({
+  dives,
+  className,
+  addControl,
+}: {
+  dives: Dive[];
+  className?: string;
+  addControl: (dive: Dive) => ReactNode;
+}) {
   return (
     <ul className={cn("space-y-3", className)}>
       {dives.map((dive) => (
-        <DiveCard key={dive.uuid} dive={dive} />
+        <DiveCard
+          key={dive.uuid}
+          dive={dive}
+          addToTrip={isCandidate(dive) ? addControl(dive) : undefined}
+        />
       ))}
     </ul>
   );
@@ -71,10 +105,12 @@ function DivesCard({
 // heading line is the target and the heading keeps its name for a screen
 // reader. A folded card unmounts its dives, maps and all.
 function PartCard({
+  partIndex,
   title,
   description,
   children,
 }: {
+  partIndex: number;
   title: ReactNode;
   description?: ReactNode;
   children: ReactNode;
@@ -82,7 +118,7 @@ function PartCard({
   const [open, setOpen] = useState(true);
   const contentId = useId();
   return (
-    <Card>
+    <Card data-trip-part={partIndex}>
       <CardHeader>
         <CardTitle as="h2">
           <button
@@ -118,11 +154,95 @@ function PartCard({
 // the one card of every dive.
 export function TripDiveSections({
   dives,
+  hasMore,
   loadFailed,
   parts,
+  candidateCount,
   newDiveHref,
+  onAdd,
 }: TripDiveSectionsProps) {
   const withReturnTo = useWithReturnTo();
+  const containerRef = useRef<HTMLDivElement>(null);
+  // One add at a time: every Add control waits while one is in flight.
+  const [isAdding, setIsAdding] = useState(false);
+  const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+
+  // Run after the render that shows the add's outcome, so the elements named
+  // are the ones on screen now rather than the ones the add was made from. A
+  // new object for every add, so this runs once for each.
+  useEffect(() => {
+    if (!focusTarget) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const { diveUuid, partIndex } = focusTarget;
+    // The card's own link leads to the dive's page; its menu is the one
+    // `aria-haspopup` button on the card once the Add control is gone.
+    const card = diveUuid
+      ? container
+          .querySelector(
+            `a[href="/dives/${diveUuid}"], a[href^="/dives/${diveUuid}?"]`,
+          )
+          ?.closest("li")
+      : null;
+    const target =
+      card?.querySelector<HTMLElement>('button[aria-haspopup="menu"]') ??
+      (partIndex === null
+        ? null
+        : container.querySelector<HTMLElement>(
+            `[data-trip-part="${partIndex}"] button[aria-expanded]`,
+          ));
+    target?.focus();
+  }, [focusTarget]);
+
+  const add = async (
+    dive: Dive,
+    extent: TripDiveAddExtent,
+    part: TripPart | null,
+    partIndex: number | null,
+  ) => {
+    // A part is named by its dates as the trip read carries them; the button
+    // offers the part only where there is one, holding more than this dive.
+    const [scope, expected]: [TripDiveAddScope, number] =
+      extent === "dive"
+        ? [{ dive_uuids: [dive.uuid] }, 1]
+        : extent === "part" && part
+          ? [
+              {
+                part: {
+                  ...(part.start_date ? { start_date: part.start_date } : {}),
+                  ...(part.end_date ? { end_date: part.end_date } : {}),
+                },
+              },
+              part.candidate_count ?? 0,
+            ]
+          : [{}, candidateCount];
+    setIsAdding(true);
+    try {
+      const added = await onAdd(scope, expected);
+      if (added) {
+        setFocusTarget({
+          diveUuid: extent === "dive" ? dive.uuid : null,
+          partIndex,
+        });
+      }
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const addButton = (
+    dive: Dive,
+    part: TripPart | null,
+    partIndex: number | null,
+  ) => (
+    <TripDiveAddButton
+      diveNumber={dive.dive_number}
+      partCount={part?.candidate_count ?? 0}
+      tripCount={candidateCount}
+      disabled={isAdding}
+      onAdd={(extent) => void add(dive, extent, part, partIndex)}
+    />
+  );
   const allDivesCard = (children: ReactNode) => (
     <DivesCard
       icon={<DiveIcon className="h-5 w-5" />}
@@ -179,12 +299,17 @@ export function TripDiveSections({
   }
 
   if (parts.length === 0) {
-    return allDivesCard(<DiveList dives={dives} />);
+    return allDivesCard(
+      <DiveList
+        dives={dives}
+        addControl={(dive) => addButton(dive, null, null)}
+      />,
+    );
   }
 
   return (
-    <div className="space-y-6">
-      {tripDiveSections(dives, parts).map((section) => {
+    <div ref={containerRef} className="space-y-6">
+      {tripDiveSections(dives, parts, { complete: !hasMore }).map((section) => {
         if (section.kind === "loose") {
           return (
             <DiveList
@@ -193,6 +318,7 @@ export function TripDiveSections({
               // these cards line up with the ones inside the part cards.
               className="border border-transparent px-6 max-sm:px-4"
               dives={section.dives}
+              addControl={(dive) => addButton(dive, null, null)}
             />
           );
         }
@@ -204,11 +330,15 @@ export function TripDiveSections({
         return (
           <PartCard
             key={`part-${section.partIndex}`}
+            partIndex={section.partIndex}
             title={place ?? dates ?? "No place recorded"}
             description={place ? dates : undefined}
           >
             {section.dives.length > 0 ? (
-              <DiveList dives={section.dives} />
+              <DiveList
+                dives={section.dives}
+                addControl={(dive) => addButton(dive, part, section.partIndex)}
+              />
             ) : (
               <EmptyState
                 icon={DiveIcon}

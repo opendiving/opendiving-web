@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  distinctContactUuids,
   formatContactAddress,
   formatContactPlace,
   formatWebsite,
@@ -67,21 +66,5 @@ describe("formatWebsite", () => {
 
   it("shows text it cannot parse as it is", () => {
     expect(formatWebsite("blueocean")).toBe("blueocean");
-  });
-});
-
-describe("distinctContactUuids", () => {
-  it("names each contact once, in the order the records first name it", () => {
-    // A trip's dives as the trip lists them: two shops, one of them twice, and
-    // a dive that names neither.
-    expect(
-      distinctContactUuids([
-        { contact_uuid: "red" },
-        { contact_uuid: null },
-        { contact_uuid: "blue" },
-        { contact_uuid: "red" },
-        {},
-      ]),
-    ).toEqual(["red", "blue"]);
   });
 });
