@@ -425,9 +425,9 @@ describe("what the print leaves behind", () => {
   it("hides its own controls, keeping the summary", () => {
     render(loaded());
 
-    expect(screen.getByRole("button", { name: /print/i })).toHaveClass(
-      "print:hidden",
-    );
+    expect(
+      screen.getByRole("button", { name: /print/i }).closest(".print\\:hidden"),
+    ).not.toBeNull();
   });
 
   it("keeps each block a reader takes as one thing off a page boundary", () => {

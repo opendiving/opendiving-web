@@ -14,7 +14,6 @@ import {
   formatUtcOffset,
   getBrowserUtcOffsetMinutes,
   diveWallClockTime,
-  greetingForHour,
   isDateOnlyStartTime,
   normalizeParsedStartTime,
   parseFormDateTime,
@@ -394,28 +393,6 @@ describe("formatDiveStartTime", () => {
     const line = formatDiveStartTime("2026-04-17T11:49:23");
     expect(line).toBe("Friday, April 17, 2026 at 11:49");
     expect(line).not.toMatch(/UTC/);
-  });
-});
-
-describe("greetingForHour", () => {
-  it("greets the morning from 04:00 until noon", () => {
-    expect(greetingForHour(4)).toBe("Good morning");
-    expect(greetingForHour(11)).toBe("Good morning");
-  });
-
-  it("greets the afternoon from noon until 18:00", () => {
-    expect(greetingForHour(12)).toBe("Good afternoon");
-    expect(greetingForHour(17)).toBe("Good afternoon");
-  });
-
-  it("greets the evening from 18:00 onwards", () => {
-    expect(greetingForHour(18)).toBe("Good evening");
-    expect(greetingForHour(23)).toBe("Good evening");
-  });
-
-  it("keeps the small hours in the evening", () => {
-    expect(greetingForHour(0)).toBe("Good evening");
-    expect(greetingForHour(3)).toBe("Good evening");
   });
 });
 

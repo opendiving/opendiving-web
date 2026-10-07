@@ -28,7 +28,7 @@ const stable = vi.hoisted(() => ({
     isAuthenticated: true,
     isLoading: false,
   },
-  auth: { user: { uuid: "user-1", units: "metric" } },
+  auth: { user: { uuid: "user-1", name: "Sam Diver", units: "metric" } },
 }));
 
 vi.mock("@/hooks/useAuthGuard", () => ({
@@ -79,6 +79,19 @@ const stats = (overrides: Partial<UserDiveStats> = {}): UserDiveStats => ({
 
 beforeEach(() => {
   getDiveStats.mockReset();
+});
+
+describe("dashboard heading", () => {
+  it("is the diver's name alone, beside their picture", async () => {
+    getDiveStats.mockResolvedValue(stats());
+    render(<DashboardPage />);
+
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
+      /^Sam Diver$/,
+    );
+    // The initials, for an account with no picture.
+    expect(screen.getByText("SD")).toBeInTheDocument();
+  });
 });
 
 describe("dashboard Species Seen tile", () => {

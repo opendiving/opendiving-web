@@ -3,6 +3,7 @@
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { DataExportCard } from "@/components/data/data-export-card";
 import { PageSpinner } from "@/components/ui/page-spinner";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export function DataPageContent() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
@@ -16,15 +17,15 @@ export function DataPageContent() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Export</h1>
-        <p className="text-muted-foreground">
-          Take a copy of everything you have entered.
-        </p>
-      </div>
+    <div>
+      <IndexHero
+        title="Export"
+        subtitle="Take a copy of everything you have entered."
+      />
 
-      <DataExportCard username={user.username} />
+      <div className={HERO_BODY}>
+        <DataExportCard username={user.username} />
+      </div>
     </div>
   );
 }

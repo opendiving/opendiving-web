@@ -1202,21 +1202,6 @@ The checklist sits above the stats, being the first thing a new account should s
 and the air-consumption chart hide at zero dives, but not while the stats request is in flight —
 `hasDives` stays true until the answer is in.
 
-## The heading greets by time of day, and reads the clock during render
-
-The dashboard heading is "Good morning/afternoon/evening, {name}!". The buckets live in
-`greetingForHour()` in `lib/date-time.ts`: morning from 04:00, afternoon from noon, evening from
-18:00, and the small hours fall in with the evening, because "Good night" is a farewell.
-
-`new Date().getHours()` runs during render, normally a hydration hazard since the server's hour is
-not the viewer's. It is safe here only because the heading sits behind the auth gate: `AuthProvider`
-starts at `isLoading: true` and resolves in an effect, so SSR and the first client render return
-`PageSpinner` and the greeting is never in the SSR markup. A greeting rendered above that gate needs
-the mounted-flag treatment `ThemeToggle` uses.
-
-The greeting is fixed for the life of the mount; no timer ticks it over at midnight.
-`scripts/screenshots.mjs` pins the browser clock to 09:00 for the README image.
-
 ## There is no `/profile` until there is someone else to show it to
 
 There is no `/profile`. A profile page exists to be someone else's view of a diver, and the API
@@ -1691,9 +1676,6 @@ Subjects are ranked from the log using the access token a Playwright `request` l
 the app's requests; a second magic link is rate-limited and `/auth/refresh` rotates the cookie.
 `DIVE_UUID` names the dive when ranks tie; an unknown uuid or a sample-less dive throws before the
 first shutter rather than falling back.
-
-The clock is pinned to 09:00 (`GREETING_HOUR` overrides) with `setFixedTime()`, not `install()`,
-leaving timers and `networkidle` real.
 
 ## The dive shot is ranked by recordings
 

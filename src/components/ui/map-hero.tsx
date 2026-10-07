@@ -5,6 +5,7 @@ import {
   useState,
   type ComponentType,
   type ReactNode,
+  type Ref,
 } from "react";
 import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { BackLink } from "@/components/ui/page-header";
@@ -222,7 +223,7 @@ export function MapHero({
         className="z-[1] [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)]"
       >
         <HeroDetails
-          className="pb-5"
+          className={cn(COLUMN, "pb-5")}
           icon={Icon}
           title={title}
           subtitle={subtitle}
@@ -240,30 +241,36 @@ export function MapHero({
   );
 }
 
-// The icon, the name, its line and its figures, in the page's column. `children`
-// closes the figures' row.
+// The icon, the name, its line and its figures. `children` closes the figures'
+// row.
 function HeroDetails({
   className,
   icon: Icon,
   title,
   subtitle,
   overline,
-  figures,
+  figures = [],
+  headingRef,
   children,
-}: Pick<
-  MapHeroProps,
-  "icon" | "title" | "subtitle" | "overline" | "figures"
-> & {
-  className?: string;
-  children?: ReactNode;
-}) {
+}: Pick<MapHeroProps, "title" | "subtitle" | "overline"> &
+  Partial<Pick<MapHeroProps, "icon" | "figures">> & {
+    className?: string;
+    headingRef?: Ref<HTMLHeadingElement>;
+    children?: ReactNode;
+  }) {
   return (
-    <div className={cn(COLUMN, className)}>
+    <div className={className}>
       {overline && <div className={OVERLINE}>{overline}</div>}
       <div className={HEADING}>
-        <Icon aria-hidden className={ICON} />
+        {Icon && <Icon aria-hidden className={ICON} />}
         <div className="min-w-0">
-          <h1 className={TITLE}>{title}</h1>
+          <h1
+            ref={headingRef}
+            tabIndex={headingRef ? -1 : undefined}
+            className={TITLE}
+          >
+            {title}
+          </h1>
           {subtitle && <p className={SUBTITLE}>{subtitle}</p>}
         </div>
       </div>
@@ -290,7 +297,7 @@ function HeroDetails({
 
 // A map hero's top row, in the flow rather than over the band, at the height
 // the band puts it.
-const PLAIN_TOP_ROW = cn(COLUMN, "flex items-center gap-4 pt-2");
+const PLAIN_TOP_ROW = "flex items-center gap-4 pt-2";
 const PLAIN_DETAILS = "mt-3 md:mt-4";
 
 // The heading of a record with no place to map, laid out as a map hero's: the
@@ -308,17 +315,50 @@ export function PlainHero({
   return (
     // The actions' glow is drawn in the page's colour, so it shows nothing here.
     <div className="[--backdrop-fade:hsl(var(--background))]">
-      <div className={cn(PLAIN_TOP_ROW, "justify-between")}>
+      <div className={cn(COLUMN, PLAIN_TOP_ROW, "justify-between")}>
         <HeroBackLink backHref={backHref} backLabel={backLabel} />
         {actions && <div className="flex shrink-0 gap-1">{actions}</div>}
+      </div>
+      <HeroDetails
+        className={cn(COLUMN, PLAIN_DETAILS)}
+        icon={icon}
+        title={title}
+        subtitle={subtitle}
+        overline={overline}
+        figures={figures}
+      />
+    </div>
+  );
+}
+
+// The heading of a page reached from the navigation rather than from a record,
+// laid out as a plain hero with nothing to go back to: the top row holds the
+// page's actions alone, at the actions' height even with none, so every page's
+// title sits at one offset. That row is all controls, so paper goes without it.
+export function IndexHero({
+  icon,
+  title,
+  subtitle,
+  actions,
+  headingRef,
+  className,
+}: Pick<MapHeroProps, "title" | "subtitle" | "actions"> &
+  Partial<Pick<MapHeroProps, "icon">> & {
+    // Makes the heading a focus target, for a page that moves focus to it.
+    headingRef?: Ref<HTMLHeadingElement>;
+    className?: string;
+  }) {
+  return (
+    <div className={cn(COLUMN, className)}>
+      <div className={cn(PLAIN_TOP_ROW, "justify-end print:hidden")}>
+        <div className="flex min-h-9 shrink-0 gap-1">{actions}</div>
       </div>
       <HeroDetails
         className={PLAIN_DETAILS}
         icon={icon}
         title={title}
         subtitle={subtitle}
-        overline={overline}
-        figures={figures}
+        headingRef={headingRef}
       />
     </div>
   );
@@ -355,7 +395,7 @@ function PlainHeroSkeleton({
 }: Known & { figureless?: boolean }) {
   return (
     <div>
-      <div className={PLAIN_TOP_ROW}>
+      <div className={cn(COLUMN, PLAIN_TOP_ROW)}>
         <HeroBackLink backHref={backHref} backLabel={backLabel} />
       </div>
       <HeroDetailsSkeleton

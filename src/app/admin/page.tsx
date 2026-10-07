@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BarChart3, Inbox } from "lucide-react";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export const metadata: Metadata = { title: "Admin" };
 
@@ -32,26 +33,29 @@ const SCREENS = [
  */
 export default function AdminPage() {
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <h1 className="text-3xl font-bold">Admin</h1>
-      <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-        {SCREENS.map(({ href, icon: Icon, title, description }) => (
-          <li key={href}>
-            <Link
-              href={href}
-              className="flex h-full gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
-            >
-              <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-              <span>
-                <span className="block font-semibold">{title}</span>
-                <span className="mt-1 block text-sm text-muted-foreground">
-                  {description}
+    <div>
+      <IndexHero title="Admin" />
+
+      <div className={HERO_BODY}>
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {SCREENS.map(({ href, icon: Icon, title, description }) => (
+            <li key={href}>
+              <Link
+                href={href}
+                className="flex h-full gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
+              >
+                <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                <span>
+                  <span className="block font-semibold">{title}</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">
+                    {description}
+                  </span>
                 </span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

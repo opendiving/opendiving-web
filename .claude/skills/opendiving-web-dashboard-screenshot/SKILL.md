@@ -3,7 +3,7 @@ name: opendiving-web-dashboard-screenshot
 description:
   Retake docs/screenshots/dashboard.png, the README hero image — the dashboard header plus both
   chart cards on their 2025 Year view. Use whenever a change alters what the dashboard looks like
-  above the Recent Dives row (the greeting, the stat cards, Gas Consumption, Dive Activity) and the
+  above the Recent Dives row (the heading, the stat cards, Gas Consumption, Dive Activity) and the
   README image would otherwise show the old UI.
 ---
 
@@ -64,8 +64,8 @@ file docs/screenshots/dashboard.png && git status --short docs/screenshots/
 ```
 
 Expect `2048 x <2 × height>` and only `dashboard.png` modified. Then open the PNG and check the
-three things the script cannot: the greeting reads correctly, both charts show 2025 bars, and the
-bottom edge sits on the gap below Dive Activity with no sliver of Recent Dives.
+three things the script cannot: the heading carries the account's name, both charts show 2025 bars,
+and the bottom edge sits on the gap below Dive Activity with no sliver of Recent Dives.
 
 Commit it on its own — `docs: retake the dashboard screenshot for <whatever changed>`.
 

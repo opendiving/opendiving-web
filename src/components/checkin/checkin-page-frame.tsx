@@ -62,7 +62,7 @@ import { CHECK_IN_GROUP_HEADINGS } from "@/components/user/user-fields-form";
 import { PortraitFrame, PortraitImage } from "@/components/user/portrait-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { IndexPageHeader } from "@/components/ui/page-header";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IconTooltip } from "@/components/ui/tooltip";
 
@@ -324,24 +324,25 @@ export function CheckInPageFrame({
   // free: 32px at the foot is enough to push a sheet that fits onto a second page,
   // and what comes off the sides is width the two columns get back.
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6 print:px-0 print:pb-0">
+    <div>
       {/* "Diver" earns its place on the printed sheet rather than on screen: the
           line under the heading is `print:hidden`, so the heading is the only thing
           naming the document a shop is handed, and "Check-in" alone above a
           stranger's name and card numbers leaves them to infer what it is. The
           account menu stays "Check-in" - there the reader is the diver, and "Diver"
           would be telling them whose page it is. */}
-      <IndexPageHeader
+      <IndexHero
         title="Diver Check-in"
-        className={INK}
-        descriptionClassName="print:hidden"
-        description={
-          link
-            ? `This link stops working on ${formatDateTime(link.expiresAt)}.`
-            : "What a dive shop asks for at the desk, on one page you can hand over"
+        className={cn(INK, "print:px-0")}
+        subtitle={
+          <span className="print:hidden">
+            {link
+              ? `This link stops working on ${formatDateTime(link.expiresAt)}.`
+              : "What a dive shop asks for at the desk, on one page you can hand over"}
+          </span>
         }
-        action={
-          <div className="flex flex-wrap gap-2 print:hidden">
+        actions={
+          <>
             {/* Waits for the diving figures: the link keeps the ones it is made with
               for its whole life, so a click before they land - or after a read
               that failed, which leaves the same nulls - would publish blanks that
@@ -350,7 +351,8 @@ export function CheckInPageFrame({
             {sharing && !link && (
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 onClick={() => void sharing.mint(diving)}
                 disabled={
                   isLoading || (figuresFailed && !corrected) || sharing.busy
@@ -364,382 +366,392 @@ export function CheckInPageFrame({
               either repo, and nothing is uploaded to produce it. */}
             <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => window.print()}
-              className="print:hidden"
             >
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
-          </div>
+          </>
         }
       />
 
-      {!link && (
-        <p className="text-sm text-muted-foreground print:hidden">
-          Your browser&rsquo;s print dialog can save this as a PDF too &mdash;
-          worth keeping on your phone for a desk with no signal.
-        </p>
-      )}
-
-      {sharing && !link && <CheckInLinkPanel sharing={sharing} />}
-
-      {/* On screen only: a sheet handed across a desk should not carry this app's
-          troubles, but the diver about to print one has to know it is short. */}
-      {loadFailed && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-destructive/40 px-4 py-3 print:hidden">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Some of this didn&rsquo;t load, so the summary below is
-              incomplete.
-            </p>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-            Try again
-          </Button>
-        </div>
-      )}
-
-      <Card
-        className={`print:border-0 print:shadow-none print:bg-white ${INK}`}
-      >
-        {/* `print:p-0` for the same reason, and it is what lets the heading above the
-            card sit on the sheet's own left edge without an offset of its own. */}
-        <CardContent className="pt-6 space-y-6 print:p-0">
-          <div className={cn(TWO_COLUMNS, "gap-y-6")}>
-            {/* Headed by the diver's own name rather than by a label: the name is
-                what the sheet is about, and "Personal information" written above
-                somebody's name tells a desk nothing the name did not. */}
-            <section className={KEEP_TOGETHER}>
-              <div className={cn("flex items-start", NAME_BESIDE_PICTURE)}>
-                {/* The portrait, never the avatar: a desk is looking at the diver's
-                    face, and the avatar is whatever the diver shows the app. With none
-                    stored, nothing prints - no initials, which identify nobody - and
-                    the screen offers the place to add one.
-
-                    The column stays either way, so the name meets the same edge as
-                    every certification's. A link's page has the column and no offer,
-                    the offer being the diver's own control. */}
-                <div className={SLOT}>
-                  {link ? (
-                    diver.portrait_sha256 && (
-                      <PortraitFrame className="w-full">
-                        <LinkPicture
-                          src={sharedPortraitUrl(link.token)}
-                          alt={`Portrait of ${diver.name}`}
-                          className="h-full w-full object-cover"
-                        />
-                      </PortraitFrame>
-                    )
-                  ) : diver.portrait_sha256 ? (
-                    <PortraitImage
-                      name={diver.name}
-                      portraitSha={diver.portrait_sha256}
-                      maxEdge={PICTURE_EDGE}
-                      className="w-full"
-                    />
-                  ) : (
-                    <PortraitFrame empty className="w-full print:hidden">
-                      <IconTooltip label="Add a portrait">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="h-full w-full rounded-none"
-                          onClick={() => setEditing("about")}
-                        >
-                          <UserSquare className="h-6 w-6 text-muted-foreground" />
-                        </Button>
-                      </IconTooltip>
-                    </PortraitFrame>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className={cn("flex items-center gap-2", HEADING_ROW)}>
-                    <h2
-                      className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}
-                    >
-                      {diver.name}
-                    </h2>
-                    {editControl(
-                      "Edit your name, portrait, date of birth and phone number",
-                      () => setEditing("about"),
-                    )}
-                  </div>
-
-                  {/* Always on screen, so the diver sees what is missing beside the
-                      control that fills it, and dropped from the print when it
-                      holds nothing: a `<dl>` with every row absent is blank page on
-                      a sheet handed to somebody. */}
-                  <div className={cn(!hasAboutYou && offSheet)}>
-                    {hasAboutYou ? (
-                      <dl className="space-y-1">
-                        <IconDetail
-                          icon={Cake}
-                          label="Date of birth"
-                          value={
-                            diver.date_of_birth &&
-                            formatDateOnly(diver.date_of_birth)
-                          }
-                        />
-                        <IconDetail
-                          icon={Phone}
-                          label="Phone"
-                          value={diver.phone}
-                        />
-                      </dl>
-                    ) : (
-                      emptyNote("Not filled in yet.")
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <Section
-              title="Diving"
-              busy={isLoading}
-              // A diver who cleared every figure has said to leave the diving off the
-              // sheet, and the sheet obeys - heading and all. The section stays on
-              // screen regardless, because the control that emptied it is the only
-              // way back to "Use logged figures", and a section that removed itself
-              // would leave a correction in force with nothing on screen saying so.
-              className={cn(KEEP_TOGETHER, !hasFigures && offSheet)}
-              action={editControl("Correct these figures", () =>
-                setEditing("diving"),
-              )}
-            >
-              {hasFigures && (
-                <DetailList>
-                  <Detail
-                    label="Dives logged"
-                    value={
-                      diving.totalDives !== null
-                        ? String(diving.totalDives)
-                        : null
-                    }
-                    pending={isLoading && !stats}
-                  />
-                  <Detail
-                    label="Max depth"
-                    value={
-                      diving.maxDepth !== null
-                        ? formatDepth(diving.maxDepth, units)
-                        : null
-                    }
-                    pending={isLoading && !stats}
-                  />
-                  <Detail
-                    label="Last dive"
-                    value={
-                      diving.lastDiveOn && formatDateOnly(diving.lastDiveOn)
-                    }
-                    pending={isLoading && !lastDiveAt}
-                  />
-                </DetailList>
-              )}
-              {/* Two states are empty here without being unfilled, and neither is
-                  visible from `hasFigures` alone: a rejected `/user/dive-stats` leaves
-                  `stats` null, and a diver who cleared all three boxes leaves a
-                  `corrected` whose every field is null. The second would otherwise
-                  read "Not filled in yet." directly above "Corrected for this
-                  summary", which is the page contradicting itself to the one diver who
-                  knows better. */}
-              {!hasFigures &&
-                !loadFailed &&
-                !corrected &&
-                emptyNote("Not filled in yet.")}
-              {corrected && (
-                <p className="text-xs text-muted-foreground print:hidden">
-                  Corrected for this summary. Nothing was saved to your log.
-                </p>
-              )}
-            </Section>
-
-            {/* Insurance and the emergency contact make the second row rather than
-                the first: a desk works down who the diver is and what they have
-                actually dived, and reaches for the policy to quote and the person to
-                call only if something goes wrong. */}
-            <Section
-              title="Dive Insurance"
-              className={cn(KEEP_TOGETHER, !hasInsurance && offSheet)}
-              action={editControl("Edit your dive insurance", () =>
-                setEditing("insurance"),
-              )}
-            >
-              {hasInsurance ? (
-                <DetailList>
-                  <Detail label="Provider" value={diver.insurance_provider} />
-                  <Detail
-                    label="Policy number"
-                    value={diver.insurance_policy_number}
-                  />
-                  <Detail
-                    label="Expires"
-                    value={
-                      diver.insurance_expires_on &&
-                      formatDateOnly(diver.insurance_expires_on)
-                    }
-                  />
-                </DetailList>
-              ) : (
-                emptyNote("Not filled in yet.")
-              )}
-            </Section>
-
-            <Section
-              title="Emergency Contact"
-              className={cn(KEEP_TOGETHER, !hasEmergencyContact && offSheet)}
-              action={editControl("Edit your emergency contact", () =>
-                setEditing("emergency"),
-              )}
-            >
-              {hasEmergencyContact ? (
-                <DetailList>
-                  <Detail label="Name" value={diver.emergency_contact_name} />
-                  <Detail label="Phone" value={diver.emergency_contact_phone} />
-                  <Detail
-                    label="Relationship"
-                    value={diver.emergency_contact_relationship}
-                  />
-                </DetailList>
-              ) : (
-                emptyNote("Not filled in yet.")
-              )}
-            </Section>
-          </div>
-
-          {/* Last, and across the full width: a diver holds any number of cards, and
-              a list that can run to a second page has to be the thing the fold falls
-              in rather than something a fixed-height pair of columns above it pushes
-              there. */}
-          <Section
-            title="Certifications"
-            busy={isLoading}
-            className={cn(
-              !isLoading && certifications.length === 0 && offSheet,
-            )}
-          >
-            {isLoading ? (
-              // Same geometry as `CertificationSummary`, down to the two-column
-              // grid, the image slot and the list under it: a placeholder that sits
-              // where its row will not is a list that jumps and resizes the moment
-              // the fetch lands.
-              <div aria-hidden className={cn(TWO_COLUMNS, "gap-y-4")}>
-                {[0, 1].map((row) => (
-                  <div key={row} className="space-y-2">
-                    <div
-                      className={cn("flex items-center", NAME_BESIDE_PICTURE)}
-                    >
-                      <Skeleton
-                        className={cn(SLOT, "h-12 sm:h-16 print:h-16")}
-                      />
-                      <Skeleton className="h-5 w-48" />
-                    </div>
-                    <div className="space-y-1">
-                      <Skeleton className="h-4 w-56" />
-                      <Skeleton className="h-4 w-48" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : certifications.length === 0 ? (
-              // Silent rather than "No certifications yet." when the list never
-              // arrived: an empty array is what a rejected fetch leaves behind too,
-              // and telling a diver who holds six cards that they hold none is the
-              // page inventing a fact about the account out of a network failure.
-              // The banner above already says what happened and offers the retry.
-              !loadFailed && emptyNote("No certifications yet.")
-            ) : (
-              <div className={cn(TWO_COLUMNS, "gap-y-4")}>
-                {/* The list endpoint's own order, taken as it arrives rather
-                    than re-imposed here: `GET /certifications` sorts by
-                    `certified_on` descending with nulls last, tie-broken by
-                    uuid, so the card a diver is most often asked to show leads.
-                    Sorting again here could only disagree with
-                    `/certifications`. */}
-                {certifications.map((certification) => (
-                  <CertificationSummary
-                    key={certification.uuid}
-                    certification={certification}
-                    contactName={contactNames[certification.uuid]}
-                    instructorName={instructorNames[certification.uuid]}
-                    linkToken={link?.token}
-                    onEdit={
-                      !link && isOwnCard(certification)
-                        ? () => openCertification(certification)
-                        : undefined
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </Section>
-
-          {/* The mark rides the footnote at the footnote's own size, rather than
-              heading the sheet. The sentence it sits in front of says this page
-              verifies nothing, and a logo set above a stranger's card numbers says
-              the opposite - that something vouches for them. What it is here for is
-              provenance: this is the one page of the app that leaves it on paper,
-              and a desk handed it twice should recognise the format. No address
-              beside it, deliberately - a self-hosted instance would have to print
-              its own, and `siteUrl` is server-side. The name stays in the
-              sentence's own type rather than `font-wordmark`: here it is running
-              text, and a display face mid-line would head the sheet after all. */}
-          <p
-            className={cn("text-xs text-muted-foreground", INK, KEEP_TOGETHER)}
-          >
-            <Logo className="mr-1 inline h-3.5 w-3.5 align-[-0.2em]" />
-            <span className="font-medium">OpenDiving</span> &middot; Printed{" "}
-            {formatDateOnly(todayIsoDate())} from {diver.name}&rsquo;s own dive
-            log. These are entries this diver made; a certification is verified
-            with the agency that issued it, not here.
+      <div className={cn(HERO_BODY, "space-y-6 print:px-0 print:pb-0")}>
+        {!link && (
+          <p className="text-sm text-muted-foreground print:hidden">
+            Your browser&rsquo;s print dialog can save this as a PDF too &mdash;
+            worth keeping on your phone for a desk with no signal.
           </p>
-        </CardContent>
-      </Card>
+        )}
 
-      {/* One instance of each, hosted here rather than reached through
-          `useQuickCreate`: that provider's certification dialog navigates to
-          `/certifications` on save, and a diver correcting a card at a desk wants
-          the summary they were about to print, not another page. Correcting is all
-          this page offers - a card is added where cards are kept. None of them on
-          a link's page, which only shows. */}
-      {!link && (
-        <>
-          <UserFieldsDialog
-            open={editing === "about"}
-            onOpenChange={(open) => setEditing(open ? "about" : null)}
-            {...CHECK_IN_GROUP_HEADINGS.about}
-            groups={[{ fields: ["name", ...ABOUT_YOU_FIELDS] }]}
-            picture="portrait"
-          />
-          <UserFieldsDialog
-            open={editing === "insurance"}
-            onOpenChange={(open) => setEditing(open ? "insurance" : null)}
-            {...CHECK_IN_GROUP_HEADINGS.insurance}
-            groups={[{ fields: [...INSURANCE_FIELDS] }]}
-          />
-          <UserFieldsDialog
-            open={editing === "emergency"}
-            onOpenChange={(open) => setEditing(open ? "emergency" : null)}
-            {...CHECK_IN_GROUP_HEADINGS.emergency}
-            groups={[{ fields: [...EMERGENCY_CONTACT_FIELDS] }]}
-          />
-          <DivingFiguresDialog
-            open={editing === "diving"}
-            onOpenChange={(open) => setEditing(open ? "diving" : null)}
-            units={units}
-            logged={logged}
-            corrected={corrected}
-            onChange={setCorrected}
-          />
-          <CertificationDialog
-            open={editing === "certification"}
-            onOpenChange={(open) => setEditing(open ? "certification" : null)}
-            certification={editingCertification}
-            onSaved={onCertificationsChanged}
-          />
-        </>
-      )}
+        {sharing && !link && <CheckInLinkPanel sharing={sharing} />}
+
+        {/* On screen only: a sheet handed across a desk should not carry this app's
+            troubles, but the diver about to print one has to know it is short. */}
+        {loadFailed && (
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-destructive/40 px-4 py-3 print:hidden">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Some of this didn&rsquo;t load, so the summary below is
+                incomplete.
+              </p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          </div>
+        )}
+
+        <Card
+          className={`print:border-0 print:shadow-none print:bg-white ${INK}`}
+        >
+          {/* `print:p-0` for the same reason, and it is what lets the heading above the
+              card sit on the sheet's own left edge without an offset of its own. */}
+          <CardContent className="pt-6 space-y-6 print:p-0">
+            <div className={cn(TWO_COLUMNS, "gap-y-6")}>
+              {/* Headed by the diver's own name rather than by a label: the name is
+                  what the sheet is about, and "Personal information" written above
+                  somebody's name tells a desk nothing the name did not. */}
+              <section className={KEEP_TOGETHER}>
+                <div className={cn("flex items-start", NAME_BESIDE_PICTURE)}>
+                  {/* The portrait, never the avatar: a desk is looking at the diver's
+                      face, and the avatar is whatever the diver shows the app. With none
+                      stored, nothing prints - no initials, which identify nobody - and
+                      the screen offers the place to add one.
+
+                      The column stays either way, so the name meets the same edge as
+                      every certification's. A link's page has the column and no offer,
+                      the offer being the diver's own control. */}
+                  <div className={SLOT}>
+                    {link ? (
+                      diver.portrait_sha256 && (
+                        <PortraitFrame className="w-full">
+                          <LinkPicture
+                            src={sharedPortraitUrl(link.token)}
+                            alt={`Portrait of ${diver.name}`}
+                            className="h-full w-full object-cover"
+                          />
+                        </PortraitFrame>
+                      )
+                    ) : diver.portrait_sha256 ? (
+                      <PortraitImage
+                        name={diver.name}
+                        portraitSha={diver.portrait_sha256}
+                        maxEdge={PICTURE_EDGE}
+                        className="w-full"
+                      />
+                    ) : (
+                      <PortraitFrame empty className="w-full print:hidden">
+                        <IconTooltip label="Add a portrait">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-full w-full rounded-none"
+                            onClick={() => setEditing("about")}
+                          >
+                            <UserSquare className="h-6 w-6 text-muted-foreground" />
+                          </Button>
+                        </IconTooltip>
+                      </PortraitFrame>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className={cn("flex items-center gap-2", HEADING_ROW)}>
+                      <h2
+                        className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}
+                      >
+                        {diver.name}
+                      </h2>
+                      {editControl(
+                        "Edit your name, portrait, date of birth and phone number",
+                        () => setEditing("about"),
+                      )}
+                    </div>
+
+                    {/* Always on screen, so the diver sees what is missing beside the
+                        control that fills it, and dropped from the print when it
+                        holds nothing: a `<dl>` with every row absent is blank page on
+                        a sheet handed to somebody. */}
+                    <div className={cn(!hasAboutYou && offSheet)}>
+                      {hasAboutYou ? (
+                        <dl className="space-y-1">
+                          <IconDetail
+                            icon={Cake}
+                            label="Date of birth"
+                            value={
+                              diver.date_of_birth &&
+                              formatDateOnly(diver.date_of_birth)
+                            }
+                          />
+                          <IconDetail
+                            icon={Phone}
+                            label="Phone"
+                            value={diver.phone}
+                          />
+                        </dl>
+                      ) : (
+                        emptyNote("Not filled in yet.")
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <Section
+                title="Diving"
+                busy={isLoading}
+                // A diver who cleared every figure has said to leave the diving off the
+                // sheet, and the sheet obeys - heading and all. The section stays on
+                // screen regardless, because the control that emptied it is the only
+                // way back to "Use logged figures", and a section that removed itself
+                // would leave a correction in force with nothing on screen saying so.
+                className={cn(KEEP_TOGETHER, !hasFigures && offSheet)}
+                action={editControl("Correct these figures", () =>
+                  setEditing("diving"),
+                )}
+              >
+                {hasFigures && (
+                  <DetailList>
+                    <Detail
+                      label="Dives logged"
+                      value={
+                        diving.totalDives !== null
+                          ? String(diving.totalDives)
+                          : null
+                      }
+                      pending={isLoading && !stats}
+                    />
+                    <Detail
+                      label="Max depth"
+                      value={
+                        diving.maxDepth !== null
+                          ? formatDepth(diving.maxDepth, units)
+                          : null
+                      }
+                      pending={isLoading && !stats}
+                    />
+                    <Detail
+                      label="Last dive"
+                      value={
+                        diving.lastDiveOn && formatDateOnly(diving.lastDiveOn)
+                      }
+                      pending={isLoading && !lastDiveAt}
+                    />
+                  </DetailList>
+                )}
+                {/* Two states are empty here without being unfilled, and neither is
+                    visible from `hasFigures` alone: a rejected `/user/dive-stats` leaves
+                    `stats` null, and a diver who cleared all three boxes leaves a
+                    `corrected` whose every field is null. The second would otherwise
+                    read "Not filled in yet." directly above "Corrected for this
+                    summary", which is the page contradicting itself to the one diver who
+                    knows better. */}
+                {!hasFigures &&
+                  !loadFailed &&
+                  !corrected &&
+                  emptyNote("Not filled in yet.")}
+                {corrected && (
+                  <p className="text-xs text-muted-foreground print:hidden">
+                    Corrected for this summary. Nothing was saved to your log.
+                  </p>
+                )}
+              </Section>
+
+              {/* Insurance and the emergency contact make the second row rather than
+                  the first: a desk works down who the diver is and what they have
+                  actually dived, and reaches for the policy to quote and the person to
+                  call only if something goes wrong. */}
+              <Section
+                title="Dive Insurance"
+                className={cn(KEEP_TOGETHER, !hasInsurance && offSheet)}
+                action={editControl("Edit your dive insurance", () =>
+                  setEditing("insurance"),
+                )}
+              >
+                {hasInsurance ? (
+                  <DetailList>
+                    <Detail label="Provider" value={diver.insurance_provider} />
+                    <Detail
+                      label="Policy number"
+                      value={diver.insurance_policy_number}
+                    />
+                    <Detail
+                      label="Expires"
+                      value={
+                        diver.insurance_expires_on &&
+                        formatDateOnly(diver.insurance_expires_on)
+                      }
+                    />
+                  </DetailList>
+                ) : (
+                  emptyNote("Not filled in yet.")
+                )}
+              </Section>
+
+              <Section
+                title="Emergency Contact"
+                className={cn(KEEP_TOGETHER, !hasEmergencyContact && offSheet)}
+                action={editControl("Edit your emergency contact", () =>
+                  setEditing("emergency"),
+                )}
+              >
+                {hasEmergencyContact ? (
+                  <DetailList>
+                    <Detail label="Name" value={diver.emergency_contact_name} />
+                    <Detail
+                      label="Phone"
+                      value={diver.emergency_contact_phone}
+                    />
+                    <Detail
+                      label="Relationship"
+                      value={diver.emergency_contact_relationship}
+                    />
+                  </DetailList>
+                ) : (
+                  emptyNote("Not filled in yet.")
+                )}
+              </Section>
+            </div>
+
+            {/* Last, and across the full width: a diver holds any number of cards, and
+                a list that can run to a second page has to be the thing the fold falls
+                in rather than something a fixed-height pair of columns above it pushes
+                there. */}
+            <Section
+              title="Certifications"
+              busy={isLoading}
+              className={cn(
+                !isLoading && certifications.length === 0 && offSheet,
+              )}
+            >
+              {isLoading ? (
+                // Same geometry as `CertificationSummary`, down to the two-column
+                // grid, the image slot and the list under it: a placeholder that sits
+                // where its row will not is a list that jumps and resizes the moment
+                // the fetch lands.
+                <div aria-hidden className={cn(TWO_COLUMNS, "gap-y-4")}>
+                  {[0, 1].map((row) => (
+                    <div key={row} className="space-y-2">
+                      <div
+                        className={cn("flex items-center", NAME_BESIDE_PICTURE)}
+                      >
+                        <Skeleton
+                          className={cn(SLOT, "h-12 sm:h-16 print:h-16")}
+                        />
+                        <Skeleton className="h-5 w-48" />
+                      </div>
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-56" />
+                        <Skeleton className="h-4 w-48" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : certifications.length === 0 ? (
+                // Silent rather than "No certifications yet." when the list never
+                // arrived: an empty array is what a rejected fetch leaves behind too,
+                // and telling a diver who holds six cards that they hold none is the
+                // page inventing a fact about the account out of a network failure.
+                // The banner above already says what happened and offers the retry.
+                !loadFailed && emptyNote("No certifications yet.")
+              ) : (
+                <div className={cn(TWO_COLUMNS, "gap-y-4")}>
+                  {/* The list endpoint's own order, taken as it arrives rather
+                      than re-imposed here: `GET /certifications` sorts by
+                      `certified_on` descending with nulls last, tie-broken by
+                      uuid, so the card a diver is most often asked to show leads.
+                      Sorting again here could only disagree with
+                      `/certifications`. */}
+                  {certifications.map((certification) => (
+                    <CertificationSummary
+                      key={certification.uuid}
+                      certification={certification}
+                      contactName={contactNames[certification.uuid]}
+                      instructorName={instructorNames[certification.uuid]}
+                      linkToken={link?.token}
+                      onEdit={
+                        !link && isOwnCard(certification)
+                          ? () => openCertification(certification)
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </Section>
+
+            {/* The mark rides the footnote at the footnote's own size, rather than
+                heading the sheet. The sentence it sits in front of says this page
+                verifies nothing, and a logo set above a stranger's card numbers says
+                the opposite - that something vouches for them. What it is here for is
+                provenance: this is the one page of the app that leaves it on paper,
+                and a desk handed it twice should recognise the format. No address
+                beside it, deliberately - a self-hosted instance would have to print
+                its own, and `siteUrl` is server-side. The name stays in the
+                sentence's own type rather than `font-wordmark`: here it is running
+                text, and a display face mid-line would head the sheet after all. */}
+            <p
+              className={cn(
+                "text-xs text-muted-foreground",
+                INK,
+                KEEP_TOGETHER,
+              )}
+            >
+              <Logo className="mr-1 inline h-3.5 w-3.5 align-[-0.2em]" />
+              <span className="font-medium">OpenDiving</span> &middot; Printed{" "}
+              {formatDateOnly(todayIsoDate())} from {diver.name}&rsquo;s own
+              dive log. These are entries this diver made; a certification is
+              verified with the agency that issued it, not here.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* One instance of each, hosted here rather than reached through
+            `useQuickCreate`: that provider's certification dialog navigates to
+            `/certifications` on save, and a diver correcting a card at a desk wants
+            the summary they were about to print, not another page. Correcting is all
+            this page offers - a card is added where cards are kept. None of them on
+            a link's page, which only shows. */}
+        {!link && (
+          <>
+            <UserFieldsDialog
+              open={editing === "about"}
+              onOpenChange={(open) => setEditing(open ? "about" : null)}
+              {...CHECK_IN_GROUP_HEADINGS.about}
+              groups={[{ fields: ["name", ...ABOUT_YOU_FIELDS] }]}
+              picture="portrait"
+            />
+            <UserFieldsDialog
+              open={editing === "insurance"}
+              onOpenChange={(open) => setEditing(open ? "insurance" : null)}
+              {...CHECK_IN_GROUP_HEADINGS.insurance}
+              groups={[{ fields: [...INSURANCE_FIELDS] }]}
+            />
+            <UserFieldsDialog
+              open={editing === "emergency"}
+              onOpenChange={(open) => setEditing(open ? "emergency" : null)}
+              {...CHECK_IN_GROUP_HEADINGS.emergency}
+              groups={[{ fields: [...EMERGENCY_CONTACT_FIELDS] }]}
+            />
+            <DivingFiguresDialog
+              open={editing === "diving"}
+              onOpenChange={(open) => setEditing(open ? "diving" : null)}
+              units={units}
+              logged={logged}
+              corrected={corrected}
+              onChange={setCorrected}
+            />
+            <CertificationDialog
+              open={editing === "certification"}
+              onOpenChange={(open) => setEditing(open ? "certification" : null)}
+              certification={editingCertification}
+              onSaved={onCertificationsChanged}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { Plus, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { IndexPageHeader } from "@/components/ui/page-header";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import {
@@ -73,92 +73,93 @@ export function PeoplePageFrame({
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <IndexPageHeader
-        className="mb-6"
+    <div>
+      <IndexHero
         title="People"
-        description="Your buddies, guides, instructors and the people who came along, kept once"
-        action={
-          <Button onClick={onNew}>
+        subtitle="Your buddies, guides, instructors and the people who came along, kept once"
+        actions={
+          <Button variant="ghost" size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
             New person
           </Button>
         }
       />
 
-      <Card>
-        <ListCardHeader title="People List" isEmpty={isEmptyList}>
-          <CountBadge
-            count={totalCount}
-            isLoading={isLoading}
-            label="person"
-            plural="people"
-            total
-            isNarrowed={isCountNarrowed}
-          />
-          <ListSearch
-            id="person-search"
-            label="Search people by name or username"
-            toggleLabel="Search people"
-            placeholder="Search by name or username..."
-            value={search}
-            onChange={onSearchChange}
-          />
-        </ListCardHeader>
-        <CardContent>
-          {!isLoading && rows.length === 0 ? (
-            // A searched list with nothing in it keeps to one line and offers
-            // nothing, as the other lists' do.
-            isSearching ? (
-              <div className="text-center py-12 text-muted-foreground">
-                No people match that name or username.
-              </div>
+      <div className={HERO_BODY}>
+        <Card>
+          <ListCardHeader title="People List" isEmpty={isEmptyList}>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="person"
+              plural="people"
+              total
+              isNarrowed={isCountNarrowed}
+            />
+            <ListSearch
+              id="person-search"
+              label="Search people by name or username"
+              toggleLabel="Search people"
+              placeholder="Search by name or username..."
+              value={search}
+              onChange={onSearchChange}
+            />
+          </ListCardHeader>
+          <CardContent>
+            {!isLoading && rows.length === 0 ? (
+              // A searched list with nothing in it keeps to one line and offers
+              // nothing, as the other lists' do.
+              isSearching ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No people match that name or username.
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Users}
+                  title="No people yet"
+                  description="Add the people you dive with once, and pick them from your dives, trips and courses."
+                  action={
+                    <Button onClick={onNew}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add your first person
+                    </Button>
+                  }
+                />
+              )
             ) : (
-              <EmptyState
-                icon={Users}
-                title="No people yet"
-                description="Add the people you dive with once, and pick them from your dives, trips and courses."
-                action={
-                  <Button onClick={onNew}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add your first person
-                  </Button>
-                }
-              />
-            )
-          ) : (
-            <Table aria-busy={rows.length === 0 || undefined}>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Dives</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRowsSkeleton columns={COLUMNS} rows={itemsPerPage} />
-                )}
-                {rows}
-              </TableBody>
-            </Table>
-          )}
+              <Table aria-busy={rows.length === 0 || undefined}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Dives</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.length === 0 && (
+                    <TableRowsSkeleton columns={COLUMNS} rows={itemsPerPage} />
+                  )}
+                  {rows}
+                </TableBody>
+              </Table>
+            )}
 
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={rows.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="people"
-            onLoadMore={onLoadMore}
-          />
-        </CardContent>
-      </Card>
+            <LoadMoreTrigger
+              hasMore={hasMore}
+              isLoading={isLoadingMore}
+              hasFailed={loadFailed}
+              loadedCount={rows.length}
+              totalCount={totalCount}
+              itemsPerPage={itemsPerPage}
+              itemLabel="people"
+              onLoadMore={onLoadMore}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
