@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 
 interface SetupChecklistCardProps {
-  // The diver's dive count, straight from the dashboard's `/user/dive-stats` call
+  // The diver's dive count, straight from Home's `/user/dive-stats` call
   // rather than re-fetched here. `null` while that request is still in flight, which
   // holds the card back - a checklist that renders "0 dives logged" for a moment and
   // then vanishes is worse than one that appears a beat late.
@@ -60,7 +60,7 @@ export function SetupChecklistCard({ totalDives }: SetupChecklistCardProps) {
         setCertificationCount(certifications.total_count);
       })
       // A supplementary card, and a failed fetch leaves it unrendered rather than
-      // turning the dashboard into an error page.
+      // turning the Home page into an error page.
       .catch((error) =>
         console.error("Failed to load setup checklist counts:", error),
       );

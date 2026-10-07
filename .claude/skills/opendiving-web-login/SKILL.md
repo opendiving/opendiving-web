@@ -79,7 +79,7 @@ Open the link and click through it, e.g. with the Browser pane:
    scope defines; this repository ships none, so what that would start depends on your own setup
    rather than on anything here — and _Before starting_ has already settled the dev server.
 2. `read_page` → click the button labelled **Sign in**
-3. Confirm success: the header shows an **Account menu** button and you land on `/dashboard`
+3. Confirm success: the header shows an **Account menu** button and you land on `/home`
 
 The page deliberately does not auto-verify on load — mail-client link scanners were consuming tokens
 before a human ever clicked. An explicit click is the design, not an obstacle to route around; see

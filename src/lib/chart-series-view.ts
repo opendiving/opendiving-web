@@ -4,7 +4,7 @@
 // one remembers *where* on the timeline you were looking, this one remembers
 // *what* you had plotted. Same storage for the same reasons - `localStorage`,
 // because a remembered view has to survive the tab closing; not the URL, because
-// it has to work from the bare `/dashboard` and `/dives/{uuid}` that the nav
+// it has to work from the bare `/home` and `/dives/{uuid}` that the nav
 // links point at and people bookmark.
 //
 // Generic over the series keys because two charts want it and their keys have

@@ -5,7 +5,7 @@ import { installDeviceMemorySuppression } from "@/lib/device-memory";
 // Arms the device-memory switch's write suppression, and exists only to do so.
 //
 // **The install is a module-evaluation side effect, not an effect and not a
-// render.** Two dashboard cards write their view keys from a mount effect with
+// render.** Two Home cards write their view keys from a mount effect with
 // no interaction at all - `dives/gas-use-card.tsx` and
 // `dives/dive-activity-card.tsx`, as soon as their series arrives - and React
 // runs child effects before parent effects, so an install from a provider's own
@@ -17,7 +17,7 @@ import { installDeviceMemorySuppression } from "@/lib/device-memory";
 // without `"use client"` compiles into the server graph alone, and even one
 // that has it can have a bare side-effect-only import dropped from the route's
 // client entry. `/privacy` and `/settings` would pull this in anyway through
-// the switch itself, so that failure would have shown up on `/dashboard` alone
+// the switch itself, so that failure would have shown up on `/home` alone
 // - exactly where the two mount-effect writers are.
 //
 // A side-effect import bolted onto `theme-provider.tsx` was the smaller diff

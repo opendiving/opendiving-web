@@ -28,7 +28,7 @@ export const NO_CHROME_ROUTES = [
   "/settings/confirm-email",
   // The screen after an account deletion. The header's user menu belongs to a
   // session that has just been blacklisted, and offering a signed-out visitor
-  // "Dashboard" and "Log a dive" on the way out is an invitation to a 401.
+  // "Home" and "Log a dive" on the way out is an invitation to a 401.
   "/goodbye",
 ];
 

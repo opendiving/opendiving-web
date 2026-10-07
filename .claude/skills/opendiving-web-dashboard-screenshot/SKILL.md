@@ -95,10 +95,9 @@ Commit it there too, on its own, with the same subject.
   not sign anything out: the token blacklist is a Postgres table the Arq worker purges, not a Redis
   key.
 
-- **`signed out on the way to /dashboard`** — the guard in `visit()` firing, after a link was
-  issued. Treat it as a real auth regression, not a flake: it is the failure mode of any token
-  handling bug, and the check exists so a run fails here instead of quietly shooting the sign-in
-  form.
+- **`signed out on the way to /home`** — the guard in `visit()` firing, after a link was issued.
+  Treat it as a real auth regression, not a flake: it is the failure mode of any token handling bug,
+  and the check exists so a run fails here instead of quietly shooting the sign-in form.
 - **`no magic-link token in the API log`** — API isn't up, or its logs are elsewhere; the script
   looks in `../opendiving-api`, overridable with `API_DIR`.
 - **`Gas Consumption has no year "2025" with dives`** — the account has nothing logged that year.

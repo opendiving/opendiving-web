@@ -136,7 +136,7 @@ describe("ProfileCompletionForm", () => {
       "samreef",
       expect.any(Function),
     );
-    expect(router.push).toHaveBeenCalledWith("/dashboard");
+    expect(router.push).toHaveBeenCalledWith("/home");
   });
 });
 
@@ -150,7 +150,7 @@ describe("ProfileCompletionForm's profile picture", () => {
 
     await submit(pickPicture);
 
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/dashboard"));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/home"));
     expect(order).toEqual(["created", "put", "signed in"]);
     expect(authAPI.uploadPicture).toHaveBeenCalledWith(
       "avatar",
@@ -166,7 +166,7 @@ describe("ProfileCompletionForm's profile picture", () => {
 
     await submit();
 
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/dashboard"));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/home"));
     expect(authAPI.uploadPicture).not.toHaveBeenCalled();
   });
 
@@ -177,7 +177,7 @@ describe("ProfileCompletionForm's profile picture", () => {
 
     await submit(pickPicture);
 
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/dashboard"));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/home"));
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Your account is ready, but your profile picture did not save",

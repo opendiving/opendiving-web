@@ -6,7 +6,7 @@
 // written by different cards, and merging them would mean each card's write
 // having to preserve the others' keys. Same storage and the same reasons -
 // `localStorage`, because it has to survive the tab closing; not the URL,
-// because it has to work from the bare `/dashboard` the nav link points at and
+// because it has to work from the bare `/home` the nav link points at and
 // people bookmark, which a query string appearing only after you touch a control
 // can't do.
 //

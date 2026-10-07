@@ -21,7 +21,7 @@ import { useKeepInside } from "@/hooks/useKeepInside";
 // grey in dark, does not.
 
 // The viewBox coordinate space, matched to the gas chart's so the two cards'
-// plots line up down the dashboard rather than being a few units out - and, like
+// plots line up down the Home page rather than being a few units out - and, like
 // it, the design width, narrowed on a phone by `useChartWidth`.
 const WIDTH = 720;
 const HEIGHT = 240;

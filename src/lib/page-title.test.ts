@@ -4,7 +4,7 @@ import { PAGE_TITLE_TEMPLATE, pageTitle } from "./page-title";
 
 describe("pageTitle", () => {
   it("names a page, then the product", () => {
-    expect(pageTitle("Dashboard")).toBe("Dashboard – OpenDiving");
+    expect(pageTitle("Home")).toBe("Home – OpenDiving");
   });
 
   it("puts a section between a page inside it and the product", () => {

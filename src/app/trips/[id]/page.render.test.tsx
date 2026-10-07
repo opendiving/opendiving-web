@@ -256,13 +256,14 @@ describe("TripDetailPage", () => {
   });
 
   it("goes back to the page it was opened from", async () => {
-    stable.searchParams = new URLSearchParams("from=/dashboard");
+    stable.searchParams = new URLSearchParams("from=/home");
     render(<TripDetailPage />);
 
     await screen.findByRole("heading", { level: 1, name: "Egypt, spring" });
-    expect(
-      screen.getByRole("link", { name: "Back to dashboard" }),
-    ).toHaveAttribute("href", "/dashboard");
+    expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute(
+      "href",
+      "/home",
+    );
   });
 
   // The dates are on the hero's line, and when it was created is not the trip's.

@@ -12,7 +12,7 @@ describe("labelForPath", () => {
   it("names the section's list page", () => {
     expect(labelForPath("/dives")).toBe("Back to dives");
     expect(labelForPath("/sites")).toBe("Back to dive sites");
-    expect(labelForPath("/dashboard")).toBe("Back to dashboard");
+    expect(labelForPath("/home")).toBe("Back to home");
     expect(labelForPath("/courses")).toBe("Back to courses");
     expect(labelForPath("/people")).toBe("Back to people");
     expect(labelForPath("/data")).toBe("Back to export");
@@ -122,23 +122,21 @@ describe("withReturnTo", () => {
     );
 
   it("names the page the link is followed from", () => {
-    expect(withReturnTo("/trips/abc", "/dashboard")).toBe(
-      "/trips/abc?from=%2Fdashboard",
-    );
+    expect(withReturnTo("/trips/abc", "/home")).toBe("/trips/abc?from=%2Fhome");
     expect(backFrom(withReturnTo("/dives/d", "/trips/abc"))).toEqual({
       href: "/trips/abc",
       label: "Back to trip",
     });
   });
 
-  // Dashboard to trip to dive, and back twice.
+  // Home to trip to dive, and back twice.
   it("keeps that page's own way back", () => {
-    const trip = withReturnTo("/trips/abc", "/dashboard");
+    const trip = withReturnTo("/trips/abc", "/home");
     const back = backFrom(withReturnTo("/dives/d", trip));
     expect(back).toEqual({ href: trip, label: "Back to trip" });
     expect(backFrom(back.href)).toEqual({
-      href: "/dashboard",
-      label: "Back to dashboard",
+      href: "/home",
+      label: "Back to home",
     });
   });
 
@@ -161,8 +159,8 @@ describe("withReturnTo", () => {
   });
 
   it("leaves a link to the page it is on as that page stands", () => {
-    expect(withReturnTo("/courses/c", "/courses/c?from=/dashboard")).toBe(
-      "/courses/c?from=/dashboard",
+    expect(withReturnTo("/courses/c", "/courses/c?from=/home")).toBe(
+      "/courses/c?from=/home",
     );
     expect(withReturnTo("/courses/c", "/courses/c")).toBe("/courses/c");
   });

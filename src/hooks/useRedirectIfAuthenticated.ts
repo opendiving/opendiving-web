@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
  * nothing) until the auth check settles and/or the redirect happens, instead
  * of briefly flashing the public page's content to a logged-in user.
  */
-export function useRedirectIfAuthenticated(redirectTo: string = "/dashboard") {
+export function useRedirectIfAuthenticated(redirectTo: string = "/home") {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 

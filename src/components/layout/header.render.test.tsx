@@ -22,7 +22,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => "/home",
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -102,17 +102,17 @@ describe("the account menu's Admin entry", () => {
     );
   });
 
-  it("puts it directly beneath Settings", async () => {
-    // The entry is the only way into the section, and the account menu is where
-    // an operator goes looking - one row below the other account destination.
+  it("puts it first, ruled off from the rest", async () => {
     stable.auth.user = diver({ is_superuser: true });
 
     const menu = await openAccountMenu();
 
-    const labels = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(
-      (item) => item.textContent,
-    );
-    expect(labels.indexOf("Admin")).toBe(labels.indexOf("Settings") + 1);
+    expect(menuRows(menu).slice(0, 4)).toEqual([
+      "---",
+      "Admin",
+      "---",
+      "Import",
+    ]);
   });
 
   it("does not offer it to an ordinary diver", async () => {
@@ -161,7 +161,7 @@ const menuRows = (menu: HTMLElement) =>
   );
 
 describe("Import and Export", () => {
-  it("puts Import last in the create menu and Export directly above Settings", async () => {
+  it("puts Import last in the create menu, and Import then Export above Settings", async () => {
     render(<Header />);
     await userEvent.click(screen.getByRole("button", { name: "Create new" }));
     const createMenu = await screen.findByRole("menu");
@@ -177,13 +177,11 @@ describe("Import and Export", () => {
     const accountMenu = await screen.findByRole("menu");
 
     expect(
+      within(accountMenu).getByRole("menuitem", { name: "Import" }),
+    ).toHaveAttribute("href", expect.stringMatching(/^\/import/));
+    expect(
       within(accountMenu).getByRole("menuitem", { name: "Export" }),
     ).toHaveAttribute("href", "/data");
-    const accountRows = menuRows(accountMenu);
-    expect(accountRows.indexOf("Settings")).toBe(
-      accountRows.indexOf("Export") + 1,
-    );
-    expect(accountRows).not.toContain("Import");
   });
 });
 
@@ -194,11 +192,12 @@ describe("the account menu's grouping", () => {
     const rows = menuRows(menu);
     expect(rows.slice(0, rows.indexOf("Settings") + 1)).toEqual([
       "---",
+      "Import",
       "Export",
       "Settings",
     ]);
     for (const page of [
-      "Dashboard",
+      "Home",
       "Trips",
       "Dives",
       "Dive Sites",
@@ -206,8 +205,8 @@ describe("the account menu's grouping", () => {
       "Gear",
       "Certifications",
       "Courses",
-      "Contacts",
       "People",
+      "Contacts",
       "Check-in",
     ]) {
       expect(rows).not.toContain(page);
@@ -222,6 +221,7 @@ describe("the bar", () => {
     const nav = screen.getByRole("navigation");
     const links = within(nav).getAllByRole("link");
     expect(links.map((link) => link.textContent)).toEqual([
+      "Home",
       "Trips",
       "Dives",
       "Dive Sites",
@@ -230,9 +230,9 @@ describe("the bar", () => {
       "Certifications",
     ]);
     // Gear and Certifications join the bar from `lg` only.
-    for (const link of links.slice(0, 4))
+    for (const link of links.slice(0, 5))
       expect(link).not.toHaveClass("hidden");
-    for (const link of links.slice(4)) expect(link).toHaveClass("hidden");
+    for (const link of links.slice(5)) expect(link).toHaveClass("hidden");
     expect(
       within(nav).getByRole("button", { name: "More" }),
     ).toBeInTheDocument();
@@ -241,31 +241,29 @@ describe("the bar", () => {
   it("marks the current page", () => {
     render(<Header />);
 
-    // The mocked path is /dashboard, which is not in the bar but in More.
+    // The mocked path is /home, which the bar holds, so More stays plain.
     const nav = screen.getByRole("navigation");
-    for (const link of within(nav).getAllByRole("link")) {
-      expect(link).not.toHaveAttribute("aria-current");
-    }
+    const home = within(nav).getByRole("link", { name: "Home" });
+    expect(home).toHaveAttribute("aria-current", "page");
+    expect(home).toHaveClass("text-coral");
     expect(within(nav).getByRole("button", { name: "More" })).toHaveClass(
-      "text-coral",
+      "text-foreground",
     );
   });
 });
 
 describe("the More menu", () => {
-  it("lists Dashboard first, ruled off, then the other record pages", async () => {
+  it("lists the record pages the bar leaves out, unruled", async () => {
     render(<Header />);
     await userEvent.click(screen.getByRole("button", { name: "More" }));
     const menu = await screen.findByRole("menu");
 
     expect(menuRows(menu)).toEqual([
-      "Dashboard",
-      "---",
       "Gear",
       "Certifications",
       "Courses",
-      "Contacts",
       "People",
+      "Contacts",
       "Check-in",
     ]);
     // Gear and Certifications are in the bar from `lg`, so More drops them there.
@@ -279,12 +277,12 @@ describe("the More menu", () => {
 });
 
 describe("the brand link", () => {
-  it("goes to the dashboard when signed in", () => {
+  it("goes to the Home page when signed in", () => {
     render(<Header />);
 
     expect(screen.getByRole("link", { name: "OpenDiving" })).toHaveAttribute(
       "href",
-      "/dashboard",
+      "/home",
     );
   });
 
@@ -312,20 +310,21 @@ describe("the mobile menu", () => {
         .getAllByRole("link")
         .map((link) => link.textContent),
     ).toEqual([
+      "Home",
       "Trips",
       "Dives",
       "Dive Sites",
       "Marine Life",
-      "Dashboard",
       "Gear",
       "Certifications",
       "Courses",
-      "Contacts",
       "People",
+      "Contacts",
       "Check-in",
     ]);
-    expect(
-      within(menu).getByRole("link", { name: "Dashboard" }),
-    ).toHaveAttribute("aria-current", "page");
+    expect(within(menu).getByRole("link", { name: "Home" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

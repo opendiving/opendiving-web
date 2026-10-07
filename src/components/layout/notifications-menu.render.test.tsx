@@ -23,7 +23,7 @@ import { isoDaysFromNow } from "@/test/local-day";
 // Returned by identity rather than rebuilt per call - the real `AuthContext` holds this
 // in state. See "A shared mock response object hides a render loop" in DECISIONS.md.
 const stable = vi.hoisted(() => ({
-  pathname: "/dashboard",
+  pathname: "/home",
   auth: {
     user: {
       uuid: "user-1",
@@ -130,7 +130,7 @@ const openPanel = async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  stable.pathname = "/dashboard";
+  stable.pathname = "/home";
   Object.assign(stable.auth.user, {
     insurance_provider: null,
     insurance_expires_on: null,
@@ -273,7 +273,7 @@ describe("the service-due rows", () => {
     // And back from the item's page to the page the bell was opened on.
     expect(within(panel).getByRole("link", { name: /R195/ })).toHaveAttribute(
       "href",
-      "/gear/item-2?from=%2Fdashboard",
+      "/gear/item-2?from=%2Fhome",
     );
   });
 

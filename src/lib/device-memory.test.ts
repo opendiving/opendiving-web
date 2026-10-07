@@ -232,7 +232,7 @@ describe("the covered writers under the switch", () => {
     expect(readStoredSeries(GAS_USE_SERIES_KEY)).toBeNull();
   });
 
-  it("stores neither dashboard card's remembered view", () => {
+  it("stores neither Home card's remembered view", () => {
     writeGasUseView({ scope: "year", anchor: null });
     writeDiveActivityView({ scope: "year", anchor: null });
 

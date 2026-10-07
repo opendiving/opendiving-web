@@ -1,7 +1,7 @@
 // A trip is a sequence of parts, and the two things every surface wants from
 // that sequence are the span it covers and the places it went. Both are derived
 // here rather than at each call site, because a list cell, a page subtitle and a
-// dashboard card disagreeing about where a trip was is invisible until someone
+// Home card disagreeing about where a trip was is invisible until someone
 // holds two of them side by side.
 
 import type { Location } from "@/lib/api/location";

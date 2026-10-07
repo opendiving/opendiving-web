@@ -1,4 +1,4 @@
-// Whether the dashboard has already offered this browser a passkey and been told
+// Whether the Home page has already offered this browser a passkey and been told
 // "not now".
 //
 // Per-browser, in `localStorage`, and deliberately not an account flag. A new
@@ -39,12 +39,12 @@ export function dismissPasskeyNudge(): void {
     window.localStorage.setItem(PASSKEY_NUDGE_DISMISSED_KEY, "1");
   } catch {
     // Nothing to do about it and nothing to say: the card closes either way,
-    // and the worst case is that it comes back on the next dashboard visit.
+    // and the worst case is that it comes back on the next Home visit.
   }
 }
 
 /**
- * Forgets the dismissal, so the dashboard offers a passkey again.
+ * Forgets the dismissal, so the Home page offers a passkey again.
  *
  * Removes the entry rather than storing a "show me" value: absence is already
  * what an undismissed browser looks like, and a second stored state would be a

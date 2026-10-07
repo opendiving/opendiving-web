@@ -5,7 +5,7 @@ import { PasskeyNudgeCard } from "./passkey-nudge-card";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // The card is three conditions and two buttons, and the conditions are the point:
-// it must not ask the API anything on the dashboards where it could never show,
+// it must not ask the API anything on the Home visits where it could never show,
 // and it must not come back once it has been answered.
 //
 // `vi.hoisted` because `vi.mock` is lifted above every other statement in the
@@ -65,7 +65,7 @@ describe("PasskeyNudgeCard", () => {
   });
 
   // The steady state after a dismissal is *no request at all* - this card is on
-  // every dashboard view, and a diver who said "not now" should not be paying
+  // every Home view, and a diver who said "not now" should not be paying
   // for it on each one.
   it("asks the API nothing where it could never show", async () => {
     mocks.browserSupportsWebAuthn.mockReturnValue(false);
@@ -80,7 +80,7 @@ describe("PasskeyNudgeCard", () => {
     await waitFor(() => expect(mocks.getPasskeys).not.toHaveBeenCalled());
   });
 
-  it("remembers a dismissal for the next dashboard visit", async () => {
+  it("remembers a dismissal for the next Home visit", async () => {
     const user = userEvent.setup();
     render(<PasskeyNudgeCard />);
     await offer();

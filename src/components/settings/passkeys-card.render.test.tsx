@@ -62,7 +62,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   // `window.localStorage` is installed per test rather than used as jsdom
   // provides it - see `test/memory-storage.ts` for why. The card reads the
-  // dashboard nudge's dismissal out of it.
+  // Home nudge's dismissal out of it.
   useStorage(memoryStorage());
   mocks.browserSupportsWebAuthn.mockReturnValue(true);
   mocks.getPasskeys.mockResolvedValue([IPHONE, SECURITY_KEY]);
@@ -230,14 +230,14 @@ describe("PasskeysCard", () => {
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 
-  // The un-dismiss the dashboard offer went without. Until this existed,
+  // The un-dismiss the Home page offer went without. Until this existed,
   // `opendiving:passkey-nudge-dismissed` was the one stored preference a diver
   // could not even change, which is what §10.3 of the privacy page said about
   // it in as many words.
-  describe("the dashboard offer", () => {
-    // The only account the dashboard card would ever offer one to: it asks for
+  describe("the Home page offer", () => {
+    // The only account the Home page card would ever offer one to: it asks for
     // the passkey list and shows itself only when that comes back empty
-    // (`dashboard/passkey-nudge-card.tsx`), so this is the one case where
+    // (`home/passkey-nudge-card.tsx`), so this is the one case where
     // undoing the dismissal genuinely brings the offer back.
     it("comes back for an account with no passkeys yet", async () => {
       const user = userEvent.setup();
@@ -247,7 +247,7 @@ describe("PasskeysCard", () => {
       await screen.findByText(/no passkeys yet/i);
 
       expect(
-        screen.getByText(/the dashboard will offer it again/i),
+        screen.getByText(/the Home page will offer it again/i),
       ).toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: /undo/i }));
 
@@ -255,7 +255,7 @@ describe("PasskeysCard", () => {
         window.localStorage.getItem("opendiving:passkey-nudge-dismissed"),
       ).toBeNull();
       expect(screen.queryByRole("button", { name: /undo/i })).toBeNull();
-      expect(screen.getByText(/back on your dashboard/i)).toBeInTheDocument();
+      expect(screen.getByText(/back on your Home page/i)).toBeInTheDocument();
     });
 
     // And the case that is most of the people who reach this card, where the
@@ -281,7 +281,7 @@ describe("PasskeysCard", () => {
       expect(
         screen.getByText(/no longer holding that dismissal/i),
       ).toBeInTheDocument();
-      expect(screen.queryByText(/back on your dashboard/i)).toBeNull();
+      expect(screen.queryByText(/back on your Home page/i)).toBeNull();
     });
 
     // The dismissal lives in this browser and removing it needs no API, so a
@@ -305,7 +305,7 @@ describe("PasskeysCard", () => {
       expect(
         window.localStorage.getItem("opendiving:passkey-nudge-dismissed"),
       ).toBeNull();
-      expect(screen.queryByText(/back on your dashboard/i)).toBeNull();
+      expect(screen.queryByText(/back on your Home page/i)).toBeNull();
     });
 
     // Nothing stored is nothing to undo - including the case that matters to

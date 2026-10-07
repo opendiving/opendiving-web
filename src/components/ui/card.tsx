@@ -64,7 +64,7 @@ const CARD_TITLE_ROW =
 const CARD_TITLE_ACTION = "-mt-1.5";
 
 // The smaller title of a card that flags something above a page's main content, such
-// as the dashboard's notices, led by an `h-4 w-4` icon. A trailing count takes `ml-auto`.
+// as Home's notices, led by an `h-4 w-4` icon. A trailing count takes `ml-auto`.
 const CARD_TITLE_SMALL = "flex items-center gap-2 text-base";
 
 const CardDescription = React.forwardRef<

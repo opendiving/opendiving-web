@@ -41,7 +41,7 @@ const POINTS: DiveActivityPoint[] = [
 
 const ANCHOR = Date.UTC(2025, 7, 10);
 
-// The chart's width on the dashboard at a 375 px and a 320 px viewport, and at
+// The chart's width on the Home page at a 375 px and a 320 px viewport, and at
 // 1024 px.
 const WIDTHS = { phone: 293, smallPhone: 238, desktop: 910 };
 const SCOPES: ChartScope[] = ["all", "year", "month"];

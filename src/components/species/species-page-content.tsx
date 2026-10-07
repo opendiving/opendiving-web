@@ -67,7 +67,7 @@ function LifeListCard({ entry }: { entry: SpeciesLifeListEntry }) {
 /**
  * The life list: every species this diver has ever logged.
  *
- * Reached from the main nav and from the dashboard's Species Seen tile.
+ * Reached from the main nav and from Home's Species Seen tile.
  *
  * The empty state is announced rather than hidden: every other list in the app
  * says when it is empty, and a menu entry that appears unbidden after a first

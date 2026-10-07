@@ -36,7 +36,7 @@ import {
   CloudDownload,
   Shield,
   ChevronDown,
-  LayoutDashboard,
+  House,
 } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { useEffect, useRef, useState } from "react";
@@ -46,11 +46,12 @@ import {
 } from "@/components/layout/quick-create";
 import { NotificationsMenu } from "@/components/layout/notifications-menu";
 
-// Everything the "+" menu can start. It's the one way to create or bring dives
-// in from the chrome at every width - the mobile menu deliberately doesn't repeat
-// these, so the hamburger is navigation and "+" is creation. A dive is the only
-// form big enough to warrant its own page; the rest open a dialog over whatever
-// the diver is looking at. Import follows them, ruled off, as the last entry.
+// Everything the "+" menu can start. It's the one way to create from the chrome
+// at every width - the mobile menu deliberately doesn't repeat these, so the
+// hamburger is navigation and "+" is creation. A dive is the only form big
+// enough to warrant its own page; the rest open a dialog over whatever the diver
+// is looking at. Import follows them, ruled off, as the last entry; the account
+// menu carries it too, beside Export.
 // `icon` is typed by what this menu actually renders - a component taking a
 // `className` - rather than as `LucideIcon`: "New dive" carries the brand mark,
 // which is a plain function component and not one of lucide's forward-ref
@@ -84,16 +85,11 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
+  { label: "Home", href: "/home", icon: House, tier: "primary" },
   { label: "Trips", href: "/trips", icon: Luggage, tier: "primary" },
   { label: "Dives", href: "/dives", icon: DiveIcon, tier: "primary" },
   { label: "Dive Sites", href: "/sites", icon: DiveSiteIcon, tier: "primary" },
   { label: "Marine Life", href: "/species", icon: Fish, tier: "primary" },
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    tier: "more",
-  },
   { label: "Gear", href: "/gear", icon: Backpack, tier: "lg" },
   {
     label: "Certifications",
@@ -102,8 +98,8 @@ const NAV_ITEMS: NavItem[] = [
     tier: "lg",
   },
   { label: "Courses", href: "/courses", icon: GraduationCap, tier: "more" },
-  { label: "Contacts", href: "/contacts", icon: BookUser, tier: "more" },
   { label: "People", href: "/people", icon: Users, tier: "more" },
+  { label: "Contacts", href: "/contacts", icon: BookUser, tier: "more" },
   { label: "Check-in", href: "/checkin", icon: ClipboardList, tier: "more" },
 ];
 
@@ -188,10 +184,12 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo and Navigation. The gap is the nav's, so it goes with the nav
-              below `md` - at 320px those 32px are what the four controls need. */}
-          <div className="flex items-center md:space-x-8">
+              below `md` - at 320px that room is what the four controls need.
+              Both gaps stay narrow until `lg`: at 768px the bar's six items fit
+              only that way. */}
+          <div className="flex items-center md:space-x-4 lg:space-x-8">
             <Link
-              href={isAuthenticated ? "/dashboard" : "/"}
+              href={isAuthenticated ? "/home" : "/"}
               className="flex flex-shrink-0 items-center space-x-2"
             >
               <Logo className="h-7 w-7 sm:h-8 sm:w-8 text-coral flex-shrink-0" />
@@ -205,7 +203,7 @@ export function Header() {
             </Link>
 
             {/* Desktop Navigation - Show different nav based on auth status */}
-            <nav className="hidden md:flex flex-shrink-0 items-center space-x-6">
+            <nav className="hidden md:flex flex-shrink-0 items-center space-x-4 lg:space-x-6">
               {isAuthenticated ? (
                 <>
                   {BAR_ITEMS.map((item) => {
@@ -237,32 +235,28 @@ export function Header() {
                     <DropdownMenuContent align="start" className="w-48">
                       {MORE_ITEMS.map((item) => {
                         const Icon = item.icon;
+                        // `lg:hidden` leaves a `display:none` row that
+                        // Radix's focusFirst loop skips: `.focus()` on it does
+                        // not move `document.activeElement`.
                         return (
-                          <React.Fragment key={item.href}>
-                            {/* `lg:hidden` leaves a `display:none` row that
-                                Radix's focusFirst loop skips: `.focus()` on it
-                                does not move `document.activeElement`. */}
-                            <DropdownMenuItem
-                              asChild
-                              className={
-                                item.tier === "lg" ? "lg:hidden" : undefined
+                          <DropdownMenuItem
+                            key={item.href}
+                            asChild
+                            className={
+                              item.tier === "lg" ? "lg:hidden" : undefined
+                            }
+                          >
+                            <Link
+                              href={item.href}
+                              aria-current={
+                                item === currentItem ? "page" : undefined
                               }
+                              className="flex items-center"
                             >
-                              <Link
-                                href={item.href}
-                                aria-current={
-                                  item === currentItem ? "page" : undefined
-                                }
-                                className="flex items-center"
-                              >
-                                <Icon className="mr-2 h-4 w-4" />
-                                {item.label}
-                              </Link>
-                            </DropdownMenuItem>
-                            {item.href === "/dashboard" && (
-                              <DropdownMenuSeparator />
-                            )}
-                          </React.Fragment>
+                              <Icon className="mr-2 h-4 w-4" />
+                              {item.label}
+                            </Link>
+                          </DropdownMenuItem>
                         );
                       })}
                     </DropdownMenuContent>
@@ -385,6 +379,32 @@ export function Header() {
                       @{user.username}
                     </div>
                     <DropdownMenuSeparator />
+                    {/* The only entrance to the admin section, and only for the
+                        account that has the rights. A plain `Link`, so nothing
+                        under `app/admin/` is imported here and the App Router
+                        keeps that chunk out of every other browser's bundle.
+                        Hiding it is a courtesy to a diver who would only meet a
+                        403 - the API gates the routes themselves. */}
+                    {user.is_superuser && (
+                      <>
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin" className="flex items-center">
+                            <Shield className="mr-2 h-4 w-4" />
+                            Admin
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={withReturnTo("/import")}
+                        className="flex items-center"
+                      >
+                        <CloudUpload className="mr-2 h-4 w-4" />
+                        Import
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/data" className="flex items-center">
                         <CloudDownload className="mr-2 h-4 w-4" />
@@ -402,20 +422,6 @@ export function Header() {
                         Settings
                       </Link>
                     </DropdownMenuItem>
-                    {/* The only entrance to the admin section, and only for the
-                        account that has the rights. A plain `Link`, so nothing
-                        under `app/admin/` is imported here and the App Router
-                        keeps that chunk out of every other browser's bundle.
-                        Hiding it is a courtesy to a diver who would only meet a
-                        403 - the API gates the routes themselves. */}
-                    {user.is_superuser && (
-                      <DropdownMenuItem asChild>
-                        <Link href="/admin" className="flex items-center">
-                          <Shield className="mr-2 h-4 w-4" />
-                          Admin
-                        </Link>
-                      </DropdownMenuItem>
-                    )}
                     <DropdownMenuSeparator />
                     <ThemeMenuItems />
                     <DropdownMenuSeparator />
@@ -465,20 +471,16 @@ export function Header() {
             <nav className="flex flex-col space-y-3">
               {isAuthenticated ? (
                 <>
-                  {NAV_ITEMS.map((item, index) => {
+                  {NAV_ITEMS.map((item) => {
                     const isCurrent = item === currentItem;
-                    // The rule falls between the bar's items and the rest.
-                    const startsRest =
-                      item.tier !== "primary" &&
-                      NAV_ITEMS[index - 1]?.tier === "primary";
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
                         aria-current={isCurrent ? "page" : undefined}
                         className={`text-sm font-medium hover:text-coral py-2 ${
-                          startsRest ? "border-t pt-5" : ""
-                        } ${isCurrent ? "text-coral" : "text-foreground"}`}
+                          isCurrent ? "text-coral" : "text-foreground"
+                        }`}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         {item.label}

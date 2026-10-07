@@ -1,5 +1,5 @@
 // Where a trip went, as text. Every compact surface - the trip card on /trips
-// and on the dashboard, a detail page subtitle - shows the same joined line, so
+// and on the Home page, a detail page subtitle - shows the same joined line, so
 // it is composed once here rather than slightly differently in each of them.
 
 interface NamedLocation {
