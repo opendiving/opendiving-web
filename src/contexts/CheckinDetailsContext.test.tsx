@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useEffect } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 
 import {
@@ -35,11 +36,16 @@ const object = (email: string | null): CheckinDetails => ({
   insurance_policies: [],
 });
 
-let state: CheckinDetailsState;
+// What the consumer last rendered with, handed out after the render rather than during it.
+const latest: { current: CheckinDetailsState | null } = { current: null };
 function Consumer() {
-  state = useCheckinDetails();
-  return <p>{state.details ? (state.details.email ?? "none") : "pending"}</p>;
+  const value = useCheckinDetails();
+  useEffect(() => {
+    latest.current = value;
+  });
+  return <p>{value.details ? (value.details.email ?? "none") : "pending"}</p>;
 }
+const state = () => latest.current!;
 
 beforeEach(() => {
   auth.user = { uuid: "user-1" };
@@ -98,7 +104,7 @@ describe("CheckinDetailsProvider", () => {
     );
 
     await act(async () => {
-      await state.save({ email: "saved@example.org" });
+      await state().save({ email: "saved@example.org" });
     });
     await act(async () => answer(object("stale@example.org")));
 
@@ -115,11 +121,11 @@ describe("CheckinDetailsProvider", () => {
       </CheckinDetailsProvider>,
     );
 
-    await waitFor(() => expect(state.loadFailed).toBe(true));
-    act(() => state.reload());
+    await waitFor(() => expect(state().loadFailed).toBe(true));
+    act(() => state().reload());
 
     expect(await screen.findByText("a@example.org")).toBeInTheDocument();
-    expect(state.loadFailed).toBe(false);
+    expect(state().loadFailed).toBe(false);
   });
 });
 
