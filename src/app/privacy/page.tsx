@@ -236,11 +236,13 @@ export default async function PrivacyPage() {
                   <strong>Check-in Details:</strong> What a dive shop asks for
                   at the desk, all of it optional: a portrait, meaning a photo
                   of your face cropped like a passport photo; your date of birth
-                  and phone number; an emergency contact, meaning somebody
-                  else&rsquo;s name, phone number and relationship to you, which
-                  you enter; and your dive insurance &mdash; the provider, the
-                  policy number and when it expires. A check-in link you make
-                  shows them to whoever holds it, as section 4.9 describes
+                  and phone number; the email address you enter for check-in,
+                  which need not be the one you sign in with; emergency
+                  contacts, meaning other people&rsquo;s names, phone numbers
+                  and relationships to you, which you enter; and your dive
+                  insurance policies &mdash; for each, the provider, the policy
+                  number and when it expires. A check-in link you make shows
+                  them to whoever holds it, as section 4.9 describes
                 </li>
                 <li>
                   <strong>Dive Logs:</strong> Dive location, depth, duration,
@@ -522,11 +524,11 @@ export default async function PrivacyPage() {
                   added to or removed from your account, tell your old address
                   when your email address is changed, remind you when gear you
                   have set a service schedule on comes due and when a
-                  certification or your dive insurance nears or passes its
-                  expiry date, and send you your year of diving in figures each
-                  January. If you use the support form, deliver what you wrote
-                  to whoever runs this copy. Section 6.3 lists all of these and
-                  says which arrive without you asking
+                  certification or one of your insurance policies nears or
+                  passes its expiry date, and send you your year of diving in
+                  figures each January. If you use the support form, deliver
+                  what you wrote to whoever runs this copy. Section 6.3 lists
+                  all of these and says which arrive without you asking
                 </li>
                 <li>
                   <strong>Decide who may create an account:</strong> Where this
@@ -947,13 +949,15 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 <strong>What a link shows:</strong> your check-in page as it
                 prints &mdash; your name and your portrait if you have one, your
-                date of birth and phone number, your dive insurance, your
-                emergency contact, your dive count, deepest dive and last dive,
-                and each certification with its number, dates, instructor and
-                dive center, beside the front of the card where you stored a
-                picture of it. Never the back of a card; a card kept as a PDF is
-                named as one rather than shown; and neither your profile picture
-                nor anything else this copy holds about you is shown at all.
+                date of birth and phone number, the email address you entered
+                for check-in, your insurance policies, your emergency contacts,
+                your dive count, deepest dive and last dive, and each
+                certification with its number, dates, instructor and dive
+                center, beside the front of the card where you stored a picture
+                of it. Never the back of a card, and never the address you sign
+                in with; a card kept as a PDF is named as one rather than shown;
+                and neither your profile picture nor anything else this copy
+                holds about you is shown at all.
               </p>
               <p className="text-foreground mb-4">
                 <strong>Who can open it:</strong> anyone who has the link, with
@@ -1346,8 +1350,8 @@ export default async function PrivacyPage() {
                 schedule on it, or gear you have archived, is never mentioned.
               </p>
               <p className="text-foreground mb-4">
-                <em>Renewals.</em> If a certification you have entered, or the
-                dive insurance in your check-in details, has an expiry date,
+                <em>Renewals.</em> If a certification you have entered, or an
+                insurance policy in your check-in details, has an expiry date,
                 this copy will email you once when that date is{" "}
                 {CERTIFICATION_EXPIRING_SOON_DAYS} days away or closer, and once
                 more when it has passed. Everything that reaches either point at

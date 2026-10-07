@@ -176,8 +176,9 @@ export type ImportNoteCode =
   | "recording_attached"
   | "recording_filled"
   | "diver_not_applied"
-  // An emergency contact or insurance the document carries but the preview does not
-  // offer: it names nobody, or it is not the first. A warning.
+  // A check-in detail the document carries but the preview does not offer: a contact
+  // naming nobody, a policy naming no provider, a row past the cap, an address this
+  // app cannot store, or this account's own sign-in address. A warning.
   | "check_in_detail_dropped"
   // Only when a fact or the portrait actually changed, which is what tells the card
   // to re-read the signed-in user.
@@ -499,8 +500,8 @@ export interface ImportPreview extends ImportReport {
    */
   token: string;
   /**
-   * One entry per check-in fact the documents carry, in the order date of birth,
-   * phone, emergency contact, insurance. Empty when they carry none.
+   * One entry per check-in detail the documents carry, in the order email, phone,
+   * date of birth, emergency contacts, insurance policies. Empty when they carry none.
    */
   check_in_details: ImportCheckInDetail[];
   /**
