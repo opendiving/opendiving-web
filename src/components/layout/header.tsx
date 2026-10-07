@@ -97,8 +97,8 @@ const NAV_ITEMS: NavItem[] = [
     tier: "lg",
   },
   { label: "Courses", href: "/courses", icon: GraduationCap, tier: "more" },
-  { label: "Contacts", href: "/contacts", icon: BookUser, tier: "more" },
   { label: "People", href: "/people", icon: Users, tier: "more" },
+  { label: "Contacts", href: "/contacts", icon: BookUser, tier: "more" },
   { label: "Check-in", href: "/checkin", icon: ClipboardList, tier: "more" },
 ];
 

@@ -206,8 +206,8 @@ describe("the account menu's grouping", () => {
       "Gear",
       "Certifications",
       "Courses",
-      "Contacts",
       "People",
+      "Contacts",
       "Check-in",
     ]) {
       expect(rows).not.toContain(page);
@@ -263,8 +263,8 @@ describe("the More menu", () => {
       "Gear",
       "Certifications",
       "Courses",
-      "Contacts",
       "People",
+      "Contacts",
       "Check-in",
     ]);
     // Gear and Certifications are in the bar from `lg`, so More drops them there.
@@ -319,8 +319,8 @@ describe("the mobile menu", () => {
       "Gear",
       "Certifications",
       "Courses",
-      "Contacts",
       "People",
+      "Contacts",
       "Check-in",
     ]);
     expect(within(menu).getByRole("link", { name: "Home" })).toHaveAttribute(
