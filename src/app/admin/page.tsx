@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BarChart3, Inbox } from "lucide-react";
+import { BarChart3, Fish, Inbox } from "lucide-react";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export const metadata: Metadata = { title: "Admin" };
@@ -22,6 +22,13 @@ const SCREENS = [
     title: "Stats",
     description:
       "Daily totals of accounts created, sign-ins and active accounts.",
+  },
+  {
+    href: "/admin/species",
+    icon: Fish,
+    title: "Species",
+    description:
+      "The species catalog, and the photo each one shows: hide, replace or re-fetch it.",
   },
 ];
 

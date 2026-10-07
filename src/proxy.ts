@@ -51,7 +51,7 @@ const API_ORIGIN_SOURCE = apiCspSource(process.env.NEXT_PUBLIC_API_URL) ?? "";
 // "own origin": they are `<img src>` elements pointed straight at the API, because the
 // route serving them is deliberately unauthenticated, so in a split-origin build - which
 // local dev is - they resolve to `apiOrigin` and not to the page's origin. The bytes are
-// Wikimedia's, fetched once by the server and stored here; no browser ever asks
+// Wikimedia's, fetched by the server and stored here; no browser ever asks
 // Wikimedia for them, which is the whole point of serving them ourselves.
 //
 // `undefined` rather than a falsy check, since an instance whose every basemap value is

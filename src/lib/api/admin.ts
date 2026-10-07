@@ -1,4 +1,5 @@
 import { apiClient, PaginatedResponse } from "./client";
+import type { Species } from "./species";
 
 /**
  * One row of the operator's invite queue, as `GET /admin/invite-requests` lists it.
@@ -106,8 +107,64 @@ export interface AdminStats {
 }
 
 /**
+ * The narrowest stored photo the API's selection rule keeps, in pixels: the width
+ * of the thumbnail it asks Commons for. Mirrors `COMMONS_THUMBNAIL_WIDTH`, which
+ * the API publishes nowhere; only a pin holds a photo narrower than this.
+ */
+export const SPECIES_PHOTO_FLOOR = 500;
+
+/**
+ * What an operator decided about a species' photo. `null` is the rule deciding,
+ * and is the only state a re-fetch leaves behind.
+ */
+export type SpeciesPhotoCuration = "hidden" | "pinned";
+
+/**
+ * The catalog page's chips, as `GET /admin/species` takes them in `filter`.
+ * `narrow` is a stored photo under `SPECIES_PHOTO_FLOOR`.
+ */
+export type AdminSpeciesFilter =
+  "with_photo" | "without_photo" | "hidden" | "pinned" | "narrow";
+
+/**
+ * A catalog row as the admin routes return it: the public record plus what an
+ * operator curating its photo needs. `photo_width` and `photo_height` are the
+ * stored bytes' size, absent for a photo kept before they were measured.
+ */
+export interface AdminSpecies extends Species {
+  photo_fetched_at: string | null;
+  photo_curation: SpeciesPhotoCuration | null;
+  photo_width: number | null;
+  photo_height: number | null;
+}
+
+/**
+ * One Commons file the photo picker offers. `width` and `height` are the
+ * original's. `preview` is a `data:` URI the API fetched on the page's behalf -
+ * `img-src` admits no Wikimedia host - and `null` when those bytes did not
+ * arrive; the file can still be pinned.
+ */
+export interface AdminSpeciesPhotoCandidate {
+  file: string;
+  width: number | null;
+  height: number | null;
+  license: string | null;
+  author: string | null;
+  source_url: string | null;
+  preview: string | null;
+  is_current: boolean;
+}
+
+/** `GET /admin/species/{uuid}/photo-candidates`' answer. */
+export interface AdminSpeciesPhotoCandidates {
+  category: string | null;
+  candidates: AdminSpeciesPhotoCandidate[];
+}
+
+/**
  * The superuser-only operator routes: the invite queue, the two things that can
- * be done to a selection from it, and the daily totals.
+ * be done to a selection from it, the daily totals, and the species catalog's
+ * photos.
  *
  * Every one of these answers `401` signed out and `403` for a signed-in account
  * that is not a superuser - the API's gate is the one that counts, and the
@@ -185,6 +242,73 @@ export const adminAPI = {
     const response = await apiClient.get<AdminStats>("/admin/stats", {
       params: { from, to },
     });
+    return response.data;
+  },
+  /**
+   * One page of the species catalog, newest first. `search` matches any name the
+   * species goes by; `filter` is one chip. Both are left off the request when
+   * unset, since the API reads an empty `filter` as a 422.
+   */
+  async listSpecies(
+    page: number = 1,
+    items_per_page: number = 10,
+    { search, filter }: { search?: string; filter?: AdminSpeciesFilter } = {},
+  ): Promise<PaginatedResponse<AdminSpecies>> {
+    const response = await apiClient.get<PaginatedResponse<AdminSpecies>>(
+      "/admin/species",
+      {
+        params: {
+          page,
+          items_per_page,
+          ...(search ? { search } : {}),
+          ...(filter ? { filter } : {}),
+        },
+      },
+    );
+    return response.data;
+  },
+
+  /** The Commons files the operator may pin for one species, previews inline. */
+  async speciesPhotoCandidates(
+    uuid: string,
+  ): Promise<AdminSpeciesPhotoCandidates> {
+    const response = await apiClient.get<AdminSpeciesPhotoCandidates>(
+      `/admin/species/${encodeURIComponent(uuid)}/photo-candidates`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Pins a Commons file - a title, with or without `File:`, or its file-page URL
+   * - as the species' photo. `422` names input that is no file, a missing file
+   * or bytes that will not decode; `503` means Commons was not reached and the
+   * row is unchanged.
+   */
+  async pinSpeciesPhoto(uuid: string, file: string): Promise<AdminSpecies> {
+    const response = await apiClient.put<AdminSpecies>(
+      `/admin/species/${encodeURIComponent(uuid)}/photo`,
+      { file },
+    );
+    return response.data;
+  },
+
+  /** Clears the species' photo and keeps the rule from putting one back. */
+  async hideSpeciesPhoto(uuid: string): Promise<AdminSpecies> {
+    const response = await apiClient.delete<AdminSpecies>(
+      `/admin/species/${encodeURIComponent(uuid)}/photo`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Asks the selection rule again and hands the row back to it: a pin or a hide
+   * is dropped, and a rule that declines clears the photo. `503`, row unchanged,
+   * when the rule could not be asked. Slow - a resolve's budgets.
+   */
+  async refetchSpeciesPhoto(uuid: string): Promise<AdminSpecies> {
+    const response = await apiClient.post<AdminSpecies>(
+      `/admin/species/${encodeURIComponent(uuid)}/photo/refetch`,
+    );
     return response.data;
   },
 };
