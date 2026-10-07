@@ -430,7 +430,7 @@ export async function fetchAllPages<T>(
   }
 
   // Reached only by exhausting `maxPages` with the API still reporting more.
-  // Warned rather than thrown: a dashboard card showing the first 2000 items is
+  // Warned rather than thrown: a Home card showing the first 2000 items is
   // better than one showing an error, but a short list that looks complete is how
   // "my oldest certification stopped appearing" becomes unexplainable.
   console.warn(

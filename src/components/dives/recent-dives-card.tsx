@@ -50,7 +50,7 @@ export interface RecentDivesCardProps {
   // of who was on them.
   personId?: string;
   // Show every dive in scope, a page at a time as the reader scrolls, rather
-  // than the dashboard's fixed preview of the latest few.
+  // than Home's fixed preview of the latest few.
   //
   // The detail pages used to ask for this with `limit={100}`, meaning "all of
   // them" - and the API clamps `items_per_page` to 100, so a diver past that
@@ -59,7 +59,7 @@ export interface RecentDivesCardProps {
   //
   // A complete list that holds nothing also drops its header down to its hidden
   // heading, as the list pages' cards do: the empty state already says what the
-  // card is for. The dashboard's preview keeps it beside the trips card.
+  // card is for. The Home page's preview keeps it beside the trips card.
   complete?: boolean;
   // Re-read the dives on screen, in place, whenever this changes - after an
   // edit to the record they are scoped to that shows on their cards: a site's
@@ -78,7 +78,7 @@ export interface RecentDivesCardProps {
 }
 
 // Shows a list of dives for a user, each as a `DiveCard`.
-// Used on the dashboard (the most recent few) and on the detail pages that
+// Used on the Home page (the most recent few) and on the detail pages that
 // scope dives to one record - a dive site, a gear item, a course, a species, a
 // person - so they all stay in sync.
 export function RecentDivesCard({
@@ -176,7 +176,7 @@ export function RecentDivesCard({
       </CardHeader>
       <CardContent>
         {isLoadingDives ? (
-          // `RECENT_DIVES_COUNT` either way: on the dashboard it is exactly
+          // `RECENT_DIVES_COUNT` either way: on the Home page it is exactly
           // the preview's size, and on a detail page the real count isn't
           // knowable up front, where a few rows is a better guess than a
           // screen of them. Busy on the list, hidden on each placeholder, as

@@ -254,7 +254,7 @@ function definitionSiteOf(target: object, name: string): object | undefined {
  *
  * Called from the module scope of `components/device-memory-installer.tsx`, so
  * it runs when the route's client bundle loads rather than when anything
- * renders - which is what puts it ahead of the dashboard cards that write their
+ * renders - which is what puts it ahead of the Home page cards that write their
  * view keys from a mount effect with no interaction at all.
  */
 export function installDeviceMemorySuppression(): void {

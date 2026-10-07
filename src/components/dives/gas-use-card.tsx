@@ -59,7 +59,7 @@ import { cn } from "@/lib/utils";
 import { useUnits } from "@/hooks/useUnits";
 import { displayNumber, unitLabel, type UnitSystem } from "@/lib/units";
 
-// The dashboard's gas-consumption trend.
+// The Home page's gas-consumption trend.
 //
 // This renders even with nothing to plot. An empty service-due list means nothing
 // needs attention, which is genuinely nothing to say,

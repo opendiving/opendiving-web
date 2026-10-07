@@ -62,7 +62,7 @@ import {
 import { subscribeToNothing } from "@/lib/chart-series-view";
 import { cn } from "@/lib/utils";
 
-// The dashboard's how-much-am-I-diving card, and the counterpart to
+// The Home page's how-much-am-I-diving card, and the counterpart to
 // `GasUseCard`: that one is about the quality of the diving, this one about the
 // quantity. They share their shape deliberately - the same header, the same stat
 // row, the same period controls in the same corner, the same All/Year/Month

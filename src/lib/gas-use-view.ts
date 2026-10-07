@@ -2,14 +2,14 @@
 // across visits.
 //
 // `localStorage`, not `sessionStorage`: this has to survive the tab closing, so
-// that arriving at `/dashboard` tomorrow - by the nav link or by typing the URL
+// that arriving at `/home` tomorrow - by the nav link or by typing the URL
 // - shows the period you left it on. Both routes go through the same mount
 // effect in `GasUseCard`, so there is nothing route-specific here.
 // (`auth-redirect.ts` reaches for the same storage for a related reason: it
 // needs a value to outlive the tab that wrote it.)
 //
 // Deliberately not the URL. A remembered view has to work from a bare
-// `/dashboard`, which is what the nav link points at and what people bookmark,
+// `/home`, which is what the nav link points at and what people bookmark,
 // and a query string that only appears after you touch a control can't do that.
 //
 // What's stored is a view preference - a scope name and a timestamp the diver

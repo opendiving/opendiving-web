@@ -54,7 +54,7 @@ one.
   the device's own event markers along the axis. A computer that chopped one dive into two logs them
   as two dives, and **Merge** folds them back into one.
 - **Air consumption** — SAC and RMV are derived automatically, including a **per-tank breakdown**
-  across recorded gas switches on multi-tank dives, with a consumption trend chart on the dashboard.
+  across recorded gas switches on multi-tank dives, with a consumption trend chart on the Home page.
 - **Trips** — group dives into a liveaboard or a holiday week, a part at a time: each part carries
   its own place and its own dates, and the trip spans them all.
 - **Dive sites** — your personal site list: the other names a site goes by, the depths it is dived
@@ -127,7 +127,7 @@ one.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 - **Installs like an app** — add it to a phone's home screen from the browser's install or share
   menu (on iOS 16.4 and later, Safari's Share → Add to Home Screen), and it opens in its own window
-  at your dashboard.
+  on your Home page.
 
 |                                                                                                        |                                                                                                                                                                                           |
 | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

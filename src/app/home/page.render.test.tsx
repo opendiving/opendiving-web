@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import DashboardPage from "./page";
+import HomePage from "./page";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 
 // The Species Seen tile must render the `species_seen` it is given rather than a
@@ -60,7 +60,7 @@ vi.mock("@/components/dives/dive-activity-card", () => ({
   DiveActivityCard: () => null,
 }));
 vi.mock("@/components/dives/gas-use-card", () => ({ GasUseCard: () => null }));
-vi.mock("@/components/dashboard/setup-checklist-card", () => ({
+vi.mock("@/components/home/setup-checklist-card", () => ({
   SetupChecklistCard: () => null,
 }));
 
@@ -81,10 +81,10 @@ beforeEach(() => {
   getDiveStats.mockReset();
 });
 
-describe("dashboard heading", () => {
+describe("Home heading", () => {
   it("is the diver's name alone, beside their picture", async () => {
     getDiveStats.mockResolvedValue(stats());
-    render(<DashboardPage />);
+    render(<HomePage />);
 
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
       /^Sam Diver$/,
@@ -97,10 +97,10 @@ describe("dashboard heading", () => {
   });
 });
 
-describe("dashboard Species Seen tile", () => {
+describe("Home Species Seen tile", () => {
   it("shows the distinct count the API derived", async () => {
     getDiveStats.mockResolvedValue(stats());
-    render(<DashboardPage />);
+    render(<HomePage />);
 
     expect(await screen.findByText("Species seen")).toBeInTheDocument();
     expect(screen.getByText("17")).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe("dashboard Species Seen tile", () => {
     // Distinct from the loading dash below: the diver has dives and has spotted
     // nothing, which is a fact about their logbook rather than a missing answer.
     getDiveStats.mockResolvedValue(stats({ species_seen: 0 }));
-    render(<DashboardPage />);
+    render(<HomePage />);
 
     await screen.findByText("Species seen");
     expect(screen.getByText("0")).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe("dashboard Species Seen tile", () => {
 
   it("holds a dash while the stats are still loading", async () => {
     getDiveStats.mockReturnValue(new Promise(() => {}));
-    render(<DashboardPage />);
+    render(<HomePage />);
 
     await screen.findByText("Species seen");
     // One per tile, and the species one is among them - "0 species" before the
@@ -133,7 +133,7 @@ describe("dashboard Species Seen tile", () => {
     // because every text-based check in this file passes either way - the merge
     // is invisible to them, and splitting the card back up would go unnoticed.
     getDiveStats.mockResolvedValue(stats());
-    const { container } = render(<DashboardPage />);
+    const { container } = render(<HomePage />);
     await screen.findByText("Species seen");
 
     // By label rather than by value, so the assertion says nothing about how
@@ -153,7 +153,7 @@ describe("dashboard Species Seen tile", () => {
 
   it("renders no stats row at all for a diver with no dives", async () => {
     getDiveStats.mockResolvedValue(stats({ total_dives: 0 }));
-    render(<DashboardPage />);
+    render(<HomePage />);
 
     await waitFor(() => expect(getDiveStats).toHaveBeenCalled());
     expect(screen.queryByText("Species seen")).not.toBeInTheDocument();
@@ -174,7 +174,7 @@ describe("the stats are read once, not once per render", () => {
   it("reads the stats once", async () => {
     getDiveStats.mockImplementation(async () => stats());
 
-    render(<DashboardPage />);
+    render(<HomePage />);
     await screen.findByText("17");
     // The loop turns on effects, which React runs on a task rather than a
     // microtask, so awaiting the rendered figure alone gets here before the second

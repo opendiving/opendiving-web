@@ -40,7 +40,7 @@ const ADD_FAILED = "Couldn't add that passkey. Please try again.";
 
 /**
  * Adding a passkey to the signed-in account, in the one shape both places that
- * offer it need: the settings card and the dashboard's enrollment nudge.
+ * offer it need: the settings card and Home's enrollment nudge.
  *
  * Registration is the mirror of `usePasskeySignIn`'s explicit half - options,
  * ceremony, verify - with two differences that follow from it happening inside a

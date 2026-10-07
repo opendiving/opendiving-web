@@ -222,9 +222,9 @@ chrome-free routes had no `<main>`" at the end of this file.
 
 ## The header sorts its destinations by use
 
-The bar carries the most used record pages, in usage order. `More ▾`, last in the row, carries the
-other record pages and Dashboard, which the brand link already reaches. The account menu carries
-only the account; "+" carries creation, import included. Below `md` the burger lists everything.
+The bar carries Home, then the most used record pages in usage order. `More ▾`, last in the row,
+carries the other record pages. The account menu carries only the account; "+" carries creation,
+import included. Below `md` the burger lists everything, in the same order and unruled.
 
 Tiers are breakpoints, not measurement: an `lg` item is `hidden lg:inline-flex` in the bar and
 `lg:hidden` in More, so the row needs no `ResizeObserver` and never reflows after paint. More stays
@@ -393,7 +393,7 @@ headed".
   direct load bounces to `/`.
 - `AuthContext` exposes `onboarding`/`completeProfile`/`clearOnboarding` and
   `requestEmailLink`/`verifyEmailLink`/`signInWithGoogle`; the last two return `boolean` (`true`
-  signed in, `false` onboarding) so callers pick `/dashboard` or `/onboarding`.
+  signed in, `false` onboarding) so callers pick `/home` or `/onboarding`.
 
 ## `google-icon.tsx`'s "G" mark is extracted directly from Google's own pre-approved asset download - not hand-reconstructed
 
@@ -440,7 +440,7 @@ That leniency remains, as defence in depth for double clicks.
 
 `/settings/confirm-email` auto-redirects to `/settings/account` 3 s after `"success"` (`setTimeout`,
 cleaned up on unmount) beside a "Back to settings" link; `/auth/verify` needs none, since
-`router.replace("/dashboard")`/`"/onboarding"` follows `verifyEmailLink` directly.
+`router.replace("/home")`/`"/onboarding"` follows `verifyEmailLink` directly.
 
 ## Magic-link pages: The button itself shouldn't show for a link that's already been used
 
@@ -467,7 +467,7 @@ The API serves current-user-only routes on a bare `/user` (no `/me`, no `{uuid}`
 public-profile endpoint for other users (limited fields, no `email`, not built). `lib/api/auth.ts`
 matches: `authAPI.getCurrentUser()` calls `GET /user`, and `authAPI.updateProfile(profileData)`
 calls `PATCH /user`. `lib/api/dive-stats.ts`'s `diveStatsAPI.getDiveStats()` calls
-`GET /user/dive-stats`; its callers are `dashboard-page-content.tsx` and `checkin-page-content.tsx`.
+`GET /user/dive-stats`; its callers are `home-page-content.tsx` and `checkin-page-content.tsx`.
 There is no way to fetch or manage another user's data through this API until the public-profile
 endpoint exists.
 
@@ -1188,26 +1188,26 @@ later `replaceState`. Signing out from a public page reloads to `/` too.
 
 It navigates only on success and otherwise changes nothing and rejects. `POST /auth/logout` alone
 blacklists the token pair and deletes the refresh cookie; after a failure a page load re-bootstraps
-from that cookie onto `/dashboard`, and clearing the user locally would paint "signed out" over a
-session the interceptor rebuilds on the next 401. `Header` turns the rejection into a "Couldn't sign
-you out" toast.
+from that cookie onto `/home`, and clearing the user locally would paint "signed out" over a session
+the interceptor rebuilds on the next 401. `Header` turns the rejection into a "Couldn't sign you
+out" toast.
 
 `hardNavigate` raises `isLeavingPage()` and `useAuthGuard` returns early on it, or the guard fires
 an RSC request for `/signin?next=…&_rsc=…` before the document dies. It lives in `lib/navigation.ts`
 so `AuthContext.test.tsx` can mock it.
 
-## The dashboard shows only what the app actually tracks
+## The Home page shows only what the app actually tracks
 
-Nothing on the dashboard (`components/dashboard/dashboard-page-frame.tsx`) claims what the app
-cannot back. Each stat tile renders a figure the API derives from the diver's dives
-(`services/dive_stats.py`), Species Seen included. There is no quick-actions card; the one action
-worth promoting, logging a dive, is a single primary button in the page header. `SetupChecklistCard`
-is driven by real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched
-with `items_per_page: 1` for `total_count` alone) and removes itself once all three are done.
+Nothing on the Home page (`components/home/home-page-frame.tsx`) claims what the app cannot back.
+Each stat tile renders a figure the API derives from the diver's dives (`services/dive_stats.py`),
+Species Seen included. There is no quick-actions card; the one action worth promoting, logging a
+dive, is a single primary button in the page header. `SetupChecklistCard` is driven by real counts
+(`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched with `items_per_page: 1`
+for `total_count` alone) and removes itself once all three are done.
 
 ## The layout is a flat stack, so the cards that can vanish leave no hole
 
-The dashboard is one `space-y-6` column with `SetupChecklistCard` and `PasskeyNudgeCard` as direct
+The Home page is one `space-y-6` column with `SetupChecklistCard` and `PasskeyNudgeCard` as direct
 children: `space-y-*` spaces rendered siblings, so a card returning `null` costs nothing, whereas a
 wrapping `<div>` would leave its own gap on every day neither renders. The same reasoning rules out
 a two-column grid whose sidebar sits empty for an established logbook.
@@ -1221,20 +1221,20 @@ and the air-consumption chart hide at zero dives, but not while the stats reques
 There is no `/profile`. A profile page exists to be someone else's view of a diver, and the API
 cannot serve one yet: the public profile endpoint is deliberately not built (see "Current-user
 endpoints live on a bare `/user`, not `/user/me`/`/user/{uuid}`"), so a `/profile` could only read
-the signed-in caller. That only duplicates the dashboard — the same `getDiveStats()` numbers behind
+the signed-in caller. That only duplicates the Home page — the same `getDiveStats()` numbers behind
 the same `hasDives` gate, the same `RecentDivesCard`, and an identity header that is a read-only
 copy of what `/settings` edits — at a second URL reachable only from the avatar dropdown.
 
 When the public endpoint lands, the page comes back as `/divers/[username]`, written fresh: it takes
-a username parameter, must not render `email`, and shares no fetch with the dashboard.
+a username parameter, must not render `email`, and shares no fetch with the Home page.
 
-## `/profile`: the dashboard carries no certifications summary in its place
+## `/profile`: the Home page carries no certifications summary in its place
 
 `CertificationsCard` and `certificationsByRecency` (`lib/certification.ts`) have no caller without
 `/profile`, so they are removed rather than left exported; both are recoverable from git when
 `/divers/[username]` wants them.
 
-The dashboard deliberately does not get the card in exchange. The header's bell already carries the
+The Home page deliberately does not get the card in exchange. The header's bell already carries the
 renewals, the half of the subject that needs the diver to act; "every c-card you hold, newest first"
 is not an alert, and `/certifications` is one nav click away with images, dates and dialogs. A
 read-only echo of a page in the nav is the duplication that took `/profile` down.
@@ -1393,7 +1393,7 @@ stale chart after a re-import.
 It branches on which failure: a 404 ("This dive has no profile") is permanent and gets no retry
 button, because re-asking returns the same 404; a 401, 5xx or network failure gets one.
 
-The dashboard stats fetch shows an error with a retry rather than tiles stuck on "—": the API
+The Home page stats fetch shows an error with a retry rather than tiles stuck on "—": the API
 returns zeroed stats for a diver with no dives, so anything landing there is exceptional.
 
 `usePaginatedResource` guards races with a request-id ref: only the newest request may settle, so a
@@ -1634,7 +1634,7 @@ trend is off.
 
 `lib/chart-series-view.ts` is the storage half, generic over series keys. `localStorage`, as in
 `gas-use-view.ts` (which lends `subscribeToNothing`): the selection must survive the tab closing and
-work from the bare `/dashboard` and `/dives/{uuid}` URLs.
+work from the bare `/home` and `/dives/{uuid}` URLs.
 
 The read is `useSyncExternalStore` with a server snapshot of `null`; the snapshot stays the raw
 string because `useSyncExternalStore` compares with `Object.is` and a freshly parsed array loops
@@ -1756,8 +1756,8 @@ would silently move the balanced height.
 
 ## `visit()` fails loudly when a navigation lands on `/signin`
 
-`visit()` throws when a navigation lands on `/signin` — "signed out on the way to /dashboard" —
-rather than letting a run quietly produce four screenshots of the sign-in form. It costs nothing and
+`visit()` throws when a navigation lands on `/signin` — "signed out on the way to /home" — rather
+than letting a run quietly produce four screenshots of the sign-in form. It costs nothing and
 catches any future auth regression, not one in particular.
 
 ## The same script writes the product repository's copies
@@ -1795,8 +1795,8 @@ text. Its consumers: `courseStatusBadgeVariant` (`incomplete`, `provisional`), `
 
 Dark `--secondary` is 22%, nine points above `--card`, because every `secondary` chip (the count
 chips on dives, sites, trips, certifications, gear and gear sets; "Rented" in `gear-items-card`,
-`dive-detail-main` and `gear-item-multi-select`; the dashboard's `doneCount/steps` chip) renders on
-a card header, where three points of lightness is no background at all.
+`dive-detail-main` and `gear-item-multi-select`; Home's `doneCount/steps` chip) renders on a card
+header, where three points of lightness is no background at all.
 
 Lightness rather than a border: the base `Badge` carries `border` and `secondary` sets
 `border-transparent`; a visible border makes it look like `outline`, which sits three rows away as
@@ -1912,9 +1912,9 @@ on a phone.
 
 ## Every chart control names its own card, because the two cards draw the same row
 
-Both cards render on `/dashboard`, `Card` is a plain `div` with no role, and a screen reader's
-controls list is flat names with no heading context, so identical toggles give four arrows all
-reading "Previous period with dives". Each `aria-label` leads with its card:
+Both cards render on `/home`, `Card` is a plain `div` with no role, and a screen reader's controls
+list is flat names with no heading context, so identical toggles give four arrows all reading
+"Previous period with dives". Each `aria-label` leads with its card:
 `Dive activity: previous period with dives`, `Gas consumption: time range`. `screenshots.mjs` scopes
 by the card's heading for the same ambiguity.
 
@@ -1959,10 +1959,10 @@ label size reads as a rendering fault.
 ## The two chart cards stack, and gas leads - both measured, not assumed
 
 Below 560px each plot narrows its viewBox instead of shrinking, so its axis text stops at 8.6px
-(`fittedChartWidth`). `lg:grid-cols-2` on the dashboard's `max-w-6xl` gives 482px (546px at
-`max-w-7xl`), and two things break: the axis text halves (16.6px to 8.6px), and the gas header goes
-from 50px to 114px as its toggle and stepper drop below the description.
-`RecentDivesCard`/`RecentTripsCard` pair up fine below: their content reflows instead of scaling.
+(`fittedChartWidth`). `lg:grid-cols-2` on Home's `max-w-6xl` gives 482px (546px at `max-w-7xl`), and
+two things break: the axis text halves (16.6px to 8.6px), and the gas header goes from 50px to 114px
+as its toggle and stepper drop below the description. `RecentDivesCard`/`RecentTripsCard` pair up
+fine below: their content reflows instead of scaling.
 
 Gas consumption leads because it can change how you dive tomorrow; activity records what already
 happened. Reliably non-empty is a weaker claim on the top slot than reliably useful.
@@ -2246,7 +2246,7 @@ stage is half the gas of 10 bar from the twinset, and a dive-wide sum or average
 `DiveGasUse.sac_bar_per_min` is `number | null` on the wire and null on multi-tank dives, where each
 `tanks` entry carries its own — meaningful because a tank has one volume, and the figure a diver
 reads off a gauge, so it stays in the table. `gas-use-chart.tsx` and `gas-use-card.tsx` plot `rmv`
-and label with `gas_used`, so the dashboard is untouched. The total row renders a greyed `-` rather
+and label with `gas_used`, so the Home page is untouched. The total row renders a greyed `-` rather
 than omitting the cell: an empty cell reads as a layout bug, a dash as "no answer here".
 
 ## The multi-tank branch splits three ways, and tests attribution first
@@ -2327,7 +2327,7 @@ through an invariant. The layout switch is `rows.length > 0`; there `tanks.lengt
 the deco bottle's row on every one-transmitter dive. The "Not attributed" row stays regardless: on
 such a dive it is the card's second fact, a bottle carried whose cost this log can't say.
 
-## The dashboard chart names no depth the rate is not divided by
+## The Home page chart names no depth the rate is not divided by
 
 Multi-cylinder dives reach `GET /user/gas-use-history` with RMV normalized against each cylinder's
 own mean depth, so the single-tank framing — `{avg_depth}m average · {gas_used} L used` in the
@@ -2782,11 +2782,11 @@ and puts the action above Cancel when they cannot, with 8px between rows.
 
 ## A headerless card restores `pt-6` by hand
 
-A card whose figures are each labelled - the dashboard's stats - has no header, and its
-`CardContent` takes an explicit `pt-6`: the default `p-6 pt-0` assumes a `CardHeader` supplied the
-top padding. The dashboard's stats-error card restores it the same way; two headerless call sites do
-not earn a `headerless` variant in `ui/card.tsx`, which would have to guess whether the next one
-wants the same padding.
+A card whose figures are each labelled - Home's stats - has no header, and its `CardContent` takes
+an explicit `pt-6`: the default `p-6 pt-0` assumes a `CardHeader` supplied the top padding. The Home
+page's stats-error card restores it the same way; two headerless call sites do not earn a
+`headerless` variant in `ui/card.tsx`, which would have to guess whether the next one wants the same
+padding.
 
 ## Pages hold their shape while they load, instead of collapsing into a spinner
 
@@ -2883,7 +2883,7 @@ The pagination footer is the same class of problem, left unsolved: it renders no
 guess (a list of exactly ten items never paginates) and guessing wrong shifts the layout the other
 way.
 
-## The dashboard's chart cards, and the enter animation
+## The Home page's chart cards, and the enter animation
 
 A `720 x 240` SVG at `w-full h-auto` collapsing to a spinner moves most of the page's height twice.
 `ChartSkeleton` reserves the same `3:1` box plus, behind a `legend` prop, the 24px the gas chart's
@@ -2892,8 +2892,8 @@ A `720 x 240` SVG at `w-full h-auto` collapsing to a spinner moves most of the p
 `app/template.tsx` is a 150ms fade with no travel; a `fade-in slide-in-from-bottom-1` over 300ms
 spent its animation sliding a `Loader2` and then cut hard to the content.
 
-The root template is keyed at the first path segment, so the fade runs on `/dives` to `/dashboard`
-and not on `/dives` to `/dives/[id]` or a pager step. Widening it is deliberately not done: a client
+The root template is keyed at the first path segment, so the fade runs on `/dives` to `/home` and
+not on `/dives` to `/dives/[id]` or a pager step. Widening it is deliberately not done: a client
 wrapper keyed on `usePathname()`, or a `dives/template.tsx`, remounts the subtree on a pager step,
 blanking the page and dropping keyboard focus (see "`dives/(detail)/layout.tsx` owns the dive fetch,
 so a step keeps the page mounted").
@@ -2915,7 +2915,7 @@ a screenshot does not show a `h-5` bar against a 24px line box or a legend nobod
 
 `ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive,
 trip and site cards load into `BackdropCardSkeleton`, one box at the card's measured 238px,
-`RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the dashboard and a page of them on
+`RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the Home page and a page of them on
 `/dives`, `/trips` and `/sites`.
 
 ## The project instructions live in AGENTS.md, and CLAUDE.md is an import
@@ -3408,7 +3408,7 @@ order (`visibleItems`, no `sort`) and `hintFor`'s row-relative redundancy check.
 ## The Species Seen tile shows the derived `species_seen`, one of four figures in one `Card`
 
 The API derives `species_seen` as the distinct species over a diver's live dives, recomputed on
-every dive write, so the dashboard shows it. The four figures sit in one headerless `Card` as a
+every dive write, so the Home page shows it. The four figures sit in one headerless `Card` as a
 `grid-cols-2 lg:grid-cols-4` grid rather than four cards: a fourth card strands itself at
 `md:grid-cols-3`, and four headers and borders on four numbers read together as one answer. A 2×2
 below `lg` rather than a single column, so four short figures do not run down the page. Icons sit in
@@ -3822,7 +3822,7 @@ squash-merge another author's PR), a `main` ruleset requiring a squash-merged pu
 ## Passkeys come from two places, and the enrollment nudge is the one that matters
 
 Enrollment lives in `components/settings/passkeys-card.tsx` and the dismissible
-`components/dashboard/passkey-nudge-card.tsx`, both through `hooks/usePasskeyRegistration.ts`:
+`components/home/passkey-nudge-card.tsx`, both through `hooks/usePasskeyRegistration.ts`:
 `usePasskeySignIn`'s explicit half with no `flow_id` (the bearer token names the owner) and a
 client-picked name. A button precedes `credentials.create()` in both, the gesture Safari requires.
 
@@ -3950,7 +3950,7 @@ than reading the stash, and `/restore` passes the one it was handed.
 Only the magic link has a side-effect-free precheck: `GET /auth/email/verify/check` answers
 `deletion_pending` as `valid: true` plus a flag, so the page's "not valid" branch stays in front and
 the button can read _Restore my account_ before anything is spent. A click on that button is the
-decision, so the page posts the verify and then the restore and lands on the dashboard.
+decision, so the page posts the verify and then the restore and lands on the Home page.
 
 The chain is gated on the precheck's answer and the outcome's status, not either alone. A deletion
 requested between precheck and click arrives at a button that said _Sign in_, and that click must
@@ -3963,7 +3963,7 @@ can only offer the restore after the POST — which is `/restore`.
 
 Same shape as `/onboarding`: a verified identity that is not yet a session, an in-memory
 `RestoreSession` never persisted, a redirect to `/` when opened without one, chrome-free, and
-`isAuthenticated` sending an already-restored diver to the dashboard. It additionally says that a
+`isAuthenticated` sending an already-restored diver to the Home page. It additionally says that a
 reload loses the offer, because `POST /auth/email/verify-code` claims its request row before
 resolving the identity — a code spent on reaching this screen is spent, and someone who closes the
 tab needs a fresh email.
@@ -4056,7 +4056,7 @@ account to upload it to until `POST /auth/complete` answers, so the form holds t
 `completeProfile` sends it in `onCreated`: after the session is captured, before the account is
 read. The first read then already carries the picture, and `/onboarding`, which moves on the moment
 `user` is set, does not move on without it. A failed upload leaves the account made — the diver is
-told and lands on the dashboard anyway. A pick replaces the Google picture the API imports; without
+told and lands on the Home page anyway. A pick replaces the Google picture the API imports; without
 one, a Google sign-up keeps it.
 
 ## Signing is a maintainer's setting, and the hook checks before it blocks
@@ -4469,16 +4469,15 @@ production build needs `API_INTERNAL_URL=http://localhost:8000`.
 ## `CardTitle` takes `as="h2"` on every card that is a section of its page
 
 `CardTitle` takes `as="h2"` on every card that is a section of its page — settings, dive detail,
-gear, dashboard. The test is "is this card a section", not "is this page failing". The landing
-page's feature cards keep `h3` because they sit under
-`<h2 class="sr-only">What OpenDiving Does</h2>`. Read a promoted card all the way down:
-`delete-account-card.tsx`'s inner heading is an `<h3>`, since an `<h4>` under `<h2>` is the same
-jump again.
+gear, Home. The test is "is this card a section", not "is this page failing". The landing page's
+feature cards keep `h3` because they sit under `<h2 class="sr-only">What OpenDiving Does</h2>`. Read
+a promoted card all the way down: `delete-account-card.tsx`'s inner heading is an `<h3>`, since an
+`<h4>` under `<h2>` is the same jump again.
 
 Reading the axe report: it names only the first offending heading per page, so one violation is the
 top of a stack — dump `document.querySelectorAll("h1,h2,h3,h4,h5,h6")` beside it. Scan public pages
-signed out: signed in, `/` and `/signin` redirect to `/dashboard`, so an authenticated pass reports
-the dashboard under three route names and never renders the landing page or sign-in form.
+signed out: signed in, `/` and `/signin` redirect to `/home`, so an authenticated pass reports the
+Home page under three route names and never renders the landing page or sign-in form.
 
 ## Ten rows of "Edit" name nothing
 
@@ -4536,7 +4535,7 @@ or a prefilled volume reads back as "22.211.1", which is not this bug.
 
 ## `aria-describedby` never reaches the accessible name
 
-The dashboard chart cards' period pickers are named with `aria-labelledby` listing the `sr-only`
+The Home page chart cards' period pickers are named with `aria-labelledby` listing the `sr-only`
 hint's id and the trigger's own id, in that order, so the name reads "Gas consumption period"
 followed by the period showing. `aria-describedby` does not contribute to the accessible name, which
 leaves the trigger named by whatever `SelectValue` renders — nothing on a period with no registered
@@ -4651,7 +4650,7 @@ entry points and the "Last time you signed in with …" line in `components/auth
 exist. The ground is WP194 §3.6: UI-customization storage is exempt only where "the user has
 explicitly requested the service to remember" the choice; this key was written automatically at
 every sign-in and survived sign-out. Disclosure is honest but does not make storage exempt.
-Unrequested writing alone does not disqualify it — the dashboard view keys are written from a mount
+Unrequested writing alone does not disqualify it — the Home page view keys are written from a mount
 effect too (`components/dives/gas-use-card.tsx`) — but those hold up a view lost on reload; this one
 bought a cosmetic sentence that never preselected, hid or reordered a method. Keeping the key under
 the device-memory control was rejected: the affordance is not worth the hardest paragraph in the
@@ -4771,8 +4770,8 @@ git grep -nEi 'list pages?|detail pages?' -- src/
 
 Subtract the certification-specific code and what remains is enumeration-bearing prose or a registry
 a new kind extends anyway (`layout/header.tsx`, `layout/quick-create.tsx`'s `QuickCreateKind`,
-`lib/return-to.ts`, `dashboard/setup-checklist-card.tsx`). The second grep is suggestive only:
-comment prose wraps, so a multi-word pattern misses a match split across a line break.
+`lib/return-to.ts`, `home/setup-checklist-card.tsx`). The second grep is suggestive only: comment
+prose wraps, so a multi-word pattern misses a match split across a line break.
 
 ## Courses nest a dialog inside a dialog
 
@@ -4781,7 +4780,7 @@ a dialog in a dialog, safely: `dialogFormSubmit` stops the inner submit propagat
 portals both to `document.body`.
 
 Courses mirror Certifications, per `git grep -n '/certifications' src/components/layout/`: a
-`NAV_ITEMS` entry, nowhere else. No dashboard card or checklist step.
+`NAV_ITEMS` entry, nowhere else. No Home card or checklist step.
 
 The list's search debounces the term that `useInfiniteResource`'s `fetchFn` closes over, because
 changing it discards every loaded page. "No courses match" and "no courses yet" are separate empty
@@ -4915,7 +4914,7 @@ only `mockImplementation(async () => page([gearItem()]))`, a fresh object per re
 apart.
 
 The pins `reads the gear list once`, `reads the certification list once` and `reads the stats once`
-must use `mockImplementation`; with `mockResolvedValue` they pass despite the bug. The dashboard's
+must use `mockImplementation`; with `mockResolvedValue` they pass despite the bug. The Home page's
 waits a beat, since effects run on a task and `findByText` returns before the second pass.
 `user-fields-form` and `units-card` do not loop but use identity-stable mocks too, so any copied
 neighbour is right.
@@ -5441,7 +5440,7 @@ carry only `DEFAULT` and `foreground` (`tailwind.config.mts`; see _Correction: t
 three brand fills now_).
 
 The cost is contrast: coral text on white and white on a coral fill are 2.5:1 at the hero accent
-word (`landing-page.tsx`), header nav active/hover (`header.tsx`), the dashboard stat label on
+word (`landing-page.tsx`), header nav active/hover (`header.tsx`), the Home page stat label on
 `group-hover`, the species card hover border, and, in both themes since both tokens are
 theme-constant, the sign-in button and `AuthForm`'s submit. Teal is 4.8:1 on white and 3.4:1 on the
 dark card, past 3:1 for graphical objects. `--destructive`/`--destructive-solid` keep their tuned
@@ -6785,7 +6784,7 @@ was rejected because long CTAs (`Log A Dive For This Course`) read as headings.
 
 `components/ui/empty-state.tsx` draws the centred "nothing here yet" a collection of records shows
 when it has none: icon, `No X yet` heading, a muted line, one action. Every list page and every card
-listing records goes through it, so two cards side by side on the dashboard cannot centre their
+listing records goes through it, so two cards side by side on the Home page cannot centre their
 contents at different heights. A card whose empty list is a one-line aside rather than a screen of
 its own — a passkey list, a service history — keeps its muted `<p>`.
 

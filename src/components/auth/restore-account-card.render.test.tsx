@@ -72,7 +72,7 @@ describe("the restore offer", () => {
     await user.click(restoreButton());
 
     expect(restoreAccount).toHaveBeenCalledWith("res-1");
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/dashboard"));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/home"));
   });
 
   // The one refusal a diver most needs stated plainly: the purge ran while the offer

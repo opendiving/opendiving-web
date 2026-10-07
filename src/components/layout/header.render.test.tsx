@@ -22,7 +22,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => "/home",
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -198,7 +198,7 @@ describe("the account menu's grouping", () => {
       "Settings",
     ]);
     for (const page of [
-      "Dashboard",
+      "Home",
       "Trips",
       "Dives",
       "Dive Sites",
@@ -222,6 +222,7 @@ describe("the bar", () => {
     const nav = screen.getByRole("navigation");
     const links = within(nav).getAllByRole("link");
     expect(links.map((link) => link.textContent)).toEqual([
+      "Home",
       "Trips",
       "Dives",
       "Dive Sites",
@@ -230,9 +231,9 @@ describe("the bar", () => {
       "Certifications",
     ]);
     // Gear and Certifications join the bar from `lg` only.
-    for (const link of links.slice(0, 4))
+    for (const link of links.slice(0, 5))
       expect(link).not.toHaveClass("hidden");
-    for (const link of links.slice(4)) expect(link).toHaveClass("hidden");
+    for (const link of links.slice(5)) expect(link).toHaveClass("hidden");
     expect(
       within(nav).getByRole("button", { name: "More" }),
     ).toBeInTheDocument();
@@ -241,26 +242,24 @@ describe("the bar", () => {
   it("marks the current page", () => {
     render(<Header />);
 
-    // The mocked path is /dashboard, which is not in the bar but in More.
+    // The mocked path is /home, which the bar holds, so More stays plain.
     const nav = screen.getByRole("navigation");
-    for (const link of within(nav).getAllByRole("link")) {
-      expect(link).not.toHaveAttribute("aria-current");
-    }
+    const home = within(nav).getByRole("link", { name: "Home" });
+    expect(home).toHaveAttribute("aria-current", "page");
+    expect(home).toHaveClass("text-coral");
     expect(within(nav).getByRole("button", { name: "More" })).toHaveClass(
-      "text-coral",
+      "text-foreground",
     );
   });
 });
 
 describe("the More menu", () => {
-  it("lists Dashboard first, ruled off, then the other record pages", async () => {
+  it("lists the record pages the bar leaves out, unruled", async () => {
     render(<Header />);
     await userEvent.click(screen.getByRole("button", { name: "More" }));
     const menu = await screen.findByRole("menu");
 
     expect(menuRows(menu)).toEqual([
-      "Dashboard",
-      "---",
       "Gear",
       "Certifications",
       "Courses",
@@ -279,12 +278,12 @@ describe("the More menu", () => {
 });
 
 describe("the brand link", () => {
-  it("goes to the dashboard when signed in", () => {
+  it("goes to the Home page when signed in", () => {
     render(<Header />);
 
     expect(screen.getByRole("link", { name: "OpenDiving" })).toHaveAttribute(
       "href",
-      "/dashboard",
+      "/home",
     );
   });
 
@@ -312,11 +311,11 @@ describe("the mobile menu", () => {
         .getAllByRole("link")
         .map((link) => link.textContent),
     ).toEqual([
+      "Home",
       "Trips",
       "Dives",
       "Dive Sites",
       "Marine Life",
-      "Dashboard",
       "Gear",
       "Certifications",
       "Courses",
@@ -324,8 +323,9 @@ describe("the mobile menu", () => {
       "People",
       "Check-in",
     ]);
-    expect(
-      within(menu).getByRole("link", { name: "Dashboard" }),
-    ).toHaveAttribute("aria-current", "page");
+    expect(within(menu).getByRole("link", { name: "Home" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

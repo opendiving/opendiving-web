@@ -118,7 +118,7 @@
        --coral-text (6.1:1 on white -> 2.5:1, light theme only; the dark theme is
        untouched, since --coral-text already resolved to the brand coral there):
        the landing hero's accent word, the header's nav items active and on hover
-       in both the desktop and the mobile menu, the dashboard stat cell's label on
+       in both the desktop and the mobile menu, the Home page stat cell's label on
        group-hover, and the species card's hover border.
 
        --coral-solid (5.1:1 under white -> 2.5:1, in *both* themes - neither token

@@ -290,7 +290,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                 parallel path existed. This sentence *names the denominator*, so
                 on a figure derived per cylinder it would assert the dive's
                 average depth produced a rate that was never divided by it -
-                the exact claim this card's own branch deleted from the dashboard
+                the exact claim this card's own branch deleted from the Home page
                 chart. A null SAC was the marker for that derivation and so stood
                 in for the test.
 

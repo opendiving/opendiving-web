@@ -22,7 +22,7 @@
 // Either way the destination lands in a browsing context with no opener, and a
 // `sessionStorage` entry - which is copied only from an opener - isn't there.
 // The value that used to be stored was therefore lost in the ordinary case, and
-// every magic-link sign-in fell through to `/dashboard`.
+// every magic-link sign-in fell through to `/home`.
 //
 // What's stored is still only a path the visitor's own browser was already
 // pointed at, and it's still read exactly once, but `localStorage` outlives the
@@ -39,7 +39,7 @@ const POST_AUTH_REDIRECT_KEY = "opendiving:post-auth-redirect";
 // backend (30 is only its default) and nothing here can see it - so matching it
 // by hand would mean an operator who raises it to an hour silently reintroduces
 // the bug this storage exists to fix, with every sign-in in the back half of the
-// window landing on `/dashboard` again.
+// window landing on `/home` again.
 //
 // The asymmetry decides it: too short breaks the feature, too long costs
 // essentially nothing. A destination can only be *read* by `/auth/verify`, which
@@ -56,7 +56,7 @@ interface StoredRedirect {
 
 // Where every auth entry point sends a freshly signed-in user when there's no
 // remembered destination.
-export const DEFAULT_POST_AUTH_REDIRECT = "/dashboard";
+export const DEFAULT_POST_AUTH_REDIRECT = "/home";
 
 // The two destinations that are not a sign-in: a verified identity with no account
 // yet, and an account inside its deletion grace period. Both are screens that ask for

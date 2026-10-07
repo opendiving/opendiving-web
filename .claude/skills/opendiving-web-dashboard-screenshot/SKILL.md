@@ -1,10 +1,10 @@
 ---
 name: opendiving-web-dashboard-screenshot
 description:
-  Retake docs/screenshots/dashboard.png, the README hero image — the dashboard header plus both
-  chart cards on their 2025 Year view. Use whenever a change alters what the dashboard looks like
-  above the Recent Dives row (the heading, the stat cards, Gas Consumption, Dive Activity) and the
-  README image would otherwise show the old UI.
+  Retake docs/screenshots/home.png, the README hero image — the dashboard header plus both chart
+  cards on their 2025 Year view. Use whenever a change alters what the dashboard looks like above
+  the Recent Dives row (the heading, the stat cards, Gas Consumption, Dive Activity) and the README
+  image would otherwise show the old UI.
 ---
 
 # Retake the dashboard README screenshot
@@ -60,7 +60,7 @@ re-run. Don't crop the PNG by hand, and don't pass a one-off height.
 The script prints `✓ dashboard.png  1024x<height> @2x`. Confirm the file matches:
 
 ```bash
-file docs/screenshots/dashboard.png && git status --short docs/screenshots/
+file docs/screenshots/home.png && git status --short docs/screenshots/
 ```
 
 Expect `2048 x <2 × height>` and only `dashboard.png` modified. Then open the PNG and check the
@@ -95,10 +95,9 @@ Commit it there too, on its own, with the same subject.
   not sign anything out: the token blacklist is a Postgres table the Arq worker purges, not a Redis
   key.
 
-- **`signed out on the way to /dashboard`** — the guard in `visit()` firing, after a link was
-  issued. Treat it as a real auth regression, not a flake: it is the failure mode of any token
-  handling bug, and the check exists so a run fails here instead of quietly shooting the sign-in
-  form.
+- **`signed out on the way to /home`** — the guard in `visit()` firing, after a link was issued.
+  Treat it as a real auth regression, not a flake: it is the failure mode of any token handling bug,
+  and the check exists so a run fails here instead of quietly shooting the sign-in form.
 - **`no magic-link token in the API log`** — API isn't up, or its logs are elsewhere; the script
   looks in `../opendiving-api`, overridable with `API_DIR`.
 - **`Gas Consumption has no year "2025" with dives`** — the account has nothing logged that year.

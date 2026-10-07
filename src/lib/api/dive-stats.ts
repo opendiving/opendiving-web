@@ -30,7 +30,7 @@ export interface DiveGasUsePoint {
 // Days rather than months because the card windows this one series three ways -
 // day by day, month by month, year by year - and sums the finer buckets into the
 // coarser ones itself (`activityBars`). One row per day dived, so the series is
-// bounded by the diving and stays smaller than the gas history the same dashboard
+// bounded by the diving and stays smaller than the gas history the same Home page
 // already fetches.
 //
 // Only days containing dives are sent. The chart draws a fixed grid (a month's

@@ -1,4 +1,4 @@
-// How much the diver has actually been diving, bucketed for the dashboard's
+// How much the diver has actually been diving, bucketed for Home's
 // activity chart. The counting itself happens in the API (`/user/dive-activity`,
 // one entry per day with diving in it); everything here is about turning that
 // sparse series into the fixed grid a bar chart needs.

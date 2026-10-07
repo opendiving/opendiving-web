@@ -14,8 +14,8 @@ import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { RecentTripsCard } from "@/components/dives/recent-trips-card";
 import { DiveActivityCard } from "@/components/dives/dive-activity-card";
 import { GasUseCard } from "@/components/dives/gas-use-card";
-import { PasskeyNudgeCard } from "@/components/dashboard/passkey-nudge-card";
-import { SetupChecklistCard } from "@/components/dashboard/setup-checklist-card";
+import { PasskeyNudgeCard } from "@/components/home/passkey-nudge-card";
+import { SetupChecklistCard } from "@/components/home/setup-checklist-card";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
@@ -106,7 +106,7 @@ function DiverAvatar({
   );
 }
 
-export interface DashboardPageFrameProps {
+export interface HomePageFrameProps {
   /** Null while the stats request is in flight. */
   stats?: UserDiveStats | null;
   statsError?: string | null;
@@ -127,11 +127,11 @@ const noop = () => {};
  * The user comes from the auth context rather than from a prop, so the name is
  * on screen at the click, before the stats request has answered.
  */
-export function DashboardPageFrame({
+export function HomePageFrame({
   stats = null,
   statsError = null,
   onRetryStats = noop,
-}: DashboardPageFrameProps) {
+}: HomePageFrameProps) {
   const { user } = useAuth();
   const units = useUnits();
 
@@ -155,7 +155,7 @@ export function DashboardPageFrame({
         subtitle="Your logbook, your trips and your stats, at a glance"
         actions={
           <Button asChild size="sm">
-            <Link href="/dives/new?from=/dashboard">
+            <Link href="/dives/new?from=/home">
               <Plus className="h-4 w-4 mr-2" />
               Log a dive
             </Link>
@@ -165,7 +165,7 @@ export function DashboardPageFrame({
 
       <div className={cn(HERO_BODY, "space-y-6")}>
         {/* Gear due a service and renewals are the header's bell, on every page;
-            what stays here is what only a dashboard visit should offer. */}
+            what stays here is what only a Home visit should offer. */}
         <SetupChecklistCard totalDives={stats?.total_dives ?? null} />
         {/* Below the checklist rather than above it: a diver with an empty logbook
             has something better to do first, and this one keeps until they come

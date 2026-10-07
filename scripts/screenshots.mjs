@@ -118,7 +118,7 @@ const CUT_BELOW = { dashboard: "Dive Activity", "dive-detail": "Recordings" };
 // this where the far column is prose or a chart.
 const CUT_AFTER_CARD = { "dive-site": "Dive Site Information" };
 const frame = (name) => ({ width: WIDTH, height: HEIGHT[name] });
-// The year both dashboard charts are parked on, on their `Year` scope - twelve months of
+// The year both Home charts are parked on, on their `Year` scope - twelve months of
 // one season in each. One constant, because the two cards showing the *same* period is
 // the point: they carry the same All/Year/Month toggle and are meant to read as a pair,
 // and a career of bars beside a single July reads as two unrelated cards that happen to
@@ -361,7 +361,7 @@ const hideDevTools = (page) =>
 // gap `space-y-6` leaves between rows rather than a few pixels into the card after it.
 //
 // It used to be one line - the top of the named card's next sibling - and that was right
-// for exactly as long as every shot cut on the dashboard, which is one column. The dive
+// for exactly as long as every shot cut on the Home page, which is one column. The dive
 // page is two. `Recordings` is a card in the narrow sidebar, so its neighbour's top is a
 // coordinate in that column, and the main column beside it was part-way down the gas
 // consumption card at the same height: the frame came out with a sentence sliced through
@@ -409,7 +409,7 @@ async function cutBelow(page, label) {
       };
 
     // Seeded from the neighbour's top where there is one, so a page with nothing open
-    // across the seam - the dashboard, every shot before the dive page - measures exactly
+    // across the seam - the Home page, every shot before the dive page - measures exactly
     // what the single line above it did, to the pixel.
     let cut = next ? box(next).top : box(anchor).bottom + gutter;
     // Each pass that moves the cut has to have found a card the pass before it could not
@@ -589,7 +589,7 @@ const MONTHS = [
   "December",
 ];
 
-// One of the two dashboard chart cards, by its own heading.
+// One of the two Home chart cards, by its own heading.
 //
 // Scoping matters and is easy to get wrong: the cards now carry the same All/Year/Month
 // toggle, the same `aria-label="Time range"` on it and the same prev/next labels, so an
@@ -611,7 +611,7 @@ const ordinal = (label) => {
   return year * 12 + (parts.length > 1 ? MONTHS.indexOf(parts[0]) : 0);
 };
 
-// Parks one of the dashboard's chart cards on a scope and a period.
+// Parks one of Home's chart cards on a scope and a period.
 //
 // One walk for both cards, where there used to be one apiece. They now carry the same
 // three scopes over the same period control, differing only in the card name each
@@ -682,7 +682,7 @@ const context = await browser.newContext({
 // profile chart is a few hundred samples of hand-rolled SVG on top of that.
 context.setDefaultTimeout(90_000);
 
-// The dashboard offers a passkey to any account that has none, in a card above the
+// The Home page offers a passkey to any account that has none, in a card above the
 // charts - and this browser is a fresh profile on every run, so it would land in the
 // hero shot whenever the demo account happens to have no passkey. Same class of pin as
 // the chart year: what the README shows should not depend on which state the account
@@ -704,16 +704,16 @@ await page.goto(`${WEB}/auth/verify?token=${link}`);
 await page.getByRole("button", { name: "Sign in" }).click();
 await page.getByRole("button", { name: "Account menu" }).waitFor();
 
-// The dashboard is where signing in lands, and the only page the bearer can be lifted
+// The Home page is where signing in lands, and the only page the bearer can be lifted
 // off before anything else needs it - so it gets loaded whether or not it gets shot.
-await visit(page, "dashboard", `${WEB}/dashboard`);
+await visit(page, "dashboard", `${WEB}/home`);
 // By heading, not by text: the cards carry visually-hidden labels naming the chart
 // their period control belongs to ("Gas consumption period"), and `getByText` matches
 // case-insensitive substrings - so a bare "Gas Consumption" resolves to two elements
 // and fails strict mode. `chartCard` scopes by the heading for the same reason.
 await page.getByRole("heading", { name: "Gas Consumption" }).waitFor();
 
-// Skipped when only the dashboard is being retaken, and each search inside it is skipped
+// Skipped when only the Home page is being retaken, and each search inside it is skipped
 // on its own: ranking the dives costs one request per candidate, for all thirty of them.
 const subjects =
   wanted("dive-detail") || wanted("gear-item") || wanted("dive-site")

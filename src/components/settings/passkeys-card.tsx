@@ -64,7 +64,7 @@ const DAY = { year: "numeric", month: "short", day: "numeric" } as const;
  * used, and the two things a diver can do about one - rename it or revoke it.
  *
  * Adding is here as well, because this is where someone who *went looking* for
- * passkeys arrives; the dashboard nudge is for everyone who didn't.
+ * passkeys arrives; the Home page nudge is for everyone who didn't.
  *
  * The card hides itself when there is nothing it could do: an API without the
  * routes, or a browser with no WebAuthn *and* no passkeys registered elsewhere.
@@ -79,7 +79,7 @@ export function PasskeysCard() {
   const [edited, setEdited] = useState<EditedName | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
 
-  // Whether the dashboard offer has been dismissed on this browser, read
+  // Whether the Home page offer has been dismissed on this browser, read
   // through `useSyncExternalStore` so the server renders the "no dismissal"
   // answer and hydration resolves the real one - the same shape the remembered
   // chart views use. `subscribeToNothing` because nothing else in this document
@@ -154,7 +154,7 @@ export function PasskeysCard() {
   const passkeys = list.status === "ready" ? list.passkeys : [];
   const pendingName = passkeys.find((one) => one.uuid === pendingId)?.name;
 
-  // Whether undoing the dismissal would actually bring the dashboard offer
+  // Whether undoing the dismissal would actually bring the Home page offer
   // back. Only an account *known* to have none qualifies: `passkeys` is `[]`
   // for a list that failed as well as for one that is genuinely empty, and
   // guessing "empty" there would put the optimistic promise in front of
@@ -376,15 +376,15 @@ export function PasskeysCard() {
           </p>
         )}
 
-        {/* The un-dismiss the dashboard offer never had. It shows only where a
+        {/* The un-dismiss the Home page offer never had. It shows only where a
             dismissal is actually stored, so a browser that never saw the offer
             - or one where the device-memory switch is on, and nothing was
             stored to begin with - is offered nothing to undo.
 
             What it promises depends on the account, and saying so is the whole
             reason these strings are conditional rather than one sentence. The
-            dashboard card offers a passkey only to an account that has none
-            (`dashboard/passkey-nudge-card.tsx`), so for the diver reading a
+            Home card offers a passkey only to an account that has none
+            (`home/passkey-nudge-card.tsx`), so for the diver reading a
             list with a passkey in it - which is most of the people who get
             here - undoing the dismissal cannot bring the offer back and must
             not claim to. It is still worth offering them, because the entry is
@@ -405,8 +405,8 @@ export function PasskeysCard() {
             <p className="text-xs text-muted-foreground">
               You dismissed the passkey offer on this browser.{" "}
               {nudgeWouldReturn
-                ? "Undo that and the dashboard will offer it again."
-                : "Undoing that removes the note, but the dashboard only offers a passkey to an account that has none."}
+                ? "Undo that and the Home page will offer it again."
+                : "Undoing that removes the note, but the Home page only offers a passkey to an account that has none."}
             </p>
             <Button
               variant="outline"
@@ -424,7 +424,7 @@ export function PasskeysCard() {
         {nudgeRestored && (
           <p className="text-xs text-muted-foreground border-t pt-3">
             {nudgeWouldReturn
-              ? "Done - the offer will be back on your dashboard next time you visit it."
+              ? "Done - the offer will be back on your Home page next time you visit it."
               : "Done - this browser is no longer holding that dismissal."}
           </p>
         )}

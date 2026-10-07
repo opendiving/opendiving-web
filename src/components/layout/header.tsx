@@ -36,7 +36,7 @@ import {
   CloudDownload,
   Shield,
   ChevronDown,
-  LayoutDashboard,
+  House,
 } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { useEffect, useRef, useState } from "react";
@@ -84,16 +84,11 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
+  { label: "Home", href: "/home", icon: House, tier: "primary" },
   { label: "Trips", href: "/trips", icon: Luggage, tier: "primary" },
   { label: "Dives", href: "/dives", icon: DiveIcon, tier: "primary" },
   { label: "Dive Sites", href: "/sites", icon: DiveSiteIcon, tier: "primary" },
   { label: "Marine Life", href: "/species", icon: Fish, tier: "primary" },
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    tier: "more",
-  },
   { label: "Gear", href: "/gear", icon: Backpack, tier: "lg" },
   {
     label: "Certifications",
@@ -191,7 +186,7 @@ export function Header() {
               below `md` - at 320px those 32px are what the four controls need. */}
           <div className="flex items-center md:space-x-8">
             <Link
-              href={isAuthenticated ? "/dashboard" : "/"}
+              href={isAuthenticated ? "/home" : "/"}
               className="flex flex-shrink-0 items-center space-x-2"
             >
               <Logo className="h-7 w-7 sm:h-8 sm:w-8 text-coral flex-shrink-0" />
@@ -237,32 +232,28 @@ export function Header() {
                     <DropdownMenuContent align="start" className="w-48">
                       {MORE_ITEMS.map((item) => {
                         const Icon = item.icon;
+                        // `lg:hidden` leaves a `display:none` row that
+                        // Radix's focusFirst loop skips: `.focus()` on it does
+                        // not move `document.activeElement`.
                         return (
-                          <React.Fragment key={item.href}>
-                            {/* `lg:hidden` leaves a `display:none` row that
-                                Radix's focusFirst loop skips: `.focus()` on it
-                                does not move `document.activeElement`. */}
-                            <DropdownMenuItem
-                              asChild
-                              className={
-                                item.tier === "lg" ? "lg:hidden" : undefined
+                          <DropdownMenuItem
+                            key={item.href}
+                            asChild
+                            className={
+                              item.tier === "lg" ? "lg:hidden" : undefined
+                            }
+                          >
+                            <Link
+                              href={item.href}
+                              aria-current={
+                                item === currentItem ? "page" : undefined
                               }
+                              className="flex items-center"
                             >
-                              <Link
-                                href={item.href}
-                                aria-current={
-                                  item === currentItem ? "page" : undefined
-                                }
-                                className="flex items-center"
-                              >
-                                <Icon className="mr-2 h-4 w-4" />
-                                {item.label}
-                              </Link>
-                            </DropdownMenuItem>
-                            {item.href === "/dashboard" && (
-                              <DropdownMenuSeparator />
-                            )}
-                          </React.Fragment>
+                              <Icon className="mr-2 h-4 w-4" />
+                              {item.label}
+                            </Link>
+                          </DropdownMenuItem>
                         );
                       })}
                     </DropdownMenuContent>
@@ -465,20 +456,16 @@ export function Header() {
             <nav className="flex flex-col space-y-3">
               {isAuthenticated ? (
                 <>
-                  {NAV_ITEMS.map((item, index) => {
+                  {NAV_ITEMS.map((item) => {
                     const isCurrent = item === currentItem;
-                    // The rule falls between the bar's items and the rest.
-                    const startsRest =
-                      item.tier !== "primary" &&
-                      NAV_ITEMS[index - 1]?.tier === "primary";
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
                         aria-current={isCurrent ? "page" : undefined}
                         className={`text-sm font-medium hover:text-coral py-2 ${
-                          startsRest ? "border-t pt-5" : ""
-                        } ${isCurrent ? "text-coral" : "text-foreground"}`}
+                          isCurrent ? "text-coral" : "text-foreground"
+                        }`}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         {item.label}

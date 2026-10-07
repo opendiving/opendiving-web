@@ -5,7 +5,7 @@
 // Not "on every navigation", which is what this said for a long time and is
 // the thing to know before touching it. A template is keyed at its own segment
 // level, and this one's level is the *first* path segment - so the fade runs
-// on /dives -> /dashboard, and does not run on /dives -> /dives/[id], on
+// on /dives -> /home, and does not run on /dives -> /dives/[id], on
 // /dives/[id] -> /dives/[id]/edit, or on a step of the dive pager. Measured in
 // a browser under both `next dev` and `next build`.
 //

@@ -33,13 +33,13 @@ function readPng(file: string) {
 }
 
 describe("manifest", () => {
-  it("installs the app standalone on the dashboard", () => {
+  it("installs the app standalone on the Home page", () => {
     expect(manifest()).toMatchObject({
       id: "/",
       name: "OpenDiving",
       short_name: "OpenDiving",
       description: SITE_DESCRIPTION,
-      start_url: "/dashboard",
+      start_url: "/home",
       scope: "/",
       display: "standalone",
       theme_color: "#ffffff",

@@ -30,7 +30,7 @@ const RECENT_TRIPS_COUNT = 5;
 const DELETED_MESSAGE = "Trip deleted successfully.";
 
 // Shows the user's most recent trips by trip date (up to 5), each editable and
-// deletable where it stands. Used on the dashboard so divers can quickly jump
+// deletable where it stands. Used on the Home page so divers can quickly jump
 // back into a trip they're logging dives for.
 export function RecentTripsCard() {
   const openCreate = useQuickCreate();

@@ -349,7 +349,7 @@ export interface FormatOptions {
    *
    * Imperial is deliberately unaffected. A whole foot is already finer than a
    * tenth of a metre and a hundredth of a cubic foot finer than a tenth of a litre,
-   * so a call that coarsens the metric figure on purpose - the dashboard's
+   * so a call that coarsens the metric figure on purpose - Home's
    * whole-metre depth, a period-average RMV - has nothing left to coarsen on the
    * other side.
    */

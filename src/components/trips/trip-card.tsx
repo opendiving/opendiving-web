@@ -28,7 +28,7 @@ interface TripCardProps {
   isDeleting: boolean;
 }
 
-// One trip as a card, on /trips and in the dashboard's recent trips: a map of
+// One trip as a card, on /trips and in Home's recent trips: a map of
 // its places as the backdrop - the whole world for a trip with no place on one
 // yet, and the map's water where this instance draws no map - and
 // what its dives add up to, as far as three figures carry it. The trip's page

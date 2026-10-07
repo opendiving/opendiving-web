@@ -1,4 +1,4 @@
-// The calendar windowing the dashboard's two trend charts share: which slice of a
+// The calendar windowing Home's two trend charts share: which slice of a
 // series is on screen, what it's called, which slices are worth offering, and how
 // to step between them.
 //

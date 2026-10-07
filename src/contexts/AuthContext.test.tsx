@@ -347,7 +347,7 @@ describe("AuthProvider outcomes", () => {
 
   // Onboarding's picture is uploaded in `onCreated`, and the account is read after
   // it: a read before would come back without the picture, and `user` being set is
-  // what moves `/onboarding` on to the dashboard.
+  // what moves `/onboarding` on to the Home page.
   it("runs a completed profile's onCreated before it reads the new account", async () => {
     refreshAccessToken.mockRejectedValue(new Error("401"));
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -397,7 +397,7 @@ describe("AuthProvider outcomes", () => {
   // that blacklists the token pair and clears the refresh cookie, so after a
   // failed one the cookie is still live and a page load would hand it to
   // `initAuth`, which re-derives the session and lets `/` bounce the diver to
-  // `/dashboard` - signed in, one click after asking to leave.
+  // `/home` - signed in, one click after asking to leave.
   it("changes nothing, and stays put, when the server didn't confirm", async () => {
     refreshAccessToken.mockResolvedValue("token");
     authAPI.getCurrentUser.mockResolvedValue(USER);

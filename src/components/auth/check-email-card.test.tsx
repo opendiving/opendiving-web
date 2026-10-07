@@ -126,7 +126,7 @@ describe("CheckEmailCard", () => {
 
     await typeCode(user, "481052");
 
-    expect(router.push).toHaveBeenCalledWith("/dashboard");
+    expect(router.push).toHaveBeenCalledWith("/home");
   });
 
   // The email prints the code as "481 052", so the obvious thing a diver does -
@@ -260,7 +260,7 @@ describe("CheckEmailCard", () => {
     expect(verifyEmailCode).toHaveBeenCalledTimes(1);
 
     await act(async () => settle({ status: "authenticated" }));
-    expect(router.push).toHaveBeenCalledWith("/dashboard");
+    expect(router.push).toHaveBeenCalledWith("/home");
   });
 
   // The expensive half of having no submit button. Auto-submit fires on every
