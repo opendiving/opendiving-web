@@ -777,14 +777,14 @@ function CertificationSummary({
     // Keeps a card off a page boundary: the alternative is a printed summary whose
     // last certification is cut in half, which is the one thing a desk cannot read.
     <div className="space-y-2 break-inside-avoid">
-      {/* The shape the diver's own block has at the top of the sheet: the picture
-          and the name on one line, and the list under it at the cell's full width -
-          which is what lines these values up with the ones in the sections above,
-          and what keeps a date off a second line in half a row of A4. */}
+      {/* The picture and the name on one line, and the list under it at the cell's
+          full width - which is what lines these values up with the ones in the
+          sections above, and what keeps a date off a second line in half a row of
+          A4. */}
       <div className={cn("flex items-center", NAME_BESIDE_PICTURE)}>
-        {/* The column stands even for a card whose picture the diver never stored,
-            for the same reason it stands beside a diver with no portrait: the name
-            beside it has to meet the same edge as the values underneath it. */}
+        {/* The column stands even for a card whose picture the diver never stored:
+            the name beside it has to meet the same edge as the values underneath
+            it. */}
         <div className={SLOT}>
           {isPdf ? (
             <CertificationCardFrame
