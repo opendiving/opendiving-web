@@ -99,7 +99,7 @@ export function SpeciesPageFrame({
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Species</h1>
+        <h1 className="text-3xl font-bold">Marine Life</h1>
         <p className="text-muted-foreground mt-2">
           Everything you have logged seeing, and when you saw it
         </p>
