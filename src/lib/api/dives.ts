@@ -1028,6 +1028,11 @@ export interface DiveNumberSuggestion {
   is_taken: boolean;
 }
 
+// `/dives/recent-volumes`: distinct cylinder volumes, most recently used first.
+export interface RecentVolumes {
+  volumes: number[];
+}
+
 // The state of a user's dive numbering, from `/dives/numbering`.
 //
 // Reported, never enforced. A gap means "part of my log lives in a paper
@@ -1330,6 +1335,19 @@ export const divesAPI = {
       params: { start_time: startTime },
     });
     return response.data;
+  },
+
+  /**
+   * Up to ten cylinder volumes (litres) from the signed-in user's own dives, the
+   * most recently used first. `until` bounds "recently" the way a lookup's does:
+   * only dives starting at or before it count (`LookupQuery` in `client.ts`).
+   */
+  async getRecentVolumes(until?: string): Promise<number[]> {
+    const response = await apiClient.get<RecentVolumes>(
+      `/dives/recent-volumes`,
+      { params: until ? { until } : {} },
+    );
+    return response.data.volumes;
   },
 
   // The state of the signed-in user's dive numbering, for the log's numbering

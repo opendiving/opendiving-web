@@ -275,12 +275,15 @@ export interface MixtureFieldsProps<TFieldValues extends MixtureFieldsValues> {
   // so a caller with no Fields dialog behind it - the render tests - gets the whole
   // card.
   isVisible?: (key: DiveFormFieldKey) => boolean;
+  // The dive's start time, which bounds each volume dropdown's recent volumes.
+  until?: string;
 }
 
 export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
   control,
   fieldArray,
   isVisible = () => true,
+  until,
 }: MixtureFieldsProps<TFieldValues>) {
   const { fields, append, remove } = fieldArray;
   const { entryUnits, toggleEntryUnits } = useEntryUnits();
@@ -333,6 +336,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                     <VolumeCombobox
                       value={field.value}
                       onChange={field.onChange}
+                      until={until}
                     />
                   </FormControl>
                   <FormMessage />

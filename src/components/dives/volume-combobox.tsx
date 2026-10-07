@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { useUnits } from "@/hooks/useUnits";
 import type { UnitSystem } from "@/lib/units";
+import { divesAPI } from "@/lib/api/dives";
 
 export interface VolumeOption {
   value: number;
@@ -201,6 +202,8 @@ export interface VolumeComboboxProps extends FormControlSlotProps {
    * would be a caller that does not exist.
    */
   onChange: (value: number | "") => void;
+  /** The dive's start time; bounds the "Recently used" group like a lookup's `until`. */
+  until?: string;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -223,22 +226,42 @@ export interface VolumeComboboxProps extends FormControlSlotProps {
 export function VolumeCombobox({
   value,
   onChange,
+  until,
   disabled,
   placeholder = "Select or enter volume...",
   ...slotProps
 }: VolumeComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const units = useUnits();
+  // The diver's own recent volumes, fetched on each open so a dive saved in
+  // another tab shows up. The last answer stays on screen while the next loads,
+  // and a failed fetch keeps whatever it had - the presets work regardless.
+  const [recentVolumes, setRecentVolumes] = useState<number[]>([]);
+  const recentRef = useRef<number[]>([]);
   // Groups for rendering, and the flat list the keyboard walks. Headings are not
   // in `options` at all, which is what makes the arrow keys skip them - there is
   // no index for a heading to occupy, so `nextActiveIndex` cannot land on one.
   const groups = useMemo(() => {
     let next = 0;
-    return volumeGroupsFor(units).map((group) => ({
+    // Ahead of every preset group, nearest the box, and in addition to them: a
+    // recent 11.1 is still listed under "US aluminium" as the AL80. Plain litres,
+    // since a stored volume cannot say which of two same-sized presets it was.
+    const recent: VolumeOptionGroup[] = recentVolumes.length
+      ? [
+          {
+            label: "Recently used",
+            options: recentVolumes.map((value) => ({
+              value,
+              label: `${value} L`,
+            })),
+          },
+        ]
+      : [];
+    return [...recent, ...volumeGroupsFor(units)].map((group) => ({
       label: group.label,
       rows: group.options.map((option) => ({ option, index: next++ })),
     }));
-  }, [units]);
+  }, [units, recentVolumes]);
   const options = useMemo(
     () => groups.flatMap((group) => group.rows.map((row) => row.option)),
     [groups],
@@ -247,6 +270,26 @@ export function VolumeCombobox({
   // `nextActiveIndex` with `CreatableCombobox` so both dropdowns in the dive
   // form move the same way.
   const [activeIndex, setActiveIndex] = useState(-1);
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    divesAPI
+      .getRecentVolumes(until)
+      .then((volumes) => {
+        if (cancelled || volumes.join() === recentRef.current.join()) return;
+        recentRef.current = volumes;
+        setRecentVolumes(volumes);
+        // The rows below shift by however much the group grew or shrank, so a
+        // highlight would land on a different preset than the one chosen.
+        setActiveIndex(-1);
+      })
+      .catch((error) =>
+        console.error("Failed to fetch recent volumes:", error),
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, until]);
   // What is being typed, while it is being typed; `null` whenever the field is
   // showing `value` itself.
   //
