@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
-import { tripsAPI, Trip } from "@/lib/api/trips";
-import { divesAPI, Dive } from "@/lib/api/dives";
-import { fetchAllPages, isAbortError } from "@/lib/api/client";
-import { distinctContactUuids } from "@/lib/contact";
+import { tripsAPI, Trip, type TripDiveAddScope } from "@/lib/api/trips";
+import type { Dive } from "@/lib/api/dives";
 import { useContactsByUuid } from "@/hooks/useContactsByUuid";
 import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,7 @@ import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassig
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripHero } from "@/components/trips/trip-hero";
 import { TripDiveSections } from "@/components/trips/trip-dive-sections";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { useToast } from "@/components/ui/use-toast";
 import { formatTripPartDates } from "@/lib/trip-parts";
 import {
@@ -41,6 +41,18 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // Cebu 2026" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Trip deleted successfully.";
 
+const dives = (count: number) => `${count} ${count === 1 ? "dive" : "dives"}`;
+
+// What an add that came back `added` of `expected` says. Short means the rest
+// stopped being candidates between the page's read and the add.
+function addedMessage(added: number, expected: number): string {
+  if (added >= expected) return `${dives(added)} added to the trip.`;
+  const rest = "moved to another trip or deleted since the page loaded";
+  return added === 0
+    ? `No dives added: they were ${rest}.`
+    : `${dives(added)} of ${expected} added to the trip. The rest were ${rest}.`;
+}
+
 export function TripDetailPageContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -53,6 +65,7 @@ export function TripDetailPageContent() {
     resource: trip,
     setResource: setTrip,
     isLoading: isLoadingTrip,
+    refetch: refetchTrip,
   } = useResource<Trip>(tripsAPI.getTrip, {
     enabled: !!user,
     errorMessage: "Failed to load trip details. Please try again.",
@@ -67,47 +80,73 @@ export function TripDetailPageContent() {
   });
   const isDeleting = del.deletingId !== null;
 
-  // Every dive of the trip, read once and keyed on the trip it was read for:
-  // the dives column groups them under the parts they were made on, which needs
-  // all of them at once, and the dive centers line is read off them - derived
-  // rather than stored on the trip, so it can never disagree with them; a week
-  // split between two shops lists both.
+  // The trip's dives with its candidates in among them, a page at a time as
+  // /dives reads its list. Keyed on the trip's uuid alone, never on the trip:
+  // an add and a save both replace that object, and a fetcher that changed with
+  // it would throw away every page the diver has scrolled through.
   const tripUuid = trip?.uuid;
-  const [tripDives, setTripDives] = useState<{
-    tripUuid: string;
-    dives: Dive[] | null;
-  } | null>(null);
-  useEffect(() => {
-    if (!tripUuid) return;
-    const controller = new AbortController();
-    fetchAllPages(
-      (page, perPage) => divesAPI.getDives(page, perPage, { tripUuid }),
-      {
-        signal: controller.signal,
-        label: "the trip's dives",
-        keyOf: (dive) => dive.uuid,
-      },
-    )
-      .then((dives) => setTripDives({ tripUuid, dives }))
-      .catch((error) => {
-        if (isAbortError(error)) return;
-        console.error("Failed to fetch the trip's dives:", error);
-        setTripDives({ tripUuid, dives: null });
+  const fetchTripDives = useCallback(
+    (page: number, perPage: number) =>
+      tripsAPI.getTripDives(tripUuid!, page, perPage),
+    [tripUuid],
+  );
+  const {
+    items: tripDives,
+    isLoading: isLoadingDives,
+    isLoadingMore,
+    totalCount,
+    itemsPerPage,
+    hasMore,
+    loadFailed,
+    loadMore,
+    reload,
+    revalidate,
+  } = useInfiniteResource<Dive>(fetchTripDives, {
+    enabled: !!tripUuid,
+    errorMessage: "Failed to load dives. Please try again.",
+    keyOf: (dive) => dive.uuid,
+  });
+
+  // An add keeps the list as long as it was - a candidate that joins the trip
+  // is still in it - so the loaded rows are re-read in place rather than from
+  // the first page, and the trip with them for its figures and its counts.
+  const addDives = useCallback(
+    async (scope: TripDiveAddScope, expected: number) => {
+      if (!tripUuid) return false;
+      try {
+        const { added } = await tripsAPI.addTripDives(tripUuid, scope);
+        await Promise.all([revalidate(), refetchTrip()]);
+        toast({ description: addedMessage(added, expected) });
+        return added > 0;
+      } catch (error) {
+        const status = (error as { response?: { status?: number } })?.response
+          ?.status;
+        if (status === 422) {
+          // A part named by dates the trip no longer carries: it was edited
+          // somewhere else since this page read it.
+          await Promise.all([revalidate(), refetchTrip()]);
+          toast({
+            title: "This trip has changed",
+            description:
+              "Its parts were edited since the page loaded, so nothing was added. The page now shows them as they are.",
+          });
+          return false;
+        }
+        console.error("Failed to add dives to the trip:", error);
         toast({
           title: "Error",
-          description: "Failed to load dives. Please try again.",
+          description: "Failed to add dives to the trip. Please try again.",
           variant: "destructive",
         });
-      });
-    return () => controller.abort();
-  }, [tripUuid, toast]);
-  const isCurrentTripDives = !!tripDives && tripDives.tripUuid === tripUuid;
-  const dives = isCurrentTripDives ? tripDives.dives : null;
-  const divesFailed = isCurrentTripDives && tripDives.dives === null;
-  const diveCenterUuids = useMemo(
-    () => (dives ? distinctContactUuids(dives) : []),
-    [dives],
+        return false;
+      }
+    },
+    [tripUuid, revalidate, refetchTrip, toast],
   );
+
+  // Read off the trip's own dives by the API, not off the list here, which
+  // holds candidates and only the pages loaded so far.
+  const diveCenterUuids = trip?.contact_uuids ?? [];
 
   const contacts = useContactsByUuid([
     ...(trip?.parts ?? []).map((part) => part.accommodation_uuid),
@@ -189,7 +228,14 @@ export function TripDetailPageContent() {
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         trip={trip}
-        onSaved={setTrip}
+        // A part's dates decide which dives are candidates, so the list starts
+        // again; and the trip is read again for the counts the form's parts
+        // do not carry.
+        onSaved={(saved) => {
+          setTrip(saved);
+          void reload();
+          void refetchTrip();
+        }}
       />
 
       <DeleteWithReassignDialog
@@ -209,10 +255,27 @@ export function TripDetailPageContent() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <TripDiveSections
-              dives={dives}
-              loadFailed={divesFailed}
+              dives={
+                isLoadingDives && tripDives.length === 0 ? null : tripDives
+              }
+              hasMore={hasMore}
+              // Once a row is on screen, a failed page is the trigger's to
+              // retry rather than the whole column's to replace.
+              loadFailed={loadFailed && tripDives.length === 0}
               parts={tripParts}
+              candidateCount={trip.candidate_count}
               newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
+              onAdd={addDives}
+            />
+            <LoadMoreTrigger
+              hasMore={hasMore}
+              isLoading={isLoadingMore}
+              hasFailed={loadFailed}
+              loadedCount={tripDives.length}
+              totalCount={totalCount}
+              itemsPerPage={itemsPerPage}
+              itemLabel="dives"
+              onLoadMore={loadMore}
             />
           </div>
 

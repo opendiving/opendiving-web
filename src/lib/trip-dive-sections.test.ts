@@ -151,6 +151,55 @@ describe("tripDiveSections", () => {
       { part: 0, dives: [] },
     ]);
   });
+  it("leaves out an empty dated part the loaded pages may not have reached yet", () => {
+    const later: TripPart = {
+      location: { name: "Safaga" },
+      start_date: "2026-04-14",
+      end_date: "2026-04-15",
+    };
+    const toEnd: TripPart = {
+      location: { name: "Cairo" },
+      end_date: "2026-04-01",
+    };
+    const nowhen: TripPart = { location: { name: "Nowhen" } };
+    const parts = [toEnd, DAHAB, SHARM, later, nowhen];
+    // The first page holds only the newest part's dives.
+    const loaded = [dive("sharm", "2026-04-11T09:00:00Z")];
+    // Safaga lies wholly after the oldest loaded day, so its emptiness is
+    // settled; Dahab and Cairo reach back past it and wait. The dateless part
+    // keeps its place beside the part before it.
+    expect(uuids(tripDiveSections(loaded, parts, { complete: false }))).toEqual(
+      [
+        { part: 4, dives: [] },
+        { part: 3, dives: [] },
+        { part: 2, dives: ["sharm"] },
+      ],
+    );
+    // A part sharing the oldest loaded day waits too: that day's other dives
+    // may be on the next page.
+    expect(
+      uuids(
+        tripDiveSections(
+          [dive("dahab", "2026-04-03T09:00:00Z")],
+          [DAHAB, SHARM],
+          {
+            complete: false,
+          },
+        ),
+      ),
+    ).toEqual([
+      { part: 1, dives: [] },
+      { part: 0, dives: ["dahab"] },
+    ]);
+    // Once the list has ended, every part is drawn.
+    expect(uuids(tripDiveSections(loaded, parts))).toEqual([
+      { part: 4, dives: [] },
+      { part: 3, dives: [] },
+      { part: 2, dives: ["sharm"] },
+      { part: 1, dives: [] },
+      { part: 0, dives: [] },
+    ]);
+  });
 });
 
 describe("tripPartForDay", () => {

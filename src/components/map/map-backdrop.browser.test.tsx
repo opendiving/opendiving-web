@@ -61,6 +61,8 @@ const trip = (parts: Trip["parts"]): Trip => ({
   dive_site_count: 7,
   species_count: 48,
   max_depth: 31.4,
+  candidate_count: 0,
+  contact_uuids: [],
 });
 
 // Wide rather than tall, so the canvas's width, not the band's height, is what

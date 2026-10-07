@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Dive } from "@/lib/api/dives";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -40,13 +41,21 @@ interface DiveCardProps {
   // to run.
   onDelete?: () => void;
   isDeleting?: boolean;
+  // The control that adds a dive the trip page shows but the trip does not hold
+  // yet. A card handed one is drawn muted, with it in place of the menu.
+  addToTrip?: ReactNode;
 }
 
 // One dive as a card, in every list of dives: a map of its sites and fixes as
 // the backdrop - the map's water where it has none - with
 // its depth curve across the foot of it, and its duration, deepest point and
 // water temperature - or its average depth where it has no temperature.
-export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
+export function DiveCard({
+  dive,
+  onDelete,
+  isDeleting,
+  addToTrip,
+}: DiveCardProps) {
   const units = useUnits();
   // The dive's page and its edit form both return to the page the card is on.
   const withReturnTo = useWithReturnTo();
@@ -77,6 +86,8 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
   return (
     <BackdropCard
       actionsLabel={`Actions for dive #${dive.dive_number}`}
+      corner={addToTrip}
+      muted={!!addToTrip}
       actions={
         <>
           <DropdownMenuItem asChild>
@@ -145,6 +156,7 @@ export function DiveCard({ dive, onDelete, isDeleting }: DiveCardProps) {
           sites={dive.dive_sites}
           course={dive.course_uuid != null}
         />
+        {addToTrip && <span className="sr-only">{" (Not in this trip)"}</span>}
       </Link>
       <div className="text-xs">
         <FactsLine facts={diveFacts(dive)} />

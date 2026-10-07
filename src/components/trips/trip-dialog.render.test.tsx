@@ -98,6 +98,8 @@ describe("TripDialog", () => {
       dive_site_count: 0,
       species_count: 0,
       max_depth: null,
+      candidate_count: 0,
+      contact_uuids: [],
     }));
     renderDialog();
 
@@ -124,6 +126,8 @@ describe("TripDialog", () => {
           dive_site_count: 0,
           species_count: 0,
           max_depth: null,
+          candidate_count: 0,
+          contact_uuids: [],
         }}
         onSaved={() => {}}
       />,
@@ -203,6 +207,8 @@ describe("TripDialog", () => {
       dive_site_count: 0,
       species_count: 0,
       max_depth: null,
+      candidate_count: 0,
+      contact_uuids: [],
     }));
     renderDialog();
 
@@ -240,6 +246,8 @@ describe("TripDialog", () => {
           dive_site_count: 0,
           species_count: 0,
           max_depth: null,
+          candidate_count: 0,
+          contact_uuids: [],
         }}
         onSaved={() => {}}
       />,
@@ -280,6 +288,8 @@ describe("TripDialog", () => {
       dive_site_count: 0,
       species_count: 0,
       max_depth: null,
+      candidate_count: 0,
+      contact_uuids: [],
     };
     render(
       <TripDialog
@@ -324,6 +334,8 @@ describe("TripDialog", () => {
       dive_site_count: 0,
       species_count: 0,
       max_depth: null,
+      candidate_count: 0,
+      contact_uuids: [],
     };
     render(
       <TripDialog

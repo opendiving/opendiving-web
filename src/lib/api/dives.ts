@@ -448,7 +448,9 @@ export interface Dive {
   // Total ballast carried on the dive, in kilograms. A plain per-dive number
   // rather than a gear item - see the API's DECISIONS.md.
   weight?: number;
-  trip_uuid?: string;
+  // `null` on a dive in no trip - which is how a trip's list of dives marks its
+  // candidates (`tripsAPI.getTripDives`).
+  trip_uuid?: string | null;
   // The training course this dive was part of, if the diver recorded one. A
   // separate grouping from the trip: a course is where a dive came from in the
   // logbook's training sense, and a dive can have both.

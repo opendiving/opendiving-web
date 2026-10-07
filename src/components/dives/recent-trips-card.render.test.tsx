@@ -81,6 +81,8 @@ const trip = (overrides: Partial<Trip>): Trip => ({
   dive_site_count: 0,
   species_count: 0,
   max_depth: null,
+  candidate_count: 0,
+  contact_uuids: [],
   ...overrides,
 });
 
