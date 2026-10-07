@@ -3335,9 +3335,10 @@ the API's geocoders, and a self-hoster configures the two apart.
 
 ## Three roads to a position, so the geocoding lives in a hook above the map
 
-A position arrives three ways — pin, place search, pasted latitude/longitude pair — and only
-`DiveSiteDialog` sees all three, so the reverse geocode and its guards live in
-`hooks/useGeocodedLocation.ts`; `DiveSiteMapField` renders search, map and credit.
+A position arrives three ways — pin, place search, pasted latitude/longitude pair — and the dialog
+holding the coordinates sees them all, so the reverse geocode and its guards live in
+`hooks/useGeocodedLocation.ts`, used by `DiveSiteDialog` and `LocationSearchDialog` alike;
+`DiveSiteMapField` renders map and credit.
 
 **A reverse-geocoded place is a name and nothing else**, where a forward search fills the whole
 place. The coordinates that come back are the _site's_ — it is the pin the diver just dropped that
@@ -5224,8 +5225,8 @@ for the region it names. Where neither resolved, the field stays as it was, so `
 `AdoptedPlace | null`. `suggestDiveSites` guards its own query length because the combobox calls
 `onSearch` with `""` on open. Distance is computed here (`haversineMeters`, `formatDistance`) so the
 unit preference holds. Catalog `attribution` joins the search credit, never the map's.
-`DiveSiteMapField` passes the form's position whole or not at all; the endpoint answers 422 to half.
-A geocoder row whose `source` and `source_id` both equal a catalog row's in the same answer is
+`LocationSearchDialog` passes its position whole or not at all; the endpoint answers 422 to half. A
+geocoder row whose `source` and `source_id` both equal a catalog row's in the same answer is
 dropped: the same OSM object, and the catalog's row names the dive site. A Wikidata row never
 matches.
 

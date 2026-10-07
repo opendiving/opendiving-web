@@ -142,9 +142,10 @@ export function DiveSiteDialog({
   };
 
   // Owned here rather than by the map, because both ways of placing a position
-  // have to reach the same lookup and only one of them comes through the map. The place it answers with is written straight into the Location
-  // field; the field's visible half stays an ordinary text input, so a diver who
-  // wants something else types over it.
+  // have to reach the same lookup and only one of them comes through the map.
+  // The place it answers with is written straight into the Location field; the
+  // field's visible half stays an ordinary text input, so a diver who wants
+  // something else types over it.
   const geocoded = useGeocodedLocation({
     open,
     latitude: watchedLatitude,
@@ -189,8 +190,9 @@ export function DiveSiteDialog({
   };
 
   // What the location search settled on fills the coordinate pair and the
-  // Location beside it, wholesale: the dialog opened on these same values, so
-  // anything it hands back that differs is a change the diver made there.
+  // Location beside it, wholesale - including the name it looked up for the
+  // form's position on opening, which replaces whatever Location held, as
+  // placing that pin by hand would have.
   //
   // A catalog dive site fills Name as well, and always - a diver who wanted
   // something else types over it, exactly as they do with the Location. Filling
