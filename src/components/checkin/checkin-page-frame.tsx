@@ -471,7 +471,7 @@ export function CheckInPageFrame({
                       a sheet handed to somebody. */}
                   <div className={cn(!hasAboutYou && offSheet)}>
                     {hasAboutYou ? (
-                      <dl className="space-y-0.5">
+                      <dl className="space-y-1">
                         <IconDetail
                           icon={Cake}
                           label="Date of birth"
