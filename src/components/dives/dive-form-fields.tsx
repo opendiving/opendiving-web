@@ -902,6 +902,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             control={control}
             fieldArray={mixtureFieldArray}
             isVisible={isVisible}
+            until={until}
           />,
         )}
 
