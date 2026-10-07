@@ -46,11 +46,12 @@ import {
 } from "@/components/layout/quick-create";
 import { NotificationsMenu } from "@/components/layout/notifications-menu";
 
-// Everything the "+" menu can start. It's the one way to create or bring dives
-// in from the chrome at every width - the mobile menu deliberately doesn't repeat
-// these, so the hamburger is navigation and "+" is creation. A dive is the only
-// form big enough to warrant its own page; the rest open a dialog over whatever
-// the diver is looking at. Import follows them, ruled off, as the last entry.
+// Everything the "+" menu can start. It's the one way to create from the chrome
+// at every width - the mobile menu deliberately doesn't repeat these, so the
+// hamburger is navigation and "+" is creation. A dive is the only form big
+// enough to warrant its own page; the rest open a dialog over whatever the diver
+// is looking at. Import follows them, ruled off, as the last entry; the account
+// menu carries it too, beside Export.
 // `icon` is typed by what this menu actually renders - a component taking a
 // `className` - rather than as `LucideIcon`: "New dive" carries the brand mark,
 // which is a plain function component and not one of lucide's forward-ref
@@ -378,6 +379,15 @@ export function Header() {
                       @{user.username}
                     </div>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={withReturnTo("/import")}
+                        className="flex items-center"
+                      >
+                        <CloudUpload className="mr-2 h-4 w-4" />
+                        Import
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/data" className="flex items-center">
                         <CloudDownload className="mr-2 h-4 w-4" />

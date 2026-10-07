@@ -161,7 +161,7 @@ const menuRows = (menu: HTMLElement) =>
   );
 
 describe("Import and Export", () => {
-  it("puts Import last in the create menu and Export directly above Settings", async () => {
+  it("puts Import last in the create menu, and Import then Export above Settings", async () => {
     render(<Header />);
     await userEvent.click(screen.getByRole("button", { name: "Create new" }));
     const createMenu = await screen.findByRole("menu");
@@ -177,13 +177,11 @@ describe("Import and Export", () => {
     const accountMenu = await screen.findByRole("menu");
 
     expect(
+      within(accountMenu).getByRole("menuitem", { name: "Import" }),
+    ).toHaveAttribute("href", expect.stringMatching(/^\/import/));
+    expect(
       within(accountMenu).getByRole("menuitem", { name: "Export" }),
     ).toHaveAttribute("href", "/data");
-    const accountRows = menuRows(accountMenu);
-    expect(accountRows.indexOf("Settings")).toBe(
-      accountRows.indexOf("Export") + 1,
-    );
-    expect(accountRows).not.toContain("Import");
   });
 });
 
@@ -194,6 +192,7 @@ describe("the account menu's grouping", () => {
     const rows = menuRows(menu);
     expect(rows.slice(0, rows.indexOf("Settings") + 1)).toEqual([
       "---",
+      "Import",
       "Export",
       "Settings",
     ]);
