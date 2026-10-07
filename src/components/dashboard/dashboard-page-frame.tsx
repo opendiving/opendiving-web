@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type AriaAttributes, type ReactNode } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -85,9 +85,15 @@ function Stat({
   );
 }
 
-// The diver's picture where a record's page has its kind's icon, and at its
-// sizes, the initials scaled to match.
-function DiverAvatar({ className }: { className?: string }) {
+// The diver's picture where a record's page has its kind's icon, at its sizes
+// and as decorative, the initials scaled to match.
+function DiverAvatar({
+  className,
+  "aria-hidden": ariaHidden,
+}: {
+  className?: string;
+  "aria-hidden"?: AriaAttributes["aria-hidden"];
+}) {
   const { user } = useAuth();
   if (!user) return null;
   return (
@@ -95,6 +101,7 @@ function DiverAvatar({ className }: { className?: string }) {
       name={user.name}
       avatarSha={user.avatar_sha256}
       className={cn(className, "text-sm md:text-[22px]")}
+      aria-hidden={ariaHidden}
     />
   );
 }

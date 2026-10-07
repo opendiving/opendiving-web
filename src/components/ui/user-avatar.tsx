@@ -18,6 +18,8 @@ interface UserAvatarProps {
   // and the initials both.
   size?: number;
   className?: string;
+  // For a picture beside the name it would only repeat.
+  "aria-hidden"?: React.AriaAttributes["aria-hidden"];
 }
 
 /**
@@ -38,6 +40,7 @@ export function UserAvatar({
   avatarSha,
   size,
   className,
+  "aria-hidden": ariaHidden,
 }: UserAvatarProps) {
   const initials = getUserInitials(name);
 
@@ -55,6 +58,7 @@ export function UserAvatar({
     <Avatar
       className={className}
       style={size ? { width: size, height: size } : undefined}
+      aria-hidden={ariaHidden}
     >
       {url && <AvatarImage src={url} alt={`${name}'s avatar`} />}
       {/* The initials scale with the circle: `text-sm` at the header's 36px. */}

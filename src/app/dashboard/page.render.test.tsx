@@ -89,8 +89,11 @@ describe("dashboard heading", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
       /^Sam Diver$/,
     );
-    // The initials, for an account with no picture.
-    expect(screen.getByText("SD")).toBeInTheDocument();
+    // The initials, for an account with no picture - hidden from a screen reader,
+    // which would hear the name twice.
+    expect(
+      screen.getByText("SD").closest("[aria-hidden='true']"),
+    ).not.toBeNull();
   });
 });
 
