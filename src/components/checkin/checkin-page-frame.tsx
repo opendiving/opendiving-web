@@ -120,11 +120,11 @@ const TWO_COLUMNS =
 // unit is the individual card, which carries this itself.
 const KEEP_TOGETHER = "break-inside-avoid";
 
-// The height of the diver's name row and of the Diving heading beside it, so the
-// rows under each start level. The edit button would set it on the diver's own
-// screen, but it is off the paper and off a link's page, where the name's line and
-// the heading's would otherwise leave the two lists 12px apart.
-const NAME_ROW = "min-h-9";
+// The height of every heading row - each section's and the diver's name - so the
+// gap from a heading to its rows is one gap, and the lists either side of a row
+// start level. The edit button would set it on the diver's own screen, but it is
+// off the paper and off a link's page, where each row would shrink to its own text.
+const HEADING_ROW = "min-h-9";
 
 /**
  * What the browser offers as the filename when this page is saved as a PDF.
@@ -454,7 +454,7 @@ export function CheckInPageFrame({
                   )}
                 </div>
                 <div className="min-w-0 flex-1 space-y-2">
-                  <div className={cn("flex items-center gap-2", NAME_ROW)}>
+                  <div className={cn("flex items-center gap-2", HEADING_ROW)}>
                     <h2
                       className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}
                     >
@@ -498,7 +498,6 @@ export function CheckInPageFrame({
             <Section
               title="Diving"
               busy={isLoading}
-              headingClassName={NAME_ROW}
               // A diver who cleared every figure has said to leave the diving off the
               // sheet, and the sheet obeys - heading and all. The section stays on
               // screen regardless, because the control that emptied it is the only
@@ -915,7 +914,6 @@ function Section({
   busy = false,
   action,
   className,
-  headingClassName,
   children,
 }: {
   title: string;
@@ -923,7 +921,6 @@ function Section({
   /** The control this section is edited through. On screen only. */
   action?: ReactNode;
   className?: string;
-  headingClassName?: string;
   children: ReactNode;
 }) {
   return (
@@ -936,7 +933,7 @@ function Section({
       <div
         className={cn(
           "flex items-center justify-between gap-2 break-after-avoid",
-          headingClassName,
+          HEADING_ROW,
         )}
       >
         <h3
