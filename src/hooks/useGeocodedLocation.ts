@@ -70,12 +70,12 @@ export interface GeocodedLocation {
  * answers about the place itself and fills all of it, while a reverse geocode
  * answers about the host's own pin and fills the name alone.
  *
- * Owned by `DiveSiteDialog` rather than by the map beneath it, because three
- * separate things now place a position - the map, the place search above it, and
- * a coordinate pair pasted into the latitude/longitude inputs - and only the
- * dialog can see all three. What it hands back is the state the map field
- * renders: the credit for the name currently in the field, and the announcement
- * that the field wrote itself.
+ * Owned by the dialog holding the field rather than by the map beneath it -
+ * `DiveSiteDialog`, and `LocationSearchDialog` for its own - because the map, a
+ * picked row and a coordinate pair pasted into the latitude/longitude inputs
+ * all place a position, and only the dialog can see every one. What it hands
+ * back is the state the map field renders: the credit for the name currently
+ * in the field, and the announcement that the field wrote itself.
  */
 export function useGeocodedLocation({
   open,

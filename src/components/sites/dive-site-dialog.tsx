@@ -11,28 +11,25 @@ import {
   DiveSiteFormInput,
   diveSiteFormValues,
   diveSiteMembersFromForm,
-  formatCoordinateForForm,
   parseCoordinatePair,
   parseFormCoordinate,
+  parseFormPosition,
 } from "@/lib/validations/dive-site";
 import { diveSitesAPI, DiveSite, ExternalId } from "@/lib/api/dive-sites";
 import { pickExternalId } from "@/lib/external-ids";
-import { GeocodeResult } from "@/lib/api/geocoding";
-import { geocodeResultToLocation } from "@/lib/locations";
 import {
   MAX_LOCATION_NAME_LENGTH,
   type LocationFormValue,
 } from "@/lib/validations/location";
-import {
-  diveSitePlaceContext,
-  DiveSiteSuggestion,
-} from "@/lib/api/dive-site-catalog";
 import { DiveSiteMapField } from "@/components/sites/dive-site-map-field";
 import { DiveSiteDetailsFields } from "@/components/sites/dive-site-details-fields";
-import { HeldSiteOffer } from "@/components/sites/held-site-offer";
 import { OtherNamesField } from "@/components/sites/other-names-field";
 import { ExternalIdsField } from "@/components/sites/external-ids-field";
-import type { PlacePick } from "@/components/sites/place-search";
+import {
+  LocationSearchDialog,
+  type SearchedLocation,
+} from "@/components/sites/location-search-dialog";
+import { MapSearchIcon } from "@/components/icons/map-search-icon";
 import { useGeocodedLocation } from "@/hooks/useGeocodedLocation";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
@@ -55,6 +52,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 const COORDINATE_HINT =
@@ -113,9 +111,7 @@ export function DiveSiteDialog({
   // The registry entry the last catalogue pick in this dialog added, which the
   // next pick replaces. A ref, since nothing renders from it.
   const pickedEntry = useRef<ExternalId | null>(null);
-  // A catalogue row the diver already holds a site for, picked while creating:
-  // the held site is offered before anything is filled.
-  const [offer, setOffer] = useState<DiveSiteSuggestion | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Reload the form whenever the dialog is opened, so it shows the dive site
   // being edited (or a clean slate) rather than whatever the previous
@@ -125,7 +121,7 @@ export function DiveSiteDialog({
     if (!open) return;
     reset(diveSiteFormValues(diveSite));
     pickedEntry.current = null;
-    setOffer(null);
+    setSearchOpen(false);
   }, [open, diveSite, reset]);
 
   // `useWatch` rather than `form.watch()`, which is what `mixture-fields.tsx`
@@ -145,11 +141,11 @@ export function DiveSiteDialog({
     onOpenChange(next);
   };
 
-  // Owned here rather than by the map, because all three ways of placing a
-  // position have to reach the same lookup and only one of them comes through
-  // the map. The place it answers with is written straight into the Location
-  // field; the field's visible half stays an ordinary text input, so a diver who
-  // wants something else types over it.
+  // Owned here rather than by the map, because both ways of placing a position
+  // have to reach the same lookup and only one of them comes through the map.
+  // The place it answers with is written straight into the Location field; the
+  // field's visible half stays an ordinary text input, so a diver who wants
+  // something else types over it.
   const geocoded = useGeocodedLocation({
     open,
     latitude: watchedLatitude,
@@ -170,7 +166,7 @@ export function DiveSiteDialog({
       shouldDirty: true,
     });
 
-  // The map, the search and the paste handler all write into the same two
+  // The map, the location search and the paste handler all write into the same two
   // fields rather than holding a position of their own, so there is one source
   // of truth and the pair stays typeable, pasteable and clearable exactly as
   // before. `shouldValidate` because a placed position completes the
@@ -193,61 +189,37 @@ export function DiveSiteDialog({
     geocoded.lookup(position);
   };
 
-  // A geocoded place fills the coordinate pair and the Location beside it. It
-  // has nothing to say about what the *site* is called - the geocoder knows
-  // where Dahab is, not that there is a Blue Hole in it - so Name is left alone.
+  // What the location search settled on fills the coordinate pair and the
+  // Location beside it, wholesale - including the name it looked up for the
+  // form's position on opening, which replaces whatever Location held, as
+  // placing that pin by hand would have.
   //
-  // The whole place goes into Location, centre and box included: a forward
-  // search answered about the place itself, so its coordinates are the
-  // locality's own and not the pin this pick is about to drop. The pin lands on
-  // the same point here only because there is nothing better to put it on yet.
-  const placeResult = (result: GeocodeResult) => {
-    const position = {
-      latitude: formatCoordinateForForm(result.latitude),
-      longitude: formatCoordinateForForm(result.longitude),
-    };
-    setPosition(position);
-    geocoded.adopt(position, {
-      location: geocodeResultToLocation(result),
-      attribution: result.attribution,
-    });
-  };
-
   // A catalog dive site fills Name as well, and always - a diver who wanted
-  // something else types over it, exactly as they do with the Location the
-  // geocoder writes. Filling it only when empty would never clobber typed text,
-  // at the price of a rule nobody can predict from looking at the form.
-  //
-  // Location comes off the record rather than out of a lookup: the catalog
-  // already resolved `region, country` when it was built, so a pick spends no
-  // request at all beyond the search that produced it. Where the record resolved
-  // to neither, `diveSitePlaceContext` answers null and the field is left
-  // untouched - a site with no place context is not an answer about where the
-  // site is, and clearing what a diver typed on the strength of one would be the
-  // mistake `useGeocodedLocation` already refuses for an `unknown` lookup.
-  //
-  // A name and nothing else, because that is all the record holds: its
-  // coordinates are the *site's*, and the catalog never resolved a centre or an
-  // extent for the region it names.
-  //
-  // The record's registry entry goes with it, on an edit as on a create - which
-  // is how a site made before picks kept one gets its identity: re-pick its row.
-  // See `pickExternalId` for which entries the pick replaces and which it keeps.
-  const fillFromCatalogSite = (site: DiveSiteSuggestion) => {
-    setOffer(null);
-    const position = {
-      latitude: formatCoordinateForForm(site.latitude),
-      longitude: formatCoordinateForForm(site.longitude),
-    };
-    setValue("name", site.name, { shouldValidate: true, shouldDirty: true });
+  // something else types over it, exactly as they do with the Location. Filling
+  // it only when empty would never clobber typed text, at the price of a rule
+  // nobody can predict from looking at the form. Its registry entry goes with
+  // it, on an edit as on a create - which is how a site made before picks kept
+  // one gets its identity: re-pick its row. See `pickExternalId` for which
+  // entries the pick replaces and which it keeps.
+  const applySearchedLocation = ({
+    location,
+    credit,
+    site,
+    ...position
+  }: SearchedLocation) => {
     setPosition(position);
-    const place = diveSitePlaceContext(site);
-    geocoded.adopt(
-      position,
-      place
-        ? { location: { name: place }, attribution: site.attribution }
-        : null,
-    );
+    if (parseFormPosition(position.latitude, position.longitude)) {
+      geocoded.adopt(
+        position,
+        location && credit ? { location, attribution: credit } : null,
+      );
+    }
+    setValue("location", location, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    if (!site) return;
+    setValue("name", site.name, { shouldValidate: true, shouldDirty: true });
     const { externalIds, added } = pickExternalId(
       getValues("external_ids") ?? [],
       pickedEntry.current,
@@ -257,29 +229,19 @@ export function DiveSiteDialog({
     pickedEntry.current = added;
   };
 
-  // A row the diver already has a site for, picked while creating one, offers
-  // that site first and fills nothing until they answer. While editing there is
-  // nothing to offer: the pick fills the site being edited, which may be the
-  // very site the row names.
-  const placeCatalogSite = (site: DiveSiteSuggestion) => {
-    if (!isEdit && site.held_site) {
-      setOffer(site);
-      return;
-    }
-    fillFromCatalogSite(site);
-  };
-
-  // Taking the offer hands the held site back as though it had just been saved
-  // here, so whatever opened the dialog - the dive form's picker selecting it,
-  // the header's menu opening its page - does what it does with a new one, and
-  // nothing is created.
-  const takeOffer = async (uuid: string) => {
+  // Taking the held site the search offered hands it back as though it had
+  // just been saved here, so whatever opened the dialog - the dive form's
+  // picker selecting it, the header's menu opening its page - does what it does
+  // with a new one, and nothing is created.
+  const takeHeldSite = async (uuid: string) => {
     setApiError(null);
     try {
       setIsSubmitting(true);
       onSaved(await diveSitesAPI.getDiveSite(uuid));
+      setSearchOpen(false);
       onOpenChange(false);
     } catch (error) {
+      setSearchOpen(false);
       setApiError(
         getApiErrorMessage(
           error,
@@ -290,15 +252,6 @@ export function DiveSiteDialog({
       setIsSubmitting(false);
     }
   };
-
-  // A row picked from the search already knows its own name, so there is
-  // nothing to look up. Which fields it fills depends on where it came from,
-  // and the pick says so itself rather than leaving this to be read off the
-  // menu-row id it came back as.
-  const placePick = (pick: PlacePick) =>
-    pick.kind === "catalog"
-      ? placeCatalogSite(pick.site)
-      : placeResult(pick.result);
 
   // A pasted "27.8506, 34.3136" fills both fields rather than landing whole in
   // whichever one had focus. Anything that isn't a pair pastes as usual.
@@ -421,28 +374,43 @@ export function DiveSiteDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Dahab, South Sinai, Egypt"
-                      // The cap is enforced by the control, not left to the
-                      // resolver: an over-long name fails at `location.name`,
-                      // and `FormMessage` reads `errors.location`, which for a
-                      // nested failure is a container with no `message` of its
-                      // own - so the diver would get the word "undefined" in
-                      // red and a save that stopped. The trip row's place field
-                      // closes the same hole by truncating what it commits.
-                      // Nothing else can overrun it: every place written here
-                      // programmatically comes from the API, which bounds the
-                      // name to this width and truncates rather than raising.
-                      maxLength={MAX_LOCATION_NAME_LENGTH}
-                      name={field.name}
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                      disabled={field.disabled}
-                      value={field.value?.name ?? ""}
-                      onChange={(event) => typeLocationName(event.target.value)}
-                    />
-                  </FormControl>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. Dahab, South Sinai, Egypt"
+                        // The cap is enforced by the control, not left to the
+                        // resolver: an over-long name fails at `location.name`,
+                        // and `FormMessage` reads `errors.location`, which for a
+                        // nested failure is a container with no `message` of its
+                        // own - so the diver would get the word "undefined" in
+                        // red and a save that stopped. The trip row's place field
+                        // closes the same hole by truncating what it commits.
+                        // Nothing else can overrun it: every place written here
+                        // programmatically comes from the API, which bounds the
+                        // name to this width and truncates rather than raising.
+                        maxLength={MAX_LOCATION_NAME_LENGTH}
+                        name={field.name}
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                        disabled={field.disabled}
+                        value={field.value?.name ?? ""}
+                        onChange={(event) =>
+                          typeLocationName(event.target.value)
+                        }
+                      />
+                    </FormControl>
+                    <IconTooltip label="Search location">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={() => setSearchOpen(true)}
+                      >
+                        <MapSearchIcon className="h-4 w-4" />
+                      </Button>
+                    </IconTooltip>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -511,20 +479,10 @@ export function DiveSiteDialog({
               latitude={watchedLatitude}
               longitude={watchedLongitude}
               onPick={placePosition}
-              onPickPlace={placePick}
               credit={geocoded.credit}
               announcement={geocoded.announcement}
-              pickNotice={
-                <HeldSiteOffer
-                  suggestion={offer}
-                  disabled={isSubmitting}
-                  onTake={takeOffer}
-                  onDecline={fillFromCatalogSite}
-                />
-              }
             />
 
-            {/* Under the search, since a pick from it is what adds one. */}
             <FormField
               control={form.control}
               name="external_ids"
@@ -587,6 +545,20 @@ export function DiveSiteDialog({
             </DialogFooter>
           </form>
         </Form>
+
+        {/* Outside the form: its fields are not this form's, and nothing in it
+            submits. */}
+        <LocationSearchDialog
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          latitude={watchedLatitude}
+          longitude={watchedLongitude}
+          location={watchedLocation}
+          offerHeldSites={!isEdit}
+          onTakeHeldSite={takeHeldSite}
+          busy={isSubmitting}
+          onUse={applySearchedLocation}
+        />
       </DialogContent>
     </Dialog>
   );

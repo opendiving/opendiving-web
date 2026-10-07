@@ -3335,9 +3335,10 @@ the API's geocoders, and a self-hoster configures the two apart.
 
 ## Three roads to a position, so the geocoding lives in a hook above the map
 
-A position arrives three ways — pin, place search, pasted latitude/longitude pair — and only
-`DiveSiteDialog` sees all three, so the reverse geocode and its guards live in
-`hooks/useGeocodedLocation.ts`; `DiveSiteMapField` renders search, map and credit.
+A position arrives three ways — pin, place search, pasted latitude/longitude pair — and the dialog
+holding the coordinates sees them all, so the reverse geocode and its guards live in
+`hooks/useGeocodedLocation.ts`, used by `DiveSiteDialog` and `LocationSearchDialog` alike;
+`DiveSiteMapField` renders map and credit.
 
 **A reverse-geocoded place is a name and nothing else**, where a forward search fills the whole
 place. The coordinates that come back are the _site's_ — it is the pin the diver just dropped that
@@ -3358,18 +3359,17 @@ The dialog stays mounted, so the hook takes `open` and resets on it in an effect
 `react-hooks/set-state-in-effect` disable `useDialogApiError` uses (synchronising to an external
 prop is the rule's escape hatch), bumping the request counter so a reply in flight is discarded.
 
-## The dive site form searches for a place too, above an `h-40 sm:h-48` map
+## A dive site's place is searched for in its own dialog
 
-`PlaceSearch` is the trip picker's field without list, reordering, creation or value, handing back
-one pick to fill coordinates, Location and, for a catalog site, Name (see "The site search has two
-sources, and only one of them names the dive site").
+The button beside Location opens `LocationSearchDialog`: Location as a `PlaceSearch`, the coordinate
+pair and a map, all held apart from the site form until "Use location" writes the pair, the place
+and, for a catalog site, Name and its registry entry (see "The site search has two sources, and only
+one of them names the dive site"). It opens on what the form holds: a position is looked up as a
+dropped pin, and a name without one is searched for through `initialQuery`.
 
-The geocoder knows the bay, not the entry, so search sits above map. The box empties after a pick,
-naming a place the pin has left being untrue, and creates nothing.
-
-Holding no value, it needs `keepOpenOnSelect`: a single-select's `handleInputChange` and `commit()`
-pick an exactly-typed name on keystroke and blur, and Save is a blur, so an unclicked "Ko Tao" would
-file a site nobody chose.
+`PlaceSearch` shows the dialog's place as its value and files Enter-committed text as a name-only
+place. It sets `commitOnEnterOnly`, because a single-select's `handleInputChange` and blur pick an
+exactly-typed name, and a pick here moves the pin.
 
 Searched places are not rounded; only `MapPicker`'s `emit` rounds, for its own echo.
 
@@ -5216,18 +5216,19 @@ measures the container against the surface.
 `Promise.allSettled`, because the combobox reads any `onSearch` throw as total failure. Catalog hits
 come first; the `hint` slot, not a new `CreatableCombobox` prop, marks which is a site.
 
-A pick is `{ kind: "catalog", site }` or `{ kind: "geocode", result }`, and `DiveSiteDialog` forks
-on the tag, not on the namespaced row id. A catalog pick fills Name and adds the row's registry
-entry (`pickExternalId`), once any site the diver already holds for it has been offered; a geocoded
-one does neither. Location is a place named `region, country`, never an ISO code, and nothing else —
-the record's coordinates are the site's, and the catalog resolved no centre or extent for the region
-it names. Where neither resolved, the field stays as it was, so `adopt` takes `AdoptedPlace | null`.
-`suggestDiveSites` guards its own query length because the combobox calls `onSearch` with `""` on
-open. Distance is computed here (`haversineMeters`, `formatDistance`) so the unit preference holds.
-Catalog `attribution` joins the search credit, never the map's. `DiveSiteMapField` passes the form's
-position whole or not at all; the endpoint answers 422 to half. A geocoder row whose `source` and
-`source_id` both equal a catalog row's in the same answer is dropped: the same OSM object, and the
-catalog's row names the dive site. A Wikidata row never matches.
+A pick is `{ kind: "catalog", site }` or `{ kind: "geocode", result }`, and `LocationSearchDialog`
+forks on the tag, not on the namespaced row id. A catalog pick fills Name and adds the row's
+registry entry (`pickExternalId`), once any site the diver already holds for it has been offered; a
+geocoded one does neither. Location is a place named `region, country`, never an ISO code, and
+nothing else — the record's coordinates are the site's, and the catalog resolved no centre or extent
+for the region it names. Where neither resolved, the field stays as it was, so `adopt` takes
+`AdoptedPlace | null`. `suggestDiveSites` guards its own query length because the combobox calls
+`onSearch` with `""` on open. Distance is computed here (`haversineMeters`, `formatDistance`) so the
+unit preference holds. Catalog `attribution` joins the search credit, never the map's.
+`LocationSearchDialog` passes its position whole or not at all; the endpoint answers 422 to half. A
+geocoder row whose `source` and `source_id` both equal a catalog row's in the same answer is
+dropped: the same OSM object, and the catalog's row names the dive site. A Wikidata row never
+matches.
 
 ## A refused save has to be announced, and `role="alert"` alone does not do it
 

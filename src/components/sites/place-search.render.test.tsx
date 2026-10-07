@@ -97,7 +97,7 @@ describe("PlaceSearch results", () => {
     // caller returns, so a named dive site beats a town by being listed first.
     suggest([THISTLEGORM]);
     searchPlaces.mockResolvedValue([DAHAB]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("thistlegorm");
 
@@ -112,7 +112,7 @@ describe("PlaceSearch results", () => {
     // tag rather than picking the menu-row id apart to find out which.
     suggest([THISTLEGORM]);
     const onPick = vi.fn();
-    render(<PlaceSearch onPick={onPick} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={onPick} />);
 
     await searchFor("thistlegorm");
     await userEvent.click(
@@ -128,7 +128,7 @@ describe("PlaceSearch results", () => {
   it("hands a picked place back tagged as one, whole", async () => {
     searchPlaces.mockResolvedValue([DAHAB]);
     const onPick = vi.fn();
-    render(<PlaceSearch onPick={onPick} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={onPick} />);
 
     await searchFor("Dahab");
     await userEvent.click(await screen.findByRole("option", { name: /Dahab/ }));
@@ -149,7 +149,7 @@ describe("PlaceSearch results", () => {
     suggest([sameSpot]);
     searchPlaces.mockResolvedValue([DAHAB]);
     const onPick = vi.fn();
-    render(<PlaceSearch onPick={onPick} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={onPick} />);
 
     await searchFor("Dahab");
     await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(2));
@@ -162,7 +162,7 @@ describe("PlaceSearch results", () => {
     // Without the pass-through this footer can never render: `hasMore` is the
     // primitive's, and the catalog response is the only thing that knows.
     suggest([THISTLEGORM], true);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("point");
 
@@ -176,7 +176,7 @@ describe("PlaceSearch results", () => {
   it("claims nothing was held back when only the geocoder answered", async () => {
     // The geocoder returns a bare list and says nothing about its own cap.
     searchPlaces.mockResolvedValue([DAHAB]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("Dahab");
     await screen.findByRole("option", { name: /Dahab/ });
@@ -188,7 +188,7 @@ describe("PlaceSearch results", () => {
     // Rows are keyed by content, and two menu rows sharing a React key is both
     // a warning and a row that can't be picked.
     searchPlaces.mockResolvedValue([DAHAB, DAHAB]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("Dahab");
 
@@ -199,7 +199,7 @@ describe("PlaceSearch results", () => {
     // Read as one line, the row says what picking it saves: the API's
     // `location`, which the Location field takes unchanged.
     searchPlaces.mockResolvedValue([DAHAB]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("Dahab");
 
@@ -218,7 +218,7 @@ describe("PlaceSearch results", () => {
       location: "Assalah Street, South Sinai Governorate, Egypt",
     };
     searchPlaces.mockResolvedValue([address]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("Dahab");
 
@@ -236,7 +236,7 @@ describe("PlaceSearch with one source down", () => {
   it("still shows catalog rows when the geocoder throws", async () => {
     suggest([THISTLEGORM]);
     searchPlaces.mockRejectedValue(new Error("429 Too Many Requests"));
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("thistlegorm");
 
@@ -251,7 +251,7 @@ describe("PlaceSearch with one source down", () => {
   it("still shows geocoded rows when the catalog throws", async () => {
     suggestDiveSites.mockRejectedValue(new Error("500"));
     searchPlaces.mockResolvedValue([DAHAB]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("Dahab");
 
@@ -266,13 +266,13 @@ describe("PlaceSearch with one source down", () => {
   it("reports the failure only when neither source could answer", async () => {
     suggestDiveSites.mockRejectedValue(new Error("500"));
     searchPlaces.mockRejectedValue(new Error("429"));
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("Dahab");
 
     expect(
       await screen.findByText(
-        "Couldn't reach the search - place the site on the map instead.",
+        "Couldn't reach the search - press Enter to use it as typed, or place the site on the map.",
       ),
     ).toBeInTheDocument();
   });
@@ -281,13 +281,13 @@ describe("PlaceSearch with one source down", () => {
     // All three empty menus end the same way, because the map below is the
     // answer to every one of them - including the geocoder's throttled proxy,
     // which the API also reports as an empty list.
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("Atlantis");
 
     expect(
       await screen.findByText(
-        "Nothing found - place the site on the map instead.",
+        "Nothing found - press Enter to use it as typed, or place the site on the map.",
       ),
     ).toBeInTheDocument();
   });
@@ -296,7 +296,7 @@ describe("PlaceSearch with one source down", () => {
 describe("PlaceSearch hints", () => {
   it("carries the finest place context the record has", async () => {
     suggest([THISTLEGORM]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("thistlegorm");
 
@@ -309,7 +309,7 @@ describe("PlaceSearch hints", () => {
 
   it("falls back to the country where the record has no region", async () => {
     suggest([{ ...THISTLEGORM, region: null }]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("thistlegorm");
 
@@ -324,7 +324,7 @@ describe("PlaceSearch hints", () => {
     // can a diver - so they are shown as what they are, and picking any of them
     // still brings its own coordinates for the pin to be dragged from.
     suggest([{ ...THISTLEGORM, region: null, country: null }]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("thistlegorm");
 
@@ -339,7 +339,7 @@ describe("PlaceSearch hints", () => {
     suggest([
       { ...THISTLEGORM, name: "砂辺", name_en: "Sunabe", region: null },
     ]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("Sunabe");
 
@@ -356,7 +356,7 @@ describe("PlaceSearch hints", () => {
         held_site: { uuid: "site-1", name: "Thistlegorm wreck" },
       },
     ]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("thistlegorm");
 
@@ -369,7 +369,7 @@ describe("PlaceSearch hints", () => {
 
   it("does not repeat a name the row already shows", async () => {
     suggest([{ ...THISTLEGORM, name_en: "SS Thistlegorm", region: null }]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("thistlegorm");
 
@@ -405,7 +405,7 @@ describe("PlaceSearch geocoder rows", () => {
 
   it("tells two same-named places apart by their region", async () => {
     searchPlaces.mockResolvedValue([MOALBOAL_CEBU, MOALBOAL_ZAMBOANGA]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("moalboal");
 
@@ -432,7 +432,7 @@ describe("PlaceSearch geocoder rows", () => {
         region: null,
       },
     ]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("philippines");
 
@@ -452,7 +452,7 @@ describe("PlaceSearch geocoder rows", () => {
         country: undefined,
       },
     ]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("moalboal");
 
@@ -472,7 +472,7 @@ describe("PlaceSearch geocoder rows", () => {
         source_id: "node/3",
       },
     ]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("sharm");
 
@@ -514,7 +514,7 @@ describe("PlaceSearch geocoder rows", () => {
       suggest([MONAD_SHOAL]);
       searchPlaces.mockResolvedValue([MONAD_SHOAL_PLACE]);
       const onPick = vi.fn();
-      render(<PlaceSearch onPick={onPick} />);
+      render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={onPick} />);
 
       await searchFor("monad shoal");
       await waitFor(() => expect(searchPlaces).toHaveResolved());
@@ -542,7 +542,9 @@ describe("PlaceSearch geocoder rows", () => {
         { ...MONAD_SHOAL, source: "wikidata", attribution: WIKIDATA_CREDIT },
       ]);
       searchPlaces.mockResolvedValue([MONAD_SHOAL_PLACE]);
-      render(<PlaceSearch onPick={vi.fn()} />);
+      render(
+        <PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />,
+      );
 
       await searchFor("monad shoal");
 
@@ -557,7 +559,9 @@ describe("PlaceSearch geocoder rows", () => {
       searchPlaces.mockResolvedValue([
         { ...MONAD_SHOAL_PLACE, source: undefined, source_id: undefined },
       ]);
-      render(<PlaceSearch onPick={vi.fn()} />);
+      render(
+        <PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />,
+      );
 
       await searchFor("monad shoal");
 
@@ -582,14 +586,28 @@ describe("PlaceSearch with a position on the form", () => {
 
   it("sends it to the catalog, so a same-name cluster comes back nearest first", async () => {
     suggest([THISTLEGORM]);
-    render(<PlaceSearch onPick={vi.fn()} position={NEARBY} />);
+    render(
+      <PlaceSearch
+        value={null}
+        onTypeName={vi.fn()}
+        onPick={vi.fn()}
+        position={NEARBY}
+      />,
+    );
 
     await searchWithPosition("thistlegorm");
   });
 
   it("puts the distance on each row", async () => {
     suggest([THISTLEGORM]);
-    render(<PlaceSearch onPick={vi.fn()} position={NEARBY} />);
+    render(
+      <PlaceSearch
+        value={null}
+        onTypeName={vi.fn()}
+        onPick={vi.fn()}
+        position={NEARBY}
+      />,
+    );
 
     await searchWithPosition("thistlegorm");
 
@@ -606,7 +624,14 @@ describe("PlaceSearch with a position on the form", () => {
     // diver on metric, in the test above.
     auth.units = "imperial";
     suggest([THISTLEGORM]);
-    render(<PlaceSearch onPick={vi.fn()} position={NEARBY} />);
+    render(
+      <PlaceSearch
+        value={null}
+        onTypeName={vi.fn()}
+        onPick={vi.fn()}
+        position={NEARBY}
+      />,
+    );
 
     await searchWithPosition("thistlegorm");
 
@@ -622,7 +647,7 @@ describe("PlaceSearch credits", () => {
     // rather than rendered, a diver reads "[Data © OpenStreetMap contributors,
     // ODbL 1.0.](https://osm.org/copyright)" under the field.
     suggest([THISTLEGORM]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("thistlegorm");
 
@@ -639,7 +664,7 @@ describe("PlaceSearch credits", () => {
     // no deduplication of our own here and there should not be.
     suggest([THISTLEGORM]);
     searchPlaces.mockResolvedValue([{ ...DAHAB, attribution: OSM_CREDIT }]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("Dahab");
     await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(2));
@@ -657,7 +682,7 @@ describe("PlaceSearch credits", () => {
     suggest([
       { ...THISTLEGORM, source: "wikidata", attribution: WIKIDATA_CREDIT },
     ]);
-    render(<PlaceSearch onPick={vi.fn()} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />);
 
     await searchFor("thistlegorm");
 
@@ -672,7 +697,9 @@ describe("PlaceSearch credits", () => {
     // rather than measured, since jsdom lays nothing out: what must not happen
     // is a paragraph arriving.
     suggest([THISTLEGORM]);
-    const { container } = render(<PlaceSearch onPick={vi.fn()} />);
+    const { container } = render(
+      <PlaceSearch value={null} onTypeName={vi.fn()} onPick={vi.fn()} />,
+    );
     const before = container.querySelectorAll("p").length;
 
     await searchFor("thistlegorm");
@@ -694,7 +721,7 @@ describe("PlaceSearch commits nothing by itself", () => {
   it("places nothing when an exact name is merely typed", async () => {
     searchPlaces.mockResolvedValue([DAHAB]);
     const onPick = vi.fn();
-    render(<PlaceSearch onPick={onPick} />);
+    render(<PlaceSearch value={null} onTypeName={vi.fn()} onPick={onPick} />);
 
     // "Dahab" is the name of the row now loaded, so the exact-match path is
     // live - the diver simply has not chosen it.
@@ -713,7 +740,7 @@ describe("PlaceSearch commits nothing by itself", () => {
     const onPick = vi.fn();
     render(
       <>
-        <PlaceSearch onPick={onPick} />
+        <PlaceSearch value={null} onTypeName={vi.fn()} onPick={onPick} />
         <button type="button">Create Dive Site</button>
       </>,
     );
@@ -725,5 +752,66 @@ describe("PlaceSearch commits nothing by itself", () => {
     );
 
     expect(onPick).not.toHaveBeenCalled();
+  });
+});
+
+describe("PlaceSearch as the dialog's Location field", () => {
+  it("shows the name of the place it holds", () => {
+    render(
+      <PlaceSearch
+        value={{ name: "Dahab, South Sinai, Egypt" }}
+        onTypeName={vi.fn()}
+        onPick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("combobox")).toHaveValue(
+      "Dahab, South Sinai, Egypt",
+    );
+  });
+
+  it("opens already searching for the name it was handed", async () => {
+    suggest([THISTLEGORM]);
+    render(
+      <PlaceSearch
+        value={{ name: "Thistlegorm" }}
+        onTypeName={vi.fn()}
+        onPick={vi.fn()}
+        initialQuery="Thistlegorm"
+      />,
+    );
+
+    expect(
+      await screen.findByRole("option", { name: /Thistlegorm/ }),
+    ).toBeInTheDocument();
+    expect(suggestDiveSites).toHaveBeenCalledWith("Thistlegorm", null);
+  });
+
+  it("takes a name nothing matched as typed, on Enter", async () => {
+    const onTypeName = vi.fn();
+    render(
+      <PlaceSearch value={null} onTypeName={onTypeName} onPick={vi.fn()} />,
+    );
+
+    await searchFor("Secret Reef");
+    await screen.findByText(/Nothing found/);
+    await userEvent.keyboard("{Enter}");
+
+    expect(onTypeName).toHaveBeenCalledWith("Secret Reef");
+  });
+
+  it("clears the place when the field is cleared", async () => {
+    const onTypeName = vi.fn();
+    render(
+      <PlaceSearch
+        value={{ name: "Dahab" }}
+        onTypeName={onTypeName}
+        onPick={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    expect(onTypeName).toHaveBeenCalledWith(null);
   });
 });
