@@ -186,10 +186,10 @@ function ImportPortraitRow({
   );
 }
 
-// Each fact the document carries, the account's value beside the proposal, and the
+// Each detail the document carries, the account's value beside the proposal, and the
 // archive's portrait beside the account's. What is in the boxes when the diver
-// imports is what is written; "Keep mine" takes a fact out of the apply altogether,
-// which is different from emptying it - an emptied fact is cleared from the account.
+// imports is what is written; "Keep mine" takes a detail out of the apply altogether,
+// which is different from emptying it - an emptied detail is cleared from the account.
 export function ImportCheckInDetails({ checkIn }: { checkIn: ImportCheckIn }) {
   const { details, form, kept, toggleKept, portrait } = checkIn;
   if (details.length === 0 && !portrait) return null;

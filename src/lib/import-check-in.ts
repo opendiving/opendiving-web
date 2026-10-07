@@ -122,7 +122,7 @@ export function portraitChoice(
   };
 }
 
-/** Whether an apply changed any of the account's check-in facts or its portrait. */
+/** Whether an apply changed any of the account's check-in details or its portrait. */
 export function checkInWasWritten(report: ImportReport): boolean {
   return report.notes.some((note) => note.code === "check_in_detail_written");
 }

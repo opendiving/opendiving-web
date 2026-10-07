@@ -180,8 +180,8 @@ export type ImportNoteCode =
   // naming nobody, a policy naming no provider, a row past the cap, an address this
   // app cannot store, or this account's own sign-in address. A warning.
   | "check_in_detail_dropped"
-  // Only when a fact or the portrait actually changed, which is what tells the card
-  // to re-read the signed-in user.
+  // Only when a check-in detail or the portrait actually changed, which is what tells
+  // the import page to re-read the shared check-in details and the signed-in user.
   | "check_in_detail_written"
   // The archive's portrait was taken, and the account's had changed since the
   // preview, so the account's stayed. Information: nothing was lost.
@@ -591,7 +591,8 @@ export const logbookImportAPI = {
    * different set, which is what stops a diver approving one plan and
    * uploading another.
    *
-   * `checkIn` is the facts to write, as a JSON field; omitted, none is written.
+   * `checkIn` is the check-in details to write, as a JSON field; omitted, none is
+   * written.
    * `portrait` is the choice for the preview's `portrait`; omitted, the account
    * keeps its own.
    */

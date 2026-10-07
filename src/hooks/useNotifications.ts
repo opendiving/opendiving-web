@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { useCheckinDetails } from "@/contexts/CheckinDetailsContext";
@@ -127,10 +127,14 @@ export function useNotifications(): NotificationsState {
 
   // The details are one copy for the whole tab and are not read per navigation, so a
   // failed read is retried where the bell retries its own: on the next page, and on
-  // `reload`.
+  // `reload`. Through a ref, so the failure itself is not a third trigger.
+  const policiesFailedRef = useRef(policiesFailed);
   useEffect(() => {
-    if (policiesFailed) reloadDetails();
-  }, [pathname, reloadKey, policiesFailed, reloadDetails]);
+    policiesFailedRef.current = policiesFailed;
+  });
+  useEffect(() => {
+    if (policiesFailedRef.current) reloadDetails();
+  }, [pathname, reloadKey, reloadDetails]);
 
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 

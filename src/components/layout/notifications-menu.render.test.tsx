@@ -265,7 +265,8 @@ describe("a failed read", () => {
       await within(panel).findByText(/Couldn't check your insurance policies/),
     ).toBeInTheDocument();
     expect(panel).not.toHaveTextContent("Nothing needs your attention");
-    const reads = vi.mocked(checkinDetailsAPI.get).mock.calls.length;
+    // Not again at once: the failure itself is no reason to ask a second time.
+    expect(checkinDetailsAPI.get).toHaveBeenCalledTimes(1);
 
     vi.mocked(checkinDetailsAPI.get).mockImplementation(async () =>
       structuredClone(server),
@@ -277,9 +278,7 @@ describe("a failed read", () => {
     expect(
       await screen.findByRole("button", { name: "Notifications (1)" }),
     ).toBeInTheDocument();
-    expect(vi.mocked(checkinDetailsAPI.get).mock.calls.length).toBeGreaterThan(
-      reads,
-    );
+    expect(checkinDetailsAPI.get).toHaveBeenCalledTimes(2);
   });
 
   it("says so rather than claiming nothing is due", async () => {
