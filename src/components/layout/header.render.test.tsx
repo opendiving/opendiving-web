@@ -169,7 +169,7 @@ describe("the account menu's Import and Export entries", () => {
 
 describe("the account menu's grouping", () => {
   it("rules off the records from the account itself", async () => {
-    // Species is the last of the records a diver keeps; Import is the first row
+    // Marine Life is the last of the records a diver keeps; Import is the first row
     // that is about the account, and Export follows it. Exactly one rule between
     // the records and them.
     const menu = await openAccountMenu();
@@ -182,12 +182,12 @@ describe("the account menu's grouping", () => {
         : (row.textContent ?? ""),
     );
 
-    const speciesToSettings = rows.slice(
-      rows.indexOf("Species"),
+    const marineLifeToSettings = rows.slice(
+      rows.indexOf("Marine Life"),
       rows.indexOf("Settings") + 1,
     );
-    expect(speciesToSettings).toEqual([
-      "Species",
+    expect(marineLifeToSettings).toEqual([
+      "Marine Life",
       "---",
       "Import",
       "Export",

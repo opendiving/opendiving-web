@@ -379,7 +379,7 @@ export function Header() {
                     <DropdownMenuItem asChild>
                       <Link href="/species" className="flex items-center">
                         <Fish className="mr-2 h-4 w-4" />
-                        Species
+                        Marine Life
                       </Link>
                     </DropdownMenuItem>
                     {/* The rule above the account rows: everything over it is a
