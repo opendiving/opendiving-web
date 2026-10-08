@@ -152,7 +152,7 @@ export function HomePageFrame({
       <IndexHero
         icon={DiverAvatar}
         title={user.name}
-        subtitle="Your logbook, your trips and your stats, at a glance"
+        description="Your logbook, your trips and your stats, at a glance"
         actions={
           <Button asChild size="sm">
             <Link href="/dives/new?from=/home">

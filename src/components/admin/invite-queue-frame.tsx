@@ -77,7 +77,7 @@ export function InviteQueueFrame({
     <div>
       <IndexHero
         title="Invite Queue"
-        subtitle="Addresses that have asked for an invitation to this instance."
+        description="Addresses that have asked for an invitation to this instance."
       />
 
       <div className={HERO_BODY}>

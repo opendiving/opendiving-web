@@ -8,8 +8,14 @@ import {
   type Ref,
 } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { MapCredit } from "@/components/map/map-credit";
 import {
@@ -57,8 +63,8 @@ const SUBTITLE = "text-sm md:mt-1 md:text-base";
 const LABEL = "text-xs md:mb-1 md:text-sm md:font-medium";
 const VALUE = "text-base md:text-2xl";
 
-// Every figure at least as wide as the widest short one, "Average rating", so
-// they line up. A date is wider, and its record lists it last.
+// Every figure at least as wide as the widest short one, so they line up. A
+// date is wider, and its record lists it last.
 const FIGURE = "min-w-22 md:min-w-26";
 
 // The band's top row, at the column's edges rather than the window's, where a
@@ -251,8 +257,8 @@ export function MapHero({
   );
 }
 
-// The icon, the name, its line and its figures. `children` closes the figures'
-// row.
+// The icon, the name, its line and its figures. `info` follows the name and
+// `aside` ends its line; `children` closes the figures' row.
 function HeroDetails({
   className,
   icon: Icon,
@@ -261,26 +267,41 @@ function HeroDetails({
   overline,
   figures = [],
   headingRef,
+  info,
+  aside,
   children,
 }: Pick<MapHeroProps, "title" | "subtitle" | "overline"> &
   Partial<Pick<MapHeroProps, "icon" | "figures">> & {
     className?: string;
     headingRef?: Ref<HTMLHeadingElement>;
+    info?: ReactNode;
+    aside?: ReactNode;
     children?: ReactNode;
   }) {
+  const heading = (
+    <h1
+      ref={headingRef}
+      tabIndex={headingRef ? -1 : undefined}
+      className={TITLE}
+    >
+      {title}
+    </h1>
+  );
   return (
     <div className={className}>
       {overline && <div className={OVERLINE}>{overline}</div>}
       <div className={HEADING}>
         {Icon && <Icon aria-hidden className={ICON} />}
-        <div className="min-w-0">
-          <h1
-            ref={headingRef}
-            tabIndex={headingRef ? -1 : undefined}
-            className={TITLE}
-          >
-            {title}
-          </h1>
+        <div className="min-w-0 flex-1">
+          {info || aside ? (
+            <div className="flex items-center gap-1">
+              {heading}
+              {info}
+              {aside && <div className="ml-auto pl-2">{aside}</div>}
+            </div>
+          ) : (
+            heading
+          )}
           {subtitle && <p className={SUBTITLE}>{subtitle}</p>}
         </div>
       </div>
@@ -341,34 +362,67 @@ export function PlainHero({
   );
 }
 
-// The heading of a page reached from the navigation rather than from a record,
-// laid out as a plain hero with nothing to go back to: the top row holds the
-// page's actions alone, at the actions' height even with none, so every page's
-// title sits at one offset. That row is all controls, so paper goes without it.
+// What a page is for, behind an icon after its title: a reader needs it once,
+// and every visit after that it is only a line between the title and the page.
+// A popover rather than a hover hint, so a tap opens it on a phone.
+function PageInfo({ children }: { children: ReactNode }) {
+  return (
+    <Popover>
+      <IconTooltip label="About this page">
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-muted-foreground print:hidden"
+          >
+            <Info className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+      </IconTooltip>
+      <PopoverContent align="start" className="text-sm">
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// The heading of a page reached from the navigation rather than from a record:
+// a plain hero with nothing to go back to, so no top row - the page's actions
+// end the title's line instead, as far from the header above and the body below
+// as from the window's edge - the column's gutter, which the body's top padding
+// falls short of from `lg` - and its description is behind an icon after the
+// title. Controls, so paper goes without them.
 export function IndexHero({
   icon,
   title,
+  description,
   subtitle,
   actions,
   headingRef,
   className,
 }: Pick<MapHeroProps, "title" | "subtitle" | "actions"> &
   Partial<Pick<MapHeroProps, "icon">> & {
+    // What the page is for, behind the icon. `subtitle` is for what a reader
+    // must see without asking, under the title.
+    description?: ReactNode;
     // Makes the heading a focus target, for a page that moves focus to it.
     headingRef?: Ref<HTMLHeadingElement>;
     className?: string;
   }) {
   return (
-    <div className={cn(COLUMN, className)}>
-      <div className={cn(PLAIN_TOP_ROW, "justify-end print:hidden")}>
-        <div className="flex min-h-9 shrink-0 gap-1">{actions}</div>
-      </div>
+    <div className={cn(COLUMN, "pt-2.5 sm:pt-6 lg:pt-8 lg:pb-2", className)}>
       <HeroDetails
-        className={PLAIN_DETAILS}
         icon={icon}
         title={title}
         subtitle={subtitle}
         headingRef={headingRef}
+        info={description && <PageInfo>{description}</PageInfo>}
+        aside={
+          actions && (
+            <div className="flex shrink-0 gap-1 print:hidden">{actions}</div>
+          )
+        }
       />
     </div>
   );

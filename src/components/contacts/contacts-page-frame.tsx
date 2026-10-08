@@ -76,7 +76,7 @@ export function ContactsPageFrame({
     <div>
       <IndexHero
         title="Contacts"
-        subtitle="The dive centers, schools, shops and places you stayed, kept once"
+        description="The dive centers, schools, shops and places you stayed, kept once"
         actions={
           <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />

@@ -33,7 +33,7 @@ export default function SupportPage() {
     <div>
       <IndexHero
         title="Support"
-        subtitle="OpenDiving is an open-source dive log built by volunteers. The form below reaches a real inbox, and most things get fixed faster in the open, on GitHub."
+        description="OpenDiving is an open-source dive log built by volunteers. The form below reaches a real inbox, and most things get fixed faster in the open, on GitHub."
       />
 
       <div className={HERO_BODY}>

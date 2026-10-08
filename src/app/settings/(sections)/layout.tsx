@@ -25,7 +25,10 @@ export default function SettingsLayout({
 
   return (
     <div>
-      <IndexHero title="Settings" subtitle="Manage your account information." />
+      <IndexHero
+        title="Settings"
+        description="Manage your account information."
+      />
 
       <div className={HERO_BODY}>
         <div className="grid grid-cols-1 gap-6 max-sm:gap-2.5 lg:grid-cols-[14rem_minmax(0,1fr)]">

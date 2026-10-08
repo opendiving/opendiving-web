@@ -20,7 +20,7 @@ export function DataPageContent() {
     <div>
       <IndexHero
         title="Export"
-        subtitle="Take a copy of everything you have entered."
+        description="Take a copy of everything you have entered."
       />
 
       <div className={HERO_BODY}>

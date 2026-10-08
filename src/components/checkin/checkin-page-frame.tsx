@@ -342,12 +342,18 @@ export function CheckInPageFrame({
       <IndexHero
         title="Diver Check-in"
         className={cn(INK, "print:px-0")}
+        // The link's end is the shop's to see, where the diver's own page only
+        // says what it is for.
         subtitle={
-          <span className="print:hidden">
-            {link
-              ? `This link stops working on ${formatDateTime(link.expiresAt)}.`
-              : "What a dive shop asks for at the desk, on one page you can hand over"}
-          </span>
+          link && (
+            <span className="print:hidden">
+              This link stops working on {formatDateTime(link.expiresAt)}.
+            </span>
+          )
+        }
+        description={
+          !link &&
+          "What a dive shop asks for at the desk, on one page you can hand over"
         }
         actions={
           <>

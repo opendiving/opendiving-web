@@ -123,7 +123,7 @@ export function SpeciesCatalogFrame({
     <div>
       <IndexHero
         title="Species"
-        subtitle="Every species in this instance's catalog, and the photo each one shows."
+        description="Every species in this instance's catalog, and the photo each one shows."
       />
 
       <div className={HERO_BODY}>
