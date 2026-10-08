@@ -197,12 +197,11 @@ script's header.
 
 ## Layout width convention
 
-Every page inside the shared chrome uses `max-w-6xl mx-auto px-4 sm:px-6 lg:px-8` for its content
-container (the profile page is the reference). Two exemptions: the landing page (`/`), built from
-full-bleed alternating sections, and the dive/trip/dive-site "new"/"edit" forms, which are
-single-column and use a narrower `max-w-2xl`. This is a content-width choice only; `Header`/`Footer`
-come from `AppShell` (next section), so the forms still sit inside the shared chrome and merely
-constrain their own inner content.
+Every page inside the shared chrome puts its content in one `max-w-6xl` column - `HERO_BODY` in
+`ui/map-hero.tsx`, whose gutter the header and footer share. The landing page (`/`), built from
+full-bleed alternating sections, is the exemption. The dive "new"/"edit" forms sit in that column
+too and cap only their card, at `max-w-2xl` (`FORM_BODY`). This is a content-width choice only;
+`Header`/`Footer` come from `AppShell` (next section).
 
 ## `Header`/`Footer` live once in `AppShell`, not per-page
 
@@ -522,9 +521,7 @@ the top-level auth-loading gate. The list and detail pages render below `AppShel
 footer, so their spinners use `min-h-[60vh]` inline. `SectionSpinner`
 (`components/ui/section-spinner.tsx`) is a loading section inside a rendered shell; `NotFoundState`
 (`components/ui/not-found-state.tsx`, `message`/`backHref`/`backLabel`) the not-found state. Both
-omit the outer container `div`, whose class differs between edit pages
-(`container mx-auto px-4 pt-8 pb-6`) and detail pages
-(`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6`).
+omit the outer container `div`: the page wraps them in its own column.
 
 ## Mixture form/display numbers match the API's 2-decimal precision
 
@@ -1859,9 +1856,9 @@ rather than growing a second line.
 
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
-`CardHeader` is `flex flex-col space-y-1.5 p-6`, and `space-y-*` is a `> * + *` selector, so the 6px
-gap above the description exists only while the description is a direct child. A card whose header
-carries a control puts the title and the control in one row and the description under it:
+`CardHeader` is a `flex flex-col space-y-1.5` column, and `space-y-*` is a `> * + *` selector, so
+the 6px gap above the description exists only while the description is a direct child. A card whose
+header carries a control puts the title and the control in one row and the description under it:
 
 ```tsx
 <CardHeader>
