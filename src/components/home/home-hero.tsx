@@ -99,7 +99,6 @@ export function HomeHero({
     <MapHero
       icon={DiverAvatar}
       title={title}
-      description="Your logbook, your trips and your stats, at a glance"
       actions={actions}
       figures={homeFigures(stats, units)}
       mapCredit
