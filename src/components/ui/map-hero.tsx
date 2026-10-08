@@ -233,7 +233,7 @@ export function MapHero({
         className="z-[1] [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)]"
       >
         <HeroDetails
-          className={cn(COLUMN, "pb-5")}
+          className={COLUMN}
           icon={Icon}
           title={title}
           subtitle={subtitle}
@@ -389,7 +389,7 @@ function MapHeroSkeleton({ backHref, backLabel, icon }: Known) {
         </div>
       </div>
       <HeroDetailsSkeleton
-        className="relative z-[1] pb-5"
+        className="relative z-[1]"
         icon={icon}
         bar="bg-background/60"
       />
