@@ -389,9 +389,10 @@ function PageInfo({ children }: { children: ReactNode }) {
 
 // The heading of a page reached from the navigation rather than from a record:
 // a plain hero with nothing to go back to, so no top row - the page's actions
-// end the title's line instead, pulled into its height on a phone, and its
-// description is behind an icon after the title. Controls, so paper goes
-// without them.
+// end the title's line instead, as far from the header above and the body below
+// as from the window's edge - the column's gutter, which the body's top padding
+// falls short of from `lg` - and its description is behind an icon after the
+// title. Controls, so paper goes without them.
 export function IndexHero({
   icon,
   title,
@@ -410,7 +411,7 @@ export function IndexHero({
     className?: string;
   }) {
   return (
-    <div className={cn(COLUMN, "pt-4 md:pt-6", className)}>
+    <div className={cn(COLUMN, "pt-2.5 sm:pt-6 lg:pt-8 lg:pb-2", className)}>
       <HeroDetails
         icon={icon}
         title={title}
@@ -419,9 +420,7 @@ export function IndexHero({
         info={description && <PageInfo>{description}</PageInfo>}
         aside={
           actions && (
-            <div className="-my-1 flex shrink-0 gap-1 md:my-0 print:hidden">
-              {actions}
-            </div>
+            <div className="flex shrink-0 gap-1 print:hidden">{actions}</div>
           )
         }
       />
