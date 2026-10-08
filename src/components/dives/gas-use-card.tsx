@@ -11,6 +11,7 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
+  Info,
   Minus,
   TrendingDown,
   TrendingUp,
@@ -25,7 +26,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { InfoPopover } from "@/components/ui/info-popover";
 import {
   Select,
   SelectContent,
@@ -194,24 +194,13 @@ export function GasUseCard() {
     <Card>
       <CardHeader>
         <div className={cn(CARD_TITLE_ROW, "@container")}>
-          <div className="flex min-w-0 grow basis-0 items-center gap-1">
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Gas Consumption
-            </CardTitle>
-            <InfoPopover label="Gas consumption: about this chart">
-              {/* "Surface-equivalent" is carrying the S of SAC here. The title
-                  deliberately doesn't: "air" is wrong the moment you breathe
-                  nitrox or trimix, and the whole data model already says gas
-                  (`gas_use`, `dive-gas.ts`). The normalisation belongs in the
-                  sentence that has room to state it.
-
-                  The rolling trend is not named here: the legend already
-                  labels it, with the window length this sentence could not
-                  state (it varies by scope - see `trendWindow`). */}
-              Surface-equivalent gas breathed per minute (RMV). Lower is better.
-            </InfoPopover>
-          </div>
+          <CardTitle
+            as="h2"
+            className="flex min-w-0 grow basis-0 items-center gap-2"
+          >
+            <Activity className="h-5 w-5" />
+            Gas Consumption
+          </CardTitle>
 
           {scope !== "all" && (
             <div
@@ -344,6 +333,19 @@ export function GasUseCard() {
             <GasUseChart points={points} scope={scope} anchor={activeAnchor} />
           </>
         )}
+        {/* "Surface-equivalent" is carrying the S of SAC here. The title
+            deliberately doesn't: "air" is wrong the moment you breathe nitrox or
+            trimix, and the whole data model already says gas (`gas_use`,
+            `dive-gas.ts`). The normalisation belongs in the sentence that has
+            room to state it.
+
+            The rolling trend is not named here: the legend already labels it,
+            with the window length this sentence could not state (it varies by
+            scope - see `trendWindow`). */}
+        <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          Surface-equivalent gas breathed per minute (RMV). Lower is better.
+        </p>
       </CardContent>
     </Card>
   );
