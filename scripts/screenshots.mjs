@@ -99,7 +99,7 @@ const HEIGHT = {
 // exists to show - `Recordings` on the dive page, which is what the whole shot is for -
 // rather than the one that happens to sit last, which is a fact about the account's data
 // and not something to write down here.
-const CUT_BELOW = { dashboard: "Dive Activity", "dive-detail": "Recordings" };
+const CUT_BELOW = { dashboard: "Gas Consumption", "dive-detail": "Recordings" };
 
 // The other framing rule, for a shot that is about one column: the frame ends at the foot
 // of the named card and whatever is beside it runs on past the edge.

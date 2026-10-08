@@ -104,17 +104,16 @@ export function HomePageFrame({
         )}
 
         {/* The two cards that say something about how the diving is *going*, rather than
-            just what was logged, so they lead the rest. Gas consumption first: it's the
-            one that can change how you dive tomorrow, where activity is a record of what
-            already happened - and it's the harder-won number, since it needs dives that
-            recorded pressures and an average depth.
+            just what was logged, so they lead the rest. Activity first: it is the one
+            every logbook fills, where gas consumption needs dives that recorded
+            pressures and an average depth.
 
             Stacked, not side by side, and that was measured rather than assumed: a
             two-column grid gives each plot 482px even on a widened page, where their
             axis text halves and the gas card's header doubles in height when its
             controls can no longer share a line with its description. See DECISIONS.md. */}
-        {hasDives && <GasUseCard />}
         {hasDives && <DiveActivityCard />}
+        {hasDives && <GasUseCard />}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-sm:gap-2.5">
           <RecentDivesCard enabled={!!user} />

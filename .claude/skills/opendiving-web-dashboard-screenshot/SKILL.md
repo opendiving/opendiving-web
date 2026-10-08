@@ -3,7 +3,7 @@ name: opendiving-web-dashboard-screenshot
 description:
   Retake docs/screenshots/dashboard.png, the README hero image — the dashboard header plus both
   chart cards on their 2025 Year view. Use whenever a change alters what the dashboard looks like
-  above the Recent Dives row (the heading, the stat cards, Gas Consumption, Dive Activity) and the
+  above the Recent Dives row (the hero and its figures, Dive Activity, Gas Consumption) and the
   README image would otherwise show the old UI.
 ---
 
@@ -65,7 +65,7 @@ file docs/screenshots/dashboard.png && git status --short docs/screenshots/
 
 Expect `2048 x <2 × height>` and only `dashboard.png` modified. Then open the PNG and check the
 three things the script cannot: the heading carries the account's name, both charts show 2025 bars,
-and the bottom edge sits on the gap below Dive Activity with no sliver of Recent Dives.
+and the bottom edge sits on the gap below Gas Consumption with no sliver of Recent Dives.
 
 Commit it on its own — `docs: retake the dashboard screenshot for <whatever changed>`.
 
@@ -103,7 +103,7 @@ Commit it there too, on its own, with the same subject.
 - **`Gas Consumption has no year "2025" with dives`** — the account has nothing logged that year.
   Override for a one-off run with `CHART_YEAR=2024`, and change the constant only if 2025 has
   genuinely stopped being the right year for the README.
-- **`cannot cut below the Dive Activity card: no card carries that heading`, or a heading wait
+- **`cannot cut below the Gas Consumption card: no card carries that heading`, or a heading wait
   timing out** — the dashboard was restructured. Update `CUT_BELOW` / the heading the walk scopes
   on, in the script.
 - **`No Chrome found`** — set `CHROME_PATH`. `playwright-core` drives the machine's own Chrome and

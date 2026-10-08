@@ -1961,7 +1961,7 @@ The change figure is in dives, not percent, and uncoloured: a light year can be 
 than a slump. `ChartStat` is shared with `gas-use-card.tsx`; the two cards stack, so a drifting
 label size reads as a rendering fault.
 
-## The two chart cards stack, and gas leads - both measured, not assumed
+## The two chart cards stack, and activity leads
 
 Below 560px each plot narrows its viewBox instead of shrinking, so its axis text stops at 8.6px
 (`fittedChartWidth`). `lg:grid-cols-2` on Home's `max-w-6xl` gives 482px (546px at `max-w-7xl`), and
@@ -1969,8 +1969,8 @@ two things break: the axis text halves (16.6px to 8.6px), and the gas header goe
 as its toggle and stepper drop below the description. `RecentDivesCard`/`RecentTripsCard` pair up
 fine below: their content reflows instead of scaling.
 
-Gas consumption leads because it can change how you dive tomorrow; activity records what already
-happened. Reliably non-empty is a weaker claim on the top slot than reliably useful.
+Dive activity leads because every logbook fills it; gas consumption needs dives that recorded
+pressures and an average depth.
 
 ## `npm run format` covers the docs at the repo root, not just `src/`
 
