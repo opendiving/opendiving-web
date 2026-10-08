@@ -28,7 +28,7 @@ export function FormPageSkeleton({
       />
       <div className={FORM_BODY}>
         <Card className="animate-skeleton-reveal motion-reduce:animate-none">
-          <CardHeader>
+          <CardHeader className="pb-[calc(var(--card-pad)+var(--card-title-lift))]">
             <Skeleton className="h-6 w-40 max-sm:h-4.5" />
           </CardHeader>
           <CardContent className="space-y-6">

@@ -186,11 +186,15 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
 
   return (
     <Card>
-      <CardHeader>
+      {/* Padded under the title by the control's overhang as well, so the Fields
+          button sits as far above the import box as it does below the card's
+          top. */}
+      <CardHeader className="pb-[calc(var(--card-pad)+var(--card-title-lift))]">
         {/* `relative` so the Fields control can be positioned into the title row
             without joining it: any flex or grid parent gets a say in the row's
             height, and this header has to be the same height with the control as
-            without it. Same mechanism, same reason, as `EntryUnitLabelRow`. */}
+            without it - its skeleton's included. Same mechanism, same reason, as
+            `EntryUnitLabelRow`. */}
         <div className="relative">
           <CardTitle as="h2">Dive Details</CardTitle>
           {/* Outside the `<form>` on purpose, menu and dialog both. Nothing in
@@ -211,26 +215,30 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
             onSubmit={handleSubmitEvent}
             className="space-y-6"
           >
-            {/* Import from a dive computer */}
-            <DiveFileImport
-              form={form}
-              replaceMixtures={mixtureFieldArray.replace}
-              onFileAdded={onFileAdded}
-              pending={pendingFiles}
-              onRemovePending={onRemovePendingFile}
-              removedStored={removedStoredFiles}
-              onRemoveStored={onRemoveStoredFile}
-              onRestoreStored={onRestoreStoredFile}
-              recordings={recordings}
-              diveUuid={diveUuid}
-              returnTo={cancelHref}
-              // One of the moments a value arrives from outside the diver's
-              // typing: whatever the file filled in is on screen, whether or not the
-              // stored set hides it, and it counts as the diver's from here on.
-              onValuesApplied={() =>
-                visibility.revealNonEmpty(form.getValues())
-              }
-            />
+            {/* Import from a dive computer. Closer to the first section than the
+                form's rhythm: the section's heading pads its own text, and the
+                visible gap is the card's padding, as it is above. */}
+            <div className="mb-[calc(var(--card-pad)-0.75rem)]">
+              <DiveFileImport
+                form={form}
+                replaceMixtures={mixtureFieldArray.replace}
+                onFileAdded={onFileAdded}
+                pending={pendingFiles}
+                onRemovePending={onRemovePendingFile}
+                removedStored={removedStoredFiles}
+                onRemoveStored={onRemoveStoredFile}
+                onRestoreStored={onRestoreStoredFile}
+                recordings={recordings}
+                diveUuid={diveUuid}
+                returnTo={cancelHref}
+                // One of the moments a value arrives from outside the diver's
+                // typing: whatever the file filled in is on screen, whether or not the
+                // stored set hides it, and it counts as the diver's from here on.
+                onValuesApplied={() =>
+                  visibility.revealNonEmpty(form.getValues())
+                }
+              />
+            </div>
 
             <DiveFormFields
               control={form.control}
