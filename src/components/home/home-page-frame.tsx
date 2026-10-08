@@ -11,6 +11,7 @@ import { PasskeyNudgeCard } from "@/components/home/passkey-nudge-card";
 import { SetupChecklistCard } from "@/components/home/setup-checklist-card";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
+import type { Location } from "@/lib/api/location";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { HERO_BODY, HERO_CONTROL } from "@/components/ui/map-hero";
@@ -19,6 +20,8 @@ import { cn } from "@/lib/utils";
 export interface HomePageFrameProps {
   /** Null while the stats request is in flight. */
   stats?: UserDiveStats | null;
+  /** Every place the diver's trips went; null while the request is in flight. */
+  places?: Location[] | null;
   statsError?: string | null;
   onRetryStats?: () => void;
 }
@@ -39,6 +42,7 @@ const noop = () => {};
  */
 export function HomePageFrame({
   stats = null,
+  places = null,
   statsError = null,
   onRetryStats = noop,
 }: HomePageFrameProps) {
@@ -60,6 +64,7 @@ export function HomePageFrame({
       <HomeHero
         title={user.name}
         stats={stats}
+        places={places}
         actions={
           <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
             <Link href="/dives/new?from=/home">

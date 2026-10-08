@@ -10,6 +10,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUnits } from "@/hooks/useUnits";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
+import type { Location } from "@/lib/api/location";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { formatDepth, type UnitSystem } from "@/lib/units";
 import { cn } from "@/lib/utils";
@@ -35,15 +36,27 @@ function DiverAvatar({
   );
 }
 
-// The logbook's headline figures. `null` stats - in flight, or failed - show a
-// dash rather than a zero: "0 dives" is a statement about the logbook. A
-// logbook with no dives has none, since a row of zeroes says less than the
-// checklist under the hero.
+// The logbook's headline figures, and how many places its trips went. Null -
+// in flight, or failed - shows a dash rather than a zero: "0 dives" is a
+// statement about the logbook. A logbook with no dives has no dive figures,
+// since a row of zeroes says less than the checklist under the hero, and a
+// count of zero is left out, as a site's is: there is nothing to count yet.
 function homeFigures(
+  stats: UserDiveStats | null,
+  places: Location[] | null,
+  units: UnitSystem,
+): MapHeroFigure[] {
+  const figures = stats?.total_dives === 0 ? [] : diveFigures(stats, units);
+  if (places?.length !== 0) {
+    figures.push({ label: "Destinations", value: places?.length ?? "—" });
+  }
+  return figures;
+}
+
+function diveFigures(
   stats: UserDiveStats | null,
   units: UnitSystem,
 ): MapHeroFigure[] {
-  if (stats?.total_dives === 0) return [];
   const value = (format: (stats: UserDiveStats) => ReactNode) =>
     stats ? format(stats) : "—";
   const figures: MapHeroFigure[] = [
@@ -63,8 +76,6 @@ function homeFigures(
       ),
     },
   ];
-  // Left out at zero, as a site's is: a logbook with no sightings has nothing
-  // to count yet.
   if (stats?.species_seen !== 0) {
     figures.push({
       label: "Species seen",
@@ -88,10 +99,12 @@ function homeFigures(
 export function HomeHero({
   title,
   stats,
+  places,
   actions,
 }: {
   title: string;
   stats: UserDiveStats | null;
+  places: Location[] | null;
   actions?: ReactNode;
 }) {
   const units = useUnits();
@@ -100,12 +113,15 @@ export function HomeHero({
       icon={DiverAvatar}
       title={title}
       actions={actions}
-      figures={homeFigures(stats, units)}
+      figures={homeFigures(stats, places, units)}
       mapCredit
       backdrop={({ map, covered }) => (
         <MapBackdrop
-          locations={[]}
-          showWhenEmpty
+          locations={places ?? []}
+          // The whole world for a diver with no placed trips, as a trip's
+          // page shows one with none - but only once that is known, so the
+          // world is never asked for on the way to their places.
+          showWhenEmpty={places !== null}
           subject="the places of your trips"
           {...map}
           water={

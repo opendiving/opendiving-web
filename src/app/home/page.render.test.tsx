@@ -63,6 +63,9 @@ vi.mock("@/components/dives/gas-use-card", () => ({ GasUseCard: () => null }));
 vi.mock("@/components/home/setup-checklist-card", () => ({
   SetupChecklistCard: () => null,
 }));
+vi.mock("@/lib/api/trips", () => ({
+  tripsAPI: { getTripPlaces: vi.fn() },
+}));
 // The map is covered where it lives; here it is only what the hero is handed.
 vi.mock("@/components/map/map-backdrop", () => ({
   MapBackdrop: vi.fn(() => null),
@@ -72,6 +75,15 @@ const { MapBackdrop } = await import("@/components/map/map-backdrop");
 
 const { diveStatsAPI } = await import("@/lib/api/dive-stats");
 const getDiveStats = vi.mocked(diveStatsAPI.getDiveStats);
+const { tripsAPI } = await import("@/lib/api/trips");
+const getTripPlaces = vi.mocked(tripsAPI.getTripPlaces);
+
+const DAHAB = {
+  name: "Dahab, South Sinai, Egypt",
+  latitude: 28.5,
+  longitude: 34.51,
+};
+const MOALBOAL = { name: "Moalboal", latitude: 9.95, longitude: 123.4 };
 
 const stats = (overrides: Partial<UserDiveStats> = {}): UserDiveStats => ({
   user_uuid: "user-1",
@@ -88,6 +100,8 @@ const figure = (label: string) =>
 
 beforeEach(() => {
   getDiveStats.mockReset();
+  getTripPlaces.mockReset();
+  getTripPlaces.mockResolvedValue([]);
   vi.mocked(MapBackdrop).mockClear();
 });
 
@@ -107,16 +121,45 @@ describe("Home heading", () => {
   });
 });
 
+const mapProps = () => vi.mocked(MapBackdrop).mock.lastCall![0];
+
 describe("Home hero map", () => {
+  it("frames the places of the diver's trips", async () => {
+    getDiveStats.mockResolvedValue(stats());
+    getTripPlaces.mockResolvedValue([DAHAB, MOALBOAL]);
+    render(<HomePage />);
+
+    await waitFor(() =>
+      expect(mapProps().locations).toEqual([DAHAB, MOALBOAL]),
+    );
+    expect(mapProps().hero).toBe(true);
+  });
+
   it("draws the whole world for a diver with no placed trips", async () => {
     getDiveStats.mockResolvedValue(stats());
     render(<HomePage />);
+
+    await waitFor(() => expect(mapProps().showWhenEmpty).toBe(true));
+    expect(mapProps().locations).toEqual([]);
+  });
+
+  it("asks for no world while the places are still loading", async () => {
+    getDiveStats.mockResolvedValue(stats());
+    getTripPlaces.mockReturnValue(new Promise(() => {}));
+    render(<HomePage />);
     await screen.findByText("Species seen");
 
-    const props = vi.mocked(MapBackdrop).mock.lastCall![0];
-    expect(props.locations).toEqual([]);
-    expect(props.showWhenEmpty).toBe(true);
-    expect(props.hero).toBe(true);
+    expect(mapProps().showWhenEmpty).toBe(false);
+  });
+
+  it("falls back to the whole world when the places cannot be read", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    getDiveStats.mockResolvedValue(stats());
+    getTripPlaces.mockRejectedValue(new Error("down"));
+    render(<HomePage />);
+
+    await waitFor(() => expect(mapProps().showWhenEmpty).toBe(true));
+    expect(screen.queryByText("Destinations")).not.toBeInTheDocument();
   });
 });
 
@@ -150,6 +193,25 @@ describe("Home hero figures", () => {
     expect(figure("Total time")).toHaveTextContent(/^40min$/);
   });
 
+  it("counts the places the diver's trips went", async () => {
+    getDiveStats.mockResolvedValue(stats());
+    getTripPlaces.mockResolvedValue([DAHAB, MOALBOAL]);
+    render(<HomePage />);
+
+    await waitFor(() =>
+      expect(figure("Destinations")).toHaveTextContent(/^2$/),
+    );
+  });
+
+  it("leaves Destinations out for a diver with no placed trips", async () => {
+    getDiveStats.mockResolvedValue(stats());
+    render(<HomePage />);
+
+    await waitFor(() => expect(getTripPlaces).toHaveBeenCalled());
+    await screen.findByText("Total dives");
+    expect(screen.queryByText("Destinations")).not.toBeInTheDocument();
+  });
+
   it("leaves Species seen out for a diver who has logged none", async () => {
     // Only once the answer is in: the loading dash below stands for it until then.
     getDiveStats.mockResolvedValue(stats({ species_seen: 0 }));
@@ -162,12 +224,14 @@ describe("Home hero figures", () => {
 
   it("holds a dash while the stats are still loading", async () => {
     getDiveStats.mockReturnValue(new Promise(() => {}));
+    getTripPlaces.mockReturnValue(new Promise(() => {}));
     render(<HomePage />);
 
     await screen.findByText("Species seen");
-    // One per figure, and the species one is among them - "0 species" before the
+    // One per figure, and the counts are among them - "0 species" before the
     // answer is known reads as a statement about the logbook.
-    expect(screen.getAllByText("—")).toHaveLength(4);
+    expect(screen.getAllByText("—")).toHaveLength(5);
+    expect(figure("Destinations")).toHaveTextContent("—");
   });
 
   it("are in the hero, not a card under it", async () => {
@@ -180,11 +244,16 @@ describe("Home hero figures", () => {
     ).toBeNull();
   });
 
-  it("are left out for a diver with no dives", async () => {
+  it("are left out for a diver with no dives, but for their destinations", async () => {
+    // A trip can be planned before a dive on it is logged.
     getDiveStats.mockResolvedValue(stats({ total_dives: 0 }));
+    getTripPlaces.mockResolvedValue([DAHAB]);
     render(<HomePage />);
 
-    await waitFor(() => expect(getDiveStats).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(figure("Destinations")).toHaveTextContent(/^1$/),
+    );
+    expect(screen.queryByText("Total dives")).not.toBeInTheDocument();
     expect(screen.queryByText("Species seen")).not.toBeInTheDocument();
   });
 });

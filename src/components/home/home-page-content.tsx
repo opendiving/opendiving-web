@@ -5,10 +5,13 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { HomePageFrame } from "@/components/home/home-page-frame";
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
 import { getApiErrorMessage } from "@/lib/api/error";
+import type { Location } from "@/lib/api/location";
+import { tripsAPI } from "@/lib/api/trips";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
-// The signed-in home page. `HomePageFrame` draws it; this reads the one
-// figure the page itself owns, the headline stats, and hands them over.
+// The signed-in home page. `HomePageFrame` draws it; this reads what the page
+// itself owns, the headline stats and the places of the diver's trips, and
+// hands them over.
 export function HomePageContent() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
   const [stats, setStats] = useState<UserDiveStats | null>(null);
@@ -19,6 +22,10 @@ export function HomePageContent() {
   // exceptional and worth saying out loud.
   const [statsError, setStatsError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Null while in flight. A failure reads as no places: the hero falls back to
+  // the whole world, which is a map rather than an error, and the page has
+  // nothing a diver could do about it.
+  const [places, setPlaces] = useState<Location[] | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -45,6 +52,23 @@ export function HomePageContent() {
     };
   }, [user, attempt]);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    tripsAPI
+      .getTripPlaces()
+      .then((data) => {
+        if (!cancelled) setPlaces(data);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch trip places:", error);
+        if (!cancelled) setPlaces([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   if (isLoading) {
     return <PageSpinner />;
   }
@@ -56,6 +80,7 @@ export function HomePageContent() {
   return (
     <HomePageFrame
       stats={stats}
+      places={places}
       statsError={statsError}
       onRetryStats={() => setAttempt((n) => n + 1)}
     />
