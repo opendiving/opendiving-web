@@ -5,6 +5,7 @@ import {
   frameCamera,
   projectFrom,
   tileLayout,
+  worldCamera,
   type MapFrame,
 } from "@/lib/map-camera";
 import { bandIn, mapCanvas, placedLocations } from "@/lib/map-frame";
@@ -48,26 +49,6 @@ describe("frameCamera", () => {
     });
   });
 
-  it("keeps the antimeridian at the edges when asked", () => {
-    const places = placedLocations([
-      { latitude: 9.9, longitude: 123.4 }, // Moalboal
-      { latitude: 28.5, longitude: 34.5 }, // Dahab
-      { latitude: 22.9, longitude: -109.9 }, // Cabo San Lucas
-    ]);
-    const frame = card(1280, 352);
-    // Unwrapped against Moalboal, Cabo San Lucas lies across the Pacific...
-    expect(
-      Math.abs(frameCamera(places, frame).center.longitude),
-    ).toBeGreaterThan(90);
-    // ...and a world map's way is across the Atlantic.
-    expect(
-      Math.abs(
-        frameCamera(places, frame, { antimeridianAtEdges: true }).center
-          .longitude,
-      ),
-    ).toBeLessThan(90);
-  });
-
   it("fits a wider frame at least as deep as a narrower one", () => {
     const places = placedLocations([
       { latitude: 28.5721, longitude: 34.5372 },
@@ -76,6 +57,66 @@ describe("frameCamera", () => {
     expect(frameCamera(places, card(975)).zoom).toBeGreaterThanOrEqual(
       frameCamera(places, card(252)).zoom,
     );
+  });
+});
+
+describe("worldCamera", () => {
+  // A hero's frame, as the Home page's map is fitted for.
+  const hero = (width: number): MapFrame => ({
+    ...card(width, 352),
+    inset: mapCanvas(width, true).inset,
+  });
+  const places = placedLocations([
+    { latitude: 28.5, longitude: 34.5 }, // Dahab
+    { latitude: 9.9, longitude: 123.4 }, // Moalboal
+  ]);
+
+  it("keeps Greenwich at the middle where every pin fits, at the picture's one zoom", () => {
+    const camera = worldCamera(places, hero(1280));
+    expect(camera.center.longitude).toBe(0);
+    expect(camera.zoom).toBe(0);
+    expect(camera.center.latitude).toBe(
+      frameCamera(places, hero(1280)).center.latitude,
+    );
+  });
+
+  it("moves across to the pins' middle where a narrow frame would leave one off it", () => {
+    const frame = hero(390);
+    const camera = worldCamera(places, frame);
+    expect(camera.center.longitude).toBeCloseTo(78.95, 1);
+
+    const layout = tileLayout(camera, whole(frame, { x: 195, y: 176 }));
+    for (const place of places) {
+      expect(Math.abs(projectFrom(layout, place).left)).toBeLessThanOrEqual(
+        195 - frame.inset,
+      );
+    }
+  });
+
+  it("crosses the antimeridian to the pins' middle when that is their short way round", () => {
+    const pacific = placedLocations([
+      { latitude: -17.7, longitude: 178.1 }, // Fiji
+      { latitude: -13.8, longitude: -172.1 }, // Samoa
+    ]);
+    expect(
+      Math.abs(worldCamera(pacific, hero(390)).center.longitude),
+    ).toBeGreaterThan(170);
+  });
+
+  it("keeps Greenwich where no way round fits every pin", () => {
+    const everywhere = placedLocations([
+      { latitude: 22.9, longitude: -109.9 }, // Cabo San Lucas
+      { latitude: 28.5, longitude: 34.5 }, // Dahab
+      { latitude: -8.35, longitude: 116.04 }, // Gili Trawangan
+    ]);
+    expect(worldCamera(everywhere, hero(390)).center.longitude).toBe(0);
+  });
+
+  it("shows nothing placed as the world from Greenwich", () => {
+    expect(worldCamera([], hero(390)).center).toEqual({
+      latitude: 0,
+      longitude: 0,
+    });
   });
 });
 

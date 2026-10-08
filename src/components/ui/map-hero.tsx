@@ -158,6 +158,9 @@ interface MapHeroProps
   // `map` leaves to the hero's details' corner - unset for a record drawn
   // without one.
   mapCredit?: boolean;
+  // The credit of a backdrop that is not this instance's map, shown whether or
+  // not this instance draws one.
+  credit?: string;
 }
 
 // A detail page's heading: the record's card drawn the width of the window, its
@@ -176,11 +179,13 @@ export function MapHero({
   overline,
   figures,
   mapCredit,
+  credit,
 }: MapHeroProps) {
-  // A map only where this instance draws its tiles: anywhere else every
-  // backdrop is water, and there is nothing to credit.
+  // An instance's map only where it draws its tiles: anywhere else that
+  // backdrop is water, and there is nothing to credit. A backdrop of its own,
+  // with its own credit, is credited either way.
   const tiles = useMapTiles();
-  const credited = mapCredit && tiles === true;
+  const credited = !!credit || (mapCredit && tiles === true);
   // How much of the map lies under the details, so its places centre between
   // the top row and the name - read as the ref attaches and followed after
   // that, as a card does it.
@@ -256,7 +261,10 @@ export function MapHero({
           {/* A chip as it is over a card's map, so without the details'
               glow. */}
           {credited && (
-            <MapCredit className="ml-auto rounded-sm opacity-75 [text-shadow:none]" />
+            <MapCredit
+              value={credit}
+              className="ml-auto rounded-sm opacity-75 [text-shadow:none]"
+            />
           )}
         </HeroDetails>
       </div>
@@ -349,7 +357,7 @@ export function PlainHero({
   subtitle,
   overline,
   figures,
-}: Omit<MapHeroProps, "backdrop" | "mapCredit"> & Known) {
+}: Omit<MapHeroProps, "backdrop" | "mapCredit" | "credit"> & Known) {
   return (
     // The actions' glow is drawn in the page's colour, so it shows nothing here.
     <div className="[--backdrop-fade:hsl(var(--background))]">

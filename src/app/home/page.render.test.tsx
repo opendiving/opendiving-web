@@ -135,8 +135,9 @@ describe("Home hero map", () => {
       expect(mapProps().locations).toEqual([DAHAB, MOALBOAL]),
     );
     expect(mapProps().hero).toBe(true);
-    // A world map's way round, the Pacific at the sides.
-    expect(mapProps().antimeridianAtEdges).toBe(true);
+    // The shipped picture of the world, credited as the shipped styles are.
+    expect(mapProps().world).toBe(true);
+    expect(screen.getByText("OpenFreeMap")).toBeInTheDocument();
   });
 
   it("draws the whole world for a diver with no placed trips", async () => {
