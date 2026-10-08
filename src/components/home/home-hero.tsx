@@ -11,7 +11,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUnits } from "@/hooks/useUnits";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 import type { Location } from "@/lib/api/location";
-import { formatDurationHoursMinutes } from "@/lib/date-time";
+import { formatDaysAgo, formatDurationHoursMinutes } from "@/lib/date-time";
+import { daysBetweenIsoDates, todayIsoDate } from "@/lib/gear-service";
+import { FactsLine } from "@/components/ui/icon-fact";
 import { formatDepth, type UnitSystem } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
@@ -46,37 +48,39 @@ function homeFigures(
   places: Location[] | null,
   units: UnitSystem,
 ): MapHeroFigure[] {
-  const figures = stats?.total_dives === 0 ? [] : diveFigures(stats, units);
+  const dived = stats?.total_dives !== 0;
+  const value = (format: (stats: UserDiveStats) => ReactNode) =>
+    stats ? format(stats) : "—";
+  const figures: MapHeroFigure[] = [];
+  if (dived) {
+    figures.push(
+      { label: "Total dives", value: value((s) => s.total_dives) },
+      {
+        label: "Max depth",
+        // Whole units and whole hours past the first: a career's totals,
+        // where the remainder is noise.
+        value: value((s) => formatDepth(s.max_depth, units, { decimals: 0 })),
+      },
+      {
+        label: "Total time",
+        value: value((s) =>
+          s.total_time >= 3600
+            ? `${Math.round(s.total_time / 3600)}h`
+            : formatDurationHoursMinutes(s.total_time),
+        ),
+      },
+    );
+  }
   if (places?.length !== 0) {
     figures.push({ label: "Destinations", value: places?.length ?? "—" });
   }
-  return figures;
-}
-
-function diveFigures(
-  stats: UserDiveStats | null,
-  units: UnitSystem,
-): MapHeroFigure[] {
-  const value = (format: (stats: UserDiveStats) => ReactNode) =>
-    stats ? format(stats) : "—";
-  const figures: MapHeroFigure[] = [
-    { label: "Total dives", value: value((s) => s.total_dives) },
-    {
-      label: "Max depth",
-      // Whole units and whole hours past the first: a career's totals, where
-      // the remainder is noise.
-      value: value((s) => formatDepth(s.max_depth, units, { decimals: 0 })),
-    },
-    {
-      label: "Total time",
-      value: value((s) =>
-        s.total_time >= 3600
-          ? `${Math.round(s.total_time / 3600)}h`
-          : formatDurationHoursMinutes(s.total_time),
-      ),
-    },
-  ];
-  if (stats?.species_seen !== 0) {
+  if (dived && stats?.dive_site_count !== 0) {
+    figures.push({
+      label: "Dive sites",
+      value: value((s) => s.dive_site_count),
+    });
+  }
+  if (dived && stats?.species_seen !== 0) {
     figures.push({
       label: "Species seen",
       // The one figure with a page behind it: the life list is this number,
@@ -94,6 +98,21 @@ function diveFigures(
   return figures;
 }
 
+// The line under the name: when the logbook starts, and how long ago it was
+// last added to - nothing until the stats are in, or for a logbook with no
+// dives.
+function homeFacts(stats: UserDiveStats | null): string[] {
+  const facts: string[] = [];
+  if (stats?.first_dive_on) {
+    facts.push(`Diving since ${stats.first_dive_on.slice(0, 4)}`);
+  }
+  if (stats?.last_dive_on) {
+    const days = daysBetweenIsoDates(stats.last_dive_on, todayIsoDate());
+    facts.push(`Last dive ${formatDaysAgo(days)}`);
+  }
+  return facts;
+}
+
 // The Home page's heading: the diver's name over the map of their diving, with
 // the logbook's figures under it, as a record's page has its own.
 export function HomeHero({
@@ -108,10 +127,12 @@ export function HomeHero({
   actions?: ReactNode;
 }) {
   const units = useUnits();
+  const facts = homeFacts(stats);
   return (
     <MapHero
       icon={DiverAvatar}
       title={title}
+      subtitle={facts.length > 0 && <FactsLine facts={facts} />}
       actions={actions}
       figures={homeFigures(stats, places, units)}
       mapCredit

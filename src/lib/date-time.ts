@@ -464,6 +464,20 @@ export function formatDurationHoursMinutes(durationSeconds: number): string {
   return minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`;
 }
 
+const RELATIVE = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
+
+// How long ago a day was, coarsening as it recedes - "today", "yesterday",
+// "3 days ago", "last week", "4 months ago", "2 years ago". Never in the
+// future: a day ahead of the viewer's - a dive logged in a zone east of them -
+// is today.
+export function formatDaysAgo(days: number): string {
+  const ago = Math.max(0, days);
+  if (ago < 7) return RELATIVE.format(-ago, "day");
+  if (ago < 30) return RELATIVE.format(-Math.floor(ago / 7), "week");
+  if (ago < 365) return RELATIVE.format(-Math.floor(ago / 30), "month");
+  return RELATIVE.format(-Math.floor(ago / 365), "year");
+}
+
 // Formats a date range - a trip's span, a course's dates - for display, e.g.
 // "Jun 1 - Jun 8, 2024".
 // Returns `undefined` if neither date is set.

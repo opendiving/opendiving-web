@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import HomePage from "./page";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
@@ -91,6 +91,9 @@ const stats = (overrides: Partial<UserDiveStats> = {}): UserDiveStats => ({
   max_depth: 39.4,
   total_time: 561600,
   species_seen: 17,
+  dive_site_count: 48,
+  first_dive_on: "2014-03-08",
+  last_dive_on: "2026-10-05",
   created_at: "2026-04-04T12:00:00+00:00",
   ...overrides,
 });
@@ -195,6 +198,37 @@ describe("Home hero figures", () => {
     expect(figure("Total time")).toHaveTextContent(/^40min$/);
   });
 
+  it("counts the dive sites, and leaves them out at zero", async () => {
+    getDiveStats.mockResolvedValue(stats());
+    const { unmount } = render(<HomePage />);
+    await screen.findByText("Total dives");
+    expect(figure("Dive sites")).toHaveTextContent(/^48$/);
+    unmount();
+
+    getDiveStats.mockResolvedValue(stats({ dive_site_count: 0 }));
+    render(<HomePage />);
+    await screen.findByText("Total dives");
+    expect(screen.queryByText("Dive sites")).not.toBeInTheDocument();
+  });
+
+  it("reads the logbook's totals, then where it went, then what it saw", async () => {
+    getDiveStats.mockResolvedValue(stats());
+    getTripPlaces.mockResolvedValue([DAHAB, MOALBOAL]);
+    render(<HomePage />);
+    await screen.findByText("Destinations");
+
+    expect(screen.getAllByRole("term").map((term) => term.textContent)).toEqual(
+      [
+        "Total dives",
+        "Max depth",
+        "Total time",
+        "Destinations",
+        "Dive sites",
+        "Species seen",
+      ],
+    );
+  });
+
   it("counts the places the diver's trips went", async () => {
     getDiveStats.mockResolvedValue(stats());
     getTripPlaces.mockResolvedValue([DAHAB, MOALBOAL]);
@@ -232,7 +266,7 @@ describe("Home hero figures", () => {
     await screen.findByText("Species seen");
     // One per figure, and the counts are among them - "0 species" before the
     // answer is known reads as a statement about the logbook.
-    expect(screen.getAllByText("—")).toHaveLength(5);
+    expect(screen.getAllByText("—")).toHaveLength(6);
     expect(figure("Destinations")).toHaveTextContent("—");
   });
 
@@ -257,6 +291,32 @@ describe("Home hero figures", () => {
     );
     expect(screen.queryByText("Total dives")).not.toBeInTheDocument();
     expect(screen.queryByText("Species seen")).not.toBeInTheDocument();
+  });
+});
+
+describe("Home hero line", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("says when the logbook starts and when it was last added to", async () => {
+    // Only `Date`: faked timers would hold the requests' promises too.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 8, 12));
+    getDiveStats.mockResolvedValue(stats());
+    render(<HomePage />);
+
+    expect(
+      await screen.findByText("Diving since 2014 · Last dive 3 days ago"),
+    ).toBeInTheDocument();
+  });
+
+  it("is left out until the stats are in", async () => {
+    getDiveStats.mockReturnValue(new Promise(() => {}));
+    render(<HomePage />);
+    await screen.findByText("Total dives");
+
+    expect(screen.queryByText(/Diving since/)).not.toBeInTheDocument();
   });
 });
 

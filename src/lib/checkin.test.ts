@@ -14,6 +14,9 @@ const stats: UserDiveStats = {
   max_depth: 39.6,
   total_time: 360000,
   species_seen: 12,
+  dive_site_count: 9,
+  first_dive_on: "2019-05-02",
+  last_dive_on: "2026-09-20",
   created_at: "2026-01-01T00:00:00+00:00",
 };
 

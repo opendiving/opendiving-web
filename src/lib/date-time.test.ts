@@ -4,6 +4,7 @@ import {
   formatDateOnly,
   formatDateTime,
   formatDateTimeForForm,
+  formatDaysAgo,
   formatDiveDateTime,
   formatDiveStartTime,
   formatDiveTimeOnly,
@@ -441,6 +442,26 @@ describe("formatDurationHoursMinutes", () => {
 
   it("rounds to the nearest minute", () => {
     expect(formatDurationHoursMinutes(59.6 * 60)).toBe("1h");
+  });
+});
+
+describe("formatDaysAgo", () => {
+  it.each([
+    [0, "today"],
+    [1, "yesterday"],
+    [3, "3 days ago"],
+    [7, "last week"],
+    [20, "2 weeks ago"],
+    [45, "last month"],
+    [200, "6 months ago"],
+    [400, "last year"],
+    [1100, "3 years ago"],
+  ])("reads %i days as %s", (days, expected) => {
+    expect(formatDaysAgo(days)).toBe(expected);
+  });
+
+  it("reads a day ahead of the viewer's as today", () => {
+    expect(formatDaysAgo(-1)).toBe("today");
   });
 });
 
