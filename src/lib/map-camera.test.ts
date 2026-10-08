@@ -93,6 +93,25 @@ describe("worldCamera", () => {
     }
   });
 
+  it("crosses the antimeridian to the pins' middle when that is their short way round", () => {
+    const pacific = placedLocations([
+      { latitude: -17.7, longitude: 178.1 }, // Fiji
+      { latitude: -13.8, longitude: -172.1 }, // Samoa
+    ]);
+    expect(
+      Math.abs(worldCamera(pacific, hero(390)).center.longitude),
+    ).toBeGreaterThan(170);
+  });
+
+  it("keeps Greenwich where no way round fits every pin", () => {
+    const everywhere = placedLocations([
+      { latitude: 22.9, longitude: -109.9 }, // Cabo San Lucas
+      { latitude: 28.5, longitude: 34.5 }, // Dahab
+      { latitude: -8.35, longitude: 116.04 }, // Gili Trawangan
+    ]);
+    expect(worldCamera(everywhere, hero(390)).center.longitude).toBe(0);
+  });
+
   it("shows nothing placed as the world from Greenwich", () => {
     expect(worldCamera([], hero(390)).center).toEqual({
       latitude: 0,

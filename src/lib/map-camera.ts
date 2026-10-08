@@ -120,25 +120,41 @@ export function frameCamera(
  * The camera of the world picture, the grid's one square at zoom 0, fitted for
  * `frame`: never zoomed, since the picture has one size, and its pins' middle
  * at the band's, as `frameCamera` has it. Across, Greenwich at the frame's
- * middle - the Pacific at the world's sides - wherever every pin fits the
- * frame's width that way, and the pins' middle where a narrower frame would
- * leave one of them off it.
+ * middle - the Pacific at the world's sides - unless a frame too narrow for
+ * the whole world would leave a pin off it and the shortest stretch of
+ * longitude holding every pin fits, which is then at the middle instead. Pins
+ * that fit no way round keep Greenwich: a world map's way of showing most of
+ * them.
  */
 export function worldCamera(
   placed: readonly PlacedLocation[],
   frame: MapFrame,
 ): Camera {
-  const fitted = frameCamera(placed, frame);
-  const reach = (frame.width - 2 * frame.inset) / 2;
-  const centred = placed.every(
-    ({ longitude }) =>
-      Math.abs(mercatorX(wrapLongitude(longitude)) - 0.5) * TILE_SIZE <= reach,
-  );
+  const { latitude } = frameCamera(placed, frame).center;
+  // In degrees of longitude, the most a frame shows either side of its middle.
+  const reach = ((frame.width - 2 * frame.inset) / 2 / TILE_SIZE) * 360;
+  const longitudes = placed
+    .map(({ longitude }) => wrapLongitude(longitude))
+    .sort((a, b) => a - b);
+  const greenwich = { center: { latitude, longitude: 0 }, zoom: 0 };
+  if (longitudes.every((longitude) => Math.abs(longitude) <= reach)) {
+    return greenwich;
+  }
+
+  // The stretch holding every pin is the world less its widest empty gap.
+  let gap = longitudes[0] + 360 - longitudes[longitudes.length - 1];
+  let east = longitudes[longitudes.length - 1];
+  for (let index = 1; index < longitudes.length; index += 1) {
+    const between = longitudes[index] - longitudes[index - 1];
+    if (between > gap) {
+      gap = between;
+      east = longitudes[index - 1];
+    }
+  }
+  const span = 360 - gap;
+  if (span > 2 * reach) return greenwich;
   return {
-    center: {
-      latitude: fitted.center.latitude,
-      longitude: centred ? 0 : fitted.center.longitude,
-    },
+    center: { latitude, longitude: wrapLongitude(east - span / 2) },
     zoom: 0,
   };
 }
