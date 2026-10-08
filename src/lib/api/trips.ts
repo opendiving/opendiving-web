@@ -157,6 +157,16 @@ export const tripsAPI = {
     return (await this.lookupTrips(1, uuids.length, { uuids })).data;
   },
 
+  /**
+   * Every place the caller's trips went, each once - the same place on several
+   * trips appears once - for a map to frame. Parts with no place, or a place
+   * with no position, are left out; a diver with no placed trips gets `[]`.
+   */
+  async getTripPlaces(): Promise<Location[]> {
+    const response = await apiClient.get("/user/trip-places");
+    return response.data;
+  },
+
   // Get a specific trip by uuid
   async getTrip(tripUuid: string): Promise<Trip> {
     const response = await apiClient.get(`/trip/${tripUuid}`);

@@ -507,6 +507,21 @@ describe("unionBounds", () => {
     expect(union.east).toBeCloseTo(188.2, 5);
   });
 
+  it("takes every place where it lies when asked not to unwrap", () => {
+    // Dahab, Moalboal and Cabo San Lucas: the short way round crosses the
+    // Pacific, and a world map keeps the Pacific at its sides.
+    const union = unionBounds(
+      [
+        { south: 28.5, north: 28.5, west: 34.5, east: 34.5 },
+        { south: 9.9, north: 9.9, west: 123.4, east: 123.4 },
+        { south: 22.9, north: 22.9, west: -109.9, east: -109.9 },
+      ],
+      { unwrap: false },
+    )!;
+    expect(union.west).toBeCloseTo(-109.9, 5);
+    expect(union.east).toBeCloseTo(123.4, 5);
+  });
+
   it("reads a box that crosses the antimeridian as one interval", () => {
     const union = unionBounds([
       { south: -18, north: -16, west: 179, east: -179 },

@@ -2,7 +2,7 @@
 // the same images when a clone of it is on disk beside this one.
 //
 //   npm run screenshots -- you@example.com             # all of them
-//   npm run screenshots -- you@example.com dashboard   # just the named ones
+//   npm run screenshots -- you@example.com home        # just the named ones
 //
 //   DIVE_UUID=<uuid> npm run screenshots -- you@example.com dive-detail
 //                                                      # that dive, not the ranked one
@@ -80,7 +80,7 @@ const WIDTH = 1024;
 // for as long as anyone had been looking at it. So the page is asked before the shutter -
 // `refuseSlicedRow()` below.
 const HEIGHT = {
-  dashboard: 1564,
+  home: 1564,
   "dive-detail": 1086,
   "gear-item": 688,
   "dive-site": 1086,
@@ -99,7 +99,7 @@ const HEIGHT = {
 // exists to show - `Recordings` on the dive page, which is what the whole shot is for -
 // rather than the one that happens to sit last, which is a fact about the account's data
 // and not something to write down here.
-const CUT_BELOW = { dashboard: "Dive Activity", "dive-detail": "Recordings" };
+const CUT_BELOW = { home: "Gas Consumption", "dive-detail": "Recordings" };
 
 // The other framing rule, for a shot that is about one column: the frame ends at the foot
 // of the named card and whatever is beside it runs on past the edge.
@@ -122,7 +122,7 @@ const frame = (name) => ({ width: WIDTH, height: HEIGHT[name] });
 // one season in each. One constant, because the two cards showing the *same* period is
 // the point: they carry the same All/Year/Month toggle and are meant to read as a pair,
 // and a career of bars beside a single July reads as two unrelated cards that happen to
-// share a dashboard. Names a year in one particular log, so an account without diving in
+// share a page. Names a year in one particular log, so an account without diving in
 // it needs this overridden.
 const CHART_YEAR = process.env.CHART_YEAR ?? "2025";
 
@@ -672,7 +672,7 @@ const browser = await chromium.launch({ executablePath: chromePath });
 const context = await browser.newContext({
   // Every `visit()` sets the frame for the page it is opening; this is only what the
   // sign-in page gets rendered at on the way through.
-  viewport: frame("dashboard"),
+  viewport: frame("home"),
   // Retina, so the images stay sharp on the displays most people read a README on.
   deviceScaleFactor: 2,
   colorScheme: "dark",
@@ -706,7 +706,7 @@ await page.getByRole("button", { name: "Account menu" }).waitFor();
 
 // The Home page is where signing in lands, and the only page the bearer can be lifted
 // off before anything else needs it - so it gets loaded whether or not it gets shot.
-await visit(page, "dashboard", `${WEB}/home`);
+await visit(page, "home", `${WEB}/home`);
 // By heading, not by text: the cards carry visually-hidden labels naming the chart
 // their period control belongs to ("Gas consumption period"), and `getByText` matches
 // case-insensitive substrings - so a bare "Gas Consumption" resolves to two elements
@@ -747,11 +747,11 @@ if (wanted("dive-site") && !site)
     `no dive site of ${email} has coordinates - nothing to shoot for dive-site`,
   );
 
-if (wanted("dashboard")) {
+if (wanted("home")) {
   await selectPeriod(page, "Gas Consumption", "Year", CHART_YEAR);
   await selectPeriod(page, "Dive Activity", "Year", CHART_YEAR);
   await atTop(page);
-  await shot(page, "dashboard", await cutBelow(page, CUT_BELOW.dashboard));
+  await shot(page, "home", await cutBelow(page, CUT_BELOW.home));
 }
 
 // One frame per page, and one page per feature. Two crops of the same page at

@@ -1204,9 +1204,9 @@ so `AuthContext.test.tsx` can mock it.
 ## The Home page shows only what the app actually tracks
 
 Nothing on the Home page (`components/home/home-page-frame.tsx`) claims what the app cannot back.
-Each stat tile renders a figure the API derives from the diver's dives (`services/dive_stats.py`),
-Species Seen included. There is no quick-actions card; the one action worth promoting, logging a
-dive, is a single primary button in the page header. `SetupChecklistCard` is driven by real counts
+Each of the hero's figures is one the API derives (`services/dive_stats.py`, and `/user/trip-places`
+for Destinations), Species Seen included. There is no quick-actions card; the one action worth
+promoting, logging a dive, is the hero's only control. `SetupChecklistCard` is driven by real counts
 (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched with `items_per_page: 1`
 for `total_count` alone) and removes itself once all three are done.
 
@@ -1217,9 +1217,10 @@ children: `space-y-*` spaces rendered siblings, so a card returning `null` costs
 wrapping `<div>` would leave its own gap on every day neither renders. The same reasoning rules out
 a two-column grid whose sidebar sits empty for an established logbook.
 
-The checklist sits above the stats, being the first thing a new account should see. The stat tiles
-and the air-consumption chart hide at zero dives, but not while the stats request is in flight —
-`hasDives` stays true until the answer is in.
+The checklist is the body's first card, being the first thing a new account should see. The hero's
+dive figures and the charts hide at zero dives, but not while the stats request is in flight — they
+stay until the answer is in. Destinations stays: a trip can be planned before a dive on it is
+logged.
 
 ## There is no `/profile` until there is someone else to show it to
 
@@ -1398,8 +1399,8 @@ stale chart after a re-import.
 It branches on which failure: a 404 ("This dive has no profile") is permanent and gets no retry
 button, because re-asking returns the same 404; a 401, 5xx or network failure gets one.
 
-The Home page stats fetch shows an error with a retry rather than tiles stuck on "—": the API
-returns zeroed stats for a diver with no dives, so anything landing there is exceptional.
+The Home page stats fetch shows an error with a retry rather than leaving its figures on "—": the
+API returns zeroed stats for a diver with no dives, so anything landing there is exceptional.
 
 `usePaginatedResource` guards races with a request-id ref: only the newest request may settle, so a
 slower earlier page cannot overwrite newer rows or `currentPage`, and superseded requests leave the
@@ -1683,7 +1684,7 @@ uneven spot.
 ## The README screenshots are generated, at one width that is a breakpoint
 
 `scripts/screenshots.mjs` retakes every image in `docs/screenshots/`;
-`npm run screenshots -- you@example.com dashboard` retakes only those. `playwright-core` (with
+`npm run screenshots -- you@example.com home` retakes only those. `playwright-core` (with
 `executablePath`), not `playwright`'s browser download.
 
 1024px wide, where `lg:grid-cols-3` stops stacking the detail pages. Height lands on a card
@@ -1961,7 +1962,7 @@ The change figure is in dives, not percent, and uncoloured: a light year can be 
 than a slump. `ChartStat` is shared with `gas-use-card.tsx`; the two cards stack, so a drifting
 label size reads as a rendering fault.
 
-## The two chart cards stack, and gas leads - both measured, not assumed
+## The two chart cards stack, and activity leads
 
 Below 560px each plot narrows its viewBox instead of shrinking, so its axis text stops at 8.6px
 (`fittedChartWidth`). `lg:grid-cols-2` on Home's `max-w-6xl` gives 482px (546px at `max-w-7xl`), and
@@ -1969,8 +1970,8 @@ two things break: the axis text halves (16.6px to 8.6px), and the gas header goe
 as its toggle and stepper drop below the description. `RecentDivesCard`/`RecentTripsCard` pair up
 fine below: their content reflows instead of scaling.
 
-Gas consumption leads because it can change how you dive tomorrow; activity records what already
-happened. Reliably non-empty is a weaker claim on the top slot than reliably useful.
+Dive activity leads because every logbook fills it; gas consumption needs dives that recorded
+pressures and an average depth.
 
 ## `npm run format` covers the docs at the repo root, not just `src/`
 
@@ -3420,16 +3421,13 @@ stays 2 so a one-letter miss says "type a species name". `hintFor` appends `3 di
 `last seen <date>`, since a diver reads rows rather than an order. Section headings were rejected
 for the reason the people pins record: they would teach the combobox unselectable rows.
 
-## The Species Seen tile shows the derived `species_seen`, one of four figures in one `Card`
+## The Home page's figures are the hero's, and a zero is left out
 
-The API derives `species_seen` as the distinct species over a diver's live dives, recomputed on
-every dive write, so the Home page shows it. The four figures sit in one headerless `Card` as a
-`grid-cols-2 lg:grid-cols-4` grid rather than four cards: a fourth card strands itself at
-`md:grid-cols-3`, and four headers and borders on four numbers read together as one answer. A 2×2
-below `lg` rather than a single column, so four short figures do not run down the page. Icons sit in
-front of the label, since a right-aligned icon in a quarter-width column floats away from its words;
-per-width measurements live in the component's comment. The cell component is `Stat`, not
-`StatCard`, because it renders a cell and not a card.
+The logbook's figures sit in the Home page's map hero (`components/home/home-hero.tsx`), as a record
+page's do, rather than in a card under it. `species_seen` and `dive_site_count` are the API's,
+derived over live dives on every read or write; Destinations is the length of `/user/trip-places`. A
+count at zero is left out rather than shown, since there is nothing to count yet. Depth is in whole
+units and time in whole hours past the first: a career's totals, where the remainder is noise.
 
 ## What actually keeps a species search from leaving is the cache, not the catalog
 
@@ -4839,8 +4837,8 @@ behind when the course changes.
 
 `.claude/skills/` is committed (`!.claude/skills/` is the ignore file's one exception) because both
 skills describe working on this repo alone: the local magic-link flow and `scripts/screenshots.mjs`.
-Their names, `opendiving-web-login` and `opendiving-web-dashboard-screenshot`, carry the repo
-because skills load by bare name across sibling repos.
+Their names, `opendiving-web-login` and `opendiving-web-home-screenshot`, carry the repo because
+skills load by bare name across sibling repos.
 
 `.claude/settings.json` is not committed; the `PreToolUse` entry for
 `.claude/hooks/no-unsigned-commits.py` lives in the untracked `settings.local.json`, and the script
@@ -5457,12 +5455,12 @@ carry only `DEFAULT` and `foreground` (`tailwind.config.mts`; see _Correction: t
 three brand fills now_).
 
 The cost is contrast: coral text on white and white on a coral fill are 2.5:1 at the hero accent
-word (`landing-page.tsx`), header nav active/hover (`header.tsx`), the Home page stat label on
-`group-hover`, the species card hover border, and, in both themes since both tokens are
-theme-constant, the sign-in button and `AuthForm`'s submit. Teal is 4.8:1 on white and 3.4:1 on the
-dark card, past 3:1 for graphical objects. `--destructive`/`--destructive-solid` keep their tuned
-pair because that colour carries meaning. `code-quality.yml`'s axe step ends in `|| true`, so its
-`color-contrast` violation fails nothing.
+word (`landing-page.tsx`), header nav active/hover (`header.tsx`), the Home hero's Species seen link
+on hover, the species card hover border, and, in both themes since both tokens are theme-constant,
+the sign-in button and `AuthForm`'s submit. Teal is 4.8:1 on white and 3.4:1 on the dark card, past
+3:1 for graphical objects. `--destructive`/`--destructive-solid` keep their tuned pair because that
+colour carries meaning. `code-quality.yml`'s axe step ends in `|| true`, so its `color-contrast`
+violation fails nothing.
 
 ## `dives/(detail)/layout.tsx` owns the dive fetch, so a step keeps the page mounted
 

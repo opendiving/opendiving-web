@@ -133,7 +133,10 @@ export interface MapHeroFigure {
   value: ReactNode;
 }
 
-interface MapHeroProps extends Known {
+// The way back is optional on a map hero: the Home page is reached from the
+// navigation, and has nothing to go back to.
+interface MapHeroProps
+  extends Pick<Known, "icon">, Partial<Pick<Known, "backHref" | "backLabel">> {
   // What fills the band behind the details: a `MapBackdrop` spreading `map`,
   // with water told how many pixels of its top the top row covers and of its
   // foot the details do.
@@ -226,8 +229,12 @@ export function MapHero({
       </div>
       <div ref={topRowRef} className={TOP_ROW}>
         <div className={cn(COLUMN, "flex items-center justify-between gap-4")}>
-          <HeroBackLink backHref={backHref} backLabel={backLabel} />
-          {actions && <div className="flex shrink-0 gap-1">{actions}</div>}
+          {backHref && backLabel && (
+            <HeroBackLink backHref={backHref} backLabel={backLabel} />
+          )}
+          {actions && (
+            <div className="ml-auto flex shrink-0 gap-1">{actions}</div>
+          )}
         </div>
       </div>
       {/* Above the map by a flex item's z-index, as a card's details are.
@@ -342,7 +349,7 @@ export function PlainHero({
   subtitle,
   overline,
   figures,
-}: Omit<MapHeroProps, "backdrop" | "mapCredit">) {
+}: Omit<MapHeroProps, "backdrop" | "mapCredit"> & Known) {
   return (
     // The actions' glow is drawn in the page's colour, so it shows nothing here.
     <div className="[--backdrop-fade:hsl(var(--background))]">

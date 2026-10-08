@@ -7,6 +7,12 @@ export interface UserDiveStats {
   max_depth: number;
   total_time: number; // seconds
   species_seen: number;
+  // Distinct dive sites the live dives name, at any position.
+  dive_site_count: number;
+  // The earliest and latest live dive's own local day, "YYYY-MM-DD"; null with
+  // no dives.
+  first_dive_on: string | null;
+  last_dive_on: string | null;
   created_at: string;
 }
 

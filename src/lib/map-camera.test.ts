@@ -48,6 +48,26 @@ describe("frameCamera", () => {
     });
   });
 
+  it("keeps the antimeridian at the edges when asked", () => {
+    const places = placedLocations([
+      { latitude: 9.9, longitude: 123.4 }, // Moalboal
+      { latitude: 28.5, longitude: 34.5 }, // Dahab
+      { latitude: 22.9, longitude: -109.9 }, // Cabo San Lucas
+    ]);
+    const frame = card(1280, 352);
+    // Unwrapped against Moalboal, Cabo San Lucas lies across the Pacific...
+    expect(
+      Math.abs(frameCamera(places, frame).center.longitude),
+    ).toBeGreaterThan(90);
+    // ...and a world map's way is across the Atlantic.
+    expect(
+      Math.abs(
+        frameCamera(places, frame, { antimeridianAtEdges: true }).center
+          .longitude,
+      ),
+    ).toBeLessThan(90);
+  });
+
   it("fits a wider frame at least as deep as a narrower one", () => {
     const places = placedLocations([
       { latitude: 28.5721, longitude: 34.5372 },

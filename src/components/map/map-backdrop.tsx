@@ -96,13 +96,18 @@ function tileSetFor(
   frame: Measured,
   theme: MapTileTheme,
   { band, anchor, canvas }: ReturnType<typeof frameGeometry>,
+  antimeridianAtEdges: boolean,
 ): TileSet {
-  const camera = frameCamera(placed, {
-    width: frame.width,
-    height: frame.height,
-    band,
-    inset: canvas.inset,
-  });
+  const camera = frameCamera(
+    placed,
+    {
+      width: frame.width,
+      height: frame.height,
+      band,
+      inset: canvas.inset,
+    },
+    { antimeridianAtEdges },
+  );
   const layout = tileLayout(camera, {
     left: Math.max(0, canvas.left) - anchor.x,
     right: Math.min(frame.width, canvas.left + canvas.width) - anchor.x,
@@ -193,6 +198,10 @@ export interface MapBackdropProps {
   hero?: boolean;
   // What shows with no map: the map's water, faded as a map is.
   water: ReactNode;
+  // Fit the places without crossing the antimeridian, so the map reads as a
+  // world map does, the Pacific at its sides - for a map of every place a
+  // diver went, rather than of one trip, where the short way round is right.
+  antimeridianAtEdges?: boolean;
 }
 
 /**
@@ -214,6 +223,7 @@ export function MapBackdrop({
   coveredTop = 0,
   hero = false,
   water,
+  antimeridianAtEdges = false,
 }: MapBackdropProps) {
   const tiles = useMapTiles();
   // Nothing is asked for until the theme is known, which on the client is from
@@ -286,9 +296,20 @@ export function MapBackdrop({
             frame,
             theme,
             frameGeometry(frame, coveredTop, coveredBottom, hero),
+            antimeridianAtEdges,
           )
         : null,
-    [drawn, tiles, theme, placed, frame, coveredTop, coveredBottom, hero],
+    [
+      drawn,
+      tiles,
+      theme,
+      placed,
+      frame,
+      coveredTop,
+      coveredBottom,
+      hero,
+      antimeridianAtEdges,
+    ],
   );
   const shown = useTileSet(want, tiles === true);
 

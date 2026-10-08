@@ -16,10 +16,10 @@ having a file for it to write to that isn't this one is the other half of the sp
 ## Verifying in the browser
 
 Some of what follows names setup rather than repo content. The `opendiving-web-login` and
-`opendiving-web-dashboard-screenshot` skills are committed under `.claude/skills/`, so a clone has
-those; the `playwright` MCP server is user scope in `~/.claude.json`, and a clone does not. Nothing
-below needs it — the failure modes are properties of the tools themselves, not of that setup — so
-read the `playwright` mentions as _if you have it_.
+`opendiving-web-home-screenshot` skills are committed under `.claude/skills/`, so a clone has those;
+the `playwright` MCP server is user scope in `~/.claude.json`, and a clone does not. Nothing below
+needs it — the failure modes are properties of the tools themselves, not of that setup — so read the
+`playwright` mentions as _if you have it_.
 
 `computer{action:"screenshot"}` only returns real pixels while the Browser pane is **visible**. A
 hidden pane stops compositing, and the capture falls back to the page background — `rgb(22, 22, 24)`
@@ -64,7 +64,7 @@ the tool action is tracked by the capture path and fails loudly when the pane is
 silently returning the previous frame.
 
 `scripts/screenshots.mjs` drives its own Playwright browser and is immune to all of this, but it
-exists to regenerate this repo's `docs/screenshots/` (see its `opendiving-web-dashboard-screenshot`
+exists to regenerate this repo's `docs/screenshots/` (see its `opendiving-web-home-screenshot`
 skill), not to answer ad-hoc "does this look right?" questions.
 
 The `playwright` MCP server is the ad-hoc answer — user scope in `~/.claude.json`, so it loads in

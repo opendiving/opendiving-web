@@ -1,19 +1,19 @@
 ---
-name: opendiving-web-dashboard-screenshot
+name: opendiving-web-home-screenshot
 description:
-  Retake docs/screenshots/dashboard.png, the README hero image — the dashboard header plus both
-  chart cards on their 2025 Year view. Use whenever a change alters what the dashboard looks like
-  above the Recent Dives row (the heading, the stat cards, Gas Consumption, Dive Activity) and the
-  README image would otherwise show the old UI.
+  Retake docs/screenshots/home.png, the README hero image — the Home page's hero plus both chart
+  cards on their 2025 Year view. Use whenever a change alters what the Home page looks like above
+  the Recent Dives row (the hero and its figures, Dive Activity, Gas Consumption) and the README
+  image would otherwise show the old UI.
 ---
 
-# Retake the dashboard README screenshot
+# Retake the Home README screenshot
 
 One command. `scripts/screenshots.mjs` owns every part of this — the sign-in, the frame, the year,
 the cut — so the job here is to run it, not to reproduce it in a browser.
 
 ```bash
-npm run screenshots -- you@example.com dashboard
+npm run screenshots -- you@example.com home
 ```
 
 Run it from `opendiving-web`, with the account whose dives the README is meant to show in place of
@@ -21,9 +21,9 @@ the placeholder — `scripts/screenshots.mjs` spells its usage the same way. It 
 magic link it reads out of the API container's log, so **the `opendiving-web-login` skill is not
 part of this flow** — only reach for it when the sign-in inside the script is what broke.
 
-Name `dashboard` explicitly. A bare `npm run screenshots -- …` retakes every image, and the rest are
-not stable between runs ("due in 24 days" counts down, the subjects are re-picked from whatever the
-log holds that day), so a full retake puts unrelated images in the diff.
+Name `home` explicitly. A bare `npm run screenshots -- …` retakes every image, and the rest are not
+stable between runs ("due in 24 days" counts down, the subjects are re-picked from whatever the log
+holds that day), so a full retake puts unrelated images in the diff.
 
 ## Before running
 
@@ -44,8 +44,8 @@ Everything the shot needs is a constant in `scripts/screenshots.mjs`, with the r
 
 - **1024px wide**, Tailwind's `lg`, at `deviceScaleFactor: 2` → the PNG lands at 2048 wide.
 - **Dark mode**, `reducedMotion: "reduce"`.
-- **Height is measured in the page, not written down** — `CUT_BELOW.dashboard` names the _Dive
-  Activity_ card, and `cutBelow()` finds the first height past it at which no card is still open,
+- **Height is measured in the page, not written down** — `CUT_BELOW.home` names the _Gas
+  Consumption_ card, and `cutBelow()` finds the first height past it at which no card is still open,
   moments before the shutter. On this page that is the row below the anchor and nothing further, so
   the frame covers the header and both chart cards and ends on a card boundary. Two hand-measured
   heights went stale within one afternoon; don't add a third.
@@ -57,17 +57,17 @@ re-run. Don't crop the PNG by hand, and don't pass a one-off height.
 
 ## After running
 
-The script prints `✓ dashboard.png  1024x<height> @2x`. Confirm the file matches:
+The script prints `✓ home.png  1024x<height> @2x`. Confirm the file matches:
 
 ```bash
-file docs/screenshots/dashboard.png && git status --short docs/screenshots/
+file docs/screenshots/home.png && git status --short docs/screenshots/
 ```
 
-Expect `2048 x <2 × height>` and only `dashboard.png` modified. Then open the PNG and check the
-three things the script cannot: the heading carries the account's name, both charts show 2025 bars,
-and the bottom edge sits on the gap below Dive Activity with no sliver of Recent Dives.
+Expect `2048 x <2 × height>` and only `home.png` modified. Then open the PNG and check the three
+things the script cannot: the heading carries the account's name, both charts show 2025 bars, and
+the bottom edge sits on the gap below Gas Consumption with no sliver of Recent Dives.
 
-Commit it on its own — `docs: retake the dashboard screenshot for <whatever changed>`.
+Commit it on its own — `docs: retake the Home screenshot for <whatever changed>`.
 
 **If the run printed `(+ product repo)`, you are not done.** `shot()` writes the same PNG into
 `../opendiving/docs/screenshots/` whenever that clone is there, and deliberately commits nothing in
@@ -103,8 +103,8 @@ Commit it there too, on its own, with the same subject.
 - **`Gas Consumption has no year "2025" with dives`** — the account has nothing logged that year.
   Override for a one-off run with `CHART_YEAR=2024`, and change the constant only if 2025 has
   genuinely stopped being the right year for the README.
-- **`cannot cut below the Dive Activity card: no card carries that heading`, or a heading wait
-  timing out** — the dashboard was restructured. Update `CUT_BELOW` / the heading the walk scopes
+- **`cannot cut below the Gas Consumption card: no card carries that heading`, or a heading wait
+  timing out** — the Home page was restructured. Update `CUT_BELOW` / the heading the walk scopes
   on, in the script.
 - **`No Chrome found`** — set `CHROME_PATH`. `playwright-core` drives the machine's own Chrome and
   never downloads one.
