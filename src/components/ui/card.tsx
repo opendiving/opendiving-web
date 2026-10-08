@@ -17,14 +17,19 @@ const Card = React.forwardRef<
 ));
 Card.displayName = "Card";
 
-// Each section pads `--card-pad` (`globals.css`), 12px on a phone.
+// Each section pads `--card-pad` (`globals.css`), 12px on a phone. The header
+// pads its top by the title's lift as well, so a control on the title's line sits
+// as far from the card's top as from its side.
 const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-(--card-pad)", className)}
+    className={cn(
+      "flex flex-col space-y-1.5 p-(--card-pad) pt-[calc(var(--card-pad)+var(--card-title-lift))]",
+      className,
+    )}
     {...props}
   />
 ));
@@ -52,15 +57,15 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
 );
 CardTitle.displayName = "CardTitle";
 
-// A title line that also holds a control. A `size="sm"` button is 36px against the
-// title's 24px line - 18px on a phone - so centring the two let the button set the
-// line's height and dropped the title below where a card without one has it.
-// Top-aligned, with the control lifted by half the difference, the title stays put
-// and the control stays centred on it; the row gap is that lift plus 12px, which keeps
-// a control that wraps onto its own line 12px clear of the title.
+// A title line that also holds a control. A `size="sm"` button is taller than the
+// title's line, so centring the two let the button set the line's height and
+// dropped the title below where a card without one has it. Top-aligned, with the
+// control lifted by `--card-title-lift`, the title stays put and the control stays
+// centred on it; the row gap is that lift plus 12px, which keeps a control that
+// wraps onto its own line 12px clear of the title.
 const CARD_TITLE_ROW =
-  "flex flex-wrap items-start justify-between gap-x-3 gap-y-4.5 max-sm:gap-y-5.25";
-const CARD_TITLE_ACTION = "-mt-1.5 max-sm:-mt-2.25";
+  "flex flex-wrap items-start justify-between gap-x-3 gap-y-[calc(var(--card-title-lift)+0.75rem)]";
+const CARD_TITLE_ACTION = "-mt-(--card-title-lift)";
 
 // The smaller title of a card that flags something above a page's main content, such
 // as Home's notices, led by an `h-4 w-4` icon. A trailing count takes `ml-auto`.
