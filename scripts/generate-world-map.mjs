@@ -29,9 +29,8 @@ const USER_AGENT =
   "OpenDiving-WorldMap (+https://github.com/opendiving/opendiving-web)";
 
 async function fetchResource(url) {
-  if (url.startsWith(LOCAL)) {
-    return readFileSync(path.join(publicDir, new URL(url).pathname));
-  }
+  const { origin, pathname } = new URL(url);
+  if (origin === LOCAL) return readFileSync(path.join(publicDir, pathname));
   const response = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
   if (response.status === 204 || response.status === 404) return null;
   if (!response.ok) throw new Error(`${response.status} from ${url}`);
