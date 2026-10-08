@@ -344,7 +344,8 @@ export function GasUseCard() {
             scope - see `trendWindow`). */}
         <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          Surface-equivalent gas breathed per minute (RMV). Lower is better.
+          Surface-equivalent gas volume breathed per minute (RMV). Lower is
+          better.
         </p>
       </CardContent>
     </Card>
