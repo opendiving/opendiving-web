@@ -84,7 +84,7 @@ export function TagsMultiSelect({
           {value.map((name) => (
             <li
               key={name}
-              className="flex items-center gap-1 rounded-md border bg-background py-0.5 pl-3 text-sm"
+              className="flex items-center rounded-md border bg-background pl-3 text-sm"
             >
               <span className="min-w-0 break-all">{name}</span>
               <IconTooltip label={`Remove ${name}`}>
