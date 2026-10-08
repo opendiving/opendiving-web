@@ -76,7 +76,7 @@ export function PeoplePageFrame({
     <div>
       <IndexHero
         title="People"
-        subtitle="Your buddies, guides, instructors and the people who came along, kept once"
+        description="Your buddies, guides, instructors and the people who came along, kept once"
         actions={
           <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />

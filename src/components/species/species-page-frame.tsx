@@ -101,7 +101,7 @@ export function SpeciesPageFrame({
     <div>
       <IndexHero
         title="Marine Life"
-        subtitle="Everything you have logged seeing, and when you saw it"
+        description="Everything you have logged seeing, and when you saw it"
       />
 
       <div className={HERO_BODY}>

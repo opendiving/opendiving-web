@@ -397,7 +397,7 @@ export function ImportPageContent() {
     <div>
       <IndexHero
         title="Import"
-        subtitle="Bring dives in from your dive computer, another logbook or an OpenDiving archive. You see what each file becomes before anything is written."
+        description="Bring dives in from your dive computer, another logbook or an OpenDiving archive. You see what each file becomes before anything is written."
       />
 
       <div className={HERO_BODY}>

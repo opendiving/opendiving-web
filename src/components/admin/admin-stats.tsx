@@ -85,7 +85,7 @@ export function AdminStatsScreen() {
     <div>
       <IndexHero
         title="Stats"
-        subtitle="Daily totals of accounts created, sign-ins and active accounts. Days are UTC."
+        description="Daily totals of accounts created, sign-ins and active accounts. Days are UTC."
       />
 
       <div className={HERO_BODY}>

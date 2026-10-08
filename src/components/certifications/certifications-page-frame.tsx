@@ -64,7 +64,7 @@ export function CertificationsPageFrame({
     <div>
       <IndexHero
         title="Certifications"
-        subtitle="Keep photos of your c-cards here, so they're on hand at the dive shop without digging out the plastic"
+        description="Keep photos of your c-cards here, so they're on hand at the dive shop without digging out the plastic"
         actions={
           <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />

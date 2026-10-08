@@ -8,8 +8,14 @@ import {
   type Ref,
 } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { MapCredit } from "@/components/map/map-credit";
 import {
@@ -251,8 +257,8 @@ export function MapHero({
   );
 }
 
-// The icon, the name, its line and its figures. `aside` ends the name's line,
-// and `children` closes the figures' row.
+// The icon, the name, its line and its figures. `info` follows the name and
+// `aside` ends its line; `children` closes the figures' row.
 function HeroDetails({
   className,
   icon: Icon,
@@ -261,12 +267,14 @@ function HeroDetails({
   overline,
   figures = [],
   headingRef,
+  info,
   aside,
   children,
 }: Pick<MapHeroProps, "title" | "subtitle" | "overline"> &
   Partial<Pick<MapHeroProps, "icon" | "figures">> & {
     className?: string;
     headingRef?: Ref<HTMLHeadingElement>;
+    info?: ReactNode;
     aside?: ReactNode;
     children?: ReactNode;
   }) {
@@ -285,10 +293,11 @@ function HeroDetails({
       <div className={HEADING}>
         {Icon && <Icon aria-hidden className={ICON} />}
         <div className="min-w-0 flex-1">
-          {aside ? (
-            <div className="flex items-center justify-between gap-3">
+          {info || aside ? (
+            <div className="flex items-center gap-1">
               {heading}
-              {aside}
+              {info}
+              {aside && <div className="ml-auto pl-2">{aside}</div>}
             </div>
           ) : (
             heading
@@ -353,20 +362,49 @@ export function PlainHero({
   );
 }
 
+// What a page is for, behind an icon after its title: a reader needs it once,
+// and every visit after that it is only a line between the title and the page.
+// A popover rather than a hover hint, so a tap opens it on a phone.
+function PageInfo({ children }: { children: ReactNode }) {
+  return (
+    <Popover>
+      <IconTooltip label="About this page">
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-muted-foreground print:hidden"
+          >
+            <Info className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+      </IconTooltip>
+      <PopoverContent align="start" className="text-sm">
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // The heading of a page reached from the navigation rather than from a record:
 // a plain hero with nothing to go back to, so no top row - the page's actions
-// end the title's line instead, pulled into its height on a phone so a page's
-// line under the title sits where a page without them has it. Controls, so
-// paper goes without them.
+// end the title's line instead, pulled into its height on a phone, and its
+// description is behind an icon after the title. Controls, so paper goes
+// without them.
 export function IndexHero({
   icon,
   title,
+  description,
   subtitle,
   actions,
   headingRef,
   className,
 }: Pick<MapHeroProps, "title" | "subtitle" | "actions"> &
   Partial<Pick<MapHeroProps, "icon">> & {
+    // What the page is for, behind the icon. `subtitle` is for what a reader
+    // must see without asking, under the title.
+    description?: ReactNode;
     // Makes the heading a focus target, for a page that moves focus to it.
     headingRef?: Ref<HTMLHeadingElement>;
     className?: string;
@@ -378,6 +416,7 @@ export function IndexHero({
         title={title}
         subtitle={subtitle}
         headingRef={headingRef}
+        info={description && <PageInfo>{description}</PageInfo>}
         aside={
           actions && (
             <div className="-my-1 flex shrink-0 gap-1 md:my-0 print:hidden">

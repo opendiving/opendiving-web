@@ -102,7 +102,7 @@ export function DivesPageFrame({
     <div>
       <IndexHero
         title="Dives"
-        subtitle="Manage and track your diving activities"
+        description="Manage and track your diving activities"
         headingRef={headingRef}
         actions={
           <>

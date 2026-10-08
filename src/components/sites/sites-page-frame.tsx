@@ -106,7 +106,7 @@ export function SitesPageFrame({
     <div>
       <IndexHero
         title="Dive Sites"
-        subtitle="Keep track of the dive sites you've visited"
+        description="Keep track of the dive sites you've visited"
         actions={
           <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />

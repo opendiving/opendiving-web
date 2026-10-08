@@ -118,7 +118,7 @@ export function CoursesPageFrame({
     <div>
       <IndexHero
         title="Courses"
-        subtitle="The training you did, with the dives and cards it produced"
+        description="The training you did, with the dives and cards it produced"
         actions={
           <Button size="sm" onClick={onNew}>
             <Plus className="h-4 w-4 mr-2" />
