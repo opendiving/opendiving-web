@@ -11,6 +11,7 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
+  Info,
   Minus,
   TrendingDown,
   TrendingUp,
@@ -20,7 +21,6 @@ import {
   CARD_TITLE_ROW,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -193,29 +193,34 @@ export function GasUseCard() {
   return (
     <Card>
       <CardHeader>
-        <div className={CARD_TITLE_ROW}>
-          <CardTitle as="h2" className="flex items-center gap-2">
+        <div className={cn(CARD_TITLE_ROW, "@container")}>
+          <CardTitle
+            as="h2"
+            className="flex min-w-0 grow basis-0 items-center gap-2"
+          >
             <Activity className="h-5 w-5" />
             Gas Consumption
           </CardTitle>
 
-          <div
-            className={`flex flex-wrap items-center gap-2 ${CARD_TITLE_ACTION}`}
-          >
-            {scope !== "all" && (
-              <div className="flex items-center gap-1">
-                <IconTooltip label="Gas consumption: previous period with dives">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9"
-                    disabled={previous === null}
-                    onClick={() => setAnchor(previous)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-                {/* The label is also the jump-to control - stepping one period
+          {scope !== "all" && (
+            <div
+              className={cn(
+                "flex items-center gap-1 @max-2xl:order-last @max-2xl:basis-full @max-2xl:justify-center",
+                CARD_TITLE_ACTION,
+              )}
+            >
+              <IconTooltip label="Gas consumption: previous period with dives">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  disabled={previous === null}
+                  onClick={() => setAnchor(previous)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
+              {/* The label is also the jump-to control - stepping one period
                     at a time is fine for "the trip before this one", but useless
                     for reaching a specific year several seasons back.
 
@@ -225,19 +230,19 @@ export function GasUseCard() {
                     has no registered item renders an empty trigger. Fixed width
                     so the chart doesn't shift sideways between "May 2026" and
                     "September 2026". */}
-                <span id={periodHintId} className="sr-only">
-                  Gas consumption period
-                </span>
-                <Select
-                  value={String(periodRange(activeAnchor, scope).start)}
-                  onValueChange={(value) => {
-                    const picked = periods.find(
-                      (period) => String(period.start) === value,
-                    );
-                    if (picked) setAnchor(picked.anchor);
-                  }}
-                >
-                  {/* `aria-labelledby`, not the `aria-describedby` this was: a
+              <span id={periodHintId} className="sr-only">
+                Gas consumption period
+              </span>
+              <Select
+                value={String(periodRange(activeAnchor, scope).start)}
+                onValueChange={(value) => {
+                  const picked = periods.find(
+                    (period) => String(period.start) === value,
+                  );
+                  if (picked) setAnchor(picked.anchor);
+                }}
+              >
+                {/* `aria-labelledby`, not the `aria-describedby` this was: a
                       description does not contribute to the accessible name, so
                       the trigger's only name was whatever `SelectValue` had
                       rendered - and on the period with no registered item (the
@@ -248,39 +253,36 @@ export function GasUseCard() {
                       period" *followed by* the period showing - the second is the
                       trigger's own text, which naming it by anything else would
                       have replaced rather than prefixed. */}
-                  <SelectTrigger
-                    id={periodTriggerId}
-                    aria-labelledby={`${periodHintId} ${periodTriggerId}`}
-                    className="h-9 w-40 px-2 text-sm font-medium"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {periods.map((period) => (
-                      <SelectItem
-                        key={period.start}
-                        value={String(period.start)}
-                      >
-                        {periodLabel(period.start, scope)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <IconTooltip label="Gas consumption: next period with dives">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9"
-                    disabled={next === null}
-                    onClick={() => setAnchor(next)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-              </div>
-            )}
+                <SelectTrigger
+                  id={periodTriggerId}
+                  aria-labelledby={`${periodHintId} ${periodTriggerId}`}
+                  className="h-9 w-40 px-2 text-sm font-medium"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {periods.map((period) => (
+                    <SelectItem key={period.start} value={String(period.start)}>
+                      {periodLabel(period.start, scope)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <IconTooltip label="Gas consumption: next period with dives">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  disabled={next === null}
+                  onClick={() => setAnchor(next)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
+            </div>
+          )}
 
-            {/* Every control in this row names its own card, because the two
+          {/* Every control in this row names its own card, because the two
                 cards draw the same row and `Card` is a plain `div` - so nothing
                 scopes them to each other. Read in place the heading above is all
                 the context you need, but a screen reader's controls list is flat
@@ -292,45 +294,35 @@ export function GasUseCard() {
                 is exactly the context a controls list drops. (Named by role
                 rather than by level, there and here: this title has been an
                 `<h3>` and is now an `<h2>`, and the scoping never cared.) */}
-            {/* A segmented control built from plain buttons - the app has no
+          {/* A segmented control built from plain buttons - the app has no
                 tabs/toggle-group primitive, and three buttons in a bordered row
                 is the whole of it. */}
-            <div
-              className="flex h-9 items-center rounded-md border p-0.5"
-              role="group"
-              aria-label="Gas consumption: time range"
-            >
-              {CHART_SCOPES.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setChosenScope(option)}
-                  aria-pressed={scope === option}
-                  className={cn(
-                    "rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                    scope === option
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {CHART_SCOPE_LABELS[option]}
-                </button>
-              ))}
-            </div>
+          <div
+            className={cn(
+              "flex h-9 items-stretch rounded-md border p-1",
+              CARD_TITLE_ACTION,
+            )}
+            role="group"
+            aria-label="Gas consumption: time range"
+          >
+            {CHART_SCOPES.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setChosenScope(option)}
+                aria-pressed={scope === option}
+                className={cn(
+                  "rounded px-2.5 text-xs font-medium transition-colors",
+                  scope === option
+                    ? "bg-secondary text-secondary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {CHART_SCOPE_LABELS[option]}
+              </button>
+            ))}
           </div>
         </div>
-        <CardDescription>
-          {/* "Surface-equivalent" is carrying the S of SAC here. The title
-                  deliberately doesn't: "air" is wrong the moment you breathe
-                  nitrox or trimix, and the whole data model already says gas
-                  (`gas_use`, `dive-gas.ts`). The normalisation belongs in the
-                  sentence that has room to state it.
-
-                  The rolling trend is not named here: the legend already
-                  labels it, with the window length this sentence could not
-                  state (it varies by scope - see `trendWindow`). */}
-          Surface-equivalent gas breathed per minute (RMV). Lower is better.
-        </CardDescription>
       </CardHeader>
       <CardContent>
         {points === null ? (
@@ -341,6 +333,20 @@ export function GasUseCard() {
             <GasUseChart points={points} scope={scope} anchor={activeAnchor} />
           </>
         )}
+        {/* "Surface-equivalent" is carrying the S of SAC here. The title
+            deliberately doesn't: "air" is wrong the moment you breathe nitrox or
+            trimix, and the whole data model already says gas (`gas_use`,
+            `dive-gas.ts`). The normalisation belongs in the sentence that has
+            room to state it.
+
+            The rolling trend is not named here: the legend already labels it,
+            with the window length this sentence could not state (it varies by
+            scope - see `trendWindow`). */}
+        <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          Surface-equivalent gas volume breathed per minute (RMV). Lower is
+          better.
+        </p>
       </CardContent>
     </Card>
   );
@@ -368,7 +374,7 @@ function GasUseSummaryRow({
         <Figure value={summary.best} units={units} />
       </ChartStat>
       <ChartStat label="Dives">
-        <span className="text-xl font-semibold tabular-nums">
+        <span className="text-base font-semibold tabular-nums">
           {summary.dives}
         </span>
       </ChartStat>
@@ -392,7 +398,7 @@ function GasUseSummaryRow({
 function Figure({ value, units }: { value: number; units: UnitSystem }) {
   return (
     <>
-      <span className="text-xl font-semibold tabular-nums">
+      <span className="text-base font-semibold tabular-nums">
         {displayNumber(value, "rmv", units, { decimals: 1 })}
       </span>
       <span className="text-sm text-muted-foreground">

@@ -26,7 +26,7 @@ export function ChartSkeleton({
         {Array.from({ length: stats }, (_, stat) => (
           <div key={stat}>
             <Skeleton className="h-3 w-20" />
-            <Skeleton className="mt-1.5 h-7 w-24" />
+            <Skeleton className="mt-1.5 h-6 w-24" />
           </div>
         ))}
       </div>
