@@ -158,7 +158,7 @@ export function SettingsNav() {
       <ul
         ref={listRef}
         className={cn(
-          "group/nav -mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0",
+          "group/nav -mx-2.5 flex gap-1 overflow-x-auto px-2.5 pb-1 sm:-mx-4 sm:px-4 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0",
           // Scrolls without a bar: the row centres the section it opens on, and a bar
           // under a row of tabs reads as a rule. The `::-webkit-scrollbar` rule is for a
           // Safari older than 18.2, which has no `scrollbar-width`.

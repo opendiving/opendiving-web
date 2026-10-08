@@ -87,7 +87,7 @@ export function GearPageFrame({
         }
       />
 
-      <div className={cn(HERO_BODY, "space-y-6")}>
+      <div className={cn(HERO_BODY, "space-y-6 max-sm:space-y-2.5")}>
         <GearItemsCard {...items} />
 
         <div ref={setsCardRef}>

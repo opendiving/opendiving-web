@@ -50,7 +50,7 @@ export function CardSkeleton({
       )}
     >
       <CardHeader>
-        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-6 w-40 max-sm:h-4.5" />
       </CardHeader>
       <CardContent className="space-y-3">
         {Array.from({ length: lines }, (_, line) => (

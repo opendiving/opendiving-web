@@ -2788,13 +2788,12 @@ that knows nothing about line breaks, so a footer that did wrap (320px, a longer
 text size) would lose its spacing. `flex-wrap-reverse` keeps the buttons on one line when they fit
 and puts the action above Cancel when they cannot, with 8px between rows.
 
-## A headerless card restores `pt-6` by hand
+## A headerless card restores its top padding by hand
 
 A card whose figures are each labelled - Home's stats - has no header, and its `CardContent` takes
-an explicit `pt-6`: the default `p-6 pt-0` assumes a `CardHeader` supplied the top padding. The Home
-page's stats-error card restores it the same way; two headerless call sites do not earn a
-`headerless` variant in `ui/card.tsx`, which would have to guess whether the next one wants the same
-padding.
+an explicit `pt-(--card-pad)`: the default `p-(--card-pad) pt-0` assumes a `CardHeader` supplied the
+top padding. A `headerless` variant in `ui/card.tsx` would have to guess whether the next one wants
+the same padding.
 
 ## Pages hold their shape while they load, instead of collapsing into a spinner
 

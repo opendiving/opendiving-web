@@ -242,7 +242,7 @@ export function EditDivePageContent() {
 
   if (!dive) {
     return (
-      <div className="container mx-auto px-4 pt-8 pb-6">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Dive not found."
           backHref="/dives"

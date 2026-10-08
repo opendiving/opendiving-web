@@ -44,12 +44,12 @@ export default function AdminPage() {
       <IndexHero title="Admin" />
 
       <div className={HERO_BODY}>
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid gap-4 max-sm:gap-2.5 sm:grid-cols-2">
           {SCREENS.map(({ href, icon: Icon, title, description }) => (
             <li key={href}>
               <Link
                 href={href}
-                className="flex h-full gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
+                className="flex h-full gap-3 rounded-lg border bg-card p-4 max-sm:p-3 transition-colors hover:bg-muted/50"
               >
                 <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
                 <span>

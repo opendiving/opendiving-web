@@ -382,6 +382,20 @@
     --header-height: calc(4.25rem + 1px);
   }
 
+  /* A card section's padding: `p-6`, and 12px on a phone, where the page's
+     gutter and the gap between cards are 10px. A variable rather than a
+     `max-sm:` class beside `p-6`, so a caller's `p-0` or `print:p-0` replaces
+     it outright - tailwind-merge only drops a class of the same variant. */
+  :root {
+    --card-pad: 1.5rem;
+  }
+
+  @media (width < 40rem) {
+    :root {
+      --card-pad: 0.75rem;
+    }
+  }
+
   html {
     scroll-padding-top: var(--header-height);
   }

@@ -17,16 +17,14 @@ const Card = React.forwardRef<
 ));
 Card.displayName = "Card";
 
-// On a phone the sections pad as wide as the page gutter (`px-4`) around the card.
-// `max-sm:` rather than `sm:px-6`, so every wider width - print included - keeps the
-// plain `p-6` that a caller's `p-0` or `print:p-0` replaces outright.
+// Each section pads `--card-pad` (`globals.css`), 12px on a phone.
 const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6 max-sm:px-4", className)}
+    className={cn("flex flex-col space-y-1.5 p-(--card-pad)", className)}
     {...props}
   />
 ));
@@ -45,7 +43,7 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
     <Heading
       ref={ref}
       className={cn(
-        "text-2xl font-semibold leading-none tracking-tight",
+        "text-2xl font-semibold leading-none tracking-tight max-sm:text-lg",
         className,
       )}
       {...props}
@@ -55,17 +53,18 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
 CardTitle.displayName = "CardTitle";
 
 // A title line that also holds a control. A `size="sm"` button is 36px against the
-// title's 24px line, so centring the two let the button set the line's height and
-// dropped the title 6px below where a card without one has it. Top-aligned, with the
-// control lifted by that 6px, the title stays put and the control stays centred on
-// it; `gap-y-4.5` keeps a control that wraps onto its own line 12px clear of the title.
+// title's 24px line - 18px on a phone - so centring the two let the button set the
+// line's height and dropped the title below where a card without one has it.
+// Top-aligned, with the control lifted by half the difference, the title stays put
+// and the control stays centred on it; the row gap is that lift plus 12px, which keeps
+// a control that wraps onto its own line 12px clear of the title.
 const CARD_TITLE_ROW =
-  "flex flex-wrap items-start justify-between gap-x-3 gap-y-4.5";
-const CARD_TITLE_ACTION = "-mt-1.5";
+  "flex flex-wrap items-start justify-between gap-x-3 gap-y-4.5 max-sm:gap-y-5.25";
+const CARD_TITLE_ACTION = "-mt-1.5 max-sm:-mt-2.25";
 
 // The smaller title of a card that flags something above a page's main content, such
 // as Home's notices, led by an `h-4 w-4` icon. A trailing count takes `ml-auto`.
-const CARD_TITLE_SMALL = "flex items-center gap-2 text-base";
+const CARD_TITLE_SMALL = "flex items-center gap-2 text-base max-sm:text-base";
 
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
@@ -83,7 +82,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0 max-sm:px-4", className)} {...props} />
+  <div ref={ref} className={cn("p-(--card-pad) pt-0", className)} {...props} />
 ));
 CardContent.displayName = "CardContent";
 
@@ -93,7 +92,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center p-6 pt-0 max-sm:px-4", className)}
+    className={cn("flex items-center p-(--card-pad) pt-0", className)}
     {...props}
   />
 ));

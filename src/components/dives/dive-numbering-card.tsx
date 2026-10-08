@@ -75,10 +75,10 @@ export function DiveNumberingCard({
 
   return (
     <>
-      {/* `pt-6` because `CardContent`'s own padding assumes a header sits above
+      {/* `pt-(--card-pad)` because `CardContent`'s own padding assumes a header sits above
           it, and a "Numbering" title would only restate the sentence under it. */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-(--card-pad)">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-2">
               <ListOrdered className="h-4 w-4 shrink-0" />

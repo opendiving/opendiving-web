@@ -73,7 +73,7 @@ export function LandingPage({ channel }: LandingPageProps = {}) {
           aria-hidden="true"
           className="hero-reef pointer-events-none absolute top-12 left-[48%] hidden w-[280px] -translate-x-1/2 opacity-25 lg:block"
         />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative z-10 max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div className="text-center">
               {/* The page's `<h1>`. It was an `<h2>` while the header wordmark
@@ -210,7 +210,7 @@ export function LandingPage({ channel }: LandingPageProps = {}) {
           band, and offsetting it is what put a black strip under the header.
           See the `scroll-padding-top` note in `globals.css`. */}
       <section id="features" className="scroll-mt-20 pb-20 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
           {/* `sr-only` rather than absent: the cards below are the page's second
               section and need a heading to sit under, but the design has never
               shown one and the cards' own titles carry it visually. */}
@@ -319,7 +319,7 @@ export function LandingPage({ channel }: LandingPageProps = {}) {
           service to count anything. It now carries the argument those numbers
           were standing in for. */}
       <section className="py-20 bg-coral dark:bg-teal text-primary-foreground">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-4xl mx-auto px-2.5 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold mb-6">
             Built to Outlive the Vendor
           </h2>
@@ -345,7 +345,7 @@ export function LandingPage({ channel }: LandingPageProps = {}) {
 
       {/* Self-hosting Section */}
       <section id="self-hosting" className="py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-4xl mx-auto px-2.5 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-foreground mb-6">
             Run Your Own
           </h2>

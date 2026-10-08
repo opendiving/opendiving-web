@@ -12,7 +12,7 @@ export function Footer() {
   // summary alone, and no page wants the chrome on paper.
   return (
     <footer className="bg-muted text-foreground py-12 print:hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
         {/* Three tiers, not two. Below `sm:` everything stacks; from `md:` up the brand
             block is the first of four equal columns. Between the two - the tablet widths
             this footer used to spend four stacked rows on - the three link columns share

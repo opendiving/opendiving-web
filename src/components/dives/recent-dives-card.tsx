@@ -181,7 +181,7 @@ export function RecentDivesCard({
           // knowable up front, where a few rows is a better guess than a
           // screen of them. Busy on the list, hidden on each placeholder, as
           // the trip lists are.
-          <ul className="space-y-3" aria-busy>
+          <ul className="space-y-3 max-sm:space-y-2.5" aria-busy>
             {Array.from({ length: RECENT_DIVES_COUNT }, (_, index) => (
               <BackdropCardSkeleton key={index} />
             ))}
@@ -201,7 +201,7 @@ export function RecentDivesCard({
             }
           />
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-3 max-sm:space-y-2.5">
             {recentDives.map((dive) => (
               <DiveCard key={dive.uuid} dive={dive} />
             ))}

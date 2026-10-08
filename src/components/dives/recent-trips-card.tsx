@@ -87,7 +87,7 @@ export function RecentTripsCard() {
       <CardContent>
         {isLoadingTrips ? (
           // Busy on the list, hidden on each placeholder, as `/trips` does.
-          <ul className="space-y-3" aria-busy>
+          <ul className="space-y-3 max-sm:space-y-2.5" aria-busy>
             {Array.from({ length: RECENT_TRIPS_COUNT }, (_, index) => (
               <BackdropCardSkeleton key={index} />
             ))}
@@ -105,7 +105,7 @@ export function RecentTripsCard() {
             }
           />
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-3 max-sm:space-y-2.5">
             {recentTrips.map((trip) => (
               <TripCard
                 key={trip.uuid}

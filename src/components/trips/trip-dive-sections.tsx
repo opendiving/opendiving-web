@@ -64,7 +64,7 @@ function DiveList({
   addControl: (dive: Dive) => ReactNode;
 }) {
   return (
-    <ul className={cn("space-y-3", className)}>
+    <ul className={cn("space-y-3 max-sm:space-y-2.5", className)}>
       {dives.map((dive) => (
         <DiveCard
           key={dive.uuid}
@@ -264,7 +264,7 @@ export function TripDiveSections({
   }
   if (dives === null) {
     return allDivesCard(
-      <ul className="space-y-3" aria-busy>
+      <ul className="space-y-3 max-sm:space-y-2.5" aria-busy>
         {Array.from({ length: SKELETON_COUNT }, (_, index) => (
           <BackdropCardSkeleton key={index} />
         ))}
@@ -308,7 +308,7 @@ export function TripDiveSections({
   }
 
   return (
-    <div ref={containerRef} className="space-y-6">
+    <div ref={containerRef} className="space-y-6 max-sm:space-y-2.5">
       {tripDiveSections(dives, parts, { complete: !hasMore }).map((section) => {
         if (section.kind === "loose") {
           return (
@@ -316,7 +316,7 @@ export function TripDiveSections({
               key={`loose-${section.dives[0].uuid}`}
               // Inset as a card's content is - its border and its padding - so
               // these cards line up with the ones inside the part cards.
-              className="border border-transparent px-6 max-sm:px-4"
+              className="border border-transparent px-(--card-pad)"
               dives={section.dives}
               addControl={(dive) => addButton(dive, null, null)}
             />

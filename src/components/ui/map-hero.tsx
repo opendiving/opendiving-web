@@ -27,11 +27,11 @@ const FRAME =
   "relative isolate flex min-h-72 flex-col justify-end pt-36 sm:min-h-80 lg:min-h-88";
 
 // The page's column, so the details line up with the body under them.
-const COLUMN = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
+const COLUMN = "mx-auto w-full max-w-6xl px-2.5 sm:px-6 lg:px-8";
 
 // The body's column under the hero, which spans the window: the hero's own
 // details sit in the same column, so they line up with it.
-export const HERO_BODY = "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6";
+export const HERO_BODY = "max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-6 pb-6";
 
 // A form page's body: the hero's column, with the form at a field's readable
 // width against its left edge, under the title.
@@ -469,11 +469,11 @@ export function MapHeroPageSkeleton({
         <MapHeroSkeleton {...known} />
       )}
       <div className={HERO_BODY}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5">
           <div className="lg:col-span-2">
             <CardSkeleton lines={7} />
           </div>
-          <div className="space-y-6">
+          <div className="space-y-6 max-sm:space-y-2.5">
             <CardSkeleton lines={4} />
           </div>
         </div>

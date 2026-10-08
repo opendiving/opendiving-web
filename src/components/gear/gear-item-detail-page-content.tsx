@@ -119,7 +119,7 @@ export function GearItemDetailPageContent() {
 
   if (!gearItem) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Gear not found."
           backHref={back.href}
@@ -170,8 +170,13 @@ export function GearItemDetailPageContent() {
         }
       />
 
-      <div className={cn(HERO_BODY, "grid grid-cols-1 lg:grid-cols-3 gap-6")}>
-        <div className="lg:col-span-2 space-y-6">
+      <div
+        className={cn(
+          HERO_BODY,
+          "grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5",
+        )}
+      >
+        <div className="lg:col-span-2 space-y-6 max-sm:space-y-2.5">
           {/* Above the dive list on purpose: service is the thing you can act on
               from this page, the dive list is reference. */}
           <GearServiceCard
@@ -200,7 +205,7 @@ export function GearItemDetailPageContent() {
         </div>
 
         {gearItem.notes && (
-          <div className="space-y-6">
+          <div className="space-y-6 max-sm:space-y-2.5">
             <Card>
               <CardHeader>
                 <CardTitle as="h2" className="flex items-center gap-2">

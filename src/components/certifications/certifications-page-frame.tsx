@@ -73,7 +73,7 @@ export function CertificationsPageFrame({
         }
       />
 
-      <div className={cn(HERO_BODY, "space-y-6")}>
+      <div className={cn(HERO_BODY, "space-y-6 max-sm:space-y-2.5")}>
         <Card>
           <ListCardHeader title="Your Certifications" isEmpty={isEmptyList}>
             <CountBadge

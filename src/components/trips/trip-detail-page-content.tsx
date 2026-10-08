@@ -187,7 +187,7 @@ export function TripDetailPageContent() {
 
   if (!trip) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Trip not found."
           backHref={back.href}
@@ -252,7 +252,7 @@ export function TripDetailPageContent() {
       />
 
       <div className={HERO_BODY}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5">
           <div className="lg:col-span-2">
             <TripDiveSections
               dives={
@@ -282,7 +282,7 @@ export function TripDetailPageContent() {
           {/* The trip's dates are on the hero's line. A trip with nothing more
               to say draws no card - there would be nothing in it but its
               heading. */}
-          <div className="space-y-6">
+          <div className="space-y-6 max-sm:space-y-2.5">
             {(tripParts.length > 0 ||
               hasPeople ||
               diveCenterNames.length > 0) && (

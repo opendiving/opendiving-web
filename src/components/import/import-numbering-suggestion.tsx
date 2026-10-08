@@ -90,7 +90,7 @@ export function ImportNumberingSuggestion({
         </p>
       ) : (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-(--card-pad)">
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
                 <ListOrdered className="h-4 w-4 shrink-0 mt-0.5" />

@@ -122,7 +122,7 @@ export function AdminStatsScreen() {
 
         {shown && "error" in shown ? (
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-(--card-pad)">
               <p className="text-sm">{shown.error}</p>
               <Button
                 variant="outline"
@@ -152,7 +152,7 @@ function StatsCards({
   label: string;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-sm:space-y-2.5">
       <Card>
         <CardHeader>
           <CardTitle as="h2">Totals</CardTitle>
