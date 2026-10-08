@@ -3,9 +3,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import HomePage from "./page";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 
-// The Species Seen figure must render the `species_seen` it is given rather than a
-// constant, and hold the hero's "—" while the request is still in flight, like its
-// three siblings.
+// The hero's figures must render what the API derived rather than a constant, and
+// hold a "—" while their request is still in flight.
 
 // Returned by identity rather than rebuilt per call, and for `user` that is
 // load-bearing rather than tidiness: the real `AuthContext` holds it in state, so it
