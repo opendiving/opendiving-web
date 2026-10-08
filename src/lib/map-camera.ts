@@ -116,6 +116,33 @@ export function frameCamera(
   };
 }
 
+/**
+ * The camera of the world picture, the grid's one square at zoom 0, fitted for
+ * `frame`: never zoomed, since the picture has one size, and its pins' middle
+ * at the band's, as `frameCamera` has it. Across, Greenwich at the frame's
+ * middle - the Pacific at the world's sides - wherever every pin fits the
+ * frame's width that way, and the pins' middle where a narrower frame would
+ * leave one of them off it.
+ */
+export function worldCamera(
+  placed: readonly PlacedLocation[],
+  frame: MapFrame,
+): Camera {
+  const fitted = frameCamera(placed, frame);
+  const reach = (frame.width - 2 * frame.inset) / 2;
+  const centred = placed.every(
+    ({ longitude }) =>
+      Math.abs(mercatorX(wrapLongitude(longitude)) - 0.5) * TILE_SIZE <= reach,
+  );
+  return {
+    center: {
+      latitude: fitted.center.latitude,
+      longitude: centred ? 0 : fitted.center.longitude,
+    },
+    zoom: 0,
+  };
+}
+
 /** One square of the grid, and where it lies from the camera's centre. */
 export interface PlacedTile {
   z: number;

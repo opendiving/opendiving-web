@@ -9,8 +9,9 @@ import { MapBackdrop } from "./map-backdrop";
 // has arrived, the tiles faded in together and shown at once after that, the
 // last set held through a theme switch, its requests let go when it unmounts,
 // nothing asked for where the instance draws no tiles, and nothing asked again
-// but by mounting again - and the world picture, which asks for nothing. Where the tiles and pins land is a layout question,
-// and `card-frames.browser.test.tsx` answers it.
+// but by mounting again. The world picture asks for nothing at all. Where the
+// tiles and pins land is a layout question, and `card-frames.browser.test.tsx`
+// answers it.
 
 const theme = vi.hoisted(() => ({ resolved: "light" as string | undefined }));
 vi.mock("next-themes", () => ({

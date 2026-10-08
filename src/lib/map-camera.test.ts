@@ -5,6 +5,7 @@ import {
   frameCamera,
   projectFrom,
   tileLayout,
+  worldCamera,
   type MapFrame,
 } from "@/lib/map-camera";
 import { bandIn, mapCanvas, placedLocations } from "@/lib/map-frame";
@@ -56,6 +57,47 @@ describe("frameCamera", () => {
     expect(frameCamera(places, card(975)).zoom).toBeGreaterThanOrEqual(
       frameCamera(places, card(252)).zoom,
     );
+  });
+});
+
+describe("worldCamera", () => {
+  // A hero's frame, as the Home page's map is fitted for.
+  const hero = (width: number): MapFrame => ({
+    ...card(width, 352),
+    inset: mapCanvas(width, true).inset,
+  });
+  const places = placedLocations([
+    { latitude: 28.5, longitude: 34.5 }, // Dahab
+    { latitude: 9.9, longitude: 123.4 }, // Moalboal
+  ]);
+
+  it("keeps Greenwich at the middle where every pin fits, at the picture's one zoom", () => {
+    const camera = worldCamera(places, hero(1280));
+    expect(camera.center.longitude).toBe(0);
+    expect(camera.zoom).toBe(0);
+    expect(camera.center.latitude).toBe(
+      frameCamera(places, hero(1280)).center.latitude,
+    );
+  });
+
+  it("moves across to the pins' middle where a narrow frame would leave one off it", () => {
+    const frame = hero(390);
+    const camera = worldCamera(places, frame);
+    expect(camera.center.longitude).toBeCloseTo(78.95, 1);
+
+    const layout = tileLayout(camera, whole(frame, { x: 195, y: 176 }));
+    for (const place of places) {
+      expect(Math.abs(projectFrom(layout, place).left)).toBeLessThanOrEqual(
+        195 - frame.inset,
+      );
+    }
+  });
+
+  it("shows nothing placed as the world from Greenwich", () => {
+    expect(worldCamera([], hero(390)).center).toEqual({
+      latitude: 0,
+      longitude: 0,
+    });
   });
 });
 

@@ -20,7 +20,12 @@ import {
   mapTileUrl,
   type MapTileTheme,
 } from "@/lib/api/map-tiles";
-import { frameCamera, projectFrom, tileLayout } from "@/lib/map-camera";
+import {
+  frameCamera,
+  projectFrom,
+  tileLayout,
+  worldCamera,
+} from "@/lib/map-camera";
 import {
   bandIn,
   mapCanvas,
@@ -99,8 +104,7 @@ const WORLD_MAP: Record<MapTileTheme, string> = {
 };
 
 // The tiles and pins `placed` shows in `frame`, fitted for it and floored - or,
-// for `world`, the world picture at its own size with the antimeridian at its
-// edges, moved only up or down to put the pins' middle at the band's.
+// for `world`, the world picture at its own size (`worldCamera`).
 function tileSetFor(
   placed: readonly PlacedLocation[],
   frame: Measured,
@@ -108,15 +112,13 @@ function tileSetFor(
   { band, anchor, canvas }: ReturnType<typeof frameGeometry>,
   world: boolean,
 ): TileSet {
-  const fitted = frameCamera(placed, {
+  const fit = {
     width: frame.width,
     height: frame.height,
     band,
     inset: canvas.inset,
-  });
-  const camera = world
-    ? { center: { latitude: fitted.center.latitude, longitude: 0 }, zoom: 0 }
-    : fitted;
+  };
+  const camera = world ? worldCamera(placed, fit) : frameCamera(placed, fit);
   const layout = tileLayout(camera, {
     left: Math.max(0, canvas.left) - anchor.x,
     right: Math.min(frame.width, canvas.left + canvas.width) - anchor.x,
