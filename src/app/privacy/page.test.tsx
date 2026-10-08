@@ -320,7 +320,7 @@ describe.each([
     expect(first + last).toBe(rights);
     // And the carve-out itself, which is what stops the first group being read
     // as covering everything this copy holds about you.
-    expect(split).toMatch(/is not part of the export/i);
+    expect(split).toMatch(/are not part of the export/i);
     expect(split).toMatch(/has to be asked for/i);
   });
 
@@ -724,9 +724,11 @@ describe("the map tiles", () => {
     expect(document.body.textContent).not.toMatch(
       /map pictures?|tiles this copy draws/i,
     );
-    expect(
-      screen.getByText(/Two things sit outside\s+those buttons/),
-    ).toBeInTheDocument();
+    const rights = screen.getByText(/The first \w+ need no request/);
+    expect(rights).toHaveTextContent(/Four things sit outside those buttons/);
+    expect(rights).toHaveTextContent(
+      /The email address you sign in with, your username and the list of signed-in devices are in Settings but are not part of the export/,
+    );
   });
 
   it("say this server draws the cards' and the page heads' maps from shared tiles, and that they are nobody's, where it does", async () => {
@@ -752,7 +754,10 @@ describe("the map tiles", () => {
 
     // §6.2: outside the export, and outside the deletion, because not yours.
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Three things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Five things sit outside those buttons/);
+    expect(rights).toHaveTextContent(
+      /The email address you sign in with, your username and the list of signed-in devices are in Settings but are not part of the export/,
+    );
     expect(rights).toHaveTextContent(
       /Nor are the map tiles section 4\.4 says this copy draws, and deleting your account leaves them too: they are not yours/,
     );
