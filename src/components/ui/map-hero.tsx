@@ -64,7 +64,7 @@ const FIGURE = "min-w-22 md:min-w-26";
 // The band's top row, at the column's edges rather than the window's, where a
 // wide screen would put it far from everything else. Above the details and the
 // map, with the credit.
-const TOP_ROW = "absolute inset-x-0 top-2 z-10";
+const TOP_ROW = "absolute inset-x-0 top-2.5 z-10";
 
 // A control on the band's top row: ghost over the map, as a card's menu is,
 // and glowing as the details' text does - the icons through a filter, since
@@ -307,7 +307,7 @@ function HeroDetails({
 
 // A map hero's top row, in the flow rather than over the band, at the height
 // the band puts it.
-const PLAIN_TOP_ROW = "flex items-center gap-4 pt-2";
+const PLAIN_TOP_ROW = "flex items-center gap-4 pt-2.5";
 const PLAIN_DETAILS = "mt-3 md:mt-4";
 
 // The heading of a record with no place to map, laid out as a map hero's: the
