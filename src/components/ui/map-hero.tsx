@@ -8,14 +8,9 @@ import {
   type Ref,
 } from "react";
 import Link from "next/link";
-import { ArrowLeft, Info } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { InfoPopover } from "@/components/ui/info-popover";
 import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { MapCredit } from "@/components/map/map-credit";
 import {
@@ -369,31 +364,6 @@ export function PlainHero({
   );
 }
 
-// What a page is for, behind an icon after its title: a reader needs it once,
-// and every visit after that it is only a line between the title and the page.
-// A popover rather than a hover hint, so a tap opens it on a phone.
-function PageInfo({ children }: { children: ReactNode }) {
-  return (
-    <Popover>
-      <IconTooltip label="About this page">
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0 text-muted-foreground print:hidden"
-          >
-            <Info className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-      </IconTooltip>
-      <PopoverContent align="start" className="text-sm">
-        {children}
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 // The heading of a page reached from the navigation rather than from a record:
 // a plain hero with nothing to go back to, so no top row - the page's actions
 // end the title's line instead, as far from the header above and the body below
@@ -424,7 +394,11 @@ export function IndexHero({
         title={title}
         subtitle={subtitle}
         headingRef={headingRef}
-        info={description && <PageInfo>{description}</PageInfo>}
+        info={
+          description && (
+            <InfoPopover label="About this page">{description}</InfoPopover>
+          )
+        }
         aside={
           actions && (
             <div className="flex shrink-0 gap-1 print:hidden">{actions}</div>

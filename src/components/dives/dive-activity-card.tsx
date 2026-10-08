@@ -20,7 +20,6 @@ import {
   CARD_TITLE_ROW,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -192,32 +191,37 @@ export function DiveActivityCard() {
   return (
     <Card>
       <CardHeader>
-        <div className={CARD_TITLE_ROW}>
-          <CardTitle as="h2" className="flex items-center gap-2">
+        <div className={cn(CARD_TITLE_ROW, "@container")}>
+          <CardTitle
+            as="h2"
+            className="flex min-w-0 grow basis-0 items-center gap-2"
+          >
             <BarChart3 className="h-5 w-5" />
             Dive Activity
           </CardTitle>
 
-          <div
-            className={`flex flex-wrap items-center gap-2 ${CARD_TITLE_ACTION}`}
-          >
-            {/* Only the bounded scopes have a period to navigate. "All" already
+          {/* Only the bounded scopes have a period to navigate. "All" already
                 shows every year there is, so arrows on it would have nowhere to
                 go. */}
-            {scope !== "all" && (
-              <div className="flex items-center gap-1">
-                <IconTooltip label="Dive activity: previous period with dives">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9"
-                    disabled={previous === null}
-                    onClick={() => setAnchor(previous)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-                {/* The label is also the jump-to control - stepping one period at
+          {scope !== "all" && (
+            <div
+              className={cn(
+                "flex items-center gap-1 @max-2xl:order-last @max-2xl:basis-full @max-2xl:justify-center",
+                CARD_TITLE_ACTION,
+              )}
+            >
+              <IconTooltip label="Dive activity: previous period with dives">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  disabled={previous === null}
+                  onClick={() => setAnchor(previous)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
+              {/* The label is also the jump-to control - stepping one period at
                     a time is fine for "the season before this one" and useless
                     for reaching one several seasons back.
 
@@ -227,54 +231,51 @@ export function DiveActivityCard() {
                     has no registered item renders an empty trigger. Fixed width -
                     the gas card's, since both now show "September 2026" - so the
                     chart doesn't shift sideways as the label changes. */}
-                <span id={periodHintId} className="sr-only">
-                  Dive activity period
-                </span>
-                <Select
-                  value={String(periodRange(activeAnchor, scope).start)}
-                  onValueChange={(value) => {
-                    const picked = periods.find(
-                      (period) => String(period.start) === value,
-                    );
-                    if (picked) setAnchor(picked.anchor);
-                  }}
-                >
-                  {/* Named the same way as the gas card's twin, and for the same
+              <span id={periodHintId} className="sr-only">
+                Dive activity period
+              </span>
+              <Select
+                value={String(periodRange(activeAnchor, scope).start)}
+                onValueChange={(value) => {
+                  const picked = periods.find(
+                    (period) => String(period.start) === value,
+                  );
+                  if (picked) setAnchor(picked.anchor);
+                }}
+              >
+                {/* Named the same way as the gas card's twin, and for the same
                       reason - `aria-describedby` never reached the accessible
                       name, so an empty trigger had none. See that file. */}
-                  <SelectTrigger
-                    id={periodTriggerId}
-                    aria-labelledby={`${periodHintId} ${periodTriggerId}`}
-                    className="h-9 w-40 px-2 text-sm font-medium"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {periods.map((period) => (
-                      <SelectItem
-                        key={period.start}
-                        value={String(period.start)}
-                      >
-                        {periodLabel(period.start, scope)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <IconTooltip label="Dive activity: next period with dives">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9"
-                    disabled={next === null}
-                    onClick={() => setAnchor(next)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-              </div>
-            )}
+                <SelectTrigger
+                  id={periodTriggerId}
+                  aria-labelledby={`${periodHintId} ${periodTriggerId}`}
+                  className="h-9 w-40 px-2 text-sm font-medium"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {periods.map((period) => (
+                    <SelectItem key={period.start} value={String(period.start)}>
+                      {periodLabel(period.start, scope)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <IconTooltip label="Dive activity: next period with dives">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  disabled={next === null}
+                  onClick={() => setAnchor(next)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
+            </div>
+          )}
 
-            {/* Every control in this row names its own card, because the two
+          {/* Every control in this row names its own card, because the two
                 cards draw the same row and `Card` is a plain `div` - so nothing
                 scopes them to each other. Read in place the heading above is all
                 the context you need, but a screen reader's controls list is flat
@@ -286,36 +287,35 @@ export function DiveActivityCard() {
                 is exactly the context a controls list drops. (Named by role
                 rather than by level, there and here: this title has been an
                 `<h3>` and is now an `<h2>`, and the scoping never cared.) */}
-            {/* A segmented control built from plain buttons - the app has no
+          {/* A segmented control built from plain buttons - the app has no
                 tabs/toggle-group primitive, and the gas card above already draws
                 this exact row. */}
-            <div
-              className="flex h-9 items-center rounded-md border p-0.5"
-              role="group"
-              aria-label="Dive activity: time range"
-            >
-              {CHART_SCOPES.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setChosenScope(option)}
-                  aria-pressed={scope === option}
-                  className={cn(
-                    "rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                    scope === option
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {CHART_SCOPE_LABELS[option]}
-                </button>
-              ))}
-            </div>
+          <div
+            className={cn(
+              "flex h-9 items-stretch rounded-md border p-1",
+              CARD_TITLE_ACTION,
+            )}
+            role="group"
+            aria-label="Dive activity: time range"
+          >
+            {CHART_SCOPES.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setChosenScope(option)}
+                aria-pressed={scope === option}
+                className={cn(
+                  "rounded px-2.5 text-xs font-medium transition-colors",
+                  scope === option
+                    ? "bg-secondary text-secondary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {CHART_SCOPE_LABELS[option]}
+              </button>
+            ))}
           </div>
         </div>
-        <CardDescription>
-          How many dives you logged, by day, month or year.
-        </CardDescription>
       </CardHeader>
       <CardContent>
         {points === null ? (
@@ -353,13 +353,13 @@ function DiveActivitySummaryRow({
   return (
     <div className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-3">
       <ChartStat label="Dives">
-        <span className="text-xl font-semibold tabular-nums">
+        <span className="text-base font-semibold tabular-nums">
           {summary.dives}
         </span>
         <Change summary={summary} />
       </ChartStat>
       <ChartStat label={BUSIEST_LABELS[scope]}>
-        <span className="text-xl font-semibold">{summary.busiestLabel}</span>
+        <span className="text-base font-semibold">{summary.busiestLabel}</span>
         <span className="text-sm text-muted-foreground tabular-nums">
           {summary.busiestDives} {summary.busiestDives === 1 ? "dive" : "dives"}
         </span>

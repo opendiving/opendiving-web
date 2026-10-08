@@ -91,7 +91,7 @@ export function RecentDivesCard({
   complete = false,
   refreshOn,
   title = "Recent Dives",
-  description = "Your latest underwater adventures",
+  description,
   viewAllHref = "/dives",
   viewAllLabel = "View all dives",
   emptyTitle = "No dives logged yet",
@@ -170,7 +170,7 @@ export function RecentDivesCard({
                 </Button>
               )}
             </div>
-            <CardDescription>{description}</CardDescription>
+            {description && <CardDescription>{description}</CardDescription>}
           </>
         )}
       </CardHeader>

@@ -10,7 +10,6 @@ import {
   CARD_TITLE_ROW,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -82,7 +81,6 @@ export function RecentTripsCard() {
             <Link href="/trips">View all trips</Link>
           </Button>
         </div>
-        <CardDescription>Your latest diving trips</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoadingTrips ? (

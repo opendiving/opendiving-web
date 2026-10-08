@@ -110,8 +110,8 @@ export function HomePageFrame({
 
             Stacked, not side by side, and that was measured rather than assumed: a
             two-column grid gives each plot 482px even on a widened page, where their
-            axis text halves and the gas card's header doubles in height when its
-            controls can no longer share a line with its description. See DECISIONS.md. */}
+            axis text halves and each header drops its period control onto a row
+            of its own. See DECISIONS.md. */}
         {hasDives && <DiveActivityCard />}
         {hasDives && <GasUseCard />}
 
