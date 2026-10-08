@@ -181,8 +181,9 @@ export function MapHero({
   mapCredit,
   credit,
 }: MapHeroProps) {
-  // A map only where this instance draws its tiles: anywhere else every
-  // backdrop is water, and there is nothing to credit.
+  // An instance's map only where it draws its tiles: anywhere else that
+  // backdrop is water, and there is nothing to credit. A backdrop of its own,
+  // with its own credit, is credited either way.
   const tiles = useMapTiles();
   const credited = !!credit || (mapCredit && tiles === true);
   // How much of the map lies under the details, so its places centre between
