@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUnits } from "@/hooks/useUnits";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 import type { Location } from "@/lib/api/location";
+import { DEFAULT_BASEMAP_ATTRIBUTION } from "@/lib/basemap";
 import { formatDaysAgo, formatDurationHoursMinutes } from "@/lib/date-time";
 import { daysBetweenIsoDates, todayIsoDate } from "@/lib/gear-service";
 import { FactsLine } from "@/components/ui/icon-fact";
@@ -113,8 +114,9 @@ function homeFacts(stats: UserDiveStats | null): string[] {
   return facts;
 }
 
-// The Home page's heading: the diver's name over the map of their diving, with
-// the logbook's figures under it, as a record's page has its own.
+// The Home page's heading: the diver's name over the world, pinned where their
+// trips went, with the logbook's figures under it, as a record's page has its
+// own.
 export function HomeHero({
   title,
   stats,
@@ -135,15 +137,14 @@ export function HomeHero({
       subtitle={facts.length > 0 && <FactsLine facts={facts} />}
       actions={actions}
       figures={homeFigures(stats, places, units)}
-      mapCredit
+      credit={DEFAULT_BASEMAP_ATTRIBUTION}
       backdrop={({ map, covered }) => (
         <MapBackdrop
           locations={places ?? []}
-          // The whole world for a diver with no placed trips, as a trip's
-          // page shows one with none - but only once that is known, so the
-          // world is never asked for on the way to their places.
+          // Water until the places are known, so the world does not move under
+          // their pins as they land.
           showWhenEmpty={places !== null}
-          antimeridianAtEdges
+          world
           subject="the places of your trips"
           {...map}
           water={

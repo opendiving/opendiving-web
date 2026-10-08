@@ -9,7 +9,7 @@ import { MapBackdrop } from "./map-backdrop";
 // has arrived, the tiles faded in together and shown at once after that, the
 // last set held through a theme switch, its requests let go when it unmounts,
 // nothing asked for where the instance draws no tiles, and nothing asked again
-// but by mounting again. Where the tiles and pins land is a layout question,
+// but by mounting again - and the world picture, which asks for nothing. Where the tiles and pins land is a layout question,
 // and `card-frames.browser.test.tsx` answers it.
 
 const theme = vi.hoisted(() => ({ resolved: "light" as string | undefined }));
@@ -82,7 +82,7 @@ const at = (longitude: number): MappableLocation[] => [
 
 const backdrop = (
   locations: MappableLocation[],
-  extra: { showWhenEmpty?: boolean } = {},
+  extra: { showWhenEmpty?: boolean; world?: boolean } = {},
 ) => (
   <div className="relative">
     <MapBackdrop
@@ -257,6 +257,22 @@ describe("MapBackdrop", () => {
       }),
     ).toBeInTheDocument();
     expect(tiles().length).toBeGreaterThan(1);
+  });
+
+  it("draws the world picture at once, with its pins, wherever tiles are drawn or not", () => {
+    instance.config = { map_tiles: false };
+    theme.resolved = "dark";
+    // Wider than the picture, so it shows more than once.
+    size.width = 1200;
+    render(backdrop(at(20), { world: true }));
+
+    expect(getMapTile).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("water")).not.toBeInTheDocument();
+    expect(tiles().length).toBeGreaterThan(1);
+    for (const tile of tiles()) {
+      expect(tile.getAttribute("src")).toBe("/world-map/dark.webp");
+    }
+    expect(map()!.querySelectorAll("[data-marker]")).toHaveLength(1);
   });
 
   // A failure is a renderer down or busy, and every map on every open page

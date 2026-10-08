@@ -209,3 +209,9 @@ OpenMapTiles and OpenStreetMap — and an operator who points `MAP_STYLE_URL` at
 must set `MAP_ATTRIBUTION` to match it, which the app enforces by throwing rather than crediting the
 wrong project. An operator who keeps the bundled pair must leave that default credit rendered; a
 build that hides it is a licence breach, not a styling choice.
+
+`public/world-map/light.webp` and `dark.webp` are the two styles drawn at zoom 0 with their
+lettering removed, by `scripts/generate-world-map.mjs`: a rendering of OpenMapTiles' OpenStreetMap
+data and OpenFreeMap's Natural Earth relief, so a Produced Work under the ODbL. The Home page's
+hero, which shows them, carries the same default credit on every instance, whatever basemap it is
+configured with.

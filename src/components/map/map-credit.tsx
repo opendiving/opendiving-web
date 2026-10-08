@@ -11,9 +11,12 @@ import { cn } from "@/lib/utils";
 export function MapCredit({
   className,
   ref,
+  value,
 }: {
   className?: string;
   ref?: Ref<HTMLDivElement>;
+  // A map's own credit, where it is not drawn from this instance's basemap.
+  value?: string;
 }) {
   // From the instance's runtime configuration, as the map's style is.
   const { basemap } = useConfig();
@@ -25,7 +28,7 @@ export function MapCredit({
         className,
       )}
     >
-      <Attribution value={basemap.attribution} underline={false} />
+      <Attribution value={value ?? basemap.attribution} underline={false} />
     </div>
   );
 }

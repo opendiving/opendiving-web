@@ -90,24 +90,33 @@ function frameGeometry(
   };
 }
 
-// The tiles and pins `placed` shows in `frame`, fitted for it and floored.
+// The static picture of the whole world `world` draws, per theme: the grid's
+// one square at zoom 0, which `scripts/generate-world-map.mjs` renders from the
+// shipped styles without their lettering.
+const WORLD_MAP: Record<MapTileTheme, string> = {
+  light: "/world-map/light.webp",
+  dark: "/world-map/dark.webp",
+};
+
+// The tiles and pins `placed` shows in `frame`, fitted for it and floored - or,
+// for `world`, the world picture at its own size with the antimeridian at its
+// edges, moved only up or down to put the pins' middle at the band's.
 function tileSetFor(
   placed: readonly PlacedLocation[],
   frame: Measured,
   theme: MapTileTheme,
   { band, anchor, canvas }: ReturnType<typeof frameGeometry>,
-  antimeridianAtEdges: boolean,
+  world: boolean,
 ): TileSet {
-  const camera = frameCamera(
-    placed,
-    {
-      width: frame.width,
-      height: frame.height,
-      band,
-      inset: canvas.inset,
-    },
-    { antimeridianAtEdges },
-  );
+  const fitted = frameCamera(placed, {
+    width: frame.width,
+    height: frame.height,
+    band,
+    inset: canvas.inset,
+  });
+  const camera = world
+    ? { center: { latitude: fitted.center.latitude, longitude: 0 }, zoom: 0 }
+    : fitted;
   const layout = tileLayout(camera, {
     left: Math.max(0, canvas.left) - anchor.x,
     right: Math.min(frame.width, canvas.left + canvas.width) - anchor.x,
@@ -115,7 +124,7 @@ function tileSetFor(
     bottom: frame.height - anchor.y,
   });
   const tiles = layout.tiles.map(({ z, x, y, left, top }) => ({
-    url: mapTileUrl(theme, z, x, y),
+    url: world ? WORLD_MAP[theme] : mapTileUrl(theme, z, x, y),
     left,
     top,
   }));
@@ -198,10 +207,12 @@ export interface MapBackdropProps {
   hero?: boolean;
   // What shows with no map: the map's water, faded as a map is.
   water: ReactNode;
-  // Fit the places without crossing the antimeridian, so the map reads as a
-  // world map does, the Pacific at its sides - for a map of every place a
-  // diver went, rather than of one trip, where the short way round is right.
-  antimeridianAtEdges?: boolean;
+  // Draw the static picture of the whole world this app ships rather than this
+  // instance's tiles - so on any instance, renderer or none - for a map of
+  // every place a diver went, which reads as a world map does: unlettered, the
+  // Pacific at its sides. It owes the shipped styles' credit, not the
+  // instance's (`DEFAULT_BASEMAP_ATTRIBUTION`).
+  world?: boolean;
 }
 
 /**
@@ -223,9 +234,10 @@ export function MapBackdrop({
   coveredTop = 0,
   hero = false,
   water,
-  antimeridianAtEdges = false,
+  world = false,
 }: MapBackdropProps) {
   const tiles = useMapTiles();
+  const drawsTiles = world || tiles !== false;
   // Nothing is asked for until the theme is known, which on the client is from
   // the first render: a light tile asked for on a dark page is a draw the diver
   // never sees.
@@ -290,30 +302,35 @@ export function MapBackdrop({
     () =>
       // A frame with no size yet - not laid out, or hidden - has no tiles to
       // ask for, and is not a frame showing nothing.
-      drawn && tiles !== false && theme && frame?.width && frame.height
+      drawn && drawsTiles && theme && frame?.width && frame.height
         ? tileSetFor(
             placed,
             frame,
             theme,
             frameGeometry(frame, coveredTop, coveredBottom, hero),
-            antimeridianAtEdges,
+            world,
           )
         : null,
     [
       drawn,
-      tiles,
+      drawsTiles,
       theme,
       placed,
       frame,
       coveredTop,
       coveredBottom,
       hero,
-      antimeridianAtEdges,
+      world,
     ],
   );
-  const shown = useTileSet(want, tiles === true);
+  const fetched = useTileSet(world ? null : want, tiles === true);
+  // The world picture is a file of this app's, which an `<img>` loads itself.
+  const shown: Shown | null =
+    world && want
+      ? { ...want, srcs: want.tiles.map(({ url }) => url), fade: false }
+      : fetched;
 
-  if (!drawn || tiles === false) return water;
+  if (!drawn || !drawsTiles) return water;
 
   return (
     <div
@@ -352,8 +369,8 @@ export function MapBackdrop({
           style={{ left: geometry.canvas.left, width: geometry.canvas.width }}
         >
           {shown.tiles.map(({ left, top }, index) => (
-            // A blob URL of a tile this page fetched, which `next/image` has
-            // nothing to optimise.
+            // A blob URL of a tile this page fetched, or the world picture,
+            // neither of which `next/image` has anything to optimise.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={`${index}:${left}:${top}`}

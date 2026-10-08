@@ -463,14 +463,8 @@ export function basemapOrigins(basemap: Basemap): string[] {
  * `adjustAntiMeridian()` on the *finished* box, which cannot see that the union
  * was built the long way round on the way there - so a two-point check passes
  * whether or not this function survived. Hence three places in its tests.
- *
- * `unwrap: false` takes each box where it lies in [-180, 180] instead, for a
- * map that should read as a world map does, the antimeridian at its edges.
  */
-export function unionBounds(
-  boxes: LatLonBounds[],
-  { unwrap = true }: { unwrap?: boolean } = {},
-): LatLonBounds | null {
+export function unionBounds(boxes: LatLonBounds[]): LatLonBounds | null {
   if (boxes.length === 0) return null;
 
   let south = MAX_LATITUDE;
@@ -495,7 +489,7 @@ export function unionBounds(
 
     if (index === 0) {
       reference = boxWest;
-    } else if (unwrap) {
+    } else {
       boxWest += Math.round((reference - boxWest) / 360) * 360;
     }
     west = Math.min(west, boxWest);
