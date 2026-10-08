@@ -30,8 +30,10 @@ const FRAME =
 const COLUMN = "mx-auto w-full max-w-6xl px-2.5 sm:px-6 lg:px-8";
 
 // The body's column under the hero, which spans the window: the hero's own
-// details sit in the same column, so they line up with it.
-export const HERO_BODY = "max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-6 pb-6";
+// details sit in the same column, so they line up with it. On a phone it starts
+// the gap between two cards under the hero.
+export const HERO_BODY =
+  "max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-6 max-sm:pt-2.5 pb-6";
 
 // A form page's body: the hero's column, with the form at a field's readable
 // width against its left edge, under the title.
@@ -50,7 +52,7 @@ const FIGURES = "flex flex-wrap gap-x-3 gap-y-3";
 // than the window and a printed page falls short of it, the title is at the
 // page's size. In the text's own colour at every width, as a card's are: the
 // glow behind them is what lifts them off the map.
-const TITLE = "text-2xl font-bold md:text-3xl print:text-3xl";
+const TITLE = "text-xl font-bold md:text-3xl print:text-3xl";
 const SUBTITLE = "text-sm md:mt-1 md:text-base";
 const LABEL = "text-xs md:mb-1 md:text-sm md:font-medium";
 const VALUE = "text-base md:text-2xl";
@@ -88,7 +90,7 @@ const HEADING = "flex items-start gap-3 md:gap-4";
 
 // Over the title rather than over the icon, which stays level with the title:
 // in by the icon's width and the heading's gap.
-const OVERLINE = "mb-1 pl-14 md:pl-18";
+const OVERLINE = "mb-1 pl-13 md:pl-18";
 
 // The kind's icon before the title and the line under it, its drawing reaching
 // from the title's capitals to the line's first baseline at both sizes: the box
@@ -96,7 +98,7 @@ const OVERLINE = "mb-1 pl-14 md:pl-18";
 // drawing, which a 24-unit icon keeps inside 2-22. It glows as their text does
 // - through a filter, since `text-shadow` stops at an SVG.
 const ICON =
-  "mt-1.5 size-11 shrink-0 stroke-[1.5] md:mt-1 md:size-14 [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+  "mt-1.5 size-10 shrink-0 stroke-[1.5] md:mt-1 md:size-14 [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
 
 // Known before the record is, so the skeleton's is the real one. Padded as the
 // actions opposite it are: over the map it is a button among buttons.
@@ -431,7 +433,7 @@ function HeroDetailsSkeleton({
         <Icon aria-hidden className={cn(ICON, "text-muted-foreground")} />
         <div className="min-w-0">
           <h1 className={TITLE}>
-            <Skeleton className={cn("h-8 w-48 md:h-9 md:w-64", bar)} />
+            <Skeleton className={cn("h-7 w-48 md:h-9 md:w-64", bar)} />
           </h1>
           <p className="md:mt-1">
             <Skeleton className={cn("h-5 w-36 md:h-6 md:w-44", bar)} />
