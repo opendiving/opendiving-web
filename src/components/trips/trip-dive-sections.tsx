@@ -126,17 +126,24 @@ function PartCard({
             aria-expanded={open}
             aria-controls={contentId}
             onClick={() => setOpen(!open)}
-            className="flex w-full items-center gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex w-full items-start gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <MapPin className="h-5 w-5 shrink-0" />
+            {/* Each icon in a box one title line tall - the title is
+                `leading-none` - so a name that wraps leaves both on its first
+                line. */}
+            <span className="flex h-[1em] shrink-0 items-center">
+              <MapPin className="h-5 w-5" />
+            </span>
             <span className="min-w-0 flex-1">{title}</span>
-            <ChevronDown
-              aria-hidden="true"
-              className={cn(
-                "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
-                !open && "-rotate-90",
-              )}
-            />
+            <span className="flex h-[1em] shrink-0 items-center">
+              <ChevronDown
+                aria-hidden="true"
+                className={cn(
+                  "h-5 w-5 text-muted-foreground transition-transform",
+                  !open && "-rotate-90",
+                )}
+              />
+            </span>
           </button>
         </CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
