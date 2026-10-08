@@ -1684,7 +1684,7 @@ uneven spot.
 ## The README screenshots are generated, at one width that is a breakpoint
 
 `scripts/screenshots.mjs` retakes every image in `docs/screenshots/`;
-`npm run screenshots -- you@example.com dashboard` retakes only those. `playwright-core` (with
+`npm run screenshots -- you@example.com home` retakes only those. `playwright-core` (with
 `executablePath`), not `playwright`'s browser download.
 
 1024px wide, where `lg:grid-cols-3` stops stacking the detail pages. Height lands on a card
@@ -4837,8 +4837,8 @@ behind when the course changes.
 
 `.claude/skills/` is committed (`!.claude/skills/` is the ignore file's one exception) because both
 skills describe working on this repo alone: the local magic-link flow and `scripts/screenshots.mjs`.
-Their names, `opendiving-web-login` and `opendiving-web-dashboard-screenshot`, carry the repo
-because skills load by bare name across sibling repos.
+Their names, `opendiving-web-login` and `opendiving-web-home-screenshot`, carry the repo because
+skills load by bare name across sibling repos.
 
 `.claude/settings.json` is not committed; the `PreToolUse` entry for
 `.claude/hooks/no-unsigned-commits.py` lives in the untracked `settings.local.json`, and the script

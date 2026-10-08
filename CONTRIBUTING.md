@@ -164,8 +164,8 @@ log and so move between runs. `DIVE_UUID=<uuid>` pins the dive when the pick is 
 throws rather than falling back if that dive cannot be read or has no recording to chart. The other
 two have no equivalent.
 
-Every shot uses one width, and the year the two dashboard charts are parked on is a constant beside
-it at the top of `scripts/screenshots.mjs`. No dimension is a round number — 1024 is `lg`, where the
+Every shot uses one width, and the year the two Home charts are parked on is a constant beside it at
+the top of `scripts/screenshots.mjs`. No dimension is a round number — 1024 is `lg`, where the
 detail pages stop stacking their sidebar, and the heights are measured in the page moments before
 the shutter — at the first line past a named card where no card is cut through, or at the foot of a
 named card where the shot is about one column. The gear page is the exception: its height is a

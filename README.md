@@ -24,7 +24,7 @@ components together. Start there if you want to run OpenDiving rather than work 
 It is also where the instance this project runs itself is named, for anyone who would rather not run
 one.
 
-![Dashboard](docs/screenshots/dashboard.png)
+![Home](docs/screenshots/home.png)
 
 ## Features
 
