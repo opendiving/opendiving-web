@@ -251,8 +251,8 @@ export function MapHero({
   );
 }
 
-// The icon, the name, its line and its figures. `children` closes the figures'
-// row.
+// The icon, the name, its line and its figures. `aside` ends the name's line,
+// and `children` closes the figures' row.
 function HeroDetails({
   className,
   icon: Icon,
@@ -261,26 +261,38 @@ function HeroDetails({
   overline,
   figures = [],
   headingRef,
+  aside,
   children,
 }: Pick<MapHeroProps, "title" | "subtitle" | "overline"> &
   Partial<Pick<MapHeroProps, "icon" | "figures">> & {
     className?: string;
     headingRef?: Ref<HTMLHeadingElement>;
+    aside?: ReactNode;
     children?: ReactNode;
   }) {
+  const heading = (
+    <h1
+      ref={headingRef}
+      tabIndex={headingRef ? -1 : undefined}
+      className={TITLE}
+    >
+      {title}
+    </h1>
+  );
   return (
     <div className={className}>
       {overline && <div className={OVERLINE}>{overline}</div>}
       <div className={HEADING}>
         {Icon && <Icon aria-hidden className={ICON} />}
-        <div className="min-w-0">
-          <h1
-            ref={headingRef}
-            tabIndex={headingRef ? -1 : undefined}
-            className={TITLE}
-          >
-            {title}
-          </h1>
+        <div className="min-w-0 flex-1">
+          {aside ? (
+            <div className="flex items-center justify-between gap-3">
+              {heading}
+              {aside}
+            </div>
+          ) : (
+            heading
+          )}
           {subtitle && <p className={SUBTITLE}>{subtitle}</p>}
         </div>
       </div>
@@ -341,10 +353,11 @@ export function PlainHero({
   );
 }
 
-// The heading of a page reached from the navigation rather than from a record,
-// laid out as a plain hero with nothing to go back to: the top row holds the
-// page's actions alone, at the actions' height even with none, so every page's
-// title sits at one offset. That row is all controls, so paper goes without it.
+// The heading of a page reached from the navigation rather than from a record:
+// a plain hero with nothing to go back to, so no top row - the page's actions
+// end the title's line instead, pulled into its height on a phone so a page's
+// line under the title sits where a page without them has it. Controls, so
+// paper goes without them.
 export function IndexHero({
   icon,
   title,
@@ -359,16 +372,19 @@ export function IndexHero({
     className?: string;
   }) {
   return (
-    <div className={cn(COLUMN, className)}>
-      <div className={cn(PLAIN_TOP_ROW, "justify-end print:hidden")}>
-        <div className="flex min-h-9 shrink-0 gap-1">{actions}</div>
-      </div>
+    <div className={cn(COLUMN, "pt-4 md:pt-6", className)}>
       <HeroDetails
-        className={PLAIN_DETAILS}
         icon={icon}
         title={title}
         subtitle={subtitle}
         headingRef={headingRef}
+        aside={
+          actions && (
+            <div className="-my-1 flex shrink-0 gap-1 md:my-0 print:hidden">
+              {actions}
+            </div>
+          )
+        }
       />
     </div>
   );
