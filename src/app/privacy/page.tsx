@@ -1244,10 +1244,13 @@ export default async function PrivacyPage() {
                 The first four need no request: access, correction, deletion and
                 portability are all buttons in Settings or on the Export page,
                 and they act immediately rather than being forwarded to
-                somebody. {mapTiles ? "Three" : "Two"} things sit outside those
+                somebody. {mapTiles ? "Five" : "Four"} things sit outside those
                 buttons, and naming them is better than letting that sentence
-                read wider than it is. The list of signed-in devices is in
-                Settings but is not part of the export.
+                read wider than it is. The email address you sign in with, your
+                username and the list of signed-in devices are in Settings but
+                are not part of the export: they are your account on this copy
+                rather than your logbook, and the username only names the file
+                you download.
                 {mapTiles && (
                   <>
                     {" "}
