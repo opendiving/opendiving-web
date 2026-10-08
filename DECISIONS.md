@@ -6015,16 +6015,17 @@ follow the primary.
 
 ## A second file of one recording fills the form, and never overwrites it
 
-`applyParsedDiveToForm` takes a mode: `"prefill"`, for a dive's first file, writes everything it
-carries; `"fill-only"`, for every later one, writes only fields the form left empty. The caller
-picks `"fill-only"` when another file is already pending or stored, or the API reports a
-same-recording match on the dive being edited. Only here can the rule hold for the dive's own
-fields: the attach fills the recording and the cylinders server-side under the API's NULL-only rule,
-and writes no other field the form holds. Emptiness is `isDiveFormFieldEmpty`: a cleared number
-input reads back `NaN`, and `0` is a reading (a freedive's `max_depth`), so falsiness is wrong.
-Cylinders go through `fillMixtures` (`lib/dive-import.ts`), form first. What it writes is saved
-before the attach, so it fills only rows the API would pair the file with and fill, and leaves the
-rest, and every `gas_number`, to the attach.
+`applyParsedDiveToForm` takes a mode: `"prefill"`, for a dive's first file, writes everything;
+`"fill-only"`, for every later one or a same-recording match on the dive being edited, writes only
+fields the form left empty. Only here can the rule hold for the dive's own fields: the server's
+attach writes none of them. Emptiness is `isDiveFormFieldEmpty`: a cleared number input reads back
+`NaN`, and `0` is a reading. Cylinders go through `fillMixtures`, which fills only the rows the API
+would pair the file with.
+
+One exception: a figure an earlier file of this form session derived (`inferred`) is replaced by a
+later file that states it, off the same computer by the API's `same_device` test. Keyed on the mark,
+not on format, so no format is ranked and a Garmin FIT is covered. A file attached on a later visit
+fills blanks only: nothing stored says how a figure was made.
 
 ## A blank cylinder member survives an attach, and the card must not assume otherwise
 

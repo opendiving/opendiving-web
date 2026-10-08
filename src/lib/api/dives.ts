@@ -1158,6 +1158,9 @@ export interface ParsedDiveMixture {
   role: GasRole | null;
 }
 
+// A figure of `ParsedDive` the reader can derive rather than read off the file.
+export type ParsedDiveInferredField = "duration" | "avg_depth" | "max_depth";
+
 // Result of reading one dive's file, in any format the API reads, via /dive/parse.
 // Most fields are nullable since not every dive-computer format populates every field.
 export interface ParsedDive {
@@ -1209,6 +1212,10 @@ export interface ParsedDive {
   // caller holding two files of one dive can say which computer each came off.
   // `POST /dive` forbids the member, so a prefilled form cannot hand it back.
   device?: RecordingDevice | null;
+  // The figures above the reader worked out from the samples because the file
+  // states none - a Suunto FIT's duration and average depth - rather than read.
+  // Absent from an API build older than the field, which reads as "all stated".
+  inferred?: ParsedDiveInferredField[];
   // Proof that the API parsed this exact file for this user. Hand it back to
   // `attachRecordingFile` along with the same `File` once the dive exists, and
   // the export is stored against that dive. Nothing else can be attached: the

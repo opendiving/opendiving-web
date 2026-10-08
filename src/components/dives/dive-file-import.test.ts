@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { applyParsedDiveToForm } from "./dive-file-import";
+import {
+  applyParsedDiveToForm,
+  type InferredFigures,
+} from "./dive-file-import";
 import { describeMixtureImport } from "@/lib/dive-import";
 import { DEFAULT_MIXTURE } from "./mixture-fields";
 import type { ParsedDive, ParsedDiveMixture } from "@/lib/api/dives";
@@ -380,6 +383,7 @@ describe("applyParsedDiveToForm in fill-only mode", () => {
     // 9.49 and `duration` 3474 are that machine's second telling of numbers the
     // form already holds from the first, and overwriting them would silently
     // replace figures the diver has been looking at - and may have corrected.
+    // Marked as stating them: a figure the file derived is the case below.
     const { form, written } = formHoldingValues({
       avg_depth: 10.74,
       duration: "50:51",
@@ -388,7 +392,12 @@ describe("applyParsedDiveToForm in fill-only mode", () => {
 
     applyParsedDiveToForm(
       form,
-      parsedDive([], { avg_depth: 9.49, duration: 3474, max_depth: 19.1 }),
+      parsedDive([], {
+        avg_depth: 9.49,
+        duration: 3474,
+        max_depth: 19.1,
+        inferred: [],
+      }),
       () => {},
       "fill-only",
     );
@@ -760,5 +769,125 @@ describe("a later file's cylinders sharing one mix", () => {
         [parsed({ start_pressure: 200 }), parsed({ oxygen: 21, helium: 0 })],
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("applyParsedDiveToForm with a figure an earlier file derived", () => {
+  // One Suunto Ocean dive's two exports, as the API reads them. The FIT states
+  // neither figure, so the reader derives both; the JSON states both. Their
+  // devices are as each file names the watch, and are one computer.
+  const oceanFit = () =>
+    parsedDive([], {
+      duration: 3440,
+      avg_depth: 10.58,
+      max_depth: 19.1,
+      inferred: ["duration", "avg_depth"],
+      device: { brand: "suunto", model: "Suunto Ocean" },
+    });
+  const oceanJson = () =>
+    parsedDive([], {
+      duration: 3424,
+      avg_depth: 10.62,
+      max_depth: 19.04,
+      inferred: [],
+      device: { brand: "Suunto", serial: "253810000400" },
+    });
+  const perdixUddf = () =>
+    parsedDive([], {
+      duration: 3380,
+      avg_depth: 10.4,
+      max_depth: 18.9,
+      inferred: [],
+      device: { brand: "Shearwater", model: "Perdix 3", serial: "D9772626" },
+    });
+
+  // Applies each file as the form does within one session: the first prefills,
+  // every later one fills, all against the one session's marks.
+  function applyInTurn(
+    values: Record<string, unknown>,
+    ...files: (ReturnType<typeof parsedDive> | ((v: typeof values) => void))[]
+  ) {
+    const { form } = formHoldingValues(values);
+    const marks: InferredFigures = {};
+    let first = true;
+    for (const file of files) {
+      if (typeof file === "function") {
+        file(values);
+        continue;
+      }
+      applyParsedDiveToForm(
+        form,
+        file,
+        () => {},
+        first ? "prefill" : "fill-only",
+        marks,
+      );
+      first = false;
+    }
+    return values;
+  }
+
+  it("takes the JSON's figures when the FIT came first", () => {
+    const values = applyInTurn({}, oceanFit(), oceanJson());
+
+    expect(values.duration).toBe("57:04");
+    expect(values.avg_depth).toBe(10.62);
+    // The FIT stated its maximum, so the JSON only fills.
+    expect(values.max_depth).toBe(19.1);
+  });
+
+  it("keeps the JSON's figures when the FIT comes second", () => {
+    const values = applyInTurn({}, oceanJson(), oceanFit());
+
+    expect(values.duration).toBe("57:04");
+    expect(values.avg_depth).toBe(10.62);
+  });
+
+  it("keeps a duration the diver typed between the two", () => {
+    const values = applyInTurn(
+      {},
+      oceanFit(),
+      (v) => {
+        v.duration = "57:00";
+      },
+      oceanJson(),
+    );
+
+    expect(values.duration).toBe("57:00");
+    expect(values.avg_depth).toBe(10.62);
+  });
+
+  it("keeps the first of two FITs, neither stating its figures", () => {
+    const second = { ...oceanFit(), duration: 3500, avg_depth: 10.1 };
+    const values = applyInTurn({}, oceanFit(), second);
+
+    expect(values.duration).toBe("57:20");
+    expect(values.avg_depth).toBe(10.58);
+  });
+
+  it("keeps the Ocean's derived figures against another computer's stated ones", () => {
+    const values = applyInTurn({}, oceanFit(), perdixUddf());
+
+    expect(values.duration).toBe("57:20");
+    expect(values.avg_depth).toBe(10.58);
+  });
+
+  it("replaces a derived figure only once", () => {
+    // The JSON's figure is stated, so a third file of the computer only fills.
+    const values = applyInTurn({}, oceanFit(), oceanJson(), {
+      ...oceanJson(),
+      duration: 3400,
+    });
+
+    expect(values.duration).toBe("57:04");
+  });
+
+  it("fills only, as before, from an API build that marks nothing", () => {
+    const { inferred: _fit, ...fit } = oceanFit();
+    const { inferred: _json, ...json } = oceanJson();
+    const values = applyInTurn({}, fit, json);
+
+    expect(values.duration).toBe("57:20");
+    expect(values.avg_depth).toBe(10.58);
   });
 });

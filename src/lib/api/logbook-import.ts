@@ -158,7 +158,8 @@ export type ImportNoteCode =
   | "read_as_written"
   | "value_dropped"
   // A value the document does not state, worked out from what it does - a
-  // dive's duration from its profile's span, its bottom temperature from its
+  // dive's duration and average depth from its samples deeper than 1.2 m (its
+  // profile's span only where none is), its bottom temperature from its
   // coldest sample. Information: nothing was lost. At the API's note cap these
   // give way to every other note, so a truncated list keeps the others.
   | "value_derived"
