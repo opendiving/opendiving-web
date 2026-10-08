@@ -97,7 +97,7 @@ function frameGeometry(
 
 // The static picture of the whole world `world` draws, per theme: the grid's
 // one square at zoom 0, which `scripts/generate-world-map.mjs` renders from the
-// shipped styles without their lettering.
+// shipped styles without their lettering or borders.
 const WORLD_MAP: Record<MapTileTheme, string> = {
   light: "/world-map/light.webp",
   dark: "/world-map/dark.webp",
