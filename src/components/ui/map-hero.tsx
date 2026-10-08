@@ -7,8 +7,10 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
-import { BackLink } from "@/components/ui/page-header";
 import { MapCredit } from "@/components/map/map-credit";
 import {
   useMapTiles,
@@ -31,21 +33,25 @@ const COLUMN = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
 // details sit in the same column, so they line up with it.
 export const HERO_BODY = "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6";
 
+// A form page's body: the hero's column, with the form at a field's readable
+// width against its left edge, under the title.
+export const FORM_BODY = cn(HERO_BODY, "[&>*]:max-w-2xl");
+
 // The figures, as many to a line as fit - three on a phone - and the map's
 // credit at the row's far end, at the details' foot. Where the figures leave it
 // no room, it wraps onto a line of its own under them, still at the right.
 const FIGURES_ROW = "mt-3 flex flex-wrap items-end gap-x-6 gap-y-2 md:mt-4";
 const FIGURES = "flex flex-wrap gap-x-3 gap-y-3";
 
-// The details at a card's sizes below `md`, where a phone's width would
-// otherwise wrap the title and put a figure on a line of its own, and at the
-// dive page's above it. The title stays bold at every width: it heads a page,
-// not a card - and on paper, where `md:` measures the sheet rather than the
-// window and a printed page falls short of it, at the page's size. In the
-// text's own colour at every width, as a card's are: the glow behind them is
-// what lifts them off the map.
-const TITLE = "text-base font-bold md:text-3xl print:text-3xl";
-const SUBTITLE = "text-xs md:mt-1 md:text-base";
+// The figures at a card's sizes below `md`, where a phone's width would
+// otherwise put one on a line of its own, and at the dive page's above it. The
+// title and its line a step under the page's sizes there rather than at a
+// card's: they head a page. On paper, where `md:` measures the sheet rather
+// than the window and a printed page falls short of it, the title is at the
+// page's size. In the text's own colour at every width, as a card's are: the
+// glow behind them is what lifts them off the map.
+const TITLE = "text-2xl font-bold md:text-3xl print:text-3xl";
+const SUBTITLE = "text-sm md:mt-1 md:text-base";
 const LABEL = "text-xs md:mb-1 md:text-sm md:font-medium";
 const VALUE = "text-base md:text-2xl";
 
@@ -78,33 +84,33 @@ interface Known {
 // The icon and the title block beside it, closer where the details are small.
 // Aligned at the top rather than centred, so a line that wraps does not pull
 // the icon down off the title.
-const HEADING = "flex items-start gap-2.5 md:gap-4";
+const HEADING = "flex items-start gap-3 md:gap-4";
 
 // Over the title rather than over the icon, which stays level with the title:
 // in by the icon's width and the heading's gap.
-const OVERLINE = "mb-1 pl-11 md:pl-18";
+const OVERLINE = "mb-1 pl-14 md:pl-18";
 
 // The kind's icon before the title and the line under it, its drawing reaching
 // from the title's capitals to the line's first baseline at both sizes: the box
-// sits 4px down the title's line and is a little taller than the drawing,
-// which a 24-unit icon keeps inside 2-22. It glows as their text does -
-// through a filter, since `text-shadow` stops at an SVG.
+// sits a few pixels down the title's line and is a little taller than the
+// drawing, which a 24-unit icon keeps inside 2-22. It glows as their text does
+// - through a filter, since `text-shadow` stops at an SVG.
 const ICON =
-  "mt-1 size-8.5 shrink-0 stroke-[1.5] md:size-14 [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+  "mt-1.5 size-11 shrink-0 stroke-[1.5] md:mt-1 md:size-14 [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
 
 // Known before the record is, so the skeleton's is the real one. Padded as the
-// actions opposite it are, rather than flush as a plain page's back link is:
-// over the map it is a button among buttons.
+// actions opposite it are: over the map it is a button among buttons.
 function HeroBackLink({
   backHref,
   backLabel,
 }: Pick<Known, "backHref" | "backLabel">) {
   return (
-    <BackLink
-      href={backHref}
-      label={backLabel}
-      className={cn("px-3", HERO_CONTROL)}
-    />
+    <Button variant="ghost" size="sm" asChild className={HERO_CONTROL}>
+      <Link href={backHref}>
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        {backLabel}
+      </Link>
+    </Button>
   );
 }
 
@@ -389,7 +395,7 @@ function MapHeroSkeleton({ backHref, backLabel, icon }: Known) {
   );
 }
 
-function PlainHeroSkeleton({
+export function PlainHeroSkeleton({
   backHref,
   backLabel,
   icon,
@@ -425,10 +431,10 @@ function HeroDetailsSkeleton({
         <Icon aria-hidden className={cn(ICON, "text-muted-foreground")} />
         <div className="min-w-0">
           <h1 className={TITLE}>
-            <Skeleton className={cn("h-6 w-48 md:h-9 md:w-64", bar)} />
+            <Skeleton className={cn("h-8 w-48 md:h-9 md:w-64", bar)} />
           </h1>
           <p className="md:mt-1">
-            <Skeleton className={cn("h-4 w-36 md:h-6 md:w-44", bar)} />
+            <Skeleton className={cn("h-5 w-36 md:h-6 md:w-44", bar)} />
           </p>
         </div>
       </div>

@@ -506,16 +506,16 @@ pass the result through `DiveFormCard` to `DiveFormFields`/`MixtureFields` and `
 which never create their own. `ParsedDive` (`lib/api/dives.ts`) declares
 `mixtures: ParsedDiveMixture[]` explicitly.
 
-## `dives/new`/`dives/[id]/edit` pages share `DiveFormCard`/`PageHeader`/`PageSpinner`
+## `dives/new`/`dives/[id]/edit` pages share `DiveFormCard`/`PlainHero`/`PageSpinner`
 
 A dive form page is its own data-loading effects, its own `onSubmit` and its early-return states,
-then one `PageHeader` and one `DiveFormCard`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
+then one `PlainHero` and one `DiveFormCard`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
 holds the `useFieldArray` generic parameter and cast in one place. `DiveFormCard`
 (`dive-form-card.tsx`) wraps `Card`/`Form`/`form` + `DiveFileImport` + `DiveFormFields` +
 `DiveFormActions`; the per-page inputs are `mode`, `onSubmit`, `cancelHref`, `submittingLabel` and
-`submitLabel`. `PageHeader` (`components/ui/page-header.tsx`) is the resource-agnostic back-button +
-title/subtitle block, with an optional `actions` slot on the back link's row for the `[id]` detail
-pages' Edit button and `ItemActionsMenu`.
+`submitLabel`. The hero is the one every record page draws, so the title sits where it does
+everywhere else; `FORM_BODY` keeps the card at `max-w-2xl` against the column's left edge, under the
+title, rather than centring it in a column of its own.
 
 `PageSpinner` (`components/ui/page-spinner.tsx`) is the full-viewport `min-h-screen` `<Loader2>` for
 the top-level auth-loading gate. The list and detail pages render below `AppShell`'s header and
@@ -2805,8 +2805,8 @@ they replace give one layout instead of three. `Skeleton` (`components/ui/skelet
 primitive; `CardSkeleton` and `ListRowsSkeleton` sit beside it, `TableRowsSkeleton` goes inside a
 real `<TableBody>`, and `MapHeroPageSkeleton` (`components/ui/map-hero.tsx`) and `FormPageSkeleton`
 (`components/ui/page-skeleton.tsx`) assemble page shells from them. The page-level ones build on the
-real `Card`, `PageHeader` and hero primitives rather than re-describing their padding, which is what
-guarantees the header the same height before and after the record lands.
+real `Card` and hero primitives rather than re-describing their padding, which is what guarantees
+the header the same height before and after the record lands.
 
 Left out: a GitHub-style top progress bar, a signal rather than a fix while pages blank, and a
 stale-while-revalidate layer under `useInfiniteResource`, which would show previous rows
