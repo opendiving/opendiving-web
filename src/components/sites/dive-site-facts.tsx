@@ -24,9 +24,10 @@ function depthRange(site: DiveSite, units: UnitSystem): string | null {
 /**
  * The line under a site's name, on its card and its page's hero alike: where it
  * is, in what water, how deep, how high, and how divers get in - each only where
- * the site records it, and the water only where it is not the sea's, which goes
- * without saying. The icons are the forms' for the same fields, a depth's the
- * one the app marks every depth with.
+ * the site records it, the water only where it is not the sea's and the altitude
+ * only where it is not sea level, both of which go without saying. The icons are
+ * the forms' for the same fields, a depth's the one the app marks every depth
+ * with.
  */
 export function diveSiteFacts(site: DiveSite, units: UnitSystem): ReactNode[] {
   const entryTypes = site.entry_types ?? [];
@@ -43,7 +44,7 @@ export function diveSiteFacts(site: DiveSite, units: UnitSystem): ReactNode[] {
         {depths}
       </IconFact>
     ),
-    site.altitude != null && (
+    site.altitude != null && site.altitude !== 0 && (
       <IconFact icon={Mountain} label="Altitude">
         {formatAltitude(site.altitude, units)}
       </IconFact>

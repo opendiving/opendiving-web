@@ -17,8 +17,8 @@ import type { ReturnTarget } from "@/lib/return-to";
  * The site page's heading: the site's card drawn the width of the window, with
  * every figure the diver's own dives there add up to, as the API counts them -
  * every live dive naming the site at any position. Derived, never typed, so it
- * is the place for a deepest dive and an average rating rather than a member a
- * diver would have to keep up to date.
+ * is the place for a deepest dive rather than a member a diver would have to
+ * keep up to date.
  */
 export function DiveSiteHero({
   site,
@@ -47,21 +47,6 @@ export function DiveSiteHero({
   if (site.species_count) {
     figures.push({ label: "Species seen", value: site.species_count });
   }
-  if (site.average_rating != null) {
-    figures.push({
-      label: "Average rating",
-      value: (
-        <>
-          {site.average_rating.toFixed(1)}
-          <span className="text-sm font-normal text-muted-foreground">
-            {" "}
-            of 5
-          </span>
-        </>
-      ),
-    });
-  }
-
   // Last, as the one figure wider than the rest.
   if (site.last_dived_on) {
     figures.push({

@@ -166,7 +166,6 @@ describe("DiveSiteHero", () => {
           last_dived_on: "2026-09-14",
           max_dive_depth: 21.4,
           species_count: 7,
-          average_rating: 4.25,
         }}
       />,
     );
@@ -182,17 +181,10 @@ describe("DiveSiteHero", () => {
     expect(figure("Last dive")).toHaveTextContent("Sep 14, 2026");
     expect(figure("Deepest")).toHaveTextContent("21 m");
     expect(figure("Species seen")).toHaveTextContent("7");
-    expect(figure("Average rating")).toHaveTextContent("4.3 of 5");
     // The date last, as the one figure wider than the rest.
     expect(
       Array.from(document.querySelectorAll("dt"), (dt) => dt.textContent),
-    ).toEqual([
-      "Dives",
-      "Deepest",
-      "Species seen",
-      "Average rating",
-      "Last dive",
-    ]);
+    ).toEqual(["Dives", "Deepest", "Species seen", "Last dive"]);
     expect(
       screen.getByRole("link", { name: "Back to dive sites" }),
     ).toHaveAttribute("href", "/sites");
@@ -238,12 +230,7 @@ describe("DiveSiteHero", () => {
     render(<DiveSiteHero back={BACK} site={{ ...SITE, dive_count: 0 }} />);
 
     expect(figure("Dives")).toHaveTextContent("0");
-    for (const label of [
-      "Last dive",
-      "Deepest",
-      "Species seen",
-      "Average rating",
-    ]) {
+    for (const label of ["Last dive", "Deepest", "Species seen"]) {
       expect(screen.queryByText(label, { selector: "dt" })).toBeNull();
     }
   });
