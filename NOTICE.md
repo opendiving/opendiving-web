@@ -211,7 +211,7 @@ wrong project. An operator who keeps the bundled pair must leave that default cr
 build that hides it is a licence breach, not a styling choice.
 
 `public/world-map/light.webp` and `dark.webp` are the two styles drawn at zoom 0 with their
-lettering removed, by `scripts/generate-world-map.mjs`: a rendering of OpenMapTiles' OpenStreetMap
-data and OpenFreeMap's Natural Earth relief, so a Produced Work under the ODbL. The Home page's
-hero, which shows them, carries the same default credit on every instance, whatever basemap it is
-configured with.
+lettering and borders removed, by `scripts/generate-world-map.mjs`: a rendering of OpenMapTiles'
+OpenStreetMap data and OpenFreeMap's Natural Earth relief, so a Produced Work under the ODbL. The
+Home page's hero, which shows them, carries the same default credit on every instance, whatever
+basemap it is configured with.

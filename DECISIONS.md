@@ -6940,12 +6940,12 @@ renderers and loads GL JS on every detail page of a default install.
 ## The Home hero draws a shipped picture of the world, not tiles
 
 `MapBackdrop`'s `world` draws `public/world-map/`, the grid's zoom-0 square rendered from the
-shipped styles without their symbol layers, in place of the instance's tiles. A map of everywhere a
-diver went reads as a world map: unlettered, the same picture for every account, Greenwich at its
-middle unless a narrow frame would leave a pin off it, and moved up or down to put the pins' middle
-in the band. It needs no renderer, so it shows on every instance, and it credits the shipped styles
-whatever basemap the instance configures. Rejected: tiles fitted to the trip places, which carry the
-basemap's lettering; and fitting the picture, which blurs past its one zoom.
+shipped styles without their symbol and boundary layers, in place of the instance's tiles. A map of
+everywhere a diver went reads as a world map: unlettered, the same picture for every account,
+Greenwich at its middle unless a narrow frame would leave a pin off it, and moved up or down to put
+the pins' middle in the band. It needs no renderer, so it shows on every instance, and it credits
+the shipped styles whatever basemap the instance configures. Rejected: tiles fitted to the trip
+places, which carry the basemap's lettering; and fitting the picture, which blurs past its one zoom.
 
 ## A page keeps four tile requests out, and a map lets its requests go
 

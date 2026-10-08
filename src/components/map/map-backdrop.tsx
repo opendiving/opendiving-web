@@ -211,9 +211,9 @@ export interface MapBackdropProps {
   water: ReactNode;
   // Draw the static picture of the whole world this app ships rather than this
   // instance's tiles - so on any instance, renderer or none - for a map of
-  // every place a diver went, which reads as a world map does: unlettered, the
-  // Pacific at its sides. It owes the shipped styles' credit, not the
-  // instance's (`DEFAULT_BASEMAP_ATTRIBUTION`).
+  // every place a diver went, which reads as a world map does: unlettered and
+  // unbordered, placed by `worldCamera`. It owes the shipped styles' credit,
+  // not the instance's (`DEFAULT_BASEMAP_ATTRIBUTION`).
   world?: boolean;
 }
 

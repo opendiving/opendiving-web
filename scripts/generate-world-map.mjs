@@ -2,8 +2,8 @@
 // Regenerates `public/world-map/{light,dark}.webp`, the Home hero's picture of
 // the whole world: the shipped styles in `public/basemap/` drawn at zoom 0 -
 // the one 512 px square of the grid that is the whole world - with every
-// symbol layer dropped, so the picture carries no lettering. Run it after
-// `generate-basemaps.mjs` changes either style.
+// symbol layer and every boundary dropped, so the picture carries no lettering
+// and no borders. Run it after `generate-basemaps.mjs` changes either style.
 //
 // Fetches about a dozen of OpenFreeMap's tiles and nothing else: the style's
 // sprite is read from `public/`, and with no symbol layer no glyph is asked
@@ -69,7 +69,9 @@ for (const [theme, file] of [
   const style = JSON.parse(
     readFileSync(path.join(publicDir, "basemap", file), "utf8"),
   );
-  style.layers = style.layers.filter((layer) => layer.type !== "symbol");
+  style.layers = style.layers.filter(
+    (layer) => layer.type !== "symbol" && layer["source-layer"] !== "boundary",
+  );
   style.sprite = new URL(style.sprite, LOCAL).href;
 
   const pixels = await render(style);
