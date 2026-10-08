@@ -10,8 +10,10 @@ import {
   divesAPI,
   MAX_DIVE_FILE_SIZE,
   ParsedDive,
+  ParsedDiveInferredField,
   ParsedDiveMatch,
   Recording,
+  RecordingDevice,
 } from "@/lib/api/dives";
 import {
   formatDiveStartTime,
@@ -36,7 +38,7 @@ import {
   type MixtureImportNotes,
 } from "@/lib/dive-import";
 import { isNonEmptyFieldValue } from "@/lib/dive-form-fields";
-import { recordingDeviceLabel } from "@/lib/dive-recordings";
+import { recordingDeviceLabel, sameDevice } from "@/lib/dive-recordings";
 import { withReturnTo } from "@/lib/return-to";
 import { Info, Loader2, Upload } from "lucide-react";
 import {
@@ -136,8 +138,25 @@ const PARSED_DIVE_MEMBERS = [
  * no attach path on the server writes them, so if the rule did not hold here it
  * would not hold anywhere. A diver who has just corrected a depth does not
  * lose the correction to the same computer's second spelling of the same dive.
+ * The one exception is a figure an earlier file derived - see `InferredFigures`.
  */
 export type ParsedDiveApplyMode = "prefill" | "fill-only";
+
+/**
+ * The figures on the form a file derived rather than read, this form session
+ * only: the value it wrote and the computer it came off. Under `"fill-only"` a
+ * later file that *states* one of these, off the same computer, replaces it -
+ * the one exception to fills-never-overwrites. A form loaded from a saved dive
+ * starts with none, since nothing stored says how its figures were made.
+ *
+ * Mutated by `applyParsedDiveToForm`; hold one per form, e.g. in a ref.
+ */
+export type InferredFigures = Partial<
+  Record<
+    ParsedDiveInferredField,
+    { value: unknown; device: RecordingDevice | null | undefined }
+  >
+>;
 
 export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   form: UseFormReturn<TFieldValues>,
@@ -152,6 +171,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   // and plain `form.setValue("mixtures", ...)` has the same problem.
   replaceMixtures: (mixtures: DiveMixtureInput[]) => void,
   mode: ParsedDiveApplyMode = "prefill",
+  inferredFigures: InferredFigures = {},
 ): MixtureImportNotes {
   // One gate for every scalar field below, so "fill-only" cannot be honoured by
   // some of them and forgotten by one. The dive's water type is written only as
@@ -159,6 +179,34 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   // never a kind of water, and the recording keeps it on attach.
   const writes = <TName extends keyof DiveFormValues & string>(name: TName) =>
     mode === "prefill" || isDiveFormFieldEmpty(form, name);
+  const inferred = new Set(parsed.inferred ?? []);
+  // A figure also passes where an earlier file of this computer derived what the
+  // form holds and this one states it. "What the form holds" is checked against
+  // the value written, so a figure the diver has since changed is theirs.
+  const writesFigure = (name: ParsedDiveInferredField) => {
+    if (writes(name)) return true;
+    const mark = inferredFigures[name];
+    return (
+      mark != null &&
+      !inferred.has(name) &&
+      Object.is(
+        form.getValues(name as unknown as Path<TFieldValues>),
+        mark.value,
+      ) &&
+      sameDevice(mark.device, parsed.device)
+    );
+  };
+  const setFigure = <TName extends ParsedDiveInferredField>(
+    name: TName,
+    value: DiveFormValues[TName],
+  ) => {
+    setDiveFormValue(form, name, value);
+    if (inferred.has(name)) {
+      inferredFigures[name] = { value, device: parsed.device };
+    } else {
+      delete inferredFigures[name];
+    }
+  };
 
   if (parsed.dive_number != null && writes("dive_number")) {
     setDiveFormValue(form, "dive_number", parsed.dive_number);
@@ -180,14 +228,14 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   if (normalizedStartTime && writes("start_time")) {
     setDiveFormValue(form, "start_time", normalizedStartTime);
   }
-  if (parsed.duration != null && writes("duration")) {
-    setDiveFormValue(form, "duration", formatDurationForForm(parsed.duration));
+  if (parsed.duration != null && writesFigure("duration")) {
+    setFigure("duration", formatDurationForForm(parsed.duration));
   }
-  if (parsed.max_depth != null && writes("max_depth")) {
-    setDiveFormValue(form, "max_depth", parsed.max_depth);
+  if (parsed.max_depth != null && writesFigure("max_depth")) {
+    setFigure("max_depth", parsed.max_depth);
   }
-  if (parsed.avg_depth != null && writes("avg_depth")) {
-    setDiveFormValue(form, "avg_depth", parsed.avg_depth);
+  if (parsed.avg_depth != null && writesFigure("avg_depth")) {
+    setFigure("avg_depth", parsed.avg_depth);
   }
   if (parsed.bottom_temperature != null && writes("bottom_temperature")) {
     setDiveFormValue(form, "bottom_temperature", parsed.bottom_temperature);
@@ -315,12 +363,14 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   const [isAttaching, setIsAttaching] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inferredFigures = useRef<InferredFigures>({});
 
   // Whether a newly parsed file is allowed to overwrite what is on the form.
   //
   // The first file of a dive is the form's best information and writes
   // everything it carries. Every later one - a second computer, or this
-  // computer's other export - fills blanks only, which is how first-file-wins
+  // computer's other export - fills blanks only (and figures an earlier file of
+  // the same computer derived, `InferredFigures`), which is how first-file-wins
   // reaches the dive's own fields: no server-side attach writes them, so if the
   // rule does not hold here it holds nowhere. `DECISIONS.md`, *"A second file of
   // one recording fills the form, and never overwrites it"*, has the whole
@@ -349,6 +399,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       parsed,
       replaceMixtures,
       alreadyHasFile || sameRecording ? "fill-only" : "prefill",
+      inferredFigures.current,
     );
     onValuesApplied?.();
     onFileAdded?.({

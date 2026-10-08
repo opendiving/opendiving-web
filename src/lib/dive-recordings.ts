@@ -62,6 +62,44 @@ export function recordingDeviceLabel(
   return label || null;
 }
 
+// Trimmed and lower-cased, or null: a FIT's `suunto` and its JSON's `Suunto` are
+// one maker.
+function foldedDeviceMember(value: string | null | undefined): string | null {
+  return value?.trim().toLowerCase() || null;
+}
+
+// Both sides carry the member and the two differ.
+function deviceMembersDisagree(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): boolean {
+  const a = foldedDeviceMember(left);
+  const b = foldedDeviceMember(right);
+  return a != null && b != null && a !== b;
+}
+
+/**
+ * Whether two files came off the same computer, by the API's own test
+ * (`same_device`), so the form and the server never disagree about a pair.
+ *
+ * A member absent on either side never makes two devices differ: the brands may
+ * not disagree, and then equal serials settle it where both carry one, or else
+ * the models may not disagree. So a Suunto Ocean's FIT (`suunto`, model, no
+ * serial) and its JSON (`Suunto`, serial, no model) are one computer.
+ */
+export function sameDevice(
+  left: RecordingDevice | null | undefined,
+  right: RecordingDevice | null | undefined,
+): boolean {
+  if (deviceMembersDisagree(left?.brand, right?.brand)) return false;
+  const leftSerial = foldedDeviceMember(left?.serial);
+  const rightSerial = foldedDeviceMember(right?.serial);
+  if (leftSerial != null && rightSerial != null) {
+    return leftSerial === rightSerial;
+  }
+  return !deviceMembersDisagree(left?.model, right?.model);
+}
+
 /**
  * What the API's `DiveMode` values are called in words.
  *

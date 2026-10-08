@@ -17,6 +17,7 @@ import {
   recordingLabel,
   recordingReadoutsLabel,
   recordingSettingsLabel,
+  sameDevice,
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
 
@@ -724,5 +725,49 @@ describe("recordingReadoutsLabel", () => {
         }),
       ),
     ).toBeNull();
+  });
+});
+
+describe("sameDevice", () => {
+  it("reads a Suunto Ocean's FIT and JSON as one computer", () => {
+    expect(
+      sameDevice(
+        { brand: "suunto", model: "Suunto Ocean" },
+        { brand: "Suunto", serial: "253810000400" },
+      ),
+    ).toBe(true);
+  });
+
+  it("tells two makers apart", () => {
+    expect(
+      sameDevice(
+        { brand: "suunto", model: "Suunto Ocean" },
+        { brand: "Shearwater", model: "Perdix 3", serial: "D9772626" },
+      ),
+    ).toBe(false);
+  });
+
+  it("settles on the serials where both carry one", () => {
+    expect(
+      sameDevice(
+        { brand: "Shearwater", model: "Perdix 3", serial: "D9772626" },
+        { model: "Shearwater Perdix 3", serial: "d9772626 " },
+      ),
+    ).toBe(true);
+    expect(
+      sameDevice(
+        { brand: "Suunto", serial: "253810000400" },
+        { brand: "Suunto", serial: "253810000401" },
+      ),
+    ).toBe(false);
+  });
+
+  it("tells two models apart with at most one serial in play", () => {
+    expect(
+      sameDevice(
+        { model: "Suunto Ocean" },
+        { model: "Suunto D5", serial: "1" },
+      ),
+    ).toBe(false);
   });
 });
