@@ -63,8 +63,8 @@ const SUBTITLE = "text-sm md:mt-1 md:text-base";
 const LABEL = "text-xs md:mb-1 md:text-sm md:font-medium";
 const VALUE = "text-base md:text-2xl";
 
-// Every figure at least as wide as the widest short one, "Average rating", so
-// they line up. A date is wider, and its record lists it last.
+// Every figure at least as wide as the widest short one, so they line up. A
+// date is wider, and its record lists it last.
 const FIGURE = "min-w-22 md:min-w-26";
 
 // The band's top row, at the column's edges rather than the window's, where a
