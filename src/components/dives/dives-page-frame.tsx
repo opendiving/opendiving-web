@@ -122,7 +122,7 @@ export function DivesPageFrame({
         }
       />
 
-      <div className={cn(HERO_BODY, "space-y-6")}>
+      <div className={cn(HERO_BODY, "space-y-6 max-sm:space-y-2.5")}>
         {numbering}
 
         <Card>
@@ -220,7 +220,7 @@ export function DivesPageFrame({
           // a map, and a browser keeps only so many of those per page - see
           // `BackdropCard`.
           <ul
-            className="grid gap-4 lg:grid-cols-2"
+            className="grid gap-4 max-sm:gap-2.5 lg:grid-cols-2"
             // Busy on the outside, hidden on each placeholder within - the split
             // `ListRowsSkeleton` documents, so a reader meets a list that is
             // loading rather than one that is silently empty.

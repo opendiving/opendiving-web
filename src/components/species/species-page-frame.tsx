@@ -159,7 +159,7 @@ export function SpeciesPageFrame({
               // before the first response, so the grid can be drawn at the size it
               // is about to be.
               <div
-                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-sm:gap-2.5"
                 // Busy on the outside, hidden on each placeholder within - the
                 // split `ListRowsSkeleton` documents. Announcing two dozen empty
                 // boxes tells a screen reader nothing.

@@ -49,7 +49,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
   const hasNotes = sightings.some((sighting) => Boolean(sighting.notes));
 
   return (
-    <div className="lg:col-span-2 space-y-6">
+    <div className="lg:col-span-2 space-y-6 max-sm:space-y-2.5">
       {/* Renders nothing for a dive logged by hand. */}
       <DiveProfileCard dive={dive} />
 

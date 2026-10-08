@@ -31,7 +31,7 @@ export function DiveFormSection({
     <section className="group/section">
       {/* Bled to the card's edges with its padding, so content scrolling under it
           is covered from border to border rather than showing either side. */}
-      <h3 className="sticky top-[var(--header-height)] z-10 -mx-6 border-b bg-card px-6 max-sm:-mx-4 max-sm:px-4">
+      <h3 className="sticky top-[var(--header-height)] z-10 -mx-(--card-pad) border-b bg-card px-(--card-pad)">
         <button
           type="button"
           aria-expanded={open}

@@ -20,7 +20,8 @@ import {
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { DiveIcon } from "@/components/logo";
+import { FORM_BODY, PlainHero } from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { FormPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
@@ -241,7 +242,7 @@ export function EditDivePageContent() {
 
   if (!dive) {
     return (
-      <div className="container mx-auto px-4 pt-8 pb-6">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Dive not found."
           backHref="/dives"
@@ -252,48 +253,52 @@ export function EditDivePageContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 pt-8 pb-6 max-w-2xl">
-      <PageHeader
+    <div>
+      <PlainHero
         backHref={returnTo.href}
         backLabel={returnTo.label}
+        icon={DiveIcon}
         title={`Edit Dive #${dive.dive_number}`}
         subtitle="Update the details of your dive"
+        figures={[]}
       />
 
-      <DiveFormCard
-        form={form}
-        mixtureFieldArray={mixtureFieldArray}
-        visibility={visibility}
-        mode="edit"
-        onSubmit={onSubmit}
-        isSubmitting={isSubmitting}
-        cancelHref={returnTo.href}
-        submittingLabel="Saving..."
-        submitLabel="Save changes"
-        onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
-        pendingFiles={pendingFiles}
-        onRemovePendingFile={(id) =>
-          setPendingFiles((files) => files.filter((item) => item.id !== id))
-        }
-        removedStoredFiles={removedFileUuids}
-        onRemoveStoredFile={(fileUuid) =>
-          setRemovedFileUuids((uuids) =>
-            uuids.includes(fileUuid) ? uuids : [...uuids, fileUuid],
-          )
-        }
-        onRestoreStoredFile={(fileUuid) =>
-          setRemovedFileUuids((uuids) =>
-            uuids.filter((uuid) => uuid !== fileUuid),
-          )
-        }
-        recordings={dive.recordings ?? []}
-        diveUuid={dive.uuid}
-        // The dive already carries its sites' names, so the picker doesn't have
-        // to look them up again just to label the rows it starts out with.
-        knownDiveSites={dive.dive_sites}
-        knownGearItems={dive.gear_items}
-        knownSpecies={dive.sightings}
-      />
+      <div className={FORM_BODY}>
+        <DiveFormCard
+          form={form}
+          mixtureFieldArray={mixtureFieldArray}
+          visibility={visibility}
+          mode="edit"
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+          cancelHref={returnTo.href}
+          submittingLabel="Saving..."
+          submitLabel="Save changes"
+          onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
+          pendingFiles={pendingFiles}
+          onRemovePendingFile={(id) =>
+            setPendingFiles((files) => files.filter((item) => item.id !== id))
+          }
+          removedStoredFiles={removedFileUuids}
+          onRemoveStoredFile={(fileUuid) =>
+            setRemovedFileUuids((uuids) =>
+              uuids.includes(fileUuid) ? uuids : [...uuids, fileUuid],
+            )
+          }
+          onRestoreStoredFile={(fileUuid) =>
+            setRemovedFileUuids((uuids) =>
+              uuids.filter((uuid) => uuid !== fileUuid),
+            )
+          }
+          recordings={dive.recordings ?? []}
+          diveUuid={dive.uuid}
+          // The dive already carries its sites' names, so the picker doesn't have
+          // to look them up again just to label the rows it starts out with.
+          knownDiveSites={dive.dive_sites}
+          knownGearItems={dive.gear_items}
+          knownSpecies={dive.sightings}
+        />
+      </div>
     </div>
   );
 }

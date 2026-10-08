@@ -26,7 +26,8 @@ import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
 import { AutofilledMarks } from "@/components/dives/autofilled-marks";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
-import { PageHeader } from "@/components/ui/page-header";
+import { DiveIcon } from "@/components/logo";
+import { FORM_BODY, PlainHero } from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { nowStartTime, parseFormDuration } from "@/lib/date-time";
@@ -515,36 +516,40 @@ function NewDiveForm() {
   };
 
   return (
-    <div className="container mx-auto px-4 pt-8 pb-6 max-w-2xl">
-      <PageHeader
+    <div>
+      <PlainHero
         backHref={returnTo.href}
         backLabel={returnTo.label}
+        icon={DiveIcon}
         title="Log New Dive"
         subtitle="Record the details of your dive"
+        figures={[]}
       />
 
-      <AutofilledMarks
-        control={form.control}
-        isAutofilled={visibility.isAutofilled}
-      >
-        <DiveFormCard
-          form={form}
-          mixtureFieldArray={mixtureFieldArray}
-          visibility={visibility}
-          mode="create"
-          onSubmit={onSubmit}
-          isSubmitting={isSubmitting}
-          cancelHref={returnTo.href}
-          submittingLabel="Logging dive..."
-          submitLabel="Log dive"
-          onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
-          pendingFiles={pendingFiles}
-          onRemovePendingFile={(id) =>
-            setPendingFiles((files) => files.filter((item) => item.id !== id))
-          }
-          diveNumberNotice={diveNumberNotice}
-        />
-      </AutofilledMarks>
+      <div className={FORM_BODY}>
+        <AutofilledMarks
+          control={form.control}
+          isAutofilled={visibility.isAutofilled}
+        >
+          <DiveFormCard
+            form={form}
+            mixtureFieldArray={mixtureFieldArray}
+            visibility={visibility}
+            mode="create"
+            onSubmit={onSubmit}
+            isSubmitting={isSubmitting}
+            cancelHref={returnTo.href}
+            submittingLabel="Logging dive..."
+            submitLabel="Log dive"
+            onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
+            pendingFiles={pendingFiles}
+            onRemovePendingFile={(id) =>
+              setPendingFiles((files) => files.filter((item) => item.id !== id))
+            }
+            diveNumberNotice={diveNumberNotice}
+          />
+        </AutofilledMarks>
+      </div>
     </div>
   );
 }

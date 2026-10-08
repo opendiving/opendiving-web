@@ -48,7 +48,7 @@ export default async function PrivacyPage() {
   const { projectOperated, joinLinks, mapTiles } = await readLegalPageConfig();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
+    <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Privacy Policy
@@ -57,7 +57,7 @@ export default async function PrivacyPage() {
       </div>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-(--card-pad)">
           {projectOperated && (
             <OperatorBlock
               intro={

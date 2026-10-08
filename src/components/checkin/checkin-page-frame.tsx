@@ -380,7 +380,12 @@ export function CheckInPageFrame({
         }
       />
 
-      <div className={cn(HERO_BODY, "space-y-6 print:px-0 print:pb-0")}>
+      <div
+        className={cn(
+          HERO_BODY,
+          "space-y-6 max-sm:space-y-2.5 print:px-0 print:pb-0",
+        )}
+      >
         {!link && (
           <p className="text-sm text-muted-foreground print:hidden">
             Your browser&rsquo;s print dialog can save this as a PDF too &mdash;
@@ -412,7 +417,7 @@ export function CheckInPageFrame({
         >
           {/* `print:p-0` for the same reason, and it is what lets the heading above the
               card sit on the sheet's own left edge without an offset of its own. */}
-          <CardContent className="pt-6 space-y-6 print:p-0">
+          <CardContent className="pt-(--card-pad) space-y-6 print:p-0">
             <div className={cn(TWO_COLUMNS, "gap-y-6")}>
               {/* Headed by the diver's own name rather than by a label: the name is
                   what the sheet is about, and "Personal information" written above

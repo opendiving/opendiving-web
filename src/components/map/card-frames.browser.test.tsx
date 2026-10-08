@@ -423,7 +423,7 @@ describe("a card's map", () => {
     await screen.findByText("Red Sea, spring");
     const widths = await expectComposed(2);
     // Narrower than a list's own cards: a list inside a card.
-    for (const width of widths) expect(width).toBeLessThan(NARROWEST - 48);
+    for (const width of widths) expect(width).toBeLessThan(NARROWEST - 40);
   });
 
   it("holds in a detail page's recent dives", async () => {

@@ -106,7 +106,7 @@ export function SpeciesDetailPageContent() {
 
   if (!species) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
         <NotFoundState
           message="Species not found."
           backHref={back.href}
@@ -166,8 +166,13 @@ export function SpeciesDetailPageContent() {
         figures={figures}
       />
 
-      <div className={cn(HERO_BODY, "grid grid-cols-1 lg:grid-cols-3 gap-6")}>
-        <div className="lg:col-span-2 space-y-6">
+      <div
+        className={cn(
+          HERO_BODY,
+          "grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5",
+        )}
+      >
+        <div className="lg:col-span-2 space-y-6 max-sm:space-y-2.5">
           {/* Scoped to this species by the filter `getDives` gained for it -
               the same shape the trip, site, gear and course pages use, which is
               what a life-list row leads to instead of a filtered /dives. */}
@@ -185,10 +190,10 @@ export function SpeciesDetailPageContent() {
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 max-sm:space-y-2.5">
           {photoSrc && (
             <Card>
-              <CardContent className="pt-6 space-y-3">
+              <CardContent className="pt-(--card-pad) space-y-3">
                 {/* At its stored size rather than a thumbnail: this is the one
                     place the photo is the subject rather than a label. A real
                     alt, unlike the thumbnails elsewhere - here the picture is

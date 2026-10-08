@@ -161,7 +161,7 @@ export function DiveDetailSidebar({
     entry && exit ? formatDistance(haversineMeters(entry, exit), units) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-sm:space-y-2.5">
       {(trip ||
         contact ||
         dive.dive_sites.length > 0 ||

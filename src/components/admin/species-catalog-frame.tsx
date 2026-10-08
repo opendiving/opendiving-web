@@ -184,7 +184,7 @@ export function SpeciesCatalogFrame({
               )
             ) : (
               <div
-                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-sm:gap-2.5"
                 aria-busy={cards.length === 0 || undefined}
               >
                 {cards.length === 0

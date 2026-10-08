@@ -137,7 +137,7 @@ export function TripsPageFrame({
           // a map, and a browser keeps only so many of those per page - see
           // `BackdropCard`.
           <ul
-            className="mt-6 grid gap-4 lg:grid-cols-2"
+            className="mt-6 grid max-sm:mt-2.5 gap-4 max-sm:gap-2.5 lg:grid-cols-2"
             // Busy on the outside, hidden on each placeholder within - the split
             // `ListRowsSkeleton` documents, so a reader meets a list that is
             // loading rather than one that is silently empty.

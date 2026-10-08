@@ -37,8 +37,8 @@ export default function SupportPage() {
       />
 
       <div className={HERO_BODY}>
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-6">
+        <div className="grid lg:grid-cols-3 gap-6 max-sm:gap-2.5">
+          <div className="lg:col-span-1 space-y-6 max-sm:space-y-2.5">
             <Card>
               <CardHeader>
                 {/* Only the two semantic icons below are coloured. `text-primary`

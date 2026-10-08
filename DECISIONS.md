@@ -197,12 +197,11 @@ script's header.
 
 ## Layout width convention
 
-Every page inside the shared chrome uses `max-w-6xl mx-auto px-4 sm:px-6 lg:px-8` for its content
-container (the profile page is the reference). Two exemptions: the landing page (`/`), built from
-full-bleed alternating sections, and the dive/trip/dive-site "new"/"edit" forms, which are
-single-column and use a narrower `max-w-2xl`. This is a content-width choice only; `Header`/`Footer`
-come from `AppShell` (next section), so the forms still sit inside the shared chrome and merely
-constrain their own inner content.
+Every page inside the shared chrome puts its content in one `max-w-6xl` column - `HERO_BODY` in
+`ui/map-hero.tsx`, whose gutter the header and footer share. The landing page (`/`), built from
+full-bleed alternating sections, is the exemption. The dive "new"/"edit" forms sit in that column
+too and cap only their card, at `max-w-2xl` (`FORM_BODY`). This is a content-width choice only;
+`Header`/`Footer` come from `AppShell` (next section).
 
 ## `Header`/`Footer` live once in `AppShell`, not per-page
 
@@ -506,25 +505,23 @@ pass the result through `DiveFormCard` to `DiveFormFields`/`MixtureFields` and `
 which never create their own. `ParsedDive` (`lib/api/dives.ts`) declares
 `mixtures: ParsedDiveMixture[]` explicitly.
 
-## `dives/new`/`dives/[id]/edit` pages share `DiveFormCard`/`PageHeader`/`PageSpinner`
+## `dives/new`/`dives/[id]/edit` pages share `DiveFormCard`/`PlainHero`/`PageSpinner`
 
 A dive form page is its own data-loading effects, its own `onSubmit` and its early-return states,
-then one `PageHeader` and one `DiveFormCard`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
+then one `PlainHero` and one `DiveFormCard`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
 holds the `useFieldArray` generic parameter and cast in one place. `DiveFormCard`
 (`dive-form-card.tsx`) wraps `Card`/`Form`/`form` + `DiveFileImport` + `DiveFormFields` +
 `DiveFormActions`; the per-page inputs are `mode`, `onSubmit`, `cancelHref`, `submittingLabel` and
-`submitLabel`. `PageHeader` (`components/ui/page-header.tsx`) is the resource-agnostic back-button +
-title/subtitle block, with an optional `actions` slot on the back link's row for the `[id]` detail
-pages' Edit button and `ItemActionsMenu`.
+`submitLabel`. The hero is the one every record page draws, so the title sits where it does
+everywhere else; `FORM_BODY` keeps the card at `max-w-2xl` against the column's left edge, under the
+title, rather than centring it in a column of its own.
 
 `PageSpinner` (`components/ui/page-spinner.tsx`) is the full-viewport `min-h-screen` `<Loader2>` for
 the top-level auth-loading gate. The list and detail pages render below `AppShell`'s header and
 footer, so their spinners use `min-h-[60vh]` inline. `SectionSpinner`
 (`components/ui/section-spinner.tsx`) is a loading section inside a rendered shell; `NotFoundState`
 (`components/ui/not-found-state.tsx`, `message`/`backHref`/`backLabel`) the not-found state. Both
-omit the outer container `div`, whose class differs between edit pages
-(`container mx-auto px-4 pt-8 pb-6`) and detail pages
-(`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6`).
+omit the outer container `div`: the page wraps them in its own column.
 
 ## Mixture form/display numbers match the API's 2-decimal precision
 
@@ -1859,9 +1856,9 @@ rather than growing a second line.
 
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
-`CardHeader` is `flex flex-col space-y-1.5 p-6`, and `space-y-*` is a `> * + *` selector, so the 6px
-gap above the description exists only while the description is a direct child. A card whose header
-carries a control puts the title and the control in one row and the description under it:
+`CardHeader` is a `flex flex-col space-y-1.5` column, and `space-y-*` is a `> * + *` selector, so
+the 6px gap above the description exists only while the description is a direct child. A card whose
+header carries a control puts the title and the control in one row and the description under it:
 
 ```tsx
 <CardHeader>
@@ -2788,13 +2785,12 @@ that knows nothing about line breaks, so a footer that did wrap (320px, a longer
 text size) would lose its spacing. `flex-wrap-reverse` keeps the buttons on one line when they fit
 and puts the action above Cancel when they cannot, with 8px between rows.
 
-## A headerless card restores `pt-6` by hand
+## A headerless card restores its top padding by hand
 
 A card whose figures are each labelled - Home's stats - has no header, and its `CardContent` takes
-an explicit `pt-6`: the default `p-6 pt-0` assumes a `CardHeader` supplied the top padding. The Home
-page's stats-error card restores it the same way; two headerless call sites do not earn a
-`headerless` variant in `ui/card.tsx`, which would have to guess whether the next one wants the same
-padding.
+an explicit `pt-(--card-pad)`: the default `p-(--card-pad) pt-0` assumes a `CardHeader` supplied the
+top padding. A `headerless` variant in `ui/card.tsx` would have to guess whether the next one wants
+the same padding.
 
 ## Pages hold their shape while they load, instead of collapsing into a spinner
 
@@ -2805,8 +2801,8 @@ they replace give one layout instead of three. `Skeleton` (`components/ui/skelet
 primitive; `CardSkeleton` and `ListRowsSkeleton` sit beside it, `TableRowsSkeleton` goes inside a
 real `<TableBody>`, and `MapHeroPageSkeleton` (`components/ui/map-hero.tsx`) and `FormPageSkeleton`
 (`components/ui/page-skeleton.tsx`) assemble page shells from them. The page-level ones build on the
-real `Card`, `PageHeader` and hero primitives rather than re-describing their padding, which is what
-guarantees the header the same height before and after the record lands.
+real `Card` and hero primitives rather than re-describing their padding, which is what guarantees
+the header the same height before and after the record lands.
 
 Left out: a GitHub-style top progress bar, a signal rather than a fix while pages blank, and a
 stale-while-revalidate layer under `useInfiniteResource`, which would show previous rows

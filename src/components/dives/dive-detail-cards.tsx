@@ -23,7 +23,7 @@ export function DiveDetailCards() {
   return (
     <div
       className={cn(
-        "grid grid-cols-1 lg:grid-cols-3 gap-6 transition-opacity",
+        "grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5 transition-opacity",
         isLoading && "opacity-50",
       )}
     >

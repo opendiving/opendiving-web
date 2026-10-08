@@ -163,7 +163,7 @@ export function HomePageFrame({
         }
       />
 
-      <div className={cn(HERO_BODY, "space-y-6")}>
+      <div className={cn(HERO_BODY, "space-y-6 max-sm:space-y-2.5")}>
         {/* Gear due a service and renewals are the header's bell, on every page;
             what stays here is what only a Home visit should offer. */}
         <SetupChecklistCard totalDives={stats?.total_dives ?? null} />
@@ -174,7 +174,7 @@ export function HomePageFrame({
 
         {statsError && (
           <Card>
-            <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
+            <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-(--card-pad)">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">{statsError}</p>
@@ -199,10 +199,10 @@ export function HomePageFrame({
              is.
 
              No header: each figure is already labelled, so a "Your diving" title
-             above them would only restate the four labels underneath. `pt-6` because `CardContent`'s own padding
+             above them would only restate the four labels underneath. `pt-(--card-pad)` because `CardContent`'s own padding
              assumes a header sits above it. */
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-(--card-pad)">
               {/* One row wherever there is room for four, and a 2×2 below that
                   rather than a single column: these are four short figures, and
                   stacking them would run the card down the page for no gain.
@@ -261,7 +261,7 @@ export function HomePageFrame({
         {hasDives && <GasUseCard />}
         {hasDives && <DiveActivityCard />}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-sm:gap-2.5">
           <RecentDivesCard enabled={!!user} />
           <RecentTripsCard />
         </div>

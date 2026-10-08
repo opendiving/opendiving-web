@@ -1,15 +1,16 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { DiveIcon } from "@/components/logo";
+import { FORM_BODY, PlainHeroSkeleton } from "@/components/ui/map-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface PageSkeletonProps {
-  /** Same destination the loaded page's `PageHeader` will use. */
+  /** Same destination the loaded page's `PlainHero` will use. */
   backHref: string;
   backLabel: string;
 }
 
 /**
- * The loading state for the dive form pages, which are a `PageHeader` over a
+ * The loading state for the dive form pages, which are a `PlainHero` over a
  * single narrow card of labelled fields.
  */
 export function FormPageSkeleton({
@@ -18,30 +19,32 @@ export function FormPageSkeleton({
   fields = 6,
 }: PageSkeletonProps & { fields?: number }) {
   return (
-    <div className="container mx-auto px-4 pt-8 pb-6 max-w-2xl" aria-busy>
-      <PageHeader
+    <div aria-busy>
+      <PlainHeroSkeleton
         backHref={backHref}
         backLabel={backLabel}
-        title={<Skeleton className="h-9 w-56" />}
-        subtitle={<Skeleton className="h-6 w-64" />}
+        icon={DiveIcon}
+        figureless
       />
-      <Card className="animate-skeleton-reveal motion-reduce:animate-none">
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {Array.from({ length: fields }, (_, field) => (
-            <div key={field} className="space-y-2">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-10 w-full" />
+      <div className={FORM_BODY}>
+        <Card className="animate-skeleton-reveal motion-reduce:animate-none">
+          <CardHeader className="pb-[calc(var(--card-pad)+var(--card-title-lift))]">
+            <Skeleton className="h-6 w-40 max-sm:h-4.5" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {Array.from({ length: fields }, (_, field) => (
+              <div key={field} className="space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+            <div className="flex justify-end gap-2">
+              <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-10 w-24" />
             </div>
-          ))}
-          <div className="flex justify-end gap-2">
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-24" />
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

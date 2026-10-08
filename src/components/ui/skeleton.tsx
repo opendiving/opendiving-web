@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  *
  * Rendered as a `<span class="block">` rather than a `<div>` on purpose: it
  * lays out identically, and it stays valid inside the `<p>` and `<h1>` that
- * `PageHeader` puts its subtitle and title in.
+ * a hero puts its title and subtitle in.
  *
  * `aria-hidden` because the region it fills should carry `aria-busy` instead -
  * announcing a dozen empty boxes tells a screen reader user nothing.
@@ -50,7 +50,7 @@ export function CardSkeleton({
       )}
     >
       <CardHeader>
-        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-6 w-40 max-sm:h-4.5" />
       </CardHeader>
       <CardContent className="space-y-3">
         {Array.from({ length: lines }, (_, line) => (

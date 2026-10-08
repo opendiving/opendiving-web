@@ -28,9 +28,9 @@ export default function SettingsLayout({
       <IndexHero title="Settings" subtitle="Manage your account information." />
 
       <div className={HERO_BODY}>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-6 max-sm:gap-2.5 lg:grid-cols-[14rem_minmax(0,1fr)]">
           <SettingsNav />
-          <div className="min-w-0 space-y-6">{children}</div>
+          <div className="min-w-0 space-y-6 max-sm:space-y-2.5">{children}</div>
         </div>
       </div>
     </div>
