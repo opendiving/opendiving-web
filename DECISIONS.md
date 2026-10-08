@@ -1204,11 +1204,11 @@ so `AuthContext.test.tsx` can mock it.
 ## The Home page shows only what the app actually tracks
 
 Nothing on the Home page (`components/home/home-page-frame.tsx`) claims what the app cannot back.
-Each stat tile renders a figure the API derives from the diver's dives (`services/dive_stats.py`),
+Each of the hero's figures is one the API derives from the diver's dives (`services/dive_stats.py`),
 Species Seen included. There is no quick-actions card; the one action worth promoting, logging a
-dive, is a single primary button in the page header. `SetupChecklistCard` is driven by real counts
-(`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched with `items_per_page: 1`
-for `total_count` alone) and removes itself once all three are done.
+dive, is the hero's only control. `SetupChecklistCard` is driven by real counts (`/user/dive-stats`,
+`/gear-items`, `/certifications`, the last two fetched with `items_per_page: 1` for `total_count`
+alone) and removes itself once all three are done.
 
 ## The layout is a flat stack, so the cards that can vanish leave no hole
 
@@ -1217,9 +1217,9 @@ children: `space-y-*` spaces rendered siblings, so a card returning `null` costs
 wrapping `<div>` would leave its own gap on every day neither renders. The same reasoning rules out
 a two-column grid whose sidebar sits empty for an established logbook.
 
-The checklist sits above the stats, being the first thing a new account should see. The stat tiles
-and the air-consumption chart hide at zero dives, but not while the stats request is in flight —
-`hasDives` stays true until the answer is in.
+The checklist is the body's first card, being the first thing a new account should see. The hero's
+figures and the charts hide at zero dives, but not while the stats request is in flight — they stay
+until the answer is in.
 
 ## There is no `/profile` until there is someone else to show it to
 

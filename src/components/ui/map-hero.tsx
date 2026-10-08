@@ -133,7 +133,10 @@ export interface MapHeroFigure {
   value: ReactNode;
 }
 
-interface MapHeroProps extends Known {
+// The way back is optional on a map hero: the Home page is reached from the
+// navigation, and has nothing to go back to.
+interface MapHeroProps
+  extends Pick<Known, "icon">, Partial<Pick<Known, "backHref" | "backLabel">> {
   // What fills the band behind the details: a `MapBackdrop` spreading `map`,
   // with water told how many pixels of its top the top row covers and of its
   // foot the details do.
@@ -151,6 +154,8 @@ interface MapHeroProps extends Known {
   // A tag above the title, as the record's card has above its name.
   overline?: ReactNode;
   figures: MapHeroFigure[];
+  // What the page is for, behind an icon after the title, as an index page's.
+  description?: ReactNode;
   // Whether the backdrop is a map where this instance draws them, whose credit
   // `map` leaves to the hero's details' corner - unset for a record drawn
   // without one.
@@ -172,6 +177,7 @@ export function MapHero({
   subtitle,
   overline,
   figures,
+  description,
   mapCredit,
 }: MapHeroProps) {
   // A map only where this instance draws its tiles: anywhere else every
@@ -226,8 +232,12 @@ export function MapHero({
       </div>
       <div ref={topRowRef} className={TOP_ROW}>
         <div className={cn(COLUMN, "flex items-center justify-between gap-4")}>
-          <HeroBackLink backHref={backHref} backLabel={backLabel} />
-          {actions && <div className="flex shrink-0 gap-1">{actions}</div>}
+          {backHref && backLabel && (
+            <HeroBackLink backHref={backHref} backLabel={backLabel} />
+          )}
+          {actions && (
+            <div className="ml-auto flex shrink-0 gap-1">{actions}</div>
+          )}
         </div>
       </div>
       {/* Above the map by a flex item's z-index, as a card's details are.
@@ -245,6 +255,7 @@ export function MapHero({
           subtitle={subtitle}
           overline={overline}
           figures={figures}
+          info={description && <PageInfo>{description}</PageInfo>}
         >
           {/* A chip as it is over a card's map, so without the details'
               glow. */}
@@ -342,7 +353,7 @@ export function PlainHero({
   subtitle,
   overline,
   figures,
-}: Omit<MapHeroProps, "backdrop" | "mapCredit">) {
+}: Omit<MapHeroProps, "backdrop" | "mapCredit" | "description"> & Known) {
   return (
     // The actions' glow is drawn in the page's colour, so it shows nothing here.
     <div className="[--backdrop-fade:hsl(var(--background))]">

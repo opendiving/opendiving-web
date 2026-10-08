@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import HomePage from "./page";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 
-// The Species Seen tile must render the `species_seen` it is given rather than a
-// constant, and hold the stats row's "—" while the request is still in flight, like
-// its three siblings.
+// The Species Seen figure must render the `species_seen` it is given rather than a
+// constant, and hold the hero's "—" while the request is still in flight, like its
+// three siblings.
 
 // Returned by identity rather than rebuilt per call, and for `user` that is
 // load-bearing rather than tidiness: the real `AuthContext` holds it in state, so it
@@ -63,6 +63,12 @@ vi.mock("@/components/dives/gas-use-card", () => ({ GasUseCard: () => null }));
 vi.mock("@/components/home/setup-checklist-card", () => ({
   SetupChecklistCard: () => null,
 }));
+// The map is covered where it lives; here it is only what the hero is handed.
+vi.mock("@/components/map/map-backdrop", () => ({
+  MapBackdrop: vi.fn(() => null),
+  useMapTiles: () => true,
+}));
+const { MapBackdrop } = await import("@/components/map/map-backdrop");
 
 const { diveStatsAPI } = await import("@/lib/api/dive-stats");
 const getDiveStats = vi.mocked(diveStatsAPI.getDiveStats);
@@ -77,8 +83,12 @@ const stats = (overrides: Partial<UserDiveStats> = {}): UserDiveStats => ({
   ...overrides,
 });
 
+const figure = (label: string) =>
+  screen.queryByText(label, { selector: "dt" })?.nextElementSibling;
+
 beforeEach(() => {
   getDiveStats.mockReset();
+  vi.mocked(MapBackdrop).mockClear();
 });
 
 describe("Home heading", () => {
@@ -97,24 +107,57 @@ describe("Home heading", () => {
   });
 });
 
-describe("Home Species Seen tile", () => {
-  it("shows the distinct count the API derived", async () => {
+describe("Home hero map", () => {
+  it("draws the whole world for a diver with no placed trips", async () => {
     getDiveStats.mockResolvedValue(stats());
     render(<HomePage />);
+    await screen.findByText("Species seen");
 
-    expect(await screen.findByText("Species seen")).toBeInTheDocument();
-    expect(screen.getByText("17")).toBeInTheDocument();
-    expect(screen.getByText("Distinct species spotted")).toBeInTheDocument();
+    const props = vi.mocked(MapBackdrop).mock.lastCall![0];
+    expect(props.locations).toEqual([]);
+    expect(props.showWhenEmpty).toBe(true);
+    expect(props.hero).toBe(true);
+  });
+});
+
+describe("Home hero figures", () => {
+  it("shows the four figures the API derived, species linking to the life list", async () => {
+    getDiveStats.mockResolvedValue(stats());
+    render(<HomePage />);
+    await screen.findByText("Species seen");
+
+    expect(figure("Total dives")).toHaveTextContent("212");
+    expect(figure("Total time")).toHaveTextContent(/^156h$/);
+    expect(figure("Max depth")).toHaveTextContent(/^39 m$/);
+    expect(
+      within(figure("Species seen") as HTMLElement).getByRole("link", {
+        name: "17",
+      }),
+    ).toHaveAttribute("href", "/species");
   });
 
-  it("shows a real zero for a diver who has logged none", async () => {
-    // Distinct from the loading dash below: the diver has dives and has spotted
-    // nothing, which is a fact about their logbook rather than a missing answer.
+  it("rounds the time to whole hours past the first, and minutes under it", async () => {
+    // 156h 31min.
+    getDiveStats.mockResolvedValue(stats({ total_time: 563460 }));
+    const { unmount } = render(<HomePage />);
+    await screen.findByText("Total dives");
+    expect(figure("Total time")).toHaveTextContent(/^157h$/);
+    unmount();
+
+    getDiveStats.mockResolvedValue(stats({ total_time: 2400 }));
+    render(<HomePage />);
+    await screen.findByText("Total dives");
+    expect(figure("Total time")).toHaveTextContent(/^40min$/);
+  });
+
+  it("leaves Species seen out for a diver who has logged none", async () => {
+    // Only once the answer is in: the loading dash below stands for it until then.
     getDiveStats.mockResolvedValue(stats({ species_seen: 0 }));
     render(<HomePage />);
 
-    await screen.findByText("Species seen");
-    expect(screen.getByText("0")).toBeInTheDocument();
+    await screen.findByText("Total dives");
+    expect(figure("Total dives")).toHaveTextContent("212");
+    expect(screen.queryByText("Species seen")).not.toBeInTheDocument();
   });
 
   it("holds a dash while the stats are still loading", async () => {
@@ -122,36 +165,22 @@ describe("Home Species Seen tile", () => {
     render(<HomePage />);
 
     await screen.findByText("Species seen");
-    // One per tile, and the species one is among them - "0 species" before the
+    // One per figure, and the species one is among them - "0 species" before the
     // answer is known reads as a statement about the logbook.
     expect(screen.getAllByText("—")).toHaveLength(4);
   });
 
-  it("holds all four figures in one card, not four", async () => {
-    // They are read together as "what my logbook amounts to", so they share a
-    // card. Asserted structurally
-    // because every text-based check in this file passes either way - the merge
-    // is invisible to them, and splitting the card back up would go unnoticed.
+  it("are in the hero, not a card under it", async () => {
     getDiveStats.mockResolvedValue(stats());
-    const { container } = render(<HomePage />);
+    render(<HomePage />);
     await screen.findByText("Species seen");
 
-    // By label rather than by value, so the assertion says nothing about how
-    // depths or durations happen to be formatted.
-    const cards = [
-      "Total dives",
-      "Max depth",
-      "Total time",
-      "Species seen",
-    ].map((label) => screen.getByText(label).closest(".rounded-lg.border"));
-
-    expect(cards[0]).not.toBeNull();
-    expect(new Set(cards).size).toBe(1);
-    // And no leftover per-figure card headings from the shape this replaced.
-    expect(container.querySelectorAll("h3")).toHaveLength(0);
+    expect(
+      screen.getByText("Total dives").closest(".rounded-lg.border"),
+    ).toBeNull();
   });
 
-  it("renders no stats row at all for a diver with no dives", async () => {
+  it("are left out for a diver with no dives", async () => {
     getDiveStats.mockResolvedValue(stats({ total_dives: 0 }));
     render(<HomePage />);
 
