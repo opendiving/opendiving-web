@@ -122,6 +122,7 @@ export function HomeHero({
           // page shows one with none - but only once that is known, so the
           // world is never asked for on the way to their places.
           showWhenEmpty={places !== null}
+          antimeridianAtEdges
           subject="the places of your trips"
           {...map}
           water={

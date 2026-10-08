@@ -70,12 +70,20 @@ export interface MapFrame {
  * Nothing placed is the whole world at `MIN_ZOOM`, its middle - the equator,
  * rather than `WORLD_CENTER`'s latitude - at the band's, so the frame shows as
  * much of the world north of the band as south of it.
+ *
+ * `antimeridianAtEdges` fits the places without crossing it (`unionBounds`'
+ * `unwrap: false`).
  */
 export function frameCamera(
   placed: readonly PlacedLocation[],
   frame: MapFrame,
+  { antimeridianAtEdges = false }: { antimeridianAtEdges?: boolean } = {},
 ): Camera {
-  const bounds = unionBounds(placed.map((location) => location.bounds));
+  const unwrap = !antimeridianAtEdges;
+  const bounds = unionBounds(
+    placed.map((location) => location.bounds),
+    { unwrap },
+  );
   if (!bounds) {
     return {
       center: { latitude: 0, longitude: WORLD_CENTER.longitude },
@@ -93,6 +101,7 @@ export function frameCamera(
       west: longitude,
       east: longitude,
     })),
+    { unwrap },
   )!;
   const width = frame.width - 2 * frame.inset;
   const zoom = Math.min(
