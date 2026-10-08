@@ -196,8 +196,10 @@ export function Header() {
               {/* A `<span>`, not an `<h1>`. The wordmark is site furniture that
                   appears on every page; as a heading it gave every page two
                   `<h1>`s, and made "OpenDiving" - rather than the page's own
-                  title - the first thing a screen reader's heading list offers. */}
-              <span className="font-wordmark text-lg sm:text-2xl font-bold tracking-wordmark text-foreground whitespace-nowrap">
+                  title - the first thing a screen reader's heading list offers.
+                  Lifted a sixteenth of an em: centred by its box, Outfit's
+                  lowercase sits 1.5px under the nav's Inter beside it. */}
+              <span className="relative -top-[0.0625em] font-wordmark text-lg sm:text-2xl font-bold tracking-wordmark text-foreground whitespace-nowrap">
                 OpenDiving
               </span>
             </Link>
