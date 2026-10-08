@@ -215,10 +215,9 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
             onSubmit={handleSubmitEvent}
             className="space-y-6"
           >
-            {/* Import from a dive computer. Closer to the first section than the
-                form's rhythm: the section's heading pads its own text, and the
-                visible gap is the card's padding, as it is above. */}
-            <div className="mb-[calc(var(--card-pad)-0.75rem)]">
+            {/* Import from a dive computer, a card's padding above the first
+                section's heading - whose own padding adds to it. */}
+            <div className="mb-(--card-pad)">
               <DiveFileImport
                 form={form}
                 replaceMixtures={mixtureFieldArray.replace}
