@@ -664,11 +664,11 @@ export function toPressureSeries(
 }
 
 // The dive's cylinders as far as naming one goes: only their labels, in the
-// order the mixtures card lists them.
+// order the Tanks card lists them.
 export type CylinderLabels = readonly Pick<DiveMixture, "gas_number">[];
 
 // What to call the cylinder a pressure series or a gas switch names by its
-// label: the tank's position in the mixtures card's own 1-based numbering where
+// label: the tank's position in the Tanks card's own 1-based numbering where
 // exactly one of the dive's cylinders carries that label, and otherwise the
 // device's label with the word kept - "gas 3", never a bare 3 that reads as a
 // row of the card. That is the rule `tankGasUseRows` names a tank by, including

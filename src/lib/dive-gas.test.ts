@@ -686,7 +686,7 @@ describe("tankGasUseRows", () => {
       gas_use: multiTankUse([
         // Deliberately the reverse of the dive's order: the API is free to emit
         // tanks in whatever order it walked the profile in, and the table has to
-        // read against the mixtures card above it regardless.
+        // read against the Tanks card above it regardless.
         tank({ gas_number: 2, gas_used: 400, rmv: 12.1, mean_depth: 6.4 }),
         tank({ gas_number: 1 }),
       ]),
@@ -713,9 +713,9 @@ describe("tankGasUseRows", () => {
   });
 
   it("names a cylinder by its position, never by its gas number", () => {
-    // The same label the mixtures card uses, so the two tables agree on what to
-    // call a tank - and 1-based position, which a Suunto Ocean's 0-based
-    // numbering is off by one from all the way down.
+    // The Tanks card's number, so the two agree on what to call a tank - and
+    // 1-based position, which a Suunto Ocean's 0-based numbering is off by one
+    // from all the way down.
     const ocean = dive({
       mixtures: [
         mixture({ id: 1, gas_number: 0 }),

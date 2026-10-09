@@ -34,11 +34,13 @@ service, and a fork that drops Google sign-in should drop the mark with it.
 
 <https://lucide.dev>
 
-`src/components/icons/twin-tank-icon.tsx` and `src/components/icons/dive-site-icon.tsx` are built
-from Lucide path data copied into the source and modified: the first is `fire-extinguisher` without
-its hose and nozzle, drawn twice and joined; the second is `map-pin` with original bubbles in place
-of its inner circle. Neither icon is one Lucide inherited from Feather, so Lucide's own ISC license
-is the only one that applies, and it asks for this notice to travel with every copy:
+`src/components/icons/tank-icon.tsx` and `src/components/icons/dive-site-icon.tsx` are built from
+Lucide path data copied into the source and modified: the first is `fire-extinguisher`, without its
+hose and nozzle and drawn twice and joined for a twin set, and with its hose mirrored and ending in
+a gauge for a single tank, which also comes mirrored with a shorter hose; the second is `map-pin`
+with original bubbles in place of its inner circle. Neither icon is one Lucide inherited from
+Feather, so Lucide's own ISC license is the only one that applies, and it asks for this notice to
+travel with every copy:
 
 > ISC License
 >

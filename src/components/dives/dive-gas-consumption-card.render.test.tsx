@@ -301,16 +301,15 @@ describe("DiveGasConsumptionCard per-tank table", () => {
     expect(decoGas.getByText("12.1 L/min")).toBeInTheDocument();
   });
 
-  it("heads its first two columns as the mixtures table above does", () => {
-    // The gas is a column here rather than a badge pinned to the position, which
-    // is what lets the two tables be read against each other down the page.
+  it("heads its first two columns with the position and the gas", () => {
+    // The gas is a column rather than a badge pinned to the position, so the
+    // badges line up down the table.
     render(<DiveGasConsumptionCard dive={twoTankDive()} />);
 
     const headers = screen
       .getAllByRole("columnheader")
       .map((header) => header.textContent);
-    // "#Tank" is the visible character plus the sr-only word behind it, which the
-    // mixtures table heads identically.
+    // "#Tank" is the visible character plus the sr-only word behind it.
     expect(headers.slice(0, 2)).toEqual(["#Tank", "Gas"]);
     // "Used", not "Gas Used": two headers leading with the same word, one naming
     // a mix and one a volume, is what the Gas column would otherwise create.

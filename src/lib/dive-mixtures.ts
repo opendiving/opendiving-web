@@ -20,6 +20,7 @@
 // one implementation, here.
 
 import type { GasRole, TankUsage } from "@/lib/api/dives";
+import type { TankGas } from "@/components/icons/tank-icon";
 import {
   formatComparableDepth,
   formatDepth,
@@ -71,12 +72,9 @@ export const DEFAULT_MIXTURE = {
 // identically rather than each keeping their own copy of the mapping.
 //
 // One word each, and the "gas" that "Bottom gas"/"Deco gas" would naturally carry is
-// deliberately dropped. Both places these appear supply that word already - a badge
-// beside the gas name in a column headed **Gas**, and an option under the form's
-// **Role** label - so it was pure redundancy, and redundancy is expensive in that
-// table: it ran to eight columns in a 667 px card and was ~52 px wider than its slot
-// before this badge existed. See DECISIONS.md - the width is a real, measured trade-off,
-// not a rounding error, and shortening these was the cheap half of it.
+// deliberately dropped: every place these appear supplies that word already - beside
+// the gas name on a tank card, in the consumption table's column headed **Gas**, and
+// under the form's **Role** label.
 export const GAS_ROLE_LABELS: Record<GasRole, string> = {
   bottom: "Bottom",
   deco: "Deco",
@@ -90,9 +88,8 @@ export const GAS_ROLE_LABELS: Record<GasRole, string> = {
 // name the same flag differently.
 //
 // One word each because it is a *name*, not a description: it is the word the diver
-// picked in the form, quoted back to them inside `tankUsageSentences` below. The
-// meaning rides alongside it there, and in the form's own longer options ("Parallel
-// (sidemount / independent)") - so this map never has to carry both jobs at once.
+// picked in the form, quoted back to them on the tank's card. The meaning rides in
+// the form's own longer options ("Parallel (sidemount / independent)").
 export const TANK_USAGE_LABELS: Record<TankUsage, string> = {
   parallel: "Parallel",
   staged: "Staged",
@@ -128,78 +125,10 @@ export function hasStagedCylinder(mixtures: readonly TankUsageOnly[]): boolean {
   return mixtures.some((mixture) => mixture.usage === "staged");
 }
 
-// What each flag *means*, as the clause trailing its name in the sentences below.
-// Split from `TANK_USAGE_LABELS` rather than folded into it because the two are read
-// at different moments: the label is the word the diver chose and has to match the
-// form's picker exactly, the gloss is the definition a reader who has never used the
-// control needs once. Worded so it holds for one cylinder or five - "at a separate
-// depth" rather than "at its own depth" - since a group can be either.
-const TANK_USAGE_GLOSSES: Record<TankUsage, string> = {
-  parallel:
-    "breathed alternately at the same depth, as a sidemount pair or independent doubles",
-  staged: "breathed at a separate depth",
-};
-
-// "1 and 2", "1, 2 and 3" - the cylinder numbers as the mixtures table's `#` column
-// shows them, which is the only handle a cylinder has: they have no names.
-function cylinderNumberList(numbers: readonly number[]): string {
-  if (numbers.length <= 2) return numbers.join(" and ");
-  return `${numbers.slice(0, -1).join(", ")} and ${numbers[numbers.length - 1]}`;
-}
-
-// Every tank-usage flag on the dive, as sentences to print beneath the mixtures
-// table - one per distinct flag, in the order the flags first appear down the table.
-// Empty when nothing is flagged, which is every imported dive: no format this app
-// parses carries the distinction, so only the diver can ever set it.
-//
-// **Prose rather than a per-row badge, and the width is why.** A third badge in the
-// Gas cell pushed the MOD column 73 px off screen at the 1024 px pinch - measured, not
-// projected - and this table's width is already a settled trade-off in this repo. The
-// invariant the prose has to keep is the one the badge kept for free: every flag a
-// diver recorded is visible on the dive page without opening the edit form, *and* a
-// reader can tell which cylinder each one belongs to. Naming the numbers is what buys
-// the second half back, so a mixed set - a parallel pair plus a staged bottle, the set
-// the per-row control exists to keep expressible - still reads correctly. See
-// DECISIONS.md for the measurements and the decision.
-//
-// Grouped rather than one sentence per row: a sidemount pair is one fact about two
-// cylinders, and "Cylinder 1 is flagged Parallel. Cylinder 2 is flagged Parallel." says
-// it twice while reading like two unrelated cylinders.
-export function tankUsageSentences(
-  mixtures: readonly TankUsageOnly[],
-): string[] {
-  const groups = new Map<TankUsage, number[]>();
-  mixtures.forEach((mixture, index) => {
-    // `""` is how a cleared `<select>` spells itself, and null is how the API sends
-    // an unflagged row - neither is a flag to state.
-    if (!mixture.usage) return;
-    const numbered = groups.get(mixture.usage);
-    if (numbered) numbered.push(index + 1);
-    else groups.set(mixture.usage, [index + 1]);
-  });
-
-  return [...groups].map(([usage, numbers]) => {
-    // Same hand-kept-mirror fallback the role and usage badges carried: a value added
-    // to the API's `TankUsage` before these two maps catch up still names itself and
-    // still says which cylinder it is on. Losing it would leave a flag the diver
-    // recorded visible nowhere but the edit form.
-    const label = TANK_USAGE_LABELS[usage] ?? usage;
-    const gloss = TANK_USAGE_GLOSSES[usage] as string | undefined;
-    const subject =
-      numbers.length === 1
-        ? `Cylinder ${numbers[0]} is`
-        : `Cylinders ${cylinderNumberList(numbers)} are`;
-
-    return gloss
-      ? `${subject} flagged ${label} - ${gloss}.`
-      : `${subject} flagged ${label}.`;
-  });
-}
-
 // The gas badge, sized so every cylinder's pill is the same width whatever it holds.
-// Both tables render this badge and are read against each other row by row, so a pill
-// that shrank to fit "Air" and grew for "EAN54" put the two tables' badges - and the
-// role badges pinned to their right - at different offsets on every row.
+// The consumption table renders this badge down a column, so a pill that shrank to fit
+// "Air" and grew for "EAN54" put its badges - and the role badges pinned to their
+// right - at different offsets on every row.
 //
 // 4.5rem is 72 px, against the widest label `gasName` can return for a real gas:
 // "Oxygen" at 66.8 px, measured in the rendered table at 12 px semibold. Not "EAN100",
@@ -240,8 +169,8 @@ export const PPO2_DECO = 1.6;
 // Whether an (O₂, He) pair is a real breathing gas that standard shorthand can name.
 //
 // Exported because every figure derived from a mix is only meaningful when this holds,
-// so the callers that render one (`gasHintParts` here, the MOD column on the mixtures
-// card) have to agree on the answer rather than each deciding for themselves.
+// so the callers that render one (`gasHintParts` here, each tank card's MOD) have to
+// agree on the answer rather than each deciding for themselves.
 //
 // Parsed dive-file previews are not validated against the DB's
 // `ck_dive_mixture_oxygen_helium_sum`, and neither is a half-typed form field, so an
@@ -285,12 +214,12 @@ const OXYGEN_MIN = 99.5;
  * Returns `null` when either fraction is unrecorded, which is a real state rather
  * than an omission - a parsed preview reports what the file held and `null` for what
  * it didn't, and a gas whose helium content is unknown cannot be told apart from air
- * by any honest label. Callers render nothing in that case.
+ * by any honest label. Callers name no gas in that case.
  *
  * Names round to whole percent, because the shorthand is integer shorthand: a 32.4 %
  * fill is an EAN32 in every logbook and on every cylinder sticker. That rounding is
- * safe here precisely because it is only ever a *label* - the mixtures card prints
- * the recorded fractions unrounded in the adjacent columns (see DECISIONS.md on
+ * safe here precisely because it is only ever a *label* - the tank cards print
+ * the recorded fractions unrounded under the name (see DECISIONS.md on
  * matching the API's 2-decimal precision), so the exact number is never more than a
  * glance away. An impossible mix falls back to spelling both fractions out.
  */
@@ -312,6 +241,22 @@ export function gasName(
   if (oxygen >= AIR_OXYGEN_MIN && oxygen <= AIR_OXYGEN_MAX) return "Air";
 
   return `EAN${Math.round(oxygen)}`;
+}
+
+// Which of the tank icon's four markings a gas takes, on `gasName`'s bands: helium
+// makes it trimix, near-pure oxygen oxygen, and any other oxygen fraction off air's
+// band nitrox. A gas `gasName` cannot name draws plain, as air does.
+export function tankGas(
+  oxygen: number | null | undefined,
+  helium: number | null | undefined,
+): TankGas {
+  if (oxygen == null || helium == null || !isNameableMix(oxygen, helium)) {
+    return "air";
+  }
+  if (helium > 0) return "trimix";
+  if (oxygen >= OXYGEN_MIN) return "oxygen";
+  if (oxygen >= AIR_OXYGEN_MIN && oxygen <= AIR_OXYGEN_MAX) return "air";
+  return "nitrox";
 }
 
 /**
@@ -373,13 +318,6 @@ export function ppO2Limit(mixture: { po2_limit?: number | null }): number {
   const limit = mixture.po2_limit;
   return limit != null && Number.isFinite(limit) ? limit : PPO2_WORKING;
 }
-
-// `sharedPpO2Limit` lived here: the one ppO₂ every cylinder on a dive shared, or null
-// when they differed, so the mixtures table could hoist "MOD @ ppO₂ 1.4" into its
-// column header and drop into per-row qualifiers only when a dive mixed limits. The
-// table now states the limit on every row unconditionally, so nothing asks the
-// question - and the helper's whole purpose was choosing between two spellings of the
-// same column, which was itself the thing making that column look like two columns.
 
 export interface EndOptions {
   // Whether oxygen is counted as narcotic. Default true, which is the conservative
@@ -539,8 +477,8 @@ function isPastLimit(depth: number, limit: number): boolean {
  * appropriate, which is a different sentence and a louder one.
  *
  * **A recorded `po2_limit` deliberately does not move these thresholds**, even though
- * it moves the MOD displayed beside them. The two are different claims: the MOD
- * column says what the diver planned this gas to, while this says what the gas can
+ * it moves the MOD displayed beside them. The two are different claims: a tank
+ * card's MOD says what the diver planned this gas to, while this says what the gas can
  * physiologically take. Letting the dive's own number set the limit it is judged
  * against would make a cylinder recorded at ppO₂ 2.0 unwarnable - the "edit that
  * turns an over-MOD warning into silence" that `PPO2_WORKING`/`PPO2_DECO` are
@@ -639,7 +577,7 @@ export function gasHintParts({
 
   if (helium != null && helium > 0) {
     const end = endDepth(depth, helium, oxygen);
-    // Qualified for the same reason the card's MOD column names its ppO₂: a diver
+    // Qualified for the same reason a tank card's MOD names its ppO₂: a diver
     // taught the older nitrogen-only convention computes 14.2 m where this says
     // 25.8 m for the same gas, and nothing else on screen explains the gap.
     if (end !== null) {

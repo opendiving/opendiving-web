@@ -1029,8 +1029,8 @@ describe("DiveProfileChart markers past the end of the recorded profile", () => 
 });
 
 describe("DiveProfileChart naming cylinders", () => {
-  // Labels count from 0 and the mixtures card numbers its rows from 1, so a bare
-  // label would name the card's next row. The chart names the joined tank by the
+  // Labels count from 0 and the Tanks card numbers its tanks from 1, so a bare
+  // label would name the card's next tank. The chart names the joined tank by the
   // card's position, and a label no cylinder carries by the device's label with
   // the word kept.
   const times = [0, 1_000_000, 2_000_000, 3_000_000];

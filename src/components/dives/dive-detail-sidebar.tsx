@@ -100,7 +100,7 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
 }
 
 // A stored vocabulary value's label, falling back to the wire value, like
-// `gearTypeLabel` and the mixtures table's role badge: the API can grow a member
+// `gearTypeLabel` and the tank cards' role badge: the API can grow a member
 // before this build ships a label for it, and rendering the slug beats rendering
 // a blank row.
 function labelOf<T extends string>(

@@ -189,12 +189,11 @@ function ppO2LimitChoices(value: number | "" | undefined): string[] {
 }
 
 // The usage options as the form spells them, which is not how the dive page does.
-// `TANK_USAGE_LABELS` is one word each because there it is a name being quoted back
-// inside a sentence that carries the meaning separately; here there is no sentence to
-// carry it, and "Parallel" alone does not say what it claims about the dive. The
-// parenthetical is the definition the diver is being asked to agree to - the flag
-// changes what the API computes, so choosing it by guessing at the word is the one
-// outcome worth spending width to prevent.
+// `TANK_USAGE_LABELS` is one word each because the tank card quotes back a choice
+// already made; here the diver is making it, and "Parallel" alone does not say what it
+// claims about the dive. The parenthetical is the definition the diver is being asked
+// to agree to - the flag changes what the API computes, so choosing it by guessing at
+// the word is the one outcome worth spending width to prevent.
 const TANK_USAGE_OPTION_LABELS: Record<(typeof TANK_USAGE)[number], string> = {
   parallel: "Parallel (sidemount / independent)",
   staged: "Staged (own depth)",

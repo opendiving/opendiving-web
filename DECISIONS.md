@@ -1882,9 +1882,8 @@ Card-title icons are `gap-2` on the title, never `mr-2` on the icon, and inherit
 
 ## The dive page's gear list is a table, and its columns lead with Type
 
-`DiveDetailMain`'s Gear card is a `Table`, the same shape as the Tanks card further up, rather than
-a `<ul>` of `gearItemLabel(item)`: brand and name glued into one string give the eye nothing to scan
-down at seven items.
+`DiveDetailMain`'s Gear card is a `Table` rather than a `<ul>` of `gearItemLabel(item)`: brand and
+name glued into one string give the eye nothing to scan down at seven items.
 
 Columns are Type, Brand, Name, deliberately not `/gear`'s Name/Type/Brand. `/gear` lists things you
 own, looked up by name; the dive page is a kit list read by type ("what suit? what computer?"), and
@@ -2004,7 +2003,7 @@ END, nitrox EAD.
 `diveModWarning`: one cylinder, `max_depth` applies with both thresholds; several, only "the
 deepest-capable gas cannot reach `max_depth`" is reported, at 1.6 only.
 
-The warning is spelled out under the table, not in a `title` tooltip. `text-warning`, not
+The warning is spelled out under the cards, not in a `title` tooltip. `text-warning`, not
 `text-warning-foreground`, which is the white on `bg-warning`.
 
 ## `diveMixtureSchema` refines `o2 + he <= 100`, mirroring `ck_dive_mixture_oxygen_helium_sum`
@@ -2040,9 +2039,8 @@ the accessible name.
 silence, and a cylinder recorded at 2.0 would become unwarnable. `OxygenFractions` declares
 `po2_limit` and never reads it, so the answer is visible in the type.
 
-The MOD header is conditional: `sharedPpO2Limit()` returns the single limit when every cylinder
-agrees (an unrecorded limit counts as the 1.4 default) and the header stays `MOD @ ppO₂ 1.4`; only a
-dive mixing limits drops to bare `MOD` with the qualifier in the rows.
+Every tank card states the limit its MOD was computed at, `MOD @ 1.4`, an unrecorded limit counting
+as the 1.4 default.
 
 `DEFAULT_MIXTURE` leaves `po2_limit` blank with placeholder `1.4 (default)`, so a hand-added
 cylinder never claims a limit the diver did not choose.
@@ -2070,21 +2068,6 @@ both `diveMixtureSchema` and `ck_dive_mixture_po2_limit_range` accept the inputs
 is a real END or EAD (a rich mix in shallow water is equivalent to the surface), whereas "MOD 0 m"
 reads as a depth the gas may be breathed at, the opposite of the truth. Both call sites render `-`
 for `null`. Exactly 0 stays a number: `mod(40, 0.4)` is 0 m.
-
-## The role badge costs the mixtures table 73 px it did not have
-
-The mixtures table overflows its two-thirds-width card (`overflow-x-auto` wrapper,
-`whitespace-nowrap` rows); MOD is the last column and the first to go off-screen. Two cuts stand on
-their own: `GAS_ROLE_LABELS` omits the word "gas" ("Bottom gas" under a column headed _Gas_ says it
-twice), and the per-row ppO₂ suffix is `@ 1.6`, not `@ ppO₂ 1.6`, rendered only when a dive mixes
-limits.
-
-The remaining width is not paid for by moving `bar` into the headers or dropping `O₂`/`He`, which
-hold the unrounded fractions. Cell padding is the real cost (at `p-4` a seven-column table spends
-224 px on it) and `He` is dropped on a dive with no helium; see "The gas tables scroll inside
-shadcn's own wrapper, and no card adds another". A `usage` badge in the same cell reproduces the
-clipping and lives outside the table; see "The mixtures table carries no usage badge;
-`tankUsageSentences` states the flags under it".
 
 ## The API sends `null` and the form schema wants `""`, so `toDiveMixtureInput` converts at the boundary
 
@@ -2277,21 +2260,20 @@ per file, so there is usually nothing to compare, and a cylinder's pressure keep
 temperature long after the diver switched away. The column is `gas_attribution`, not `gas_usage`,
 because it carries only which cylinder, for how long, at what mean depth — no pressures. The litres
 come from the form's `start_pressure`/`end_pressure`, not the profile's curve: the two disagree by a
-few bar for the same cooling reason, and the recorded header is the number the mixtures card prints
+few bar for the same cooling reason, and the recorded header is the number the Tanks card prints
 directly above, so deriving consumption from another would make the table unreconcilable with it.
 
-## The consumption table is six columns wide and scrolls, like the mixtures table above it
+## The consumption table is six columns wide and scrolls
 
-The consumption table sits in its own `overflow-x-auto` wrapper, like the mixtures table above it,
-so a narrow pane scrolls the table and never the page body. `RMV` and `SAC` are content-driven
-(`18.24 L/min`, `0.82 bar/min`), so shortening headers gains nothing there, and moving units into
-the headers is forbidden by the card's rule: units stay with the values, never doubled in the label.
-"Avg depth" keeps its full length: it is a mean depth over the stretch a cylinder was breathed, and
-"Depth" beside a per-tank row invites reading it as that gas's deepest point — the misreading
-`diveModWarning` refuses to warn per tank over, a mean depth being the wrong input for a MOD. Before
-shortening a header, check what fraction of the table is `p-4` padding; halving it is what made this
-table fit. Widths: see "The gas tables scroll inside shadcn's own wrapper, and no card adds
-another".
+The consumption table scrolls inside shadcn's own wrapper, so a narrow pane scrolls the table and
+never the page body. `RMV` and `SAC` are content-driven (`18.24 L/min`, `0.82 bar/min`), so
+shortening headers gains nothing there, and moving units into the headers is forbidden by the card's
+rule: units stay with the values, never doubled in the label. "Avg depth" keeps its full length: it
+is a mean depth over the stretch a cylinder was breathed, and "Depth" beside a per-tank row invites
+reading it as that gas's deepest point — the misreading `diveModWarning` refuses to warn per tank
+over, a mean depth being the wrong input for a MOD. Before shortening a header, check what fraction
+of the table is `p-4` padding; halving it is what made this table fit. Widths: see "The consumption
+table scrolls inside shadcn's own wrapper, and no card adds another".
 
 ## The tank↔mixture join applies the API's duplicate rule rather than trusting it
 
@@ -2465,11 +2447,10 @@ selection. `DiveProfileChart selection across dives` and
 `DiveMixture.name` is not a field: the label is a pure function of the fractions from the API and so
 from here: schema field, form input, column, label fallbacks and `getDefaultMixtureName`. A cylinder
 is named by 1-based position; `ParsedDiveMixture.name` was always `null`, so imports were already
-positional. The mixtures card's first column is `Tank`, cells `Tank 1`, `Tank 2`: the consumption
-card's format, since the tables are read row against row and `TankGasUseRow.label` derives the same
-string; an unmatched cylinder stays `Gas N`. The column stays: the consumption card joins to it, the
-profile's pressure channels are numbered against it, and `Tank 1` fits the slot. `mergeMixture` lost
-`index`.
+positional. The Tanks card names each cylinder `#1`, `#2`, and the consumption table's `#` column
+numbers its rows the same, since the two are read against each other and `TankGasUseRow.label`
+derives the same number; an unmatched cylinder stays `Gas N`. The profile's pressure channels are
+named against the same positions. `mergeMixture` lost `index`.
 
 The per-tank form is eight boxes in a two-column grid, nothing widened (`Volume | ppO₂`, `O₂ | He`,
 `Start | End`, `Role | Usage`), so pairs read as pairs and the two `<select>`s sit adjacent.
@@ -2536,24 +2517,29 @@ node and drops keyboard focus. Unavailable is `aria-disabled` plus `pointer-even
 `aria-busy` marks not-yet-known. A failed fetch is silent, as in `DiveNumberingCard`.
 `dive-neighbor-nav.render.test.tsx` pins node identity across the `href` swap.
 
-## The gas tables scroll inside shadcn's own wrapper, and no card adds another
+## The consumption table scrolls inside shadcn's own wrapper, and no card adds another
 
-Both tables fit their 582 px slot at the 1024 px `lg:col-span-2` pinch, except a mixtures table
-carrying role badges: the MOD column states a limit at the scale it is compared at (115 px metric,
-112 px imperial, 9 px and 13 px more than a rounded one), which puts that worst case 7 px and 11 px
-past the slot and scrolls it. `px-2` cells did most of the fit; see "Cell padding is `px-2`
-app-wide". The cards add no `overflow-x-auto` wrapper: shadcn's `Table` wraps itself in
-`relative w-full overflow-auto` (`ui/table.tsx`), so an outer one never scrolls and
-`closest('[class*="overflow-x-auto"]')` reports 0 px. Measure `table.scrollWidth` against
-`table.parentElement.clientWidth`, any conditional `tfoot` rendered. Chart wrappers
+The table fits its 582 px slot at the 1024 px `lg:col-span-2` pinch; `px-2` cells did most of the
+fit, see "Cell padding is `px-2` app-wide". The card adds no `overflow-x-auto` wrapper: shadcn's
+`Table` wraps itself in `relative w-full overflow-auto` (`ui/table.tsx`), so an outer one never
+scrolls and `closest('[class*="overflow-x-auto"]')` reports 0 px. Measure `table.scrollWidth`
+against `table.parentElement.clientWidth`, any conditional `tfoot` rendered. Chart wrappers
 (`dive-profile-chart.tsx`, `gas-use-chart.tsx`, `dive-activity-chart.tsx`) stay: SVG has none.
 
-Columns: gas has its own column in both; `Used`, not `Gas Used`; `He` only when a cylinder carries
-helium; header `#` plus `sr-only` "Tank", `TankGasUseRow.label` `"1"`, unmatched tanks `Gas 3`,
-footer `Total`; every MOD carries its muted ppO₂, so `sharedPpO2Limit` is gone. `GAS_BADGE_CLASS`
-(`lib/dive-mixtures.ts`) is a 4.5 rem `min-width` sized to `Oxygen`. A shared `w-16` aligning both
-badges is rejected: it collapses under `table-layout: auto`. The MOD cell's accessible name is
-`56.66 m@ 1.4` (`dom-accessibility-api` trims nodes); tests assert `textContent`.
+Columns: gas has its own column; `Used`, not `Gas Used`; header `#` plus `sr-only` "Tank",
+`TankGasUseRow.label` `"1"`, unmatched tanks `Gas 3`, footer `Total`. `GAS_BADGE_CLASS`
+(`lib/dive-mixtures.ts`) is a 4.5 rem `min-width` sized to `Oxygen`; a `w-16` is rejected, since it
+collapses under `table-layout: auto`.
+
+## The Tanks card is a grid of tank cards, columned by its own width
+
+One card per cylinder, drawn as a dive's card is but with no backdrop. Columns are `auto-fill` at
+`min(19rem, 100%)` rather than breakpoints, because the slot is narrowest at `lg`: three columns at
+`xl` squeezed a card to 212 px and overlapped its figures. 19 rem holds three figures on one line;
+the `min` keeps a lone column inside a 320 px phone's card. Figures are `min-w-20`, about the width
+of `211.44 bar`, so they line up from card to card, and wrap under about 350 px as the hero's do.
+The MOD's ppO₂ sits in the label, `MOD @ 1.4`, so the depth is the figure. A missing volume or
+fraction is left out of the facts line; a missing pressure or MOD is a muted dash.
 
 ## Cell padding is `px-2` app-wide
 
@@ -4701,8 +4687,8 @@ so `ParsedDiveMixture` has no `usage` field. DiveJSON's `cylinders[].usage`
 its result field by field and silently drops any it omits. The new-dive form carries it over from
 the last dive, with `role` and gas fractions. `TANK_USAGE_LABELS` (`lib/dive-mixtures.ts`) is one
 word per flag; `TANK_USAGE_OPTION_LABELS` in `mixture-fields.tsx` is longer ("Parallel (sidemount /
-independent)") because an option row has no sentence around it and the flag changes what the API
-computes.
+independent)") because the form is where the diver chooses it, and the flag changes what the API
+computes; the tank card only quotes the choice back.
 
 ## `gasUseUnavailableReason` nudges toward Parallel, and where the nudge sits is the whole design
 
@@ -4729,8 +4715,8 @@ to. Nothing is inferred from `DiveGasUse.tanks` here; the flag is the diver's st
 cylinder saw the same depths. Fractions are compared, not `gasName`, which rounds 31.6% and 32.4%
 both to "EAN32"; `helium` normalizes to `0` because `OxygenFractions` allows it absent while the
 form writes a flat zero and an import leaves it absent where the file recorded none.
-`DiveMixturesCard`'s amber MOD cell follows the same predicate, marking every row, since every row
-holds the gas named.
+`DiveMixturesCard`'s amber MOD follows the same predicate, marking every card, since every one holds
+the gas named.
 
 ## `DiveGasUse`'s doc comments are swept by claim, not by list
 
@@ -4751,18 +4737,16 @@ and a whole-dive RMV divided by `dive.avg_depth`; position guarantees the claim,
 arm renders only where `tanks` is empty, exactly the derivations taken against the dive's average
 depth.
 
-## The mixtures table carries no usage badge; `tankUsageSentences` states the flags under it
+## A tank card's line carries its usage, and its icon reads a twin set off the volume
 
-The mixtures table carries no usage badge; `tankUsageSentences` in `lib/dive-mixtures.ts` states the
-flags beneath it ("Cylinders 1 and 2 are flagged Parallel — …"). Every recorded flag stays visible
-on the dive page, tied to its cylinder by the table's `#`. A badge in the Gas cell measures 655 px
-against the 582 px slot at 1024 px, clipping the MOD column by 73 px. Measure with
-`table.style.width = 'min-content'` and `getBoundingClientRect().width`; `scrollWidth` returns the
-container's width whenever the table fits. Rejected on measurement: the Volume cell (14 px inline,
-56 px stacked — an overflowing table is already at min-content), icons (touch has no hover), and
-band-only icons (579 px, but a glyph vocabulary against "Three glyph families, not five"). The
-column set stays; role badges are the worst case, and the two-decimal MOD beside them now takes it a
-few px past the slot, into shadcn's own scroll. jsdom does no layout; tests pin text only.
+The usage flag is the last fact on the card's line, as the label the diver picked ("Parallel",
+"Staged"), falling back to the wire value as the role badge does; its meaning stays in the form.
+
+The card draws the twin-set icon for a cylinder whose litres match a twin-set preset
+(`isTwinSetVolume` in `volume-combobox.tsx`): `DiveMixture` records no twin flag, and no single in
+the presets shares a total with them. A hand-typed 24 L single draws as a twin set, which is the
+price of having no flag. Parallel cylinders are separate records, so each draws as a single, and the
+first one flagged draws mirrored, as the left of the pair.
 
 ## Adding a resource means sweeping the prose that enumerates the resources
 
@@ -6027,9 +6011,9 @@ An attached file fills the blank mixture columns of the dive's cylinder it pairs
 declines where its fractions disagree, where the file records no such member, where the row already
 carries a pressure, where the fill would break a constraint, or where a second computer's pair is
 made by position and could be wrong. So `oxygen` can legitimately stay NULL after an attach.
-`DiveMixturesCard` handles that — `mixture.oxygen != null` through `RecordedCell`, and `gasName`
-returns null on the same input so the badge stays empty — and must keep doing so; an empty cell
-after an attach is the pair declining, not the UI failing.
+`DiveMixturesCard` handles that — the O₂ fact is written only for `mixture.oxygen != null`, and
+`gasName` returns null on the same input so the card reads "Gas not recorded" — and must keep doing
+so; a missing fraction after an attach is the pair declining, not the UI failing.
 
 ## One chart and a switcher, never two curves on one axis
 

@@ -639,13 +639,12 @@ export interface TankGasUseRow {
   // React key. Built from the cylinder's identity rather than its gas number,
   // which is neither unique nor always present.
   key: string;
-  // Named exactly as the mixtures card names the same cylinder - its 1-based
-  // position, written bare - so the two tables can be read against each other
-  // row by row. A tank matching no mixture has no position to state and carries
+  // The cylinder's 1-based position, written bare - the number the Tanks card
+  // names the same cylinder by - so the two can be read against each other. A tank matching no mixture has no position to state and carries
   // the device's `Gas N` instead.
   label: string;
-  // `gasName`'s output, so the badge here and the badge there are the same
-  // string - null for a cylinder whose fractions can't be named, and for a tank
+  // `gasName`'s output, so this badge names the gas exactly as the Tanks card
+  // does - null for a cylinder whose fractions can't be named, and for a tank
   // with no mixture to name it from.
   gas: string | null;
   role: GasRole | null;
@@ -656,7 +655,7 @@ export interface TankGasUseRow {
   // Null for a cylinder with no figures. That is a real state worth a row
   // rather than an omission: a pony bottle carried and never breathed belongs
   // in this table saying so, and dropping it would leave the table quietly
-  // shorter than the mixtures table above it.
+  // shorter than the Tanks card above it.
   //
   // **Two server states collapse into this null**, and a caller labelling the
   // row must not name only the first. Either the attribution never mentioned
@@ -758,10 +757,9 @@ export function tankGasUseRows(dive: Dive): TankGasUseRow[] {
       // here, and it should be true for the reason it states.
       key:
         mixture.id != null ? `mixture-id-${mixture.id}` : `mixture-at-${index}`,
-      // Same label as the mixtures card's first column, down to the 1-based
-      // position - which is the cylinder's place in the list, and deliberately
-      // not its gas number, which the reader counts from 0. Bare, because
-      // both tables now head this column `#` and carry the word nowhere.
+      // The Tanks card's number for the cylinder - its 1-based place in the
+      // list, and deliberately not its gas number, which the reader counts
+      // from 0. Bare, because the column is headed `#`.
       label: `${index + 1}`,
       gas: gasName(mixture.oxygen, mixture.helium),
       role: mixture.role ?? null,
@@ -778,8 +776,8 @@ export function tankGasUseRows(dive: Dive): TankGasUseRow[] {
       // tanks labelled gas 1 would otherwise render under one React key.
       key: `tank-${index}`,
       // The device's own label is all there is to call it by. "Gas 3" rather
-      // than a bare "3", so it can't be misread as the third row of the mixtures
-      // table - the whole point of this row is that it matches none of them.
+      // than a bare "3", so it can't be misread as the Tanks card's `#3` - the
+      // whole point of this row is that it matches none of them.
       // This is why the rows above lost the word and this one keeps it: the
       // distinction was never "tank" versus "gas", it was numbered-by-position
       // versus named-by-the-device, and only one of those needs saying now that

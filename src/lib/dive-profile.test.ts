@@ -444,7 +444,7 @@ describe("PROFILE_CHANNELS gap semantics", () => {
 
 describe("cylinderName", () => {
   it("names a label by the position of the one cylinder carrying it", () => {
-    // The reader's labels count from 0; the mixtures card counts from 1.
+    // The reader's labels count from 0; the Tanks card counts from 1.
     const cylinders = [{ gas_number: 0 }, { gas_number: 1 }];
     expect(cylinderName(0, cylinders)).toBe("tank 1");
     expect(cylinderName(1, cylinders)).toBe("tank 2");
