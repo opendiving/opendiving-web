@@ -11,6 +11,7 @@ import {
 } from "react-hook-form";
 import { AddRowButton, RepeatableRow } from "@/components/ui/repeatable-row";
 import { Input } from "@/components/ui/input";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
   FormControl,
@@ -407,36 +408,32 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             <FormField
               control={control}
               name={`mixtures.${index}.oxygen` as Path<TFieldValues>}
-              render={({ field }) => (
+              render={({ field: { onChange, value, ...field } }) => (
                 <FormItem>
                   <FormLabel>O₂ (%)</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      // `any`, not the API's own two decimals: `oxygen` is a
-                      // `Float` column, and while the form's prefill rounds to
-                      // two places, a logbook import keeps whatever precision
-                      // the file recorded. A `step` finer than the data is a
-                      // constraint that cancels the save - see DECISIONS.md,
-                      // "`step` is a claim about the column". `min`/`max` stay:
-                      // 0-100 is a fact about a percentage.
-                      step="any"
-                      min="0"
-                      max="100"
+                    {/* `step="any"` (on a mouse's number input), not the API's own
+                        two decimals: `oxygen` is a `Float` column, and while the
+                        form's prefill rounds to two places, a logbook import keeps
+                        whatever precision the file recorded. A `step` finer than
+                        the data is a constraint that cancels the save - see
+                        DECISIONS.md, "`step` is a claim about the column".
+                        `min`/`max` stay: 0-100 is a fact about a percentage.
+
+                        An emptied box is `""`, never `NaN` and no longer
+                        `undefined` - the same sentinel the two pressures below
+                        use, and now for the same reason: an unrecorded mix is a
+                        state a cylinder can be in, so clearing this box has to
+                        submit "not recorded" rather than draw a "required"
+                        message. `undefined` is the one spelling that cannot work,
+                        because react-hook-form re-displays a field's default the
+                        moment its value resolves to it. */}
+                    <DecimalInput
+                      min={0}
+                      max={100}
                       {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        // An emptied box is `""`, never `NaN` and no longer
-                        // `undefined` - the same sentinel the two pressures
-                        // below use, and now for the same reason: an unrecorded
-                        // mix is a state a cylinder can be in, so clearing this
-                        // box has to submit "not recorded" rather than draw a
-                        // "required" message. `undefined` is the one spelling
-                        // that cannot work, because react-hook-form re-displays
-                        // a field's default the moment its value resolves to it.
-                        const raw = e.target.value;
-                        field.onChange(raw === "" ? "" : parseFloat(raw));
-                      }}
+                      value={value}
+                      onValueChange={onChange}
                     />
                   </FormControl>
                   <FormMessage />
@@ -448,34 +445,29 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               <FormField
                 control={control}
                 name={`mixtures.${index}.helium` as Path<TFieldValues>}
-                render={({ field }) => (
+                render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
                     <FormLabel>He (%)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        // `any`, for the reason O₂ above gives.
-                        step="any"
-                        min="0"
-                        max="100"
+                      {/* `step="any"` and `""` on an emptied box, for the reasons
+                          O₂ above gives. Blank is not 0 % helium here any more
+                          than it is on the wire: a file that recorded no analysis
+                          said nothing about helium, and writing a 0 for it would
+                          be the app inventing the one fact that separates nitrox
+                          from trimix.
+
+                          *Hiding* the column does write a 0, and that is not the
+                          same act: emptying the box is the diver declining to
+                          answer, while hiding it is them saying they dive air and
+                          nitrox - which is the claim that made the column
+                          hideable. See "A hidden helium is `0`, not blank" in
+                          DECISIONS.md. */}
+                      <DecimalInput
+                        min={0}
+                        max={100}
                         {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          // `""` on an emptied box, for the reason O₂ above gives.
-                          // Blank is not 0 % helium here any more than it is on the
-                          // wire: a file that recorded no analysis said nothing
-                          // about helium, and writing a 0 for it would be the app
-                          // inventing the one fact that separates nitrox from
-                          // trimix.
-                          //
-                          // *Hiding* the column does write a 0, and that is not the
-                          // same act: emptying the box is the diver declining to
-                          // answer, while hiding it is them saying they dive air and
-                          // nitrox - which is the claim that made the column hideable.
-                          // See "A hidden helium is `0`, not blank" in DECISIONS.md.
-                          const raw = e.target.value;
-                          field.onChange(raw === "" ? "" : parseFloat(raw));
-                        }}
+                        value={value}
+                        onValueChange={onChange}
                       />
                     </FormControl>
                     <FormMessage />

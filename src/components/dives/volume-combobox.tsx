@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { nextActiveIndex } from "@/components/ui/creatable-combobox";
+import { parseDecimal } from "@/lib/decimal-entry";
 import { cn } from "@/lib/utils";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { useUnits } from "@/hooks/useUnits";
@@ -306,7 +307,7 @@ export function VolumeCombobox({
   //
   // This exists because the input is `type="text"` (see the `role` below for
   // why) and the committed value is a `number`, so without it the round trip
-  // through `parseFloat` eats the keystroke that is mid-decimal: typing the "."
+  // through `parseDecimal` eats the keystroke that is mid-decimal: typing the "."
   // of "11.1" parses to `11`, which renders as "11", which deletes the "." the
   // diver just pressed and makes a decimal volume unenterable. `type="number"`
   // hid that - a browser reports `value === ""` for a half-typed "11." while
@@ -362,7 +363,7 @@ export function VolumeCombobox({
         onChange={(e) => {
           const raw = e.target.value;
           setDraft(raw);
-          const parsed = parseFloat(raw);
+          const parsed = parseDecimal(raw);
           onChange(Number.isNaN(parsed) ? "" : parsed);
         }}
         role="combobox"

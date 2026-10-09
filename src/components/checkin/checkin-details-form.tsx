@@ -73,19 +73,26 @@ export const CHECK_IN_GROUP_HEADINGS: Record<
   },
 };
 
-// How each scalar member is written on screen.
+// How each scalar member is written on screen. They describe the diver, so the
+// phone and email boxes say so to the browser's autofill.
 const SCALAR_SPECS = {
   date_of_birth: { label: "Date of birth", kind: "date" },
-  phone: { label: "Phone number", kind: "tel" },
+  phone: { label: "Phone number", kind: "tel", autoComplete: "tel" },
   email: {
     label: "Email",
     kind: "email",
+    autoComplete: "email",
     description:
       "Printed on your check-in sheet and carried in your exports. The address you sign in with stays private.",
   },
 } as const satisfies Record<
   "date_of_birth" | "phone" | "email",
-  { label: string; kind: "date" | "tel" | "email"; description?: string }
+  {
+    label: string;
+    kind: "date" | "tel" | "email";
+    autoComplete?: string;
+    description?: string;
+  }
 >;
 
 /** The sheet's About You dialog edits the account's name beside the object. */
@@ -143,8 +150,12 @@ export function CheckinMemberField({
     );
   }
 
-  const spec: { label: string; kind: string; description?: string } =
-    SCALAR_SPECS[member];
+  const spec: {
+    label: string;
+    kind: string;
+    autoComplete?: string;
+    description?: string;
+  } = SCALAR_SPECS[member];
   return (
     <FormField
       control={control}
@@ -158,7 +169,11 @@ export function CheckinMemberField({
             {spec.kind === "date" ? (
               <DatePicker value={field.value} onChange={field.onChange} />
             ) : (
-              <Input type={spec.kind} {...field} />
+              <Input
+                type={spec.kind}
+                autoComplete={spec.autoComplete}
+                {...field}
+              />
             )}
           </FormControl>
           {spec.description && (
@@ -348,7 +363,7 @@ function LoadedForm({
                 <FormItem>
                   <FormLabel>Full name</FormLabel>
                   <FormControl>
-                    <Input type="text" {...field} />
+                    <Input type="text" autoComplete="name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

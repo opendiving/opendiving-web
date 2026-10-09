@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { Input } from "@/components/ui/input";
+import { useCoarsePointer } from "@/hooks/useCoarsePointer";
+import { decimalEntryMessage, parseDecimal } from "@/lib/decimal-entry";
 import {
   displayBound,
   displayNumber,
@@ -57,6 +59,11 @@ export interface UnitNumberInputProps extends Omit<
  * the id and `aria-*` that `FormControl`'s `Slot` hands down land on a labelable
  * element rather than on a wrapper (DECISIONS.md, "`FormControl` only labels what it
  * can reach").
+ *
+ * On touch, a box that cannot go below zero is text with a keypad rather than a
+ * number input - see "A finger types numbers on a keypad, with either separator"
+ * in DECISIONS.md. Its bounds are then checked here and reported as the box's own
+ * validity, so the form refuses a save exactly as a number input's would.
  */
 export const UnitNumberInput = React.forwardRef<
   HTMLInputElement,
@@ -76,6 +83,17 @@ export const UnitNumberInput = React.forwardRef<
   },
   ref,
 ) {
+  const keypad = useCoarsePointer() && min != null && min >= 0;
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const setRefs = React.useCallback(
+    (node: HTMLInputElement | null) => {
+      inputRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref],
+  );
+
   // What the diver has actually typed, while they are typing it.
   //
   // Without it, every keystroke would put the *committed* value straight back under
@@ -131,12 +149,31 @@ export const UnitNumberInput = React.forwardRef<
         ? displayNumber(value as number, dimension, units)
         : String(value));
 
+  const placeholder =
+    placeholderValue == null
+      ? undefined
+      : `e.g. ${
+          units === "imperial"
+            ? displayNumber(placeholderValue, dimension, units)
+            : placeholderValue
+        }`;
+  const displayMin =
+    min == null ? undefined : displayBound(min, dimension, units, "min");
+  const displayMax =
+    max == null ? undefined : displayBound(max, dimension, units, "max");
+
+  const validity = keypad
+    ? decimalEntryMessage(displayed, displayMin, displayMax)
+    : "";
+  React.useLayoutEffect(() => {
+    inputRef.current?.setCustomValidity(validity);
+  }, [validity]);
+
   const commit = (raw: string) => {
     setDraft(raw);
 
-    const typed = isIntegerDimension(dimension)
-      ? parseInt(raw, 10)
-      : parseFloat(raw);
+    const parsed = parseDecimal(raw);
+    const typed = isIntegerDimension(dimension) ? Math.trunc(parsed) : parsed;
     if (Number.isNaN(typed)) {
       onChange(emptyValue);
       return;
@@ -145,9 +182,28 @@ export const UnitNumberInput = React.forwardRef<
     onChange(toCommittedMetric(typed, dimension, units));
   };
 
+  if (keypad) {
+    return (
+      <Input
+        ref={setRefs}
+        type="text"
+        inputMode={isIntegerDimension(dimension) ? "numeric" : "decimal"}
+        autoComplete="off"
+        placeholder={placeholder}
+        value={displayed}
+        onChange={(e) => commit(e.target.value)}
+        onBlur={(e) => {
+          setDraft(null);
+          onBlur?.(e);
+        }}
+        {...props}
+      />
+    );
+  }
+
   return (
     <Input
-      ref={ref}
+      ref={setRefs}
       type="number"
       // Derived from the dimension, never passed in, because `step` is a native
       // *constraint* and not just a spinner increment: a value that is not a
@@ -163,17 +219,9 @@ export const UnitNumberInput = React.forwardRef<
       // a `Float` one, which is every depth, temperature, pressure and weight
       // the importers can write at full precision.
       step={units === "imperial" || isIntegerDimension(dimension) ? 1 : "any"}
-      min={min == null ? undefined : displayBound(min, dimension, units, "min")}
-      max={max == null ? undefined : displayBound(max, dimension, units, "max")}
-      placeholder={
-        placeholderValue == null
-          ? undefined
-          : `e.g. ${
-              units === "imperial"
-                ? displayNumber(placeholderValue, dimension, units)
-                : placeholderValue
-            }`
-      }
+      min={displayMin}
+      max={displayMax}
+      placeholder={placeholder}
       value={displayed}
       onChange={(e) => commit(e.target.value)}
       onBlur={(e) => {

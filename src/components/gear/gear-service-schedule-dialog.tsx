@@ -256,6 +256,7 @@ export function GearServiceScheduleDialog({
                     <FormControl>
                       <Input
                         type="number"
+                        inputMode="numeric"
                         min="1"
                         step="1"
                         placeholder="e.g. 12"
@@ -281,6 +282,7 @@ export function GearServiceScheduleDialog({
                     <FormControl>
                       <Input
                         type="number"
+                        inputMode="numeric"
                         min="1"
                         step="1"
                         placeholder="e.g. 100"
