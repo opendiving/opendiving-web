@@ -561,7 +561,7 @@ omit the outer container `div`: the page wraps them in its own column.
 ## Mixture numbers display at the API's 2-decimal precision
 
 The API rounds parsed `oxygen`/`helium`/`start_pressure`/`end_pressure` to two decimals, and
-`dives/[id]/page.tsx` renders `oxygen` and `helium` as raw numbers — `toFixed(1)` hides a real digit
+`DiveMixturesCard` renders `oxygen` and `helium` as raw numbers — `toFixed(1)` hides a real digit
 (`20.99%` as `21.0%`).
 
 Volume is `VolumeCombobox` (`volume-combobox.tsx`), built like `CreatableCombobox`: a plain
