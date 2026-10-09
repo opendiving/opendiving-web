@@ -15,11 +15,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 
-// Species cards inside a card of their own - a dive's, a site's - as many to a
-// row as the column fits, and narrow enough that a site's side column and a
-// phone take two: the life list's cards at a phone's width.
+// Species cards in whatever column holds them - the life list's, a dive's, a
+// site's side column - as many to a row as fit at a width that keeps a card
+// wider than it is tall: three on the life list, two on a dive, one beside a
+// site and on a phone.
 export const SPECIES_CARD_GRID =
-  "grid grid-cols-[repeat(auto-fill,minmax(min(8.5rem,100%),1fr))] gap-3 max-sm:gap-2.5";
+  "grid grid-cols-[repeat(auto-fill,minmax(min(16rem,100%),1fr))] gap-3 max-sm:gap-2.5";
 
 // A card's place while the life list loads, at its measured height: a backdrop
 // card's, and the line under the binomial its cards carry - 254px.

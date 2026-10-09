@@ -14,7 +14,10 @@ import {
 } from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { SpeciesCardSkeleton } from "@/components/species/species-card";
+import {
+  SPECIES_CARD_GRID,
+  SpeciesCardSkeleton,
+} from "@/components/species/species-card";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export interface SpeciesPageFrameProps {
@@ -41,8 +44,9 @@ const noop = () => {};
 // A grid rather than the list pages' table, and more per page than their ten.
 // These rows are photographs, so they tile where a table would leave most of
 // each row empty, and a life list is a thing to look at rather than to scan a
-// column of. Lives here so the page reads the figure from the frame it renders
-// rather than repeating it.
+// column of. 24 fills whole rows of the one, two or three the grid takes. Lives
+// here so the page reads the figure from the frame it renders rather than
+// repeating it.
 export const SPECIES_PER_PAGE = 24;
 
 // Everything /species draws before its cards exist, kept apart from the data render so
@@ -134,7 +138,7 @@ export function SpeciesPageFrame({
               // before the first response, so the grid can be drawn at the size it
               // is about to be.
               <ul
-                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-sm:gap-2.5"
+                className={SPECIES_CARD_GRID}
                 // Busy on the outside, hidden on each placeholder within - the
                 // split `ListRowsSkeleton` documents. Announcing two dozen empty
                 // boxes tells a screen reader nothing.
