@@ -8,7 +8,10 @@ import {
   AutofilledLegend,
   AutofilledMarks,
 } from "@/components/dives/autofilled-marks";
-import { DiveFileImport } from "@/components/dives/dive-file-import";
+import {
+  DiveFileImport,
+  DiveFileImportInfo,
+} from "@/components/dives/dive-file-import";
 import {
   DiveFormFields,
   DiveFormValues,
@@ -209,6 +212,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
               open={!collapsedGroups.has("Import")}
               onOpenChange={(open) => setGroupOpen("Import", open)}
               keepMounted
+              titleAdornment={<DiveFileImportInfo />}
             >
               <DiveFileImport
                 form={form}

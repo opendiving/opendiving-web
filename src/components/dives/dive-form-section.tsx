@@ -12,6 +12,8 @@ interface DiveFormSectionProps {
   // Keeps the content mounted while collapsed, for a section whose state lives in its
   // component rather than in form state - the file import's note and its parse.
   keepMounted?: boolean;
+  // Sits right after the title, outside the toggle - an info popover, say.
+  titleAdornment?: ReactNode;
   children: ReactNode;
 }
 
@@ -26,6 +28,7 @@ export function DiveFormSection({
   open,
   onOpenChange,
   keepMounted = false,
+  titleAdornment,
   children,
 }: DiveFormSectionProps) {
   const contentId = useId();
@@ -68,23 +71,28 @@ export function DiveFormSection({
           open && stuck && "shadow-[inset_0_-1px_0_hsl(var(--border))]",
         )}
       >
-        <CardTitle as="h2">
+        {/* The toggle holds only the title, as a button cannot hold `titleAdornment`'s
+            own; its `::after` stretches over the whole row, at least 44px tall, and
+            the adornment sits above that. */}
+        <CardTitle as="h2" className="relative flex items-center gap-1">
           <button
             type="button"
             aria-expanded={open}
             aria-controls={contentId}
             onClick={() => onOpenChange(!open)}
-            className="relative flex w-full items-center justify-between gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="text-left after:absolute after:inset-x-0 after:inset-y-[min(0px,calc((100%-2.75rem)/2))] after:rounded-sm focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
           >
             {title}
-            <ChevronDown
-              aria-hidden="true"
-              className={cn(
-                "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
-                !open && "-rotate-90",
-              )}
-            />
           </button>
+          {titleAdornment && <span className="relative">{titleAdornment}</span>}
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              // Rotated, it paints above the toggle's `::after` and would catch the click.
+              "pointer-events-none ml-auto h-5 w-5 shrink-0 text-muted-foreground transition-transform",
+              !open && "-rotate-90",
+            )}
+          />
         </CardTitle>
       </CardHeader>
       {/* The heading's even padding is `--card-pad`, which a phone halves; the rest of
