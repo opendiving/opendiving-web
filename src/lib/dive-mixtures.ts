@@ -477,8 +477,8 @@ function isPastLimit(depth: number, limit: number): boolean {
  * appropriate, which is a different sentence and a louder one.
  *
  * **A recorded `po2_limit` deliberately does not move these thresholds**, even though
- * it moves the MOD displayed beside them. The two are different claims: the MOD
- * column says what the diver planned this gas to, while this says what the gas can
+ * it moves the MOD displayed beside them. The two are different claims: a tank
+ * card's MOD says what the diver planned this gas to, while this says what the gas can
  * physiologically take. Letting the dive's own number set the limit it is judged
  * against would make a cylinder recorded at ppO₂ 2.0 unwarnable - the "edit that
  * turns an over-MOD warning into silence" that `PPO2_WORKING`/`PPO2_DECO` are

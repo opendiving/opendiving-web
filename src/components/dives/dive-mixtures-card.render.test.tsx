@@ -67,7 +67,7 @@ describe("DiveMixturesCard warnings", () => {
     expect(
       screen.getByText(/no gas logged for this dive/i),
     ).toBeInTheDocument();
-    // Attributed to the dive: no row is singled out.
+    // Attributed to the dive: no tank is singled out.
     expect(screen.queryByText(/past this mix/i)).not.toBeInTheDocument();
   });
 
@@ -152,9 +152,9 @@ describe("DiveMixturesCard helium", () => {
 });
 
 // A cylinder may record a mix with no vessel, or a vessel with no analysis, so every
-// figure on a row is one the dive might not have. The card's job is that a diver can
-// tell a recorded number from an absent one - which is a claim about each cell, not
-// only about the two pressures that happened to be nullable first.
+// figure on a tank card is one the dive might not have. The card's job is that a diver
+// can tell a recorded number from an absent one - which is a claim about each figure,
+// not only about the two pressures that happened to be nullable first.
 describe("DiveMixturesCard absent figures", () => {
   const MIX_ONLY: DiveMixture = {
     volume: null,
@@ -276,7 +276,7 @@ describe("DiveMixturesCard role badge", () => {
   it("falls back to the wire value for a role the label map hasn't caught up with", () => {
     // `GAS_ROLE_LABELS` is kept in step with the API's `GasRole` by hand, so the
     // cast stands in for the window after a role is added there. Without the
-    // fallback this renders a bordered badge containing nothing at all.
+    // fallback this renders an empty badge.
     const unknown = { ...EAN54, role: "bailout" as GasRole };
     render(<DiveMixturesCard dive={dive([unknown], 30)} />);
 
