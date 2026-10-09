@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
+import { swallowClickOf } from "@/lib/swallow-click";
 import { cn } from "@/lib/utils";
 
 const TooltipProvider = TooltipPrimitive.Provider;
@@ -42,6 +43,13 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 // Radix's own default is 700ms, which is tuned for tooltips that decorate
 // already-labelled controls rather than ones that carry the only words.
 export const HINT_DELAY_MS = 300;
+
+// A finger has no hover, so it asks for a hint the way Android does: by holding
+// the control. How long the hold is, how far the finger may drift during it, and
+// how long the hint stays once it lifts - long enough to read a few words.
+const HOLD_MS = 500;
+const HOLD_SLOP_PX = 10;
+const HELD_HINT_MS = 1500;
 
 // Radix opens a hint on focus with no delay, which is what a keyboard arrival
 // wants and what a pointer-driven focus never does. Two controls take focus
@@ -91,6 +99,30 @@ function IconTooltip({
   side?: React.ComponentPropsWithoutRef<typeof TooltipContent>["side"];
   align?: React.ComponentPropsWithoutRef<typeof TooltipContent>["align"];
 }) {
+  const [hovered, setHovered] = React.useState(false);
+  const [held, setHeld] = React.useState(false);
+  const hold = React.useRef<{
+    id: number;
+    x: number;
+    y: number;
+    timer: number;
+  } | null>(null);
+  const linger = React.useRef<number | undefined>(undefined);
+  // A finger is on the control, held or not yet.
+  const fingerDown = React.useRef(false);
+
+  const endHold = () => {
+    if (hold.current) window.clearTimeout(hold.current.timer);
+    hold.current = null;
+  };
+  React.useEffect(
+    () => () => {
+      endHold();
+      window.clearTimeout(linger.current);
+    },
+    [],
+  );
+
   return (
     // The provider lives here rather than once in the root layout so the
     // component is self-sufficient: Radix throws without one, and a shared
@@ -104,10 +136,60 @@ function IconTooltip({
     // keeping it open while the pointer travels into it only leaves a chip
     // sitting over the next control.
     <TooltipProvider delayDuration={HINT_DELAY_MS} disableHoverableContent>
-      <Tooltip>
+      <Tooltip open={hovered || held} onOpenChange={setHovered}>
         <TooltipTrigger
           asChild
           aria-label={label}
+          // A hold shows the hint, and the click its release would send is
+          // swallowed: the finger asked what the control is, not to use it. A
+          // tap, a drag and a scroll are untouched.
+          onPointerDown={(event) => {
+            if (event.pointerType === "mouse") return;
+            fingerDown.current = true;
+            window.clearTimeout(linger.current);
+            setHeld(false);
+            endHold();
+            const pointerId = event.pointerId;
+            hold.current = {
+              id: pointerId,
+              x: event.clientX,
+              y: event.clientY,
+              timer: window.setTimeout(() => {
+                hold.current = null;
+                setHeld(true);
+                swallowClickOf({ pointerId });
+              }, HOLD_MS),
+            };
+          }}
+          onPointerMove={(event) => {
+            const current = hold.current;
+            if (
+              current &&
+              event.pointerId === current.id &&
+              Math.hypot(event.clientX - current.x, event.clientY - current.y) >
+                HOLD_SLOP_PX
+            ) {
+              endHold();
+            }
+          }}
+          onPointerUp={() => {
+            fingerDown.current = false;
+            endHold();
+            if (held) {
+              linger.current = window.setTimeout(
+                () => setHeld(false),
+                HELD_HINT_MS,
+              );
+            }
+          }}
+          onPointerCancel={() => {
+            fingerDown.current = false;
+            endHold();
+          }}
+          // Android answers a hold with a context menu of its own, over the hint.
+          onContextMenu={(event) => {
+            if (fingerDown.current || held) event.preventDefault();
+          }}
           // Vetoing Radix's own focus handler is what works, and it has to be
           // this half: `Slot` runs the child's handler before Radix's, so
           // Radix's identical guard is still reading a false flag. Its

@@ -144,8 +144,8 @@ export function DiveCard({
         // the flow, so a dive with chips is as tall as one without. Lifted over
         // the card's link, so their hints are reachable, and only as wide as
         // they are - up to the card's width - so the link still takes a click
-        // beside them.
-        <div className="relative z-10 h-0">
+        // beside them. Not for a finger, whose tap on a card means the dive.
+        <div className="relative z-10 h-0 touch:pointer-events-none">
           <div className="absolute bottom-1 left-0 max-w-full">{chips}</div>
         </div>
       )}

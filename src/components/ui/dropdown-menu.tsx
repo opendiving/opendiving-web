@@ -4,9 +4,68 @@ import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
+// What a finger's tap on the trigger toggles - see `DropdownMenuTrigger`.
+const ToggleContext = React.createContext<(() => void) | null>(null);
 
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+// Radix's root, holding its own open state so a trigger can toggle it.
+function DropdownMenu({
+  open: openProp,
+  defaultOpen = false,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
+  return (
+    <ToggleContext.Provider value={() => setOpen(!open)}>
+      <DropdownMenuPrimitive.Root
+        open={open}
+        onOpenChange={setOpen}
+        {...props}
+      />
+    </ToggleContext.Provider>
+  );
+}
+
+// Radix opens a menu on press, which for a finger is also the start of a scroll:
+// every swipe that began on a trigger opened a menu, and a modal one at that. A
+// finger opens it with its tap's click instead - Radix skips its own press handler
+// once this one has prevented it - and a mouse and the keyboard are left to Radix.
+const DropdownMenuTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
+>(({ onPointerDown, onClick, ...props }, ref) => {
+  const toggle = React.useContext(ToggleContext);
+  const pointerType = React.useRef<string | null>(null);
+  return (
+    <DropdownMenuPrimitive.Trigger
+      ref={ref}
+      {...props}
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        pointerType.current = event.pointerType;
+        if (event.pointerType !== "mouse") event.preventDefault();
+      }}
+      onClick={(event) => {
+        onClick?.(event);
+        // A keyboard's click has no `detail`, and Radix answered its keydown.
+        if (
+          event.defaultPrevented ||
+          event.detail === 0 ||
+          pointerType.current === "mouse"
+        ) {
+          return;
+        }
+        toggle?.();
+      }}
+    />
+  );
+});
+DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName;
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 
@@ -63,7 +122,9 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        // Never taller than the room Radix measures beside the trigger: an account
+        // menu on a phone held sideways otherwise runs off the screen.
+        "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className,
       )}
       {...props}

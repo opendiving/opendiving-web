@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
+import { swallowClickOf } from "@/lib/swallow-click";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -158,9 +159,13 @@ export function Header() {
   useEffect(() => {
     if (!isMobileMenuOpen) return;
 
+    // The press that closes the menu goes no further: its click would otherwise
+    // land on whatever the menu was covering - a link a finger never meant to
+    // follow.
     const handlePointerDown = (event: PointerEvent) => {
       if (headerRef.current?.contains(event.target as Node)) return;
       setIsMobileMenuOpen(false);
+      swallowClickOf(event);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsMobileMenuOpen(false);
