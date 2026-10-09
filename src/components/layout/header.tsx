@@ -153,8 +153,8 @@ export function Header() {
 
   // Escape closes the mobile menu, and a tap outside it lands on its backdrop. A
   // press in one of the header's own popups - its menus and the bell, portalled
-  // above the backdrop - closes it too, since a choice there leaves for a page
-  // the menu would otherwise stay open over.
+  // above the backdrop - closes it too: a choice made there is done with the
+  // menu, and one that navigates would otherwise leave it open over the page.
   useEffect(() => {
     if (!isMobileMenuOpen) return;
 
