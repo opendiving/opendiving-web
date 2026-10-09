@@ -50,25 +50,40 @@ export function DiveFormSection(props: DiveFormSectionProps) {
   const headingRef = useRef<HTMLButtonElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [stuck, setStuck] = useState(false);
+  const [passed, setPassed] = useState(false);
 
   // The sentinel sits one header-height above the card, so it leaves the top of the
   // viewport exactly when the card's top passes under the site header - the moment
   // the heading starts sticking. Leaving at the bottom is not that, hence the side.
+  //
+  // The section index reads the same sentinel one step more generously: a jump
+  // lands a card exactly on that line, where the heading is not yet stuck and a
+  // tap on it still collapses, but the reader is plainly in that section. Shrinking
+  // the root by two pixels counts the sentinel as gone once its bottom edge
+  // touches the line - "at or above", where `stuck` is "above".
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
-    const observer = new IntersectionObserver(([entry]) =>
-      setStuck(
-        !entry.isIntersecting &&
-          entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0),
-      ),
+    const above = (entry: IntersectionObserverEntry) =>
+      !entry.isIntersecting &&
+      entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0);
+    const stuckObserver = new IntersectionObserver(([entry]) =>
+      setStuck(above(entry)),
     );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    const passedObserver = new IntersectionObserver(
+      ([entry]) => setPassed(above(entry)),
+      { rootMargin: "-2px 0px 0px 0px" },
+    );
+    stuckObserver.observe(sentinel);
+    passedObserver.observe(sentinel);
+    return () => {
+      stuckObserver.disconnect();
+      passedObserver.disconnect();
+    };
   }, []);
 
-  // The form's section index lists what reports here, and reads the same
-  // sentinel's answer to tell which section the reader is in.
+  // The form's section index lists what reports here, and reads the sentinel's
+  // answer to tell which section the reader is in.
   const registry = useDiveFormSectionRegistry();
   useEffect(() => {
     const card = cardRef.current;
@@ -80,8 +95,8 @@ export function DiveFormSection(props: DiveFormSectionProps) {
     return () => registry.unregister(title);
   }, [registry, title]);
   useEffect(() => {
-    registry?.setStuck(title, stuck);
-  }, [registry, title, stuck]);
+    registry?.setPassed(title, passed);
+  }, [registry, title, passed]);
 
   const shown = open && !empty;
   // Where the index is not beside the form, the stuck heading carries it: the

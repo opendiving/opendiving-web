@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 // The dive form's sections as a list to jump by: which are on the page, which the
 // reader is in, and the way to each. Every `DiveFormSection` reports itself here
-// as it mounts and as its heading sticks, so the list follows the Fields menu
+// as it mounts and as it scrolls under the header, so the list follows the Fields menu
 // without restating the show/hide rules the sections are rendered under.
 
 interface SectionHandle {
@@ -36,13 +36,14 @@ interface SectionHandle {
 }
 
 interface SectionRecord extends SectionHandle {
-  stuck: boolean;
+  // The card's top is at or above the site header's line.
+  passed: boolean;
 }
 
 interface DiveFormSectionRegistry {
   register: (group: DiveFormFieldGroup, handle: SectionHandle) => void;
   unregister: (group: DiveFormFieldGroup) => void;
-  setStuck: (group: DiveFormFieldGroup, stuck: boolean) => void;
+  setPassed: (group: DiveFormFieldGroup, passed: boolean) => void;
 }
 
 export interface DiveFormSectionIndexState {
@@ -55,7 +56,7 @@ export interface DiveFormSectionIndexState {
 }
 
 // Two contexts rather than one: the registry never changes, so a section's
-// effects can depend on it without re-running every time a heading sticks.
+// effects can depend on it without re-running every time the reader scrolls.
 const RegistryContext = createContext<DiveFormSectionRegistry | null>(null);
 const IndexContext = createContext<DiveFormSectionIndexState | null>(null);
 
@@ -117,7 +118,7 @@ export function useDiveFormSections(): DiveFormSections {
     () => ({
       register: (group, handle) =>
         setRecords((current) =>
-          new Map(current).set(group, { ...handle, stuck: false }),
+          new Map(current).set(group, { ...handle, passed: false }),
         ),
       unregister: (group) =>
         setRecords((current) => {
@@ -125,25 +126,25 @@ export function useDiveFormSections(): DiveFormSections {
           next.delete(group);
           return next;
         }),
-      setStuck: (group, stuck) =>
+      setPassed: (group, passed) =>
         setRecords((current) => {
           const record = current.get(group);
-          if (!record || record.stuck === stuck) return current;
-          return new Map(current).set(group, { ...record, stuck });
+          if (!record || record.passed === passed) return current;
+          return new Map(current).set(group, { ...record, passed });
         }),
     }),
     [],
   );
 
-  // The reader is in the last section whose heading has stuck: every section above
-  // it has stuck too, and the one below has not. Nothing stuck is the top of the
-  // page, which is the first section.
+  // The reader is in the last section whose top has passed the header's line: every
+  // section above it has passed too, and the one below has not. None passed is the
+  // top of the page, which is the first section.
   const sections = useMemo(
     () => DIVE_FORM_FIELD_GROUPS.filter((group) => records.has(group)),
     [records],
   );
   const active =
-    [...sections].reverse().find((group) => records.get(group)?.stuck) ??
+    [...sections].reverse().find((group) => records.get(group)?.passed) ??
     sections[0];
 
   const jump = useCallback(
