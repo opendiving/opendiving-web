@@ -185,9 +185,11 @@ export function DiveFormSection(props: DiveFormSectionProps) {
               </button>
             </CardTitle>
             {/* As tall as the chevron's line once its margins are counted, so the
-                heading does not move when the control appears. */}
+                heading does not move when the control appears. Hidden as a whole
+                where the control is, since an empty flex item still costs the row
+                its gap and would nudge the chevron as the heading sticks. */}
             {sectionsTrigger && (
-              <div className="-my-1 -mr-1 flex items-center">
+              <div className="-my-1 -mr-1 flex items-center lg:hidden">
                 {sectionsTrigger}
               </div>
             )}
