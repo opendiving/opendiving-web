@@ -157,7 +157,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                           // Tanks card - a role the API has and this build
                           // hasn't renders as its wire value rather than as an
                           // empty badge.
-                          <Badge variant="outline">
+                          <Badge variant="teal">
                             {GAS_ROLE_LABELS[row.role] ?? row.role}
                           </Badge>
                         )}
