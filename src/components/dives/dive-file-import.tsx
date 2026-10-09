@@ -613,7 +613,10 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
         />
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* Top-aligned with the button lifted onto the text's 24px line, so the text
+          starts where a field's label does under its heading rather than centred
+          lower on the taller button. */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1">
             <p className="font-medium text-sm">Import from a dive computer</p>
@@ -657,7 +660,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
             {importNote}
           </p>
         </div>
-        <div>
+        <div className="sm:-mt-2">
           <input
             ref={fileInputRef}
             type="file"
