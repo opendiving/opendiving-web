@@ -511,6 +511,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   <FormControl>
                     <Input
                       type="number"
+                      inputMode="numeric"
                       min="1"
                       {...field}
                       value={field.value ?? ""}

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type InputHTMLAttributes, type ReactNode, useState } from "react";
 import {
   useForm,
   useFormState,
@@ -47,16 +47,30 @@ import { PictureField } from "@/components/user/picture-field";
 // rather than a box with no label.
 const FIELD_SPECS: Record<
   UserFieldKey,
-  { label: string; placeholder?: string; description?: string }
+  {
+    label: string;
+    placeholder?: string;
+    description?: string;
+    input: InputHTMLAttributes<HTMLInputElement>;
+  }
 > = {
   name: {
     label: "Full name",
     placeholder: "Enter your full name",
+    input: { autoComplete: "name" },
   },
+  // A handle, not the sign-in: autofill's `nickname`, not its `username`. A
+  // phone would capitalise its first letter, which the lowercase rule refuses.
   username: {
     label: "Username",
     placeholder: "Choose a username",
     description: "Lowercase letters and numbers, unique across OpenDiving.",
+    input: {
+      autoComplete: "nickname",
+      autoCapitalize: "none",
+      autoCorrect: "off",
+      spellCheck: false,
+    },
   },
 };
 
@@ -250,7 +264,12 @@ export function UserField({
             {spec.label}
           </FormLabel>
           <FormControl>
-            <Input type="text" placeholder={spec.placeholder} {...field} />
+            <Input
+              type="text"
+              placeholder={spec.placeholder}
+              {...spec.input}
+              {...field}
+            />
           </FormControl>
           {spec.description && (
             <FormDescription>{spec.description}</FormDescription>

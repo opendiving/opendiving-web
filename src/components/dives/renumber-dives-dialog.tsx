@@ -170,6 +170,7 @@ function RenumberForm({
             <Input
               id="renumber-start-at"
               type="number"
+              inputMode="numeric"
               min="1"
               value={startAt}
               onChange={(e) => setStartAt(e.target.value)}

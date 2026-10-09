@@ -115,6 +115,7 @@ export function DivingFiguresDialog({
                   <FormControl>
                     <Input
                       type="number"
+                      inputMode="numeric"
                       min={0}
                       step={1}
                       name={field.name}

@@ -150,7 +150,11 @@ export function SupportForm({ fallbackEmail }: SupportFormProps) {
               <FormItem>
                 <FormLabel>Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="Your name" {...field} />
+                  <Input
+                    placeholder="Your name"
+                    autoComplete="name"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -167,6 +171,7 @@ export function SupportForm({ fallbackEmail }: SupportFormProps) {
                   <Input
                     type="email"
                     placeholder="you@example.com"
+                    autoComplete="email"
                     {...field}
                   />
                 </FormControl>

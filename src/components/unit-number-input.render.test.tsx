@@ -7,6 +7,7 @@ import {
   type UnitNumberInputProps,
 } from "./unit-number-input";
 import type { UnitSystem } from "@/lib/units";
+import { usePointer } from "@/test/pointer";
 
 // What only a render reaches: that a diver typing whole feet gets those same whole
 // feet back after the box has been through metres and a `<input type="number">`.
@@ -318,5 +319,62 @@ describe("UnitNumberInput when the entry units change under it", () => {
     // Still mid-word: the reformat to 30.53 belongs on blur, and a guard that
     // fired on every render would take it here instead.
     expect(box().value).toBe("30.526");
+  });
+});
+
+describe("UnitNumberInput under a finger", () => {
+  it("is text on a decimal keypad when it cannot go below zero", () => {
+    usePointer("coarse");
+    render(<Harness dimension="depth" units="metric" min={0} />);
+
+    expect(box()).toHaveAttribute("type", "text");
+    expect(box()).toHaveAttribute("inputmode", "decimal");
+  });
+
+  it("reads a comma as the decimal point", async () => {
+    usePointer("coarse");
+    const onCommit = vi.fn();
+    render(
+      <Harness dimension="depth" units="metric" min={0} onCommit={onCommit} />,
+    );
+
+    await userEvent.type(box(), "18,5");
+
+    expect(onCommit).toHaveBeenLastCalledWith(18.5);
+    expect(box().value).toBe("18,5");
+  });
+
+  it("takes whole numbers on a digit keypad for an integer dimension", () => {
+    usePointer("coarse");
+    render(<Harness dimension="visibility" units="metric" min={0} />);
+
+    expect(box()).toHaveAttribute("inputmode", "numeric");
+  });
+
+  it("stays a number input where a value can be negative", () => {
+    // No iOS keypad has a minus key.
+    usePointer("coarse");
+    render(<Harness dimension="temperature" units="metric" min={-50} />);
+
+    expect(box()).toHaveAttribute("type", "number");
+    expect(box()).not.toHaveAttribute("inputmode");
+  });
+
+  it("refuses a value outside its bounds, as a number input would", async () => {
+    usePointer("coarse");
+    render(<Harness dimension="pressure" units="metric" min={0} max={300} />);
+
+    await userEvent.type(box(), "301");
+    expect(box().validationMessage).toBe("Enter 300 or less.");
+
+    await userEvent.clear(box());
+    await userEvent.type(box(), "200");
+    expect(box().validity.valid).toBe(true);
+  });
+
+  it("is a number input for a mouse", () => {
+    render(<Harness dimension="depth" units="metric" min={0} />);
+
+    expect(box()).toHaveAttribute("type", "number");
   });
 });

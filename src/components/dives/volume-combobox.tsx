@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { nextActiveIndex } from "@/components/ui/creatable-combobox";
+import { parseDecimal } from "@/lib/decimal-entry";
 import { cn } from "@/lib/utils";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { useUnits } from "@/hooks/useUnits";
@@ -362,7 +363,7 @@ export function VolumeCombobox({
         onChange={(e) => {
           const raw = e.target.value;
           setDraft(raw);
-          const parsed = parseFloat(raw);
+          const parsed = parseDecimal(raw);
           onChange(Number.isNaN(parsed) ? "" : parsed);
         }}
         role="combobox"
