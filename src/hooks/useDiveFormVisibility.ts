@@ -128,6 +128,8 @@ export interface DiveFormVisibility {
    * What the new form marks.
    */
   isAutofilled: (name: string) => boolean;
+  /** Whether any field is, so the form can say what its marks mean. */
+  anyAutofilled: boolean;
   /** `AutofillMarks.note`, for a field filled in outside this layer - the dive number. */
   noteAutofill: AutofillMarks["note"];
   /** True while a toggle is in flight. */
@@ -648,6 +650,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     overwrite,
     prefill,
     isAutofilled: marks.isMarked,
+    anyAutofilled: marks.anyMarked,
     noteAutofill: note,
     isSaving,
     saveError,

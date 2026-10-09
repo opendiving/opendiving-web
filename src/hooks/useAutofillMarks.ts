@@ -54,6 +54,8 @@ export function realignMixtureMarks(
 export interface AutofillMarks {
   /** Whether the field at `name` - a key, or `mixtures.<i>.<column>` - is marked. */
   isMarked: (name: string) => boolean;
+  /** Whether any field is marked. */
+  anyMarked: boolean;
   /**
    * Records an automatic write of `after` over `before` at `path`: a field, or
    * `mixtures` for the whole cylinder list, compared cell by cell. What the write
@@ -167,5 +169,5 @@ export function useAutofillMarks<TFieldValues extends FieldValues>(
 
   const isMarked = useCallback((name: string) => name in marks, [marks]);
 
-  return { isMarked, note };
+  return { isMarked, anyMarked: Object.keys(marks).length > 0, note };
 }

@@ -329,4 +329,18 @@ describe("the mobile menu", () => {
       "page",
     );
   });
+
+  it("lets a choice in the header's own menus through while it is open", async () => {
+    render(<Header />);
+    await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const accountMenu = await screen.findByRole("menu");
+
+    await userEvent.click(
+      within(accountMenu).getByRole("menuitem", { name: "Sign out" }),
+    );
+
+    expect(stable.auth.signOut).toHaveBeenCalled();
+    expect(document.getElementById("mobile-menu")).toBeNull();
+  });
 });
