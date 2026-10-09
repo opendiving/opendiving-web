@@ -512,9 +512,9 @@ then one `PlainHero` and one `DiveForm`. `useMixtureFieldArray(control)` (`mixtu
 holds the `useFieldArray` generic parameter and cast in one place. `DiveForm` (`dive-form.tsx`)
 wraps `Form`/`form` + `DiveFileImport` + `DiveFormFields` + `DiveFormActions`, each section a card
 of its own; the per-page inputs are `mode`, `onSubmit`, `cancelHref`, `submittingLabel` and
-`submitLabel`. The hero is the one every record page draws, so the title sits where it does
-everywhere else; `FORM_BODY` keeps the form at `max-w-2xl` against the column's left edge, under the
-title, rather than centring it in a column of its own.
+`submitLabel`. The hero is the one every record page draws, narrowed with the body to one centred
+`FORM_COLUMN` at the form's width: the page's wide column would put the Fields control a window away
+from the form it configures, and leave the form off centre.
 
 `PageSpinner` (`components/ui/page-spinner.tsx`) is the full-viewport `min-h-screen` `<Loader2>` for
 the top-level auth-loading gate. The list and detail pages render below `AppShell`'s header and

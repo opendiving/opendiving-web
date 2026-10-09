@@ -2,11 +2,10 @@
 
 import {
   useId,
+  useRef,
   useState,
   type KeyboardEvent,
   type PointerEvent,
-  type ReactNode,
-  type Ref,
 } from "react";
 import { Star } from "lucide-react";
 import type { FormControlSlotProps } from "@/components/ui/form";
@@ -35,7 +34,6 @@ export interface RatingInputProps extends FormControlSlotProps {
   /** The visible label's id - a group is named by reference, not by `for`. */
   "aria-labelledby"?: string;
   disabled?: boolean;
-  ref?: Ref<HTMLDivElement>;
 }
 
 /**
@@ -50,8 +48,9 @@ export interface RatingInputProps extends FormControlSlotProps {
  * of that and then have to be kept in step with it.
  *
  * **A radio cannot be unchecked, so clearing is two other things.** Backspace or
- * Delete on a focused star clears it, and `RatingLabelRow` puts a Clear button in
- * the label row for a pointer. Unrated is a real answer - `null`, not zero, and
+ * Delete on a focused star clears it, and a Clear button after the stars does for a
+ * pointer, while there is a rating to clear. It sits beside the group rather than in
+ * it, which may only hold radios. Unrated is a real answer - `null`, not zero, and
  * what every dive logged before this field existed holds.
  */
 export function RatingInput({
@@ -62,8 +61,8 @@ export function RatingInput({
   "aria-invalid": ariaInvalid,
   "aria-labelledby": ariaLabelledBy,
   disabled,
-  ref,
 }: RatingInputProps) {
+  const groupRef = useRef<HTMLDivElement>(null);
   // One group per control: a second rating on the page must not share its
   // radios' name, or the browser would treat the ten as one set.
   const name = useId();
@@ -81,91 +80,70 @@ export function RatingInput({
     onChange(null);
   };
 
-  return (
-    <div
-      ref={ref}
-      id={id}
-      role="radiogroup"
-      aria-labelledby={ariaLabelledBy}
-      aria-describedby={ariaDescribedBy}
-      aria-invalid={ariaInvalid}
-      // `h-10`, an input's height, so the field sits on its grid row like the
-      // boxes beside it rather than a few pixels short of them.
-      className="flex h-10 items-center gap-1"
-      onPointerLeave={hover(null)}
-    >
-      {STEPS.map((step) => (
-        <label
-          key={step}
-          className={cn(
-            "relative flex h-8 w-8 items-center justify-center",
-            disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer",
-          )}
-          onPointerEnter={hover(step)}
-        >
-          <input
-            type="radio"
-            name={name}
-            value={step}
-            checked={value === step}
-            disabled={disabled}
-            aria-label={ratingStepLabel(step)}
-            onChange={() => onChange(step)}
-            onKeyDown={clearOnKey}
-            className="peer sr-only"
-          />
-          <Star
-            aria-hidden
-            className={cn(
-              "h-6 w-6 rounded-sm peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background",
-              shown !== null && step <= shown
-                ? "fill-coral text-coral"
-                : "text-muted-foreground",
-            )}
-          />
-        </label>
-      ))}
-    </div>
-  );
-}
+  const clear = () => {
+    onChange(null);
+    // The button goes with the rating it cleared, so the focus it held lands on
+    // the stars rather than on the page.
+    groupRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+  };
 
-/**
- * The rating field's label row, with a Clear button parked at its right-hand end
- * while there is a rating to clear.
- *
- * Positioned rather than laid out, for `EntryUnitLabelRow`'s reason: a flex row
- * would blockify the `<label>` and let the button set the row's height, so this
- * field's stars would sit lower than the box beside them on the same grid row.
- * Out of flow, the button has no say in that, and the row is the line box a bare
- * label would give it.
- */
-export function RatingLabelRow({
-  children,
-  canClear,
-  onClear,
-}: {
-  children: ReactNode;
-  canClear: boolean;
-  onClear: () => void;
-}) {
   return (
-    // `mb-0` collects no margin a bare inline label would have dropped - see
-    // `EntryUnitLabelRow`.
-    <div className="relative mb-0">
-      {children}
-      {canClear && (
-        <span className="absolute inset-y-0 right-0 flex items-center">
-          <button
-            // Inside the dive `<form>`, where a button's default type submits.
-            type="button"
-            onClick={onClear}
-            // Contains the visible word, so a speech-input user can say it.
-            aria-label="Clear rating"
-            className="rounded px-1.5 py-0.5 text-xs leading-none text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    // `h-10`, an input's height, so the field sits on its grid row like the boxes
+    // beside it rather than a few pixels short of them.
+    <div className="flex h-10 items-center gap-2">
+      <div
+        ref={groupRef}
+        id={id}
+        role="radiogroup"
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
+        className="flex items-center gap-1"
+        onPointerLeave={hover(null)}
+      >
+        {STEPS.map((step) => (
+          <label
+            key={step}
+            className={cn(
+              "relative flex h-8 w-8 items-center justify-center",
+              disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer",
+            )}
+            onPointerEnter={hover(step)}
           >
-            Clear
-          </button>
-        </span>
+            <input
+              type="radio"
+              name={name}
+              value={step}
+              checked={value === step}
+              disabled={disabled}
+              aria-label={ratingStepLabel(step)}
+              onChange={() => onChange(step)}
+              onKeyDown={clearOnKey}
+              className="peer sr-only"
+            />
+            <Star
+              aria-hidden
+              className={cn(
+                "h-6 w-6 rounded-sm peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background",
+                shown !== null && step <= shown
+                  ? "fill-coral text-coral"
+                  : "text-muted-foreground",
+              )}
+            />
+          </label>
+        ))}
+      </div>
+      {value !== null && !disabled && (
+        <button
+          // Inside the dive `<form>`, where a button's default type submits.
+          type="button"
+          onClick={clear}
+          // Contains the visible word, so a speech-input user can say it.
+          aria-label="Clear rating"
+          className="rounded px-1.5 py-0.5 text-xs leading-none text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Clear
+        </button>
       )}
     </div>
   );

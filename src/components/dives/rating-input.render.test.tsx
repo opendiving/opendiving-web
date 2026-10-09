@@ -3,7 +3,7 @@ import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { RatingInput, RatingLabelRow, RatingStars } from "./rating-input";
+import { RatingInput, RatingStars } from "./rating-input";
 
 // What the control has to be is a keyboard and screen-reader question as much as
 // a pointer one: the arrows move the step, a key clears it, and the group and
@@ -16,9 +16,7 @@ function Field({ initial = null }: { initial?: number | null }) {
   const [value, setValue] = useState<number | null>(initial);
   return (
     <>
-      <RatingLabelRow canClear={value !== null} onClear={() => setValue(null)}>
-        <span id="rating-label">Rating</span>
-      </RatingLabelRow>
+      <span id="rating-label">Rating</span>
       <RatingInput
         aria-labelledby="rating-label"
         value={value}
@@ -94,8 +92,8 @@ describe("RatingInput", () => {
   });
 });
 
-describe("RatingLabelRow", () => {
-  it("offers Clear only while there is a rating to clear", async () => {
+describe("the Clear button", () => {
+  it("is offered only while there is a rating to clear, and hands focus to the stars", async () => {
     render(<Field />);
     expect(
       screen.queryByRole("button", { name: "Clear rating" }),
@@ -108,6 +106,7 @@ describe("RatingLabelRow", () => {
     expect(
       screen.queryByRole("button", { name: "Clear rating" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "1 star" })).toHaveFocus();
   });
 });
 

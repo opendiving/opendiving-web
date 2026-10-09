@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Control, FieldValues, Path, useWatch } from "react-hook-form";
 import {
   ArrowDownToLine,
@@ -49,7 +49,7 @@ import {
   type SightingErrors,
 } from "@/components/dives/species-multi-select";
 import { DiveVocabularyField } from "@/components/dives/dive-vocabulary-field";
-import { RatingInput, RatingLabelRow } from "@/components/dives/rating-input";
+import { RatingInput } from "@/components/dives/rating-input";
 import { TagsMultiSelect } from "@/components/dives/tags-multi-select";
 import { DiveMixtureInput, type SightingInput } from "@/lib/validations/dive";
 import {
@@ -234,7 +234,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   const isVisible = visibility.isVisible;
   // The rating is a group, which a label names by reference rather than by `for`.
   const ratingLabelId = useId();
-  const ratingRef = useRef<HTMLDivElement>(null);
   // Offered for a boat entry, and kept on screen whenever it holds a name - typed
   // before the entry changed, or stored - so a name is never both kept and out of
   // reach. Submitted like any other field.
@@ -1029,22 +1028,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 name={"rating" as Path<TFieldValues>}
                 render={({ field }) => (
                   <FormItem>
-                    <RatingLabelRow
-                      canClear={field.value != null}
-                      onClear={() => {
-                        field.onChange(null);
-                        // The button goes with the rating it cleared, so the focus
-                        // it held lands on the stars rather than on the page.
-                        ratingRef.current
-                          ?.querySelector<HTMLInputElement>("input")
-                          ?.focus();
-                      }}
-                    >
-                      <FormLabel id={ratingLabelId}>Rating</FormLabel>
-                    </RatingLabelRow>
+                    <FormLabel id={ratingLabelId}>Rating</FormLabel>
                     <FormControl>
                       <RatingInput
-                        ref={ratingRef}
                         aria-labelledby={ratingLabelId}
                         value={field.value ?? null}
                         onChange={field.onChange}

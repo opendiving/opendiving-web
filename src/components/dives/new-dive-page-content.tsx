@@ -27,7 +27,7 @@ import { DiveForm } from "@/components/dives/dive-form";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { DiveIcon } from "@/components/logo";
-import { FORM_BODY, PlainHero } from "@/components/ui/map-hero";
+import { FORM_BODY, FORM_COLUMN, PlainHero } from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { nowStartTime, parseFormDuration } from "@/lib/date-time";
@@ -524,6 +524,7 @@ function NewDiveForm() {
         title="Log New Dive"
         subtitle="Record the details of your dive"
         figures={[]}
+        column={FORM_COLUMN}
         actions={<DiveFormFieldsMenu visibility={visibility} />}
       />
 

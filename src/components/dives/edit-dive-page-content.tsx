@@ -22,7 +22,7 @@ import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveForm } from "@/components/dives/dive-form";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
 import { DiveIcon } from "@/components/logo";
-import { FORM_BODY, PlainHero } from "@/components/ui/map-hero";
+import { FORM_BODY, FORM_COLUMN, PlainHero } from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { FormPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
@@ -264,6 +264,7 @@ export function EditDivePageContent() {
         title={`Edit Dive #${dive.dive_number}`}
         subtitle="Update the details of your dive"
         figures={[]}
+        column={FORM_COLUMN}
         actions={<DiveFormFieldsMenu visibility={visibility} />}
       />
 

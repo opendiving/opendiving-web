@@ -1,6 +1,10 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DiveIcon } from "@/components/logo";
-import { FORM_BODY, PlainHeroSkeleton } from "@/components/ui/map-hero";
+import {
+  FORM_BODY,
+  FORM_COLUMN,
+  PlainHeroSkeleton,
+} from "@/components/ui/map-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface PageSkeletonProps {
@@ -25,6 +29,7 @@ export function FormPageSkeleton({
         backLabel={backLabel}
         icon={DiveIcon}
         figureless
+        column={FORM_COLUMN}
       />
       <div className={FORM_BODY}>
         <Card className="animate-skeleton-reveal motion-reduce:animate-none">
