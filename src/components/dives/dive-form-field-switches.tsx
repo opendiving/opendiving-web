@@ -123,7 +123,10 @@ export function DiveFormFieldSwitches({
           </Label>
         </div>
         {revealed && (
-          <p className="pl-11 text-xs text-muted-foreground">
+          // Lifted into the row's lower band on touch, so it sits under its own
+          // label rather than halfway to the next one. The switch's hit area
+          // stays on top of it: a positioned pseudo-element paints over this.
+          <p className="pl-11 text-xs text-muted-foreground touch:-mt-3">
             shown because it holds a value
           </p>
         )}
