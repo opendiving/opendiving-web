@@ -89,10 +89,6 @@ describe("DialogContent dismissal", () => {
   });
 });
 
-// Every dialog here is controlled and opened by a plain button, never by a
-// `DialogTrigger`, so Radix has no trigger to hand focus back to on its own.
-// Rendered in `StrictMode`, as `next dev` renders the app: its second run of
-// the content's effects comes after an `autoFocus` field has taken focus.
 describe("DialogContent open focus", () => {
   // iOS opens a focused `<select>`'s picker wheel, so a dialog that starts
   // with one would open a dropdown nobody tapped.
@@ -127,6 +123,10 @@ describe("DialogContent open focus", () => {
   });
 });
 
+// Every dialog here is controlled and opened by a plain button, never by a
+// `DialogTrigger`, so Radix has no trigger to hand focus back to on its own.
+// Rendered in `StrictMode`, as `next dev` renders the app: its second run of
+// the content's effects comes after an `autoFocus` field has taken focus.
 describe("DialogContent focus return", () => {
   it("hands focus back to the button that opened it", async () => {
     function EditCourse() {
