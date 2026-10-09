@@ -115,6 +115,15 @@ function IconTooltip({
     if (hold.current) window.clearTimeout(hold.current.timer);
     hold.current = null;
   };
+  // However the finger leaves - a lift, or a scroll the browser took over - a
+  // hint it held stays a moment and goes. Radix's own dismissals reach only
+  // `hovered`, since one of them is the finger's leave at the lift.
+  const fingerGone = () => {
+    fingerDown.current = false;
+    endHold();
+    window.clearTimeout(linger.current);
+    linger.current = window.setTimeout(() => setHeld(false), HELD_HINT_MS);
+  };
   React.useEffect(
     () => () => {
       endHold();
@@ -172,19 +181,11 @@ function IconTooltip({
               endHold();
             }
           }}
-          onPointerUp={() => {
-            fingerDown.current = false;
-            endHold();
-            if (held) {
-              linger.current = window.setTimeout(
-                () => setHeld(false),
-                HELD_HINT_MS,
-              );
-            }
+          onPointerUp={(event) => {
+            if (event.pointerType !== "mouse") fingerGone();
           }}
-          onPointerCancel={() => {
-            fingerDown.current = false;
-            endHold();
+          onPointerCancel={(event) => {
+            if (event.pointerType !== "mouse") fingerGone();
           }}
           // Android answers a hold with a context menu of its own, over the hint.
           onContextMenu={(event) => {

@@ -5981,11 +5981,9 @@ Radix opens a dropdown on press, which for a finger also starts a scroll. `Dropd
 open state, and its trigger prevents a finger's press and toggles on that press's own click. A click
 whose press reached the page - an open modal menu takes the page's pointer events - leaves it shut.
 
-A finger has no hover. `IconTooltip` shows its hint on a 500ms hold, keeps it 1.5s after the lift,
-and swallows the release's click (`swallowClickOf`) and Android's context menu. A dive chip shows
-its hint on a tap; on a card its row lets the tap through to the link. A legend above the dive form
-explains the teal dot, and a bell row's title is a 44px underlined line. The mobile menu swallows
-the click of the press that closes it.
+A finger has no hover, so `IconTooltip` shows its hint on a hold and swallows the release's click
+(`swallowClickOf`). Nothing else on a page may be hover-only: what a hint says is either said on the
+page or reachable by a tap.
 
 Rejected: a hint on tap, which would take every icon button's tap.
 

@@ -54,6 +54,17 @@ describe("an icon button's name under a finger", () => {
     expect(hint()).toBeNull();
   });
 
+  it("goes a moment after a held finger turns into a scroll", () => {
+    const { button } = renderOne();
+    fireEvent.pointerDown(button, FINGER);
+    wait(500);
+
+    fireEvent.pointerCancel(button, FINGER);
+    wait(1600);
+
+    expect(hint()).toBeNull();
+  });
+
   it("leaves a tap to press the button, with no name shown", () => {
     const { button, onClick } = renderOne();
 

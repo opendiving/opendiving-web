@@ -31,9 +31,9 @@ function DropdownMenu({
   );
 }
 
-// Radix opens a menu on press, which for a finger is also the start of a scroll:
-// every swipe that began on a trigger opened a menu, and a modal one at that. A
-// finger opens it with its tap's click instead - Radix skips its own press handler
+// Radix opens a menu on press, which for a finger is also the start of a scroll,
+// so a swipe that starts on a trigger would open a modal menu. A finger opens it
+// with its tap's click instead - Radix skips its own press handler
 // once this one has prevented it - and a mouse and the keyboard are left to Radix.
 //
 // Only a click whose press began here: while a modal menu is open the page takes
