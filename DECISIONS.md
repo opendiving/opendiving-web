@@ -1071,8 +1071,8 @@ clears when the window changes.
 
 ## A finger reads a chart by tapping or scrubbing, and the readout stays
 
-Every chart reads out through `useChartReadout`. A mouse and the keyboard drive it as before; a
-finger taps a point or drags sideways to scrub, and the plot's `touch-action: pan-y pinch-zoom`
+Every chart reads out through `useChartReadout`. A mouse and the keyboard drive it through `hover`;
+a finger taps a point or drags sideways to scrub, and the plot's `touch-action: pan-y pinch-zoom`
 leaves vertical swipes and pinches to the page. The readout stays after the finger lifts, since
 nothing is left hovering, and clears on a press outside the chart. Mouse events the browser sends
 after a tap are ignored for a second: in whole pixels they name a neighbour on a continuous axis.

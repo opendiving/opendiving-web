@@ -188,7 +188,7 @@ describe("the gas consumption chart under a finger", () => {
     expect(clickOpens(dots[5])).toBe(true);
   });
 
-  it("opens the dive on a mouse click, as it always has", () => {
+  it("opens the dive on the first mouse click", () => {
     const { dots } = renderYear();
 
     fireEvent.pointerDown(dots[4], { pointerType: "mouse" });

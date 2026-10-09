@@ -52,7 +52,7 @@ export interface ChartReadout<T> {
 
 /**
  * One readout for a chart, from any pointer. A mouse or the keyboard reports
- * through `hover`, as it always has; a finger taps a point to read it, or drags
+ * through `hover`; a finger taps a point to read it, or drags
  * sideways to scrub, and what it chose stays after it lifts until a press lands
  * outside the plot's parent - the chart's frame, which holds its card.
  *
@@ -62,8 +62,8 @@ export interface ChartReadout<T> {
  * The browser follows a tap with mouse events at the same point, which reach
  * `hover` too - in whole pixels, so on a continuous axis they can name a
  * neighbour of what the tap pinned. Nothing a mouse says just after a finger
- * lifts replaces a pinned readout, and nothing it says clears one, so a chart
- * keeps its mouse handlers as they are.
+ * lifts replaces a pinned readout, and nothing it says clears one, so a chart's
+ * mouse handlers need not tell a mouse from a finger.
  *
  * @example
  * const readout = useChartReadout((event) => indexAt(event.clientX));
@@ -121,8 +121,8 @@ export function useChartReadout<T>(
     pinned,
     hover,
     scrubProps: {
-      // A vertical swipe still scrolls the page and a pinch still zooms it; a
-      // sideways one is left to the chart. A style rather than a class, so
+      // A vertical swipe scrolls the page and a pinch zooms it; a sideways one
+      // is left to the chart. A style rather than a class, so
       // spreading these cannot replace the plot's own `className`.
       style: { touchAction: "pan-y pinch-zoom" },
       onPointerDown: (event) => {

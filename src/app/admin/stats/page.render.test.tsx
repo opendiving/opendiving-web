@@ -117,7 +117,7 @@ describe("the stats screen", () => {
     const activity = within(card("Activity"));
     expect(activity.getByText("Sign-ins")).toBeInTheDocument();
     expect(activity.getByText("Active accounts")).toBeInTheDocument();
-    // The screen reader's day-by-day list, which the hover title repeats.
+    // The screen reader's day-by-day list.
     expect(
       activity.getByText("September 1: Sign-ins 12, Active accounts 20", {
         selector: "li",
