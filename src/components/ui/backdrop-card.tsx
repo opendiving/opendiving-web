@@ -65,14 +65,17 @@ export function UnplacedBackdrop({
   );
 }
 
-interface BackdropCardProps {
+// The menu's items, and the name that goes with them, as every list's row
+// actions are named after their row. A record with nothing to do to it - a
+// species - passes neither, and its corner is empty.
+type BackdropCardActions =
+  | { actions: ReactNode; actionsLabel: string }
+  | { actions?: never; actionsLabel?: never };
+
+type BackdropCardProps = BackdropCardActions & {
   // What fills the card behind its details, handed how many pixels of its foot
   // the details cover. Rendered only while the card is on or near the screen.
   backdrop: (coveredBottom: number) => ReactNode;
-  // The menu's items; the corner is empty without them.
-  actions?: ReactNode;
-  // Names the menu after its card, as every list's row actions are.
-  actionsLabel: string;
   // A control of the caller's own in the corner, in place of the menu.
   corner?: ReactNode;
   // Draws the record as one that is shown but not yet the list's own: the
@@ -84,7 +87,7 @@ interface BackdropCardProps {
   // The details, from a link styled `BACKDROP_CARD_LINK` down. Anything in them
   // that has to stay reachable past that link is lifted with `relative z-10`.
   children: ReactNode;
-}
+};
 
 // One record as a card, as /trips, /dives, /sites and the lists of recent ones
 // draw them: a backdrop - a map, or whatever stands in for one - its details over
@@ -170,7 +173,8 @@ export function BackdropCard({
       {corner ? (
         <div className="absolute right-1 top-1 z-10">{corner}</div>
       ) : (
-        actions && (
+        actions &&
+        actionsLabel && (
           <div className="absolute right-1 top-1 z-10">
             <ItemActionsMenu
               label={actionsLabel}

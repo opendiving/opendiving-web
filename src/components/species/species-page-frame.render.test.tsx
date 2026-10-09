@@ -25,7 +25,7 @@ const header = () =>
 
 describe("SpeciesPageFrame", () => {
   it("puts the search box in the header row, beside the count", () => {
-    frame({ totalCount: 12, cards: [<div key="c" />] });
+    frame({ totalCount: 12, cards: [<li key="c" />] });
 
     expect(within(header()).getByText("12 species")).toBeInTheDocument();
     expect(
@@ -35,7 +35,7 @@ describe("SpeciesPageFrame", () => {
 
   it("reports what is typed into it", async () => {
     const onSearchChange = vi.fn();
-    frame({ onSearchChange, cards: [<div key="c" />] });
+    frame({ onSearchChange, cards: [<li key="c" />] });
 
     await userEvent.type(
       screen.getByLabelText("Search your species by name"),

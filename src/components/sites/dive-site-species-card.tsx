@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Fish } from "lucide-react";
 import { fetchAllPages, isAbortError } from "@/lib/api/client";
 import { speciesAPI, type SpeciesLifeListEntry } from "@/lib/api/species";
-import { speciesDisplayName, speciesSecondaryName } from "@/lib/species";
-import { SpeciesThumbnail } from "@/components/species/species-thumbnail";
-import { useWithReturnTo } from "@/hooks/useReturnTo";
+import { speciesSeenRange } from "@/lib/species";
+import {
+  SPECIES_CARD_GRID,
+  SpeciesCard,
+} from "@/components/species/species-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const diveCount = (count: number) =>
-  count === 1 ? "1 dive" : `${count} dives`;
 
 /**
  * The species sighted on the diver's dives at a site, each linking to its own
@@ -31,7 +29,6 @@ export function DiveSiteSpeciesCard({
 }) {
   const [species, setSpecies] = useState<SpeciesLifeListEntry[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const withReturnTo = useWithReturnTo();
 
   useEffect(() => {
     if (speciesCount === 0) return;
@@ -75,37 +72,16 @@ export function DiveSiteSpeciesCard({
               : "Loading species..."}
           </p>
         ) : (
-          <ul className="space-y-2">
-            {species.map((entry) => {
-              const secondary = speciesSecondaryName(entry);
-              return (
-                <li key={entry.uuid}>
-                  <Link
-                    href={withReturnTo(`/species/${entry.uuid}`)}
-                    className="flex items-center gap-3 rounded-md text-sm hover:underline touch:min-h-11"
-                  >
-                    <SpeciesThumbnail
-                      uuid={entry.uuid}
-                      photoSha256={entry.photo_sha256}
-                      className="h-10 w-10 shrink-0"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">
-                        {speciesDisplayName(entry)}
-                      </span>
-                      {secondary && (
-                        <span className="block truncate text-xs italic text-muted-foreground">
-                          {secondary}
-                        </span>
-                      )}
-                    </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {diveCount(entry.dive_count)}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+          <ul className={SPECIES_CARD_GRID}>
+            {species.map((entry) => (
+              <SpeciesCard
+                key={entry.uuid}
+                species={entry}
+                figures={[{ label: "Dives", value: entry.dive_count }]}
+              >
+                {speciesSeenRange(entry.first_seen, entry.last_seen)}
+              </SpeciesCard>
+            ))}
           </ul>
         )}
       </CardContent>

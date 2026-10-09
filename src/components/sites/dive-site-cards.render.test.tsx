@@ -298,7 +298,10 @@ describe("DiveSiteSpeciesCard", () => {
       name: /Clark's anemonefish/,
     });
     expect(clownfish).toHaveAttribute("href", "/species/sp-1");
-    expect(clownfish).toHaveTextContent("3 dives");
+    expect(
+      within(clownfish.closest("li")!).getByText("Dives", { selector: "dt" })
+        .nextElementSibling,
+    ).toHaveTextContent("3");
     expect(
       screen.getByRole("link", { name: /Chromodoris willani/ }),
     ).toHaveAttribute("href", "/species/sp-2");

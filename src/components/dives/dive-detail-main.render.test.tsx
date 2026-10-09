@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { DiveDetailMain } from "./dive-detail-main";
 import type { Dive } from "@/lib/api/dives";
 
@@ -36,60 +36,26 @@ function sighting(
   };
 }
 
+// What the dive page decides about its species; how one species reads as a
+// card is `species-card.render.test.tsx`'s.
 describe("DiveDetailMain species card", () => {
   const CLOWNFISH = sighting();
+  const MORAY = sighting({
+    uuid: "species-2",
+    scientific_name: "Gymnothorax javanicus",
+    common_name: "Giant moray",
+  });
 
-  it("lists what was spotted, common name first", () => {
-    render(<DiveDetailMain dive={dive({ sightings: [CLOWNFISH] })} />);
+  it("draws a card for each species spotted, in spotting order", () => {
+    render(<DiveDetailMain dive={dive({ sightings: [MORAY, CLOWNFISH] })} />);
 
     expect(screen.getByText("Species Spotted")).toBeInTheDocument();
-    expect(screen.getByText("Ocellaris clownfish")).toBeInTheDocument();
-    expect(screen.getByText("Amphiprion ocellaris")).toBeInTheDocument();
-  });
-
-  it("italicises the scientific name, by the binomial convention", () => {
-    render(<DiveDetailMain dive={dive({ sightings: [CLOWNFISH] })} />);
-
-    expect(screen.getByText("Amphiprion ocellaris")).toHaveClass("italic");
-  });
-
-  it("names the rank when the sighting is broader than a species", () => {
-    // "a moray eel" is an honest log entry and resolves to a family;
-    // "Muraenidae" on its own would read as a species and isn't one.
-    render(
-      <DiveDetailMain
-        dive={dive({
-          sightings: [
-            sighting({
-              uuid: "species-2",
-              scientific_name: "Muraenidae",
-              common_name: null,
-              rank: "Family",
-            }),
-          ],
-        })}
-      />,
-    );
-
-    expect(screen.getByText("Muraenidae (Family)")).toBeInTheDocument();
-  });
-
-  it("dashes the common name a species doesn't have", () => {
-    render(
-      <DiveDetailMain
-        dive={dive({
-          sightings: [
-            sighting({
-              uuid: "species-3",
-              scientific_name: "Chromodoris annae",
-              common_name: null,
-            }),
-          ],
-        })}
-      />,
-    );
-
-    expect(screen.getByText("\u2014")).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("href")?.startsWith("/species/"))
+        .map((link) => link.textContent),
+    ).toEqual(["Giant moray", "Ocellaris clownfish"]);
   });
 
   it("renders no card at all for a dive with nothing spotted", () => {
@@ -117,152 +83,28 @@ describe("DiveDetailMain species card counts and notes", () => {
     common_name: "Green sea turtle",
   });
 
-  const cellsOf = (name: string) =>
-    [...screen.getByRole("link", { name }).closest("tr")!.children].map(
-      (cell) => cell.textContent,
-    );
+  const cardOf = (name: string) =>
+    within(screen.getByRole("link", { name }).closest("li")!);
 
-  it("shows how many were counted and the note beside the names", () => {
+  it("shows how many were counted, and the note with its line breaks", () => {
     render(<DiveDetailMain dive={dive({ sightings: [MANTA, TURTLE] })} />);
 
+    const manta = cardOf("Giant manta ray");
     expect(
-      screen.getByRole("columnheader", { name: "Count" }),
-    ).toBeInTheDocument();
+      manta.getByText("Count", { selector: "dt" }).nextElementSibling,
+    ).toHaveTextContent("3");
     expect(
-      screen.getByRole("columnheader", { name: "Notes" }),
-    ).toBeInTheDocument();
-    expect(cellsOf("Giant manta ray").slice(1)).toEqual([
-      "Giant manta ray",
-      "Mobula birostris",
-      "3",
-      "Cleaning station\nat 18 m",
-    ]);
-  });
-
-  it("leaves an uncounted sighting's count blank, never 1", () => {
-    render(<DiveDetailMain dive={dive({ sightings: [MANTA, TURTLE] })} />);
-
-    expect(cellsOf("Green sea turtle").slice(1)).toEqual([
-      "Green sea turtle",
-      "Chelonia mydas",
-      "",
-      "",
-    ]);
-  });
-
-  it("keeps a note's line breaks", () => {
-    render(<DiveDetailMain dive={dive({ sightings: [MANTA] })} />);
-
-    expect(
-      screen.getByText((_, element) => element?.textContent === MANTA.notes),
+      manta.getByText((_, element) => element?.textContent === MANTA.notes, {
+        selector: "span",
+      }),
     ).toHaveClass("whitespace-pre-wrap");
   });
 
-  it("adds no column that no sighting fills", () => {
-    render(<DiveDetailMain dive={dive({ sightings: [TURTLE] })} />);
+  it("gives an uncounted sighting no count, never 1", () => {
+    render(<DiveDetailMain dive={dive({ sightings: [MANTA, TURTLE] })} />);
 
     expect(
-      screen.queryByRole("columnheader", { name: "Count" }),
+      cardOf("Green sea turtle").queryByText("Count", { selector: "dt" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("columnheader", { name: "Notes" }),
-    ).not.toBeInTheDocument();
-  });
-});
-
-// The image column, in the half jsdom can answer. Whether the rows end up the
-// same *height* is a layout question and jsdom performs no layout - every
-// `getBoundingClientRect()` there is zeroed, so such an assertion would pass
-// against any markup at all. That half is `dive-detail-main.browser.test.tsx`.
-//
-// What is pinned here is what the DOM alone settles: a row with a digest renders
-// an image, a row without renders none, and the photo is never the thing that
-// carries a species' name.
-describe("DiveDetailMain species photos", () => {
-  const PHOTOGRAPHED = sighting({
-    photo_sha256:
-      "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-  });
-
-  const UNPHOTOGRAPHED = sighting({
-    uuid: "species-2",
-    scientific_name: "Chromodoris annae",
-    common_name: "Anna's chromodoris",
-    photo_sha256: null,
-  });
-
-  it("renders a thumbnail for a species that has a photo", () => {
-    const { container } = render(
-      <DiveDetailMain dive={dive({ sightings: [PHOTOGRAPHED] })} />,
-    );
-
-    const images = [...container.querySelectorAll("img")];
-    expect(images).toHaveLength(1);
-    // Built against the API client's own base, and carrying the digest so a
-    // replaced photo cannot be served from the browser's cache.
-    expect(images[0].getAttribute("src")).toContain(
-      `/species/${PHOTOGRAPHED.uuid}/photo?v=`,
-    );
-  });
-
-  it("draws nothing at all in the cell of a species without one", () => {
-    // Not a placeholder, not a broken-image glyph, not stranded alt text. The
-    // cell is still there - that is what keeps the rows aligned - and it is
-    // empty.
-    const { container } = render(
-      <DiveDetailMain dive={dive({ sightings: [UNPHOTOGRAPHED] })} />,
-    );
-
-    expect(container.querySelectorAll("img")).toHaveLength(0);
-  });
-
-  it("renders one image for the photographed row of a mixed table", () => {
-    const { container } = render(
-      <DiveDetailMain
-        dive={dive({ sightings: [PHOTOGRAPHED, UNPHOTOGRAPHED] })}
-      />,
-    );
-
-    expect(container.querySelectorAll("img")).toHaveLength(1);
-    expect(container.querySelectorAll("tbody tr")).toHaveLength(2);
-  });
-
-  it("links each species to its page, naming the link once", () => {
-    render(<DiveDetailMain dive={dive({ sightings: [PHOTOGRAPHED] })} />);
-
-    // Exactly one *named* link per species, even though the thumbnail beside it
-    // is clickable too: the image link is `aria-hidden` and out of the tab order
-    // precisely so a screen reader's link list doesn't carry the same
-    // destination twice with nothing to tell them apart.
-    const named = screen.getAllByRole("link", {
-      name: "Ocellaris clownfish",
-    });
-    expect(named).toHaveLength(1);
-    expect(named[0]).toHaveAttribute("href", `/species/${PHOTOGRAPHED.uuid}`);
-  });
-
-  it("names the link for a species with no common name", () => {
-    // The visible cell is an em-dash for these, and "—" is not a link name -
-    // so the accessible name falls back to the binomial rather than to nothing.
-    render(
-      <DiveDetailMain
-        dive={dive({
-          sightings: [
-            sighting({
-              uuid: "species-3",
-              scientific_name: "Muraenidae",
-              common_name: null,
-              rank: "Family",
-              photo_sha256: null,
-            }),
-          ],
-        })}
-      />,
-    );
-
-    expect(screen.getByRole("link", { name: "Muraenidae" })).toHaveAttribute(
-      "href",
-      "/species/species-3",
-    );
   });
 });
