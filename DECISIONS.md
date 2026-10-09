@@ -144,8 +144,8 @@ has no `min`/`max`, so `decimalEntryMessage` sets the bounds as custom validity,
 refusal reads. Plain whole-number fields keep `type="number"` with `inputMode="numeric"`: no
 separator to lose.
 
-A mouse keeps `type="number"`: a desktop keyboard has a point key. Contacts and people carry no
-`autoComplete`, which would offer the diver's own details.
+A mouse keeps `type="number"`: a desktop keyboard has a point key. Contacts and people set
+`autoComplete="off"`: autofill would offer the diver's own details.
 
 Rejected: `inputMode="decimal"` on `type="number"`, which shows the comma and still drops it.
 
@@ -558,13 +558,11 @@ footer, so their spinners use `min-h-[60vh]` inline. `SectionSpinner`
 (`components/ui/not-found-state.tsx`, `message`/`backHref`/`backLabel`) the not-found state. Both
 omit the outer container `div`: the page wraps them in its own column.
 
-## Mixture form/display numbers match the API's 2-decimal precision
+## Mixture numbers display at the API's 2-decimal precision
 
-The API rounds parsed `oxygen`/`helium`/`start_pressure`/`end_pressure` to two decimals, so
-`mixture-fields.tsx`'s `<Input type="number">`s for those use `step="0.01"`, like
-`max_depth`/`avg_depth`/`bottom_temperature` in `dive-form-fields.tsx`, and `dives/[id]/page.tsx`
-renders `oxygen` and `helium` as raw numbers — `toFixed(1)` hides a real digit (`20.99%` as
-`21.0%`).
+The API rounds parsed `oxygen`/`helium`/`start_pressure`/`end_pressure` to two decimals, and
+`dives/[id]/page.tsx` renders `oxygen` and `helium` as raw numbers — `toFixed(1)` hides a real digit
+(`20.99%` as `21.0%`).
 
 Volume is `VolumeCombobox` (`volume-combobox.tsx`), built like `CreatableCombobox`: a plain
 `<input type="number">` plus a hand-rendered absolute-positioned dropdown of `<button>`s, not Radix
