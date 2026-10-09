@@ -179,7 +179,7 @@ export function PeopleMultiSelect({
                 key={reference.person_uuid}
                 ref={setItemRef(index)}
                 className={cn(
-                  "flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm",
+                  "flex items-center gap-2 rounded-md border bg-background py-1.5 pl-3 pr-2 text-sm max-sm:flex-wrap",
                   isDragging && "relative z-10 shadow-lg ring-2 ring-ring",
                 )}
                 style={
@@ -211,7 +211,9 @@ export function PeopleMultiSelect({
                     </span>
                   )}
                 </span>
-                <div className="w-32 shrink-0 sm:w-36">
+                {/* A line of its own on a phone, where beside the name it would cut
+                    both the name and its own longer roles. */}
+                <div className="w-36 shrink-0 max-sm:order-last max-sm:w-full">
                   <NativeSelect
                     aria-label={`Role of ${label}`}
                     className="h-9"
