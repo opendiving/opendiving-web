@@ -276,6 +276,20 @@ describe("MapBackdrop", () => {
     expect(map()!.querySelectorAll("[data-marker]")).toHaveLength(1);
   });
 
+  // The dark picture is lifted well off the page's near-black, which rings a
+  // pin at full strength everywhere else.
+  it("rings the pins on the dark world picture in a colour of its own", async () => {
+    const ring = () => map()!.style.getPropertyValue("--marker-ring");
+    theme.resolved = "dark";
+    const { unmount } = render(backdrop(at(20), { world: true }));
+    expect(ring()).not.toBe("");
+    unmount();
+
+    render(backdrop(at(21)));
+    await answerAll();
+    expect(ring()).toBe("");
+  });
+
   // A failure is a renderer down or busy, and every map on every open page
   // asking again on a schedule would add to it.
   it("shows water where a tile cannot be had, and asks again only on a mount", async () => {
