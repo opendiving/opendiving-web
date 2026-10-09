@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { formatUtcOffset } from "@/lib/date-time";
 
 // Every UTC offset in real-world use falls on a 15-minute boundary between
@@ -26,13 +20,6 @@ for (
 ) {
   OFFSET_OPTIONS.push(minutes);
 }
-
-// The value "Not recorded" carries in the DOM. A `Select` is a string-valued
-// control and Radix reserves `""` for "nothing selected", so the unknown state
-// needs a sentinel of its own - it is a real choice, not the absence of one.
-// Never sent anywhere: `UtcOffsetSelect` maps it back to `null` at this
-// boundary, and `null` is what the rest of the app speaks.
-const UNKNOWN_OFFSET_VALUE = "unknown";
 
 export interface UtcOffsetSelectProps {
   // `null` is "not recorded" - the dive's own zone was never captured. Distinct
@@ -58,36 +45,33 @@ export function UtcOffsetSelect({
   disabled,
   allowUnknown = false,
 }: UtcOffsetSelectProps) {
-  const selected =
-    value === null
-      ? UNKNOWN_OFFSET_VALUE
-      : value !== undefined
-        ? String(value)
-        : undefined;
-
   return (
-    <Select
-      value={selected}
-      onValueChange={(next) =>
-        onChange(next === UNKNOWN_OFFSET_VALUE ? null : Number(next))
+    <NativeSelect
+      aria-label="UTC offset"
+      // `""` is "Not recorded" where that is offered, and otherwise the
+      // placeholder of a field with nothing in it yet.
+      value={value == null ? "" : String(value)}
+      onChange={(e) =>
+        onChange(e.target.value === "" ? null : Number(e.target.value))
       }
       disabled={disabled}
     >
-      <SelectTrigger aria-label="UTC offset">
-        <SelectValue placeholder="UTC offset" />
-      </SelectTrigger>
-      <SelectContent>
-        {/* First, not last: it is the state the dive is already in whenever this
-            option exists at all, so it is what the trigger is showing. */}
-        {allowUnknown && (
-          <SelectItem value={UNKNOWN_OFFSET_VALUE}>Not recorded</SelectItem>
-        )}
-        {OFFSET_OPTIONS.map((minutes) => (
-          <SelectItem key={minutes} value={String(minutes)}>
-            UTC{formatUtcOffset(minutes)}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      {/* First, not last: it is the state the dive is already in whenever this
+          option exists at all, so it is what the box is showing. */}
+      {allowUnknown ? (
+        <option value="">Not recorded</option>
+      ) : (
+        value == null && (
+          <option value="" disabled hidden>
+            UTC offset
+          </option>
+        )
+      )}
+      {OFFSET_OPTIONS.map((minutes) => (
+        <option key={minutes} value={minutes}>
+          UTC{formatUtcOffset(minutes)}
+        </option>
+      ))}
+    </NativeSelect>
   );
 }
