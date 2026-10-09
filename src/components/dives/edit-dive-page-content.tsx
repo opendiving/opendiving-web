@@ -19,9 +19,10 @@ import {
 } from "@/lib/validations/dive";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
-import { DiveFormCard } from "@/components/dives/dive-form-card";
+import { DiveForm } from "@/components/dives/dive-form";
+import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
 import { DiveIcon } from "@/components/logo";
-import { FORM_BODY, PlainHero } from "@/components/ui/map-hero";
+import { FORM_BODY, FORM_COLUMN, PlainHero } from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { FormPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
@@ -95,7 +96,7 @@ export function EditDivePageContent() {
     replaceMixtures: mixtureFieldArray.replace,
     fillsDefaults: false,
   });
-  const { revealNonEmpty } = visibility;
+  const { reveal, revealNonEmpty } = visibility;
 
   // Seeds the form from the loaded dive, and is one of the moments a value
   // arrives from outside the diver's typing: a dive that records notes shows
@@ -106,8 +107,10 @@ export function EditDivePageContent() {
       const values = diveToFormValues(diveData);
       form.reset(values);
       revealNonEmpty(values);
+      // The import's section holds the dive's files, which can be struck off there.
+      if ((diveData.recordings ?? []).length > 0) reveal(["file_import"]);
     },
-    [form, revealNonEmpty],
+    [form, reveal, revealNonEmpty],
   );
 
   const {
@@ -261,10 +264,12 @@ export function EditDivePageContent() {
         title={`Edit Dive #${dive.dive_number}`}
         subtitle="Update the details of your dive"
         figures={[]}
+        column={FORM_COLUMN}
+        actions={<DiveFormFieldsMenu visibility={visibility} />}
       />
 
       <div className={FORM_BODY}>
-        <DiveFormCard
+        <DiveForm
           form={form}
           mixtureFieldArray={mixtureFieldArray}
           visibility={visibility}

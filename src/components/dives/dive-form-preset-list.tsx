@@ -7,7 +7,11 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { dialogFormSubmit } from "@/lib/dialog-form";
-import type { DiveFormPreset } from "@/lib/api/dive-form-presets";
+import {
+  ALL_FIELDS_PRESET_NAME,
+  isAllFieldsPresetName,
+  type DiveFormPreset,
+} from "@/lib/api/dive-form-presets";
 import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
 
 /**
@@ -15,7 +19,7 @@ import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
  * one without changing the fields on the form.
  *
  * **Neither applying nor saving lives here.** The menu applies a preset in one click
- * from the card, and the Fields tab's "Save as" writes the current fields into a new
+ * from the page's top row, and the Fields tab's "Save as" writes the current fields into a new
  * preset or over an existing one - so a row is left with renaming and deleting, which
  * is all that is genuinely about the preset rather than about the form.
  *
@@ -51,7 +55,7 @@ export function DiveFormPresetList({ presets }: { presets: DiveFormPresets }) {
 
   const handleRename = async () => {
     const name = draftName.trim();
-    if (!name || !editing) return;
+    if (!name || !editing || isAllFieldsPresetName(name)) return;
     // An unchanged name is not a rename. Saving it anyway spends a PATCH to store
     // what is already stored, and reads as an edit in the account's history.
     if (name !== editing.name) await presets.renamePreset(editing, name);
@@ -68,6 +72,13 @@ export function DiveFormPresetList({ presets }: { presets: DiveFormPresets }) {
 
   return (
     <div className="space-y-2">
+      {/* Built in, and so the one row with nothing to do to it. */}
+      <div className="flex h-9 items-center gap-2">
+        <span className="min-w-0 flex-1 text-sm">{ALL_FIELDS_PRESET_NAME}</span>
+        <span className="text-xs text-muted-foreground">
+          Built in, shows every field
+        </span>
+      </div>
       {presets.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading presets...</p>
       ) : rows && rows.length > 0 ? (
@@ -114,7 +125,9 @@ export function DiveFormPresetList({ presets }: { presets: DiveFormPresets }) {
                         variant="ghost"
                         size="sm"
                         disabled={
-                          presets.isWorking || draftName.trim().length === 0
+                          presets.isWorking ||
+                          draftName.trim().length === 0 ||
+                          isAllFieldsPresetName(draftName)
                         }
                       >
                         <Check className="h-4 w-4" />

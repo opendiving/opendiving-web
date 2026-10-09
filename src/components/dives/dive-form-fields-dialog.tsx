@@ -13,9 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DiveFormFieldSwitches } from "@/components/dives/dive-form-field-switches";
 import { DiveFormPresetList } from "@/components/dives/dive-form-preset-list";
 import { DiveFormPresetSaveAs } from "@/components/dives/dive-form-preset-save-as";
-import { hiddenFieldsEqual } from "@/lib/dive-form-fields";
 import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
-import type { DiveFormPreset } from "@/lib/api/dive-form-presets";
+import {
+  currentDiveFormPreset,
+  type DiveFormPreset,
+} from "@/lib/api/dive-form-presets";
 import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
@@ -28,9 +30,9 @@ interface DiveFormFieldsDialogProps {
 }
 
 /**
- * The preset whose saved fields are exactly the ones on screen, or `""` for none
- * - the same comparison the Fields trigger makes to decide between a preset's
- * name and "Custom", so the two can never disagree about what is current.
+ * The saved preset the fields on screen are on, or `""` for none - the built-in "All"
+ * included, which nothing can be saved over. The same answer the Fields trigger gives,
+ * so the two can never disagree about what is current.
  *
  * Recomputed on every render, deliberately. Freezing it at the moment the
  * dialog opened is the behaviour "Save as" needs, and it gets that from being
@@ -40,11 +42,10 @@ interface DiveFormFieldsDialogProps {
 function matchingPresetName(
   presets: readonly DiveFormPreset[] | null,
   hidden: readonly DiveFormFieldKey[],
+  pickedUuid: string | null,
 ): string {
-  return (
-    presets?.find((preset) => hiddenFieldsEqual(preset.hidden_fields, hidden))
-      ?.name ?? ""
-  );
+  const current = currentDiveFormPreset(presets, hidden, pickedUuid);
+  return current.kind === "saved" ? current.preset.name : "";
 }
 
 /**
@@ -122,13 +123,26 @@ export function DiveFormFieldsDialog({
               initialName={matchingPresetName(
                 presets.presets,
                 visibility.hidden,
+                visibility.selectedPresetUuid,
               )}
               disabled={presets.isWorking}
-              onSave={(name, existing) => {
+              // The fields on screen are now that preset's, so it becomes the pick.
+              onSave={async (name, existing) => {
                 if (existing) {
-                  void presets.updateHiddenFields(existing, visibility.hidden);
+                  if (
+                    await presets.updateHiddenFields(
+                      existing,
+                      visibility.hidden,
+                    )
+                  ) {
+                    visibility.selectPreset(existing.uuid);
+                  }
                 } else {
-                  void presets.createPreset(name, visibility.hidden);
+                  const created = await presets.createPreset(
+                    name,
+                    visibility.hidden,
+                  );
+                  if (created) visibility.selectPreset(created.uuid);
                 }
               }}
             />

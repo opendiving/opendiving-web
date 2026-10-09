@@ -41,9 +41,12 @@ const COLUMN = "mx-auto w-full max-w-6xl px-2.5 sm:px-6 lg:px-8";
 export const HERO_BODY =
   "max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-6 max-sm:pt-2.5 pb-6";
 
-// A form page's body: the hero's column, with the form at a field's readable
-// width against its left edge, under the title.
-export const FORM_BODY = cn(HERO_BODY, "[&>*]:max-w-2xl");
+// A form page's column, hero and body alike: centred at a field's readable width,
+// measured inside the gutters so the form keeps that width at every breakpoint.
+export const FORM_COLUMN = "w-auto max-w-2xl box-content";
+
+// A form page's body, in `FORM_COLUMN`.
+export const FORM_BODY = cn(HERO_BODY, FORM_COLUMN);
 
 // The figures, as many to a line as fit - three on a phone - and the map's
 // credit at the row's far end, at the details' foot. Where the figures leave it
@@ -357,16 +360,21 @@ export function PlainHero({
   subtitle,
   overline,
   figures,
-}: Omit<MapHeroProps, "backdrop" | "mapCredit" | "credit"> & Known) {
+  column,
+}: Omit<MapHeroProps, "backdrop" | "mapCredit" | "credit"> &
+  Known & {
+    // Narrows the hero to its page's column - `FORM_COLUMN` on a form page.
+    column?: string;
+  }) {
   return (
     // The actions' glow is drawn in the page's colour, so it shows nothing here.
     <div className="[--backdrop-fade:hsl(var(--background))]">
-      <div className={cn(COLUMN, PLAIN_TOP_ROW, "justify-between")}>
+      <div className={cn(COLUMN, column, PLAIN_TOP_ROW, "justify-between")}>
         <HeroBackLink backHref={backHref} backLabel={backLabel} />
         {actions && <div className="flex shrink-0 gap-1">{actions}</div>}
       </div>
       <HeroDetails
-        className={cn(COLUMN, PLAIN_DETAILS)}
+        className={cn(COLUMN, column, PLAIN_DETAILS)}
         icon={icon}
         title={title}
         subtitle={subtitle}
@@ -471,14 +479,15 @@ export function PlainHeroSkeleton({
   backLabel,
   icon,
   figureless,
-}: Known & { figureless?: boolean }) {
+  column,
+}: Known & { figureless?: boolean; column?: string }) {
   return (
     <div>
-      <div className={cn(COLUMN, PLAIN_TOP_ROW)}>
+      <div className={cn(COLUMN, column, PLAIN_TOP_ROW)}>
         <HeroBackLink backHref={backHref} backLabel={backLabel} />
       </div>
       <HeroDetailsSkeleton
-        className={PLAIN_DETAILS}
+        className={cn(column, PLAIN_DETAILS)}
         icon={icon}
         figureless={figureless}
       />

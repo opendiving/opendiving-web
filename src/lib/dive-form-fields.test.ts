@@ -5,6 +5,8 @@ import {
   DIVE_FORM_FIELDS,
   DIVE_FORM_FIELD_GROUPS,
   DIVE_FORM_FIELD_REGISTRY,
+  DIVE_FORM_SECTION_FIELDS,
+  DIVE_FORM_VALUE_FIELDS,
   EMPTY_DIVE_FORM_VALUES,
   MIXTURE_FIELD_PREFIX,
   NON_BLANK_EMPTY_FIELD_VALUES,
@@ -13,6 +15,7 @@ import {
   diveFormFieldGroup,
   diveFormFieldsWithErrors,
   hiddenFieldsEqual,
+  isMixtureField,
   isNonEmptyFieldValue,
   nonEmptyDiveFormFields,
 } from "./dive-form-fields";
@@ -41,11 +44,20 @@ describe("the vocabulary is the form's own optional fields", () => {
     const optional = optionalKeysOf(
       diveCreateSchema.shape as unknown as Record<string, ZodType>,
     );
-    const registered = DIVE_FORM_FIELDS.filter(
+    const registered = DIVE_FORM_VALUE_FIELDS.filter(
       (key) => !key.startsWith(MIXTURE_FIELD_PREFIX),
     );
 
     expect([...registered].sort()).toEqual([...optional].sort());
+  });
+
+  it("exempts only keys that name no field of the dive", () => {
+    // The section keys skip the check above, so one that came to name a schema field
+    // would escape it with a value nothing on the form then governs.
+    const shape = diveCreateSchema.shape as unknown as Record<string, ZodType>;
+    for (const key of DIVE_FORM_SECTION_FIELDS) {
+      expect(shape[key], `${key} is a dive field now`).toBeUndefined();
+    }
   });
 
   it("holds every optional cylinder field except the ones exempt by name", () => {
@@ -89,16 +101,17 @@ describe("the vocabulary is the form's own optional fields", () => {
 });
 
 describe("the vocabulary's order", () => {
-  it("puts the people straight after the dive center", () => {
-    // Declaration order is the order the Fields dialog lists its rows, and the form
-    // renders the field right under the dive center - so both agree on this slot.
-    expect(
-      DIVE_FORM_FIELDS.slice(
-        DIVE_FORM_FIELDS.indexOf("contact_uuid"),
-        DIVE_FORM_FIELDS.indexOf("contact_uuid") + 2,
-      ),
-    ).toEqual(["contact_uuid", "people"]);
-    expect(EMPTY_DIVE_FORM_VALUES.people).toEqual([]);
+  it("runs through the groups in the order the form renders them", () => {
+    // Declaration order is the order the Fields dialog lists its rows, so each
+    // section's keys are one run of it, in section order - the per-cylinder keys
+    // trailing the list.
+    const groups = DIVE_FORM_FIELDS.filter((key) => !isMixtureField(key)).map(
+      (key) => diveFormFieldGroup(key),
+    );
+    const runs = groups.filter((group, i) => group !== groups[i - 1]);
+    expect(runs).toEqual(
+      DIVE_FORM_FIELD_GROUPS.filter((group) => runs.includes(group)),
+    );
   });
 });
 
@@ -107,7 +120,7 @@ describe("diveFormFieldGroup", () => {
     expect(diveFormFieldGroup("start_time")).toBe("Dive info");
     expect(diveFormFieldGroup("dive_number")).toBe("Dive info");
     expect(diveFormFieldGroup("duration")).toBe("Dive info");
-    expect(diveFormFieldGroup("entry_type")).toBe("Context");
+    expect(diveFormFieldGroup("entry_type")).toBe("Location");
     expect(diveFormFieldGroup("mixtures")).toBe("Tanks");
     expect(diveFormFieldGroup("sightings")).toBe("Marine life");
   });
@@ -154,7 +167,7 @@ describe("the panel's registry", () => {
     // whatever the table holds. This asserts the property directly instead - an
     // empty value the reveal rule would call non-empty is a key that puts itself
     // back on screen the moment a stored dive holds one.
-    for (const key of DIVE_FORM_FIELDS) {
+    for (const key of DIVE_FORM_VALUE_FIELDS) {
       expect(EMPTY_DIVE_FORM_VALUES).toHaveProperty(key);
       if (key in NON_BLANK_EMPTY_FIELD_VALUES) {
         expect(EMPTY_DIVE_FORM_VALUES[key], key).toBe(

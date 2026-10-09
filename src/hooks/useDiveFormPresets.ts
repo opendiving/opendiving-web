@@ -14,7 +14,10 @@ import {
   type DiveFormFieldKey,
 } from "@/lib/dive-form-fields";
 
-/** The account's presets and the five things the Fields surfaces do to them. */
+/**
+ * The account's presets and the five things the Fields surfaces do to them, each
+ * resolving to whether the API took it.
+ */
 export interface DiveFormPresets {
   /** `null` until the first fetch resolves - not an empty list, which means "none". */
   presets: DiveFormPreset[] | null;
@@ -25,17 +28,18 @@ export interface DiveFormPresets {
   busyUuid: string | null;
   /** True while any request is in flight - what disables every button at once. */
   isWorking: boolean;
+  /** Resolves to the new preset, or `null` when the API refused it. */
   createPreset: (
     name: string,
     hidden: readonly DiveFormFieldKey[],
-  ) => Promise<void>;
-  renamePreset: (preset: DiveFormPreset, name: string) => Promise<void>;
+  ) => Promise<DiveFormPreset | null>;
+  renamePreset: (preset: DiveFormPreset, name: string) => Promise<boolean>;
   updateHiddenFields: (
     preset: DiveFormPreset,
     hidden: readonly DiveFormFieldKey[],
-  ) => Promise<void>;
-  deletePreset: (preset: DiveFormPreset) => Promise<void>;
-  restoreDefaults: () => Promise<void>;
+  ) => Promise<boolean>;
+  deletePreset: (preset: DiveFormPreset) => Promise<boolean>;
+  restoreDefaults: () => Promise<boolean>;
 }
 
 /**
@@ -51,7 +55,7 @@ export interface DiveFormPresets {
  * preset the stored hidden set matches - or "Custom" when none does - so the list is
  * needed to paint the button, before any diver has asked for it. That reverses the
  * lazier rule the inline Fields panel had, and knowingly: a label that says "Fields"
- * until first opened and "Technical" afterwards is worse than one small request.
+ * until first opened and "Recreational" afterwards is worse than one small request.
  *
  * Every mutation updates the list in place rather than refetching. The API's `PATCH`
  * answers with a message rather than the row, so a refetch would be the only way to
@@ -96,12 +100,16 @@ export function useDiveFormPresets(): DiveFormPresets {
     [...rows].sort((a, b) => a.name.localeCompare(b.name));
 
   const run = useCallback(
-    async (uuid: string | null, action: () => Promise<void>) => {
+    async (
+      uuid: string | null,
+      action: () => Promise<void>,
+    ): Promise<boolean> => {
       setError(null);
       setBusyUuid(uuid);
       setIsWorking(true);
       try {
         await action();
+        return true;
       } catch (actionError) {
         console.error("Dive form preset action failed:", actionError);
         setError(
@@ -110,6 +118,7 @@ export function useDiveFormPresets(): DiveFormPresets {
             "That didn't work. Please try again.",
           ),
         );
+        return false;
       } finally {
         setBusyUuid(null);
         setIsWorking(false);
@@ -119,18 +128,22 @@ export function useDiveFormPresets(): DiveFormPresets {
   );
 
   const createPreset = useCallback(
-    (name: string, hidden: readonly DiveFormFieldKey[]) =>
-      run(null, async () => {
-        const created = await diveFormPresetsAPI.createPreset({
+    async (name: string, hidden: readonly DiveFormFieldKey[]) => {
+      let created: DiveFormPreset | null = null;
+      await run(null, async () => {
+        const row = await diveFormPresetsAPI.createPreset({
           name,
           hidden_fields: canonicalHiddenFields(hidden),
         });
-        setPresets((rows) => sortByName([...(rows ?? []), created]));
+        created = row;
+        setPresets((rows) => sortByName([...(rows ?? []), row]));
         toast({
           title: "Preset saved",
-          description: `"${created.name}" holds the fields on this form.`,
+          description: `"${row.name}" holds the fields on this form.`,
         });
-      }),
+      });
+      return created;
+    },
     [run, toast],
   );
 

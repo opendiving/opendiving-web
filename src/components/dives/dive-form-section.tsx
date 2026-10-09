@@ -2,20 +2,22 @@
 
 import { useId, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface DiveFormSectionProps {
   title: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // Keeps the content mounted while collapsed, for a section whose state lives in its
+  // component rather than in form state - the file import's note and its parse.
+  keepMounted?: boolean;
   children: ReactNode;
 }
 
-// One of the dive form's field groups, headed the way the check-in page heads its
-// sections. The heading sticks under the site header while its section scrolls past,
-// and the section being its containing block is what hands the spot to the next
-// heading: this one leaves with its section's bottom edge, which is where the next
-// one starts.
+// One of the dive form's field groups, a card of its own. The heading sticks under the
+// site header while its card scrolls past, and the card being its containing block is
+// what hands the spot to the next heading: this one leaves with its card's bottom edge.
 //
 // A collapsed section unmounts its fields, as a hidden field is not rendered - their
 // values stay in form state (`shouldUnregister: false`) and are submitted all the same.
@@ -23,42 +25,43 @@ export function DiveFormSection({
   title,
   open,
   onOpenChange,
+  keepMounted = false,
   children,
 }: DiveFormSectionProps) {
   const contentId = useId();
 
   return (
-    <section className="group/section">
-      {/* Bled to the card's edges with its padding, so content scrolling under it
-          is covered from border to border rather than showing either side. */}
-      <h3 className="sticky top-[var(--header-height)] z-10 -mx-(--card-pad) border-b bg-card px-(--card-pad)">
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={contentId}
-          onClick={() => onOpenChange(!open)}
-          className="flex w-full items-center justify-between gap-2 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-        >
-          {title}
-          <ChevronDown
-            aria-hidden="true"
-            className={cn(
-              "h-4 w-4 shrink-0 transition-transform",
-              !open && "-rotate-90",
-            )}
-          />
-        </button>
-      </h3>
-      {/* The section's spacing is its content's padding rather than a margin between
-          sections - see `DiveFormFields`. The last one leaves the gap above the
-          buttons to the form. */}
-      <div
-        id={contentId}
-        hidden={!open}
-        className="space-y-6 py-6 group-last/section:pb-0"
+    <Card>
+      {/* Squared off at the foot while open, so content scrolling under the stuck
+          heading cannot show through its corners. */}
+      <CardHeader
+        className={cn(
+          "sticky top-[var(--header-height)] z-10 rounded-t-lg bg-card",
+          !open && "rounded-b-lg",
+        )}
       >
-        {open && children}
-      </div>
-    </section>
+        <CardTitle as="h2">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={contentId}
+            onClick={() => onOpenChange(!open)}
+            className="flex w-full items-center justify-between gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {title}
+            <ChevronDown
+              aria-hidden="true"
+              className={cn(
+                "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
+                !open && "-rotate-90",
+              )}
+            />
+          </button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent id={contentId} hidden={!open} className="space-y-6">
+        {(open || keepMounted) && children}
+      </CardContent>
+    </Card>
   );
 }

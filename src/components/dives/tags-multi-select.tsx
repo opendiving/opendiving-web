@@ -8,7 +8,7 @@ import {
   type ComboboxItem,
 } from "@/components/ui/creatable-combobox";
 import type { FormControlSlotProps } from "@/components/ui/form";
-import { tagKey } from "@/lib/api/tags";
+import { TAG_NAME_MAX, tagKey } from "@/lib/api/tags";
 import { useTags } from "@/hooks/useTags";
 
 export interface TagsMultiSelectProps extends FormControlSlotProps {
@@ -22,6 +22,13 @@ export interface TagsMultiSelectProps extends FormControlSlotProps {
 // back the stored spelling for the record to carry.
 const tagItem = (name: string): ComboboxItem => ({ id: name, name });
 
+// The API's bound, counted in code points as it counts them - what `tagsField`
+// checks again on submit for a tag that arrived some other way.
+const tagNameError = (name: string): string | null =>
+  [...name.trim()].length > TAG_NAME_MAX
+    ? `A tag can be at most ${TAG_NAME_MAX} characters`
+    : null;
+
 /**
  * Picks a dive's tags, or a dive site's - one vocabulary serves both: the ones
  * already on it as a row of chips, each with its own remove button, above the
@@ -31,6 +38,8 @@ const tagItem = (name: string): ComboboxItem => ({ id: name, name });
  * a diver keeps a handful, so the whole vocabulary is one read and needs no
  * search round trip. Typing a name that is not among them and pressing Enter
  * adds it as typed, with nothing sent: the dive or site write creates the tag.
+ * A name the API would refuse is not added: it stays in the field with the
+ * reason under it, to be corrected.
  *
  * **The match is advisory.** Typing `NIGHT` beside a stored `night` picks the
  * stored spelling, and a name already on the record in any case is not added
@@ -109,6 +118,7 @@ export function TagsMultiSelect({
         value={undefined}
         onChange={addTag}
         onCreate={createNamed}
+        validateCreate={tagNameError}
         disabled={disabled}
         placeholder={value.length ? "Add another tag..." : "Add a tag..."}
         noItemsLabel="No tags yet. Type one and press Enter to add it."

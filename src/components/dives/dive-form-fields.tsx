@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Control, FieldValues, Path, useWatch } from "react-hook-form";
 import {
   ArrowDownToLine,
@@ -49,7 +49,7 @@ import {
   type SightingErrors,
 } from "@/components/dives/species-multi-select";
 import { DiveVocabularyField } from "@/components/dives/dive-vocabulary-field";
-import { RatingInput, RatingLabelRow } from "@/components/dives/rating-input";
+import { RatingInput } from "@/components/dives/rating-input";
 import { TagsMultiSelect } from "@/components/dives/tags-multi-select";
 import { DiveMixtureInput, type SightingInput } from "@/lib/validations/dive";
 import {
@@ -191,7 +191,7 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   knownSpecies?: SpeciesSummary[];
   // Raised by the species picker while a pick is still being resolved into a
   // catalog row - see `SpeciesMultiSelect.onPendingChange`. Owned by
-  // `DiveFormCard`, which is where the submit button that must wait for it is.
+  // `DiveForm`, which is where the submit button that must wait for it is.
   onSpeciesPendingChange?: (isPending: boolean) => void;
   // A note shown under the dive number, but only while the field still holds
   // `forValue`. Carried as a value rather than a ready-made string so the
@@ -205,7 +205,7 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // back-filling a log, reconciled later with Renumber, so this must not block
   // a save.
   diveNumberNotice?: { forValue: number; message: string } | null;
-  // Owned by `DiveFormCard`, whose failed-submit path opens the sections an error
+  // Owned by `DiveForm`, whose failed-submit path opens the sections an error
   // landed in.
   collapsedGroups: ReadonlySet<DiveFormFieldGroup>;
   onGroupOpenChange: (group: DiveFormFieldGroup, open: boolean) => void;
@@ -234,7 +234,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   const isVisible = visibility.isVisible;
   // The rating is a group, which a label names by reference rather than by `for`.
   const ratingLabelId = useId();
-  const ratingRef = useRef<HTMLDivElement>(null);
   // Offered for a boat entry, and kept on screen whenever it holds a name - typed
   // before the entry changed, or stored - so a name is never both kept and out of
   // reach. Submitted like any other field.
@@ -286,84 +285,58 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   );
 
   return (
-    // One block in the form's `space-y-6`, its sections flush inside it: a stuck
-    // heading leaves with its section's bottom edge, so any gap between sections is
-    // distance it scrolls away before the next heading arrives.
-    <div>
+    // A fragment, so each section is a card in the form's own stack.
+    <>
+      {isVisible("course_uuid") &&
+        section(
+          "Training",
+          <FormField
+            control={control}
+            name={"course_uuid" as Path<TFieldValues>}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Course</FormLabel>
+                <FormControl>
+                  <CourseCombobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    until={until}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />,
+        )}
+
       {(isVisible("trip_uuid") ||
-        isVisible("course_uuid") ||
         isVisible("contact_uuid") ||
-        isVisible("people") ||
         isVisible("dive_site_uuids") ||
         isVisible("entry_type") ||
         showBoatName) &&
         section(
-          "Context",
+          "Location",
           <>
-            {/* Trip & Course, a pair in a two-column grid so each keeps the same column
-          width, gap and label rhythm as every other row in this form.
-
-          Guarded, and that guard is load-bearing now that Dive number has moved
-          out from under it: with both of these hidden the grid would render empty
-          and leave the section's `space-y-6` gap between its heading and the
-          next field, which reads as a field that failed to load.
-
-          With exactly one of them visible the survivor spans both columns rather
-          than sitting half-width beside a hole - `FormField` renders `FormItem`
-          as this grid's direct child, so `:only-child` is the remaining field.
-          The `md:` prefix is required: below it the grid is one column wide and a
-          `col-span-2` would invent a second. The readings grid below solves the
-          same problem by packing instead; this row cannot, having only the two
-          fields, and a full-width combobox reads well directly above the
-          full-width dive site picker. */}
-            {(isVisible("trip_uuid") || isVisible("course_uuid")) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:[&>:only-child]:col-span-2">
-                {isVisible("trip_uuid") && (
-                  <FormField
-                    control={control}
-                    name={"trip_uuid" as Path<TFieldValues>}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Trip</FormLabel>
-                        <FormControl>
-                          <TripCombobox
-                            value={field.value}
-                            onChange={field.onChange}
-                            until={until}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            {isVisible("trip_uuid") && (
+              <FormField
+                control={control}
+                name={"trip_uuid" as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Trip</FormLabel>
+                    <FormControl>
+                      <TripCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        until={until}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-
-                {isVisible("course_uuid") && (
-                  <FormField
-                    control={control}
-                    name={"course_uuid" as Path<TFieldValues>}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Course</FormLabel>
-                        <FormControl>
-                          <CourseCombobox
-                            value={field.value}
-                            onChange={field.onChange}
-                            until={until}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </div>
+              />
             )}
 
-            {/* A row of its own, not a third child of the pair above: that grid is two
-          columns and renders only while the trip or the course does, and a dive
-          center belongs on a fun dive with neither. Full width for the reason the
-          lone survivor of the pair spans both columns. */}
             {isVisible("contact_uuid") && (
               <FormField
                 control={control}
@@ -380,30 +353,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         initialRoles={DIVE_CENTER}
                         placeholder="Select a dive center..."
                         addNewLabel="Add dive center..."
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {/* Under the dive center: the shop that ran the dive, then who was on it.
-          A person picked here is a buddy until the diver says otherwise. */}
-            {isVisible("people") && (
-              <FormField
-                control={control}
-                name={"people" as Path<TFieldValues>}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>People</FormLabel>
-                    <FormControl>
-                      <PeopleMultiSelect
-                        value={field.value ?? []}
-                        onChange={field.onChange}
-                        defaultRole="buddy"
-                        until={until}
-                        pinnedUuids={roster.people}
                       />
                     </FormControl>
                     <FormMessage />
@@ -477,6 +426,31 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               </div>
             )}
           </>,
+        )}
+
+      {/* A person picked here is a buddy until the diver says otherwise. */}
+      {isVisible("people") &&
+        section(
+          "People",
+          <FormField
+            control={control}
+            name={"people" as Path<TFieldValues>}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>People</FormLabel>
+                <FormControl>
+                  <PeopleMultiSelect
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    defaultRole="buddy"
+                    until={until}
+                    pinnedUuids={roster.people}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />,
         )}
 
       {section(
@@ -1054,22 +1028,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 name={"rating" as Path<TFieldValues>}
                 render={({ field }) => (
                   <FormItem>
-                    <RatingLabelRow
-                      canClear={field.value != null}
-                      onClear={() => {
-                        field.onChange(null);
-                        // The button goes with the rating it cleared, so the focus
-                        // it held lands on the stars rather than on the page.
-                        ratingRef.current
-                          ?.querySelector<HTMLInputElement>("input")
-                          ?.focus();
-                      }}
-                    >
-                      <FormLabel id={ratingLabelId}>Rating</FormLabel>
-                    </RatingLabelRow>
+                    <FormLabel id={ratingLabelId}>Rating</FormLabel>
                     <FormControl>
                       <RatingInput
-                        ref={ratingRef}
                         aria-labelledby={ratingLabelId}
                         value={field.value ?? null}
                         onChange={field.onChange}
@@ -1121,6 +1082,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             )}
           </>,
         )}
-    </div>
+    </>
   );
 }

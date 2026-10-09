@@ -60,7 +60,7 @@ describe("DiveStartTimeField on a dive whose time of day was never recorded", ()
     expect(box()).toHaveValue("2002-06-18");
     expect(time()).toHaveValue("");
     expect(offset()).toBeDisabled();
-    expect(offset()).toHaveTextContent("Not recorded");
+    expect(offset()).toHaveDisplayValue("Not recorded");
     expect(screen.queryByDisplayValue(/00:00/)).not.toBeInTheDocument();
   });
 
@@ -83,6 +83,19 @@ describe("DiveStartTimeField on a dive whose time of day was never recorded", ()
     // The same controls stay on screen, now with a clock to put a zone on.
     expect(time()).toHaveValue("10:30:00");
     expect(offset()).toBeEnabled();
+  });
+
+  it("puts the typed time in the zone picked for it", async () => {
+    render(<Field initial="2002-06-18" />);
+
+    fireEvent.change(time(), { target: { value: "10:30" } });
+    await userEvent.selectOptions(offset(), "UTC+05:45");
+
+    expect(committed()).toBe("2002-06-18T10:30:00+05:45");
+    // A zone once adopted is not given back: the API refuses to remove one.
+    expect(
+      screen.queryByRole("option", { name: "Not recorded" }),
+    ).not.toBeInTheDocument();
   });
 
   it("goes back to the bare date when the typed time is emptied", () => {

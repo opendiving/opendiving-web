@@ -10,14 +10,15 @@ import type {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
-import { authAPI } from "@/lib/api/auth";
+import { authAPI, type UpdateProfileData } from "@/lib/api/auth";
 import { useAutofillMarks, type AutofillMarks } from "@/hooks/useAutofillMarks";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
-  DIVE_FORM_FIELDS,
+  DIVE_FORM_VALUE_FIELDS,
   EMPTY_DIVE_FORM_VALUES,
   MIXTURE_FORM_FIELDS,
   canonicalHiddenFields,
+  holdsValue,
   isMixtureField,
   isNonEmptyFieldValue,
   mixtureFieldName,
@@ -73,6 +74,18 @@ export interface DiveFormVisibility {
    * diver sees.
    */
   setHidden: (next: readonly DiveFormFieldKey[]) => void;
+  /**
+   * The saved preset the diver last applied, or `null` for none or the built-in "All".
+   * Kept when a switch changes the set; whoever shows it checks the set still matches.
+   */
+  selectedPresetUuid: string | null;
+  /** `setHidden` with a preset's set, remembering the preset - `null` for "All". */
+  applyPreset: (
+    hidden: readonly DiveFormFieldKey[],
+    presetUuid: string | null,
+  ) => void;
+  /** Remembers a preset the current set was just saved into, persisted like a toggle. */
+  selectPreset: (presetUuid: string | null) => void;
   /**
    * Puts keys on screen for this form instance without touching the stored set, and
    * marks them as the diver's own so a later hide keeps their values.
@@ -193,6 +206,15 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   const { note } = marks;
 
   const hidden = override ?? stored;
+  // Same pattern: the account's pick until this form makes one. Boxed, so a pick of
+  // `null` - "All" - is an override and not the absence of one.
+  const [selectionOverride, setSelectionOverride] = useState<{
+    uuid: string | null;
+  } | null>(null);
+  const selectedPresetUuid =
+    selectionOverride !== null
+      ? selectionOverride.uuid
+      : (user?.dive_form_preset_uuid ?? null);
 
   // Mirrors of the two, readable from a handler without a stale closure. Written both
   // here (so the account's set arriving after mount is picked up) and synchronously
@@ -250,7 +272,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   // empty it.
   useEffect(() => {
     const initial: Partial<Record<DiveFormFieldKey, unknown>> = {};
-    for (const key of DIVE_FORM_FIELDS) {
+    for (const key of DIVE_FORM_VALUE_FIELDS) {
       if (isMixtureField(key)) continue;
       initial[key] = formRef.current.getValues(
         key as unknown as Path<TFieldValues>,
@@ -265,7 +287,11 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
 
   // ---- persistence -------------------------------------------------------
 
-  const pendingRef = useRef<DiveFormFieldKey[] | null>(null);
+  // Only what changed: a toggle leaves the account's preset pick alone.
+  const pendingRef = useRef<Pick<
+    UpdateProfileData,
+    "dive_form_hidden_fields" | "dive_form_preset_uuid"
+  > | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
@@ -285,8 +311,8 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     try {
       // `PATCH /user` is `extra="forbid"`, so only the field being changed is sent -
       // the same shape the settings cards use.
-      await authAPI.updateProfile({ dive_form_hidden_fields: next });
-      mergeUserRef.current({ dive_form_hidden_fields: next });
+      await authAPI.updateProfile(next);
+      mergeUserRef.current(next);
     } catch (error) {
       console.error("Failed to save dive form field visibility:", error);
       const message = getApiErrorMessage(
@@ -371,7 +397,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     ) => {
       if (!fillsDefaultsRef.current) return;
 
-      for (const key of DIVE_FORM_FIELDS) {
+      for (const key of DIVE_FORM_VALUE_FIELDS) {
         if (GAS_KEYS.includes(key)) continue;
         if (wasVisible(key) === isNowVisible(key)) continue;
         if (!isUntouched(key)) continue;
@@ -430,6 +456,25 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     [hiddenSet, revealed],
   );
 
+  // Folds a change into the pending save and restarts the debounce, so a preset applied
+  // as a set and a pick goes out as one request.
+  const schedule = useCallback(
+    (
+      change: Pick<
+        UpdateProfileData,
+        "dive_form_hidden_fields" | "dive_form_preset_uuid"
+      >,
+    ) => {
+      pendingRef.current = { ...pendingRef.current, ...change };
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(
+        () => void flushRef.current(),
+        SAVE_DEBOUNCE_MS,
+      );
+    },
+    [],
+  );
+
   const setHidden = useCallback(
     (next: readonly DiveFormFieldKey[]) => {
       const canonical = canonicalHiddenFields(next);
@@ -456,14 +501,25 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
 
       applyValueRules(wasVisible, isNowVisible);
 
-      pendingRef.current = canonical;
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(
-        () => void flushRef.current(),
-        SAVE_DEBOUNCE_MS,
-      );
+      schedule({ dive_form_hidden_fields: canonical });
     },
-    [applyValueRules],
+    [applyValueRules, schedule],
+  );
+
+  const selectPreset = useCallback(
+    (presetUuid: string | null) => {
+      setSelectionOverride({ uuid: presetUuid });
+      schedule({ dive_form_preset_uuid: presetUuid });
+    },
+    [schedule],
+  );
+
+  const applyPreset = useCallback(
+    (next: readonly DiveFormFieldKey[], presetUuid: string | null) => {
+      setHidden(next);
+      selectPreset(presetUuid);
+    },
+    [setHidden, selectPreset],
   );
 
   const reveal = useCallback((keys: readonly DiveFormFieldKey[]) => {
@@ -545,7 +601,9 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
         ...(base as Record<string, unknown>),
       };
       for (const key of Object.keys(carried) as DiveFormFieldKey[]) {
-        if (key === "mixtures" || isMixtureField(key)) continue;
+        if (key === "mixtures" || isMixtureField(key) || !holdsValue(key)) {
+          continue;
+        }
         seeded[key] = visible(key) ? carried[key] : EMPTY_DIVE_FORM_VALUES[key];
       }
       if ("mixtures" in carried) seeded.mixtures = desiredMixtures(visible);
@@ -554,7 +612,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
       // layer's write, and a key left out of the record would read as the diver's the
       // first time they hid it.
       const written: Partial<Record<DiveFormFieldKey, unknown>> = {};
-      for (const key of DIVE_FORM_FIELDS) {
+      for (const key of DIVE_FORM_VALUE_FIELDS) {
         if (isMixtureField(key)) continue;
         written[key] = seeded[key];
       }
@@ -581,6 +639,9 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     isRevealed,
     isVisible,
     setHidden,
+    selectedPresetUuid,
+    applyPreset,
+    selectPreset,
     reveal,
     revealNonEmpty,
     autofill,

@@ -55,6 +55,10 @@ export interface User {
   // fetch of its own, which is what lets the form's *first paint* already omit the
   // hidden fields instead of showing them and taking them away.
   dive_form_hidden_fields: DiveFormFieldKey[];
+  // The saved preset the diver last applied, or `null` for none - the built-in "All"
+  // included, which is not a row. Presets may hold identical sets, so this is what tells
+  // the Fields menu which one to name; it is shown only while its set still matches.
+  dive_form_preset_uuid: string | null;
   // Whether this account holds the operator's rights - the caller's own record on
   // `GET /user` (the backend's `UserRead.is_superuser`), never a disclosure about
   // anybody else. It is what the header uses to offer the `/admin` section at all.
@@ -119,6 +123,8 @@ export interface UpdateProfileData {
   // this client sends the canonical form anyway so what it holds and what came back
   // cannot differ. An explicit `null` is a 422.
   dive_form_hidden_fields?: DiveFormFieldKey[];
+  // One of the caller's own presets, or `null`; anything else is a 422.
+  dive_form_preset_uuid?: string | null;
 }
 
 /**

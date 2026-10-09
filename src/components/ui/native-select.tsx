@@ -10,9 +10,8 @@ export interface NativeSelectProps extends React.SelectHTMLAttributes<HTMLSelect
 // `SelectTrigger` does. The handful of pickers that need `""` as a real option
 // (DECISIONS.md, "A dive-level select carries the same three states") cannot be a
 // Radix `Select`, and the UA's own arrow sits further right and in a different
-// shape than the Radix one - so a row mixing the two, like the dive form's Water
-// type beside its UTC offset, shows two arrows at two insets unless this draws
-// the second one.
+// shape than the Radix one - so a native picker would not match the Radix ones
+// still used in the dialogs unless this draws the same arrow.
 //
 // The overlay rather than a `background-image`: the chevron is `currentColor`, and
 // a data-URI SVG would have to name a hex, which is two hexes across the themes.

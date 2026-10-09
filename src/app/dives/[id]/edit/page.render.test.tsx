@@ -699,6 +699,28 @@ describe("removing a file the dive already holds", () => {
       ],
     } as Partial<Dive>);
 
+  it("brings the import back under a set that hides it, for the files it lists", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["file_import"];
+    vi.mocked(divesAPI.getDive).mockResolvedValue(diveWithFiles());
+
+    render(<EditDivePage />);
+
+    expect(
+      await screen.findByRole("button", { name: "Delete ocean.fit" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the import under that set for a dive with no files", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["file_import"];
+
+    render(<EditDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(
+      screen.queryByRole("button", { name: /upload dive files/i }),
+    ).not.toBeInTheDocument();
+  });
+
   const markForRemoval = async (name: string) => {
     await userEvent.click(
       await screen.findByRole("button", { name: `Delete ${name}` }),

@@ -30,6 +30,7 @@ export const USER: User = {
   avatar_sha256: null,
   units: "metric",
   dive_form_hidden_fields: [],
+  dive_form_preset_uuid: null,
 };
 
 // Two dives, so the pager has somewhere to step. `DIVE_A` is the later of the

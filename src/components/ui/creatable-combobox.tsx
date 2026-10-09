@@ -296,6 +296,9 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   // off where it would file a half-made one (`ContactCombobox`'s roleless
   // contact).
   onCreate?: (name: string) => Promise<ComboboxItem>;
+  // Why `onCreate` would be refused this name, or null. A refused name is left in
+  // the field to be corrected, with the menu shut and the reason under it.
+  validateCreate?: (name: string) => string | null;
   placeholder?: string;
   disabled?: boolean;
   // Shown when the menu is empty and nothing has been typed ("No dive sites
@@ -377,6 +380,7 @@ export function CreatableCombobox({
   onChange,
   onTextChange,
   onCreate,
+  validateCreate,
   onAddNew,
   addNewLabel = "Add new...",
   placeholder = "Select or type a new name...",
@@ -404,6 +408,8 @@ export function CreatableCombobox({
   const [typed, setTyped] = useState(!!initialQuery);
   const [isOpen, setIsOpen] = useState(!!initialQuery);
   const [isSaving, setIsSaving] = useState(false);
+  // What `validateCreate` said about the last name committed, until it is edited.
+  const [refusal, setRefusal] = useState<string | null>(null);
   // Index of the keyboard-highlighted option, or -1 for none. Counts the
   // "Add new..." entry as option 0 when present, since it's a row in the menu
   // like any other and skipping it would make it unreachable by keyboard.
@@ -436,6 +442,7 @@ export function CreatableCombobox({
   // name in the input once it has dropped out of the current search results.
   const lastSelectedRef = useRef<ComboboxItem | null>(null);
   const listId = useId();
+  const refusalId = useId();
   const optionId = (index: number) => `${listId}-option-${index}`;
 
   // An append-only field has always worked this way; a single-select opts in.
@@ -532,7 +539,8 @@ export function CreatableCombobox({
   const searchPending = isRemote && searchedQuery !== query;
 
   useEffect(() => {
-    if (isOpen) return;
+    // A refused name stays in the field to be corrected, menu shut or not.
+    if (isOpen || refusal !== null) return;
     // Deliberate sync-from-external-value pattern: `inputValue` doubles as both the
     // user's in-progress typed text (while open) and a mirror of the externally
     // selected `value` (once closed/committed), so it can't be purely derived during
@@ -543,7 +551,7 @@ export function CreatableCombobox({
       (lastSelectedRef.current?.id === value ? lastSelectedRef.current : null);
     setInputValue(match ? match.name : "");
     setTyped(false);
-  }, [value, availableItems, selectedItem, isOpen]);
+  }, [value, availableItems, selectedItem, isOpen, refusal]);
 
   // One effect rather than a call beside each `setInputValue`: the field's text
   // is written from six places (typing, a picked row, a blur commit, a create, the
@@ -629,6 +637,7 @@ export function CreatableCombobox({
 
   const handleInputChange = (text: string) => {
     setInputValue(text);
+    setRefusal(null);
     setTyped(true);
     setIsOpen(true);
     // Typing re-filters the list, so a held-over index would point at a
@@ -750,6 +759,15 @@ export function CreatableCombobox({
       return;
     }
 
+    const refused = validateCreate?.(action.name) ?? null;
+    if (refused !== null) {
+      setRefusal(refused);
+      // Focus before close, for the reason `readyForNext` gives.
+      inputRef.current?.focus();
+      setIsOpen(false);
+      return;
+    }
+
     try {
       setIsSaving(true);
       const created = await onCreate!(action.name);
@@ -774,219 +792,234 @@ export function CreatableCombobox({
   };
 
   return (
-    <div className="relative">
-      <Input
-        ref={inputRef}
-        id={id}
-        aria-describedby={ariaDescribedBy}
-        aria-invalid={ariaInvalid}
-        aria-label={ariaLabel}
-        type="text"
-        role="combobox"
-        aria-expanded={isOpen}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        // Points a screen reader at the keyboard-highlighted row without moving
-        // real focus off the input.
-        aria-activedescendant={
-          isOpen && activeOption >= 0 ? optionId(activeOption) : undefined
-        }
-        placeholder={placeholder}
-        value={inputValue}
-        disabled={disabled || isLoading}
-        className={cn(value !== undefined && "pr-7")}
-        onChange={(e) => handleInputChange(e.target.value)}
-        onFocus={() => {
-          setIsOpen(true);
-          // The menu now opens unfiltered, so the text sitting in a filled
-          // single-select is a label rather than a query - and clicking in to
-          // change the trip and typing gave "Dahab 2025R" against an empty menu.
-          // Selecting it makes the first keystroke replace it, which is what the
-          // field looks like it will do.
-          //
-          // `onFocus` rather than `onClick`: the latter fires again on every
-          // click into an already-focused field, so it would keep re-selecting
-          // under a caret the diver had just placed by hand.
-          //
-          // Gated on there being something to replace, which is not the same as
-          // `!keepOpenOnSelect`: an append-only field is empty after every pick,
-          // but so is a single-select on a new dive, and `select()` on an empty
-          // field is a no-op that still raises the handles and the copy callout
-          // on a phone. `keepOpenOnSelect` stays in the condition because that
-          // field's input is a filter even when the diver has typed into it -
-          // its text is a query, and a query is not a label.
-          if (!keepOpenOnSelect && inputValue) inputRef.current?.select();
-        }}
-        // Focus alone isn't enough: a `focus` event doesn't fire on an input
-        // that already has focus, so any path that closes the menu while
-        // keeping focus (picking an item, Escape, a dialog restoring focus)
-        // would otherwise leave it unopenable without clicking away first.
-        onClick={() => setIsOpen(true)}
-        onBlur={() => {
-          const byEnter = committedByEnterRef.current;
-          committedByEnterRef.current = false;
-          closeMenu();
-          // Under `enterOnly`, leaving the field does nothing but close the menu
-          // - no create, and no exact-match select either. Blur committing suits
-          // a single-select whose typed text *is* the value, where dropping it
-          // would lose the edit; a field that files free text wants the opposite,
-          // so that a diver who clicks Save with a half-typed query gets what
-          // they can see rather than a place they never chose. `handleSelect`
-          // and Enter are the only ways in.
-          if (enterOnly && !byEnter) return;
-          commit();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-            // Stop the caret jumping to the start/end of the text while the
-            // same keys are driving the menu.
-            e.preventDefault();
-            if (!isOpen) {
-              setIsOpen(true);
-              return;
-            }
-            setActiveIndex((current) =>
-              nextActiveIndex(
-                clampActiveIndex(current, optionCount),
-                e.key === "ArrowDown" ? 1 : -1,
-                optionCount,
-              ),
-            );
-            return;
+    <>
+      <div className="relative">
+        <Input
+          ref={inputRef}
+          id={id}
+          aria-describedby={
+            [ariaDescribedBy, refusal !== null && refusalId]
+              .filter(Boolean)
+              .join(" ") || undefined
           }
-
-          if (e.key === "Enter") {
-            e.preventDefault();
-            // With a row highlighted, Enter takes it. With nothing highlighted
-            // Enter keeps its original meaning: commit the typed text, which is
-            // what matches an exactly-typed name (or creates one via onCreate).
-            if (isOpen && activeOption >= 0) {
-              if (onAddNew && activeOption === 0) {
-                openAddNew();
-              } else {
-                handleSelect(filteredItems[activeOption - addNewOffset]);
-              }
-              return;
-            }
-            committedByEnterRef.current = true;
-            inputRef.current?.blur();
-            return;
+          aria-invalid={ariaInvalid || refusal !== null || undefined}
+          aria-label={ariaLabel}
+          type="text"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          // Points a screen reader at the keyboard-highlighted row without moving
+          // real focus off the input.
+          aria-activedescendant={
+            isOpen && activeOption >= 0 ? optionId(activeOption) : undefined
           }
-
-          if (e.key === "Escape") {
+          placeholder={placeholder}
+          value={inputValue}
+          disabled={disabled || isLoading}
+          className={cn(value !== undefined && "pr-7")}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={() => {
+            setIsOpen(true);
+            // The menu now opens unfiltered, so the text sitting in a filled
+            // single-select is a label rather than a query - and clicking in to
+            // change the trip and typing gave "Dahab 2025R" against an empty menu.
+            // Selecting it makes the first keystroke replace it, which is what the
+            // field looks like it will do.
+            //
+            // `onFocus` rather than `onClick`: the latter fires again on every
+            // click into an already-focused field, so it would keep re-selecting
+            // under a caret the diver had just placed by hand.
+            //
+            // Gated on there being something to replace, which is not the same as
+            // `!keepOpenOnSelect`: an append-only field is empty after every pick,
+            // but so is a single-select on a new dive, and `select()` on an empty
+            // field is a no-op that still raises the handles and the copy callout
+            // on a phone. `keepOpenOnSelect` stays in the condition because that
+            // field's input is a filter even when the diver has typed into it -
+            // its text is a query, and a query is not a label.
+            if (!keepOpenOnSelect && inputValue) inputRef.current?.select();
+          }}
+          // Focus alone isn't enough: a `focus` event doesn't fire on an input
+          // that already has focus, so any path that closes the menu while
+          // keeping focus (picking an item, Escape, a dialog restoring focus)
+          // would otherwise leave it unopenable without clicking away first.
+          onClick={() => setIsOpen(true)}
+          onBlur={() => {
+            const byEnter = committedByEnterRef.current;
+            committedByEnterRef.current = false;
             closeMenu();
-            inputRef.current?.blur();
-          }
-        }}
-      />
-      {(isSaving || isSearching) && (
-        <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-      )}
-      {!isSaving &&
-        !isSearching &&
-        value !== undefined &&
-        !disabled &&
-        !isLoading && (
-          <IconTooltip label="Clear">
-            <button
-              type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                setInputValue("");
-                setTyped(false);
-                onChange(undefined);
-                inputRef.current?.focus();
-              }}
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </IconTooltip>
-        )}
-      {isOpen && !isLoading && (
-        <div
-          id={listId}
-          role="listbox"
-          className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto"
-        >
-          {onAddNew && (
-            <button
-              type="button"
-              id={optionId(0)}
-              role="option"
-              aria-selected={activeOption === 0}
-              ref={(el) => {
-                optionRefs.current[0] = el;
-              }}
-              className={cn(
-                "w-full text-left px-3 py-2 text-sm text-primary hover:bg-accent hover:text-accent-foreground flex items-center gap-1.5 border-b",
-                activeOption === 0 && "bg-accent text-accent-foreground",
-              )}
-              // Prevent the input's onBlur from firing before this click is registered.
-              onMouseDown={(e) => e.preventDefault()}
-              // Keep the highlight under the mouse, so switching between mouse
-              // and keyboard mid-list doesn't leave two rows looking active.
-              onMouseEnter={() => setActiveIndex(0)}
-              onClick={openAddNew}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {addNewLabel}
-            </button>
-          )}
-          {filteredItems.length > 0 ? (
-            filteredItems.map((item, index) => {
-              const optionIndex = index + addNewOffset;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  id={optionId(optionIndex)}
-                  role="option"
-                  aria-selected={optionIndex === activeOption}
-                  ref={(el) => {
-                    optionRefs.current[optionIndex] = el;
-                  }}
-                  className={cn(
-                    "w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground",
-                    item.id === value && "bg-accent/50",
-                    optionIndex === activeOption &&
-                      "bg-accent text-accent-foreground",
-                  )}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseEnter={() => setActiveIndex(optionIndex)}
-                  onClick={() => handleSelect(item)}
-                >
-                  {item.name}
-                  {item.hint && (
-                    <span className="text-muted-foreground">, {item.hint}</span>
-                  )}
-                </button>
+            // Under `enterOnly`, leaving the field does nothing but close the menu
+            // - no create, and no exact-match select either. Blur committing suits
+            // a single-select whose typed text *is* the value, where dropping it
+            // would lose the edit; a field that files free text wants the opposite,
+            // so that a diver who clicks Save with a half-typed query gets what
+            // they can see rather than a place they never chose. `handleSelect`
+            // and Enter are the only ways in.
+            if (enterOnly && !byEnter) return;
+            commit();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+              // Stop the caret jumping to the start/end of the text while the
+              // same keys are driving the menu.
+              e.preventDefault();
+              if (!isOpen) {
+                setIsOpen(true);
+                return;
+              }
+              setActiveIndex((current) =>
+                nextActiveIndex(
+                  clampActiveIndex(current, optionCount),
+                  e.key === "ArrowDown" ? 1 : -1,
+                  optionCount,
+                ),
               );
-            })
-          ) : (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
-              {emptyMenuLabel({
-                query,
-                minSearchLength,
-                maxSearchLength,
-                searchFailed,
-                isBusy: isSearching || searchPending,
-                noItemsLabel,
-                noMatchesLabel,
-                queryTooLongLabel,
-                searchErrorLabel,
-              })}
-            </div>
+              return;
+            }
+
+            if (e.key === "Enter") {
+              e.preventDefault();
+              // With a row highlighted, Enter takes it. With nothing highlighted
+              // Enter keeps its original meaning: commit the typed text, which is
+              // what matches an exactly-typed name (or creates one via onCreate).
+              if (isOpen && activeOption >= 0) {
+                if (onAddNew && activeOption === 0) {
+                  openAddNew();
+                } else {
+                  handleSelect(filteredItems[activeOption - addNewOffset]);
+                }
+                return;
+              }
+              committedByEnterRef.current = true;
+              inputRef.current?.blur();
+              return;
+            }
+
+            if (e.key === "Escape") {
+              closeMenu();
+              inputRef.current?.blur();
+            }
+          }}
+        />
+        {(isSaving || isSearching) && (
+          <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+        )}
+        {!isSaving &&
+          !isSearching &&
+          value !== undefined &&
+          !disabled &&
+          !isLoading && (
+            <IconTooltip label="Clear">
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setInputValue("");
+                  setTyped(false);
+                  onChange(undefined);
+                  inputRef.current?.focus();
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </IconTooltip>
           )}
-          {remoteResult.hasMore && (
-            // Without this a truncated page reads as "that's everything you
-            // have", and the missing site looks like it was never logged.
-            <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-              More matches than shown - keep typing to narrow.
-            </div>
-          )}
-        </div>
+        {isOpen && !isLoading && (
+          <div
+            id={listId}
+            role="listbox"
+            className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto"
+          >
+            {onAddNew && (
+              <button
+                type="button"
+                id={optionId(0)}
+                role="option"
+                aria-selected={activeOption === 0}
+                ref={(el) => {
+                  optionRefs.current[0] = el;
+                }}
+                className={cn(
+                  "w-full text-left px-3 py-2 text-sm text-primary hover:bg-accent hover:text-accent-foreground flex items-center gap-1.5 border-b",
+                  activeOption === 0 && "bg-accent text-accent-foreground",
+                )}
+                // Prevent the input's onBlur from firing before this click is registered.
+                onMouseDown={(e) => e.preventDefault()}
+                // Keep the highlight under the mouse, so switching between mouse
+                // and keyboard mid-list doesn't leave two rows looking active.
+                onMouseEnter={() => setActiveIndex(0)}
+                onClick={openAddNew}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {addNewLabel}
+              </button>
+            )}
+            {filteredItems.length > 0 ? (
+              filteredItems.map((item, index) => {
+                const optionIndex = index + addNewOffset;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    id={optionId(optionIndex)}
+                    role="option"
+                    aria-selected={optionIndex === activeOption}
+                    ref={(el) => {
+                      optionRefs.current[optionIndex] = el;
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground",
+                      item.id === value && "bg-accent/50",
+                      optionIndex === activeOption &&
+                        "bg-accent text-accent-foreground",
+                    )}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setActiveIndex(optionIndex)}
+                    onClick={() => handleSelect(item)}
+                  >
+                    {item.name}
+                    {item.hint && (
+                      <span className="text-muted-foreground">
+                        , {item.hint}
+                      </span>
+                    )}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                {emptyMenuLabel({
+                  query,
+                  minSearchLength,
+                  maxSearchLength,
+                  searchFailed,
+                  isBusy: isSearching || searchPending,
+                  noItemsLabel,
+                  noMatchesLabel,
+                  queryTooLongLabel,
+                  searchErrorLabel,
+                })}
+              </div>
+            )}
+            {remoteResult.hasMore && (
+              // Without this a truncated page reads as "that's everything you
+              // have", and the missing site looks like it was never logged.
+              <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+                More matches than shown - keep typing to narrow.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {/* A sibling rather than inside the box above, whose height the icons centre on.
+        Only a caller passing `validateCreate` can render it. */}
+      {refusal !== null && (
+        <p id={refusalId} className="mt-2 text-sm font-medium text-destructive">
+          {refusal}
+        </p>
       )}
-    </div>
+    </>
   );
 }

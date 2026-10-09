@@ -199,9 +199,9 @@ script's header.
 
 Every page inside the shared chrome puts its content in one `max-w-6xl` column - `HERO_BODY` in
 `ui/map-hero.tsx`, whose gutter the header and footer share. The landing page (`/`), built from
-full-bleed alternating sections, is the exemption. The dive "new"/"edit" forms sit in that column
-too and cap only their card, at `max-w-2xl` (`FORM_BODY`). This is a content-width choice only;
-`Header`/`Footer` come from `AppShell` (next section).
+full-bleed alternating sections, is the exemption, and so are the dive "new"/"edit" forms, whose
+hero and body share one centred `max-w-2xl` column (`FORM_COLUMN`). This is a content-width choice
+only; `Header`/`Footer` come from `AppShell` (next section).
 
 ## `Header`/`Footer` live once in `AppShell`, not per-page
 
@@ -501,20 +501,20 @@ unchanged when the new array is shorter, so an import with fewer mixtures than t
 trailing rows behind. `mixture-fields.tsx` exports the `MixtureFieldArray` type
 (`UseFieldArrayReturn<MixtureFieldsValues, "mixtures">`) and `useMixtureFieldArray(control)`;
 `new-dive-page-content.tsx` and `edit-dive-page-content.tsx` call it once beside `useForm()` and
-pass the result through `DiveFormCard` to `DiveFormFields`/`MixtureFields` and `DiveFileImport`,
-which never create their own. `ParsedDive` (`lib/api/dives.ts`) declares
-`mixtures: ParsedDiveMixture[]` explicitly.
+pass the result through `DiveForm` to `DiveFormFields`/`MixtureFields` and `DiveFileImport`, which
+never create their own. `ParsedDive` (`lib/api/dives.ts`) declares `mixtures: ParsedDiveMixture[]`
+explicitly.
 
-## `dives/new`/`dives/[id]/edit` pages share `DiveFormCard`/`PlainHero`/`PageSpinner`
+## `dives/new`/`dives/[id]/edit` pages share `DiveForm`/`PlainHero`/`PageSpinner`
 
 A dive form page is its own data-loading effects, its own `onSubmit` and its early-return states,
-then one `PlainHero` and one `DiveFormCard`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
-holds the `useFieldArray` generic parameter and cast in one place. `DiveFormCard`
-(`dive-form-card.tsx`) wraps `Card`/`Form`/`form` + `DiveFileImport` + `DiveFormFields` +
-`DiveFormActions`; the per-page inputs are `mode`, `onSubmit`, `cancelHref`, `submittingLabel` and
-`submitLabel`. The hero is the one every record page draws, so the title sits where it does
-everywhere else; `FORM_BODY` keeps the card at `max-w-2xl` against the column's left edge, under the
-title, rather than centring it in a column of its own.
+then one `PlainHero` and one `DiveForm`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
+holds the `useFieldArray` generic parameter and cast in one place. `DiveForm` (`dive-form.tsx`)
+wraps `Form`/`form` + `DiveFileImport` + `DiveFormFields` + `DiveFormActions`, each section a card
+of its own; the per-page inputs are `mode`, `onSubmit`, `cancelHref`, `submittingLabel` and
+`submitLabel`. The hero is the one every record page draws, narrowed with the body to one centred
+`FORM_COLUMN` at the form's width: the page's wide column would put the Fields control a window away
+from the form it configures, and leave the form off centre.
 
 `PageSpinner` (`components/ui/page-spinner.tsx`) is the full-viewport `min-h-screen` `<Loader2>` for
 the top-level auth-loading gate. The list and detail pages render below `AppShell`'s header and
@@ -5779,12 +5779,14 @@ falling silent; `isSingleGasParallelSet` refuses a set whose first cylinder has 
 rows are named sets of the same. Both live on the account, not the device, and the user record
 carries the set, so the first paint omits them.
 
-Storing the hidden set makes a new field visible under every preset and "Technical" the empty list.
-A preset is a snapshot: applying one copies its `hidden_fields` into the account state, later
-toggles change the state only, and the Fields menu marks the preset whose set equals the stored
-state. Equality is a list comparison because `canonicalHiddenFields` in `lib/dive-form-fields.ts`
-puts every set read or written in form order. The API canonicalizes into its own stable order, so
-the web never relies on the two agreeing.
+Storing the hidden set makes a new field visible under every preset, and the built-in "All" the
+empty list: a constant, not a row, so it cannot be renamed, overwritten or deleted, and no saved
+preset may take its name. A preset is a snapshot: applying one copies its `hidden_fields` into the
+account state and records `user.dive_form_preset_uuid`, later toggles change the state only. Presets
+may hold identical sets, so `currentDiveFormPreset` names the pick while its set still matches, then
+"All" for nothing hidden, then the first saved match. Equality is a list comparison because
+`canonicalHiddenFields` in `lib/dive-form-fields.ts` puts every set read or written in form order.
+The API canonicalizes into its own stable order, so the web never relies on the two agreeing.
 
 Hidden means not in the DOM: the `FormField` is not rendered. react-hook-form's default
 `shouldUnregister: false` keeps the value and validates it, so a hidden field is submitted as a
@@ -5845,17 +5847,17 @@ flip-then-leave still saves. `SAVE_DEBOUNCE_MS` in the hook is the figure's only
 
 ## The Fields control is a menu with a dialog behind it, and neither is in the form
 
-The control is positioned into the title row (`absolute inset-y-0 right-0`, `type="button"`), as
-`EntryUnitLabelRow` does, so the header's height ignores it.
+The control is a page action in the hero's top row, opposite the way back, dressed as the back link
+is.
 
 The menu applies presets; Configure opens a dialog of switches and preset housekeeping. A failed
 `PATCH /user` toasts from `useDiveFormVisibility`'s `flush`. Escape belongs to the dialog: Radix
 listens on `document` in the capture phase.
 
 "Save as" is one name plus Save: an unmatched name creates, a match replaces; not
-`CreatableCombobox`, which commits on blur. The trigger reads `Fields: <preset>` or "Custom", so
-`useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name prompt uses
-`dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
+`CreatableCombobox`, which commits on blur. The trigger reads `Fields: <preset>`, "All" or "Custom",
+so `useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name prompt
+uses `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
 
 A switch shows the effective state and edits the stored one. A unit toggle rides on every visible
 box with a unit, so hiding one of a dimension's fields leaves the toggle on the others.
@@ -6601,9 +6603,9 @@ label in the app by 6px to cure a clip only these rows produce.
 
 ## "Save as" opens on the preset the fields already match
 
-Opening Configure on a set matching an account preset seeds "Save as" with that preset's name under
-a "Replaces…" line, so saving edits back under that name is one tap. A set matching nothing opens
-empty.
+Opening Configure seeds "Save as" with the saved preset the trigger names, under a "Replaces…" line,
+so saving edits back under that name is one tap; what it saves becomes the pick. "All" and a set
+matching nothing open empty.
 
 The mount freezes the seed. The match is computed against `visibility.hidden`, which changes on the
 first flip, so a name recomputed every render would blank itself on the very edit the diver means to

@@ -1,5 +1,8 @@
 import { apiClient, fetchAllPages, type PaginatedResponse } from "./client";
-import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
+import {
+  hiddenFieldsEqual,
+  type DiveFormFieldKey,
+} from "@/lib/dive-form-fields";
 
 /**
  * A named set of dive-form fields to keep hidden, saved against one account.
@@ -19,6 +22,52 @@ export interface DiveFormPreset {
   name: string;
   hidden_fields: DiveFormFieldKey[];
   created_at: string;
+}
+
+/**
+ * The built-in preset every account has and none stores: every field shown. It is the
+ * empty hidden set, which is what a new account starts with, so a new form reads "All".
+ * Not a row, so nothing can rename, overwrite or delete it, and no saved preset may take
+ * its name.
+ */
+export const ALL_FIELDS_PRESET_NAME = "All";
+
+/** Whether `name` is the built-in preset's, matched as the API matches preset names. */
+export function isAllFieldsPresetName(name: string): boolean {
+  return name.trim().toLowerCase() === ALL_FIELDS_PRESET_NAME.toLowerCase();
+}
+
+/** Which preset the form is on, as the Fields surfaces name it. */
+export type CurrentDiveFormPreset =
+  | { kind: "saved"; preset: DiveFormPreset }
+  | { kind: "all" }
+  | { kind: "loading" }
+  | { kind: "custom" };
+
+/**
+ * The preset the hidden set is on: the one the diver picked while its set still matches,
+ * else the built-in "All" for nothing hidden, else the first saved one holding the set.
+ *
+ * Presets may hold identical sets, so the pick is what tells them apart - and a set
+ * edited away from it and back is on it again. The fallbacks name a set nobody picked
+ * as anything: one applied on another client before the pick was stored, or a toggle
+ * that happens to land on a saved set.
+ */
+export function currentDiveFormPreset(
+  presets: readonly DiveFormPreset[] | null,
+  hidden: readonly DiveFormFieldKey[],
+  pickedUuid: string | null,
+): CurrentDiveFormPreset {
+  const picked = presets?.find((preset) => preset.uuid === pickedUuid);
+  if (picked && hiddenFieldsEqual(picked.hidden_fields, hidden)) {
+    return { kind: "saved", preset: picked };
+  }
+  if (hidden.length === 0) return { kind: "all" };
+  if (presets === null) return { kind: "loading" };
+  const matching = presets.find((preset) =>
+    hiddenFieldsEqual(preset.hidden_fields, hidden),
+  );
+  return matching ? { kind: "saved", preset: matching } : { kind: "custom" };
 }
 
 export interface DiveFormPresetCreate {

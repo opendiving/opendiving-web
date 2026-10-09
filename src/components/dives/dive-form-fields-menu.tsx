@@ -10,10 +10,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { HERO_CONTROL } from "@/components/ui/map-hero";
+import { cn } from "@/lib/utils";
 import { DiveFormFieldsDialog } from "@/components/dives/dive-form-fields-dialog";
 import { useDiveFormPresets } from "@/hooks/useDiveFormPresets";
-import { hiddenFieldsEqual } from "@/lib/dive-form-fields";
-import type { DiveFormPreset } from "@/lib/api/dive-form-presets";
+import {
+  ALL_FIELDS_PRESET_NAME,
+  currentDiveFormPreset,
+} from "@/lib/api/dive-form-presets";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
 /** What the trigger reads while the account's presets are still on the wire. */
@@ -31,23 +35,18 @@ interface DiveFormFieldsMenuProps {
 }
 
 /**
- * The Fields control at the end of the dive card's title row: a menu of the account's
- * presets, and Configure for everything else.
+ * The Fields control in the dive form page's top row, opposite the way back: a menu of
+ * the account's presets, and Configure for everything else. Dressed as the back link
+ * is, a hero control.
  *
- * **Positioned rather than laid out**, for the reason `EntryUnitLabelRow` documents: a
- * flex row would give the control a say in the header's height, and the header has to
- * occupy the same vertical space with it as without it. `type="button"` because this
- * renders on a card whose content is a `<form>` and the default type submits.
+ * **The trigger is labelled with the state, not with the control's name**, by
+ * `currentDiveFormPreset`: the preset the diver picked while its set still matches,
+ * "All" for nothing hidden, and "Custom" for a set no preset holds. Save as seeds its
+ * name from the same answer, so the two can never disagree. The accessible name keeps
+ * "Fields" in front of it, so the control is still findable by what it does.
  *
- * **The trigger is labelled with the state, not with the control's name.** A hidden set
- * equal to a saved preset's reads as that preset; one equal to none reads "Custom".
- * That is the same "which preset matches?" comparison the dialog marks a row with, so
- * the two can never disagree - and it means the button answers the question a diver
- * opens this menu to ask. The accessible name keeps "Fields" in front of it, so the
- * control is still findable by what it does.
- *
- * **Picking a preset applies it and nothing else.** A preset is a snapshot: applying
- * copies its hidden set into the account's current state, and editing a field
+ * **Picking a preset applies its set and remembers the pick.** A preset is a snapshot:
+ * applying copies its hidden set into the account's current state, and editing a field
  * afterwards changes the state rather than the preset - at which point the trigger
  * says "Custom" until the diver writes it back from Configure.
  */
@@ -56,30 +55,57 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
   const [isConfigureOpen, setIsConfigureOpen] = useState(false);
 
   const rows = presets.presets;
-  // Two presets can hold the same set - saving the current fields under a second name
-  // is all it takes - so "which one is current?" has no single answer, and every
-  // matching row is marked, exactly as the Presets tab marks them. The trigger has to
-  // name *one*, and takes the first: it says which set is on the form, not which row
-  // put it there, and nothing downstream remembers a preset anyway.
-  const isCurrent = (preset: DiveFormPreset) =>
-    hiddenFieldsEqual(preset.hidden_fields, visibility.hidden);
-  const current = rows?.find(isCurrent);
-  const label = rows === null ? LOADING_LABEL : (current?.name ?? CUSTOM_LABEL);
+  // One answer, shared with Save as: the preset the diver picked while its set still
+  // matches, so two presets holding the same set are told apart by which was applied.
+  const current = currentDiveFormPreset(
+    rows,
+    visibility.hidden,
+    visibility.selectedPresetUuid,
+  );
+  const label =
+    current.kind === "saved"
+      ? current.preset.name
+      : current.kind === "all"
+        ? ALL_FIELDS_PRESET_NAME
+        : current.kind === "loading"
+          ? LOADING_LABEL
+          : CUSTOM_LABEL;
+
+  const presetItem = (
+    key: string,
+    name: string,
+    isCurrent: boolean,
+    onSelect: () => void,
+  ) => (
+    <DropdownMenuItem key={key} onSelect={onSelect}>
+      {/* The check is a mark *and* a word, for the reason the dialog's own list
+          carries: colour and an icon alone would leave the current preset unnamed
+          to a screen reader. */}
+      <Check
+        className={`mr-2 h-3.5 w-3.5 text-teal ${isCurrent ? "" : "invisible"}`}
+        aria-hidden
+      />
+      <span aria-current={isCurrent ? "true" : undefined}>{name}</span>
+      {isCurrent && <span className="sr-only">(current fields)</span>}
+    </DropdownMenuItem>
+  );
 
   return (
-    <span className="absolute inset-y-0 right-0 flex items-center">
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             // The visible text is the *state*, so the name has to carry what the
             // control is as well - and it must contain the visible text, which is
             // WCAG's Label in Name. While the list is still loading the two are the
             // same word, and repeating it would read as a stutter.
-            aria-label={rows === null ? undefined : `Fields: ${label}`}
-            className="gap-2"
+            aria-label={
+              label === LOADING_LABEL ? undefined : `Fields: ${label}`
+            }
+            className={cn("gap-2", HERO_CONTROL)}
           >
             {/* Sliders, then the state, then the chevron: what the control is about,
                 what it currently says, and last the mark that it opens - which is
@@ -92,33 +118,23 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[12rem]">
+          {presetItem(
+            "all",
+            ALL_FIELDS_PRESET_NAME,
+            current.kind === "all",
+            () => visibility.applyPreset([], null),
+          )}
           {presets.isLoading ? (
             <DropdownMenuItem disabled>Loading presets...</DropdownMenuItem>
-          ) : rows && rows.length > 0 ? (
-            rows.map((preset) => (
-              <DropdownMenuItem
-                key={preset.uuid}
-                onSelect={() => visibility.setHidden(preset.hidden_fields)}
-              >
-                {/* The check is a mark *and* a word, for the reason the dialog's
-                    own list carries: colour and an icon alone would leave the
-                    current preset unnamed to a screen reader. */}
-                <Check
-                  className={`mr-2 h-3.5 w-3.5 text-teal ${
-                    isCurrent(preset) ? "" : "invisible"
-                  }`}
-                  aria-hidden
-                />
-                <span aria-current={isCurrent(preset) ? "true" : undefined}>
-                  {preset.name}
-                </span>
-                {isCurrent(preset) && (
-                  <span className="sr-only">(current fields)</span>
-                )}
-              </DropdownMenuItem>
-            ))
           ) : (
-            <DropdownMenuItem disabled>No presets yet</DropdownMenuItem>
+            rows?.map((preset) =>
+              presetItem(
+                preset.uuid,
+                preset.name,
+                current.kind === "saved" && current.preset.uuid === preset.uuid,
+                () => visibility.applyPreset(preset.hidden_fields, preset.uuid),
+              ),
+            )
           )}
           <DropdownMenuSeparator />
           {/* The dialog mounts while this item still has focus - Radix flushes
@@ -137,6 +153,6 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
         visibility={visibility}
         presets={presets}
       />
-    </span>
+    </>
   );
 }
