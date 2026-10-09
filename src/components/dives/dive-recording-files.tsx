@@ -164,7 +164,7 @@ export function DiveRecordingFiles({
         />
       )}
 
-      <ul className="mt-3 space-y-2" data-testid="dive-file-list">
+      <ul className="space-y-2" data-testid="dive-file-list">
         {storedRows.map((row) => (
           <FileRow
             key={row.key}
