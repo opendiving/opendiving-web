@@ -2997,7 +2997,7 @@ every caller already draws, and the map stays ignorant of dives. A domain-shaped
 `kind: "site" | "gps"` is rejected for the same reason `subject` is a string.
 
 The fix inverts the pin's two colours rather than its size, shape or hue: same coral, same 12px,
-`border-coral` with a `bg-background/80` centre against the pin's `border-background` over
+`border-coral` with a `bg-background/80` centre against the pin's page-coloured ring over
 `bg-coral`. One accent reads as one legend, and the tinted centre keeps the ring legible over a
 coastline on Positron and Dark Matter.
 

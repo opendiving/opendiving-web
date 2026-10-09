@@ -3,7 +3,9 @@
 // the whole world: the shipped styles in `public/basemap/` drawn at zoom 0 -
 // the one 512 px square of the grid that is the whole world - with every
 // symbol layer and every boundary dropped, so the picture carries no lettering
-// and no borders. Run it after `generate-basemaps.mjs` changes either style.
+// and no borders. Run it after `generate-basemaps.mjs` changes either style,
+// and re-read the dark picture's land colour into `WORLD_MAP` in
+// `src/components/map/map-backdrop.tsx`, which rings the pins drawn on it.
 //
 // Fetches about a dozen of OpenFreeMap's tiles and nothing else: the style's
 // sprite is read from `public/`, and with no symbol layer no glyph is asked
