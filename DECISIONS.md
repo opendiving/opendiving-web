@@ -116,20 +116,20 @@ imported dive keeps its seconds; a time change writes `HH:mm:00`, since no wheel
 
 ## On touch, every control is 44px to a finger
 
-The `touch:` variant in `globals.css` asks the same query as `useCoarsePointer`. Under it every
-control takes at least 44×44 CSS px, in one of two ways:
+The `touch:` variant in `globals.css` asks the same query as `useCoarsePointer`. Under it a control
+takes 44×44 CSS px, in one of two ways:
 
 - Buttons, fields and menu rows grow. `Button`, `Input`, `SelectTrigger` and `NativeSelect` take
-  `touch:min-h-11`, and listbox and menu rows take `touch:py-3`. It is a floor, so a caller's `h-7`
-  shrinks a button for a mouse only, and a button and a field on one row stay level.
-- Compact controls that are part of a larger shape keep their look and take `touch:tap-target`, a
-  centred 44px `::after`. These are a segmented scope, a tab, the unit toggle, a clear cross, a
-  row's grip or remove, a switch and a dialog's close. The element must be positioned.
+  `touch:min-h-11`, and listbox and menu rows `touch:py-3`. A floor, so a caller's `h-7` shrinks a
+  button for a mouse only. `--header-height` and `--card-title-lift` follow the 44px button.
+- A compact control that is part of a larger shape keeps its look and takes `touch:tap-target`, a
+  centred 44px `::after`. The element must be positioned, and the area must stay off neighbouring
+  controls: a positioned pseudo-element paints over an unpositioned field and takes its taps.
 
-Rejected:
+The unit toggle is the exception. Its area grows up and out and stops at its field, 34px tall.
 
-- A width breakpoint, which misses a tablet.
-- Growing the compact controls, which breaks the shapes they sit in.
+Rejected: a width breakpoint, which misses a tablet, and growing the compact controls, which breaks
+the shapes they sit in.
 
 ## FastAPI 422 errors can be an array, not a string - never render `detail` directly
 

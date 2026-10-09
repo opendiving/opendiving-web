@@ -557,7 +557,7 @@ function GasUseLegend({
 }) {
   return (
     <div
-      className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs"
+      className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs touch:gap-y-0"
       role="group"
       aria-label="Plotted series"
     >
@@ -632,7 +632,7 @@ function MarkToggle({
       aria-pressed={marks.includes(mark)}
       onClick={() => onToggle(mark)}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "inline-flex items-center gap-1.5 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch:min-h-11",
         marks.includes(mark)
           ? "text-muted-foreground"
           : "text-muted-foreground/50",

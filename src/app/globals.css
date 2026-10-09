@@ -407,14 +407,20 @@
   :root {
     --card-pad: 1.5rem;
     /* Half of what a `size="sm"` button's 36px exceeds a card title's line by:
-       24px, and 18px on a phone. */
+       24px, and 18px on a phone. On touch the button is 44px. */
     --card-title-lift: 0.375rem;
+    @variant touch {
+      --card-title-lift: 0.625rem;
+    }
   }
 
   @media (width < 40rem) {
     :root {
       --card-pad: 0.75rem;
       --card-title-lift: 0.5625rem;
+      @variant touch {
+        --card-title-lift: 0.8125rem;
+      }
     }
   }
 

@@ -299,7 +299,7 @@ export function GasUseCard() {
                 is the whole of it. */}
           <div
             className={cn(
-              "flex h-9 items-stretch rounded-md border p-1",
+              "flex h-9 items-stretch rounded-md border p-1 touch:h-11",
               CARD_TITLE_ACTION,
             )}
             role="group"
