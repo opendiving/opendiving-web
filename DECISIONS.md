@@ -1614,8 +1614,8 @@ half-updated stylesheet; re-run before believing a sudden spike.
 
 `@testing-library/react`, `/dom`, `/jest-dom` and `/user-event` are dev dependencies;
 `vitest.setup.ts` registers jest-dom's matchers plus the browser APIs Radix needs on mount that
-jsdom lacks (`matchMedia`, `ResizeObserver`, `scrollIntoView`), or a dialog or select throws before
-its assertion.
+jsdom lacks (`matchMedia`, `ResizeObserver`, `scrollIntoView`), or a dialog throws before its
+assertion.
 
 Hook tests each pin a bug: `useDeleteResource` shows the API's own message on a refused delete,
 `usePaginatedResource` ignores a late superseded response, `useResource` stays silent once
@@ -6488,8 +6488,7 @@ the ppO₂ limit `<select>`, or the O₂ box where that column is hidden — and
 `<select>` opens its picker wheel, so one tap on Add tank adds a tank and opens a dropdown nobody
 asked for. Hence `append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })`.
 
-The app's plain `<select>`s (ppO₂ limit, Role, Usage, water type) are chosen over the shadcn
-`Select` because they need `""` as a real selectable option, and any programmatic `.focus()` on one
+Every picker is a `<select>`, so any programmatic `.focus()` on one, a dialog's open-focus included,
 is a dropdown opening on a phone.
 
 ## The dive file picker takes several files, and the batch is applied serially

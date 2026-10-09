@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 import { Input } from "./input";
+import { NativeSelect } from "./native-select";
 
 // A press on the scrim must not be able to discard a half-filled form, which is
 // what the dismissal tests cover. The opt-back-in case is the control: it proves
@@ -92,6 +93,40 @@ describe("DialogContent dismissal", () => {
 // `DialogTrigger`, so Radix has no trigger to hand focus back to on its own.
 // Rendered in `StrictMode`, as `next dev` renders the app: its second run of
 // the content's effects comes after an `autoFocus` field has taken focus.
+describe("DialogContent open focus", () => {
+  // iOS opens a focused `<select>`'s picker wheel, so a dialog that starts
+  // with one would open a dropdown nobody tapped.
+  it("takes it on the panel when the first field is a picker", async () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Log service</DialogTitle>
+          <NativeSelect aria-label="Service type">
+            <option value="service">Service</option>
+          </NativeSelect>
+        </DialogContent>
+      </Dialog>,
+    );
+    await settle();
+
+    expect(screen.getByRole("dialog")).toHaveFocus();
+  });
+
+  it("leaves Radix's default for any other first field", async () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Rename</DialogTitle>
+          <Input aria-label="Name" />
+        </DialogContent>
+      </Dialog>,
+    );
+    await settle();
+
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveFocus();
+  });
+});
+
 describe("DialogContent focus return", () => {
   it("hands focus back to the button that opened it", async () => {
     function EditCourse() {

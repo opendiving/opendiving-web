@@ -143,6 +143,18 @@ function RememberOpener({
   return null;
 }
 
+// Whether Radix's open-focus would land on a `<select>`: its first tabbable
+// element, found the way Radix finds it.
+function startsWithPicker(panel: HTMLElement) {
+  const first = Array.from(panel.querySelectorAll<HTMLElement>("*")).find(
+    (el) =>
+      el.tabIndex >= 0 &&
+      !(el as HTMLButtonElement).disabled &&
+      !(el instanceof HTMLInputElement && el.type === "hidden"),
+  );
+  return first instanceof HTMLSelectElement;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -190,6 +202,15 @@ const DialogContent = React.forwardRef<
         // cross, Cancel and Escape all still close, and each of those is
         // deliberate. Before the spread, so a dialog can opt back in.
         onPointerDownOutside={(event) => event.preventDefault()}
+        // On iOS a focused `<select>` opens its picker wheel, so a dialog that
+        // starts with one takes focus on the panel instead. Before the spread,
+        // so a dialog's own handler replaces this.
+        onOpenAutoFocus={(event) => {
+          const panel = event.currentTarget as HTMLElement;
+          if (!startsWithPicker(panel)) return;
+          event.preventDefault();
+          panel.focus();
+        }}
         // A caller's own handler runs first and can still take over by
         // preventing the default. An opener that has left the page meanwhile
         // falls through to Radix, which finds no trigger and leaves focus be.
