@@ -38,6 +38,7 @@ export function DiveFormSection(props: DiveFormSectionProps) {
   const { title, empty = false, children } = props;
   const open = props.onOpenChange === undefined || props.open;
   const contentId = useId();
+  const cardRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [stuck, setStuck] = useState(false);
 
@@ -60,7 +61,7 @@ export function DiveFormSection(props: DiveFormSectionProps) {
   const shown = open && !empty;
 
   return (
-    <Card className="relative">
+    <Card ref={cardRef} className="relative">
       <div
         ref={sentinelRef}
         aria-hidden="true"
@@ -100,7 +101,23 @@ export function DiveFormSection(props: DiveFormSectionProps) {
               type="button"
               aria-expanded={open}
               aria-controls={contentId}
-              onClick={() => props.onOpenChange(!open)}
+              onClick={() => {
+                // A stuck heading is a way back to the top of its section, which
+                // collapsing would throw away by moving everything below it.
+                // `html`'s `scroll-padding-top` lands the card under the site header.
+                if (open && stuck) {
+                  cardRef.current?.scrollIntoView({
+                    block: "start",
+                    behavior: window.matchMedia(
+                      "(prefers-reduced-motion: reduce)",
+                    ).matches
+                      ? "auto"
+                      : "smooth",
+                  });
+                  return;
+                }
+                props.onOpenChange(!open);
+              }}
               className="relative flex w-full items-center justify-between gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {title}
