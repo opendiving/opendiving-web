@@ -120,7 +120,7 @@ function TankCard({
             {mixture.role && (
               // The wire value where `GAS_ROLE_LABELS`, kept in step with the API's
               // `GasRole` by hand, has not caught up yet.
-              <Badge variant="outline">
+              <Badge variant="teal">
                 {GAS_ROLE_LABELS[mixture.role] ?? mixture.role}
               </Badge>
             )}
