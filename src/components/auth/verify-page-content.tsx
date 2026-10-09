@@ -192,12 +192,12 @@ function VerifyStatus({
               description={
                 email ? (
                   <>
-                    Click below to sign in as{" "}
+                    Sign in below as{" "}
                     <span className="font-medium text-foreground">{email}</span>
                     .
                   </>
                 ) : (
-                  "Click below to finish signing in to OpenDiving."
+                  "Sign in below to continue to OpenDiving."
                 )
               }
             />

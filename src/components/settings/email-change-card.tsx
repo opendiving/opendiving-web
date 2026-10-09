@@ -85,9 +85,8 @@ export function EmailChangeCard({ currentEmail }: EmailChangeCardProps) {
             {sentTo && (
               <StatusMessage variant="success">
                 <span>
-                  We sent a confirmation link to <strong>{sentTo}</strong>.
-                  Click it to finish changing your email - it expires in 30
-                  minutes.
+                  We sent a confirmation link to <strong>{sentTo}</strong>. Open
+                  it to finish changing your email - it expires in 30 minutes.
                 </span>
               </StatusMessage>
             )}

@@ -162,12 +162,12 @@ function ConfirmStatus({
               description={
                 email ? (
                   <>
-                    Click below to change your account&apos;s email to{" "}
+                    Confirm below to change your account&apos;s email to{" "}
                     <span className="font-medium text-foreground">{email}</span>
                     .
                   </>
                 ) : (
-                  "Click below to finish changing your account's email."
+                  "Confirm below to finish changing your account's email."
                 )
               }
             />

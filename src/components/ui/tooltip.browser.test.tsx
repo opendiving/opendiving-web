@@ -4,7 +4,7 @@ import { Trash2 } from "lucide-react";
 
 import { Button } from "./button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import { IconTooltip } from "./tooltip";
+import { IconTooltip, TextHint } from "./tooltip";
 
 const FINGER = { pointerType: "touch", pointerId: 7, clientX: 20, clientY: 20 };
 
@@ -138,5 +138,92 @@ describe("an icon button's name under a finger", () => {
     wait(0);
 
     expect(screen.getByText("Open elsewhere")).toBeInTheDocument();
+  });
+});
+
+describe("a label's hint under a finger", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const HINT = "Pescador Island, Panagsama Wall";
+  const hint = () => screen.queryByRole("tooltip");
+  const wait = (ms: number) => act(() => vi.advanceTimersByTime(ms));
+
+  function tap(target: Element, pointerType = "touch") {
+    fireEvent.pointerDown(target, { ...FINGER, pointerType });
+    fireEvent.pointerUp(target, { ...FINGER, pointerType });
+    fireEvent.click(target);
+  }
+
+  it("says the whole of it on a tap", () => {
+    render(
+      <TextHint hint={HINT}>
+        <span>Pescador Island +1</span>
+      </TextHint>,
+    );
+
+    tap(screen.getByText("Pescador Island +1"));
+
+    expect(hint()).toHaveTextContent(HINT);
+  });
+
+  it("stops saying it when a finger presses elsewhere", () => {
+    render(
+      <TextHint hint={HINT}>
+        <span>Pescador Island +1</span>
+      </TextHint>,
+    );
+    tap(screen.getByText("Pescador Island +1"));
+    // Radix listens for a press outside an open hint from the next tick on.
+    wait(0);
+
+    fireEvent.pointerDown(document.body, FINGER);
+    wait(0);
+
+    expect(hint()).toBeNull();
+  });
+
+  it("leaves a mouse to the title, hovered or clicked", () => {
+    render(
+      <TextHint hint={HINT}>
+        <span>Pescador Island +1</span>
+      </TextHint>,
+    );
+    const label = screen.getByText("Pescador Island +1");
+
+    fireEvent.pointerMove(label, { pointerType: "mouse" });
+    wait(1000);
+    tap(label, "mouse");
+
+    expect(label).toHaveAttribute("title", HINT);
+    expect(hint()).toBeNull();
+  });
+
+  it("leaves a tap in a link to the link", () => {
+    render(
+      <a href="#dive">
+        <TextHint hint={HINT}>
+          <span>Pescador Island +1</span>
+        </TextHint>
+      </a>,
+    );
+
+    tap(screen.getByText("Pescador Island +1"));
+
+    expect(hint()).toBeNull();
+  });
+
+  it("is plain text when there is nothing more to say", () => {
+    render(
+      <TextHint hint={undefined}>
+        <span>Pescador Island</span>
+      </TextHint>,
+    );
+    const label = screen.getByText("Pescador Island");
+
+    tap(label);
+
+    expect(label).not.toHaveAttribute("title");
+    expect(hint()).toBeNull();
   });
 });
