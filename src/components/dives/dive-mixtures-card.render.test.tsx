@@ -37,13 +37,26 @@ function dive(mixtures: DiveMixture[], maxDepth: number | null): Dive {
   } as Dive;
 }
 
+// Each card's MOD as the diver reads it: the label with the limit it was computed
+// at, and the depth.
+function mods(): [string | null, string | null][] {
+  return screen.getAllByRole("listitem").map((card) => {
+    const label = within(card)
+      .getAllByRole("term")
+      .find((term) => term.textContent?.startsWith("MOD"))!;
+    return [label.textContent, label.nextElementSibling!.textContent];
+  });
+}
+
 describe("DiveMixturesCard warnings", () => {
   it("says nothing about a staged deco bottle carried past its own MOD", () => {
     // The regression case: EAN54 tops out at 19.62 m and the dive reached 45.91 m,
     // but it was breathed on the ascent. Nothing here is a problem.
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 45.91)} />);
 
-    expect(screen.getByText("EAN54")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "#2 EAN54" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/past this mix/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/no gas logged/i)).not.toBeInTheDocument();
   });
@@ -87,77 +100,54 @@ describe("DiveMixturesCard warnings", () => {
       />,
     );
 
-    expect(screen.getByText("O₂ 50% / He 60%")).toBeInTheDocument();
-    expect(screen.queryByText(/\d+\.\d m$/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "#1 O₂ 50% / He 60%" }),
+    ).toBeInTheDocument();
+    expect(mods()).toEqual([["MOD", "-"]]);
   });
 });
 
-// A cylinder has no name of its own, so its row is identified by position - and by the
-// same 1-based position the consumption card below numbers its own rows with, which is
-// the only thing letting the two tables be read against each other.
-describe("DiveMixturesCard identity column", () => {
-  it("numbers the rows by position, under a header that says so", () => {
-    render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
-
-    // Named "Tank" rather than "#", which a screen reader reads as punctuation
-    // or not at all - the visible header is still the character.
-    expect(
-      screen.getByRole("columnheader", { name: "Tank" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "1" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "2" })).toBeInTheDocument();
-  });
-
-  it("gives the gas a column of its own, beside the position rather than in it", () => {
-    // The consumption card below heads its own second column the same way, which
-    // is what puts the two tables' badges in one line down the page.
+// A cylinder has no name of its own, so its card is named by position - the same
+// 1-based position the consumption card below numbers its rows with, which is the only
+// thing letting the two be read against each other - and by its gas.
+describe("DiveMixturesCard tank names", () => {
+  it("names each card by its position and its gas, in the dive's order", () => {
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
 
     expect(
-      screen.getByRole("columnheader", { name: "Gas" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "Air" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "EAN54" })).toBeInTheDocument();
+      screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
+    ).toEqual(["#1 Air", "#2 EAN54"]);
   });
 });
 
 // Helium is the one fraction a dive can have nothing to say about: air and nitrox
-// record a flat 0, which is most dives and a column of zeroes on every one of them.
-describe("DiveMixturesCard helium column", () => {
+// record a flat 0, which is most dives and a zero on every card of them.
+describe("DiveMixturesCard helium", () => {
   it("is absent when no cylinder carries any", () => {
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
 
-    expect(
-      screen.queryByRole("columnheader", { name: "He" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "O₂" }),
-    ).toBeInTheDocument();
+    const [air] = screen.getAllByRole("listitem");
+    expect(air).toHaveTextContent("O₂ 21%");
+    expect(air).not.toHaveTextContent("He");
   });
 
-  it("returns for every row once one cylinder has helium", () => {
+  it("returns on every card once one cylinder has helium", () => {
     // Including the air cylinder's own 0, which is a real contrast on a dive that
     // carries both rather than the noise it is on a dive that carries neither.
     const trimix: DiveMixture = { volume: 24, oxygen: 21, helium: 35 };
     render(<DiveMixturesCard dive={dive([AIR, trimix], 30)} />);
 
-    expect(
-      screen.getByRole("columnheader", { name: "He" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("35%")).toBeInTheDocument();
-    expect(screen.getByText("0%")).toBeInTheDocument();
+    const [air, tx] = screen.getAllByRole("listitem");
+    expect(tx).toHaveTextContent("He 35%");
+    expect(air).toHaveTextContent("He 0%");
   });
 
   it("stays away for a dive whose cylinders record no helium either way", () => {
-    // Unrecorded is not zero, and it is not helium either. A column summoned by rows
-    // that would all read "-" is width spent saying nothing twice over - which is
-    // what the guard on `showHelium` and the dash in the cell have to agree about.
+    // Unrecorded is not zero, and it is not helium either.
     const unanalysed: DiveMixture = { volume: 12, oxygen: null, helium: null };
     render(<DiveMixturesCard dive={dive([unanalysed], 30)} />);
 
-    expect(
-      screen.queryByRole("columnheader", { name: "He" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("listitem")).not.toHaveTextContent("He");
   });
 });
 
@@ -174,44 +164,52 @@ describe("DiveMixturesCard absent figures", () => {
     end_pressure: 90,
   };
 
-  it("dashes a cylinder that records a mix and no size", () => {
-    // The UDDF `<tankdata>` with a gas link and no `<tankvolume>`. Before the column
-    // was nullable this cylinder was dropped on import and the row did not exist.
+  it("leaves the size out of a cylinder that records a mix and no size", () => {
+    // The UDDF `<tankdata>` with a gas link and no `<tankvolume>`.
     render(<DiveMixturesCard dive={dive([MIX_ONLY], 30)} />);
 
-    expect(screen.getByRole("cell", { name: "-" })).toBeInTheDocument();
-    expect(screen.queryByText(/11\.1 L/)).not.toBeInTheDocument();
+    const card = screen.getByRole("listitem");
+    expect(card).not.toHaveTextContent(/\d L/);
     // The figures it *does* record are untouched.
-    expect(screen.getByRole("cell", { name: "EAN32" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "32%" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "#1 EAN32" }),
+    ).toBeInTheDocument();
+    expect(card).toHaveTextContent("O₂ 32%");
   });
 
-  it("mutes the dash rather than printing it at full contrast", () => {
+  it("dashes an unrecorded pressure, muted rather than at full contrast", () => {
     // An absence at full contrast reads as a value - the same rule the consumption
     // card below applies to its own dashes.
-    render(<DiveMixturesCard dive={dive([MIX_ONLY], 30)} />);
-
-    expect(screen.getByRole("cell", { name: "-" })).toHaveClass(
-      "text-muted-foreground",
+    render(
+      <DiveMixturesCard
+        dive={dive([{ ...MIX_ONLY, end_pressure: null }], 30)}
+      />,
     );
+
+    const dash = screen.getByText("-");
+    expect(dash.previousElementSibling).toHaveTextContent("End");
+    expect(dash).toHaveClass("text-muted-foreground");
   });
 
   it("names no gas for a cylinder whose mix was never recorded", () => {
     // Not "EAN0" and not "Air": a size with no analysis behind it says nothing about
-    // what was breathed, so the badge, the MOD and the O₂ cell all decline.
+    // what was breathed, so the name, the MOD and the O₂ fraction all decline.
     const sizeOnly: DiveMixture = { volume: 12, oxygen: null, helium: null };
     render(<DiveMixturesCard dive={dive([sizeOnly], 30)} />);
 
-    expect(screen.queryByText(/^EAN/)).not.toBeInTheDocument();
-    expect(screen.queryByText("Air")).not.toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "12 L" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "#1 Gas not recorded" }),
+    ).toBeInTheDocument();
+    const card = screen.getByRole("listitem");
+    expect(card).toHaveTextContent("12 L");
+    expect(card).not.toHaveTextContent("O₂");
+    expect(mods()).toEqual([["MOD", "-"]]);
   });
 });
 
-// The MOD column states the limit its number was computed at on every row, and the
-// header stays bare. What only a render reaches is that the two halves of a cell are
-// wired to the same limit - a depth printed beside a ppO₂ it wasn't derived from is
-// worse than no MOD at all, and neither half can show it alone.
+// Every MOD states the limit it was computed at. What only a render reaches is that
+// the two halves are wired to the same limit - a depth printed beside a ppO₂ it wasn't
+// derived from is worse than no MOD at all, and neither half can show it alone.
 describe("DiveMixturesCard ppO₂ qualifier", () => {
   const at = (po2_limit: number, oxygen: number): DiveMixture => ({
     volume: 11.1,
@@ -220,34 +218,18 @@ describe("DiveMixturesCard ppO₂ qualifier", () => {
     po2_limit,
   });
 
-  // The MOD is the last cell of every body row. Asserted on `textContent` rather than
-  // by accessible name: the depth and its limit are two elements so the muted one can
-  // be muted, and `dom-accessibility-api` trims each node before joining them, which
-  // turns the rendered "56.66 m @ 1.4" into the name "56.66 m@ 1.4". The space is really
-  // in the DOM - this reads what the diver sees rather than pinning that quirk.
-  function modCells(): (string | null)[] {
-    return screen
-      .getAllByRole("row")
-      .slice(1)
-      .map((row) => {
-        const cells = within(row).getAllByRole("cell");
-        return cells[cells.length - 1].textContent;
-      });
-  }
-
-  it("qualifies every row, including the dive where all cylinders agree", () => {
+  it("qualifies every card, including the dive where all cylinders agree", () => {
     // Neither records a limit, so both fall back to the same working default - and
-    // both say so, rather than the header saying it once for them.
+    // both say so.
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
 
-    expect(
-      screen.getByRole("columnheader", { name: "MOD" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/MOD @ ppO₂/)).not.toBeInTheDocument();
     // 15.92 m, not the 19.62 m the warning above quotes for the same gas: that one is
     // the 1.6 deco ceiling. Two different numbers for one cylinder is exactly why
     // every MOD says which limit produced it.
-    expect(modCells()).toEqual(["56.66 m @ 1.4", "15.92 m @ 1.4"]);
+    expect(mods()).toEqual([
+      ["MOD @ 1.4", "56.66 m"],
+      ["MOD @ 1.4", "15.92 m"],
+    ]);
   });
 
   it("carries each cylinder's own limit when the dive mixes them", () => {
@@ -255,15 +237,18 @@ describe("DiveMixturesCard ppO₂ qualifier", () => {
     // of the same dive.
     render(<DiveMixturesCard dive={dive([at(1.4, 21), at(1.6, 50)], 30)} />);
 
-    expect(modCells()).toEqual(["56.66 m @ 1.4", "22 m @ 1.6"]);
+    expect(mods()).toEqual([
+      ["MOD @ 1.4", "56.66 m"],
+      ["MOD @ 1.6", "22 m"],
+    ]);
   });
 
-  it("computes each row at its own recorded limit, not the default", () => {
-    // EAN50 at ppO₂ 1.6 is 22 m; at the 1.4 default it would be 18 m. A cell
+  it("computes each card at its own recorded limit, not the default", () => {
+    // EAN50 at ppO₂ 1.6 is 22 m; at the 1.4 default it would be 18 m. A label
     // saying 1.4 beside this number would be naming a limit it didn't use.
     render(<DiveMixturesCard dive={dive([at(1.6, 50)], 20)} />);
 
-    expect(modCells()).toEqual(["22 m @ 1.6"]);
+    expect(mods()).toEqual([["MOD @ 1.6", "22 m"]]);
   });
 });
 
@@ -276,7 +261,9 @@ describe("DiveMixturesCard role badge", () => {
     expect(screen.getByText("Deco")).toBeInTheDocument();
     // Beside the gas name rather than replacing it - the two answer one question
     // together, "EAN54, the deco bottle".
-    expect(screen.getByText("EAN54")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "#1 EAN54" }),
+    ).toBeInTheDocument();
   });
 
   it("shows no badge for the cylinders that have no role, which is most of them", () => {
@@ -297,38 +284,11 @@ describe("DiveMixturesCard role badge", () => {
   });
 });
 
-// The usage flag is stated under the table, not badged in it - a third badge in the
-// Gas cell pushed MOD off screen at the pinch width. `tankUsageSentences` is unit-
-// tested in `lib/dive-mixtures.test.ts`; what only a render reaches is that the card
-// prints those sentences, against the same `#` numbers its own first column shows,
-// and prints nothing when there is nothing to say.
-describe("DiveMixturesCard usage sentence", () => {
-  it("names both cylinders of a pair the diver flagged parallel", () => {
-    render(
-      <DiveMixturesCard
-        dive={dive(
-          [
-            { ...AIR, usage: "parallel" },
-            { ...AIR, usage: "parallel" },
-          ],
-          30,
-        )}
-      />,
-    );
-
-    expect(
-      screen.getByText(/Cylinders 1 and 2 are flagged Parallel/),
-    ).toBeInTheDocument();
-    // The meaning travels with the flag: nothing else on this page says what
-    // "Parallel" claims about the dive.
-    expect(
-      screen.getByText(/breathed alternately at the same depth/),
-    ).toBeInTheDocument();
-  });
-
-  it("names each group against its own row number on a mixed set", () => {
-    // The set the per-row control exists to keep expressible, and the case a
-    // whole-dive sentence could not state at all.
+// The usage flag is on each card's line, beside the figures it qualifies.
+describe("DiveMixturesCard usage", () => {
+  it("states each cylinder's own flag on a mixed set", () => {
+    // The set the per-cylinder control exists to keep expressible: a parallel
+    // pair plus a staged deco bottle.
     render(
       <DiveMixturesCard
         dive={dive(
@@ -342,23 +302,17 @@ describe("DiveMixturesCard usage sentence", () => {
       />,
     );
 
-    expect(
-      screen.getByText(
-        /Cylinders 1 and 2 are flagged Parallel.*Cylinder 3 is flagged Staged/,
-      ),
-    ).toBeInTheDocument();
-    // The role badge is untouched by any of this - it stayed in the table.
-    expect(screen.getByText("Deco")).toBeInTheDocument();
+    const [first, second, third] = screen.getAllByRole("listitem");
+    expect(first).toHaveTextContent("O₂ 21% · Parallel");
+    expect(second).toHaveTextContent("O₂ 21% · Parallel");
+    expect(third).toHaveTextContent("O₂ 54% · Staged");
+    expect(within(third).getByText("Deco")).toBeInTheDocument();
   });
 
-  it("says nothing at all when no cylinder is flagged, which is every import", () => {
-    // No format this app parses carries the distinction, so an unflagged row is
-    // the default state rather than an omission - and a sentence about the
-    // absence would be on every imported dive in the corpus.
+  it("says nothing when no cylinder is flagged, which is every import", () => {
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
 
-    expect(screen.queryByText(/is flagged/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/are flagged/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Parallel|Staged/)).not.toBeInTheDocument();
   });
 
   it("falls back to the wire value for a usage the label map hasn't caught up with", () => {
@@ -368,8 +322,55 @@ describe("DiveMixturesCard usage sentence", () => {
     const unknown = { ...EAN54, usage: "manifolded" as TankUsage };
     render(<DiveMixturesCard dive={dive([AIR, unknown], 20)} />);
 
+    expect(screen.getAllByRole("listitem")[1]).toHaveTextContent(
+      "O₂ 54% · manifolded",
+    );
+  });
+});
+
+describe("DiveMixturesCard icon", () => {
+  it("draws a twin set for a twin-set preset's litres and a single otherwise", () => {
+    render(
+      <DiveMixturesCard
+        dive={dive(
+          [
+            { ...AIR, volume: 22.2 },
+            { ...EAN54, volume: 11.1 },
+          ],
+          30,
+        )}
+      />,
+    );
+
+    const [twin, single] = screen
+      .getAllByRole("listitem")
+      .map((card) => card.querySelector("svg")!.getAttribute("class"));
+    expect(twin).toMatch(/lucide-twin-tank\b/);
+    expect(single).toMatch(/lucide-tank-nitrox\b/);
+  });
+
+  it("draws the first parallel cylinder as the left of the pair", () => {
+    render(
+      <DiveMixturesCard
+        dive={dive(
+          [
+            { ...EAN54, role: "deco", usage: "staged" },
+            { ...AIR, volume: 11.1, usage: "parallel" },
+            { ...AIR, volume: 11.1, usage: "parallel" },
+          ],
+          30,
+        )}
+      />,
+    );
+
     expect(
-      screen.getByText("Cylinder 2 is flagged manifolded."),
-    ).toBeInTheDocument();
+      screen
+        .getAllByRole("listitem")
+        .map((card) => card.querySelector("svg")!.getAttribute("class")),
+    ).toEqual([
+      expect.stringMatching(/lucide-tank-nitrox\b/),
+      expect.stringMatching(/lucide-left-tank\b/),
+      expect.stringMatching(/lucide-tank\b/),
+    ]);
   });
 });

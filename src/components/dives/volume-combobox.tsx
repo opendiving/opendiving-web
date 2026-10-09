@@ -40,6 +40,22 @@ export interface VolumeOptionGroup {
   options: VolumeOption[];
 }
 
+const TWIN_SETS: VolumeOption[] = [
+  { value: 14, label: "14 L (2x7 L)" },
+  { value: 22.2, label: "22.2 L (2x AL80)", imperialName: "2x AL80" },
+  { value: 24, label: "24 L (2x12 L)" },
+  { value: 30, label: "30 L (2x15 L)" },
+];
+
+/**
+ * Whether a cylinder's litres are one of the twin-set presets: the only way a
+ * cylinder says it is a twin set, since a mixture records nothing but its volume.
+ * No single in the presets shares a total with them.
+ */
+export function isTwinSetVolume(volume: number | null | undefined): boolean {
+  return TWIN_SETS.some((option) => option.value === volume);
+}
+
 // Common cylinder water capacities (litres), in four groups.
 //
 // The named entries are the US sizes, carrying the name divers actually say
@@ -82,12 +98,7 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
     // rarer pick, so the singles a diver reaches for most are the rows nearest
     // the box. The 2x AL80 rides along rather than splitting the group by
     // material.
-    options: [
-      { value: 14, label: "14 L (2x7 L)" },
-      { value: 22.2, label: "22.2 L (2x AL80)", imperialName: "2x AL80" },
-      { value: 24, label: "24 L (2x12 L)" },
-      { value: 30, label: "30 L (2x15 L)" },
-    ],
+    options: TWIN_SETS,
   },
   {
     label: "US aluminium",

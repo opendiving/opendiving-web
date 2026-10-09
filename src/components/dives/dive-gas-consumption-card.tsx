@@ -89,15 +89,13 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
           <p className="text-sm text-muted-foreground">{reason}</p>
         ) : rows.length > 0 ? (
           <>
-            {/* No wrapper of its own, for the reason the Tanks card above
-                states: shadcn's `Table` brings its own scroll container and the
-                second one never scrolled.
+            {/* No wrapper of its own: shadcn's `Table` brings its own scroll
+                container, and a second one never scrolls.
 
-                `tabular-nums` for the same reason that table carries it: five
-                columns of figures read down a column. */}
+                `tabular-nums` because five columns of figures read down a
+                column. */}
             <Table className="tabular-nums">
-              {/* "per gas", not "per cylinder" as the mixtures table above says:
-                  this one can also carry a `Gas N` row for a tank the profile
+              {/* "per gas", not "per cylinder": this table can also carry a `Gas N` row for a tank the profile
                   attributed that matches none of the dive's cylinders, and the
                   caption is the only place that shape is stated rather than shown. */}
               <TableCaption className="sr-only">
@@ -105,15 +103,12 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
               </TableCaption>
               <TableHeader>
                 <TableRow>
-                  {/* `#` and `Gas`, matching the mixtures table's own first two
-                      columns - the two tables are meant to be read against each
-                      other, so they head, number and badge them identically. The
-                      gas name is therefore on the page twice; that is the price of
-                      the two tables agreeing, and this table has to be legible on
-                      its own since "which of these is the deco bottle" is the
-                      question its rows exist to answer. */}
-                  {/* `#` is punctuation to a screen reader - see the mixtures
-                      card, which spells the word out the same way. */}
+                  {/* `#` and `Gas`, numbering the rows as the Tanks card above
+                      names its tanks, so the two are read against each other. The
+                      gas name is therefore on the page twice; this table has to be
+                      legible on its own, since "which of these is the deco bottle"
+                      is the question its rows exist to answer. `#` is punctuation
+                      to a screen reader, so the word is spelled out for one. */}
                   <TableHead>
                     <span aria-hidden>#</span>
                     <span className="sr-only">Tank</span>
@@ -136,12 +131,11 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
               </TableHeader>
               <TableBody>
                 {rows.map((row) => (
-                  // Nothing in a body row wraps, for the reason the mixtures
-                  // table gives: a broken "18.4 L/min" reads as two values.
+                  // Nothing in a body row wraps: a broken "18.4 L/min" reads as
+                  // two values.
                   <TableRow key={row.key} className="whitespace-nowrap">
-                    {/* Muted and unweighted, as the mixtures table writes the
-                        same cell: the position addresses the row rather than
-                        saying anything about it. */}
+                    {/* Muted and unweighted: the position addresses the row
+                        rather than saying anything about it. */}
                     <TableCell className="text-muted-foreground">
                       {row.label}
                     </TableCell>

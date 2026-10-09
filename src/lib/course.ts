@@ -23,7 +23,7 @@ const COURSE_STATUS_LABELS: Record<CourseStatus, string> = {
 /**
  * Label for a course's status, falling back to the wire value for one this build
  * doesn't know about - the same tolerance `certificationAgencyLabel` and the
- * mixtures table's role badge have, since the API can grow a member before the
+ * tank cards' role badge have, since the API can grow a member before the
  * app ships a label for it, and rendering the slug beats rendering a blank cell.
  */
 export function courseStatusLabel(status: string | null | undefined): string {
