@@ -131,6 +131,24 @@ A link inside running text keeps its size. The unit toggle's area stops at its f
 Rejected: a width breakpoint, which misses a tablet, and growing compact controls, which breaks the
 shapes they sit in.
 
+## A finger types numbers on a keypad, with either separator
+
+Under `useCoarsePointer`, `UnitNumberInput` and `DecimalInput` put a value that cannot go below
+zero - depth, pressure, visibility, a gas percentage - in `type="text"` on `inputMode="decimal"`, or
+`"numeric"` for a whole number. A signed value (temperature, altitude, a coordinate) and a duration
+keep the full keyboard: iOS's keypads have no "-" or ":" and no way to switch.
+
+Text, not `type="number"`: the decimal keypad types the region's separator, and WebKit's number
+input drops a comma, so "1,5" arrives as 15. `parseDecimal` reads either separator, never both. Text
+has no `min`/`max`, so `decimalEntryMessage` sets the bounds as custom validity, which the submit
+refusal reads. Plain whole-number fields keep `type="number"` with `inputMode="numeric"`: no
+separator to lose.
+
+A mouse keeps `type="number"`: a desktop keyboard has a point key. Contacts and people carry no
+`autoComplete`, which would offer the diver's own details.
+
+Rejected: `inputMode="decimal"` on `type="number"`, which shows the comma and still drops it.
+
 ## FastAPI 422 errors can be an array, not a string - never render `detail` directly
 
 Pydantic validation errors return `detail` as an array of `{type, loc, msg, input}` objects; other
@@ -2608,7 +2626,8 @@ fails `COORDINATE_REGEX`.
 
 The pair hint is an `aria-hidden` `<p>` plus a per-field `sr-only` `<FormDescription>`:
 `<FormDescription>` throws outside a `FormField`, and a hand-set `aria-describedby` overrides
-`<FormControl>`'s, silencing errors. No `inputMode="decimal"`: iOS has no minus key.
+`<FormControl>`'s, silencing errors. No `inputMode`: a coordinate needs its minus (see "A finger
+types numbers on a keypad, with either separator").
 
 ## The map writes into the coordinate fields, and can tell its own echo from a diver typing
 
@@ -4558,7 +4577,7 @@ Render tests assert both buttons of two rows; `GearItemMultiSelect` has one.
 `VolumeCombobox` is an `<input type="text" inputMode="decimal">`, not `type="number"`: a number
 input's implicit role is `spinbutton`, and ARIA allows `combobox` only on text, search, tel, url and
 email (axe `aria-allowed-role`). `CreatableCombobox` is already on `type="text"`. The committed
-value is a `number`, so every keystroke round-trips through `parseFloat` and `String`, and a text
+value is a `number`, so every keystroke round-trips through `parseDecimal` and `String`, and a text
 input then eats a mid-decimal keystroke: "11." parses to `11` and the "." vanishes. A `draft` string
 sits between keystrokes and value: the input renders `draft` while typing, the committed number
 otherwise, and the draft drops on blur, Escape, Enter and preset pick. `step`/`min` are gone; the
