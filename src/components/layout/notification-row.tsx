@@ -27,7 +27,8 @@ interface NotificationRowProps {
  * The row is two controls. The button is stretched over the whole row rather than
  * wrapping it, because a link inside a button is invalid, and the title's link is
  * lifted above it - so a click on the title goes to the item and a click anywhere
- * else opens its form.
+ * else opens its form. On touch the title's line is 44px tall and underlined,
+ * since a finger has no hover to show which words are the link.
  *
  * The right column is as wide as its badge, so the badges end on one line down both
  * sections whatever each one says, with the qualifier centred under its badge.
@@ -49,7 +50,7 @@ export function NotificationRow({
         onClick={onNavigate}
         // `justify-self-start` keeps the link to its text, so the rest of its cell
         // still opens the form.
-        className="relative z-10 justify-self-start text-sm font-medium hover:underline"
+        className="relative z-10 justify-self-start text-sm font-medium hover:underline touch:inline-flex touch:min-h-11 touch:items-center touch:underline touch:underline-offset-4"
       >
         {title}
       </Link>

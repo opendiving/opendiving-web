@@ -27,6 +27,23 @@ function AutofilledMark({ name }: { name: string }) {
   );
 }
 
+/**
+ * What the marks mean, said once above the form while any field carries one, so
+ * no finger has to hover a dot to find out. Hidden from a screen reader along
+ * with the dots it explains.
+ */
+export function AutofilledLegend() {
+  return (
+    <p
+      aria-hidden
+      className="flex items-center gap-1.5 text-sm text-muted-foreground"
+    >
+      <span className="inline-block size-1.5 rounded-full bg-teal" />
+      Filled in for you
+    </p>
+  );
+}
+
 const renderMark = (name: string) => <AutofilledMark name={name} />;
 
 /**

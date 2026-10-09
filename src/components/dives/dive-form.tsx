@@ -4,7 +4,10 @@ import { type FormEvent, useEffect, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Form } from "@/components/ui/form";
 import { FormApiError } from "@/components/ui/form-api-error";
-import { AutofilledMarks } from "@/components/dives/autofilled-marks";
+import {
+  AutofilledLegend,
+  AutofilledMarks,
+} from "@/components/dives/autofilled-marks";
 import { DiveFileImport } from "@/components/dives/dive-file-import";
 import {
   DiveFormFields,
@@ -197,6 +200,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
           onSubmit={handleSubmitEvent}
           className="space-y-6 max-sm:space-y-2.5"
         >
+          {visibility.anyAutofilled && <AutofilledLegend />}
           {/* Kept mounted while collapsed: a parse in flight and the note it leaves
               are this component's state, not the form's. */}
           {isVisible("file_import") && (
