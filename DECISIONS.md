@@ -199,9 +199,9 @@ script's header.
 
 Every page inside the shared chrome puts its content in one `max-w-6xl` column - `HERO_BODY` in
 `ui/map-hero.tsx`, whose gutter the header and footer share. The landing page (`/`), built from
-full-bleed alternating sections, is the exemption. The dive "new"/"edit" forms sit in that column
-too and cap only their card, at `max-w-2xl` (`FORM_BODY`). This is a content-width choice only;
-`Header`/`Footer` come from `AppShell` (next section).
+full-bleed alternating sections, is the exemption, and so are the dive "new"/"edit" forms, whose
+hero and body share one centred `max-w-2xl` column (`FORM_COLUMN`). This is a content-width choice
+only; `Header`/`Footer` come from `AppShell` (next section).
 
 ## `Header`/`Footer` live once in `AppShell`, not per-page
 

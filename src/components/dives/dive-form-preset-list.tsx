@@ -19,7 +19,7 @@ import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
  * one without changing the fields on the form.
  *
  * **Neither applying nor saving lives here.** The menu applies a preset in one click
- * from the card, and the Fields tab's "Save as" writes the current fields into a new
+ * from the page's top row, and the Fields tab's "Save as" writes the current fields into a new
  * preset or over an existing one - so a row is left with renaming and deleting, which
  * is all that is genuinely about the preset rather than about the form.
  *

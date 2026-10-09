@@ -60,7 +60,7 @@ Test, lint, format and type-check commands are in `CONTRIBUTING.md`.
 - 2-space indent
 - `camelCase` for functions and variables
 - `PascalCase` for component identifiers, `kebab-case` for the files holding them (e.g.
-  `DiveFormCard` in `dive-form-card.tsx`)
+  `DiveFormSection` in `dive-form-section.tsx`)
 - React functional components with hooks
 - JSDoc (`/** */`) on `lib/api/` and `hooks/` exports, where editors surface it on hover at every
   call site. Elsewhere a plain `//` comment above the export is fine — what matters is explaining

@@ -14,8 +14,8 @@ interface PageSkeletonProps {
 }
 
 /**
- * The loading state for the dive form pages, which are a `PlainHero` over a
- * single narrow card of labelled fields.
+ * The loading state for the dive form pages, which are a `PlainHero` over a stack
+ * of section cards in one narrow column. One card stands in for the first of them.
  */
 export function FormPageSkeleton({
   backHref,
