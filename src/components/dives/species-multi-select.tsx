@@ -607,7 +607,7 @@ export function SpeciesMultiSelect({
                       aria-describedby={
                         rowErrors?.notes ? notesErrorId : undefined
                       }
-                      className="field-sizing-content max-h-40 min-h-10 resize-none leading-5"
+                      className="field-sizing-content max-h-40 min-h-10 resize-none leading-5 touch:min-h-11"
                       disabled={disabled}
                       value={sighting.notes ?? ""}
                       onChange={(event) => setNotes(uuid, event.target.value)}
