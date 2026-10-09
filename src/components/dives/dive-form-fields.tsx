@@ -290,80 +290,56 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
     // heading leaves with its section's bottom edge, so any gap between sections is
     // distance it scrolls away before the next heading arrives.
     <div>
+      {isVisible("course_uuid") &&
+        section(
+          "Training",
+          <FormField
+            control={control}
+            name={"course_uuid" as Path<TFieldValues>}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Course</FormLabel>
+                <FormControl>
+                  <CourseCombobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    until={until}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />,
+        )}
+
       {(isVisible("trip_uuid") ||
-        isVisible("course_uuid") ||
         isVisible("contact_uuid") ||
-        isVisible("people") ||
         isVisible("dive_site_uuids") ||
         isVisible("entry_type") ||
         showBoatName) &&
         section(
-          "Context",
+          "Location",
           <>
-            {/* Trip & Course, a pair in a two-column grid so each keeps the same column
-          width, gap and label rhythm as every other row in this form.
-
-          Guarded, and that guard is load-bearing now that Dive number has moved
-          out from under it: with both of these hidden the grid would render empty
-          and leave the section's `space-y-6` gap between its heading and the
-          next field, which reads as a field that failed to load.
-
-          With exactly one of them visible the survivor spans both columns rather
-          than sitting half-width beside a hole - `FormField` renders `FormItem`
-          as this grid's direct child, so `:only-child` is the remaining field.
-          The `md:` prefix is required: below it the grid is one column wide and a
-          `col-span-2` would invent a second. The readings grid below solves the
-          same problem by packing instead; this row cannot, having only the two
-          fields, and a full-width combobox reads well directly above the
-          full-width dive site picker. */}
-            {(isVisible("trip_uuid") || isVisible("course_uuid")) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:[&>:only-child]:col-span-2">
-                {isVisible("trip_uuid") && (
-                  <FormField
-                    control={control}
-                    name={"trip_uuid" as Path<TFieldValues>}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Trip</FormLabel>
-                        <FormControl>
-                          <TripCombobox
-                            value={field.value}
-                            onChange={field.onChange}
-                            until={until}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            {isVisible("trip_uuid") && (
+              <FormField
+                control={control}
+                name={"trip_uuid" as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Trip</FormLabel>
+                    <FormControl>
+                      <TripCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        until={until}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-
-                {isVisible("course_uuid") && (
-                  <FormField
-                    control={control}
-                    name={"course_uuid" as Path<TFieldValues>}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Course</FormLabel>
-                        <FormControl>
-                          <CourseCombobox
-                            value={field.value}
-                            onChange={field.onChange}
-                            until={until}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </div>
+              />
             )}
 
-            {/* A row of its own, not a third child of the pair above: that grid is two
-          columns and renders only while the trip or the course does, and a dive
-          center belongs on a fun dive with neither. Full width for the reason the
-          lone survivor of the pair spans both columns. */}
             {isVisible("contact_uuid") && (
               <FormField
                 control={control}
@@ -380,30 +356,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         initialRoles={DIVE_CENTER}
                         placeholder="Select a dive center..."
                         addNewLabel="Add dive center..."
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {/* Under the dive center: the shop that ran the dive, then who was on it.
-          A person picked here is a buddy until the diver says otherwise. */}
-            {isVisible("people") && (
-              <FormField
-                control={control}
-                name={"people" as Path<TFieldValues>}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>People</FormLabel>
-                    <FormControl>
-                      <PeopleMultiSelect
-                        value={field.value ?? []}
-                        onChange={field.onChange}
-                        defaultRole="buddy"
-                        until={until}
-                        pinnedUuids={roster.people}
                       />
                     </FormControl>
                     <FormMessage />
@@ -477,6 +429,31 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               </div>
             )}
           </>,
+        )}
+
+      {/* A person picked here is a buddy until the diver says otherwise. */}
+      {isVisible("people") &&
+        section(
+          "People",
+          <FormField
+            control={control}
+            name={"people" as Path<TFieldValues>}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>People</FormLabel>
+                <FormControl>
+                  <PeopleMultiSelect
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    defaultRole="buddy"
+                    until={until}
+                    pinnedUuids={roster.people}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />,
         )}
 
       {section(

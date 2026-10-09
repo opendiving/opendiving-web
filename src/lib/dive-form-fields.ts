@@ -25,13 +25,13 @@
  * name them, so renaming one is a data migration on both sides rather than a rename.
  */
 export const DIVE_FORM_FIELDS = [
-  "trip_uuid",
   "course_uuid",
+  "trip_uuid",
   "contact_uuid",
-  "people",
   "dive_site_uuids",
   "entry_type",
   "boat_name",
+  "people",
   "type",
   "max_depth",
   "avg_depth",
@@ -125,7 +125,9 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
  * listed anyway - a gap where Start time should be reads as a field that went missing.
  */
 export const DIVE_FORM_FIELD_GROUPS = [
-  "Context",
+  "Training",
+  "Location",
+  "People",
   "Dive info",
   "Environment",
   "Tanks",
@@ -149,21 +151,17 @@ export interface DiveFormFieldEntry {
  * new optional input fails the suite until it is registered here.
  */
 export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
-  {
-    key: "trip_uuid",
-    label: "Trip",
-    group: "Context",
-  },
-  { key: "course_uuid", label: "Course", group: "Context" },
-  { key: "contact_uuid", label: "Dive center", group: "Context" },
-  { key: "people", label: "People", group: "Context" },
+  { key: "course_uuid", label: "Course", group: "Training" },
+  { key: "trip_uuid", label: "Trip", group: "Location" },
+  { key: "contact_uuid", label: "Dive center", group: "Location" },
   {
     key: "dive_site_uuids",
     label: "Dive site(s)",
-    group: "Context",
+    group: "Location",
   },
-  { key: "entry_type", label: "Entry type", group: "Context" },
-  { key: "boat_name", label: "Boat name", group: "Context" },
+  { key: "entry_type", label: "Entry type", group: "Location" },
+  { key: "boat_name", label: "Boat name", group: "Location" },
+  { key: "people", label: "People", group: "People" },
   { key: "type", label: "Dive type", group: "Dive info" },
   { key: "max_depth", label: "Maximum depth", group: "Dive info" },
   { key: "avg_depth", label: "Average depth", group: "Dive info" },
@@ -277,13 +275,13 @@ export function hiddenFieldsEqual(
 export const EMPTY_DIVE_FORM_VALUES: Readonly<
   Record<DiveFormFieldKey, unknown>
 > = {
-  trip_uuid: null,
   course_uuid: null,
+  trip_uuid: null,
   contact_uuid: null,
-  people: [],
   dive_site_uuids: [],
   entry_type: "",
   boat_name: "",
+  people: [],
   type: "",
   max_depth: null,
   avg_depth: null,

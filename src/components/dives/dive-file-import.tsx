@@ -172,7 +172,25 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   replaceMixtures: (mixtures: DiveMixtureInput[]) => void,
   mode: ParsedDiveApplyMode = "prefill",
   inferredFigures: InferredFigures = {},
+  // Told of every write before it lands, with the value it replaces - what the dive
+  // form marks the fields an import filled in by.
+  noteWrite?: (path: string, before: unknown, after: unknown) => void,
 ): MixtureImportNotes {
+  const setValue = <TName extends keyof DiveFormValues & string>(
+    name: TName,
+    value: DiveFormValues[TName],
+  ) => {
+    noteWrite?.(
+      name,
+      form.getValues(name as unknown as Path<TFieldValues>),
+      value,
+    );
+    setDiveFormValue(form, name, value);
+  };
+  const replace = (mixtures: DiveMixtureInput[]) => {
+    noteWrite?.("mixtures", getDiveFormMixtures(form), mixtures);
+    replaceMixtures(mixtures);
+  };
   // One gate for every scalar field below, so "fill-only" cannot be honoured by
   // some of them and forgotten by one. The dive's water type is written only as
   // the file states the dive's own: a file's salinity is a setting of the device,
@@ -200,7 +218,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
     name: TName,
     value: DiveFormValues[TName],
   ) => {
-    setDiveFormValue(form, name, value);
+    setValue(name, value);
     if (inferred.has(name)) {
       inferredFigures[name] = { value, device: parsed.device };
     } else {
@@ -209,7 +227,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   };
 
   if (parsed.dive_number != null && writes("dive_number")) {
-    setDiveFormValue(form, "dive_number", parsed.dive_number);
+    setValue("dive_number", parsed.dive_number);
   }
   // A file that states only a day, applied to a dive that has only a day, keeps
   // it a day: the midnight `normalizeParsedStartTime` supplies for a new dive
@@ -226,7 +244,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
       ? normalizeParsedStartTime(parsed.start_time)
       : undefined;
   if (normalizedStartTime && writes("start_time")) {
-    setDiveFormValue(form, "start_time", normalizedStartTime);
+    setValue("start_time", normalizedStartTime);
   }
   if (parsed.duration != null && writesFigure("duration")) {
     setFigure("duration", formatDurationForForm(parsed.duration));
@@ -238,13 +256,13 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
     setFigure("avg_depth", parsed.avg_depth);
   }
   if (parsed.bottom_temperature != null && writes("bottom_temperature")) {
-    setDiveFormValue(form, "bottom_temperature", parsed.bottom_temperature);
+    setValue("bottom_temperature", parsed.bottom_temperature);
   }
   // An empty string or list is a file stating nothing, never one clearing the form.
   for (const name of PARSED_DIVE_MEMBERS) {
     const value = parsed[name];
     if (value != null && isNonEmptyFieldValue(value) && writes(name)) {
-      setDiveFormValue(form, name, value);
+      setValue(name, value);
     }
   }
   if (parsed.mixtures.length === 0) {
@@ -261,7 +279,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
     // rather than overwrites by definition - without the file's labels, which
     // the attach writes.
     if (existing.length === 0) {
-      replaceMixtures(
+      replace(
         parsed.mixtures.map((mixture) => ({
           ...mergeMixture(mixture).value,
           gas_number: undefined,
@@ -269,7 +287,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
       );
     } else {
       const filled = fillMixtures(parsed.mixtures, existing);
-      if (filled) replaceMixtures(filled);
+      if (filled) replace(filled);
     }
     return { guessed: {}, keptPressures: false, discardedPressures: false };
   }
@@ -280,7 +298,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
       existingMixtureFor(existing, parsed.mixtures.length, index),
     ),
   );
-  replaceMixtures(merged.map((cylinder) => cylinder.value));
+  replace(merged.map((cylinder) => cylinder.value));
   return mixtureImportNotes(parsed.mixtures, merged, existing);
 }
 
@@ -307,6 +325,9 @@ export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
   // deliberately visibility-blind: it sets whatever the file carries, which is the
   // owner's import rule for free.
   onValuesApplied?: () => void;
+  // Told of each value the import writes, before it lands - see
+  // `applyParsedDiveToForm`'s `noteWrite`.
+  onWrite?: (path: string, before: unknown, after: unknown) => void;
   // The files this dive already holds, on the edit form. Empty on the create
   // form, where nothing is stored until the dive exists.
   recordings?: Recording[];
@@ -333,6 +354,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   replaceMixtures,
   onFileAdded,
   onValuesApplied,
+  onWrite,
   recordings = [],
   pending = [],
   onRemovePending,
@@ -400,6 +422,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       replaceMixtures,
       alreadyHasFile || sameRecording ? "fill-only" : "prefill",
       inferredFigures.current,
+      onWrite,
     );
     onValuesApplied?.();
     onFileAdded?.({

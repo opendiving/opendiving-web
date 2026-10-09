@@ -24,7 +24,6 @@ import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { useDiveSitePrefill } from "@/hooks/useDiveSitePrefill";
 import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
-import { AutofilledMarks } from "@/components/dives/autofilled-marks";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { DiveIcon } from "@/components/logo";
 import { FORM_BODY, PlainHero } from "@/components/ui/map-hero";
@@ -527,28 +526,23 @@ function NewDiveForm() {
       />
 
       <div className={FORM_BODY}>
-        <AutofilledMarks
-          control={form.control}
-          isAutofilled={visibility.isAutofilled}
-        >
-          <DiveFormCard
-            form={form}
-            mixtureFieldArray={mixtureFieldArray}
-            visibility={visibility}
-            mode="create"
-            onSubmit={onSubmit}
-            isSubmitting={isSubmitting}
-            cancelHref={returnTo.href}
-            submittingLabel="Logging dive..."
-            submitLabel="Log dive"
-            onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
-            pendingFiles={pendingFiles}
-            onRemovePendingFile={(id) =>
-              setPendingFiles((files) => files.filter((item) => item.id !== id))
-            }
-            diveNumberNotice={diveNumberNotice}
-          />
-        </AutofilledMarks>
+        <DiveFormCard
+          form={form}
+          mixtureFieldArray={mixtureFieldArray}
+          visibility={visibility}
+          mode="create"
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+          cancelHref={returnTo.href}
+          submittingLabel="Logging dive..."
+          submitLabel="Log dive"
+          onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
+          pendingFiles={pendingFiles}
+          onRemovePendingFile={(id) =>
+            setPendingFiles((files) => files.filter((item) => item.id !== id))
+          }
+          diveNumberNotice={diveNumberNotice}
+        />
       </div>
     </div>
   );

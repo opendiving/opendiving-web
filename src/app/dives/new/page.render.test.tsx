@@ -2917,6 +2917,50 @@ describe("importing a file onto a form with fields hidden", () => {
   });
 });
 
+describe("importing a file", () => {
+  it("marks what the file filled in, a cylinder's cells included", async () => {
+    vi.mocked(divesAPI.parseDiveFile).mockResolvedValue({
+      dive_number: null,
+      start_time: null,
+      duration: null,
+      max_depth: 32.1,
+      avg_depth: null,
+      bottom_temperature: null,
+      salinity: null,
+      mixtures: [{ volume: 11.1, oxygen: 32, helium: 0, start_pressure: 200 }],
+      cns_start: null,
+      cns_end: null,
+      otu_start: null,
+      otu_end: null,
+      surface_pressure_bar: null,
+      file_token: "token",
+    } as Awaited<ReturnType<typeof divesAPI.parseDiveFile>>);
+    const isMarked = (field: HTMLElement) =>
+      Boolean(
+        (field as HTMLInputElement).labels?.[0]?.querySelector(
+          '[title="Filled in for you"]',
+        ),
+      );
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    importFile();
+
+    const maxDepth = await screen.findByRole("spinbutton", {
+      name: /maximum depth/i,
+    });
+    await waitFor(() => expect(maxDepth).toHaveValue(32.1));
+    expect(isMarked(maxDepth)).toBe(true);
+    expect(
+      isMarked(screen.getByRole("spinbutton", { name: /start pressure/i })),
+    ).toBe(true);
+    expect(
+      isMarked(screen.getByRole("spinbutton", { name: /average depth/i })),
+    ).toBe(false);
+  });
+});
+
 describe("loading a gear set onto a form with Weight hidden", () => {
   it("puts the weight box on screen, filled with the set's own", async () => {
     stable.auth.user.dive_form_hidden_fields = ["weight"];

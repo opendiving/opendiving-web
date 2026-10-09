@@ -3,7 +3,7 @@ import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import type { Tag } from "@/lib/api/tags";
+import { TAG_NAME_MAX, type Tag } from "@/lib/api/tags";
 import { TagsMultiSelect } from "./tags-multi-select";
 
 vi.mock("@/lib/api/tags", async (importOriginal) => {
@@ -79,6 +79,30 @@ describe("TagsMultiSelect", () => {
     expect(
       screen.getByRole("button", { name: "Remove wreck" }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps a tag past the API's bound in the field, menu shut and the reason under it", async () => {
+    render(<Picker />);
+    await waitFor(() => expect(fetchAllTags).toHaveBeenCalled());
+    const tooLong = "x".repeat(TAG_NAME_MAX + 1);
+
+    await userEvent.type(picker(), `${tooLong}{Enter}`);
+
+    expect(value()).toEqual([]);
+    expect(picker()).toHaveValue(tooLong);
+    expect(picker()).toHaveFocus();
+    expect(picker()).toHaveAttribute("aria-expanded", "false");
+    expect(picker()).toHaveAttribute("aria-invalid", "true");
+    expect(picker()).toHaveAccessibleDescription(
+      `A tag can be at most ${TAG_NAME_MAX} characters`,
+    );
+
+    await userEvent.type(picker(), "{Backspace}");
+    expect(picker()).not.toHaveAttribute("aria-invalid");
+    await userEvent.type(picker(), "{Enter}");
+
+    expect(value()).toEqual(["x".repeat(TAG_NAME_MAX)]);
+    expect(picker()).toHaveValue("");
   });
 
   it("still takes a typed tag when the list could not be read", async () => {
