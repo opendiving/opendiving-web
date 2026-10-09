@@ -58,9 +58,11 @@ export function DiveFormSection(props: DiveFormSectionProps) {
   //
   // The section index reads the same sentinel one step more generously: a jump
   // lands a card exactly on that line, where the heading is not yet stuck and a
-  // tap on it still collapses, but the reader is plainly in that section. Shrinking
-  // the root by two pixels counts the sentinel as gone once its bottom edge
-  // touches the line - "at or above", where `stuck` is "above".
+  // tap on it still collapses, but the reader is plainly in that section. The
+  // sentinel is a pixel tall and sits inside the card's 1px border, so with the
+  // card's top on the line its bottom edge is 2px below the viewport's top; a root
+  // shrunk by 3px counts it gone there and not a pixel higher, an edge touching
+  // the root's still being an intersection. "At or above", where `stuck` is "above".
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -72,7 +74,7 @@ export function DiveFormSection(props: DiveFormSectionProps) {
     );
     const passedObserver = new IntersectionObserver(
       ([entry]) => setPassed(above(entry)),
-      { rootMargin: "-2px 0px 0px 0px" },
+      { rootMargin: "-3px 0px 0px 0px" },
     );
     stuckObserver.observe(sentinel);
     passedObserver.observe(sentinel);
