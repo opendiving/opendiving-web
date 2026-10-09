@@ -293,8 +293,10 @@ export function Header() {
 
           {/* Actions */}
           {/* Phones narrower than 370px get tighter gaps, so the wordmark and
-              the four controls don't crowd each other. */}
-          <div className="flex flex-shrink-0 items-center space-x-2 max-[370px]:space-x-1">
+              the four controls don't crowd each other. On touch, under 360px,
+              the controls narrow to 40 and sit flush: four 44px boxes and the
+              wordmark are wider than a 320px screen. */}
+          <div className="flex flex-shrink-0 items-center space-x-2 max-[370px]:space-x-1 max-[360px]:touch:space-x-0">
             {isAuthenticated && user && (
               <DropdownMenu>
                 {/* The hint wraps the *menu* trigger rather than sitting
@@ -305,7 +307,7 @@ export function Header() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="px-3 max-[370px]:px-2"
+                      className="px-3 max-[370px]:px-2 max-[360px]:touch:min-w-10"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -362,7 +364,7 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="relative me-3 h-9 w-9 rounded-full p-0 max-[370px]:me-2 md:me-0"
+                        className="relative me-3 h-9 w-9 rounded-full p-0 max-[370px]:me-2 md:me-0 max-[360px]:touch:me-0 max-[360px]:touch:min-w-10"
                       >
                         <UserAvatar
                           name={user.name}
@@ -449,7 +451,7 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="md:hidden px-3 max-[370px]:px-2"
+                className="md:hidden px-3 max-[370px]:px-2 max-[360px]:touch:min-w-10"
                 aria-expanded={isMobileMenuOpen}
                 aria-controls="mobile-menu"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
