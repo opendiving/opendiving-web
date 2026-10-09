@@ -70,7 +70,7 @@ export type MixtureFieldArray = UseFieldArrayReturn<
 // cast to `MixtureFieldArray` - pass `form.control` in directly. Call this
 // once per form, at the same level as the `useForm()` call, and pass the
 // result down to both `DiveFormFields`/`MixtureFields` and `DiveFileImport`
-// (e.g. via `DiveFormCard`) - see `MixtureFieldArray`'s doc comment above for
+// (e.g. via `DiveForm`) - see `MixtureFieldArray`'s doc comment above for
 // why there must only ever be one instance per form.
 export function useMixtureFieldArray<TFieldValues extends MixtureFieldsValues>(
   control: Control<TFieldValues>,

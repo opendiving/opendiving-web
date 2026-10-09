@@ -501,19 +501,19 @@ unchanged when the new array is shorter, so an import with fewer mixtures than t
 trailing rows behind. `mixture-fields.tsx` exports the `MixtureFieldArray` type
 (`UseFieldArrayReturn<MixtureFieldsValues, "mixtures">`) and `useMixtureFieldArray(control)`;
 `new-dive-page-content.tsx` and `edit-dive-page-content.tsx` call it once beside `useForm()` and
-pass the result through `DiveFormCard` to `DiveFormFields`/`MixtureFields` and `DiveFileImport`,
-which never create their own. `ParsedDive` (`lib/api/dives.ts`) declares
-`mixtures: ParsedDiveMixture[]` explicitly.
+pass the result through `DiveForm` to `DiveFormFields`/`MixtureFields` and `DiveFileImport`, which
+never create their own. `ParsedDive` (`lib/api/dives.ts`) declares `mixtures: ParsedDiveMixture[]`
+explicitly.
 
-## `dives/new`/`dives/[id]/edit` pages share `DiveFormCard`/`PlainHero`/`PageSpinner`
+## `dives/new`/`dives/[id]/edit` pages share `DiveForm`/`PlainHero`/`PageSpinner`
 
 A dive form page is its own data-loading effects, its own `onSubmit` and its early-return states,
-then one `PlainHero` and one `DiveFormCard`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
-holds the `useFieldArray` generic parameter and cast in one place. `DiveFormCard`
-(`dive-form-card.tsx`) wraps `Card`/`Form`/`form` + `DiveFileImport` + `DiveFormFields` +
-`DiveFormActions`; the per-page inputs are `mode`, `onSubmit`, `cancelHref`, `submittingLabel` and
+then one `PlainHero` and one `DiveForm`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
+holds the `useFieldArray` generic parameter and cast in one place. `DiveForm` (`dive-form.tsx`)
+wraps `Form`/`form` + `DiveFileImport` + `DiveFormFields` + `DiveFormActions`, each section a card
+of its own; the per-page inputs are `mode`, `onSubmit`, `cancelHref`, `submittingLabel` and
 `submitLabel`. The hero is the one every record page draws, so the title sits where it does
-everywhere else; `FORM_BODY` keeps the card at `max-w-2xl` against the column's left edge, under the
+everywhere else; `FORM_BODY` keeps the form at `max-w-2xl` against the column's left edge, under the
 title, rather than centring it in a column of its own.
 
 `PageSpinner` (`components/ui/page-spinner.tsx`) is the full-viewport `min-h-screen` `<Loader2>` for
@@ -5845,8 +5845,8 @@ flip-then-leave still saves. `SAVE_DEBOUNCE_MS` in the hook is the figure's only
 
 ## The Fields control is a menu with a dialog behind it, and neither is in the form
 
-The control is positioned into the title row (`absolute inset-y-0 right-0`, `type="button"`), as
-`EntryUnitLabelRow` does, so the header's height ignores it.
+The control is a page action in the hero's top row, opposite the way back, dressed as the back link
+is.
 
 The menu applies presets; Configure opens a dialog of switches and preset housekeeping. A failed
 `PATCH /user` toasts from `useDiveFormVisibility`'s `flush`. Escape belongs to the dialog: Radix

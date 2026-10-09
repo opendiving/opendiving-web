@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { HERO_CONTROL } from "@/components/ui/map-hero";
+import { cn } from "@/lib/utils";
 import { DiveFormFieldsDialog } from "@/components/dives/dive-form-fields-dialog";
 import { useDiveFormPresets } from "@/hooks/useDiveFormPresets";
 import { hiddenFieldsEqual } from "@/lib/dive-form-fields";
@@ -31,13 +33,9 @@ interface DiveFormFieldsMenuProps {
 }
 
 /**
- * The Fields control at the end of the dive card's title row: a menu of the account's
- * presets, and Configure for everything else.
- *
- * **Positioned rather than laid out**, for the reason `EntryUnitLabelRow` documents: a
- * flex row would give the control a say in the header's height, and the header has to
- * occupy the same vertical space with it as without it. `type="button"` because this
- * renders on a card whose content is a `<form>` and the default type submits.
+ * The Fields control in the dive form page's top row, opposite the way back: a menu of
+ * the account's presets, and Configure for everything else. Dressed as the back link
+ * is, a hero control.
  *
  * **The trigger is labelled with the state, not with the control's name.** A hidden set
  * equal to a saved preset's reads as that preset; one equal to none reads "Custom".
@@ -67,19 +65,19 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
   const label = rows === null ? LOADING_LABEL : (current?.name ?? CUSTOM_LABEL);
 
   return (
-    <span className="absolute inset-y-0 right-0 flex items-center">
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             // The visible text is the *state*, so the name has to carry what the
             // control is as well - and it must contain the visible text, which is
             // WCAG's Label in Name. While the list is still loading the two are the
             // same word, and repeating it would read as a stutter.
             aria-label={rows === null ? undefined : `Fields: ${label}`}
-            className="gap-2"
+            className={cn("gap-2", HERO_CONTROL)}
           >
             {/* Sliders, then the state, then the chevron: what the control is about,
                 what it currently says, and last the mark that it opens - which is
@@ -137,6 +135,6 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
         visibility={visibility}
         presets={presets}
       />
-    </span>
+    </>
   );
 }

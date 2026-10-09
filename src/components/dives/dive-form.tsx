@@ -2,7 +2,6 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { AutofilledMarks } from "@/components/dives/autofilled-marks";
@@ -12,7 +11,7 @@ import {
   DiveFormValues,
 } from "@/components/dives/dive-form-fields";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
-import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
+import { DiveFormSection } from "@/components/dives/dive-form-section";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveSiteSummary, Recording } from "@/lib/api/dives";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
@@ -26,7 +25,7 @@ import {
 import { describeBlockedSubmit } from "@/lib/form-validity";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
-export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
+export interface DiveFormProps<TFieldValues extends DiveFormValues> {
   form: UseFormReturn<TFieldValues>;
   mixtureFieldArray: MixtureFieldArray;
   mode: "create" | "edit";
@@ -61,12 +60,11 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   diveNumberNotice?: { forValue: number; message: string } | null;
 }
 
-// The "Dive Details" card shared by the create and edit dive pages: file
-// import, the main form fields (including gas mixtures), and the
-// cancel/submit action row - identical between the two pages apart from
-// `mode`/`onSubmit`/the action labels, which are the only pieces
-// that actually differ between logging a new dive and editing an existing one.
-export function DiveFormCard<TFieldValues extends DiveFormValues>({
+// The dive form shared by the create and edit dive pages: the file import and the
+// field sections, a card each, and the cancel/submit action row - identical between
+// the two pages apart from `mode`/`onSubmit`/the action labels, which are the only
+// pieces that actually differ between logging a new dive and editing an existing one.
+export function DiveForm<TFieldValues extends DiveFormValues>({
   form,
   mixtureFieldArray,
   mode,
@@ -88,7 +86,7 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   knownGearItems,
   knownSpecies,
   diveNumberNotice,
-}: DiveFormCardProps<TFieldValues>) {
+}: DiveFormProps<TFieldValues>) {
   // Owned here rather than in `DiveFormFields` because the button that has to
   // wait for it is this component's, not that one's. A species picked but not
   // yet resolved is not in form state, so a save that beat the resolve would
@@ -186,96 +184,80 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   };
 
   return (
-    <Card>
-      {/* Padded under the title by the control's overhang as well, so the Fields
-          button sits as far above the import box as it does below the card's
-          top. */}
-      <CardHeader className="pb-[calc(var(--card-pad)+var(--card-title-lift))]">
-        {/* `relative` so the Fields control can be positioned into the title row
-            without joining it: any flex or grid parent gets a say in the row's
-            height, and this header has to be the same height with the control as
-            without it - its skeleton's included. Same mechanism, same reason, as
-            `EntryUnitLabelRow`. */}
-        <div className="relative">
-          <CardTitle as="h2">Dive Details</CardTitle>
-          {/* Outside the `<form>` on purpose, menu and dialog both. Nothing in
-              either is a form control of the dive, and a submit raised inside one -
-              the Configure dialog's name prompt taking Enter - would otherwise reach
-              `handleSubmit` through the React tree even when the DOM says it
-              cannot. */}
-          <DiveFormFieldsMenu visibility={visibility} />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <AutofilledMarks
-          control={form.control}
-          isAutofilled={visibility.isAutofilled}
+    <AutofilledMarks
+      control={form.control}
+      isAutofilled={visibility.isAutofilled}
+    >
+      <Form {...form}>
+        <form
+          // The browser no longer cancels this submit on its own - see
+          // `handleSubmitEvent`, which asks it the same question and reports
+          // the answer rather than leaving the diver with a dead button.
+          noValidate
+          onSubmit={handleSubmitEvent}
+          className="space-y-6 max-sm:space-y-2.5"
         >
-          <Form {...form}>
-            <form
-              // The browser no longer cancels this submit on its own - see
-              // `handleSubmitEvent`, which asks it the same question and reports
-              // the answer rather than leaving the diver with a dead button.
-              noValidate
-              onSubmit={handleSubmitEvent}
-              className="space-y-6"
+          {/* Kept mounted while collapsed: a parse in flight and the note it leaves
+              are this component's state, not the form's. */}
+          {isVisible("file_import") && (
+            <DiveFormSection
+              title="Import"
+              open={!collapsedGroups.has("Import")}
+              onOpenChange={(open) => setGroupOpen("Import", open)}
+              keepMounted
             >
-              {/* Import from a dive computer, a card's padding above the first
-                section's heading - whose own padding adds to it. */}
-              <div className="mb-(--card-pad)">
-                <DiveFileImport
-                  form={form}
-                  replaceMixtures={mixtureFieldArray.replace}
-                  onFileAdded={onFileAdded}
-                  pending={pendingFiles}
-                  onRemovePending={onRemovePendingFile}
-                  removedStored={removedStoredFiles}
-                  onRemoveStored={onRemoveStoredFile}
-                  onRestoreStored={onRestoreStoredFile}
-                  recordings={recordings}
-                  diveUuid={diveUuid}
-                  returnTo={cancelHref}
-                  // One of the moments a value arrives from outside the diver's
-                  // typing: whatever the file filled in is on screen, whether or not the
-                  // stored set hides it, and it counts as the diver's from here on.
-                  onValuesApplied={() =>
-                    visibility.revealNonEmpty(form.getValues())
-                  }
-                  onWrite={visibility.noteAutofill}
-                />
-              </div>
-
-              <DiveFormFields
-                control={form.control}
-                mode={mode}
-                visibility={visibility}
-                mixtureFieldArray={mixtureFieldArray}
-                knownDiveSites={knownDiveSites}
-                knownGearItems={knownGearItems}
-                knownSpecies={knownSpecies}
-                onSpeciesPendingChange={setIsResolvingSpecies}
-                diveNumberNotice={diveNumberNotice}
-                collapsedGroups={collapsedGroups}
-                onGroupOpenChange={setGroupOpen}
+              <DiveFileImport
+                form={form}
+                replaceMixtures={mixtureFieldArray.replace}
+                onFileAdded={onFileAdded}
+                pending={pendingFiles}
+                onRemovePending={onRemovePendingFile}
+                removedStored={removedStoredFiles}
+                onRemoveStored={onRemoveStoredFile}
+                onRestoreStored={onRestoreStoredFile}
+                recordings={recordings}
+                diveUuid={diveUuid}
+                returnTo={cancelHref}
+                // One of the moments a value arrives from outside the diver's
+                // typing: whatever the file filled in is on screen, whether or not
+                // the stored set hides it, and it counts as the diver's from here on.
+                onValuesApplied={() =>
+                  visibility.revealNonEmpty(form.getValues())
+                }
+                onWrite={visibility.noteAutofill}
               />
+            </DiveFormSection>
+          )}
 
-              {/* Above the buttons, so a refusal is on screen next to the control
-                that produced it rather than off the top of a long form. */}
-              <FormApiError error={blockedSubmit} />
+          <DiveFormFields
+            control={form.control}
+            mode={mode}
+            visibility={visibility}
+            mixtureFieldArray={mixtureFieldArray}
+            knownDiveSites={knownDiveSites}
+            knownGearItems={knownGearItems}
+            knownSpecies={knownSpecies}
+            onSpeciesPendingChange={setIsResolvingSpecies}
+            diveNumberNotice={diveNumberNotice}
+            collapsedGroups={collapsedGroups}
+            onGroupOpenChange={setGroupOpen}
+          />
 
-              <DiveFormActions
-                cancelHref={cancelHref}
-                mode={mode}
-                isSubmitting={isSubmitting}
-                submittingLabel={submittingLabel}
-                submitLabel={submitLabel}
-                isBusy={isResolvingSpecies}
-                busyLabel="Adding species..."
-              />
-            </form>
-          </Form>
-        </AutofilledMarks>
-      </CardContent>
-    </Card>
+          {/* Above the buttons, so a refusal is on screen next to the control
+              that produced it rather than off the top of a long form. */}
+          <FormApiError error={blockedSubmit} />
+
+          <DiveFormActions
+            cancelHref={cancelHref}
+            mode={mode}
+            isSubmitting={isSubmitting}
+            submittingLabel={submittingLabel}
+            submitLabel={submitLabel}
+            isBusy={isResolvingSpecies}
+            busyLabel="Adding species..."
+          />
+        </form>
+      </Form>
+    </AutofilledMarks>
   );
 }

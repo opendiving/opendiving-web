@@ -23,7 +23,8 @@ import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { useDiveSitePrefill } from "@/hooks/useDiveSitePrefill";
 import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
-import { DiveFormCard } from "@/components/dives/dive-form-card";
+import { DiveForm } from "@/components/dives/dive-form";
+import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { DiveIcon } from "@/components/logo";
 import { FORM_BODY, PlainHero } from "@/components/ui/map-hero";
@@ -523,10 +524,11 @@ function NewDiveForm() {
         title="Log New Dive"
         subtitle="Record the details of your dive"
         figures={[]}
+        actions={<DiveFormFieldsMenu visibility={visibility} />}
       />
 
       <div className={FORM_BODY}>
-        <DiveFormCard
+        <DiveForm
           form={form}
           mixtureFieldArray={mixtureFieldArray}
           visibility={visibility}

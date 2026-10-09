@@ -25,6 +25,7 @@
  * name them, so renaming one is a data migration on both sides rather than a rename.
  */
 export const DIVE_FORM_FIELDS = [
+  "file_import",
   "course_uuid",
   "trip_uuid",
   "contact_uuid",
@@ -61,6 +62,34 @@ export const DIVE_FORM_FIELDS = [
 export type DiveFormFieldKey = (typeof DIVE_FORM_FIELDS)[number];
 
 /**
+ * Keys that hide a part of the form rather than a field of the dive, with no value
+ * stored under them - so the value rules (prefill, reveal, empty values) pass them by.
+ * The registry guard reads this list rather than restating it, so a key cannot skip
+ * the schema check silently.
+ */
+export const DIVE_FORM_SECTION_FIELDS = [
+  "file_import",
+] as const satisfies readonly DiveFormFieldKey[];
+
+/** A key naming a field of the dive, which the form holds a value for. */
+export type DiveFormValueFieldKey = Exclude<
+  DiveFormFieldKey,
+  (typeof DIVE_FORM_SECTION_FIELDS)[number]
+>;
+
+/** True for a key the form holds a value under. */
+export function holdsValue(
+  key: DiveFormFieldKey,
+): key is DiveFormValueFieldKey {
+  return !(DIVE_FORM_SECTION_FIELDS as readonly DiveFormFieldKey[]).includes(
+    key,
+  );
+}
+
+/** The keys naming a field of the dive, in form order. */
+export const DIVE_FORM_VALUE_FIELDS = DIVE_FORM_FIELDS.filter(holdsValue);
+
+/**
  * Marks a key as naming a field of *every* cylinder rather than of the dive.
  *
  * Deliberately not react-hook-form's own path (`mixtures.0.po2_limit`): a key names
@@ -79,7 +108,8 @@ export function mixtureFieldName(key: DiveFormFieldKey): string {
 }
 
 /** The per-cylinder keys, in form order - the columns a tank card can lose. */
-export const MIXTURE_FORM_FIELDS = DIVE_FORM_FIELDS.filter(isMixtureField);
+export const MIXTURE_FORM_FIELDS =
+  DIVE_FORM_VALUE_FIELDS.filter(isMixtureField);
 
 /**
  * Keys of `diveMixtureSchema` that accept `undefined` and are still not hideable,
@@ -125,6 +155,7 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
  * listed anyway - a gap where Start time should be reads as a field that went missing.
  */
 export const DIVE_FORM_FIELD_GROUPS = [
+  "Import",
   "Training",
   "Location",
   "People",
@@ -151,6 +182,7 @@ export interface DiveFormFieldEntry {
  * new optional input fails the suite until it is registered here.
  */
 export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
+  { key: "file_import", label: "Import from a dive computer", group: "Import" },
   { key: "course_uuid", label: "Course", group: "Training" },
   { key: "trip_uuid", label: "Trip", group: "Location" },
   { key: "contact_uuid", label: "Dive center", group: "Location" },
@@ -273,7 +305,7 @@ export function hiddenFieldsEqual(
  * back in from whatever the prefill left as the default.
  */
 export const EMPTY_DIVE_FORM_VALUES: Readonly<
-  Record<DiveFormFieldKey, unknown>
+  Record<DiveFormValueFieldKey, unknown>
 > = {
   course_uuid: null,
   trip_uuid: null,
@@ -330,7 +362,7 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
  * exception cannot be made silently, and it pins the value as well as the name.
  */
 export const NON_BLANK_EMPTY_FIELD_VALUES: Partial<
-  Record<DiveFormFieldKey, unknown>
+  Record<DiveFormValueFieldKey, unknown>
 > = {
   "mixture.helium": 0,
 };
@@ -365,7 +397,7 @@ export type DiveFormFieldValues = {
  * still reveals on a stored `0`, because its empty value is `""`: a drained cylinder is
  * a reading, and that distinction is the whole reason the empty values are per-key.
  */
-function revealsField(key: DiveFormFieldKey, value: unknown): boolean {
+function revealsField(key: DiveFormValueFieldKey, value: unknown): boolean {
   return isNonEmptyFieldValue(value) && value !== EMPTY_DIVE_FORM_VALUES[key];
 }
 
@@ -383,7 +415,7 @@ export function nonEmptyDiveFormFields(
 ): DiveFormFieldKey[] {
   const mixtures = Array.isArray(values.mixtures) ? values.mixtures : [];
 
-  return DIVE_FORM_FIELDS.filter((key) => {
+  return DIVE_FORM_VALUE_FIELDS.filter((key) => {
     if (!isMixtureField(key)) return revealsField(key, values[key]);
     const name = mixtureFieldName(key);
     return mixtures.some((row) => revealsField(key, row?.[name]));
@@ -406,7 +438,7 @@ export function diveFormFieldsWithErrors(
 ): DiveFormFieldKey[] {
   const revealed = new Set<DiveFormFieldKey>();
 
-  for (const key of DIVE_FORM_FIELDS) {
+  for (const key of DIVE_FORM_VALUE_FIELDS) {
     if (!isMixtureField(key) && errors[key] !== undefined) revealed.add(key);
   }
 

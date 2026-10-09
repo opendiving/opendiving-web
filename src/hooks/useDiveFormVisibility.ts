@@ -14,10 +14,11 @@ import { authAPI } from "@/lib/api/auth";
 import { useAutofillMarks, type AutofillMarks } from "@/hooks/useAutofillMarks";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
-  DIVE_FORM_FIELDS,
+  DIVE_FORM_VALUE_FIELDS,
   EMPTY_DIVE_FORM_VALUES,
   MIXTURE_FORM_FIELDS,
   canonicalHiddenFields,
+  holdsValue,
   isMixtureField,
   isNonEmptyFieldValue,
   mixtureFieldName,
@@ -250,7 +251,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   // empty it.
   useEffect(() => {
     const initial: Partial<Record<DiveFormFieldKey, unknown>> = {};
-    for (const key of DIVE_FORM_FIELDS) {
+    for (const key of DIVE_FORM_VALUE_FIELDS) {
       if (isMixtureField(key)) continue;
       initial[key] = formRef.current.getValues(
         key as unknown as Path<TFieldValues>,
@@ -371,7 +372,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     ) => {
       if (!fillsDefaultsRef.current) return;
 
-      for (const key of DIVE_FORM_FIELDS) {
+      for (const key of DIVE_FORM_VALUE_FIELDS) {
         if (GAS_KEYS.includes(key)) continue;
         if (wasVisible(key) === isNowVisible(key)) continue;
         if (!isUntouched(key)) continue;
@@ -545,7 +546,9 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
         ...(base as Record<string, unknown>),
       };
       for (const key of Object.keys(carried) as DiveFormFieldKey[]) {
-        if (key === "mixtures" || isMixtureField(key)) continue;
+        if (key === "mixtures" || isMixtureField(key) || !holdsValue(key)) {
+          continue;
+        }
         seeded[key] = visible(key) ? carried[key] : EMPTY_DIVE_FORM_VALUES[key];
       }
       if ("mixtures" in carried) seeded.mixtures = desiredMixtures(visible);
@@ -554,7 +557,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
       // layer's write, and a key left out of the record would read as the diver's the
       // first time they hid it.
       const written: Partial<Record<DiveFormFieldKey, unknown>> = {};
-      for (const key of DIVE_FORM_FIELDS) {
+      for (const key of DIVE_FORM_VALUE_FIELDS) {
         if (isMixtureField(key)) continue;
         written[key] = seeded[key];
       }

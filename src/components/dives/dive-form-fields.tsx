@@ -191,7 +191,7 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   knownSpecies?: SpeciesSummary[];
   // Raised by the species picker while a pick is still being resolved into a
   // catalog row - see `SpeciesMultiSelect.onPendingChange`. Owned by
-  // `DiveFormCard`, which is where the submit button that must wait for it is.
+  // `DiveForm`, which is where the submit button that must wait for it is.
   onSpeciesPendingChange?: (isPending: boolean) => void;
   // A note shown under the dive number, but only while the field still holds
   // `forValue`. Carried as a value rather than a ready-made string so the
@@ -205,7 +205,7 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // back-filling a log, reconciled later with Renumber, so this must not block
   // a save.
   diveNumberNotice?: { forValue: number; message: string } | null;
-  // Owned by `DiveFormCard`, whose failed-submit path opens the sections an error
+  // Owned by `DiveForm`, whose failed-submit path opens the sections an error
   // landed in.
   collapsedGroups: ReadonlySet<DiveFormFieldGroup>;
   onGroupOpenChange: (group: DiveFormFieldGroup, open: boolean) => void;
@@ -286,10 +286,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   );
 
   return (
-    // One block in the form's `space-y-6`, its sections flush inside it: a stuck
-    // heading leaves with its section's bottom edge, so any gap between sections is
-    // distance it scrolls away before the next heading arrives.
-    <div>
+    // A fragment, so each section is a card in the form's own stack.
+    <>
       {isVisible("course_uuid") &&
         section(
           "Training",
@@ -1098,6 +1096,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             )}
           </>,
         )}
-    </div>
+    </>
   );
 }

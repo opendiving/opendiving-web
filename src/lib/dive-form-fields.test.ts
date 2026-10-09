@@ -5,6 +5,8 @@ import {
   DIVE_FORM_FIELDS,
   DIVE_FORM_FIELD_GROUPS,
   DIVE_FORM_FIELD_REGISTRY,
+  DIVE_FORM_SECTION_FIELDS,
+  DIVE_FORM_VALUE_FIELDS,
   EMPTY_DIVE_FORM_VALUES,
   MIXTURE_FIELD_PREFIX,
   NON_BLANK_EMPTY_FIELD_VALUES,
@@ -42,11 +44,20 @@ describe("the vocabulary is the form's own optional fields", () => {
     const optional = optionalKeysOf(
       diveCreateSchema.shape as unknown as Record<string, ZodType>,
     );
-    const registered = DIVE_FORM_FIELDS.filter(
+    const registered = DIVE_FORM_VALUE_FIELDS.filter(
       (key) => !key.startsWith(MIXTURE_FIELD_PREFIX),
     );
 
     expect([...registered].sort()).toEqual([...optional].sort());
+  });
+
+  it("exempts only keys that name no field of the dive", () => {
+    // The section keys skip the check above, so one that came to name a schema field
+    // would escape it with a value nothing on the form then governs.
+    const shape = diveCreateSchema.shape as unknown as Record<string, ZodType>;
+    for (const key of DIVE_FORM_SECTION_FIELDS) {
+      expect(shape[key], `${key} is a dive field now`).toBeUndefined();
+    }
   });
 
   it("holds every optional cylinder field except the ones exempt by name", () => {
@@ -156,7 +167,7 @@ describe("the panel's registry", () => {
     // whatever the table holds. This asserts the property directly instead - an
     // empty value the reveal rule would call non-empty is a key that puts itself
     // back on screen the moment a stored dive holds one.
-    for (const key of DIVE_FORM_FIELDS) {
+    for (const key of DIVE_FORM_VALUE_FIELDS) {
       expect(EMPTY_DIVE_FORM_VALUES).toHaveProperty(key);
       if (key in NON_BLANK_EMPTY_FIELD_VALUES) {
         expect(EMPTY_DIVE_FORM_VALUES[key], key).toBe(
