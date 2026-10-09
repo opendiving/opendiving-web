@@ -3,11 +3,12 @@ import {
   formatTripLocationNames,
   formatTripLocationNamesHint,
 } from "@/lib/trip-locations";
+import { TextHint } from "@/components/ui/tooltip";
 
 // How many names a compact surface shows before the rest become "+N". One,
 // because a place's own name carries its country - two of "Dahab, Egypt" do not
-// fit a trip card's line beside its dates, and the hover hint is what keeps the
-// count honest.
+// fit a trip card's line beside its dates, and the hint is what keeps the count
+// honest.
 //
 // Private, as the limit for every surface that joins a trip's places for a
 // reader: each of them renders this component rather than joining the names
@@ -20,8 +21,8 @@ export interface TripLocationsLabelProps {
 }
 
 // Renders a trip's locations as "Dahab, Egypt +2", with every name in full as a
-// hover hint whenever the "+N" is holding some of them back, and nothing at all
-// for a trip with no usable locations.
+// hint whenever the "+N" is holding some of them back, and nothing at all for a
+// trip with no usable locations.
 //
 // One component rather than the same three lines at each call site, because the label
 // and its hint have to be computed against the same limit: a hint built with a
@@ -35,11 +36,10 @@ export function TripLocationsLabel({
   if (!names) return null;
 
   return (
-    <span
-      className={className}
-      title={formatTripLocationNamesHint(locations, { max: SHOWN_LOCATIONS })}
+    <TextHint
+      hint={formatTripLocationNamesHint(locations, { max: SHOWN_LOCATIONS })}
     >
-      {names}
-    </span>
+      <span className={className}>{names}</span>
+    </TextHint>
   );
 }

@@ -40,7 +40,7 @@ setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 // A pointer that moved less than this between press and release was a tap on a
 // place, not a drag that happened to end where it started. MapLibre's own
 // default is 3 px; this is the figure the hand-rolled gesture handler used, and
-// it is what "click to place the dive site" was tuned against on a phone.
+// it is what "tap or click to place the dive site" was tuned against on a phone.
 const TAP_SLOP_PX = 5;
 
 export interface MapCanvasProps {

@@ -233,10 +233,61 @@ function IconTooltip({
   );
 }
 
+/**
+ * Text that stands for more than it shows - "Dahab, Egypt +2" - with all of it
+ * in `hint`, or no `hint` when the text already says everything.
+ *
+ * A mouse reads it off `title`. A finger has no hover, so a tap shows the same
+ * words as a hint, until a press elsewhere. A tap on a link - one inside the
+ * text, or one the text sits in - is the link's: on a card a tap means the
+ * record, and its page carries the same text with the hint.
+ */
+function TextHint({
+  hint,
+  children,
+}: {
+  hint: string | undefined;
+  children: React.ReactElement;
+}) {
+  const [tapped, setTapped] = React.useState(false);
+  const finger = React.useRef(false);
+  if (!hint) return children;
+
+  return (
+    <TooltipProvider>
+      {/* Opened by a tap and nothing else: a mouse already has the `title`, and
+          Radix's own opens - a hover, a focus - would show it twice. */}
+      <Tooltip
+        open={tapped}
+        onOpenChange={(open) => {
+          if (!open) setTapped(false);
+        }}
+      >
+        <TooltipTrigger
+          asChild
+          title={hint}
+          onPointerDown={(event) => {
+            finger.current = event.pointerType !== "mouse";
+          }}
+          onClick={(event) => {
+            if (!finger.current) return;
+            if ((event.target as Element).closest("a")) return;
+            setTapped(true);
+          }}
+        >
+          {children}
+        </TooltipTrigger>
+        <TooltipContent>{hint}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 export {
   Tooltip,
   TooltipProvider,
   TooltipTrigger,
   TooltipContent,
   IconTooltip,
+  TextHint,
 };

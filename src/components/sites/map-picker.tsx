@@ -478,7 +478,7 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
           // renderer owns and rebuilds: the crosshair and the hint are its
           // siblings, and the tests select through it for exactly that reason.
           role="application"
-          aria-label="Map. Click to place the dive site."
+          aria-label="Map. Tap or click to place the dive site."
           aria-describedby="map-picker-help"
           tabIndex={0}
           onKeyDown={handleKeyDown}
@@ -586,9 +586,9 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
       </p>
 
       <p id="map-picker-help" className="text-sm text-muted-foreground">
-        Click to place the site, and drag to pan. Two fingers pan and pinch to
-        zoom; <kbd>Ctrl</kbd>/<kbd>⌘</kbd> and the wheel zooms. With the map
-        focused, arrow keys pan, <kbd>+</kbd>/<kbd>-</kbd> zoom and{" "}
+        Tap or click to place the site. A mouse drags to pan; two fingers pan
+        and pinch to zoom; <kbd>Ctrl</kbd>/<kbd>⌘</kbd> and the wheel zooms.
+        With the map focused, arrow keys pan, <kbd>+</kbd>/<kbd>-</kbd> zoom and{" "}
         <kbd>Enter</kbd> places it at the crosshair.
       </p>
     </div>

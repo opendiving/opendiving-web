@@ -487,8 +487,8 @@ distinct from the post-click `"verifying"`. A used, invalidated or expired token
 "succeeds" again via the backend's idempotent-reuse leniency, meant for races. A `checkedRef` guard
 keeps Strict Mode from double-firing the check.
 
-The check returns the token's target email, shown in `"ready"` ("Click below to sign in as
-`{email}`") and, for confirm-email, in `"success"` from `verifyEmailChange`'s response.
+The check returns the token's target email, shown in `"ready"` ("Sign in below as `{email}`") and,
+for confirm-email, in `"success"` from `verifyEmailChange`'s response.
 
 `AuthForm`'s "Check your email" screen gates "Resend link" behind a 30 s client-side countdown
 (`RESEND_COOLDOWN_SECONDS`), a self-rescheduling `setTimeout` (not a mount-tied `setInterval`) that
@@ -2782,17 +2782,18 @@ whole dialog on every keystroke in the notes. The map is a `next/dynamic` import
 since it measures its element and reads the theme; the wrapper lives in its own file so the
 skeleton's height cannot drift from the map's.
 
-## A "+N" is a promise that hovering will say what N was
+## A "+N" is a promise that the label will say what N was
 
 `Dahab, Egypt +2` compacts a list the payload already holds, so every surface showing it carries the
-full list as a `title`.
+full list as a `TextHint`: a `title` for a mouse, a hint on a tap for a finger. On a card the tap is
+the card's, and the record's page answers it.
 
-The hint sits on the whole label, not the "+N": a two-character badge is a small hover target and
-splits the answer in two.
+The hint sits on the whole label, not the "+N": a two-character badge is a small target and splits
+the answer in two.
 
 A hint that repeats the label is worse than none, so `formatTripLocationNamesHint` sits beside
 `formatTripLocationNames`, answers `undefined` when nothing is hidden, and decides that under the
-same blank-dropping rule: `["Moalboal", " "]` under `max: 1` shows no "+N" and gets no tooltip.
+same blank-dropping rule: `["Moalboal", " "]` under `max: 1` shows no "+N" and gets no hint.
 `TripLocationsLabel` calls both, as `DiveSitesLabel` does for dives; the trip card passes locations
 only.
 
@@ -2804,9 +2805,8 @@ list separates with `; `, a comma being indistinguishable from the commas inside
 accessible label (`mapLabel`) takes the separator and not the cap: a cap withholds names from the
 one reader who cannot count the pins.
 
-`title` answers a mouse and nobody else: no hover on touch, unreachable by keyboard on a `<span>`.
-The alternative is a `Popover` trigger nested in a link; hover-only stands until the app has a
-tooltip primitive.
+A keyboard still cannot reach the hint: the label is a `<span>`, and making it focusable would put a
+second tab stop inside a card's link.
 
 ## `DialogFooter` is one row at every width, and its gap is `gap-2` not `space-x-2`
 
