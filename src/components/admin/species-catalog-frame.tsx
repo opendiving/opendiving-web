@@ -83,7 +83,7 @@ function Chip({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1 text-sm transition-colors",
+        "relative rounded-full border px-3 py-1 text-sm transition-colors touch:tap-target",
         pressed
           ? "border-transparent bg-secondary text-secondary-foreground"
           : "text-muted-foreground hover:text-foreground",
@@ -148,7 +148,7 @@ export function SpeciesCatalogFrame({
           <CardContent>
             {!isEmptyList && (
               <div
-                className="mb-4 flex flex-wrap gap-2"
+                className="mb-4 flex flex-wrap gap-2 touch:gap-y-3.5"
                 role="group"
                 aria-label="Show"
               >

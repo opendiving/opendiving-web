@@ -88,9 +88,9 @@ export function RatingInput({
   };
 
   return (
-    // `h-10`, an input's height, so the field sits on its grid row like the boxes
-    // beside it rather than a few pixels short of them.
-    <div className="flex h-10 items-center gap-2">
+    // An input's height, 44px on touch as well, so the field sits on its grid row
+    // like the boxes beside it rather than a few pixels short of them.
+    <div className="flex h-10 items-center gap-2 touch:h-11">
       <div
         ref={groupRef}
         id={id}
@@ -98,14 +98,14 @@ export function RatingInput({
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
-        className="flex items-center gap-1"
+        className="flex items-center gap-1 touch:gap-0"
         onPointerLeave={hover(null)}
       >
         {STEPS.map((step) => (
           <label
             key={step}
             className={cn(
-              "relative flex h-8 w-8 items-center justify-center",
+              "relative flex h-8 w-8 items-center justify-center touch:h-11 touch:w-11",
               disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer",
             )}
             onPointerEnter={hover(step)}
@@ -140,7 +140,7 @@ export function RatingInput({
           onClick={clear}
           // Contains the visible word, so a speech-input user can say it.
           aria-label="Clear rating"
-          className="rounded px-1.5 py-0.5 text-xs leading-none text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="relative rounded px-1.5 py-0.5 text-xs leading-none text-muted-foreground touch:tap-target transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Clear
         </button>

@@ -53,9 +53,11 @@ const AVATAR_SIZE = 160;
 // picture, Replace, Adjust and the bin need more than a 375px screen leaves. From
 // `sm`, back in the button row. `left-32` is the picture's 160px less the 28px badge
 // and a 4px inset. One element rather than a copy in each place, because `hidden` is
-// only CSS and a test would find both.
+// only CSS and a test would find both. On touch the badge keeps its size, since a
+// 44px one would hang off the picture, and takes a finger through its hit area
+// instead - which is why it is `relative` rather than `static` from `sm`.
 const BIN =
-  "absolute left-32 top-1 z-10 h-7 w-7 rounded-full border bg-background/80 p-0 shadow-sm sm:static sm:h-9 sm:w-auto sm:rounded-md sm:border-0 sm:bg-transparent sm:px-3 sm:shadow-none";
+  "absolute left-32 top-1 z-10 h-7 w-7 rounded-full border bg-background/80 p-0 shadow-sm touch:min-h-0 touch:min-w-0 touch:tap-target sm:relative sm:left-auto sm:top-auto sm:h-9 sm:w-auto sm:rounded-md sm:border-0 sm:bg-transparent sm:px-3 sm:shadow-none";
 
 /**
  * One picture as its form shows it: what it holds, what saving will do to it, and the

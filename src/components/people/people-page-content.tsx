@@ -115,7 +115,10 @@ export function PeoplePageContent() {
         rows={people.map((person) => (
           <TableRow key={person.uuid}>
             <TableCell className="font-medium">
-              <Link href={`/people/${person.uuid}`} className="hover:underline">
+              <Link
+                href={`/people/${person.uuid}`}
+                className="relative hover:underline touch:tap-target"
+              >
                 {person.name}
               </Link>
             </TableCell>
@@ -131,7 +134,7 @@ export function PeoplePageContent() {
                   person's page lists. */}
               <Link
                 href={`/people/${person.uuid}`}
-                className="hover:underline"
+                className="relative hover:underline touch:tap-target"
                 aria-label={`${person.dive_count} ${
                   person.dive_count === 1 ? "dive" : "dives"
                 } with ${person.name}`}

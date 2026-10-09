@@ -195,7 +195,7 @@ export function PeopleMultiSelect({
                     <button
                       type="button"
                       disabled={disabled}
-                      className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+                      className="relative shrink-0 cursor-grab rounded text-muted-foreground touch:tap-target hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
                       {...handleProps(index)}
                     >
                       <GripVertical className="h-4 w-4" />
@@ -244,7 +244,7 @@ export function PeopleMultiSelect({
                   <button
                     type="button"
                     disabled={disabled}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground touch:h-11 touch:w-11"
                     onClick={() => removePerson(reference.person_uuid)}
                   >
                     <X className="h-3.5 w-3.5" />

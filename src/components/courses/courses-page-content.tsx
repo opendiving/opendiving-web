@@ -150,7 +150,7 @@ export function CoursesPageContent() {
             <TableCell className="font-medium">
               <Link
                 href={`/courses/${course.uuid}`}
-                className="hover:underline"
+                className="relative hover:underline touch:tap-target"
               >
                 {course.name}
               </Link>

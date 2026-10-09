@@ -188,7 +188,7 @@ export function DiveSiteMultiSelect({
                 key={id}
                 ref={setItemRef(index)}
                 className={cn(
-                  "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border bg-background px-2 py-1.5 text-sm",
+                  "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border bg-background px-2 py-1.5 text-sm touch:min-h-11",
                   isDragging && "relative z-10 shadow-lg ring-2 ring-ring",
                 )}
                 // The dragged row is translated to follow the pointer; the rest
@@ -215,7 +215,7 @@ export function DiveSiteMultiSelect({
                     <button
                       type="button"
                       disabled={disabled}
-                      className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+                      className="relative shrink-0 cursor-grab rounded text-muted-foreground touch:tap-target hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
                       {...handleProps(index)}
                     >
                       <GripVertical className="h-4 w-4" />
@@ -234,7 +234,7 @@ export function DiveSiteMultiSelect({
                   <button
                     type="button"
                     disabled={disabled}
-                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    className="relative shrink-0 text-muted-foreground hover:text-foreground touch:tap-target"
                     onClick={() => removeSite(id)}
                   >
                     <X className="h-3.5 w-3.5" />

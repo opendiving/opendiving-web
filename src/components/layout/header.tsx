@@ -182,7 +182,7 @@ export function Header() {
       className="sticky top-0 z-50 bg-background shadow-sm border-b print:hidden"
     >
       <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
+        <div className="flex justify-between items-center py-4 touch:py-3">
           {/* Logo and Navigation. The gap is the nav's, so it goes with the nav
               below `md` - at 320px that room is what the four controls need.
               Both gaps stay narrow until `lg`: at 768px the bar's six items fit
@@ -190,7 +190,7 @@ export function Header() {
           <div className="flex items-center md:space-x-4 lg:space-x-8">
             <Link
               href={isAuthenticated ? "/home" : "/"}
-              className="flex flex-shrink-0 items-center space-x-2"
+              className="flex flex-shrink-0 items-center space-x-2 touch:min-h-11"
             >
               <Logo className="h-7 w-7 sm:h-8 sm:w-8 text-coral flex-shrink-0" />
               {/* A `<span>`, not an `<h1>`. The wordmark is site furniture that
@@ -215,7 +215,7 @@ export function Header() {
                         key={item.href}
                         href={item.href}
                         aria-current={isCurrent ? "page" : undefined}
-                        className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                        className={`whitespace-nowrap touch:py-3 text-sm font-medium transition-colors hover:text-coral ${
                           item.tier === "lg" ? "hidden lg:inline-flex" : ""
                         } ${isCurrent ? "text-coral" : "text-foreground"}`}
                       >
@@ -225,7 +225,7 @@ export function Header() {
                   })}
                   <DropdownMenu>
                     <DropdownMenuTrigger
-                      className={`group inline-flex items-center whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                      className={`group inline-flex items-center whitespace-nowrap touch:py-3 text-sm font-medium transition-colors hover:text-coral ${
                         currentItem
                           ? MORE_ACTIVE[currentItem.tier]
                           : "text-foreground"
@@ -268,13 +268,13 @@ export function Header() {
                 <>
                   <Link
                     href="/#features"
-                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
+                    className="whitespace-nowrap touch:py-3 text-sm font-medium text-foreground hover:text-primary"
                   >
                     Features
                   </Link>
                   <Link
                     href="/#self-hosting"
-                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
+                    className="whitespace-nowrap touch:py-3 text-sm font-medium text-foreground hover:text-primary"
                   >
                     Self-hosting
                   </Link>
@@ -282,7 +282,7 @@ export function Header() {
                     href="https://github.com/opendiving/opendiving-web"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
+                    className="whitespace-nowrap touch:py-3 text-sm font-medium text-foreground hover:text-primary"
                   >
                     Source
                   </a>
@@ -293,8 +293,10 @@ export function Header() {
 
           {/* Actions */}
           {/* Phones narrower than 370px get tighter gaps, so the wordmark and
-              the four controls don't crowd each other. */}
-          <div className="flex flex-shrink-0 items-center space-x-2 max-[370px]:space-x-1">
+              the four controls don't crowd each other. On touch, under 360px,
+              the controls narrow to 40 and sit flush: four 44px boxes and the
+              wordmark are wider than a 320px screen. */}
+          <div className="flex flex-shrink-0 items-center space-x-2 max-[370px]:space-x-1 max-[360px]:touch:space-x-0">
             {isAuthenticated && user && (
               <DropdownMenu>
                 {/* The hint wraps the *menu* trigger rather than sitting
@@ -305,7 +307,7 @@ export function Header() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="px-3 max-[370px]:px-2"
+                      className="px-3 max-[370px]:px-2 max-[360px]:touch:min-w-10"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -362,7 +364,7 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="relative me-3 h-9 w-9 rounded-full p-0 max-[370px]:me-2 md:me-0"
+                        className="relative me-3 h-9 w-9 rounded-full p-0 max-[370px]:me-2 md:me-0 max-[360px]:touch:me-0 max-[360px]:touch:min-w-10"
                       >
                         <UserAvatar
                           name={user.name}
@@ -449,7 +451,7 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="md:hidden px-3 max-[370px]:px-2"
+                className="md:hidden px-3 max-[370px]:px-2 max-[360px]:touch:min-w-10"
                 aria-expanded={isMobileMenuOpen}
                 aria-controls="mobile-menu"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -468,7 +470,7 @@ export function Header() {
           // nothing to scroll.
           <div
             id="mobile-menu"
-            className="md:hidden border-t py-4 max-h-[calc(100dvh-4.5rem)] overflow-y-auto"
+            className="md:hidden border-t py-4 max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain"
           >
             <nav className="flex flex-col space-y-3">
               {isAuthenticated ? (
@@ -480,7 +482,7 @@ export function Header() {
                         key={item.href}
                         href={item.href}
                         aria-current={isCurrent ? "page" : undefined}
-                        className={`text-sm font-medium hover:text-coral py-2 ${
+                        className={`text-sm font-medium hover:text-coral py-2 touch:py-3 ${
                           isCurrent ? "text-coral" : "text-foreground"
                         }`}
                         onClick={() => setIsMobileMenuOpen(false)}
@@ -494,14 +496,14 @@ export function Header() {
                 <>
                   <Link
                     href="/#features"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2 touch:py-3"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Features
                   </Link>
                   <Link
                     href="/#self-hosting"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2 touch:py-3"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Self-hosting
@@ -510,7 +512,7 @@ export function Header() {
                     href="https://github.com/opendiving/opendiving-web"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2 touch:py-3"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Source

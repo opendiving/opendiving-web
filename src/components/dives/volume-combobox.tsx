@@ -421,7 +421,7 @@ export function VolumeCombobox({
         <div
           id={listId}
           role="listbox"
-          className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto"
+          className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto overscroll-contain"
         >
           {groups.map((group) => (
             // `role="group"` named by `aria-label` rather than by pointing at the
@@ -451,7 +451,7 @@ export function VolumeCombobox({
                     optionRefs.current[index] = el;
                   }}
                   className={cn(
-                    "w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground",
+                    "w-full text-left px-3 py-2 touch:py-3 text-sm hover:bg-accent hover:text-accent-foreground",
                     // Tints every row holding the committed value, so 15 L lights
                     // up both the HP117 and the LP95. Correct rather than sloppy:
                     // the mixture records litres and cannot tell those two apart.

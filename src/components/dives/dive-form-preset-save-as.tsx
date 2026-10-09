@@ -217,7 +217,7 @@ export function DiveFormPresetSaveAs({
             <div
               id={listId}
               role="listbox"
-              className="absolute bottom-full z-50 mb-1 max-h-60 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md"
+              className="absolute bottom-full z-50 mb-1 max-h-60 w-full overflow-auto overscroll-contain rounded-md border bg-popover p-1 shadow-md"
             >
               {/* Buttons directly inside the listbox, with no `<li>` between: a
                   `<ul>` would make the listbox own `listitem`s rather than the
@@ -234,7 +234,7 @@ export function DiveFormPresetSaveAs({
                     event.preventDefault();
                     pick(preset);
                   }}
-                  className={`w-full rounded-sm px-2 py-1.5 text-left text-sm ${
+                  className={`w-full rounded-sm px-2 py-1.5 touch:py-3 text-left text-sm ${
                     index === activeIndex ? "bg-accent" : ""
                   }`}
                 >

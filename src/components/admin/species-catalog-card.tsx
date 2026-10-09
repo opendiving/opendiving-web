@@ -77,7 +77,7 @@ export function SpeciesCatalogCard({
       <div className="flex flex-1 flex-col gap-1 p-3">
         <Link
           href={`/species/${species.uuid}`}
-          className="font-medium leading-tight hover:underline break-words"
+          className="relative font-medium leading-tight hover:underline break-words touch:tap-target"
         >
           {name}
         </Link>

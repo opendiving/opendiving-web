@@ -89,7 +89,7 @@ function CourseRow({ courseUuid }: { courseUuid: string }) {
       <dd className="text-sm">
         <Link
           href={withReturnTo(`/courses/${course.uuid}`)}
-          className="hover:underline"
+          className="relative hover:underline touch:tap-target"
         >
           {course.name}
         </Link>
@@ -126,7 +126,7 @@ function InstructorRow({ personUuid }: { personUuid: string }) {
       <dd className="text-sm">
         <Link
           href={withReturnTo(`/people/${person.uuid}`)}
-          className="hover:underline"
+          className="relative hover:underline touch:tap-target"
         >
           {person.name}
         </Link>

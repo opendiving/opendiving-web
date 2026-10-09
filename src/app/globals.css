@@ -1,6 +1,23 @@
 @import "tailwindcss";
 @config "../../tailwind.config.mts";
 
+/* A finger is driving. The same query as `hooks/useCoarsePointer.ts`, so a
+   device that gets the OS date wheels also gets the finger-sized controls. See
+   "On touch, every control is 44px to a finger" in DECISIONS.md. */
+@custom-variant touch (@media (hover: none) and (pointer: coarse));
+
+/* A 44px hit area centred on a control smaller than that, drawn by `::after` so
+   the control keeps its look. The element must be positioned, since the
+   pseudo-element is placed against it. Used as `touch:tap-target`. */
+@utility tap-target {
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: min(0px, calc((100% - 2.75rem) / 2));
+    inset-inline: min(0px, calc((100% - 2.75rem) / 2));
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -367,8 +384,9 @@
 
      So this is derived from the header rather than measured off a screenshot:
      `py-4` twice, the `size="sm"` action button at `h-9`, and the 1px
-     `border-b`. It therefore tracks the root font size the same way the header
-     does, which a px literal would not.
+     `border-b`. On touch it is `py-3` twice and the button's 44px floor, which
+     is the same sum. It therefore tracks the root font size the same way the
+     header does, which a px literal would not.
 
      Note `header.tsx`'s mobile menu caps itself at `calc(100dvh-4.5rem)`. That
      is deliberately a different, slightly generous number - it is slack on a
@@ -389,14 +407,20 @@
   :root {
     --card-pad: 1.5rem;
     /* Half of what a `size="sm"` button's 36px exceeds a card title's line by:
-       24px, and 18px on a phone. */
+       24px, and 18px on a phone. On touch the button is 44px. */
     --card-title-lift: 0.375rem;
+    @variant touch {
+      --card-title-lift: 0.625rem;
+    }
   }
 
   @media (width < 40rem) {
     :root {
       --card-pad: 0.75rem;
       --card-title-lift: 0.5625rem;
+      @variant touch {
+        --card-title-lift: 0.8125rem;
+      }
     }
   }
 
@@ -424,6 +448,20 @@
   select:not(:disabled),
   input:where([type="checkbox"], [type="file"]):not(:disabled) {
     cursor: pointer;
+  }
+
+  /* No double-tap zoom on a control, so tapping one twice in quick succession -
+     a period arrow, a map zoom button, a star - is two taps. Pinch still zooms.
+     A drag handle's inline `touch-action: none` (`useDragSort`) outranks this. */
+  a,
+  button,
+  [role="button"],
+  input,
+  label,
+  select,
+  summary,
+  textarea {
+    touch-action: manipulation;
   }
 
   /* Every date field is a native one on a touch device

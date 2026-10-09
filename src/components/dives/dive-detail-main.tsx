@@ -92,7 +92,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
                             href={withReturnTo(`/gear/${item.uuid}`)}
-                            className="hover:underline"
+                            className="relative hover:underline touch:tap-target"
                           >
                             {item.name}
                           </Link>
@@ -194,7 +194,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                           what is on screen. */}
                       <Link
                         href={withReturnTo(`/species/${sighting.uuid}`)}
-                        className="hover:underline"
+                        className="relative hover:underline touch:tap-target"
                         aria-label={speciesDisplayName(sighting)}
                       >
                         {sighting.common_name || (

@@ -292,7 +292,7 @@ export function DiveActivityCard() {
                 this exact row. */}
           <div
             className={cn(
-              "flex h-9 items-stretch rounded-md border p-1",
+              "flex h-9 items-stretch rounded-md border p-1 touch:h-11",
               CARD_TITLE_ACTION,
             )}
             role="group"
@@ -305,7 +305,7 @@ export function DiveActivityCard() {
                 onClick={() => setChosenScope(option)}
                 aria-pressed={scope === option}
                 className={cn(
-                  "rounded px-2.5 text-xs font-medium transition-colors",
+                  "relative rounded px-2.5 text-xs font-medium transition-colors touch:min-w-11 touch:tap-target",
                   scope === option
                     ? "bg-secondary text-secondary-foreground"
                     : "text-muted-foreground hover:text-foreground",

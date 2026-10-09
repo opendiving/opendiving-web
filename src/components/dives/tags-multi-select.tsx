@@ -100,7 +100,7 @@ export function TagsMultiSelect({
                 <button
                   type="button"
                   disabled={disabled}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center text-teal-foreground/80 hover:text-teal-foreground"
+                  className="relative flex h-8 w-8 shrink-0 items-center justify-center text-teal-foreground/80 touch:tap-target hover:text-teal-foreground"
                   onClick={() => removeTag(name)}
                 >
                   <X className="h-3.5 w-3.5" />

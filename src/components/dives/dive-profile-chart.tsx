@@ -1522,7 +1522,7 @@ function LegendToggles({
 }) {
   return (
     <div
-      className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs"
+      className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs touch:gap-y-0"
       role="group"
       // Named for what this dive's legend actually holds. Most dives carry no
       // markers and get no switch for them, and a group announcing a control it
@@ -1552,7 +1552,7 @@ function LegendToggles({
             aria-pressed={on}
             onClick={() => onToggle(key)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "inline-flex items-center gap-1.5 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch:min-h-11",
               on ? "text-muted-foreground" : "text-muted-foreground/50",
             )}
           >

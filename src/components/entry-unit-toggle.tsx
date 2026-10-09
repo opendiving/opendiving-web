@@ -53,7 +53,12 @@ export function EntryUnitToggle({
       // Inline rather than flex, and the separator carries its own spaces, so the
       // button's text content is the "m | ft" the `aria-label` above quotes -
       // a gap drawn in CSS would leave the two disagreeing about what is visible.
-      className="inline-block rounded border px-1.5 py-0.5 text-xs leading-none text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      //
+      // On touch the hit area grows up and out, and down only to the foot of the
+      // 24px label row - the 3px under this 18px toggle centred in it. The field's
+      // input starts there, and a pressure field's is not positioned, so anything
+      // reaching below the row would take its taps.
+      className="relative inline-block rounded border px-1.5 py-0.5 text-xs leading-none text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch:after:absolute touch:after:-inset-x-3 touch:after:-top-[13px] touch:after:-bottom-[3px]"
     >
       {UNIT_SYSTEMS.map((system, index) => (
         <Fragment key={system}>

@@ -170,7 +170,7 @@ export function GearItemsCard({
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={`/gear/${item.uuid}`}
-                        className="hover:underline"
+                        className="relative hover:underline touch:tap-target"
                       >
                         {item.name}
                       </Link>

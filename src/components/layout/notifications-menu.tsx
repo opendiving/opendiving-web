@@ -168,7 +168,7 @@ export function NotificationsMenu() {
               // The narrow padding and gap are for the 320px header row. The wider gap
               // after it is the chip's: it hangs off the bell's right edge, and the
               // avatar beside it has no padding of its own to keep it off.
-              className="relative me-3 px-3 max-[370px]:me-2 max-[370px]:px-2"
+              className="relative me-3 px-3 max-[370px]:me-2 max-[370px]:px-2 max-[360px]:touch:me-0 max-[360px]:touch:min-w-10"
             >
               <Bell className="h-4 w-4" />
               {/* The count is in the trigger's name already, so the chip is the
@@ -202,7 +202,7 @@ export function NotificationsMenu() {
           onCloseAutoFocus={(event) => {
             if (editing) event.preventDefault();
           }}
-          className="max-h-[var(--radix-popover-content-available-height)] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
+          className="max-h-[var(--radix-popover-content-available-height)] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-0"
         >
           {!isLoaded ? (
             <div

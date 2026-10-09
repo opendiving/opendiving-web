@@ -108,7 +108,7 @@ export function DiveFormFieldSwitches({
       visibility.isHidden(entry.key) && visibility.isRevealed(entry.key);
     return (
       <div key={entry.key}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 touch:min-h-11">
           <Switch
             id={fieldId}
             checked={visibility.isVisible(entry.key)}
@@ -123,7 +123,10 @@ export function DiveFormFieldSwitches({
           </Label>
         </div>
         {revealed && (
-          <p className="pl-11 text-xs text-muted-foreground">
+          // Lifted into the row's lower band on touch, so it sits under its own
+          // label rather than halfway to the next one. The switch's hit area
+          // stays on top of it: a positioned pseudo-element paints over this.
+          <p className="pl-11 text-xs text-muted-foreground touch:-mt-3">
             shown because it holds a value
           </p>
         )}
@@ -151,14 +154,19 @@ export function DiveFormFieldSwitches({
         return (
           <fieldset
             key={group}
-            className="mb-6 space-y-3 break-inside-avoid last:mb-0"
+            // On touch a row is the switch's 44px hit area and rows abut, so no
+            // switch's area reaches into its neighbour's.
+            className="mb-6 space-y-3 break-inside-avoid last:mb-0 touch:space-y-0"
           >
             <legend className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {group}
             </legend>
             {leading.map(fieldRow)}
             {alwaysOn.map(({ entry, id: rowId }) => (
-              <div key={rowId} className="flex items-center gap-2">
+              <div
+                key={rowId}
+                className="flex items-center gap-2 touch:min-h-11"
+              >
                 <Switch id={rowId} checked disabled />
                 <Label htmlFor={rowId} className={SWITCH_LABEL}>
                   {entry.label}

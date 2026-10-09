@@ -177,7 +177,7 @@ export function SettingsNav() {
                 onClick={() => listRef.current?.removeAttribute("data-instant")}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium",
+                  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 touch:py-3 text-sm font-medium",
                   LABEL_FADE,
                   current
                     ? "text-foreground [anchor-name:--settings-nav-shown] not-supports-[position-anchor:auto]:bg-muted"

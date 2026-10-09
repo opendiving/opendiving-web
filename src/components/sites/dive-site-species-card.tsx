@@ -82,7 +82,7 @@ export function DiveSiteSpeciesCard({
                 <li key={entry.uuid}>
                   <Link
                     href={withReturnTo(`/species/${entry.uuid}`)}
-                    className="flex items-center gap-3 rounded-md text-sm hover:underline"
+                    className="flex items-center gap-3 rounded-md text-sm hover:underline touch:min-h-11"
                   >
                     <SpeciesThumbnail
                       uuid={entry.uuid}

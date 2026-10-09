@@ -175,7 +175,7 @@ export function DiveDetailSidebar({
                   <div className="min-w-0">
                     <Link
                       href={withReturnTo(`/trips/${trip.uuid}`)}
-                      className="font-medium hover:underline"
+                      className="relative font-medium hover:underline touch:tap-target"
                     >
                       {trip.name}
                     </Link>
@@ -239,17 +239,17 @@ export function DiveDetailSidebar({
                     lists its parts: the hero and the cards cap the list at the
                     first with a "+N", and this is the one surface with room to
                     name the rest. */}
-                <ul className="space-y-1.5">
+                <ul className="space-y-1.5 touch:space-y-0">
                   {dive.dive_sites.map((site) => (
                     <li
                       key={site.uuid}
-                      className="flex items-start gap-2 text-sm"
+                      className="flex items-start gap-2 text-sm touch:min-h-11"
                     >
                       <DiveSiteIcon className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                       <div className="min-w-0">
                         <Link
                           href={withReturnTo(`/sites/${site.uuid}`)}
-                          className="font-medium hover:underline"
+                          className="relative font-medium hover:underline touch:tap-target"
                         >
                           {site.name}
                         </Link>
@@ -326,7 +326,7 @@ export function DiveDetailSidebar({
             </div>
             <Link
               href={withReturnTo(`/courses/${course.uuid}`)}
-              className="flex items-center gap-2 text-sm font-medium hover:underline"
+              className="flex items-center gap-2 text-sm font-medium hover:underline touch:min-h-11"
             >
               <GraduationCap className="h-4 w-4 text-muted-foreground" />
               {course.name}

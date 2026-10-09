@@ -31,17 +31,17 @@ export function PeopleList({ people, resolved, className }: PeopleListProps) {
   if (rows.length === 0) return null;
 
   return (
-    <ul className={cn("space-y-1.5", className)}>
+    <ul className={cn("space-y-1.5 touch:space-y-0", className)}>
       {rows.map(({ reference, person }) => (
         <li
           key={reference.person_uuid}
-          className="flex items-start gap-2 text-sm"
+          className="flex items-start gap-2 text-sm touch:min-h-11"
         >
           <User className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
           <span className="min-w-0">
             <Link
               href={withReturnTo(`/people/${person.uuid}`)}
-              className="font-medium hover:underline"
+              className="relative font-medium hover:underline touch:tap-target"
             >
               {person.name}
             </Link>
