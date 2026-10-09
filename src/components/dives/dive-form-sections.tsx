@@ -16,6 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
 import {
   DIVE_FORM_FIELD_GROUPS,
@@ -246,20 +247,21 @@ export function DiveFormSectionsTrigger({ className }: { className?: string }) {
   const picked = useRef(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Sections"
-          className={cn(
-            "relative h-7 w-7 text-muted-foreground touch:min-h-0 touch:min-w-0 touch:tap-target",
-            className,
-          )}
-        >
-          <TableOfContents className="h-5 w-5" aria-hidden="true" />
-        </Button>
-      </PopoverTrigger>
+      <IconTooltip label="Sections">
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "relative h-7 w-7 text-muted-foreground touch:min-h-0 touch:min-w-0 touch:tap-target",
+              className,
+            )}
+          >
+            <TableOfContents className="h-5 w-5" aria-hidden="true" />
+          </Button>
+        </PopoverTrigger>
+      </IconTooltip>
       <PopoverContent
         align="end"
         className="w-56 p-1"
