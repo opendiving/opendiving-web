@@ -72,12 +72,9 @@ export const DEFAULT_MIXTURE = {
 // identically rather than each keeping their own copy of the mapping.
 //
 // One word each, and the "gas" that "Bottom gas"/"Deco gas" would naturally carry is
-// deliberately dropped. Both places these appear supply that word already - a badge
-// beside the gas name in a column headed **Gas**, and an option under the form's
-// **Role** label - so it was pure redundancy, and redundancy is expensive in that
-// table: it ran to eight columns in a 667 px card and was ~52 px wider than its slot
-// before this badge existed. See DECISIONS.md - the width is a real, measured trade-off,
-// not a rounding error, and shortening these was the cheap half of it.
+// deliberately dropped: every place these appear supplies that word already - beside
+// the gas name on a tank card, in the consumption table's column headed **Gas**, and
+// under the form's **Role** label.
 export const GAS_ROLE_LABELS: Record<GasRole, string> = {
   bottom: "Bottom",
   deco: "Deco",
@@ -172,8 +169,8 @@ export const PPO2_DECO = 1.6;
 // Whether an (O₂, He) pair is a real breathing gas that standard shorthand can name.
 //
 // Exported because every figure derived from a mix is only meaningful when this holds,
-// so the callers that render one (`gasHintParts` here, the MOD column on the mixtures
-// card) have to agree on the answer rather than each deciding for themselves.
+// so the callers that render one (`gasHintParts` here, each tank card's MOD) have to
+// agree on the answer rather than each deciding for themselves.
 //
 // Parsed dive-file previews are not validated against the DB's
 // `ck_dive_mixture_oxygen_helium_sum`, and neither is a half-typed form field, so an
@@ -580,7 +577,7 @@ export function gasHintParts({
 
   if (helium != null && helium > 0) {
     const end = endDepth(depth, helium, oxygen);
-    // Qualified for the same reason the card's MOD column names its ppO₂: a diver
+    // Qualified for the same reason a tank card's MOD names its ppO₂: a diver
     // taught the older nitrogen-only convention computes 14.2 m where this says
     // 25.8 m for the same gas, and nothing else on screen explains the gap.
     if (end !== null) {

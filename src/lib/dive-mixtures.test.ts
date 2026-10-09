@@ -672,7 +672,7 @@ describe("gasHintParts with a recorded ppO2 limit", () => {
 
 describe("a recorded ppO2 limit does not move the warning thresholds", () => {
   it("still warns about a gas the dive recorded a high limit for", () => {
-    // The MOD column would show 30 m for this gas at ppO₂ 2.0, and 32 m is inside
+    // The tank card's MOD would show 30 m for this gas at ppO₂ 2.0, and 32 m is inside
     // it. The warning is about what the gas can physiologically take, not about
     // what the dive planned - see `diveModWarning`. A file must not be able to
     // silence it.

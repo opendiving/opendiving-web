@@ -37,7 +37,7 @@ interface DiveMixturesCardProps {
 // full contrast reads as a value.
 function Figure({ label, value }: { label: ReactNode; value: ReactNode }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-20">
       <dt className="text-xs">{label}</dt>
       <dd
         className={cn(
@@ -132,9 +132,10 @@ function TankCard({
           )}
         </div>
       </div>
-      {/* Columns as wide as "211.44 bar" and no wider, so a card spanning the
-          slot keeps its figures together, as a dive card's are. */}
-      <dl className="mt-3 grid grid-cols-[repeat(3,minmax(0,6.5rem))] gap-2">
+      {/* Each figure about as wide as "211.44 bar", so they line up from
+          card to card, and wrapping onto a second line on a phone too narrow
+          for three, as the dive hero's figures do. */}
+      <dl className="mt-3 flex flex-wrap gap-x-3 gap-y-2">
         <Figure
           label="Start"
           value={
@@ -240,9 +241,9 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
       </CardHeader>
       <CardContent>
         {/* Columns from the card's own width rather than the window's: the slot
-            this card sits in is narrowest at `lg`, and 19rem is what three
-            figures as wide as "211.44 bar" take. */}
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(19rem,1fr))] gap-3">
+            this card sits in is narrowest at `lg`, and 19rem holds a card's
+            three figures on one line. One column never outgrows the card. */}
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(19rem,100%),1fr))] gap-3">
           {dive.mixtures.map((mixture, index) => (
             <TankCard
               key={mixture.id ?? index}

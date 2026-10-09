@@ -2535,13 +2535,13 @@ collapses under `table-layout: auto`.
 
 ## The Tanks card is a grid of tank cards, columned by its own width
 
-One card per cylinder, as a dive's card is drawn but with no backdrop: the tank icon beside
-`#1 EAN32` and its facts line, then Start, End and MOD. Columns are `auto-fill` at a 19 rem minimum
-rather than breakpoints, because the slot is narrowest at `lg`: three columns at `xl` squeezed a
-card to 212 px and overlapped its figures. Each figure column is capped at 6.5 rem, the width of
-`211.44 bar`, so a lone card spanning the slot keeps its figures together. The MOD's ppO₂ sits in
-the label, `MOD @ 1.4`, so the depth is the figure. A missing volume or fraction is left out of the
-facts line; a missing pressure or MOD is a muted dash.
+One card per cylinder, drawn as a dive's card is but with no backdrop. Columns are `auto-fill` at
+`min(19rem, 100%)` rather than breakpoints, because the slot is narrowest at `lg`: three columns at
+`xl` squeezed a card to 212 px and overlapped its figures. 19 rem holds three figures on one line;
+the `min` keeps a lone column inside a 320 px phone's card. Figures are `min-w-20`, about the width
+of `211.44 bar`, so they line up from card to card, and wrap under about 350 px as the hero's do.
+The MOD's ppO₂ sits in the label, `MOD @ 1.4`, so the depth is the figure. A missing volume or
+fraction is left out of the facts line; a missing pressure or MOD is a muted dash.
 
 ## Cell padding is `px-2` app-wide
 

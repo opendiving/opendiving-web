@@ -776,8 +776,8 @@ export function tankGasUseRows(dive: Dive): TankGasUseRow[] {
       // tanks labelled gas 1 would otherwise render under one React key.
       key: `tank-${index}`,
       // The device's own label is all there is to call it by. "Gas 3" rather
-      // than a bare "3", so it can't be misread as the third row of the mixtures
-      // table - the whole point of this row is that it matches none of them.
+      // than a bare "3", so it can't be misread as the Tanks card's `#3` - the
+      // whole point of this row is that it matches none of them.
       // This is why the rows above lost the word and this one keeps it: the
       // distinction was never "tank" versus "gas", it was numbered-by-position
       // versus named-by-the-device, and only one of those needs saying now that
