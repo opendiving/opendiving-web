@@ -5975,6 +5975,20 @@ window open.
 Inside a dialog the first Escape closes the hint, not the dialog: the tooltip is the higher
 dismissable layer, and the APG gives Escape to it. `tooltip.render.test.tsx` pins both.
 
+## On touch, a menu opens on a tap and a hint answers a hold
+
+Radix opens a dropdown on press, which for a finger also starts a scroll. `DropdownMenu` holds its
+open state, and its trigger prevents a finger's press and toggles on that press's own click. A click
+whose press reached the page - an open modal menu takes the page's pointer events - leaves it shut.
+
+A finger has no hover. `IconTooltip` shows its hint on a 500ms hold, keeps it 1.5s after the lift,
+and swallows the release's click (`swallowClickOf`) and Android's context menu. A dive chip shows
+its hint on a tap; on a card its row lets the tap through to the link. A legend above the dive form
+explains the teal dot, and a bell row's title is a 44px underlined line. The mobile menu swallows
+the click of the press that closes it.
+
+Rejected: a hint on tap, which would take every icon button's tap.
+
 ## Icon button hints: The guard is structural, reading the source rather than the DOM
 
 `components/icon-button-hints.test.ts` reads the source, not the DOM: a `<Button>` or `<button>`

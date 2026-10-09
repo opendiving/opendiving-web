@@ -684,6 +684,10 @@ describe("the last-dive prefill", () => {
     await waitFor(() => expect(isMarked(altitude)).toBe(true));
     expect(isMarked(screen.getByLabelText(/water type/i))).toBe(true);
     expect(isMarked(screen.getByLabelText(/bottom temperature/i))).toBe(false);
+    // What the marks mean, said where a finger can read it.
+    expect(
+      screen.getByText("Filled in for you", { selector: "p" }),
+    ).toBeInTheDocument();
 
     // Typed back to the same value, it is still the diver's.
     const user = userEvent.setup();
