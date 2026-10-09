@@ -126,7 +126,7 @@ function PartCard({
             aria-expanded={open}
             aria-controls={contentId}
             onClick={() => setOpen(!open)}
-            className="flex w-full items-start gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative flex w-full items-start gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {/* Each icon in a box one title line tall - the title is
                 `leading-none` - so a name that wraps leaves both on its first

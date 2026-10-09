@@ -190,7 +190,7 @@ export function Header() {
           <div className="flex items-center md:space-x-4 lg:space-x-8">
             <Link
               href={isAuthenticated ? "/home" : "/"}
-              className="flex flex-shrink-0 items-center space-x-2"
+              className="flex flex-shrink-0 items-center space-x-2 touch:min-h-11"
             >
               <Logo className="h-7 w-7 sm:h-8 sm:w-8 text-coral flex-shrink-0" />
               {/* A `<span>`, not an `<h1>`. The wordmark is site furniture that

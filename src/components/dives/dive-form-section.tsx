@@ -46,7 +46,7 @@ export function DiveFormSection({
             aria-expanded={open}
             aria-controls={contentId}
             onClick={() => onOpenChange(!open)}
-            className="flex w-full items-center justify-between gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative flex w-full items-center justify-between gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {title}
             <ChevronDown

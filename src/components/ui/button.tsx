@@ -22,7 +22,7 @@ const buttonVariants = cva(
       // A floor rather than a height on touch, so a caller's `h-7` or `h-auto`
       // still shrinks the button for a mouse and cannot shrink it for a finger.
       size: {
-        default: "h-10 px-4 py-2 touch:min-h-11",
+        default: "h-10 px-4 py-2 touch:min-h-11 touch:min-w-11",
         sm: "h-9 rounded-md px-3 touch:min-h-11 touch:min-w-11",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10 touch:min-h-11 touch:min-w-11",
