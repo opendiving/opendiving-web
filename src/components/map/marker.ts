@@ -7,7 +7,10 @@ import { cn } from "@/lib/utils";
 //
 // `bg-coral`, not `bg-primary`: primary is near-black in light and mid-grey in
 // dark, which is invisible against a dark basemap. Coral is the one accent held
-// constant across both themes.
+// constant across both themes. The ring is the page's colour, standing in for
+// the land of the map under it, unless that map names its own in
+// `--marker-ring` - translucent, perhaps, which is why the coral stops inside
+// it.
 //
 // A fix inverts the same two colours rather than changing size or hue: same
 // coral, same 12px, so the pair reads as one legend where a second colour would
@@ -18,5 +21,5 @@ export const markerClassName = (variant: "pin" | "fix") =>
     "h-3 w-3 rounded-full border-2 shadow",
     variant === "fix"
       ? "border-coral bg-background/80"
-      : "border-background bg-coral",
+      : "border-[color:var(--marker-ring,hsl(var(--background)))] bg-coral bg-clip-padding",
   );
