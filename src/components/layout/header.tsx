@@ -161,10 +161,13 @@ export function Header() {
 
     // The press that closes the menu goes no further: its click would otherwise
     // land on whatever the menu was covering - a link a finger never meant to
-    // follow.
+    // follow. Except in one of the header's own popups - its menus and the bell,
+    // portalled out of the header - where the press is a choice being made.
     const handlePointerDown = (event: PointerEvent) => {
-      if (headerRef.current?.contains(event.target as Node)) return;
+      const target = event.target as Element;
+      if (headerRef.current?.contains(target)) return;
       setIsMobileMenuOpen(false);
+      if (target.closest?.("[data-radix-popper-content-wrapper]")) return;
       swallowClickOf(event);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
