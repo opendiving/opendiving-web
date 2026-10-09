@@ -5981,8 +5981,10 @@ Radix opens a dropdown on press, which for a finger also starts a scroll. `Dropd
 open state, and its trigger prevents a finger's press and toggles on that press's own click. A click
 whose press reached the page - an open modal menu takes the page's pointer events - leaves it shut.
 
-A finger has no hover, so `IconTooltip` shows its hint on a hold and swallows the release's click
-(`swallowClickOf`).
+A finger has no hover, so `IconTooltip` shows its hint on a hold and stops the release's click
+before the control hears it. A popover that closes on an outside click reads a stopped click as
+taken and stays open, which suits a hold. It would not suit the mobile menu's closing tap, so that
+tap lands on a backdrop under the menu instead of being stopped.
 
 Rejected: a hint on tap, which would take every icon button's tap.
 

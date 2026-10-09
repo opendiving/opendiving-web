@@ -3,7 +3,6 @@
 import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
-import { swallowClickOf } from "@/lib/swallow-click";
 import { cn } from "@/lib/utils";
 
 const TooltipProvider = TooltipPrimitive.Provider;
@@ -110,6 +109,8 @@ function IconTooltip({
   const linger = React.useRef<number | undefined>(undefined);
   // A finger is on the control, held or not yet.
   const fingerDown = React.useRef(false);
+  // The click a hold's release sends is not for the control.
+  const swallowClick = React.useRef(false);
 
   const endHold = () => {
     if (hold.current) window.clearTimeout(hold.current.timer);
@@ -153,20 +154,20 @@ function IconTooltip({
           // swallowed: the finger asked what the control is, not to use it. A
           // tap, a drag and a scroll are untouched.
           onPointerDown={(event) => {
+            swallowClick.current = false;
             if (event.pointerType === "mouse") return;
             fingerDown.current = true;
             window.clearTimeout(linger.current);
             setHeld(false);
             endHold();
-            const pointerId = event.pointerId;
             hold.current = {
-              id: pointerId,
+              id: event.pointerId,
               x: event.clientX,
               y: event.clientY,
               timer: window.setTimeout(() => {
                 hold.current = null;
                 setHeld(true);
-                swallowClickOf({ pointerId });
+                swallowClick.current = true;
               }, HOLD_MS),
             };
           }}
@@ -186,6 +187,18 @@ function IconTooltip({
           }}
           onPointerCancel={(event) => {
             if (event.pointerType !== "mouse") fingerGone();
+          }}
+          // Stopped before the control's own handlers hear it. A popover open
+          // elsewhere reads a stopped click as taken and stays open, which suits a
+          // hold: it asks what the control is and dismisses nothing.
+          onClickCapture={(event) => {
+            if (!swallowClick.current) return;
+            swallowClick.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onKeyDown={() => {
+            swallowClick.current = false;
           }}
           // Android answers a hold with a context menu of its own, over the hint.
           onContextMenu={(event) => {

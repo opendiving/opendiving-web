@@ -7,7 +7,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
-import { swallowClickOf } from "@/lib/swallow-click";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -40,7 +39,7 @@ import {
   House,
 } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useQuickCreate,
   type QuickCreateKind,
@@ -131,7 +130,6 @@ export function Header() {
   // where it was launched from - otherwise its Back/Cancel would guess.
   const withReturnTo = useWithReturnTo();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const headerRef = useRef<HTMLElement>(null);
   const { toast } = useToast();
 
   // `signOut` rejects when the server never confirmed, and deliberately leaves
@@ -153,42 +151,35 @@ export function Header() {
     }
   };
 
-  // The mobile menu lives inside the sticky header, so it has no overlay of its
-  // own to dismiss it - without this, tapping the page or hitting Escape leaves
-  // it covering the screen and only the toggle can close it again.
+  // Escape closes the mobile menu, and a tap outside it lands on its backdrop.
   useEffect(() => {
     if (!isMobileMenuOpen) return;
 
-    // The press that closes the menu goes no further: its click would otherwise
-    // land on whatever the menu was covering - a link a finger never meant to
-    // follow. Except in one of the header's own popups - its menus and the bell,
-    // portalled out of the header - where the press is a choice being made.
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Element;
-      if (headerRef.current?.contains(target)) return;
-      setIsMobileMenuOpen(false);
-      if (target.closest?.("[data-radix-popper-content-wrapper]")) return;
-      swallowClickOf(event);
-    };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsMobileMenuOpen(false);
     };
 
-    document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isMobileMenuOpen]);
 
   // `print:hidden` because `/checkin` prints, and the summary it prints is the page
   // alone - a nav bar on a sheet handed across a dive-shop desk is noise.
   return (
-    <header
-      ref={headerRef}
-      className="sticky top-0 z-50 bg-background shadow-sm border-b print:hidden"
-    >
+    <header className="sticky top-0 z-50 bg-background shadow-sm border-b print:hidden">
+      {/* Over the page and under the header's own content, while the mobile menu
+          is open: a tap outside the menu closes it and lands on nothing, rather
+          than on whatever the menu was covering. It closes on the click, so it is
+          still there to take it. The header's menus and bell portal above it, and
+          a popover waiting for that click to close sees it too. */}
+      {isMobileMenuOpen && (
+        <div
+          aria-hidden
+          data-mobile-menu-backdrop
+          className="fixed inset-0 -z-10 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
       <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4 touch:py-3">
           {/* Logo and Navigation. The gap is the nav's, so it goes with the nav

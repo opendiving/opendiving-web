@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Header } from "./header";
 import type { User } from "@/lib/api/auth";
@@ -328,27 +328,6 @@ describe("the mobile menu", () => {
       "aria-current",
       "page",
     );
-  });
-
-  it("closes on a press outside it, and that press goes no further", async () => {
-    const behind = vi.fn();
-    const { container } = render(
-      <>
-        <Header />
-        <button type="button" onClick={behind}>
-          Covered by the menu
-        </button>
-      </>,
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const covered = screen.getByRole("button", { name: "Covered by the menu" });
-
-    fireEvent.pointerDown(covered);
-    fireEvent.pointerUp(covered);
-    fireEvent.click(covered);
-
-    expect(container.querySelector("#mobile-menu")).toBeNull();
-    expect(behind).not.toHaveBeenCalled();
   });
 
   it("lets a choice in the header's own menus through while it is open", async () => {

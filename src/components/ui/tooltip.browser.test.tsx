@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "./button";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { IconTooltip } from "./tooltip";
 
 const FINGER = { pointerType: "touch", pointerId: 7, clientX: 20, clientY: 20 };
@@ -94,5 +95,25 @@ describe("an icon button's name under a finger", () => {
     wait(500);
 
     expect(fireEvent.contextMenu(button)).toBe(false);
+  });
+
+  it("leaves a panel open elsewhere alone - a hold asks, it dismisses nothing", () => {
+    const { button } = renderOne();
+    render(
+      <Popover defaultOpen>
+        <PopoverTrigger>Panel</PopoverTrigger>
+        <PopoverContent>Open elsewhere</PopoverContent>
+      </Popover>,
+    );
+    // Radix listens for a press outside an open panel from the next tick on.
+    wait(0);
+
+    fireEvent.pointerDown(button, { ...FINGER, button: 0 });
+    wait(500);
+    fireEvent.pointerUp(button, FINGER);
+    fireEvent.click(button);
+    wait(0);
+
+    expect(screen.getByText("Open elsewhere")).toBeInTheDocument();
   });
 });
