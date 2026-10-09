@@ -2003,7 +2003,7 @@ END, nitrox EAD.
 `diveModWarning`: one cylinder, `max_depth` applies with both thresholds; several, only "the
 deepest-capable gas cannot reach `max_depth`" is reported, at 1.6 only.
 
-The warning is spelled out under the table, not in a `title` tooltip. `text-warning`, not
+The warning is spelled out under the cards, not in a `title` tooltip. `text-warning`, not
 `text-warning-foreground`, which is the white on `bg-warning`.
 
 ## `diveMixtureSchema` refines `o2 + he <= 100`, mirroring `ck_dive_mixture_oxygen_helium_sum`
@@ -2039,9 +2039,8 @@ the accessible name.
 silence, and a cylinder recorded at 2.0 would become unwarnable. `OxygenFractions` declares
 `po2_limit` and never reads it, so the answer is visible in the type.
 
-The MOD header is conditional: `sharedPpO2Limit()` returns the single limit when every cylinder
-agrees (an unrecorded limit counts as the 1.4 default) and the header stays `MOD @ ppO₂ 1.4`; only a
-dive mixing limits drops to bare `MOD` with the qualifier in the rows.
+Every tank card states the limit its MOD was computed at, `MOD @ 1.4`, an unrecorded limit counting
+as the 1.4 default.
 
 `DEFAULT_MIXTURE` leaves `po2_limit` blank with placeholder `1.4 (default)`, so a hand-added
 cylinder never claims a limit the diver did not choose.
@@ -4688,8 +4687,8 @@ so `ParsedDiveMixture` has no `usage` field. DiveJSON's `cylinders[].usage`
 its result field by field and silently drops any it omits. The new-dive form carries it over from
 the last dive, with `role` and gas fractions. `TANK_USAGE_LABELS` (`lib/dive-mixtures.ts`) is one
 word per flag; `TANK_USAGE_OPTION_LABELS` in `mixture-fields.tsx` is longer ("Parallel (sidemount /
-independent)") because an option row has no sentence around it and the flag changes what the API
-computes.
+independent)") because the form is where the diver chooses it, and the flag changes what the API
+computes; the tank card only quotes the choice back.
 
 ## `gasUseUnavailableReason` nudges toward Parallel, and where the nudge sits is the whole design
 

@@ -643,8 +643,8 @@ export interface TankGasUseRow {
   // names the same cylinder by - so the two can be read against each other. A tank matching no mixture has no position to state and carries
   // the device's `Gas N` instead.
   label: string;
-  // `gasName`'s output, so the badge here and the badge there are the same
-  // string - null for a cylinder whose fractions can't be named, and for a tank
+  // `gasName`'s output, so this badge names the gas exactly as the Tanks card
+  // does - null for a cylinder whose fractions can't be named, and for a tank
   // with no mixture to name it from.
   gas: string | null;
   role: GasRole | null;
