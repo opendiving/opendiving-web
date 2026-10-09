@@ -35,32 +35,39 @@ function DropdownMenu({
 // every swipe that began on a trigger opened a menu, and a modal one at that. A
 // finger opens it with its tap's click instead - Radix skips its own press handler
 // once this one has prevented it - and a mouse and the keyboard are left to Radix.
+//
+// Only a click whose press began here: while a modal menu is open the page takes
+// no pointer events, so a tap on the trigger presses the page, which closes the
+// menu, and its click then lands on the trigger - and must not open it again.
 const DropdownMenuTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
->(({ onPointerDown, onClick, ...props }, ref) => {
+>(({ onPointerDown, onPointerCancel, onKeyDown, onClick, ...props }, ref) => {
   const toggle = React.useContext(ToggleContext);
-  const pointerType = React.useRef<string | null>(null);
+  const fingerPressed = React.useRef(false);
   return (
     <DropdownMenuPrimitive.Trigger
       ref={ref}
       {...props}
       onPointerDown={(event) => {
         onPointerDown?.(event);
-        pointerType.current = event.pointerType;
-        if (event.pointerType !== "mouse") event.preventDefault();
+        fingerPressed.current = event.pointerType !== "mouse";
+        if (fingerPressed.current) event.preventDefault();
+      }}
+      // A press the browser took for a scroll sends no click to clear it.
+      onPointerCancel={(event) => {
+        onPointerCancel?.(event);
+        fingerPressed.current = false;
+      }}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        fingerPressed.current = false;
       }}
       onClick={(event) => {
         onClick?.(event);
-        // A keyboard's click has no `detail`, and Radix answered its keydown.
-        if (
-          event.defaultPrevented ||
-          event.detail === 0 ||
-          pointerType.current === "mouse"
-        ) {
-          return;
-        }
-        toggle?.();
+        const finger = fingerPressed.current;
+        fingerPressed.current = false;
+        if (finger && !event.defaultPrevented) toggle?.();
       }}
     />
   );
