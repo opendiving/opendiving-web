@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 
 import { DailyBarChart } from "./daily-bar-chart";
 import type { Series } from "./daily-stats";
-import { overlappingLabels, sidewaysScrollers } from "@/test/chart-layout";
+import {
+  overlappingLabels,
+  sidewaysScrollers,
+  withinSides,
+} from "@/test/chart-layout";
+import { centreOf, pressElsewhere, tap } from "@/test/touch";
 
 // Load-bearing, as in the dive charts' layout tests: without the app's Tailwind a
 // width class computes to nothing and a chart wider than its box passes.
@@ -65,4 +70,44 @@ describe("the daily bar chart's layout", () => {
       expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth);
     },
   );
+});
+
+describe("the daily bar chart's readout", () => {
+  function renderPhone() {
+    const { frame, svg } = renderAt(WIDTHS.phone, "stacked");
+    const columns = [...svg.querySelectorAll('rect[fill="transparent"]')];
+    const card = () => frame.querySelector('[role="presentation"]');
+    return { frame, columns, card };
+  }
+
+  it("says what a day held when the mouse is over its column", () => {
+    const { columns, card } = renderPhone();
+
+    fireEvent.mouseEnter(columns[9]);
+    expect(card()).toHaveTextContent("August 10");
+    expect(card()).toHaveTextContent(`${SERIES[0].values[9]}Series 0`);
+
+    fireEvent.mouseLeave(columns[9]);
+    expect(card()).toBeNull();
+  });
+
+  it("says what a day held when a finger taps it, until a press elsewhere", () => {
+    const { columns, card } = renderPhone();
+
+    tap(columns[9], centreOf(columns[9]));
+    expect(card()).toHaveTextContent("August 10");
+
+    pressElsewhere();
+    expect(card()).toBeNull();
+  });
+
+  it("keeps the card inside a phone-width chart at either end", () => {
+    const { frame, columns, card } = renderPhone();
+
+    for (const column of [columns[0], columns[columns.length - 1]]) {
+      fireEvent.mouseEnter(column);
+      expect(withinSides(card() as Element, frame)).toBe(true);
+      fireEvent.mouseLeave(column);
+    }
+  });
 });

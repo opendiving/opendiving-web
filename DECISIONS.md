@@ -1065,8 +1065,23 @@ third, edge-aligned within 18% of either side — and `useKeepInside` pulls in w
 chart still leaves past an edge, where it would scroll the page sideways.
 
 Each dot has an invisible `r=7` hit circle with `fill="transparent"`, not `fill="none"`, which takes
-no pointer events. The card is `pointer-events-none` so it cannot steal the hover, has no accessible
-text (the link's `aria-label` does), and clears when the window changes.
+no pointer events. The card is `pointer-events-none` so it cannot steal the hover, but for the link
+a finger's card carries (below); it has no accessible text (the link's `aria-label` does), and
+clears when the window changes.
+
+## A finger reads a chart by tapping or scrubbing, and the readout stays
+
+Every chart reads out through `useChartReadout`. A mouse and the keyboard drive it through `hover`;
+a finger taps a point or drags sideways to scrub, and the plot's `touch-action: pan-y pinch-zoom`
+leaves vertical swipes and pinches to the page. The readout stays after the finger lifts, since
+nothing is left hovering, and clears on a press outside the chart. Mouse events the browser sends
+after a tap are ignored for a second: in whole pixels they name a neighbour on a continuous axis.
+
+A gas dot is a link, so a first tap reads it and the card offers Open dive; a second tap opens it.
+The dot pinned is the one the tap's `click` lands on, since the browser aims it at the nearest link
+under the fingertip.
+
+Rejected: a readout only while the finger is down, which covers what it reads.
 
 ## `--tooltip` is its own surface token, because `--popover` isn't one
 

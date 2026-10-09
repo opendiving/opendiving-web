@@ -7,6 +7,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import type { DiveGasUsePoint } from "@/lib/api/dive-stats";
 import {
   type GasUseMark,
@@ -23,6 +25,12 @@ import type { ChartScope } from "@/lib/chart-period";
 import { axisTicks, labelCapacity, niceDomain } from "@/lib/chart-scale";
 import { smoothBandPath, smoothPath } from "@/lib/chart-path";
 import {
+  type PlotMark,
+  nearestByX,
+  nearestWithin,
+  viewBoxPoint,
+} from "@/lib/chart-readout";
+import {
   GAS_USE_SERIES_KEY,
   parseSeriesVisibility,
   readStoredSeries,
@@ -32,6 +40,7 @@ import {
 } from "@/lib/chart-series-view";
 import { diveWallClockTime, formatDiveDateTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
+import { useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
 import { useKeepInside } from "@/hooks/useKeepInside";
 import { useUnits } from "@/hooks/useUnits";
@@ -72,6 +81,9 @@ const HEIGHT = 240;
 const PADDING = { top: 12, right: 14, bottom: 28, left: 42 };
 
 const PLOT_HEIGHT = HEIGHT - PADDING.top - PADDING.bottom;
+
+// How far from a dot a tap still means it, in CSS px - about half a fingertip.
+const TAP_REACH = 24;
 
 // The room each x label gets before the axis starts skipping them, in viewBox
 // units. A year's label sits at the centre of the part of that year the chart
@@ -117,14 +129,37 @@ const readStoredMarks = () => readStoredSeries(GAS_USE_SERIES_KEY);
 export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   const units = useUnits();
   const withReturnTo = useWithReturnTo();
-  // Index into `points` of the dive under the cursor (or keyboard focus). One
-  // piece of state for the whole chart, not a tooltip component per dot: at a
-  // few hundred dives, per-dot tooltip instances are a lot of machinery for one
-  // that can ever be open. It also drives the dot's own highlight, so the lit
+  const [chartRef, width] = useChartWidth(WIDTH);
+  // Index into `points` of the dive under the cursor, keyboard focus or finger.
+  // One piece of state for the whole chart, not a tooltip component per dot: at
+  // a few hundred dives, per-dot tooltip instances are a lot of machinery for
+  // one that can ever be open. It also drives the dot's own highlight, so the lit
   // dot and the tooltip can't disagree the way a CSS `:hover` and React state
   // would.
-  const [hovered, setHovered] = useState<number | null>(null);
-  const [chartRef, width] = useChartWidth(WIDTH);
+  //
+  // A finger picks among the dots as drawn, read off their `data-*`: the dot it
+  // tapped, or the nearest within reach of the tap, and while scrubbing the one
+  // nearest its x.
+  const readout = useChartReadout<number>((event, gesture) => {
+    const svg = event.currentTarget;
+    const at = viewBoxPoint(
+      svg.getBoundingClientRect(),
+      width,
+      event.clientX,
+      event.clientY,
+    );
+    const dots = [...svg.querySelectorAll<SVGElement>("[data-point]")];
+    const marks: PlotMark<number>[] = dots.map((dot) => ({
+      value: Number(dot.dataset.point),
+      x: Number(dot.dataset.x),
+      y: Number(dot.dataset.y),
+    }));
+    if (gesture === "scrub") return nearestByX(marks, at)?.value ?? null;
+    const tapped = (event.target as Element).closest?.("[data-point]");
+    if (tapped instanceof SVGElement) return Number(tapped.dataset.point);
+    return nearestWithin(marks, at, TAP_REACH * at.scale)?.value ?? null;
+  });
+  const hovered = readout.value;
   const plotWidth = width - PADDING.left - PADDING.right;
 
   // Which marks the diver picked in *this* visit, and null until they pick -
@@ -337,6 +372,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
           className="w-full h-auto"
           role="group"
           aria-label={describeSeries(visible.length, meanRmv, units)}
+          {...readout.scrubProps}
         >
           {/* Alternating months (or years) behind the plot - the chart's
                 only vertical structure, and what lets a cluster of dots be
@@ -475,12 +511,20 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
                 key={point.dive_uuid}
                 href={withReturnTo(`/dives/${point.dive_uuid}`)}
                 aria-label={describePoint(point, units)}
-                onMouseEnter={() => setHovered(index)}
-                onMouseLeave={() => setHovered(null)}
+                data-point={index}
+                data-x={x(times[index])}
+                data-y={y(displayRmv(point.gas_use.rmv))}
+                onMouseEnter={() => readout.hover(index)}
+                onMouseLeave={() => readout.hover(null)}
                 // Keyboard focus opens the tooltip too, so tabbing through the
                 // series reads the same as hovering it.
-                onFocus={() => setHovered(index)}
-                onBlur={() => setHovered(null)}
+                onFocus={() => readout.hover(index)}
+                onBlur={() => readout.hover(null)}
+                // A finger's first tap on a dot reads it, the way a hover would;
+                // the card's link, or a second tap, opens the dive.
+                onClick={(event) => {
+                  if (readout.takeFirstTap(index)) event.preventDefault();
+                }}
               >
                 {/* Faded by default so overlapping dots read as density rather than
                 a solid band, and lit up when it's the one being described. */}
@@ -515,6 +559,11 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             cy={y(displayRmv(hoveredPoint.gas_use.rmv))}
             chartWidth={width}
             units={units}
+            openHref={
+              readout.pinned
+                ? withReturnTo(`/dives/${hoveredPoint.dive_uuid}`)
+                : undefined
+            }
           />
         )}
       </div>
@@ -677,12 +726,16 @@ function GasUseTooltip({
   cy,
   chartWidth,
   units,
+  openHref,
 }: {
   point: DiveGasUsePoint;
   cx: number;
   cy: number;
   chartWidth: number;
   units: UnitSystem;
+  // Where the dive opens, for a card a finger pinned: there is no cursor on the
+  // dot to click it with, so the card carries the link.
+  openHref?: string;
 }) {
   // Flipped and nudged so the card lands inside the chart box rather than over
   // the card's header or, on a phone, past the screen's edge. `useKeepInside`
@@ -732,6 +785,16 @@ function GasUseTooltip({
       <div className="text-xs text-tooltip-foreground/70">
         {describePointBasis(point, units)}
       </div>
+      {openHref && (
+        // The one part of the card that takes the pointer.
+        <Link
+          href={openHref}
+          className="pointer-events-auto mt-1.5 flex min-h-11 items-center gap-1 border-t border-white/10 text-sm font-medium"
+        >
+          Open dive
+          <ChevronRight aria-hidden className="h-4 w-4" />
+        </Link>
+      )}
     </div>
   );
 }

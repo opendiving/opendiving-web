@@ -65,6 +65,7 @@ import {
   writeSeriesVisibility,
 } from "@/lib/chart-series-view";
 import { cn } from "@/lib/utils";
+import { useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
 import { useKeepInside } from "@/hooks/useKeepInside";
 import { useUnits } from "@/hooks/useUnits";
@@ -270,7 +271,20 @@ export function DiveProfileChart({
   // resolves its own nearest sample from that (`sampleIndexAt`), or none at all
   // where it recorded nothing near enough to be quoted.
   // Milliseconds on the profile's axis, like every time below.
-  const [hoveredMs, setHoveredMs] = useState<number | null>(null);
+  //
+  // A finger's x goes through the same hit target as a mouse's, so the two land
+  // on the same instant.
+  const hitRef = useRef<SVGRectElement>(null);
+  const timeAt = (box: DOMRect, clientX: number) =>
+    Math.min(
+      profile.duration,
+      Math.max(0, ((clientX - box.left) / box.width) * profile.duration),
+    );
+  const readout = useChartReadout<number>((event) => {
+    const hit = hitRef.current;
+    return hit ? timeAt(hit.getBoundingClientRect(), event.clientX) : null;
+  });
+  const hoveredMs = readout.value;
 
   // What the diver picked in *this* visit, and null until they pick - which is
   // what leaves room for the remembered selection underneath. Channels and the
@@ -837,6 +851,7 @@ export function DiveProfileChart({
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-auto"
           role="img"
+          {...readout.scrubProps}
           // Only what's on screen. A summary naming a temperature range the
           // diver has hidden describes a chart nobody is looking at.
           aria-label={describeProfile({
@@ -1147,17 +1162,21 @@ export function DiveProfileChart({
               equivalent here without inventing a focus model for a polyline. The
               `aria-label` above carries the summary instead. */}
           <rect
+            ref={hitRef}
             x={PADDING.left}
             y={PADDING.top}
             width={plotWidth}
             height={chartFoot - PADDING.top}
             fill="transparent"
-            onMouseMove={(event) => {
-              const bounds = event.currentTarget.getBoundingClientRect();
-              const ratio = (event.clientX - bounds.left) / bounds.width;
-              setHoveredMs(Math.min(duration, Math.max(0, ratio * duration)));
-            }}
-            onMouseLeave={() => setHoveredMs(null)}
+            onMouseMove={(event) =>
+              readout.hover(
+                timeAt(
+                  event.currentTarget.getBoundingClientRect(),
+                  event.clientX,
+                ),
+              )
+            }
+            onMouseLeave={() => readout.hover(null)}
           />
         </svg>
 
