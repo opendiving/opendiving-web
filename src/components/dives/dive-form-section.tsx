@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -29,15 +29,43 @@ export function DiveFormSection({
   children,
 }: DiveFormSectionProps) {
   const contentId = useId();
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+
+  // The sentinel sits one header-height above the card, so it leaves the top of the
+  // viewport exactly when the card's top passes under the site header - the moment
+  // the heading starts sticking. Leaving at the bottom is not that, hence the side.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setStuck(
+        !entry.isIntersecting &&
+          entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0),
+      ),
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <Card>
+    <Card className="relative">
+      <div
+        ref={sentinelRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-(--header-height) h-px w-px"
+      />
       {/* Squared off at the foot while open, so content scrolling under the stuck
-          heading cannot show through its corners. */}
+          heading cannot show through its corners. Padded evenly rather than with
+          the title's lift, which would leave the chevron off the heading's middle. A
+          collapsed card is all heading, so it never sticks and takes no rule. */}
       <CardHeader
         className={cn(
-          "sticky top-[var(--header-height)] z-10 rounded-t-lg bg-card",
+          "sticky top-[var(--header-height)] z-10 rounded-t-lg bg-card pt-(--card-pad)",
           !open && "rounded-b-lg",
+          // A shadow rather than a border: it takes no height, so the rule appearing
+          // neither nudges the fields nor pulls the chevron off the middle.
+          open && stuck && "shadow-[inset_0_-1px_0_hsl(var(--border))]",
         )}
       >
         <CardTitle as="h2">

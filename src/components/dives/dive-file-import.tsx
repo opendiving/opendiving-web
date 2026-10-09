@@ -586,7 +586,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   };
 
   return (
-    <div className="rounded-lg border border-dashed p-4 bg-muted/40">
+    <div>
       {offer && (
         <ConfirmDialog
           open
