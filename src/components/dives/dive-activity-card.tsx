@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   BarChart3,
   ChevronLeft,
@@ -25,13 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { ChartSkeleton } from "@/components/dives/chart-skeleton";
 import { ChartStat } from "@/components/dives/chart-stat";
 import { DiveActivityChart } from "@/components/dives/dive-activity-chart";
@@ -82,18 +70,6 @@ export function DiveActivityCard() {
   // empty period.
   const [chosenScope, setChosenScope] = useState<ChartScope | null>(null);
   const [anchor, setAnchor] = useState<number | null>(null);
-
-  // Names the period dropdown without talking over what it says. `aria-label`
-  // here would *replace* the trigger's accessible name, and part of that name is
-  // its own value - "September 2025" - which is the one thing a diver needs read
-  // back. This id leads an `aria-labelledby` that ends with the trigger's own, so
-  // the chart's name is prefixed onto the value rather than swapped for it. It
-  // was an `aria-describedby` until a description turned out never to reach the
-  // name at all; the reasoning is beside the attribute, below.
-  const periodHintId = useId();
-  // The trigger names itself as well as being named - see the `aria-labelledby`
-  // below.
-  const periodTriggerId = useId();
 
   // The view remembered from last time, through `useSyncExternalStore` rather
   // than a `useState` + effect pair for the reason `GasUseCard` documents at
@@ -227,40 +203,29 @@ export function DiveActivityCard() {
 
                     Its value is the *period's* start, never `activeAnchor`
                     itself: the anchor is whichever day you happened to land on,
-                    which usually matches no option, and a `Select` whose value
-                    has no registered item renders an empty trigger. Fixed width -
+                    which usually matches no option, and a `<select>` whose value
+                    matches no option shows the first one instead. Fixed width -
                     the gas card's, since both now show "September 2026" - so the
                     chart doesn't shift sideways as the label changes. */}
-              <span id={periodHintId} className="sr-only">
-                Dive activity period
-              </span>
-              <Select
-                value={String(periodRange(activeAnchor, scope).start)}
-                onValueChange={(value) => {
-                  const picked = periods.find(
-                    (period) => String(period.start) === value,
-                  );
-                  if (picked) setAnchor(picked.anchor);
-                }}
-              >
-                {/* Named the same way as the gas card's twin, and for the same
-                      reason - `aria-describedby` never reached the accessible
-                      name, so an empty trigger had none. See that file. */}
-                <SelectTrigger
-                  id={periodTriggerId}
-                  aria-labelledby={`${periodHintId} ${periodTriggerId}`}
-                  className="h-9 w-40 px-2 text-sm font-medium"
+              <div className="w-40 shrink-0">
+                <NativeSelect
+                  aria-label="Dive activity: period"
+                  className="h-9 pl-2 font-medium"
+                  value={String(periodRange(activeAnchor, scope).start)}
+                  onChange={(event) => {
+                    const picked = periods.find(
+                      (period) => String(period.start) === event.target.value,
+                    );
+                    if (picked) setAnchor(picked.anchor);
+                  }}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
                   {periods.map((period) => (
-                    <SelectItem key={period.start} value={String(period.start)}>
+                    <option key={period.start} value={String(period.start)}>
                       {periodLabel(period.start, scope)}
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </NativeSelect>
+              </div>
               <IconTooltip label="Dive activity: next period with dives">
                 <Button
                   variant="ghost"

@@ -71,8 +71,6 @@ export function DivesFilters({
     <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-3">
       <div className="space-y-2">
         <Label htmlFor="dive-tag">Tag</Label>
-        {/* A plain `<select>`, for the courses row's reason: "Any tag" *is* `""`,
-            and Radix reserves that value for clearing. */}
         <NativeSelect
           id="dive-tag"
           value={filters.tagUuid}

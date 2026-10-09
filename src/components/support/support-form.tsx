@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,13 +15,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   SUPPORT_CATEGORIES,
@@ -187,20 +181,15 @@ export function SupportForm({ fallbackEmail }: SupportFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>What's it about?</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
+              <FormControl>
+                <NativeSelect {...field}>
                   {SUPPORT_CATEGORIES.map((category) => (
-                    <SelectItem key={category} value={category}>
+                    <option key={category} value={category}>
                       {SUPPORT_CATEGORY_LABELS[category]}
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </NativeSelect>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

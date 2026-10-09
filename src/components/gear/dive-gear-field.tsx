@@ -4,16 +4,10 @@ import { useEffect, useState } from "react";
 import { BookmarkPlus } from "lucide-react";
 import { GearSet, GearItemSummary, fetchAllGearSets } from "@/lib/api/gear";
 import { isAbortError } from "@/lib/api/client";
+import { NativeSelect } from "@/components/ui/native-select";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
 
@@ -131,28 +125,22 @@ export function DiveGearField({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-[12rem] flex-1">
-          <Select value={loadedSetUuid ?? ""} onValueChange={handleSetSelected}>
-            <SelectTrigger aria-label="Load a gear set">
-              <SelectValue placeholder="Load a gear set..." />
-            </SelectTrigger>
-            <SelectContent>
-              {gearSets.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-muted-foreground">
-                  No gear sets yet.
-                </div>
-              ) : (
-                gearSets.map((set) => (
-                  <SelectItem key={set.uuid} value={set.uuid}>
-                    {set.name}
-                    <span className="text-muted-foreground">
-                      {" "}
-                      ({set.gear_items.length})
-                    </span>
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          <NativeSelect
+            aria-label="Load a gear set"
+            value={loadedSetUuid ?? ""}
+            onChange={(e) => handleSetSelected(e.target.value)}
+          >
+            <option value="" disabled>
+              {gearSets.length === 0
+                ? "No gear sets yet"
+                : "Load a gear set..."}
+            </option>
+            {gearSets.map((set) => (
+              <option key={set.uuid} value={set.uuid}>
+                {set.name} ({set.gear_items.length})
+              </option>
+            ))}
+          </NativeSelect>
         </div>
         <Button
           type="button"

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
+import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,13 +28,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -43,11 +37,6 @@ import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
 import { useEntryUnits } from "@/hooks/useEntryUnits";
 import { unitLabel } from "@/lib/units";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
-
-// Sentinel for the "Create a new set" option in the target picker. Radix's
-// `SelectItem` can't take an empty string value, so a real (uuid-shaped-free)
-// marker is used instead of `""`.
-const NEW_SET_VALUE = "__new__";
 
 interface GearSetDialogProps {
   open: boolean;
@@ -139,7 +128,7 @@ export function GearSetDialog({
   // follows the target so the user can see (and still rename) what they're
   // overwriting.
   const handleTargetChange = (next: string) => {
-    if (next === NEW_SET_VALUE) {
+    if (next === "") {
       setTargetUuid(undefined);
       setValue("name", "");
       return;
@@ -224,24 +213,18 @@ export function GearSetDialog({
             {showTargetPicker && (
               <div className="space-y-2">
                 <Label htmlFor="gear-set-target">Save to</Label>
-                <Select
-                  value={targetUuid ?? NEW_SET_VALUE}
-                  onValueChange={handleTargetChange}
+                <NativeSelect
+                  id="gear-set-target"
+                  value={targetUuid ?? ""}
+                  onChange={(e) => handleTargetChange(e.target.value)}
                 >
-                  <SelectTrigger id="gear-set-target">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NEW_SET_VALUE}>
-                      Create a new set
-                    </SelectItem>
-                    {existingSets.map((set) => (
-                      <SelectItem key={set.uuid} value={set.uuid}>
-                        {set.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">Create a new set</option>
+                  {existingSets.map((set) => (
+                    <option key={set.uuid} value={set.uuid}>
+                      {set.name}
+                    </option>
+                  ))}
+                </NativeSelect>
                 {targetUuid !== undefined && (
                   <p className="text-xs text-muted-foreground">
                     This replaces everything currently in that set.

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
+import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,22 +32,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
-
-// Radix's `SelectItem` can't take an empty string value, so "no type" needs a
-// real marker in the dropdown - mapped back to `undefined` on save.
-const NO_TYPE_VALUE = "__none__";
 
 interface GearItemDialogProps {
   open: boolean;
@@ -203,28 +193,16 @@ export function GearItemDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
-                  <Select
-                    value={field.value || NO_TYPE_VALUE}
-                    onValueChange={(next) =>
-                      field.onChange(next === NO_TYPE_VALUE ? "" : next)
-                    }
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={NO_TYPE_VALUE}>
-                        <span className="text-muted-foreground">No type</span>
-                      </SelectItem>
+                  <FormControl>
+                    <NativeSelect {...field} value={field.value ?? ""}>
+                      <option value="">No type</option>
                       {GEAR_TYPES.map((gearType) => (
-                        <SelectItem key={gearType} value={gearType}>
+                        <option key={gearType} value={gearType}>
                           {gearTypeLabel(gearType)}
-                        </SelectItem>
+                        </option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </NativeSelect>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

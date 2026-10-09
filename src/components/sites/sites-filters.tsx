@@ -78,8 +78,6 @@ export function SitesFilters({
 
       <div className="space-y-2">
         <Label htmlFor="site-tag">Tag</Label>
-        {/* A plain `<select>`: "Any tag" *is* `""`, and Radix reserves that
-            value for clearing. */}
         <NativeSelect
           id="site-tag"
           value={filters.tagUuid}

@@ -31,11 +31,8 @@ export interface DiveVocabularyFieldProps<
 // One of the dive's closed vocabularies - the water, the dive type, the
 // conditions, the entry - as a select with "Not recorded" first.
 //
-// A plain `<select>` rather than the shadcn `Select` used elsewhere, for the same
-// reason as the cylinder Role picker in `mixture-fields.tsx`: "unset" has to be a
-// real, selectable option, and Radix reserves `""` for clearing. The three states
-// behind it are DECISIONS.md's "A dive-level select carries the same three
-// states".
+// The three states behind "Not recorded" are DECISIONS.md's "A dive-level select
+// carries the same three states".
 export function DiveVocabularyField<
   TFieldValues extends FieldValues,
   TValue extends string,

@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
+import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,13 +49,6 @@ import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
 import { PersonCombobox } from "@/components/people/person-combobox";
 import { splitCourseInstructor } from "@/lib/people";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -476,20 +470,15 @@ export function CertificationDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Agency *</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
+                    <FormControl>
+                      <NativeSelect {...field}>
                         {CERTIFICATION_AGENCIES.map((value) => (
-                          <SelectItem key={value} value={value}>
+                          <option key={value} value={value}>
                             {certificationAgencyLabel(value)}
-                          </SelectItem>
+                          </option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </NativeSelect>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

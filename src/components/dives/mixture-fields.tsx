@@ -354,11 +354,9 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   return (
                     <FormItem>
                       <FormLabel>ppO₂ limit (bar)</FormLabel>
-                      {/* A plain `<select>` for the same two reasons as `role`
-                        below: it needs "unset" as a real selectable option,
-                        which Radix reserves `""` for, and `""` has to reach
-                        react-hook-form as the live cleared value rather than
-                        `undefined`, which it re-displays the default over.
+                      {/* `""` has to reach react-hook-form as the live cleared
+                        value rather than `undefined`, which it re-displays the
+                        default over.
 
                         A picker rather than the number box this started as
                         because the field has an actual vocabulary. Every value
@@ -543,8 +541,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Usage</FormLabel>
-                    {/* A plain `<select>` for the same reason as Role below, and
-                      beside it deliberately: the two are the cylinder's
+                    {/* Beside Role deliberately: the two are the cylinder's
                       answers to "what for" and "how", and a diver setting one
                       is usually about to consider the other. Per row rather
                       than once for the dive, so a mixed set - a parallel pair
@@ -580,14 +577,6 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    {/* A plain `<select>` rather than the shadcn `Select` used
-                      elsewhere on this form, because this one has to express
-                      "unset" as a real, selectable option. `Select` has no empty
-                      `SelectItem` (Radix reserves `""` for clearing), so the
-                      escape hatch would have to be a sentinel value mapped back
-                      to `undefined` on both edges - more machinery than a
-                      four-option optional field is worth. Most cylinders have no
-                      recorded role and that has to stay easy to leave alone. */}
                     <FormControl>
                       <NativeSelect
                         {...field}

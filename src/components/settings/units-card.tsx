@@ -22,11 +22,6 @@ import { UNIT_SYSTEMS, UNIT_SYSTEM_LABELS, type UnitSystem } from "@/lib/units";
 // Saves on change, like the email switches under Notifications: one field, and the
 // whole app re-renders converted the moment `refreshUser` lands, so a "Save" button
 // would sit between the diver and a change they can already see happening.
-//
-// A plain `<select>` rather than the shadcn `Select`, but for the opposite reason to
-// the dive form's pickers: those need `""` as a selectable "unset", and this one has
-// no empty state at all - the column is `NOT NULL` and every account has an answer.
-// A native two-option picker is simply the smallest thing that works here.
 export function UnitsCard() {
   const { user, refreshUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);

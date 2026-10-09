@@ -309,9 +309,8 @@ describe("MixtureFields role input", () => {
   });
 
   it("lets an imported role actually be cleared", () => {
-    // The whole reason this is a plain `<select>` with a real "Not recorded" option
-    // rather than shadcn's `Select`. Writing `undefined` on clear made react-hook-form
-    // re-display the default, so choosing "Not recorded" snapped back to Deco - the
+    // "Not recorded" is a real option whose value is "". Writing `undefined` on
+    // clear made react-hook-form re-display the default, so choosing "Not recorded" snapped back to Deco - the
     // trap `diveMixtureSchema` documents and the numeric fields already dodge with "".
     render(<Harness mixtures={[{ ...EAN54, role: "deco" }]} maxDepth={30} />);
     const select = screen.getByLabelText(/^role$/i);

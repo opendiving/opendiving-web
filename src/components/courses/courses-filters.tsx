@@ -127,12 +127,6 @@ export function CoursesFilters({
 
       <div className="space-y-2">
         <Label htmlFor="course-agency">Agency</Label>
-        {/* A plain `<select>` rather than the shadcn `Select` the course
-              dialog uses, for the reason DECISIONS.md gives under "A dive-level
-              select carries the same three states": "Any agency" *is* `""`, and
-              Radix reserves that value for clearing. The dialog reaches for a
-              sentinel instead because there `null` is a stored fact - a course
-              run by a private instructor - rather than an absent filter. */}
         <NativeSelect
           id="course-agency"
           value={filters.agency}

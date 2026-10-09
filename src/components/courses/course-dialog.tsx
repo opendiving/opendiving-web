@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
+import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,13 +38,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -52,12 +46,6 @@ import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import { PersonCombobox } from "@/components/people/person-combobox";
 import { PeopleMultiSelect } from "@/components/people/people-multi-select";
-
-// The agency picker's "no agency" option. The form itself holds `null` for that
-// state and the API is sent `null`; this string exists only because a Radix
-// `SelectItem` may not carry `""`, which is how that component spells "nothing
-// selected" - so the option needs a value of its own and it never leaves here.
-const NO_AGENCY = "none";
 
 // What a contact created from a course form starts as.
 const SCHOOL: readonly ContactRole[] = ["school"];
@@ -270,30 +258,24 @@ export function CourseDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Agency</FormLabel>
-                    <Select
-                      value={field.value ?? NO_AGENCY}
-                      onValueChange={(value) =>
-                        field.onChange(value === NO_AGENCY ? null : value)
-                      }
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
+                    <FormControl>
+                      <NativeSelect
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      >
                         {/* First, because it is what the form opens on: a
                             course run by a private instructor has no agency,
                             and the state has to be pickable again after one has
                             been chosen. */}
-                        <SelectItem value={NO_AGENCY}>No agency</SelectItem>
+                        <option value="">No agency</option>
                         {CERTIFICATION_AGENCIES.map((value) => (
-                          <SelectItem key={value} value={value}>
+                          <option key={value} value={value}>
                             {certificationAgencyLabel(value)}
-                          </SelectItem>
+                          </option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </NativeSelect>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -305,20 +287,15 @@ export function CourseDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status *</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
+                    <FormControl>
+                      <NativeSelect {...field}>
                         {COURSE_STATUSES.map((value) => (
-                          <SelectItem key={value} value={value}>
+                          <option key={value} value={value}>
                             {courseStatusLabel(value)}
-                          </SelectItem>
+                          </option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </NativeSelect>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

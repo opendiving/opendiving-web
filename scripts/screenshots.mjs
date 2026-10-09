@@ -574,21 +574,6 @@ async function shot(page, name, height) {
   );
 }
 
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
 // One of the two Home chart cards, by its own heading.
 //
 // Scoping matters and is easy to get wrong: the cards now carry the same All/Year/Month
@@ -603,47 +588,14 @@ const chartCard = (page, heading) =>
     })
     .last();
 
-// Orders the labels the period control produces, so a walk knows which arrow to press.
-// Two shapes, one per scope: "2025" and "July 2025".
-const ordinal = (label) => {
-  const parts = label.trim().split(" ");
-  const year = Number(parts[parts.length - 1]);
-  return year * 12 + (parts.length > 1 ? MONTHS.indexOf(parts[0]) : 0);
-};
-
 // Parks one of Home's chart cards on a scope and a period.
 //
-// One walk for both cards, where there used to be one apiece. They now carry the same
-// three scopes over the same period control, differing only in the card name each
-// control's `aria-label` leads with - which is the whole point of the change that merged
-// them.
-//
-// The arrows are matched on the half of that label they share, as a regex: the card name
-// in front of it is what tells a screen reader's controls list which chart it drives, and
-// pinning it here would mean this walk breaks every time that wording is improved. The
-// `chartCard` scope is what makes matching the shared half unambiguous.
-//
 // The period picker only exists once the toggle is off `All`, so the scope click has to
-// come before the walk. The arrows skip periods with no dives, so stepping is safe
-// across the gaps in a log rather than counting through them.
+// come first. Picking by label fails loudly when the card has no dives in that period.
 async function selectPeriod(page, heading, scope, target) {
   const card = chartCard(page, heading);
   await card.getByRole("button", { name: scope, exact: true }).click();
-  const combobox = card.getByRole("combobox").first();
-
-  for (let step = 0; step < 60; step++) {
-    const current = (await combobox.textContent()).trim();
-    if (current === target) return;
-    const arrow =
-      ordinal(current) > ordinal(target)
-        ? /previous period with dives/i
-        : /next period with dives/i;
-    await card.getByRole("button", { name: arrow }).click();
-    await page.waitForTimeout(120);
-  }
-  throw new Error(
-    `${heading} has no ${scope.toLowerCase()} "${target}" with dives`,
-  );
+  await card.getByRole("combobox").selectOption({ label: target });
 }
 
 const atTop = (page) => page.evaluate(() => window.scrollTo(0, 0));
@@ -707,10 +659,6 @@ await page.getByRole("button", { name: "Account menu" }).waitFor();
 // The Home page is where signing in lands, and the only page the bearer can be lifted
 // off before anything else needs it - so it gets loaded whether or not it gets shot.
 await visit(page, "home", `${WEB}/home`);
-// By heading, not by text: the cards carry visually-hidden labels naming the chart
-// their period control belongs to ("Gas consumption period"), and `getByText` matches
-// case-insensitive substrings - so a bare "Gas Consumption" resolves to two elements
-// and fails strict mode. `chartCard` scopes by the heading for the same reason.
 await page.getByRole("heading", { name: "Gas Consumption" }).waitFor();
 
 // Skipped when only the Home page is being retaken, and each search inside it is skipped
