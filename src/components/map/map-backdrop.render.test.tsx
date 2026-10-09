@@ -276,8 +276,8 @@ describe("MapBackdrop", () => {
     expect(map()!.querySelectorAll("[data-marker]")).toHaveLength(1);
   });
 
-  // The dark picture's land is lifted well off the page's near-black, which
-  // rings a pin everywhere else.
+  // The dark picture is lifted well off the page's near-black, which rings a
+  // pin at full strength everywhere else.
   it("rings the pins on the dark world picture in a colour of its own", async () => {
     const ring = () => map()!.style.getPropertyValue("--marker-ring");
     theme.resolved = "dark";

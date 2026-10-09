@@ -101,11 +101,14 @@ function frameGeometry(
 // shipped styles without their lettering or borders.
 const WORLD_MAP: Record<MapTileTheme, { src: string; pinRing?: string }> = {
   light: { src: "/world-map/light.webp" },
-  // Its land's commonest colour rings the pins, where the page's colour stands
-  // in for the land everywhere else: at zoom 0 the dark style lays its relief
-  // over the land at 0.6 opacity, which lifts it well off the dark tiles' land,
-  // and the page's near-black drew every pin on it in a hard outline.
-  dark: { src: "/world-map/dark.webp", pinRing: "rgb(81 85 86)" },
+  // The page's colour at half strength rings the pins, over whatever is under
+  // them: at zoom 0 the dark style lays its relief over the land at 0.6
+  // opacity, which lifts it well off the dark tiles' land, and the page's
+  // near-black at full strength drew every pin on it in a hard outline.
+  dark: {
+    src: "/world-map/dark.webp",
+    pinRing: "hsl(var(--background) / 0.5)",
+  },
 };
 
 // The tiles and pins `placed` shows in `frame`, fitted for it and floored - or,
