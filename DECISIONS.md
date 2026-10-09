@@ -5779,12 +5779,14 @@ falling silent; `isSingleGasParallelSet` refuses a set whose first cylinder has 
 rows are named sets of the same. Both live on the account, not the device, and the user record
 carries the set, so the first paint omits them.
 
-Storing the hidden set makes a new field visible under every preset and "Technical" the empty list.
-A preset is a snapshot: applying one copies its `hidden_fields` into the account state, later
-toggles change the state only, and the Fields menu marks the preset whose set equals the stored
-state. Equality is a list comparison because `canonicalHiddenFields` in `lib/dive-form-fields.ts`
-puts every set read or written in form order. The API canonicalizes into its own stable order, so
-the web never relies on the two agreeing.
+Storing the hidden set makes a new field visible under every preset, and the built-in "All" the
+empty list: a constant, not a row, so it cannot be renamed, overwritten or deleted, and no saved
+preset may take its name. A preset is a snapshot: applying one copies its `hidden_fields` into the
+account state and records `user.dive_form_preset_uuid`, later toggles change the state only. Presets
+may hold identical sets, so `currentDiveFormPreset` names the pick while its set still matches, then
+"All" for nothing hidden, then the first saved match. Equality is a list comparison because
+`canonicalHiddenFields` in `lib/dive-form-fields.ts` puts every set read or written in form order.
+The API canonicalizes into its own stable order, so the web never relies on the two agreeing.
 
 Hidden means not in the DOM: the `FormField` is not rendered. react-hook-form's default
 `shouldUnregister: false` keeps the value and validates it, so a hidden field is submitted as a
@@ -5853,9 +5855,9 @@ The menu applies presets; Configure opens a dialog of switches and preset housek
 listens on `document` in the capture phase.
 
 "Save as" is one name plus Save: an unmatched name creates, a match replaces; not
-`CreatableCombobox`, which commits on blur. The trigger reads `Fields: <preset>` or "Custom", so
-`useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name prompt uses
-`dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
+`CreatableCombobox`, which commits on blur. The trigger reads `Fields: <preset>`, "All" or "Custom",
+so `useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name prompt
+uses `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
 
 A switch shows the effective state and edits the stored one. A unit toggle rides on every visible
 box with a unit, so hiding one of a dimension's fields leaves the toggle on the others.
@@ -6601,9 +6603,9 @@ label in the app by 6px to cure a clip only these rows produce.
 
 ## "Save as" opens on the preset the fields already match
 
-Opening Configure on a set matching an account preset seeds "Save as" with that preset's name under
-a "Replaces…" line, so saving edits back under that name is one tap. A set matching nothing opens
-empty.
+Opening Configure seeds "Save as" with the saved preset the trigger names, under a "Replaces…" line,
+so saving edits back under that name is one tap; what it saves becomes the pick. "All" and a set
+matching nothing open empty.
 
 The mount freezes the seed. The match is computed against `visibility.hidden`, which changes on the
 first flip, so a name recomputed every render would blank itself on the very edit the diver means to

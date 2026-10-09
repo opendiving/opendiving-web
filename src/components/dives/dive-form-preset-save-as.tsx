@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { menuQuery } from "@/components/ui/creatable-combobox";
 import { dialogFormSubmit } from "@/lib/dialog-form";
-import type { DiveFormPreset } from "@/lib/api/dive-form-presets";
+import {
+  ALL_FIELDS_PRESET_NAME,
+  isAllFieldsPresetName,
+  type DiveFormPreset,
+} from "@/lib/api/dive-form-presets";
 
 /**
  * The API compares preset names case-insensitively - a create under a name already
@@ -90,6 +94,7 @@ export function DiveFormPresetSaveAs({
 
   const trimmed = name.trim();
   const existing = findByName(presets, trimmed);
+  const reserved = isAllFieldsPresetName(trimmed);
   const query = menuQuery({ text: name, typed }).toLowerCase();
   const matches = presets.filter((preset) =>
     preset.name.toLowerCase().includes(query),
@@ -147,7 +152,7 @@ export function DiveFormPresetSaveAs({
       className="space-y-1 border-t pt-4"
       onSubmit={dialogFormSubmit((event) => {
         event?.preventDefault();
-        if (!trimmed) return;
+        if (!trimmed || reserved) return;
         onSave(trimmed, existing);
       })}
     >
@@ -239,16 +244,21 @@ export function DiveFormPresetSaveAs({
             </div>
           )}
         </div>
-        <Button type="submit" disabled={disabled || trimmed.length === 0}>
+        <Button
+          type="submit"
+          disabled={disabled || trimmed.length === 0 || reserved}
+        >
           Save
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
         {trimmed.length === 0
           ? "Keep the fields above under a name you can come back to."
-          : existing
-            ? `Replaces the fields saved in "${existing.name}".`
-            : `Creates a new preset called "${trimmed}".`}
+          : reserved
+            ? `"${ALL_FIELDS_PRESET_NAME}" is built in and always shows every field.`
+            : existing
+              ? `Replaces the fields saved in "${existing.name}".`
+              : `Creates a new preset called "${trimmed}".`}
       </p>
     </form>
   );
