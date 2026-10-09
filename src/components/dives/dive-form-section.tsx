@@ -87,7 +87,14 @@ export function DiveFormSection({
           </button>
         </CardTitle>
       </CardHeader>
-      <CardContent id={contentId} hidden={!open} className="space-y-6">
+      {/* The heading's even padding is `--card-pad`, which a phone halves; the rest of
+          the first field's gap is made up here, so it sits as far below the heading as
+          the fields sit from each other. */}
+      <CardContent
+        id={contentId}
+        hidden={!open}
+        className="space-y-6 pt-[calc(--spacing(6)-var(--card-pad))]"
+      >
         {(open || keepMounted) && children}
       </CardContent>
     </Card>
