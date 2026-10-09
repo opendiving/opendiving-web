@@ -103,8 +103,8 @@ const WORLD_MAP: Record<MapTileTheme, { src: string; pinRing?: string }> = {
   light: { src: "/world-map/light.webp" },
   // The page's colour at half strength rings the pins, over whatever is under
   // them: at zoom 0 the dark style lays its relief over the land at 0.6
-  // opacity, which lifts it well off the dark tiles' land, and the page's
-  // near-black at full strength drew every pin on it in a hard outline.
+  // opacity, which lifts it well off the dark tiles' land, so the page's
+  // near-black at full strength reads on it as a hard outline.
   dark: {
     src: "/world-map/dark.webp",
     pinRing: "hsl(var(--background) / 0.5)",
