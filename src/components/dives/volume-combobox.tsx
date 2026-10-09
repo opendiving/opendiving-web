@@ -230,11 +230,9 @@ export interface VolumeComboboxProps extends FormControlSlotProps {
 // dropdown to help pick the right preset.
 //
 // Deliberately a plain input + manually-rendered dropdown (mirroring
-// `CreatableCombobox`'s approach) rather than a Radix/shadcn `Select`: a
-// `Select` needs a `<SelectItem>` already registered for the current value in
-// order to display it, which doesn't hold for arbitrary/parsed values (see
-// DECISIONS.md's "NaN L" gotcha) - a plain controlled input always displays
-// exactly what `value` holds, with no item-registration indirection to go wrong.
+// `CreatableCombobox`'s approach) rather than a picker: a parsed volume usually
+// matches no preset, and a plain controlled input always displays exactly what
+// `value` holds.
 export function VolumeCombobox({
   value,
   onChange,

@@ -3131,11 +3131,10 @@ describe("loading a gear set onto a form with Weight hidden", () => {
       screen.queryByRole("spinbutton", { name: /^weight/i }),
     ).not.toBeInTheDocument();
 
-    await userEvent.click(
-      await screen.findByRole("combobox", { name: /load a gear set/i }),
-    );
-    await userEvent.click(
-      await screen.findByRole("option", { name: /warm water/i }),
+    await screen.findByRole("option", { name: /warm water/i });
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: /load a gear set/i }),
+      "set-1",
     );
 
     await waitFor(() =>

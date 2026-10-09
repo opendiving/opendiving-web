@@ -3,13 +3,6 @@ import { render } from "@testing-library/react";
 import { Waves } from "lucide-react";
 
 import { NativeSelect } from "./native-select";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./select";
 
 // Load-bearing: the browser project renders no `app/layout.tsx`, so without this
 // none of the Tailwind below computes and every box measures 0.
@@ -23,47 +16,26 @@ function chevronOf(field: Element) {
   return chevron.getBoundingClientRect();
 }
 
-describe("a native picker's chevron against the Radix one", () => {
-  it("insets it from the field's right edge exactly as `SelectTrigger` does", () => {
-    const { getByRole, getByLabelText } = render(
+describe("a native picker's chevron", () => {
+  it("draws its own arrow inside the box, centred on it", () => {
+    const { getByRole } = render(
       <div className="w-96">
         <NativeSelect aria-label="Water type">
           <option value="">Not recorded</option>
         </NativeSelect>
-        <Select>
-          <SelectTrigger aria-label="UTC offset">
-            <SelectValue placeholder="UTC offset" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="0">UTC+00:00</SelectItem>
-          </SelectContent>
-        </Select>
       </div>,
     );
 
     const native = getByRole("combobox", { name: "Water type" });
-    const radix = getByLabelText("UTC offset");
+    const box = native.getBoundingClientRect();
+    // The UA arrow is not an `svg`, so this fails the moment the picker loses
+    // its own chevron.
+    const chevron = chevronOf(native.parentElement!);
 
-    const nativeBox = native.getBoundingClientRect();
-    const radixBox = radix.getBoundingClientRect();
-
-    // The measurement is the gap between the arrow and the border beside it,
-    // which is what reads as misaligned on a form row carrying one of each.
-    // The UA's own arrow sits at a different gap and draws a different glyph,
-    // so this fails the moment a picker loses its own chevron.
-    const nativeInset =
-      nativeBox.right - chevronOf(native.parentElement!).right;
-    const radixInset = radixBox.right - chevronOf(radix).right;
-
-    expect(nativeInset).toBeCloseTo(radixInset, 1);
-    expect(nativeInset).toBeGreaterThan(0);
-
-    // Centred on the box, the other half of sitting where the Radix one sits.
-    const centerY = (box: DOMRect) => box.top + box.height / 2;
-    expect(centerY(chevronOf(native.parentElement!))).toBeCloseTo(
-      centerY(nativeBox),
-      1,
-    );
+    expect(chevron.right).toBeLessThan(box.right);
+    expect(chevron.left).toBeGreaterThan(box.left);
+    const centerY = (rect: DOMRect) => rect.top + rect.height / 2;
+    expect(centerY(chevron)).toBeCloseTo(centerY(box), 1);
   });
 
   it("leaves a leading adornment on top of the box, not under it", () => {

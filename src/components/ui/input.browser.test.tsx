@@ -55,11 +55,9 @@ describe("focusable fields against iOS's focus zoom", () => {
   });
 
   it("does the same for a `NativeSelect`", async () => {
-    // The dive form's ppO₂ limit, Role, Usage and water type are plain
-    // `<select>`s rather than the Radix one, because they need an empty option -
-    // and a `<select>` is a field iOS zooms for exactly like a text box. They
-    // borrow their box from `inputClassName` through `NativeSelect`, so this is
-    // where that reaches them.
+    // Every picker in the app is a plain `<select>`, a field iOS zooms for
+    // exactly like a text box. They borrow their box from `inputClassName`
+    // through `NativeSelect`, so this is where that reaches them.
     const { getByRole } = render(
       <NativeSelect aria-label="Role">
         <option value="">Not recorded</option>

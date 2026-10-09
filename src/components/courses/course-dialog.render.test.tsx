@@ -286,8 +286,7 @@ describe("CourseDialog", () => {
 
     expect(screen.queryByLabelText("Agency name *")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText("Agency"));
-    await userEvent.click(await screen.findByRole("option", { name: "Other" }));
+    await userEvent.selectOptions(screen.getByLabelText("Agency"), "Other");
 
     expect(await screen.findByLabelText("Agency name *")).toBeInTheDocument();
   });
@@ -296,7 +295,7 @@ describe("CourseDialog", () => {
     // The create form opens on no agency rather than PADI, so a diver who
     // never looks at the field stores nothing instead of a fabricated one.
     open();
-    expect(screen.getByLabelText("Agency")).toHaveTextContent("No agency");
+    expect(screen.getByLabelText("Agency")).toHaveDisplayValue("No agency");
 
     await userEvent.type(screen.getByLabelText("Course *"), "Nitrox, at home");
     await save();
@@ -315,12 +314,9 @@ describe("CourseDialog", () => {
     open(EXISTING);
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Agency")).toHaveTextContent("TDI"),
+      expect(screen.getByLabelText("Agency")).toHaveDisplayValue("TDI"),
     );
-    await userEvent.click(screen.getByLabelText("Agency"));
-    await userEvent.click(
-      await screen.findByRole("option", { name: "No agency" }),
-    );
+    await userEvent.selectOptions(screen.getByLabelText("Agency"), "No agency");
     await save();
 
     await waitFor(() => expect(updateCourse).toHaveBeenCalled());

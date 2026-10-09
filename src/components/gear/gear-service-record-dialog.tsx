@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
+import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,13 +38,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
@@ -192,20 +186,15 @@ export function GearServiceRecordDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Service type *</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
+                  <FormControl>
+                    <NativeSelect {...field}>
                       {SERVICE_KINDS.map((kind: ServiceKind) => (
-                        <SelectItem key={kind} value={kind}>
+                        <option key={kind} value={kind}>
                           {serviceKindLabel(kind)}
-                        </SelectItem>
+                        </option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </NativeSelect>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

@@ -119,9 +119,9 @@ imported dive keeps its seconds; a time change writes `HH:mm:00`, since no wheel
 The `touch:` variant in `globals.css` asks the same query as `useCoarsePointer`. Under it a control
 takes 44×44 CSS px, in one of two ways:
 
-- Buttons, fields and menu rows grow. `Button`, `Input`, `SelectTrigger` and `NativeSelect` take
-  `touch:min-h-11`, a floor, so a caller's `h-7` shrinks a button for a mouse only; menu rows take
-  `touch:py-3`. `--header-height` and `--card-title-lift` follow the 44px button.
+- Buttons, fields and menu rows grow. `Button`, `Input` and `NativeSelect` take `touch:min-h-11`, a
+  floor, so a caller's `h-7` shrinks a button for a mouse only; menu rows take `touch:py-3`.
+  `--header-height` and `--card-title-lift` follow the 44px button.
 - A compact control in a larger shape, or a link standing on its own line, keeps its look and takes
   `touch:tap-target`, a centred 44px `::after`. The element must be positioned and its area must
   stay off its neighbours: a positioned pseudo-element paints over an unpositioned field.
@@ -565,13 +565,11 @@ The API rounds parsed `oxygen`/`helium`/`start_pressure`/`end_pressure` to two d
 (`20.99%` as `21.0%`).
 
 Volume is `VolumeCombobox` (`volume-combobox.tsx`), built like `CreatableCombobox`: a plain
-`<input type="number">` plus a hand-rendered absolute-positioned dropdown of `<button>`s, not Radix
-`Select`. Radix registers `SelectItem`s only once the dropdown has opened, so a closed trigger's
-`SelectValue` cannot resolve a label for a parsed value matching no preset and renders "NaN L". The
-input shows the bare number (`11.1`, never `11.1 L (AL80)`); a preset's label appears only in the
-dropdown, which always lists every preset with no filter-as-you-type — few enough that filtering
-only hinders comparing them. There is no custom clear button: select-all and delete already clear a
-native number input.
+`<input type="number">` plus a hand-rendered absolute-positioned dropdown of `<button>`s, not a
+`<select>`, because a parsed volume usually matches no preset. The input shows the bare number
+(`11.1`, never `11.1 L (AL80)`); a preset's label appears only in the dropdown, which always lists
+every preset with no filter-as-you-type — few enough that filtering only hinders comparing them.
+There is no custom clear button: select-all and delete already clear a native number input.
 
 ## Gear sets are loaded into the dive form, never linked from the dive
 
@@ -676,8 +674,7 @@ either source, so the API widens first — it rejects an unknown `type` with a 4
 last.
 
 Type is optional: `""` is the form's "not set" state, sent as explicit `null` on update and omitted
-on create. Radix `SelectItem` cannot take an empty string, so "No type" uses a `__none__` sentinel,
-like `GearSetDialog`'s "Create a new set".
+on create, and it is the "No type" option's value.
 
 ## `ComboboxItem.hint` is a cosmetic second line, not a `location`
 
@@ -1060,9 +1057,9 @@ calendar period, so one April trip is one cluster, not a stretched year.
 
 `periodRange`, `periodLabel`, `availablePeriods`, `stepPeriod` and `resolveAnchor` live in
 `lib/chart-period.ts`, shared with `DiveActivityCard`. `stepPeriod()` skips to the next period
-containing dives; `null` disables the button. The label is a `<Select>` over `availablePeriods()`
-whose value is the period's start, never the anchor: a Radix `Select` with an unregistered value
-renders an empty trigger. The anchor is always a dive's own timestamp.
+containing dives; `null` disables the button. The label is a `<select>` over `availablePeriods()`
+whose value is the period's start, never the anchor: a `<select>` whose value matches no option
+shows the first one. The anchor is always a dive's own timestamp.
 
 Everything buckets on `diveWallClockTime()`, never `new Date(start_time).getTime()`, and reads back
 with `getUTC*`/`Date.UTC`/`timeZone: "UTC"`; a local getter in that chain moves a New Year's dive a
@@ -1971,14 +1968,7 @@ list is flat names with no heading context, so identical toggles give four arrow
 `Dive activity: previous period with dives`, `Gas consumption: time range`. `screenshots.mjs` scopes
 by the card's heading for the same ambiguity.
 
-The period dropdown's accessible name is its own value ("September 2025"), which `aria-label` would
-replace. The `SelectTrigger` uses `aria-labelledby` naming a visually-hidden hint span and then the
-trigger's own text, so the name reads chart then period; see "`aria-describedby` never reaches the
-accessible name" for why a description alone is not enough.
-
-That hidden span is why `screenshots.mjs` waits on `getByRole("heading")` rather than
-`getByText("Gas Consumption")`: `getByText` matches case-insensitive substrings, so a bare title
-also matches "Gas consumption period" and fails strict mode.
+The period dropdown is `Gas consumption: period`; a `<select>` announces its value after its name.
 
 ## Empty buckets are the point, and the ceiling comes from the whole logbook
 
@@ -2100,12 +2090,11 @@ API reader's cylinder label and the join key to that cylinder's pressure curve o
 In `mergeMixture` it needs `??`, not `||`: the reader labels the first cylinder 0. The zod rule is
 `min(0)`, mirroring `ck_dive_mixture_gas_number_non_negative`.
 
-`role` is a plain `<select>`, not the shadcn `Select`, because it needs "unset" as a real option and
-Radix reserves `""` for clearing. Its empty value stays `""`, converted to `undefined` by
-`normalizeMixtures` at the edge; react-hook-form re-displays a field's default whenever the value
-resolves to `undefined`, so `e.target.value || undefined` snaps an imported `"deco"` back on
-clearing. Any optional form field needs a non-`undefined` empty value, and `role` is
-`z.union([z.literal(""), z.enum(GAS_ROLES)]).optional()` for that reason.
+`role` is a `<select>` with "unset" as a real option. Its empty value stays `""`, converted to
+`undefined` by `normalizeMixtures` at the edge; react-hook-form re-displays a field's default
+whenever the value resolves to `undefined`, so `e.target.value || undefined` snaps an imported
+`"deco"` back on clearing. Any optional form field needs a non-`undefined` empty value, and `role`
+is `z.union([z.literal(""), z.enum(GAS_ROLES)]).optional()` for that reason.
 `MixtureFields role input > lets an imported role actually be cleared` pins it.
 
 ## `mod()` returns null below the surface, where `end`/`ead` floor at zero
@@ -2426,10 +2415,9 @@ average depth after the maximum only while the rest leave fewer than four.
 
 `po2_limit` is a `<select>`, not `<input type="number">`: the schema's 0.4–2 band catches a unit
 error (Suunto JSON writes 140000 Pa for 1.4 bar), the values a diver picks are seven, and free entry
-bought typos and a 422 on `ck_dive_mixture_po2_limit_range` the diver cannot act on. A `<select>`
-for the same reasons as `role`: "unset" needs a real option, Radix `Select` reserves `""`, and `""`
-must reach react-hook-form as the live cleared value — see "The API sends `null`, the form schema
-only understood `""`".
+bought typos and a 422 on `ck_dive_mixture_po2_limit_range` the diver cannot act on. As with `role`,
+`""` is "unset" and must reach react-hook-form as the live cleared value — see "The API sends
+`null`, the form schema only understood `""`".
 
 The options are strings: `String(1.0)` is `"1"`, so an option labelled `"1.0"` would never match its
 stored value; selection compares `Number(option) === value`, one direction only. A limit not on the
@@ -4583,16 +4571,6 @@ real constraint is `z.number().positive()` in the dive schema. jsdom does not sa
 so the render tests pin only the logic; typing a decimal is a Chrome check — clear the field first,
 or a prefilled volume reads back as "22.211.1", which is not this bug.
 
-## `aria-describedby` never reaches the accessible name
-
-The Home page chart cards' period pickers are named with `aria-labelledby` listing the `sr-only`
-hint's id and the trigger's own id, in that order, so the name reads "Gas consumption period"
-followed by the period showing. `aria-describedby` does not contribute to the accessible name, which
-leaves the trigger named by whatever `SelectValue` renders — nothing on a period with no registered
-item, which axe reports as `button-name`. An `aria-label`, or `aria-labelledby` pointing at the hint
-alone, replaces the trigger's text instead of prefixing it and takes the current period out of the
-announcement.
-
 ## The unit toggle's off half is `text-muted-foreground`, not `text-muted-foreground/60`
 
 `EntryUnitToggle` renders the unselected system in full-strength `text-muted-foreground`, not 60% of
@@ -6554,9 +6532,8 @@ page.
 
 `Input`'s box is `text-base md:text-sm`: 16px on a phone, 14px from `md:` up. `Textarea` and the
 month/year `<select>`s in `calendar.tsx` carry the same classes; a `<select>` zooms like a text box,
-and the app's plain `<select>`s (ppO₂ limit, Role, Usage, water type, the units picker) are
-`NativeSelect`, which composes `inputClassName`, so they inherit it. `SelectTrigger` needs nothing:
-Radix's is a `<button>`, not a field.
+and every picker in the app is a `NativeSelect`, which composes `inputClassName`, so they inherit
+it. A caller's `text-sm` would undo it on a phone.
 
 `maximum-scale=1` or `user-scalable=no` is rejected: it takes pinch-zoom from everybody, and iOS
 ignores both anyway. `input.browser.test.tsx` asserts 16px below the `md` breakpoint and 14px above,
@@ -7004,3 +6981,13 @@ queues the rest in the order asked, and a map that unmounts aborts its requests 
 Rejected: two, which draws a single card in three turns; one count across tabs through Web Locks,
 which exist only in a secure context; and answering a miss at once and polling, which the no-timer
 rule refuses.
+
+## Every picker is a native `<select>`
+
+A choice from a fixed list is `NativeSelect`, never a custom listbox: a phone opens its own picker
+wheel or sheet, `""` is an ordinary option for "unset" with no sentinel, and the accessible name is
+the label alone, with the value announced after it. Rejected: shadcn's Radix `Select`, which
+reserves `""`, shows an empty trigger for a value with no registered item, and needed a hidden span
+to put a name before its value. What an `<option>` cannot do is markup — a muted count or an icon
+becomes plain text, as in "Load a gear set". A list that needs typing or rich rows is a combobox
+(`CreatableCombobox`).

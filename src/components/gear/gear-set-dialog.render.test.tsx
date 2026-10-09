@@ -223,11 +223,10 @@ describe("the gear set dialog's other save paths", () => {
     // target set's - so this pins which of the two reaches the API.
     saveDivesGear();
 
-    await userEvent.click(screen.getByRole("combobox", { name: "Save to" }));
-    await userEvent.click(
-      within(await screen.findByRole("listbox")).getByRole("option", {
-        name: "Sidemount",
-      }),
+    await screen.findByRole("option", { name: "Sidemount" });
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Save to" }),
+      "Sidemount",
     );
     await save();
 
