@@ -84,14 +84,14 @@ export function TagsMultiSelect({
           {value.map((name) => (
             <li
               key={name}
-              className="flex items-center rounded-md border border-transparent bg-coral pl-3 text-sm text-primary-foreground"
+              className="flex items-center rounded-md border border-transparent bg-teal pl-3 text-sm text-teal-foreground"
             >
               <span className="min-w-0 break-all">{name}</span>
               <IconTooltip label={`Remove ${name}`}>
                 <button
                   type="button"
                   disabled={disabled}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center text-primary-foreground/80 hover:text-primary-foreground"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center text-teal-foreground/80 hover:text-teal-foreground"
                   onClick={() => removeTag(name)}
                 >
                   <X className="h-3.5 w-3.5" />

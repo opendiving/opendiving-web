@@ -280,6 +280,22 @@ describe("DiveCard", () => {
     expect(within(item).getByText("CCR")).toHaveAttribute("aria-hidden");
   });
 
+  it("follows the kind with the diver's tags in teal, and rates the dive after its name", () => {
+    const item = card({
+      dive: dive({
+        type: "closed_circuit",
+        tags: ["night", "Wreck"],
+        rating: 4,
+      }),
+    });
+
+    expect(item).toHaveTextContent("CCRClosed circuitnightWreckDive #212");
+    expect(within(item).getByText("Wreck")).toHaveClass("bg-teal");
+    expect(
+      within(item).getByRole("link", { name: "Dive #212 4 of 5 stars" }),
+    ).toBeInTheDocument();
+  });
+
   it("ends its line with a paperclip where the dive holds a recording", () => {
     expect(card({ dive: dive({ recording_count: 1 }) })).toHaveTextContent(
       "Apr 4, 2026, 10:04 · Recording attached",

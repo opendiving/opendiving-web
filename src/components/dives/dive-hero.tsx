@@ -80,6 +80,7 @@ export function DiveHero({
           diveNumber={dive.dive_number}
           sites={dive.dive_sites}
           course={dive.course_uuid != null}
+          rating={dive.rating}
         />
       }
       subtitle={<FactsLine facts={facts} />}

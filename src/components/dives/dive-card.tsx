@@ -142,9 +142,11 @@ export function DiveCard({
       {chips && (
         // Over the foot of the backdrop's band rather than above the name in
         // the flow, so a dive with chips is as tall as one without. Lifted over
-        // the card's link, so their hints are reachable.
+        // the card's link, so their hints are reachable, and only as wide as
+        // they are - up to the card's width - so the link still takes a click
+        // beside them.
         <div className="relative z-10 h-0">
-          <div className="absolute bottom-1 left-0">{chips}</div>
+          <div className="absolute bottom-1 left-0 max-w-full">{chips}</div>
         </div>
       )}
       <Link
@@ -155,6 +157,7 @@ export function DiveCard({
           diveNumber={dive.dive_number}
           sites={dive.dive_sites}
           course={dive.course_uuid != null}
+          rating={dive.rating}
         />
         {addToTrip && <span className="sr-only">{" (Not in this trip)"}</span>}
       </Link>

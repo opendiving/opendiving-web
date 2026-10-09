@@ -34,19 +34,32 @@ function Chip({ text, label }: { text: string; label: string }) {
   );
 }
 
+// One of the diver's tags, in the brand's teal, its words its own: there is
+// nothing shorter to show and nothing longer to hint at. A name too long for
+// the row ends in an ellipsis rather than overflowing it.
+function TagChip({ tag }: { tag: string }) {
+  return (
+    <span className="max-w-full truncate rounded-sm border border-teal bg-teal px-1 text-[10px] font-semibold leading-4 tracking-wide text-teal-foreground [text-shadow:none] md:text-xs md:leading-5">
+      {tag}
+    </span>
+  );
+}
+
 /**
  * The chips over a dive's title, on its card and its page's hero alike: the
- * water, then the kind of dive. Salt water and open circuit have none - each
- * goes without saying - and a dive with neither has no row. Lifted over a
- * card's link, so its hints are reachable.
+ * water, then the kind of dive, then the diver's tags in their order. Salt
+ * water and open circuit have none - each goes without saying - and a dive
+ * with none of the three has no row. Lifted over a card's link, so its hints
+ * are reachable.
  */
 export function diveChips(dive: Dive): ReactNode {
   const water = dive.water_type && WATER_TYPE_ABBREVIATIONS[dive.water_type];
   const type = dive.type && DIVE_TYPE_ABBREVIATIONS[dive.type];
-  if (!water && !type) return null;
+  const tags = dive.tags ?? [];
+  if (!water && !type && tags.length === 0) return null;
   return (
     <TooltipProvider delayDuration={HINT_DELAY_MS} disableHoverableContent>
-      <div className="relative z-10 flex w-fit gap-1">
+      <div className="relative z-10 flex w-fit max-w-full flex-wrap gap-1">
         {water && (
           <Chip
             text={water}
@@ -59,6 +72,9 @@ export function diveChips(dive: Dive): ReactNode {
             label={vocabularyLabel(DIVE_TYPE_LABELS, dive.type!)}
           />
         )}
+        {tags.map((tag) => (
+          <TagChip key={tag} tag={tag} />
+        ))}
       </div>
     </TooltipProvider>
   );
