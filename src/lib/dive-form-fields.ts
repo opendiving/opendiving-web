@@ -182,7 +182,7 @@ export interface DiveFormFieldEntry {
  * new optional input fails the suite until it is registered here.
  */
 export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
-  { key: "file_import", label: "Import from a dive computer", group: "Import" },
+  { key: "file_import", label: "Upload dive files", group: "Import" },
   { key: "course_uuid", label: "Course", group: "Training" },
   { key: "trip_uuid", label: "Trip", group: "Location" },
   { key: "contact_uuid", label: "Dive center", group: "Location" },
