@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { barPath } from "@/lib/chart-path";
+import { viewBoxPoint } from "@/lib/chart-readout";
 import { axisTicks, countDomain, labelCapacity } from "@/lib/chart-scale";
 import type { ChartScope } from "@/lib/chart-period";
 import type { ActivityBar } from "@/lib/dive-activity";
 import { cn } from "@/lib/utils";
+import { useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
 import { useKeepInside } from "@/hooks/useKeepInside";
 
@@ -84,9 +86,27 @@ export function DiveActivityChart({
   // One hovered index for the whole chart rather than a tooltip component per
   // bar - the same call, for the same reason, as the gas chart's dots: only one
   // can ever be open, and shared state means the lit bar and the card it
-  // describes cannot disagree.
-  const [hovered, setHovered] = useState<number | null>(null);
+  // describes cannot disagree. A finger picks the column under it, by the same
+  // slots the hover targets below are cut into.
   const [chartRef, width] = useChartWidth(WIDTH);
+  const readout = useChartReadout<number>((event) => {
+    const { x } = viewBoxPoint(
+      event.currentTarget.getBoundingClientRect(),
+      width,
+      event.clientX,
+      event.clientY,
+    );
+    const column = Math.floor(
+      ((x - PADDING.left) / (width - PADDING.left - PADDING.right)) *
+        bars.length,
+    );
+    return Math.min(bars.length - 1, Math.max(0, column));
+  });
+  // A finger's pick outlives the bars it was made on, when the period changes.
+  const hovered =
+    readout.value !== null && readout.value < bars.length
+      ? readout.value
+      : null;
 
   const total = bars.reduce((sum, bar) => sum + bar.dives, 0);
 
@@ -145,6 +165,7 @@ export function DiveActivityChart({
           // the whole picture.
           role="img"
           aria-label={describeBars(bars, scope, total)}
+          {...readout.scrubProps}
         >
           {/* Gridlines and the y scale, `aria-hidden` because `role="img"`
                 does not reliably keep bare `<text>` out of the accessibility
@@ -200,8 +221,8 @@ export function DiveActivityChart({
                 width={slot}
                 height={PLOT_HEIGHT}
                 fill="transparent"
-                onMouseEnter={() => setHovered(index)}
-                onMouseLeave={() => setHovered(null)}
+                onMouseEnter={() => readout.hover(index)}
+                onMouseLeave={() => readout.hover(null)}
               />
               <path
                 d={barPath(

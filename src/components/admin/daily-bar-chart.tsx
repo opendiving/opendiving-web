@@ -1,9 +1,13 @@
 "use client";
 
+import { useRef } from "react";
 import { barPath } from "@/lib/chart-path";
+import { viewBoxPoint } from "@/lib/chart-readout";
 import { axisTicks, countDomain, labelCapacity } from "@/lib/chart-scale";
 import { cn } from "@/lib/utils";
+import { useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
+import { useKeepInside } from "@/hooks/useKeepInside";
 import { dayLabel, type Series } from "@/components/admin/daily-stats";
 
 // Hand-rolled SVG for the reason every chart in this app is: a `<style>`-injecting
@@ -43,6 +47,24 @@ export function DailyBarChart({
   emptyMessage,
 }: DailyBarChartProps) {
   const [chartRef, width] = useChartWidth(WIDTH);
+  // The day under the pointer or finger, by the slots the columns are cut into.
+  const readout = useChartReadout<number>((event) => {
+    const { x } = viewBoxPoint(
+      event.currentTarget.getBoundingClientRect(),
+      width,
+      event.clientX,
+      event.clientY,
+    );
+    const day = Math.floor(
+      ((x - PADDING.left) / (width - PADDING.left - PADDING.right)) *
+        days.length,
+    );
+    return Math.min(days.length - 1, Math.max(0, day));
+  });
+  const hovered =
+    readout.value !== null && readout.value < days.length
+      ? readout.value
+      : null;
 
   const dayTotal = (index: number) =>
     series.reduce((sum, one) => sum + one.values[index], 0);
@@ -111,7 +133,7 @@ export function DailyBarChart({
     });
   };
 
-  // What a day held, in words: the hover title and the screen-reader list.
+  // What a day held, in words, for the screen-reader list.
   const describeDay = (index: number) => {
     const counted = series
       .filter((one) => one.values[index] > 0)
@@ -122,13 +144,15 @@ export function DailyBarChart({
   return (
     <div>
       {/* Never scrolls: `useChartWidth` narrows the viewBox on a phone instead,
-          so the page keeps no horizontal scroll at 375 px. */}
-      <div ref={chartRef}>
+          so the page keeps no horizontal scroll at 375 px. The positioning
+          context of the day's card. */}
+      <div ref={chartRef} className="relative">
         <svg
           viewBox={`0 0 ${width} ${HEIGHT}`}
           className="w-full h-auto"
           role="img"
           aria-label={description}
+          {...readout.scrubProps}
         >
           {axisTicks(domain).map((tick) => (
             <g key={tick} aria-hidden className="text-border">
@@ -177,17 +201,17 @@ export function DailyBarChart({
                   />
                 ) : null,
               )}
-              {/* The whole column answers the hover, with the day in words -
-                  a quiet day is a sliver and an empty one has no bar at all. */}
+              {/* The whole column answers the hover - a quiet day is a sliver
+                  and an empty one has no bar at all. */}
               <rect
                 x={slotStart(index)}
                 y={PADDING.top}
                 width={slot}
                 height={PLOT_HEIGHT}
                 fill="transparent"
-              >
-                <title>{describeDay(index)}</title>
-              </rect>
+                onMouseEnter={() => readout.hover(index)}
+                onMouseLeave={() => readout.hover(null)}
+              />
             </g>
           ))}
 
@@ -208,6 +232,24 @@ export function DailyBarChart({
             ) : null,
           )}
         </svg>
+
+        {hovered !== null && (
+          <DailyBarTooltip
+            day={days[hovered]}
+            series={series}
+            index={hovered}
+            cx={slotStart(hovered) + slot / 2}
+            cy={
+              baseline -
+              height(
+                layout === "stacked"
+                  ? dayTotal(hovered)
+                  : Math.max(0, ...series.map((one) => one.values[hovered])),
+              )
+            }
+            chartWidth={width}
+          />
+        )}
       </div>
 
       {isEmpty && (
@@ -239,6 +281,63 @@ export function DailyBarChart({
           <li key={day}>{describeDay(index)}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// The day's card, on the dive activity chart's terms: placed at the top of the
+// day's marks, flipped and nudged to stay inside the chart. HTML rather than an
+// SVG `<title>`, which only a mouse can ever open.
+function DailyBarTooltip({
+  day,
+  series,
+  index,
+  cx,
+  cy,
+  chartWidth,
+}: {
+  day: string;
+  series: Series[];
+  index: number;
+  cx: number;
+  cy: number;
+  chartWidth: number;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  useKeepInside(cardRef);
+  const below = cy < HEIGHT * 0.35;
+  const translateY = below ? "12px" : "calc(-100% - 12px)";
+  const translateX =
+    cx < chartWidth * 0.18
+      ? "-12px"
+      : cx > chartWidth * 0.82
+        ? "calc(-100% + 12px)"
+        : "-50%";
+
+  return (
+    <div
+      ref={cardRef}
+      className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
+      style={{
+        left: `${(cx / chartWidth) * 100}%`,
+        top: `${(cy / HEIGHT) * 100}%`,
+        transform: `translate(${translateX}, ${translateY})`,
+      }}
+      role="presentation"
+    >
+      <div className="text-xs text-tooltip-foreground/70">{dayLabel(day)}</div>
+      {series.map((one) => (
+        <div key={one.key} className="mt-0.5 flex items-center gap-1.5 text-sm">
+          <span
+            aria-hidden
+            className={cn("h-2 w-2 shrink-0 rounded-sm bg-current", one.colour)}
+          />
+          <span className="font-semibold tabular-nums">
+            {one.values[index]}
+          </span>
+          <span className="text-tooltip-foreground/70">{one.label}</span>
+        </div>
+      ))}
     </div>
   );
 }
