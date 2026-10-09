@@ -38,7 +38,12 @@ import {
   type MixtureImportNotes,
 } from "@/lib/dive-import";
 import { isNonEmptyFieldValue } from "@/lib/dive-form-fields";
-import { recordingDeviceLabel, sameDevice } from "@/lib/dive-recordings";
+import {
+  diveFileRows,
+  recordingDeviceLabel,
+  sameDevice,
+} from "@/lib/dive-recordings";
+import { DiveFormSection } from "@/components/dives/dive-form-section";
 import { withReturnTo } from "@/lib/return-to";
 import { Info, Loader2, Upload } from "lucide-react";
 import {
@@ -585,8 +590,52 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
     }
   };
 
+  const uploadButton = (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={DIVE_COMPUTER_FILE_ACCEPT}
+        // A dive off two computers, or one computer's JSON beside its FIT,
+        // was always two trips through this picker for no reason: the form
+        // already holds a list and the server already decides per file
+        // which recording it joins.
+        multiple
+        className="hidden"
+        onChange={handleFilesSelected}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isParsingFile}
+      >
+        {isParsingFile ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Parsing...
+          </>
+        ) : (
+          <>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload dive files
+          </>
+        )}
+      </Button>
+    </>
+  );
+
   return (
-    <div className="rounded-lg border border-dashed p-4 bg-muted/40">
+    <DiveFormSection
+      title="Import"
+      titleAdornment={<DiveFileImportInfo />}
+      action={uploadButton}
+      empty={
+        !importNote &&
+        pending.length === 0 &&
+        diveFileRows(recordings).length === 0
+      }
+    >
       {offer && (
         <ConfirmDialog
           open
@@ -613,83 +662,19 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
         />
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1">
-            <p className="font-medium text-sm">Import from a dive computer</p>
-            {/* A popover rather than a hover hint: a paragraph is more than a hint
-                carries, and a tap has to open it on a phone. */}
-            <Popover>
-              <IconTooltip label="About importing a file">
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground"
-                  >
-                    <Info className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-              </IconTooltip>
-              <PopoverContent align="start" className="text-sm">
-                Upload this dive&apos;s file, in any format logbook import
-                reads, to fill in the fields below. Pick as many as you like at
-                once: one per computer that recorded this dive, or one
-                computer&apos;s second export alongside its first. A file
-                holding several dives goes through logbook import instead.
-              </PopoverContent>
-            </Popover>
-          </div>
-          {/* Rendered unconditionally and `sr-only` until there is something to say: a
-              `role="status"` region that mounts together with its text is typically not
-              announced at all, since screen readers register it on insertion and read
-              *subsequent* changes. The text is computed once at import and never changes
-              afterwards, so this announces exactly once - see `describeMixtureImport`. */}
-          <p
-            role="status"
-            className={
-              importNote
-                ? "text-sm text-amber-700 dark:text-amber-500 mt-1"
-                : "sr-only"
-            }
-          >
-            {importNote}
-          </p>
-        </div>
-        <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={DIVE_COMPUTER_FILE_ACCEPT}
-            // A dive off two computers, or one computer's JSON beside its FIT,
-            // was always two trips through this picker for no reason: the form
-            // already holds a list and the server already decides per file
-            // which recording it joins.
-            multiple
-            className="hidden"
-            onChange={handleFilesSelected}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isParsingFile}
-          >
-            {isParsingFile ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Parsing...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload dive files
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+      {/* Rendered unconditionally and `sr-only` until there is something to say: a
+          `role="status"` region that mounts together with its text is typically not
+          announced at all, since screen readers register it on insertion and read
+          *subsequent* changes. The text is computed once at import and never changes
+          afterwards, so this announces exactly once - see `describeMixtureImport`. */}
+      <p
+        role="status"
+        className={
+          importNote ? "text-sm text-amber-700 dark:text-amber-500" : "sr-only"
+        }
+      >
+        {importNote}
+      </p>
 
       <DiveRecordingFiles
         recordings={recordings}
@@ -699,7 +684,37 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
         onRemoveStored={onRemoveStored}
         onRestoreStored={onRestoreStored}
       />
-    </div>
+    </DiveFormSection>
+  );
+}
+
+// What the import does, beside its section's title.
+//
+// A popover rather than a hover hint: a paragraph is more than a hint carries, and a
+// tap has to open it on a phone.
+function DiveFileImportInfo() {
+  return (
+    <Popover>
+      <IconTooltip label="About importing a file">
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground"
+          >
+            <Info className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+      </IconTooltip>
+      <PopoverContent align="start" className="text-sm">
+        Upload this dive&apos;s file, in any format logbook import reads, to
+        fill in the fields below. Pick as many as you like at once: one per
+        computer that recorded this dive, or one computer&apos;s second export
+        alongside its first. A file holding several dives goes through logbook
+        import instead.
+      </PopoverContent>
+    </Popover>
   );
 }
 

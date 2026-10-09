@@ -85,3 +85,24 @@ export function reveal() {
     );
   }
 }
+
+/**
+ * Report every element currently under observation as scrolled up past the top
+ * of the viewport - off screen, and above it rather than below. Wrap it in
+ * `act()`, as `reveal`.
+ */
+export function scrollPast() {
+  for (const { element, callback, observer } of [...registrations]) {
+    callback(
+      [
+        {
+          isIntersecting: false,
+          target: element,
+          boundingClientRect: { top: -1 } as DOMRectReadOnly,
+          rootBounds: { top: 0 } as DOMRectReadOnly,
+        } as IntersectionObserverEntry,
+      ],
+      observer,
+    );
+  }
+}

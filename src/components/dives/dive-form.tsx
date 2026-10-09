@@ -14,7 +14,6 @@ import {
   DiveFormValues,
 } from "@/components/dives/dive-form-fields";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
-import { DiveFormSection } from "@/components/dives/dive-form-section";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveSiteSummary, Recording } from "@/lib/api/dives";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
@@ -201,36 +200,27 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
           className="space-y-6 max-sm:space-y-2.5"
         >
           {visibility.anyAutofilled && <AutofilledLegend />}
-          {/* Kept mounted while collapsed: a parse in flight and the note it leaves
-              are this component's state, not the form's. */}
           {isVisible("file_import") && (
-            <DiveFormSection
-              title="Import"
-              open={!collapsedGroups.has("Import")}
-              onOpenChange={(open) => setGroupOpen("Import", open)}
-              keepMounted
-            >
-              <DiveFileImport
-                form={form}
-                replaceMixtures={mixtureFieldArray.replace}
-                onFileAdded={onFileAdded}
-                pending={pendingFiles}
-                onRemovePending={onRemovePendingFile}
-                removedStored={removedStoredFiles}
-                onRemoveStored={onRemoveStoredFile}
-                onRestoreStored={onRestoreStoredFile}
-                recordings={recordings}
-                diveUuid={diveUuid}
-                returnTo={cancelHref}
-                // One of the moments a value arrives from outside the diver's
-                // typing: whatever the file filled in is on screen, whether or not
-                // the stored set hides it, and it counts as the diver's from here on.
-                onValuesApplied={() =>
-                  visibility.revealNonEmpty(form.getValues())
-                }
-                onWrite={visibility.noteAutofill}
-              />
-            </DiveFormSection>
+            <DiveFileImport
+              form={form}
+              replaceMixtures={mixtureFieldArray.replace}
+              onFileAdded={onFileAdded}
+              pending={pendingFiles}
+              onRemovePending={onRemovePendingFile}
+              removedStored={removedStoredFiles}
+              onRemoveStored={onRemoveStoredFile}
+              onRestoreStored={onRestoreStoredFile}
+              recordings={recordings}
+              diveUuid={diveUuid}
+              returnTo={cancelHref}
+              // One of the moments a value arrives from outside the diver's
+              // typing: whatever the file filled in is on screen, whether or not
+              // the stored set hides it, and it counts as the diver's from here on.
+              onValuesApplied={() =>
+                visibility.revealNonEmpty(form.getValues())
+              }
+              onWrite={visibility.noteAutofill}
+            />
           )}
 
           <DiveFormFields
