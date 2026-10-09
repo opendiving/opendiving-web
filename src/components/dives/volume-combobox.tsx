@@ -307,7 +307,7 @@ export function VolumeCombobox({
   //
   // This exists because the input is `type="text"` (see the `role` below for
   // why) and the committed value is a `number`, so without it the round trip
-  // through `parseFloat` eats the keystroke that is mid-decimal: typing the "."
+  // through `parseDecimal` eats the keystroke that is mid-decimal: typing the "."
   // of "11.1" parses to `11`, which renders as "11", which deletes the "." the
   // diver just pressed and makes a decimal volume unenterable. `type="number"`
   // hid that - a browser reports `value === ""` for a half-typed "11." while

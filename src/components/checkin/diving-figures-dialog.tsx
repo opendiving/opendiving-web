@@ -148,6 +148,7 @@ export function DivingFiguresDialog({
                     <UnitNumberInput
                       dimension="depth"
                       units={units}
+                      min={0}
                       value={field.value}
                       onChange={field.onChange}
                       name={field.name}

@@ -6139,9 +6139,9 @@ columns nothing rounds: UDDF yields `2.70000029`, a pound weight commits as 5.9 
 `UnitNumberInput` holds "30.526" mid-word until commit, and FIT passes `float(oxygen)` through. No
 caller declares a step. `UnitNumberInput` derives it from the dimension (whole units in imperial,
 else `isIntegerDimension` answers `1` for `Integer` columns and `"any"` for `Float`), and the prop
-is gone from the interface, so passing one fails to compile. `oxygen` and `helium` are plain
-`<Input>`s with `step="any"`, keeping `min`/`max`. Arrows now step by 1. Rejected: rounding for
-display, which rewrites an untouched value on open, and rounding in the API, which discards the
+is gone from the interface, so passing one fails to compile. `oxygen` and `helium` are
+`DecimalInput`s, `step="any"` with `min`/`max` for a mouse. Arrows now step by 1. Rejected: rounding
+for display, which rewrites an untouched value on open, and rounding in the API, which discards the
 computer's figure; `formatDepth` already trims display.
 
 ## The silent half is the worse half, and it outlives any one step
