@@ -19,6 +19,7 @@ import {
   TankIcon,
   TwinTankIcon,
 } from "@/components/icons/tank-icon";
+import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { isTwinSetVolume } from "@/components/dives/volume-combobox";
 import { useUnits } from "@/hooks/useUnits";
@@ -235,7 +236,7 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
     <Card>
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
-          <TwinTankIcon className="h-5 w-5" />
+          <DiveSectionIcon group="Tanks" />
           Tanks
         </CardTitle>
       </CardHeader>

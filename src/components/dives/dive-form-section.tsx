@@ -3,10 +3,18 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
+import {
+  DiveFormSectionsTrigger,
+  scrollToSection,
+  useDiveFormSectionRegistry,
+} from "@/components/dives/dive-form-sections";
+import type { DiveFormFieldGroup } from "@/lib/dive-form-fields";
 import { cn } from "@/lib/utils";
 
 type DiveFormSectionProps = {
-  title: string;
+  // The group's name is the heading, and names the glyph beside it.
+  title: DiveFormFieldGroup;
   // Nothing in the content is visible, so it drops its padding and the card is all
   // heading. Its children stay mounted - a status region among them, say.
   empty?: boolean;
@@ -39,6 +47,7 @@ export function DiveFormSection(props: DiveFormSectionProps) {
   const open = props.onOpenChange === undefined || props.open;
   const contentId = useId();
   const cardRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLButtonElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [stuck, setStuck] = useState(false);
 
@@ -58,10 +67,33 @@ export function DiveFormSection(props: DiveFormSectionProps) {
     return () => observer.disconnect();
   }, []);
 
+  // The form's section index lists what reports here, and reads the same
+  // sentinel's answer to tell which section the reader is in.
+  const registry = useDiveFormSectionRegistry();
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!registry || !card) return;
+    registry.register(title, {
+      element: card,
+      focus: () => (headingRef.current ?? card).focus({ preventScroll: true }),
+    });
+    return () => registry.unregister(title);
+  }, [registry, title]);
+  useEffect(() => {
+    registry?.setStuck(title, stuck);
+  }, [registry, title, stuck]);
+
   const shown = open && !empty;
+  // Where the index is not beside the form, the stuck heading carries it: the
+  // reader is a long way from the top, which is where the page's own controls are.
+  const sectionsTrigger = shown && stuck && (
+    <DiveFormSectionsTrigger className="lg:hidden" />
+  );
 
   return (
-    <Card ref={cardRef} className="relative">
+    // Focusable so a jump from the index can land the keyboard on a card whose
+    // heading has no control of its own.
+    <Card ref={cardRef} tabIndex={-1} className="relative outline-none">
       <div
         ref={sentinelRef}
         aria-hidden="true"
@@ -83,6 +115,7 @@ export function DiveFormSection(props: DiveFormSectionProps) {
         {props.onOpenChange === undefined ? (
           <div className="flex items-center justify-between gap-2">
             <CardTitle as="h2" className="flex items-center gap-1">
+              <DiveSectionIcon group={title} className="mr-1" />
               {title}
               {/* No height of its own: a touch screen's 44px floor would otherwise
                   stretch the title's line, and the box beyond its icon is invisible. */}
@@ -93,43 +126,55 @@ export function DiveFormSection(props: DiveFormSectionProps) {
             {/* Overhangs the title's line into the heading's padding, so the heading
                 is as tall as every other section's - on a touch screen nearly so,
                 where the button's floor is 44px. */}
-            <div className="-my-2">{props.action}</div>
+            <div className="-my-2 flex items-center gap-2">
+              {props.action}
+              {sectionsTrigger}
+            </div>
           </div>
         ) : (
-          <CardTitle as="h2">
-            <button
-              type="button"
-              aria-expanded={open}
-              aria-controls={contentId}
-              onClick={() => {
-                // A stuck heading is a way back to the top of its section, which
-                // collapsing would throw away by moving everything below it.
-                // `html`'s `scroll-padding-top` lands the card under the site header.
-                if (open && stuck) {
-                  cardRef.current?.scrollIntoView({
-                    block: "start",
-                    behavior: window.matchMedia(
-                      "(prefers-reduced-motion: reduce)",
-                    ).matches
-                      ? "auto"
-                      : "smooth",
-                  });
-                  return;
-                }
-                props.onOpenChange(!open);
-              }}
-              className="relative flex w-full items-center justify-between gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {title}
-              <ChevronDown
-                aria-hidden="true"
-                className={cn(
-                  "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
-                  !open && "-rotate-90",
-                )}
-              />
-            </button>
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle as="h2" className="min-w-0 grow">
+              <button
+                ref={headingRef}
+                type="button"
+                aria-expanded={open}
+                aria-controls={contentId}
+                onClick={() => {
+                  // A stuck heading is a way back to the top of its section, which
+                  // collapsing would throw away by moving everything below it.
+                  if (open && stuck) {
+                    if (cardRef.current) scrollToSection(cardRef.current);
+                    return;
+                  }
+                  props.onOpenChange(!open);
+                }}
+                className="relative flex w-full items-center justify-between gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <DiveSectionIcon group={title} />
+                  {title}
+                </span>
+                {/* Stuck, a tap on the heading scrolls rather than collapses, so the
+                    chevron says nothing there; on a narrow screen the sections
+                    control takes its place rather than widening the heading. */}
+                <ChevronDown
+                  aria-hidden="true"
+                  className={cn(
+                    "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
+                    !open && "-rotate-90",
+                    sectionsTrigger && "max-lg:hidden",
+                  )}
+                />
+              </button>
+            </CardTitle>
+            {/* As tall as the chevron's line once its margins are counted, so the
+                heading does not move when the control appears. */}
+            {sectionsTrigger && (
+              <div className="-my-1 -mr-1 flex items-center">
+                {sectionsTrigger}
+              </div>
+            )}
+          </div>
         )}
       </CardHeader>
       {/* The heading's even padding is `--card-pad`, which a phone halves; the rest of

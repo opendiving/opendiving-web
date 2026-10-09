@@ -14,6 +14,11 @@ import {
   DiveFormValues,
 } from "@/components/dives/dive-form-fields";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
+import {
+  DiveFormSectionIndex,
+  DiveFormSectionsProvider,
+  useDiveFormSections,
+} from "@/components/dives/dive-form-sections";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveSiteSummary, Recording } from "@/lib/api/dives";
 import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
@@ -22,7 +27,6 @@ import { SpeciesSummary } from "@/lib/api/species";
 import {
   diveFormFieldGroup,
   diveFormFieldsWithErrors,
-  type DiveFormFieldGroup,
 } from "@/lib/dive-form-fields";
 import { describeBlockedSubmit } from "@/lib/form-validity";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
@@ -106,16 +110,8 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
   const [focusRequest, setFocusRequest] = useState<{
     key: string;
   } | null>(null);
-  const [collapsedGroups, setCollapsedGroups] = useState<
-    ReadonlySet<DiveFormFieldGroup>
-  >(() => new Set());
-  const setGroupOpen = (group: DiveFormFieldGroup, open: boolean) =>
-    setCollapsedGroups((current) => {
-      const next = new Set(current);
-      if (open) next.delete(group);
-      else next.add(group);
-      return next;
-    });
+  const sections = useDiveFormSections();
+  const { collapsedGroups, setGroupOpen, openGroups } = sections;
   const { isVisible, reveal } = visibility;
   useEffect(() => {
     if (!focusRequest) return;
@@ -143,11 +139,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
       return group !== undefined && collapsedGroups.has(group);
     });
     if (inCollapsed.length > 0) {
-      setCollapsedGroups((current) => {
-        const next = new Set(current);
-        for (const name of inCollapsed) next.delete(diveFormFieldGroup(name)!);
-        return next;
-      });
+      openGroups(inCollapsed.map((name) => diveFormFieldGroup(name)!));
     }
 
     const keys = diveFormFieldsWithErrors(errors);
@@ -190,68 +182,80 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
       control={form.control}
       isAutofilled={visibility.isAutofilled}
     >
-      <Form {...form}>
-        <form
-          // The browser no longer cancels this submit on its own - see
-          // `handleSubmitEvent`, which asks it the same question and reports
-          // the answer rather than leaving the diver with a dead button.
-          noValidate
-          onSubmit={handleSubmitEvent}
-          className="space-y-6 max-sm:space-y-2.5"
-        >
-          {visibility.anyAutofilled && <AutofilledLegend />}
-          {isVisible("file_import") && (
-            <DiveFileImport
-              form={form}
-              replaceMixtures={mixtureFieldArray.replace}
-              onFileAdded={onFileAdded}
-              pending={pendingFiles}
-              onRemovePending={onRemovePendingFile}
-              removedStored={removedStoredFiles}
-              onRemoveStored={onRemoveStoredFile}
-              onRestoreStored={onRestoreStoredFile}
-              recordings={recordings}
-              diveUuid={diveUuid}
-              returnTo={cancelHref}
-              // One of the moments a value arrives from outside the diver's
-              // typing: whatever the file filled in is on screen, whether or not
-              // the stored set hides it, and it counts as the diver's from here on.
-              onValuesApplied={() =>
-                visibility.revealNonEmpty(form.getValues())
-              }
-              onWrite={visibility.noteAutofill}
-            />
-          )}
+      <DiveFormSectionsProvider sections={sections}>
+        <Form {...form}>
+          <div className="relative">
+            {/* The section index, in the room beside the form's column from `lg`
+                up: a rail the form's full height, so the list can stick inside it
+                level with the first card and follow the reader down. Ahead of the
+                form in the order, where a keyboard reaches a table of contents
+                before the pages it lists. Below `lg` a stuck heading carries it. */}
+            <div className="absolute inset-y-0 left-full ml-6 hidden w-36 lg:block">
+              <DiveFormSectionIndex className="sticky top-[calc(var(--header-height)+--spacing(6))]" />
+            </div>
+            <form
+              // The browser no longer cancels this submit on its own - see
+              // `handleSubmitEvent`, which asks it the same question and reports
+              // the answer rather than leaving the diver with a dead button.
+              noValidate
+              onSubmit={handleSubmitEvent}
+              className="space-y-6 max-sm:space-y-2.5"
+            >
+              {visibility.anyAutofilled && <AutofilledLegend />}
+              {isVisible("file_import") && (
+                <DiveFileImport
+                  form={form}
+                  replaceMixtures={mixtureFieldArray.replace}
+                  onFileAdded={onFileAdded}
+                  pending={pendingFiles}
+                  onRemovePending={onRemovePendingFile}
+                  removedStored={removedStoredFiles}
+                  onRemoveStored={onRemoveStoredFile}
+                  onRestoreStored={onRestoreStoredFile}
+                  recordings={recordings}
+                  diveUuid={diveUuid}
+                  returnTo={cancelHref}
+                  // One of the moments a value arrives from outside the diver's
+                  // typing: whatever the file filled in is on screen, whether or not
+                  // the stored set hides it, and it counts as the diver's from here on.
+                  onValuesApplied={() =>
+                    visibility.revealNonEmpty(form.getValues())
+                  }
+                  onWrite={visibility.noteAutofill}
+                />
+              )}
 
-          <DiveFormFields
-            control={form.control}
-            mode={mode}
-            visibility={visibility}
-            mixtureFieldArray={mixtureFieldArray}
-            knownDiveSites={knownDiveSites}
-            knownGearItems={knownGearItems}
-            knownSpecies={knownSpecies}
-            onSpeciesPendingChange={setIsResolvingSpecies}
-            diveNumberNotice={diveNumberNotice}
-            collapsedGroups={collapsedGroups}
-            onGroupOpenChange={setGroupOpen}
-          />
+              <DiveFormFields
+                control={form.control}
+                mode={mode}
+                visibility={visibility}
+                mixtureFieldArray={mixtureFieldArray}
+                knownDiveSites={knownDiveSites}
+                knownGearItems={knownGearItems}
+                knownSpecies={knownSpecies}
+                onSpeciesPendingChange={setIsResolvingSpecies}
+                diveNumberNotice={diveNumberNotice}
+                collapsedGroups={collapsedGroups}
+                onGroupOpenChange={setGroupOpen}
+              />
 
-          {/* Above the buttons, so a refusal is on screen next to the control
+              {/* Above the buttons, so a refusal is on screen next to the control
               that produced it rather than off the top of a long form. */}
-          <FormApiError error={blockedSubmit} />
+              <FormApiError error={blockedSubmit} />
 
-          <DiveFormActions
-            cancelHref={cancelHref}
-            mode={mode}
-            isSubmitting={isSubmitting}
-            submittingLabel={submittingLabel}
-            submitLabel={submitLabel}
-            isBusy={isResolvingSpecies}
-            busyLabel="Adding species..."
-          />
-        </form>
-      </Form>
+              <DiveFormActions
+                cancelHref={cancelHref}
+                mode={mode}
+                isSubmitting={isSubmitting}
+                submittingLabel={submittingLabel}
+                submitLabel={submitLabel}
+                isBusy={isResolvingSpecies}
+                busyLabel="Adding species..."
+              />
+            </form>
+          </div>
+        </Form>
+      </DiveFormSectionsProvider>
     </AutofilledMarks>
   );
 }
