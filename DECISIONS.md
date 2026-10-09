@@ -5982,8 +5982,7 @@ open state, and its trigger prevents a finger's press and toggles on that press'
 whose press reached the page - an open modal menu takes the page's pointer events - leaves it shut.
 
 A finger has no hover, so `IconTooltip` shows its hint on a hold and swallows the release's click
-(`swallowClickOf`). Nothing else on a page may be hover-only: what a hint says is either said on the
-page or reachable by a tap.
+(`swallowClickOf`).
 
 Rejected: a hint on tap, which would take every icon button's tap.
 
