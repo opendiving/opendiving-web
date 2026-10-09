@@ -179,7 +179,7 @@ export function PeopleMultiSelect({
                 key={reference.person_uuid}
                 ref={setItemRef(index)}
                 className={cn(
-                  "flex items-center gap-2 rounded-md border bg-background py-1.5 pl-3 pr-2 text-sm max-sm:flex-wrap",
+                  "flex items-center gap-2 rounded-md border bg-background py-1.5 pl-3 pr-2 text-sm max-sm:flex-wrap max-sm:pr-3 max-sm:pb-3",
                   isDragging && "relative z-10 shadow-lg ring-2 ring-ring",
                 )}
                 style={
