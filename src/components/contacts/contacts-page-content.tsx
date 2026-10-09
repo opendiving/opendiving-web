@@ -144,7 +144,7 @@ export function ContactsPageContent() {
                   href={contact.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:underline"
+                  className="relative hover:underline touch:tap-target"
                 >
                   {formatWebsite(contact.website)}
                 </a>

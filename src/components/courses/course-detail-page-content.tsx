@@ -230,7 +230,7 @@ export function CourseDetailPageContent() {
                 <InfoRow label="Instructor">
                   <Link
                     href={withReturnTo(`/people/${instructor.uuid}`)}
-                    className="hover:underline"
+                    className="relative hover:underline touch:tap-target"
                   >
                     {instructor.name}
                   </Link>
