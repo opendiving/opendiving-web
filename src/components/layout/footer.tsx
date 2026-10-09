@@ -35,24 +35,36 @@ export function Footer() {
             <p id="footer-platform" className="font-semibold mb-4">
               Platform
             </p>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <ul className="space-y-2 text-sm text-muted-foreground touch:space-y-0">
               <li>
-                <Link href="/dives" className="hover:text-foreground">
+                <Link
+                  href="/dives"
+                  className="hover:text-foreground touch:block touch:py-3"
+                >
                   Dive Log
                 </Link>
               </li>
               <li>
-                <Link href="/trips" className="hover:text-foreground">
+                <Link
+                  href="/trips"
+                  className="hover:text-foreground touch:block touch:py-3"
+                >
                   Trips
                 </Link>
               </li>
               <li>
-                <Link href="/sites" className="hover:text-foreground">
+                <Link
+                  href="/sites"
+                  className="hover:text-foreground touch:block touch:py-3"
+                >
                   Dive Sites
                 </Link>
               </li>
               <li>
-                <Link href="/gear" className="hover:text-foreground">
+                <Link
+                  href="/gear"
+                  className="hover:text-foreground touch:block touch:py-3"
+                >
                   Equipment
                 </Link>
               </li>
@@ -62,13 +74,13 @@ export function Footer() {
             <p id="footer-resources" className="font-semibold mb-4">
               Resources
             </p>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <ul className="space-y-2 text-sm text-muted-foreground touch:space-y-0">
               <li>
                 <a
                   href="https://github.com/opendiving"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-foreground"
+                  className="hover:text-foreground touch:block touch:py-3"
                 >
                   GitHub
                 </a>
@@ -78,7 +90,7 @@ export function Footer() {
                   href="https://github.com/opendiving/opendiving-api"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-foreground"
+                  className="hover:text-foreground touch:block touch:py-3"
                 >
                   API
                 </a>
@@ -88,7 +100,7 @@ export function Footer() {
                   href="https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-foreground"
+                  className="hover:text-foreground touch:block touch:py-3"
                 >
                   Contributing
                 </a>
@@ -98,7 +110,7 @@ export function Footer() {
                   href="https://github.com/opendiving/opendiving-web/blob/main/CODE_OF_CONDUCT.md"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-foreground"
+                  className="hover:text-foreground touch:block touch:py-3"
                 >
                   Code of Conduct
                 </a>
@@ -109,19 +121,28 @@ export function Footer() {
             <p id="footer-support" className="font-semibold mb-4">
               Support
             </p>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <ul className="space-y-2 text-sm text-muted-foreground touch:space-y-0">
               <li>
-                <Link href="/support" className="hover:text-foreground">
+                <Link
+                  href="/support"
+                  className="hover:text-foreground touch:block touch:py-3"
+                >
                   Support
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="hover:text-foreground">
+                <Link
+                  href="/privacy"
+                  className="hover:text-foreground touch:block touch:py-3"
+                >
                   Privacy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="hover:text-foreground">
+                <Link
+                  href="/terms"
+                  className="hover:text-foreground touch:block touch:py-3"
+                >
                   Terms of Service
                 </Link>
               </li>

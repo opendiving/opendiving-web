@@ -384,8 +384,9 @@
 
      So this is derived from the header rather than measured off a screenshot:
      `py-4` twice, the `size="sm"` action button at `h-9`, and the 1px
-     `border-b`. It therefore tracks the root font size the same way the header
-     does, which a px literal would not.
+     `border-b`. On touch it is `py-3` twice and the button's 44px floor, which
+     is the same sum. It therefore tracks the root font size the same way the
+     header does, which a px literal would not.
 
      Note `header.tsx`'s mobile menu caps itself at `calc(100dvh-4.5rem)`. That
      is deliberately a different, slightly generous number - it is slack on a

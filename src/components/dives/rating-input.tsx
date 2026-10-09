@@ -88,8 +88,8 @@ export function RatingInput({
   };
 
   return (
-    // `h-10`, an input's height, so the field sits on its grid row like the boxes
-    // beside it rather than a few pixels short of them.
+    // An input's height, 44px on touch as well, so the field sits on its grid row
+    // like the boxes beside it rather than a few pixels short of them.
     <div className="flex h-10 items-center gap-2 touch:h-11">
       <div
         ref={groupRef}

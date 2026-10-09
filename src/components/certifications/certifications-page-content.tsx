@@ -118,7 +118,7 @@ export function CertificationsPageContent() {
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    className="hover:underline text-left"
+                    className="hover:underline text-left touch:min-h-11"
                     onClick={() => setViewing(certification)}
                   >
                     {certification.name}

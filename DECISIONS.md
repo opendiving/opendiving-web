@@ -114,6 +114,23 @@ The date-time field is two inputs, not `datetime-local`, which Android chains tw
 iOS strips the seconds from when only the date changes. A date change rewrites the date alone, so an
 imported dive keeps its seconds; a time change writes `HH:mm:00`, since no wheel offers seconds.
 
+## On touch, every control is 44px to a finger
+
+The `touch:` variant in `globals.css` asks the same query as `useCoarsePointer`. Under it every
+control takes at least 44×44 CSS px, in one of two ways:
+
+- Buttons, fields and menu rows grow. `Button`, `Input`, `SelectTrigger` and `NativeSelect` take
+  `touch:min-h-11`, and listbox and menu rows take `touch:py-3`. It is a floor, so a caller's `h-7`
+  shrinks a button for a mouse only, and a button and a field on one row stay level.
+- Compact controls that are part of a larger shape keep their look and take `touch:tap-target`, a
+  centred 44px `::after`. These are a segmented scope, a tab, the unit toggle, a clear cross, a
+  row's grip or remove, a switch and a dialog's close. The element must be positioned.
+
+Rejected:
+
+- A width breakpoint, which misses a tablet.
+- Growing the compact controls, which breaks the shapes they sit in.
+
 ## FastAPI 422 errors can be an array, not a string - never render `detail` directly
 
 Pydantic validation errors return `detail` as an array of `{type, loc, msg, input}` objects; other

@@ -263,7 +263,7 @@ export function CheckEmailCard({
         )}
       </form>
 
-      <div className="mt-6 flex flex-col items-center gap-2 border-t pt-4">
+      <div className="mt-6 flex flex-col items-center gap-2 border-t pt-4 touch:gap-0">
         {resendMessage && (
           <StatusMessage variant="success" className="mb-2 w-full text-left">
             {resendMessage}
@@ -278,7 +278,7 @@ export function CheckEmailCard({
           type="button"
           onClick={handleResend}
           disabled={cooldown > 0 || isResending}
-          className="text-sm font-medium underline hover:text-foreground disabled:cursor-not-allowed disabled:text-muted-foreground disabled:hover:text-muted-foreground"
+          className="text-sm font-medium underline hover:text-foreground touch:min-h-11 disabled:cursor-not-allowed disabled:text-muted-foreground disabled:hover:text-muted-foreground"
         >
           {isResending
             ? "Resending..."
@@ -289,7 +289,7 @@ export function CheckEmailCard({
         <button
           type="button"
           onClick={onUseDifferentEmail}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-sm text-muted-foreground hover:text-foreground touch:min-h-11"
         >
           Use a different email
         </button>
