@@ -49,6 +49,27 @@ describe("DiveTitle", () => {
     expect(container).toHaveTextContent("#212 Blue Hole (training dive)");
     expect(container.querySelector("svg")).toHaveAttribute("aria-hidden");
   });
+
+  it("rates the dive after its name and its marks", () => {
+    const { container } = render(
+      <DiveTitle
+        diveNumber={212}
+        sites={[{ uuid: "a", name: "Blue Hole" }]}
+        course
+        rating={3}
+      />,
+    );
+
+    expect(container.lastElementChild).toBe(
+      screen.getByRole("img", { name: "3 of 5 stars" }),
+    );
+  });
+
+  it("draws no stars for an unrated dive", () => {
+    render(<DiveTitle diveNumber={212} sites={[]} rating={null} />);
+
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
 });
 
 // The same name for the tab, where it can only be text.

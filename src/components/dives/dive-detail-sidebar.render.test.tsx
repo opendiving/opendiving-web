@@ -332,45 +332,6 @@ describe("DiveDetailSidebar environment, read from a newer API", () => {
   });
 });
 
-// The diver's own classification sits in Dive Information, not among the
-// readings.
-describe("DiveDetailSidebar dive information", () => {
-  const information = () =>
-    within(
-      screen
-        .getByRole("heading", { name: "Dive Information" })
-        .closest(".rounded-lg") as HTMLElement,
-    );
-
-  it("shows the type, the rating and the tags", () => {
-    renderSidebar(
-      dive({
-        type: "closed_circuit",
-        rating: 4,
-        tags: ["night", "Wreck"],
-      }),
-    );
-
-    expect(information().getByText("Closed circuit")).toBeInTheDocument();
-    expect(
-      information().getByRole("img", { name: "4 of 5 stars" }),
-    ).toBeInTheDocument();
-    expect(
-      information()
-        .getAllByRole("listitem")
-        .map((item) => item.textContent),
-    ).toEqual(["night", "Wreck"]);
-  });
-
-  it("draws no card for a dive that records none of the three", () => {
-    renderSidebar(dive());
-
-    expect(
-      screen.queryByRole("heading", { name: "Dive Information" }),
-    ).not.toBeInTheDocument();
-  });
-});
-
 describe("DiveDetailSidebar training", () => {
   it("links the course, outside the Location card", () => {
     // A course is not a place. The Location card renders on the strength of the

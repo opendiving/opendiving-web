@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   CURRENT_LABELS,
   Dive,
-  DIVE_TYPE_LABELS,
   ENTRY_TYPE_LABELS,
   WATER_TYPE_LABELS,
   WAVES_LABELS,
@@ -23,8 +22,6 @@ import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
 import { PeopleList } from "@/components/people/people-list";
-import { RatingStars } from "@/components/dives/rating-input";
-import { Badge } from "@/components/ui/badge";
 import { fixPoint } from "@/components/dives/dive-map-locations";
 import {
   Building2,
@@ -89,16 +86,6 @@ function Reading({
   );
 }
 
-// One row of the Dive Information card.
-function InfoRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <div className="text-sm font-medium text-muted-foreground">{label}</div>
-      <div className="text-sm">{children}</div>
-    </div>
-  );
-}
-
 // A stored vocabulary value's label, falling back to the wire value, like
 // `gearTypeLabel` and the tank cards' role badge: the API can grow a member
 // before this build ships a label for it, and rendering the slug beats rendering
@@ -111,8 +98,8 @@ function labelOf<T extends string>(
 }
 
 /**
- * The dive detail page's sidebar: where the dive was, what the water was like, what
- * recorded it, and how the diver classed it.
+ * The dive detail page's sidebar: where the dive was, what the water was like, and
+ * what recorded it.
  *
  * Each card renders only when it has something to show.
  */
@@ -144,9 +131,6 @@ export function DiveDetailSidebar({
     region: contact?.address?.region,
     country: contact?.address?.country,
   });
-  const tags = dive.tags ?? [];
-  const hasInformation =
-    dive.type != null || dive.rating != null || tags.length > 0;
 
   const entry = fixPoint(dive.entry_latitude, dive.entry_longitude);
   const exit = fixPoint(dive.exit_latitude, dive.exit_longitude);
@@ -407,41 +391,6 @@ export function DiveDetailSidebar({
 
       {/* What recorded this dive, and what the account still holds from each */}
       <DiveRecordingsCard dive={dive} onChanged={onRecordingsChanged} />
-
-      {hasInformation && (
-        <Card>
-          <CardHeader>
-            <CardTitle as="h2">Dive Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {/* The diver's own classification of the dive, here rather than
-                among the readings: none of the three was measured. */}
-            {dive.type != null && (
-              <InfoRow label="Dive type">
-                {labelOf(DIVE_TYPE_LABELS, dive.type)}
-              </InfoRow>
-            )}
-            {dive.rating != null && (
-              <InfoRow label="Rating">
-                <RatingStars rating={dive.rating} />
-              </InfoRow>
-            )}
-            {tags.length > 0 && (
-              <InfoRow label="Tags">
-                <ul className="flex flex-wrap gap-1.5 pt-1">
-                  {tags.map((tag) => (
-                    <li key={tag}>
-                      <Badge variant="outline" className="font-medium">
-                        {tag}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              </InfoRow>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

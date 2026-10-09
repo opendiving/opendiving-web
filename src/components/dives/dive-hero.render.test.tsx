@@ -133,6 +133,23 @@ describe("DiveHero", () => {
     ).not.toHaveTextContent("Recording attached");
   });
 
+  it("tags its title with the diver's tags in coral, and rates the dive after it", () => {
+    render(
+      <DiveHero
+        back={BACK}
+        dive={dive({ water_type: "salt", tags: ["night", "Wreck"], rating: 4 })}
+      />,
+    );
+
+    expect(screen.getByText("Wreck").parentElement).toHaveTextContent(
+      /^nightWreck$/,
+    );
+    expect(screen.getByText("Wreck")).toHaveClass("bg-coral");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Dive #1 4 of 5 stars" }),
+    ).toBeInTheDocument();
+  });
+
   // Each goes without saying.
   it("tags neither salt water nor open circuit", () => {
     render(

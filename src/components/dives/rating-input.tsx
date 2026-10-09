@@ -172,22 +172,29 @@ export function RatingLabelRow({
 }
 
 /**
- * A stored rating drawn as stars, for reading. One image with one name rather
- * than five, so a screen reader says "4 of 5 stars" once.
+ * A stored rating drawn as stars, for reading, each the size of the text it
+ * sits in. One image with one name rather than five, so a screen reader says
+ * "4 of 5 stars" once.
  */
-export function RatingStars({ rating }: { rating: number }) {
+export function RatingStars({
+  rating,
+  className,
+}: {
+  rating: number;
+  className?: string;
+}) {
   return (
     <span
       role="img"
       aria-label={ratingSummary(rating)}
-      className="inline-flex items-center gap-0.5"
+      className={cn("inline-flex items-center gap-[0.125em]", className)}
     >
       {STEPS.map((step) => (
         <Star
           key={step}
           aria-hidden
           className={cn(
-            "h-4 w-4",
+            "size-[1em]",
             step <= rating ? "fill-coral text-coral" : "text-muted-foreground",
           )}
         />
