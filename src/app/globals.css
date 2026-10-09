@@ -1,6 +1,23 @@
 @import "tailwindcss";
 @config "../../tailwind.config.mts";
 
+/* A finger is driving. The same query as `hooks/useCoarsePointer.ts`, so a
+   device that gets the OS date wheels also gets the finger-sized controls. See
+   "On touch, every control is 44px to a finger" in DECISIONS.md. */
+@custom-variant touch (@media (hover: none) and (pointer: coarse));
+
+/* A 44px hit area centred on a control smaller than that, drawn by `::after` so
+   the control keeps its look. The element must be positioned, since the
+   pseudo-element is placed against it. Used as `touch:tap-target`. */
+@utility tap-target {
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: min(0px, calc((100% - 2.75rem) / 2));
+    inset-inline: min(0px, calc((100% - 2.75rem) / 2));
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -424,6 +441,20 @@
   select:not(:disabled),
   input:where([type="checkbox"], [type="file"]):not(:disabled) {
     cursor: pointer;
+  }
+
+  /* No double-tap zoom on a control, so tapping one twice in quick succession -
+     a period arrow, a map zoom button, a star - is two taps. Pinch still zooms.
+     A drag handle's inline `touch-action: none` (`useDragSort`) outranks this. */
+  a,
+  button,
+  [role="button"],
+  input,
+  label,
+  select,
+  summary,
+  textarea {
+    touch-action: manipulation;
   }
 
   /* Every date field is a native one on a touch device

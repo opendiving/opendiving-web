@@ -182,7 +182,7 @@ export function Header() {
       className="sticky top-0 z-50 bg-background shadow-sm border-b print:hidden"
     >
       <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
+        <div className="flex justify-between items-center py-4 touch:py-3">
           {/* Logo and Navigation. The gap is the nav's, so it goes with the nav
               below `md` - at 320px that room is what the four controls need.
               Both gaps stay narrow until `lg`: at 768px the bar's six items fit
@@ -215,7 +215,7 @@ export function Header() {
                         key={item.href}
                         href={item.href}
                         aria-current={isCurrent ? "page" : undefined}
-                        className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                        className={`whitespace-nowrap touch:py-3 text-sm font-medium transition-colors hover:text-coral ${
                           item.tier === "lg" ? "hidden lg:inline-flex" : ""
                         } ${isCurrent ? "text-coral" : "text-foreground"}`}
                       >
@@ -225,7 +225,7 @@ export function Header() {
                   })}
                   <DropdownMenu>
                     <DropdownMenuTrigger
-                      className={`group inline-flex items-center whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                      className={`group inline-flex items-center whitespace-nowrap touch:py-3 text-sm font-medium transition-colors hover:text-coral ${
                         currentItem
                           ? MORE_ACTIVE[currentItem.tier]
                           : "text-foreground"
@@ -268,13 +268,13 @@ export function Header() {
                 <>
                   <Link
                     href="/#features"
-                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
+                    className="whitespace-nowrap touch:py-3 text-sm font-medium text-foreground hover:text-primary"
                   >
                     Features
                   </Link>
                   <Link
                     href="/#self-hosting"
-                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
+                    className="whitespace-nowrap touch:py-3 text-sm font-medium text-foreground hover:text-primary"
                   >
                     Self-hosting
                   </Link>
@@ -282,7 +282,7 @@ export function Header() {
                     href="https://github.com/opendiving/opendiving-web"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
+                    className="whitespace-nowrap touch:py-3 text-sm font-medium text-foreground hover:text-primary"
                   >
                     Source
                   </a>
@@ -468,7 +468,7 @@ export function Header() {
           // nothing to scroll.
           <div
             id="mobile-menu"
-            className="md:hidden border-t py-4 max-h-[calc(100dvh-4.5rem)] overflow-y-auto"
+            className="md:hidden border-t py-4 max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain"
           >
             <nav className="flex flex-col space-y-3">
               {isAuthenticated ? (
@@ -480,7 +480,7 @@ export function Header() {
                         key={item.href}
                         href={item.href}
                         aria-current={isCurrent ? "page" : undefined}
-                        className={`text-sm font-medium hover:text-coral py-2 ${
+                        className={`text-sm font-medium hover:text-coral py-2 touch:py-3 ${
                           isCurrent ? "text-coral" : "text-foreground"
                         }`}
                         onClick={() => setIsMobileMenuOpen(false)}
@@ -494,14 +494,14 @@ export function Header() {
                 <>
                   <Link
                     href="/#features"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2 touch:py-3"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Features
                   </Link>
                   <Link
                     href="/#self-hosting"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2 touch:py-3"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Self-hosting
@@ -510,7 +510,7 @@ export function Header() {
                     href="https://github.com/opendiving/opendiving-web"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2 touch:py-3"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Source

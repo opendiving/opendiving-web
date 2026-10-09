@@ -312,7 +312,7 @@ export function GasUseCard() {
                 onClick={() => setChosenScope(option)}
                 aria-pressed={scope === option}
                 className={cn(
-                  "rounded px-2.5 text-xs font-medium transition-colors",
+                  "relative rounded px-2.5 text-xs font-medium transition-colors touch:min-w-11 touch:tap-target",
                   scope === option
                     ? "bg-secondary text-secondary-foreground"
                     : "text-muted-foreground hover:text-foreground",

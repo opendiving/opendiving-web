@@ -913,7 +913,7 @@ export function CreatableCombobox({
             <IconTooltip label="Clear">
               <button
                 type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground touch:tap-target"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   setInputValue("");
@@ -930,7 +930,7 @@ export function CreatableCombobox({
           <div
             id={listId}
             role="listbox"
-            className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto"
+            className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto overscroll-contain"
           >
             {onAddNew && (
               <button
@@ -942,7 +942,7 @@ export function CreatableCombobox({
                   optionRefs.current[0] = el;
                 }}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-sm text-primary hover:bg-accent hover:text-accent-foreground flex items-center gap-1.5 border-b",
+                  "w-full text-left px-3 py-2 touch:py-3 text-sm text-primary hover:bg-accent hover:text-accent-foreground flex items-center gap-1.5 border-b",
                   activeOption === 0 && "bg-accent text-accent-foreground",
                 )}
                 // Prevent the input's onBlur from firing before this click is registered.
@@ -970,7 +970,7 @@ export function CreatableCombobox({
                       optionRefs.current[optionIndex] = el;
                     }}
                     className={cn(
-                      "w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground",
+                      "w-full text-left px-3 py-2 touch:py-3 text-sm hover:bg-accent hover:text-accent-foreground",
                       item.id === value && "bg-accent/50",
                       optionIndex === activeOption &&
                         "bg-accent text-accent-foreground",

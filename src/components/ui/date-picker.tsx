@@ -90,7 +90,7 @@ function NativeDatePicker({
         <IconTooltip label="Clear">
           <button
             type="button"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground touch:tap-target"
             onClick={() => onChange("")}
           >
             <X className="h-3.5 w-3.5" />
