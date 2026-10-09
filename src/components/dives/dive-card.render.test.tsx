@@ -280,7 +280,7 @@ describe("DiveCard", () => {
     expect(within(item).getByText("CCR")).toHaveAttribute("aria-hidden");
   });
 
-  it("follows the kind with the diver's tags in coral, and rates the dive after its name", () => {
+  it("follows the kind with the diver's tags in teal, and rates the dive after its name", () => {
     const item = card({
       dive: dive({
         type: "closed_circuit",
@@ -290,7 +290,7 @@ describe("DiveCard", () => {
     });
 
     expect(item).toHaveTextContent("CCRClosed circuitnightWreckDive #212");
-    expect(within(item).getByText("Wreck")).toHaveClass("bg-coral");
+    expect(within(item).getByText("Wreck")).toHaveClass("bg-teal");
     expect(
       within(item).getByRole("link", { name: "Dive #212 4 of 5 stars" }),
     ).toBeInTheDocument();

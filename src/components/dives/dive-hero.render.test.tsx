@@ -133,7 +133,7 @@ describe("DiveHero", () => {
     ).not.toHaveTextContent("Recording attached");
   });
 
-  it("tags its title with the diver's tags in coral, and rates the dive after it", () => {
+  it("tags its title with the diver's tags in teal, and rates the dive after it", () => {
     render(
       <DiveHero
         back={BACK}
@@ -144,7 +144,7 @@ describe("DiveHero", () => {
     expect(screen.getByText("Wreck").parentElement).toHaveTextContent(
       /^nightWreck$/,
     );
-    expect(screen.getByText("Wreck")).toHaveClass("bg-coral");
+    expect(screen.getByText("Wreck")).toHaveClass("bg-teal");
     expect(
       screen.getByRole("heading", { level: 1, name: "Dive #1 4 of 5 stars" }),
     ).toBeInTheDocument();

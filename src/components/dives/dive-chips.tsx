@@ -34,12 +34,12 @@ function Chip({ text, label }: { text: string; label: string }) {
   );
 }
 
-// One of the diver's tags, in the brand's coral, its words its own: there is
+// One of the diver's tags, in the brand's teal, its words its own: there is
 // nothing shorter to show and nothing longer to hint at. A name too long for
 // the row ends in an ellipsis rather than overflowing it.
 function TagChip({ tag }: { tag: string }) {
   return (
-    <span className="max-w-full truncate rounded-sm border border-coral bg-coral px-1 text-[10px] font-semibold leading-4 tracking-wide text-coral-foreground [text-shadow:none] md:text-xs md:leading-5">
+    <span className="max-w-full truncate rounded-sm border border-teal bg-teal px-1 text-[10px] font-semibold leading-4 tracking-wide text-teal-foreground [text-shadow:none] md:text-xs md:leading-5">
       {tag}
     </span>
   );
