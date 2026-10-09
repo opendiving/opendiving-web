@@ -11,9 +11,9 @@ import {
 // scrubbing, in CSS px.
 const TAP_SLOP = 8;
 
-// How long after a tap its `click` can still arrive - the browser sends one
-// once the finger lifts, and a click later than this belongs to something else.
-const TAP_CLICK_MS = 1000;
+// How long after a finger lifts the mouse events and `click` a browser sends in
+// its wake can still arrive. Anything later belongs to something else.
+const AFTER_FINGER_MS = 1000;
 
 /** How a finger chose a readout: one tap, or a sideways drag across the plot. */
 export type ReadoutGesture = "tap" | "scrub";
@@ -41,11 +41,13 @@ export interface ChartReadout<T> {
     onPointerCancel: () => void;
   };
   /**
-   * Whether the `click` arriving now is the one a finger's first tap on `value`
-   * sends - for a mark that is also a link, which that tap should read out
-   * rather than follow. Answers once per tap.
+   * For a mark that is also a link: whether the `click` arriving now is the one
+   * a finger's first tap on `value` sends, which should read it out rather than
+   * follow it. If so it pins `value`, since the browser aims a tap's click at
+   * the nearest link under the fingertip, and that is the mark a second tap
+   * will open. Answers once per tap.
    */
-  isFirstTap: (value: T) => boolean;
+  takeFirstTap: (value: T) => boolean;
 }
 
 /**
@@ -57,9 +59,11 @@ export interface ChartReadout<T> {
  * `pick` turns a finger's position into a value - an index, an instant - or null
  * where the chart has nothing to say. It is asked on every move while scrubbing.
  *
- * The browser follows a tap with mouse events at the same point. They arrive as
- * `hover` calls naming the value the tap already pinned, or null as the finger
- * taps elsewhere, and neither unpins it - so a chart keeps its mouse handlers.
+ * The browser follows a tap with mouse events at the same point, which reach
+ * `hover` too - in whole pixels, so on a continuous axis they can name a
+ * neighbour of what the tap pinned. Nothing a mouse says just after a finger
+ * lifts replaces a pinned readout, and nothing it says clears one, so a chart
+ * keeps its mouse handlers as they are.
  *
  * @example
  * const readout = useChartReadout((event) => indexAt(event.clientX));
@@ -86,6 +90,7 @@ export function useChartReadout<T>(
     before: T | null;
   } | null>(null);
   const lastTap = useRef<{ at: number; before: T | null } | null>(null);
+  const lifted = useRef(-Infinity);
 
   const pinned = readout?.pinned ?? false;
   useEffect(() => {
@@ -97,13 +102,13 @@ export function useChartReadout<T>(
     return () => document.removeEventListener("pointerdown", dismiss, true);
   }, [pinned]);
 
-  const hover = (value: T | null) =>
+  const hover = (value: T | null) => {
+    const afterFinger = performance.now() - lifted.current < AFTER_FINGER_MS;
     setReadout((current) => {
-      if (current?.pinned && (value === null || value === current.value)) {
-        return current;
-      }
+      if (current?.pinned && (value === null || afterFinger)) return current;
       return value === null ? null : { value, pinned: false };
     });
+  };
 
   const pin = (event: ReactPointerEvent<Element>, gesture: ReadoutGesture) => {
     frame.current = event.currentTarget.parentElement;
@@ -149,8 +154,9 @@ export function useChartReadout<T>(
         const current = press.current;
         if (!current || event.pointerId !== current.id) return;
         press.current = null;
+        lifted.current = performance.now();
         if (current.scrubbing) return;
-        lastTap.current = { at: performance.now(), before: current.before };
+        lastTap.current = { at: lifted.current, before: current.before };
         pin(event, "tap");
       },
       // The browser took the gesture over, to scroll or zoom: whatever the
@@ -159,14 +165,18 @@ export function useChartReadout<T>(
         press.current = null;
       },
     },
-    isFirstTap: (value) => {
+    takeFirstTap: (value) => {
       const tap = lastTap.current;
       lastTap.current = null;
-      return (
-        tap !== null &&
-        performance.now() - tap.at < TAP_CLICK_MS &&
-        tap.before !== value
-      );
+      if (
+        tap === null ||
+        performance.now() - tap.at >= AFTER_FINGER_MS ||
+        tap.before === value
+      ) {
+        return false;
+      }
+      setReadout({ value, pinned: true });
+      return true;
     },
   };
 }

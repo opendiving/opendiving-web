@@ -523,7 +523,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
                 // A finger's first tap on a dot reads it, the way a hover would;
                 // the card's link, or a second tap, opens the dive.
                 onClick={(event) => {
-                  if (readout.isFirstTap(index)) event.preventDefault();
+                  if (readout.takeFirstTap(index)) event.preventDefault();
                 }}
               >
                 {/* Faded by default so overlapping dots read as density rather than

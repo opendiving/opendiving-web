@@ -10,6 +10,14 @@ import {
   sidewaysScrollers,
   withinSides,
 } from "@/test/chart-layout";
+import {
+  centreOf,
+  fingerDown,
+  fingerMove,
+  fingerUp,
+  pressElsewhere,
+  tap,
+} from "@/test/touch";
 
 // Load-bearing, as in `dive-profile-chart.browser.test.tsx`, whose first test
 // fails without it: without the app's Tailwind a `min-w-*` class computes to
@@ -99,4 +107,60 @@ describe("the dive activity chart's layout", () => {
       }
     },
   );
+});
+
+describe("the dive activity chart under a finger", () => {
+  const bars = activityBars(POINTS, "year", ANCHOR);
+
+  function renderYear() {
+    const { frame, svg } = renderAt(WIDTHS.phone, "year");
+    const columns = [...svg.querySelectorAll('rect[fill="transparent"]')];
+    const card = () => frame.querySelector('[role="presentation"]');
+    return { svg, columns, card };
+  }
+
+  it("reads the column a tap lands on, and keeps it after the finger lifts", () => {
+    const { columns, card } = renderYear();
+
+    tap(columns[3], centreOf(columns[3]));
+
+    expect(card()).toHaveTextContent(bars[3].name);
+  });
+
+  it("scrubs across the columns as the finger drags sideways", () => {
+    const { columns, card } = renderYear();
+
+    fingerDown(columns[1], centreOf(columns[1]));
+    // Pointer capture keeps every move on the column the finger went down on.
+    fingerMove(columns[1], centreOf(columns[8]));
+    expect(card()).toHaveTextContent(bars[8].name);
+
+    fingerUp(columns[1], centreOf(columns[8]));
+    expect(card()).toHaveTextContent(bars[8].name);
+  });
+
+  it("lets go when a finger presses anywhere else", () => {
+    const { columns, card } = renderYear();
+    tap(columns[3], centreOf(columns[3]));
+
+    pressElsewhere();
+
+    expect(card()).toBeNull();
+  });
+
+  it("is not cleared by the mouse events a browser sends after a tap", () => {
+    const { columns, card } = renderYear();
+    tap(columns[3], centreOf(columns[3]));
+
+    fireEvent.mouseEnter(columns[3]);
+    fireEvent.mouseLeave(columns[3]);
+
+    expect(card()).toHaveTextContent(bars[3].name);
+  });
+
+  it("leaves a vertical swipe to the page", () => {
+    const { svg } = renderYear();
+
+    expect(getComputedStyle(svg).touchAction).toBe("pan-y pinch-zoom");
+  });
 });

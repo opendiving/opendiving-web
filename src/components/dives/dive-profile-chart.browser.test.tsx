@@ -9,6 +9,13 @@ import {
   sidewaysScrollers,
   withinSides,
 } from "@/test/chart-layout";
+import {
+  fingerDown,
+  fingerMove,
+  fingerUp,
+  pressElsewhere,
+  tap,
+} from "@/test/touch";
 
 // Load-bearing: the browser project loads none of this app's Tailwind, and
 // without it a `min-w-*` class computes to nothing, so a chart wider than its
@@ -115,5 +122,60 @@ describe("the dive profile chart's layout", () => {
 
       expect(withinSides(card, frame), `at ${step * 2}%`).toBe(true);
     }
+  });
+});
+
+describe("the dive profile chart under a finger", () => {
+  function renderPhone() {
+    const { frame, svg } = renderAt(WIDTHS.phone);
+    const target = svg.querySelector('rect[fill="transparent"]') as Element;
+    const box = target.getBoundingClientRect();
+    // A point on the plot, as a fraction of the dive.
+    const at = (fraction: number) => ({
+      x: box.left + box.width * fraction,
+      y: box.top + box.height / 3,
+    });
+    const card = () => frame.querySelector('[role="presentation"]');
+    return { svg, at, card };
+  }
+
+  it("reads the instant a tap lands on, and keeps it after the finger lifts", () => {
+    const { svg, at, card } = renderPhone();
+
+    // Two fifths of a 50-minute dive.
+    tap(svg, at(0.4));
+
+    expect(card()).toHaveTextContent("20:00 elapsed");
+  });
+
+  it("scrubs along the dive as the finger drags sideways", () => {
+    const { svg, at, card } = renderPhone();
+
+    fingerDown(svg, at(0.2));
+    fingerMove(svg, at(0.6));
+    expect(card()).toHaveTextContent("30:00 elapsed");
+
+    fingerUp(svg, at(0.6));
+    expect(card()).toHaveTextContent("30:00 elapsed");
+  });
+
+  it("lets go when a finger presses anywhere else", () => {
+    const { svg, at, card } = renderPhone();
+    tap(svg, at(0.4));
+
+    pressElsewhere();
+
+    expect(card()).toBeNull();
+  });
+
+  it("is not cleared by the mouse events a browser sends after a tap", () => {
+    const { svg, at, card } = renderPhone();
+    const target = svg.querySelector('rect[fill="transparent"]') as Element;
+    tap(svg, at(0.4));
+
+    fireEvent.mouseMove(target, { clientX: at(0.4).x, clientY: at(0.4).y });
+    fireEvent.mouseLeave(target);
+
+    expect(card()).toHaveTextContent("20:00 elapsed");
   });
 });
