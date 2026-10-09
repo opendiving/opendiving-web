@@ -341,5 +341,6 @@ describe("the mobile menu", () => {
     );
 
     expect(stable.auth.signOut).toHaveBeenCalled();
+    expect(document.getElementById("mobile-menu")).toBeNull();
   });
 });

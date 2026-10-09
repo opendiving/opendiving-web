@@ -100,34 +100,60 @@ function IconTooltip({
 }) {
   const [hovered, setHovered] = React.useState(false);
   const [held, setHeld] = React.useState(false);
-  const hold = React.useRef<{
-    id: number;
-    x: number;
-    y: number;
-    timer: number;
-  } | null>(null);
   const linger = React.useRef<number | undefined>(undefined);
   // A finger is on the control, held or not yet.
   const fingerDown = React.useRef(false);
   // The click a hold's release sends is not for the control.
   const swallowClick = React.useRef(false);
+  // Stops following the finger that is down, if one is.
+  const release = React.useRef<(() => void) | null>(null);
 
-  const endHold = () => {
-    if (hold.current) window.clearTimeout(hold.current.timer);
-    hold.current = null;
-  };
-  // However the finger leaves - a lift, or a scroll the browser took over - a
-  // hint it held stays a moment and goes. Radix's own dismissals reach only
-  // `hovered`, since one of them is the finger's leave at the lift.
-  const fingerGone = () => {
-    fingerDown.current = false;
-    endHold();
-    window.clearTimeout(linger.current);
-    linger.current = window.setTimeout(() => setHeld(false), HELD_HINT_MS);
+  // The finger is followed on `window` rather than on the control: a drag handle
+  // under it moves its row, node and all, out from under the finger, and the
+  // events go with the node. A move past the slop is a drag, which the hint
+  // gives way to whether it showed yet or not; however the finger leaves - a
+  // lift, or a scroll the browser took over - a hint it held stays a moment and
+  // goes. Radix's own dismissals reach only `hovered`, since one of them is the
+  // finger's leave at the lift.
+  const followFinger = (down: React.PointerEvent) => {
+    release.current?.();
+    const { pointerId, clientX, clientY } = down;
+    const timer = window.setTimeout(() => {
+      setHeld(true);
+      swallowClick.current = true;
+    }, HOLD_MS);
+    const move = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      if (
+        Math.hypot(event.clientX - clientX, event.clientY - clientY) <=
+        HOLD_SLOP_PX
+      ) {
+        return;
+      }
+      window.clearTimeout(timer);
+      setHeld(false);
+    };
+    const end = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      release.current?.();
+      linger.current = window.setTimeout(() => setHeld(false), HELD_HINT_MS);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    fingerDown.current = true;
+    release.current = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      fingerDown.current = false;
+      release.current = null;
+    };
   };
   React.useEffect(
     () => () => {
-      endHold();
+      release.current?.();
       window.clearTimeout(linger.current);
     },
     [],
@@ -156,37 +182,9 @@ function IconTooltip({
           onPointerDown={(event) => {
             swallowClick.current = false;
             if (event.pointerType === "mouse") return;
-            fingerDown.current = true;
             window.clearTimeout(linger.current);
             setHeld(false);
-            endHold();
-            hold.current = {
-              id: event.pointerId,
-              x: event.clientX,
-              y: event.clientY,
-              timer: window.setTimeout(() => {
-                hold.current = null;
-                setHeld(true);
-                swallowClick.current = true;
-              }, HOLD_MS),
-            };
-          }}
-          onPointerMove={(event) => {
-            const current = hold.current;
-            if (
-              current &&
-              event.pointerId === current.id &&
-              Math.hypot(event.clientX - current.x, event.clientY - current.y) >
-                HOLD_SLOP_PX
-            ) {
-              endHold();
-            }
-          }}
-          onPointerUp={(event) => {
-            if (event.pointerType !== "mouse") fingerGone();
-          }}
-          onPointerCancel={(event) => {
-            if (event.pointerType !== "mouse") fingerGone();
+            followFinger(event);
           }}
           // Stopped before the control's own handlers hear it. A popover open
           // elsewhere reads a stopped click as taken and stays open, which suits a

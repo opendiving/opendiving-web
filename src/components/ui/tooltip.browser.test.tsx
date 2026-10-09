@@ -66,6 +66,29 @@ describe("an icon button's name under a finger", () => {
     expect(hint()).toBeNull();
   });
 
+  it("gives way to a drag that follows the hold", () => {
+    const { button } = renderOne();
+    fireEvent.pointerDown(button, FINGER);
+    wait(500);
+    expect(hint()).toBeInTheDocument();
+
+    fireEvent.pointerMove(button, { ...FINGER, clientY: 60 });
+
+    expect(hint()).toBeNull();
+  });
+
+  it("goes after a lift that lands off the control", () => {
+    // A drag handle's row moves under the finger, and the lift goes with it.
+    const { button } = renderOne();
+    fireEvent.pointerDown(button, FINGER);
+    wait(500);
+
+    fireEvent.pointerUp(document.body, FINGER);
+    wait(1600);
+
+    expect(hint()).toBeNull();
+  });
+
   it("leaves a tap to press the button, with no name shown", () => {
     const { button, onClick } = renderOne();
 

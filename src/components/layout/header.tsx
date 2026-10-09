@@ -151,16 +151,29 @@ export function Header() {
     }
   };
 
-  // Escape closes the mobile menu, and a tap outside it lands on its backdrop.
+  // Escape closes the mobile menu, and a tap outside it lands on its backdrop. A
+  // press in one of the header's own popups - its menus and the bell, portalled
+  // above the backdrop - closes it too, since a choice there leaves for a page
+  // the menu would otherwise stay open over.
   useEffect(() => {
     if (!isMobileMenuOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsMobileMenuOpen(false);
     };
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Element;
+      if (target.closest?.("[data-radix-popper-content-wrapper]")) {
+        setIsMobileMenuOpen(false);
+      }
+    };
 
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
   }, [isMobileMenuOpen]);
 
   // `print:hidden` because `/checkin` prints, and the summary it prints is the page
