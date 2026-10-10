@@ -21,7 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Backpack, Fish, FileText, Weight } from "lucide-react";
+import { Weight } from "lucide-react";
+import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatWeight } from "@/lib/units";
@@ -65,7 +66,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
         <Card>
           <CardHeader>
             <CardTitle as="h2" className="flex items-center gap-2">
-              <Backpack className="h-5 w-5" />
+              <DiveSectionIcon group="Gear" />
               Gear
             </CardTitle>
           </CardHeader>
@@ -128,7 +129,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
         <Card>
           <CardHeader>
             <CardTitle as="h2" className="flex items-center gap-2">
-              <Fish className="h-5 w-5" />
+              <DiveSectionIcon group="Marine life" />
               Species Spotted
             </CardTitle>
           </CardHeader>
@@ -163,7 +164,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
         <Card>
           <CardHeader>
             <CardTitle as="h2" className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+              <DiveSectionIcon group="Notes" />
               Notes
             </CardTitle>
           </CardHeader>

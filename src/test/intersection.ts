@@ -90,9 +90,13 @@ export function reveal() {
  * Report every element currently under observation as scrolled up past the top
  * of the viewport - off screen, and above it rather than below. Wrap it in
  * `act()`, as `reveal`.
+ *
+ * `within` narrows it to the elements inside one node - the reader has scrolled
+ * past this card and not the next.
  */
-export function scrollPast() {
+export function scrollPast(within?: Element) {
   for (const { element, callback, observer } of [...registrations]) {
+    if (within && !within.contains(element)) continue;
     callback(
       [
         {

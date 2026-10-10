@@ -2204,7 +2204,9 @@ describe("the pickers", () => {
 });
 
 describe("the form's sections", () => {
-  const heading = (name: RegExp) => screen.getByRole("button", { name });
+  // The heading's own control: the section index lists a button of the same name.
+  const heading = (name: RegExp) =>
+    within(screen.getByRole("heading", { name })).getByRole("button");
 
   it("collapse from their heading and keep what they hold", async () => {
     render(<NewDivePage />);
