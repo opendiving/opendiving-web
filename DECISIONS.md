@@ -1864,9 +1864,9 @@ disappearing before it reads as a button.
 (`bg-destructive-solid`) for `overdue`; `warning` and `outline` are out of it. The scale reads by
 hue, not weight: an outline beside two fills reads as an absence, and "In service" is a verdict.
 
-The palette has three accents (`--coral` 16, `--teal` 180, `--pressure` 265); `--warning`'s amber on
-a status chip was a fourth hue for one badge. Coral and `destructive` are six degrees apart, so they
-separate by lightness.
+The palette has two accents (`--coral` 16, `--teal` 180) and a chart grey (`--pressure`);
+`--warning`'s amber on a status chip was a third hue for one badge. Coral and `destructive` are six
+degrees apart, so they separate by lightness.
 
 `--coral-foreground` and `--teal-foreground` are both white so the three chips share one label
 colour. Coral pays 2.50:1 on the label, under AA; the fix if wanted is near-black on
@@ -2172,8 +2172,10 @@ toggled off; not a fifth `PROFILE_CHANNELS` entry (switch: _"The markers have a 
 it is not a fifth channel"_).
 
 Three glyph families, not five. Colour marks only what joins elsewhere: a gas switch is `--pressure`
-grey for its `gas_number`. A stop is not the ceiling's red: both types are the Suunto app's `Notify`
-values as the `divejson` package's reader maps them (`STOP_TYPES`), a recommended pause.
+for its `gas_number`. With pressure grey that sits close to the other markers' `--muted-foreground`,
+and the diamond is what tells a gas switch apart. A stop is not the ceiling's red: both types are
+the Suunto app's `Notify` values as the `divejson` package's reader maps them (`STOP_TYPES`), a
+recommended pause.
 
 `describeEvent` passes an `other`'s label through unchanged; `gas_number` is tested with `== null`.
 `label` is free text, so the tooltip line is `max-w-64 whitespace-normal`.
@@ -5348,11 +5350,11 @@ sentence talks to is fine; what it claims the reader _is_ is the defect.
 ## Errors are coral at hue 10, and the lightness is the load-bearing half
 
 `--destructive` is `10 88% 42%` light and `10 100% 68%` dark; `--destructive-solid` is `10 88% 40%`
-in both. Every other accent is warm-or-cool — `--coral` at 16, `--teal` at 180, `--pressure` at 265
-— and a saturated hue-0 red beside them reads as imported. Hue 10, not 16: same family, still a
-distinguishable pigment where they meet. They do meet (sign-in is `bg-coral`, delete is
-`bg-destructive-solid`), and the collision is accepted: a destructive control that must be
-unmistakable carries it in the label or a confirm step, as `ConfirmDialog` does.
+in both. Every other accent is warm-or-cool — `--coral` at 16, `--teal` at 180 — and a saturated
+hue-0 red beside them reads as imported. Hue 10, not 16: same family, still a distinguishable
+pigment where they meet. They do meet (sign-in is `bg-coral`, delete is `bg-destructive-solid`), and
+the collision is accepted: a destructive control that must be unmistakable carries it in the label
+or a confirm step, as `ConfirmDialog` does.
 
 The lightness is the load-bearing half. `text-destructive` is body text in `FormMessage`, every
 per-field validation message; shadcn's 60.2% default is 3.76:1 on `--background` (AA fails), hue 10

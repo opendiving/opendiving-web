@@ -1473,12 +1473,11 @@ function EventMarker({
       // fails the person it matters most to.
       //
       // Composited against the card the markers actually sit on, 0.55 puts
-      // `--ceiling` at **1.94:1** and `--pressure` at **2.01:1** in dark and
+      // `--ceiling` at **1.94:1** in dark, `--pressure` at **1.94:1** and
       // `--muted-foreground` at **2.37:1** in light - all under the 3:1 WCAG
       // asks of a graphical object, despite every one of those tokens clearing
-      // it on its own. 0.9 brings the worst case to **3.27:1** and leaves real
-      // headroom; 0.85 would clear at 3.05:1, which is close enough to the line
-      // that a rounding difference in compositing could put it under.
+      // it on its own. 0.9 brings the worst case, `--pressure` on white, to
+      // **3.26:1**; 0.85 would put it under the line.
       //
       // The picket-fence worry is answered by the marks being thin ticks on the
       // baseline rather than by making them faint, and the hover still reads: it

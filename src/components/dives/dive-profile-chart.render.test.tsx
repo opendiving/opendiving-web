@@ -900,7 +900,7 @@ describe("DiveProfileChart vertical axes", () => {
   });
 
   // Which colour each edge is labelled in, which is how the chart says which
-  // channel owns it: teal depth, red ceiling, coral temperature, violet pressure.
+  // channel owns it: teal depth, red ceiling, coral temperature, grey pressure.
   const axisColours = (root: HTMLElement) => ({
     left:
       root.querySelector("text[text-anchor='end']")?.getAttribute("class") ??

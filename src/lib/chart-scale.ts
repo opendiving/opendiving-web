@@ -56,12 +56,18 @@ export function niceDomain(values: number[], targetTicks = 5): Domain {
 // Walks `niceDomain`'s ladder up from the smallest step that could span the
 // values until one does, floor included. For non-negative values that always
 // terminates; the cap is for anything else, which gets an unrounded domain.
+// Values that never change get whole units around them, as `niceDomain` gives
+// them a band, rather than a ladder that starts at nothing.
 export function alignedDomain(values: number[], steps: number): Domain {
   if (values.length === 0 || steps < 1) return niceDomain(values);
 
   const lowest = Math.min(...values);
   const highest = Math.max(...values);
-  const range = Math.max(highest - lowest, 1e-9);
+  const range = highest - lowest;
+  if (range === 0) {
+    const min = Math.floor(lowest) - Math.floor(steps / 2);
+    return { min, max: min + steps, step: 1 };
+  }
 
   let magnitude = 10 ** Math.floor(Math.log10(range / steps));
   for (let attempt = 0; attempt < 12; attempt += 1, magnitude *= 10) {

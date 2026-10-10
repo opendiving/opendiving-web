@@ -185,10 +185,11 @@
 
        Declared here and deliberately *not* redeclared under .dark, the same
        property that makes coral and teal hold their contrast in both themes:
-       55% lightness is 3.5:1 against a white card and 4.6:1 against the dark
-       theme's 13% one. A per-theme pair would have to be tuned twice and would
+       52% lightness is 3.9:1 against a white card and 4.2:1 against the dark
+       theme's 13% one, and still 3.3:1 under a gas-switch marker's resting 0.9
+       opacity on white. A per-theme pair would have to be tuned twice and would
        drift. */
-    --pressure: 220 6% 55%;
+    --pressure: 220 6% 52%;
 
     /* Fourth chart accent, for the dive profile's deco ceiling. Red, which is
        what every dive computer and every other dive log uses for the ceiling,

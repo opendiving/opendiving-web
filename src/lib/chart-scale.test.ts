@@ -64,6 +64,16 @@ describe("alignedDomain", () => {
     expect(stepCount(domain)).toBe(4);
   });
 
+  it("gives values that never change whole units around them", () => {
+    // A cylinder whose gauge never moved: a ladder starting from a zero range
+    // would print 200.0000000001.
+    expect(alignedDomain([200, 200], 4)).toEqual({
+      min: 198,
+      max: 202,
+      step: 1,
+    });
+  });
+
   it("lands every tick on another axis's height", () => {
     const temperature = niceDomain([21.6, 26.4]);
     const pressure = alignedDomain([30, 210], stepCount(temperature));
