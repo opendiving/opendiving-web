@@ -1212,8 +1212,8 @@ describe("DiveProfileChart marker toggle", () => {
 
   it("keeps the markers up with every channel hidden, and holds the message back", () => {
     // A plot showing only markers has content, so "Every channel is hidden. Pick
-    // one below to plot it." printed across them would be describing a chart
-    // nobody is looking at.
+    // one from the menu to plot it." printed across them would be describing a
+    // chart nobody is looking at.
     const { container } = render(<DiveProfileChart profile={withMarkers} />);
     for (const name of Object.values(CHANNEL_BUTTONS)) {
       const toggle = screen.queryByRole("button", { name });
