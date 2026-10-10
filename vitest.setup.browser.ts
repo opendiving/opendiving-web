@@ -26,11 +26,9 @@ import { afterEach } from "vitest";
 // rather than a failed assertion, which is why it looks nothing like a missing
 // polyfill.
 //
-// The map tests never hit it because none of them renders a link. The first
-// browser test over an app component that does - the species card's row-height
-// guard - is what found it. An empty `env` is enough: every value Next looks for
-// here is optional, and supplying real ones would be inventing build
-// configuration a test has no business deciding.
+// A browser test that renders no link never hits it. An empty `env` is enough:
+// every value Next looks for here is optional, and supplying real ones would be
+// inventing build configuration a test has no business deciding.
 globalThis.process ??= { env: {} } as NodeJS.Process;
 
 afterEach(cleanup);
