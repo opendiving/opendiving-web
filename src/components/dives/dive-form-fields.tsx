@@ -8,6 +8,7 @@ import {
   Clock,
   CloudSun,
   Eye,
+  Hash,
   Mountain,
   Shapes,
   Ship,
@@ -428,31 +429,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           </>,
         )}
 
-      {/* A person picked here is a buddy until the diver says otherwise. */}
-      {isVisible("people") &&
-        section(
-          "People",
-          <FormField
-            control={control}
-            name={"people" as Path<TFieldValues>}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>People</FormLabel>
-                <FormControl>
-                  <PeopleMultiSelect
-                    value={field.value ?? []}
-                    onChange={field.onChange}
-                    defaultRole="buddy"
-                    until={until}
-                    pinnedUuids={roster.people}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />,
-        )}
-
       {section(
         "Dive info",
         <>
@@ -508,30 +484,34 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Dive number{requiredMark}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      min="1"
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        // `parseInt(...) || 1` looked equivalent and wasn't: `||`
-                        // treats an emptied box (NaN) and a typed 0 alike, so
-                        // clearing the field instantly rewrote it to 1. That write
-                        // also marked the field dirty, and `useSuggestedDiveNumber`
-                        // reads `isDirty` as its permanent "the diver chose a
-                        // number" latch - so one accidental clear stopped the
-                        // number following the date for the rest of the form's
-                        // life, including after a file import changed the date.
-                        // An emptied box must stay empty and let the schema speak.
-                        const parsed = parseInt(e.target.value, 10);
-                        field.onChange(
-                          Number.isNaN(parsed) ? undefined : parsed,
-                        );
-                      }}
-                    />
-                  </FormControl>
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                    <FormControl>
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min="1"
+                        className="pl-9"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          // `parseInt(...) || 1` looked equivalent and wasn't: `||`
+                          // treats an emptied box (NaN) and a typed 0 alike, so
+                          // clearing the field instantly rewrote it to 1. That write
+                          // also marked the field dirty, and `useSuggestedDiveNumber`
+                          // reads `isDirty` as its permanent "the diver chose a
+                          // number" latch - so one accidental clear stopped the
+                          // number following the date for the rest of the form's
+                          // life, including after a file import changed the date.
+                          // An emptied box must stay empty and let the schema speak.
+                          const parsed = parseInt(e.target.value, 10);
+                          field.onChange(
+                            Number.isNaN(parsed) ? undefined : parsed,
+                          );
+                        }}
+                      />
+                    </FormControl>
+                  </div>
                   {diveNumberNotice &&
                   field.value === diveNumberNotice.forValue ? (
                     <FormDescription>
@@ -1012,6 +992,31 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     onPendingChange={onSpeciesPendingChange}
                   />
                 </FormControl>
+              </FormItem>
+            )}
+          />,
+        )}
+
+      {/* A person picked here is a buddy until the diver says otherwise. */}
+      {isVisible("people") &&
+        section(
+          "People",
+          <FormField
+            control={control}
+            name={"people" as Path<TFieldValues>}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>People</FormLabel>
+                <FormControl>
+                  <PeopleMultiSelect
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    defaultRole="buddy"
+                    until={until}
+                    pinnedUuids={roster.people}
+                  />
+                </FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />,
