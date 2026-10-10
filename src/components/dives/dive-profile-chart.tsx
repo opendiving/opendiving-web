@@ -1130,12 +1130,11 @@ export function DiveProfileChart({
             </text>
           ))}
 
-          {/* Depth is the chart's subject, so it gets a filled area under the
-              curve - which also makes "which side is the water" unambiguous on
-              an inverted axis - and everything else is a bare line on top. The
-              fill is what marks it out, not a heavier stroke: every channel is
-              drawn at the same weight. One per run, so the fill breaks wherever
-              the line does. */}
+          {/* Depth is the chart's subject, so it is drawn as the water column
+              itself - which also makes "which side is the water" unambiguous on
+              an inverted axis - with no line along its edge, and everything
+              else is a bare line on top. One per run, so the fill breaks
+              wherever the recording does. */}
           {depthAreas.map((area, index) => (
             <path
               key={index}
@@ -1160,40 +1159,42 @@ export function DiveProfileChart({
             />
           ))}
 
-          {shown.map((channel) => (
-            <g
-              key={channel.key}
-              className={channel.series.channel.colorClass}
-              clipPath={
-                channel.panelIndex >= 0
-                  ? `url(#${clipPrefix}-panel-${channel.panelIndex})`
-                  : undefined
-              }
-            >
-              {channel.segments.map((segment, index) => (
-                <polyline
-                  key={index}
-                  points={segment
-                    .map(
-                      (position) =>
-                        `${x(channel.series.t[position])},${channel.y(channel.series.values[position])}`,
-                    )
-                    .join(" ")}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  // From the channel rather than from this line's key, so the
-                  // legend swatch below can read the same flag - see `dashed`
-                  // on `ProfileChannel` for why the dash is load-bearing.
-                  strokeDasharray={
-                    channel.series.channel.dashed ? "5 3" : undefined
-                  }
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              ))}
-            </g>
-          ))}
+          {shown
+            .filter((channel) => channel.channelKey !== "depth")
+            .map((channel) => (
+              <g
+                key={channel.key}
+                className={channel.series.channel.colorClass}
+                clipPath={
+                  channel.panelIndex >= 0
+                    ? `url(#${clipPrefix}-panel-${channel.panelIndex})`
+                    : undefined
+                }
+              >
+                {channel.segments.map((segment, index) => (
+                  <polyline
+                    key={index}
+                    points={segment
+                      .map(
+                        (position) =>
+                          `${x(channel.series.t[position])},${channel.y(channel.series.values[position])}`,
+                      )
+                      .join(" ")}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    // From the channel rather than from this line's key, so the
+                    // legend swatch below can read the same flag - see `dashed`
+                    // on `ProfileChannel` for why the dash is load-bearing.
+                    strokeDasharray={
+                      channel.series.channel.dashed ? "5 3" : undefined
+                    }
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                ))}
+              </g>
+            ))}
 
           {/* Event markers, on the axis rather than on the depth curve, and
               behind a switch of their own in the legend. They are still not a
@@ -1770,9 +1771,12 @@ function LegendToggles({
                       // has no way to dash a fill: `border-current` picks up
                       // the same `currentColor` `bg-current` does, so both
                       // branches inherit the colour the same way.
-                      channel.dashed
-                        ? "border-t-2 border-dashed border-current"
-                        : "h-0.5 rounded-full bg-current",
+                      key === "depth"
+                        ? // The water column is a fill, so its swatch is one.
+                          "h-2.5 rounded-sm bg-current opacity-40"
+                        : channel.dashed
+                          ? "border-t-2 border-dashed border-current"
+                          : "h-0.5 rounded-full bg-current",
                       // Hidden channels keep their swatch, in the button's
                       // own muted colour rather than the channel's: a grey
                       // line where the teal one was is the whole of "this is
