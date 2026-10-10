@@ -1748,13 +1748,8 @@ function LegendToggles({
               // whether it is on.
               <div
                 key={key}
-                className="flex items-center gap-2 px-2 py-1.5 touch:min-h-11"
+                className="flex items-center justify-between gap-4 px-2 py-1.5 touch:min-h-11"
               >
-                <Switch
-                  id={id}
-                  checked={visible.includes(key)}
-                  onCheckedChange={() => onToggle(key)}
-                />
                 <Label
                   htmlFor={id}
                   className="flex cursor-pointer items-center gap-2 font-normal leading-5"
@@ -1813,6 +1808,11 @@ function LegendToggles({
                     ? `${channel.label} (${channel.unit})`
                     : EVENTS_LABEL}
                 </Label>
+                <Switch
+                  id={id}
+                  checked={visible.includes(key)}
+                  onCheckedChange={() => onToggle(key)}
+                />
               </div>
             );
           })}
