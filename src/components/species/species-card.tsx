@@ -26,9 +26,11 @@ export const SPECIES_CARD_GRID =
 // A species' photo behind its names, on its card and across its page's hero -
 // the map's water and a fish where it has none, as a dive with no place is
 // drawn. Faded as a map is, into the colour the names glow in, so they read
-// over a photo as over a map; on a hero, as wide as a hero's map and
-// dissolving into the page at its sides as that does. Decorative: the name
-// over it says what it is.
+// over a photo as over a map. On a hero it is as wide as a hero's map at most
+// and narrows with the window rather than cropping, its sides dissolving into
+// the page by as much as a map's do at that width - a quarter of its width at
+// its widest, and nothing once a map's fades would lie past the window's edges.
+// Decorative: the name over it says what it is.
 export function SpeciesBackdrop({
   photo,
   coveredBottom,
@@ -67,14 +69,16 @@ export function SpeciesBackdrop({
           "absolute inset-y-0",
           hero ? "left-1/2 -translate-x-1/2" : "inset-x-0",
         )}
-        style={hero ? { width: HERO_CANVAS_WIDTH } : undefined}
+        style={
+          hero ? { width: `min(${HERO_CANVAS_WIDTH}px, 100%)` } : undefined
+        }
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- see SpeciesThumbnail */}
         <img src={photo} alt="" className="size-full object-cover" />
         {hero &&
           fade(
             "to right",
-            `var(--backdrop-fade), transparent ${SIDE_FADE_WIDTH}px, transparent ${HERO_CANVAS_WIDTH - SIDE_FADE_WIDTH}px, var(--backdrop-fade)`,
+            `var(--backdrop-fade), transparent max(0px, 50% - ${HERO_CANVAS_WIDTH / 2 - SIDE_FADE_WIDTH}px), transparent min(100%, 50% + ${HERO_CANVAS_WIDTH / 2 - SIDE_FADE_WIDTH}px), var(--backdrop-fade)`,
           )}
       </div>
       {fade("to bottom", "transparent, var(--backdrop-fade)")}
