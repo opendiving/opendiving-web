@@ -415,6 +415,10 @@ export function axisUnitSuffix(
   return `${channelSeparator(key)}${displayChannel(PROFILE_CHANNELS[key], units).unit}`;
 }
 
+/** The axis a channel is scaled against. */
+export const channelAxis = (key: ProfileChannelKey): ProfileAxisKey =>
+  CHANNEL_AXIS[key];
+
 /** Which channels of a selection belong to one axis, in the legend's order. */
 export function channelsOnAxis(
   shown: readonly ProfileChannelKey[],

@@ -1664,10 +1664,12 @@ as inert as a `setTimeout` constant is a measurement error first.
 
 ## Both charts' legends are the control for what they plot
 
-Every mark on both charts is toggled from its legend entry, which names it and carries its swatch.
-Entries are `<button aria-pressed>`, not checkboxes; the label stays the mark's name in both states,
-and a hidden mark's swatch turns muted. Hiding everything is allowed and replaces the plot with a
-one-line message.
+Every mark on both charts is toggled from its legend entry, which names it and carries its swatch;
+the label stays the mark's name in both states. The gas chart's entries are `<button aria-pressed>`
+under the plot, and a hidden mark's swatch turns muted. The profile's ten channels and markers would
+wrap to three lines on a phone, so its legend is a menu on the card's title row, grouped by graph,
+one `Switch` per entry with the swatch always coloured. Hiding everything is allowed and replaces
+the plot with a one-line message.
 
 The profile chart toggles by channel, not plotted line: both pressure lines share `--pressure`, and
 "tank pressure" survives across dives where "gas 2" does not.
