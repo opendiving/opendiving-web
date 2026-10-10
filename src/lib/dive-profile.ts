@@ -399,6 +399,30 @@ export function axisDomain(
     : niceDomain([0, bound]);
 }
 
+// The least a temperature axis spans, in degrees Celsius. Readings are tenths of
+// a degree, and fitted tight a dive whose water moved 0.4 °C draws each tenth as
+// a quarter of the plot - a staircase that reads as a swing. Twenty tenths keeps
+// one step to a twentieth of the height.
+const MIN_TEMPERATURE_SPAN_C = 2;
+
+/**
+ * The temperature axis: `niceDomain` over the readings, widened about their
+ * middle to at least `MIN_TEMPERATURE_SPAN_C` in the diver's units. A dive whose
+ * readings span more is fitted exactly as `niceDomain` fits it.
+ */
+export function temperatureDomain(
+  values: readonly number[],
+  units: UnitSystem,
+): Domain {
+  if (values.length === 0) return niceDomain([]);
+
+  const span =
+    toChannelDisplay(MIN_TEMPERATURE_SPAN_C, "temperature", units) -
+    toChannelDisplay(0, "temperature", units);
+  const middle = (Math.min(...values) + Math.max(...values)) / 2;
+  return niceDomain([...values, middle - span / 2, middle + span / 2]);
+}
+
 // What follows the number on a panel row's top tick - the separator and the unit
 // both, so "40 min" and "100%" each get the spacing that quantity is written
 // with. Read off the channels themselves rather than written out again, so a row

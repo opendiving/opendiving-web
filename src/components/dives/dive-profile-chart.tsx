@@ -57,6 +57,7 @@ import {
   profileScalePlacement,
   readoutTolerance,
   segmentByTimeGap,
+  temperatureDomain,
   toChannelSeries,
   toPressureSeries,
   tooltipVerticalAnchor,
@@ -487,14 +488,15 @@ export function DiveProfileChart({
     if (temperature) {
       // Its own domain, not shared with depth: a 21.6-21.9 °C range - which is
       // what a whole dive's temperature usually spans - would be a flat line on
-      // any axis wide enough for depth.
+      // any axis wide enough for depth. Nor fitted tight to it, though - see
+      // `temperatureDomain`.
       plotted.push({
         key: "temperature",
         channelKey: "temperature",
         axis: "temperature",
         label: PROFILE_CHANNELS.temperature.label,
         series: temperature,
-        domain: niceDomain(temperature.values),
+        domain: temperatureDomain(temperature.values, units),
         ...runs(temperature.t, PROFILE_CHANNELS.temperature),
       });
     }
