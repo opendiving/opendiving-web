@@ -1133,8 +1133,9 @@ export function DiveProfileChart({
           {/* Depth is the chart's subject, so it is drawn as the water column
               itself - which also makes "which side is the water" unambiguous on
               an inverted axis - with no line along its edge, and everything
-              else is a bare line on top. One per run, so the fill breaks
-              wherever the recording does. */}
+              else is a bare line on top - below the 3:1 the lines clear, by
+              choice (see DECISIONS.md, the profile chart's section). One per
+              run, so the fill breaks wherever the recording does. */}
           {depthAreas.map((area, index) => (
             <path
               key={index}
@@ -1772,7 +1773,7 @@ function LegendToggles({
                       // branches inherit the colour the same way.
                       key === "depth"
                         ? // The water column is a fill, so its swatch is one.
-                          "h-2.5 rounded-sm bg-current opacity-40"
+                          "h-2.5 rounded-sm bg-current opacity-15"
                         : channel.dashed
                           ? "border-t-2 border-dashed border-current"
                           : "h-0.5 rounded-full bg-current",

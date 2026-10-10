@@ -1126,8 +1126,11 @@ anchors at the surface by arithmetic — feeding the surface's own `0` into the 
 Same CSP reasoning as the air-consumption chart, restated in the component so nobody reaches for
 Recharts; the arithmetic lives in `lib/dive-profile.ts`, Vitest-tested.
 
-Depth is inverted, surface-anchored and filled (`text-teal`, `opacity-15`). Temperature gets its own
-domain, since 21.6–21.9 °C is flat on a depth-wide axis. Every cylinder shares one pressure domain.
+Depth is inverted, surface-anchored and drawn as its fill alone (`text-teal`, `opacity-15`), with no
+line along the edge, by the owner's choice. That makes it the one mark under the 3:1 bar the chart's
+other marks clear, knowingly: no fill reaches 3:1 short of opaque, the depth axis and the crosshair
+carry the reading, and the fill only says which side is water. Temperature gets its own domain,
+since 21.6–21.9 °C is flat on a depth-wide axis. Every cylinder shares one pressure domain.
 
 One hovered time, not index: channels are sampled independently, so a full-plot transparent `<rect>`
 maps the cursor to an instant on the profile's millisecond axis once and each channel resolves its
