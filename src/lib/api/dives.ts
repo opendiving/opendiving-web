@@ -523,13 +523,16 @@ export interface Dive {
 
 /** A recording's depth curve at a dive card's resolution. */
 export interface DepthOutline {
-  /** Milliseconds from the recording's first depth reading to its last. */
+  /**
+   * Milliseconds from the recording's first depth reading to where the dive
+   * ends - the profile's `dive_end_time` - or to its last depth reading where
+   * the profile has no such end.
+   */
   span: number;
   /**
    * Centimetres: value `i` is the deepest reading in the `i`th of
    * `values.length` equal slices of `span`, or the straight line between its
-   * neighbours for a slice no reading falls in - so the deepest value is the
-   * recording's maximum depth.
+   * neighbours for a slice no reading falls in.
    */
   values: number[];
 }
@@ -687,7 +690,7 @@ export interface DiveProfileInfo {
   // Span of the recorded samples in **milliseconds**, the profile's own
   // `duration` - which is *not* `dive.duration` despite sharing the word: that one
   // is seconds, the diver's own record, and may have been hand-edited, while a
-  // dive computer keeps logging for a few seconds after the dive ends.
+  // dive computer keeps logging for minutes after the dive ends.
   duration: number;
   depth_sample_count: number;
   // Always sent: every stored profile is one of the three. It is here because a
@@ -823,6 +826,13 @@ export interface DiveProfile {
   // put it, and clipping that to the plot is the chart's job (see
   // `dive-profile-chart.tsx`).
   duration: number;
+  // Where the dive ends on the same axis, short of `duration` by the time the
+  // computer went on recording at the surface: the end of the last interval
+  // that starts deeper than the API's in-water threshold. The chart's axis ends
+  // here (`cutAtDiveEnd`); the samples past it are still in the series. Null
+  // where no interval counts, and absent from a body cached before the API sent
+  // it - both mean the chart draws the whole profile.
+  dive_end_time?: number | null;
   depth?: DiveProfileSeries | null;
   // The deco ceiling, in centimeters on depth's own scale, because it is drawn
   // against depth's axis and a ceiling of 3 m has to be the same integer as a

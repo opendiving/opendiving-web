@@ -399,6 +399,30 @@ export function axisDomain(
     : niceDomain([0, bound]);
 }
 
+// The least a temperature axis spans, in degrees Celsius. Readings are tenths of
+// a degree, and fitted tight a dive whose water moved 0.4 °C draws each tenth as
+// a quarter of the plot - a staircase that reads as a swing. Twenty tenths keeps
+// one step to a twentieth of the height.
+const MIN_TEMPERATURE_SPAN_C = 2;
+
+/**
+ * The temperature axis: `niceDomain` over the readings, widened about their
+ * middle to at least `MIN_TEMPERATURE_SPAN_C` in the diver's units. A dive whose
+ * readings span more is fitted exactly as `niceDomain` fits it.
+ */
+export function temperatureDomain(
+  values: readonly number[],
+  units: UnitSystem,
+): Domain {
+  if (values.length === 0) return niceDomain([]);
+
+  const span =
+    toChannelDisplay(MIN_TEMPERATURE_SPAN_C, "temperature", units) -
+    toChannelDisplay(0, "temperature", units);
+  const middle = (Math.min(...values) + Math.max(...values)) / 2;
+  return niceDomain([...values, middle - span / 2, middle + span / 2]);
+}
+
 // What follows the number on a panel row's top tick - the separator and the unit
 // both, so "40 min" and "100%" each get the spacing that quantity is written
 // with. Read off the channels themselves rather than written out again, so a row
@@ -620,6 +644,43 @@ function channelSeparator(key: ProfileChannelKey): string {
   return typeof entry === "string" ? unitSeparator(entry) : entry.separator;
 }
 
+// The profile as the chart draws it: every channel ends at `dive_end_time` and
+// `duration` becomes that instant, so the axis, every scale fitted from the
+// series, the crosshair and the accessible summary all stop where the dive did.
+// A computer goes on recording at the surface for minutes after a dive, in case
+// the diver descends again; those samples stay in the data and off the chart.
+//
+// A sample at the end is kept, so depth ends on the reading that closed the
+// dive, and nothing is invented to reach the edge. Events are left alone: the
+// chart clips its markers to `duration`. With no end in the response - null, or
+// a body from a build that did not send one - the profile comes back whole.
+export function cutAtDiveEnd(profile: DiveProfile): DiveProfile {
+  const end = profile.dive_end_time;
+  if (end == null || end >= profile.duration) return profile;
+
+  const cut = <S extends DiveProfileSeries>(series: S): S => {
+    const past = series.times.findIndex((time) => time > end);
+    return past === -1
+      ? series
+      : {
+          ...series,
+          times: series.times.slice(0, past),
+          values: series.values.slice(0, past),
+        };
+  };
+
+  const visible: DiveProfile = {
+    ...profile,
+    duration: end,
+    pressures: (profile.pressures ?? []).map(cut),
+  };
+  for (const key of PROFILE_SERIES_KEYS) {
+    const series = profile[key];
+    if (series) visible[key] = cut(series);
+  }
+  return visible;
+}
+
 // A channel's stored integers as display units, or `null` when the profile
 // doesn't carry that channel.
 //
@@ -631,6 +692,10 @@ function channelSeparator(key: ProfileChannelKey): string {
 // `toPressureSeries` below. Derived rather than spelled out, so a channel added
 // to `ProfileChannelKey` is one this accepts without a second edit.
 export type ProfileSeriesKey = Exclude<ProfileChannelKey, "pressure">;
+
+const PROFILE_SERIES_KEYS = PROFILE_CHANNEL_KEYS.filter(
+  (key): key is ProfileSeriesKey => key !== "pressure",
+);
 
 export function toChannelSeries(
   profile: DiveProfile,
