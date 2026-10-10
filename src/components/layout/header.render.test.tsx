@@ -63,6 +63,24 @@ const openAccountMenu = async () => {
   return screen.findByRole("menu");
 };
 
+// Every row of an open menu, with each separator as "---".
+const menuRows = (menu: HTMLElement) =>
+  Array.from(
+    menu.querySelectorAll('[role="menuitem"], [role="separator"]'),
+  ).map((row) =>
+    row.getAttribute("role") === "separator" ? "---" : (row.textContent ?? ""),
+  );
+
+// The burger's panel stays mounted while shut, hidden by the stylesheet this
+// file does not load, so it is found by id rather than by role.
+const burger = () => document.getElementById("mobile-menu")!;
+const burgerRows = () =>
+  Array.from(burger().querySelectorAll("a, hr")).map((row) =>
+    row.tagName === "HR" ? "---" : (row.textContent ?? ""),
+  );
+const barNav = () =>
+  screen.getAllByRole("navigation").find((nav) => !burger().contains(nav))!;
+
 beforeEach(() => {
   stable.auth.isAuthenticated = true;
   stable.auth.user = diver();
@@ -92,54 +110,52 @@ describe("the notifications bell", () => {
   });
 });
 
-describe("the account menu's Admin entry", () => {
-  it("offers Admin to a superuser", async () => {
+describe("the Admin entry", () => {
+  it("ends More and the burger for a superuser, ruled off from the rest", async () => {
     stable.auth.user = diver({ is_superuser: true });
+    render(<Header />);
 
-    await openAccountMenu();
+    expect(burgerRows().slice(-2)).toEqual(["---", "Admin"]);
+    expect(
+      within(burger()).getByRole("link", { name: "Admin" }),
+    ).toHaveAttribute("href", "/admin");
 
-    expect(screen.getByRole("menuitem", { name: /Admin/ })).toHaveAttribute(
-      "href",
-      "/admin",
-    );
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    const menu = await screen.findByRole("menu");
+    expect(menuRows(menu).slice(-1)).toEqual(["Admin"]);
   });
 
-  it("puts it first, ruled off from the rest", async () => {
-    stable.auth.user = diver({ is_superuser: true });
+  it("is not offered to an ordinary diver", () => {
+    stable.auth.user = diver({ is_superuser: false });
+    render(<Header />);
 
+    expect(burgerRows()).not.toContain("Admin");
+  });
+
+  it("is not offered when the API never sent the field", () => {
+    // An instance one version behind omits `is_superuser` entirely, and an
+    // absent field must not read as a yes - this is the entry that opens a door.
+    stable.auth.user = diver();
+    render(<Header />);
+
+    expect(burgerRows()).not.toContain("Admin");
+    expect(burgerRows()).toContain("Contacts");
+  });
+});
+
+describe("the account menu's Check-in entry", () => {
+  it("comes first, ruled off from the rest", async () => {
     const menu = await openAccountMenu();
 
     expect(menuRows(menu).slice(0, 4)).toEqual([
       "---",
-      "Admin",
+      "Check-in",
       "---",
       "Import",
     ]);
-  });
-
-  it("does not offer it to an ordinary diver", async () => {
-    stable.auth.user = diver({ is_superuser: false });
-
-    await openAccountMenu();
-
     expect(
-      screen.queryByRole("menuitem", { name: /Admin/ }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("does not offer it when the API never sent the field", async () => {
-    // An instance one version behind omits `is_superuser` entirely, and an
-    // absent field must not read as a yes - this is the entry that opens a door.
-    stable.auth.user = diver();
-
-    await openAccountMenu();
-
-    expect(
-      screen.queryByRole("menuitem", { name: /Admin/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("menuitem", { name: /Settings/ }),
-    ).toBeInTheDocument();
+      within(menu).getByRole("menuitem", { name: "Check-in" }),
+    ).toHaveAttribute("href", "/checkin");
   });
 });
 
@@ -153,14 +169,6 @@ describe("the account menu's Settings entry", () => {
     );
   });
 });
-
-// Every row of an open menu, with each separator as "---".
-const menuRows = (menu: HTMLElement) =>
-  Array.from(
-    menu.querySelectorAll('[role="menuitem"], [role="separator"]'),
-  ).map((row) =>
-    row.getAttribute("role") === "separator" ? "---" : (row.textContent ?? ""),
-  );
 
 describe("Import and Export", () => {
   it("puts Import last in the create menu, and Import then Export above Settings", async () => {
@@ -194,6 +202,8 @@ describe("the account menu's grouping", () => {
     const rows = menuRows(menu);
     expect(rows.slice(0, rows.indexOf("Settings") + 1)).toEqual([
       "---",
+      "Check-in",
+      "---",
       "Import",
       "Export",
       "Settings",
@@ -209,7 +219,6 @@ describe("the account menu's grouping", () => {
       "Courses",
       "People",
       "Contacts",
-      "Check-in",
     ]) {
       expect(rows).not.toContain(page);
     }
@@ -220,7 +229,7 @@ describe("the bar", () => {
   it("lists the most used pages in order, then More", () => {
     render(<Header />);
 
-    const nav = screen.getByRole("navigation");
+    const nav = barNav();
     const links = within(nav).getAllByRole("link");
     expect(links.map((link) => link.textContent)).toEqual([
       "Home",
@@ -244,7 +253,7 @@ describe("the bar", () => {
     render(<Header />);
 
     // The mocked path is /home, which the bar holds, so More stays plain.
-    const nav = screen.getByRole("navigation");
+    const nav = barNav();
     const home = within(nav).getByRole("link", { name: "Home" });
     expect(home).toHaveAttribute("aria-current", "page");
     expect(home).toHaveClass("text-coral");
@@ -266,7 +275,6 @@ describe("the More menu", () => {
       "Courses",
       "People",
       "Contacts",
-      "Check-in",
     ]);
     // Gear and Certifications are in the bar from `lg`, so More drops them there.
     expect(within(menu).getByRole("menuitem", { name: "Gear" })).toHaveClass(
@@ -302,37 +310,56 @@ describe("the brand link", () => {
 });
 
 describe("the mobile menu", () => {
-  it("lists every destination", async () => {
-    const { container } = render(<Header />);
-    await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
+  it("lists every destination, grouped", () => {
+    render(<Header />);
 
-    const menu = container.querySelector<HTMLElement>("#mobile-menu")!;
-    expect(
-      within(menu)
-        .getAllByRole("link")
-        .map((link) => link.textContent),
-    ).toEqual([
+    expect(burgerRows()).toEqual([
       "Home",
+      "---",
       "Trips",
       "Dives",
       "Dive Sites",
       "Marine Life",
+      "---",
       "Gear",
       "Certifications",
       "Courses",
       "People",
       "Contacts",
-      "Check-in",
     ]);
-    expect(within(menu).getByRole("link", { name: "Home" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(
+      within(burger()).getByRole("link", { name: "Home" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("opens and closes on the burger", async () => {
+    render(<Header />);
+    const toggle = screen.getByRole("button", { name: "Open menu" });
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(burger()).toHaveClass("visible");
+
+    await userEvent.click(screen.getByRole("button", { name: "Close menu" }));
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(burger()).toHaveClass("invisible");
+  });
+
+  it("locks the page behind it while open", async () => {
+    render(<Header />);
+    const toggle = screen.getByRole("button", { name: "Open menu" });
+
+    await userEvent.click(toggle);
+    expect(document.documentElement.style.overflow).toBe("hidden");
+
+    await userEvent.click(toggle);
+    expect(document.documentElement.style.overflow).toBe("");
   });
 
   it("lets a choice in the header's own menus through while it is open", async () => {
     render(<Header />);
-    await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const toggle = screen.getByRole("button", { name: "Open menu" });
+    await userEvent.click(toggle);
     await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
     const accountMenu = await screen.findByRole("menu");
 
@@ -341,6 +368,6 @@ describe("the mobile menu", () => {
     );
 
     expect(stable.auth.signOut).toHaveBeenCalled();
-    expect(document.getElementById("mobile-menu")).toBeNull();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 });
