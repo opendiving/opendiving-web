@@ -322,10 +322,9 @@ function GasUseSummaryRow({
   units: UnitSystem;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-3">
-      <ChartStat label="Average">
+    <div className="mb-5 flex flex-wrap items-start gap-x-8 gap-y-3">
+      <ChartStat label="Average" detail={<Change summary={summary} />}>
         <Figure value={summary.average} units={units} />
-        <Change summary={summary} />
       </ChartStat>
       <ChartStat label="Best dive">
         <Figure value={summary.best} units={units} />
@@ -382,11 +381,11 @@ function Change({ summary }: { summary: GasUseSummary }) {
   const Icon = percent === 0 ? Minus : percent < 0 ? TrendingDown : TrendingUp;
 
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+    <div className="flex items-center gap-1 text-xs text-muted-foreground">
       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
       {percent === 0
         ? `level with ${summary.previousLabel}`
         : `${Math.abs(percent)}% vs ${summary.previousLabel}`}
-    </span>
+    </div>
   );
 }
