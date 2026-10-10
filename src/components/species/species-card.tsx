@@ -12,7 +12,6 @@ import {
   UnplacedBackdrop,
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 
 // Species cards in whatever column holds them - the life list's, a dive's, a
@@ -22,22 +21,13 @@ import { useWithReturnTo } from "@/hooks/useReturnTo";
 export const SPECIES_CARD_GRID =
   "grid grid-cols-[repeat(auto-fill,minmax(min(16rem,100%),1fr))] gap-3 max-sm:gap-2.5";
 
-// A card's place while the life list loads, at its measured height: a backdrop
-// card's, and the line under the binomial its cards carry - 254px.
-export function SpeciesCardSkeleton() {
-  return (
-    <li aria-hidden>
-      <Skeleton className="h-63.5 rounded-lg" />
-    </li>
-  );
-}
-
 interface SpeciesCardProps {
   species: SpeciesSummary;
   // What the page knows of this species on the diver's dives: how many there
-  // were on the life list, how many were counted on a dive.
+  // were and when it was last seen on a list of them, how many were counted on
+  // a dive.
   figures?: BackdropCardFigure[];
-  // A line under the names: when it was seen, or the diver's note on it.
+  // A line under the names: the diver's note on it, on a dive.
   children?: ReactNode;
 }
 

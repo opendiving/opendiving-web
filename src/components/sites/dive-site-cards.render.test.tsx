@@ -298,10 +298,12 @@ describe("DiveSiteSpeciesCard", () => {
       name: /Clark's anemonefish/,
     });
     expect(clownfish).toHaveAttribute("href", "/species/sp-1");
-    expect(
-      within(clownfish.closest("li")!).getByText("Dives", { selector: "dt" })
-        .nextElementSibling,
-    ).toHaveTextContent("3");
+    const figure = (label: string) =>
+      within(clownfish.closest("li")!).getByText(label, { selector: "dt" })
+        .nextElementSibling;
+    expect(figure("Dives")).toHaveTextContent("3");
+    // In the zone the dive was logged in, not the viewer's.
+    expect(figure("Last seen")).toHaveTextContent("Sep 14, 2026");
     expect(
       screen.getByRole("link", { name: /Chromodoris willani/ }),
     ).toHaveAttribute("href", "/species/sp-2");

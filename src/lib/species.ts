@@ -109,12 +109,12 @@ export function speciesNameWithRank(species: RankedSpecies): string {
 }
 
 /**
- * When a diver saw this species, as one line: a single date when every sighting
- * falls on one day, and a range otherwise.
+ * A sighting's dive start time as a bare date - a species card's and the species
+ * page's last sighting.
  *
- * **The two inputs are dive `start_time`s, so each end reads in the zone of the
- * dive behind it rather than in UTC or the viewer's** - the app-wide contract
- * every dive-derived surface honours. That is why this goes through
+ * **The input is a dive `start_time`, so it reads in the zone of the dive behind
+ * it rather than in UTC or the viewer's** - the app-wide contract every
+ * dive-derived surface honours. That is why this goes through
  * `formatDiveDateTime` and not `formatDateTime`: the latter would re-derive the
  * *viewer's* local time and report a dive logged in Thailand at the reader's
  * clock. The error is invisible against any dive logged at `+00:00`, which is
@@ -123,26 +123,7 @@ export function speciesNameWithRank(species: RankedSpecies): string {
  * An imported dive may carry **no** offset, and then the wall clock is the whole
  * of what was recorded. `formatDiveDateTime` prints those digits as they stand,
  * so such a sighting lands on the day the diver wrote down - which is the only
- * day there is to land on. It is the same call as everywhere else here; what
- * would break it is any attempt to supply the missing zone.
- *
- * **The collapse compares the formatted dates, not the timestamps behind them**,
- * and that distinction is the whole reason this is a function rather than an
- * inline ternary. The values are start times to the second, so two sightings on
- * one day - the ordinary case, since a diver logs several dives at a site and
- * sees the same fish on each - differ as strings while rendering as one date.
- * Comparing the raw values prints "Aug 30, 2026 - Aug 30, 2026" for every one of
- * them, and only a species seen exactly once ever collapses.
- */
-export function speciesSeenRange(firstSeen: string, lastSeen: string): string {
-  const first = speciesSeenOn(firstSeen);
-  const last = speciesSeenOn(lastSeen);
-  return first === last ? first : `${first} – ${last}`;
-}
-
-/**
- * A sighting's dive start time as a bare date, in that dive's zone - each end of
- * `speciesSeenRange`, and the species page's last sighting.
+ * day there is to land on.
  */
 export function speciesSeenOn(startTime: string): string {
   return formatDiveDateTime(startTime, {

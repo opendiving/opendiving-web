@@ -14,10 +14,8 @@ import {
 } from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import {
-  SPECIES_CARD_GRID,
-  SpeciesCardSkeleton,
-} from "@/components/species/species-card";
+import { SPECIES_CARD_GRID } from "@/components/species/species-card";
+import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export interface SpeciesPageFrameProps {
@@ -146,7 +144,7 @@ export function SpeciesPageFrame({
               >
                 {cards.length === 0
                   ? Array.from({ length: itemsPerPage }, (_, card) => (
-                      <SpeciesCardSkeleton key={card} />
+                      <BackdropCardSkeleton key={card} />
                     ))
                   : cards}
               </ul>

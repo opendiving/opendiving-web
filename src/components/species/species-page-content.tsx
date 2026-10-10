@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { speciesAPI, SpeciesLifeListEntry } from "@/lib/api/species";
-import { speciesSeenRange } from "@/lib/species";
+import { speciesSeenOn } from "@/lib/species";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import {
   SPECIES_PER_PAGE,
@@ -100,10 +100,11 @@ export function SpeciesPageContent() {
         <SpeciesCard
           key={entry.uuid}
           species={entry}
-          figures={[{ label: "Dives", value: entry.dive_count }]}
-        >
-          {speciesSeenRange(entry.first_seen, entry.last_seen)}
-        </SpeciesCard>
+          figures={[
+            { label: "Dives", value: entry.dive_count },
+            { label: "Last seen", value: speciesSeenOn(entry.last_seen) },
+          ]}
+        />
       ))}
     />
   );

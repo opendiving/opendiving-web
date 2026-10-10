@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Fish } from "lucide-react";
 import { fetchAllPages, isAbortError } from "@/lib/api/client";
 import { speciesAPI, type SpeciesLifeListEntry } from "@/lib/api/species";
-import { speciesSeenRange } from "@/lib/species";
+import { speciesSeenOn } from "@/lib/species";
 import {
   SPECIES_CARD_GRID,
   SpeciesCard,
@@ -77,10 +77,11 @@ export function DiveSiteSpeciesCard({
               <SpeciesCard
                 key={entry.uuid}
                 species={entry}
-                figures={[{ label: "Dives", value: entry.dive_count }]}
-              >
-                {speciesSeenRange(entry.first_seen, entry.last_seen)}
-              </SpeciesCard>
+                figures={[
+                  { label: "Dives", value: entry.dive_count },
+                  { label: "Last seen", value: speciesSeenOn(entry.last_seen) },
+                ]}
+              />
             ))}
           </ul>
         )}
