@@ -5,7 +5,8 @@ import { page } from "vitest/browser";
 import { Header } from "./header";
 import type { User } from "@/lib/api/auth";
 
-// The layout under test is the stylesheet's: `fixed inset-0` and `md:hidden`.
+// The layout under test is the stylesheet's: `fixed`, `w-2/3`, `invisible`
+// and `md:hidden`.
 import "@/app/globals.css";
 
 const stable = vi.hoisted(() => ({
@@ -59,7 +60,7 @@ beforeEach(async () => {
   } as User;
 });
 
-function renderOverPage() {
+async function renderOverPage() {
   render(
     <>
       <Header />
@@ -68,36 +69,70 @@ function renderOverPage() {
       </a>
     </>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-  const menu = () => document.getElementById("mobile-menu");
+  const toggle = screen.getByRole("button", { name: "Open menu" });
+  fireEvent.click(toggle);
+  await slid();
+  const menu = () => document.getElementById("mobile-menu")!;
   const backdrop = () => document.querySelector("[data-mobile-menu-backdrop]");
-  // A point on the page under the open menu's foot, where a finger closing it
-  // would land.
-  const below = { x: 20, y: 790 };
-  return { menu, backdrop, below };
+  // A point on the page left of the open menu, where a finger closing it would
+  // land.
+  const beside = { x: 20, y: 600 };
+  return { toggle, menu, backdrop, beside };
 }
 
-describe("the mobile menu on a phone", () => {
-  it("takes a tap outside it on its backdrop, not on the page", () => {
-    const { menu, backdrop, below } = renderOverPage();
-    expect(menu()?.getBoundingClientRect().bottom).toBeLessThan(below.y);
+// The menu slides and its backdrop fades over 300ms, and a box mid-slide is
+// neither where it starts nor where it ends.
+const slid = () => act(() => new Promise((done) => setTimeout(done, 350)));
 
-    expect(document.elementFromPoint(below.x, below.y)).toBe(backdrop());
+const centre = (element: Element) => {
+  const box = element.getBoundingClientRect();
+  return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+};
+
+describe("the mobile menu on a phone", () => {
+  it("takes two thirds of the width, under the header", async () => {
+    const { menu } = await renderOverPage();
+    const box = menu().getBoundingClientRect();
+    const header = document.querySelector("header")!.getBoundingClientRect();
+
+    expect(box.right).toBe(window.innerWidth);
+    expect(box.width).toBeCloseTo((window.innerWidth * 2) / 3, 0);
+    expect(box.top).toBe(header.bottom);
+    expect(box.bottom).toBe(window.innerHeight);
   });
 
-  it("closes on that tap and hands the page back", () => {
-    const { menu, backdrop, below } = renderOverPage();
+  it("leaves the burger above the dimmed page, to close it again", async () => {
+    const { toggle, menu } = await renderOverPage();
+    const { x, y } = centre(toggle);
+    expect(toggle.contains(document.elementFromPoint(x, y))).toBe(true);
+
+    fireEvent.click(toggle);
+    await slid();
+
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(getComputedStyle(menu()).visibility).toBe("hidden");
+  });
+
+  it("takes a tap outside it on its backdrop, not on the page", async () => {
+    const { backdrop, beside } = await renderOverPage();
+
+    expect(document.elementFromPoint(beside.x, beside.y)).toBe(backdrop());
+  });
+
+  it("closes on that tap and hands the page back at once", async () => {
+    const { toggle, backdrop, beside } = await renderOverPage();
 
     fireEvent.click(backdrop() as Element);
 
-    expect(menu()).toBeNull();
-    expect(document.elementFromPoint(below.x, below.y)).toHaveTextContent(
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    // Still fading out, but no longer in the way.
+    expect(document.elementFromPoint(beside.x, beside.y)).toHaveTextContent(
       "Below the menu",
     );
   });
 
   it("closes with the bell's panel on one tap outside both", async () => {
-    const { menu, backdrop } = renderOverPage();
+    const { toggle, backdrop } = await renderOverPage();
     fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
     await nextTick();
     expect(
@@ -112,7 +147,7 @@ describe("the mobile menu on a phone", () => {
     fireEvent.click(outside);
     await nextTick();
 
-    expect(menu()).toBeNull();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
     // Closed, and easing out under the stylesheet's exit animation.
     expect(
       document.querySelector(
