@@ -71,7 +71,7 @@ const FIXED_SOURCES: Record<string, string> = {
 // Chart accents from `globals.css`, each declared once for both themes and
 // clearing 3:1 against either card, as the text colour an SVG mark fills with
 // `currentColor`. Written out whole so Tailwind finds them. The fixed doors keep
-// one colour each, so "Waiting list" is the same violet every month; channels take
+// one colour each, so "Waiting list" is the same grey every month; channels take
 // the rest in turn, and past six of them a colour repeats - the legend names every
 // series in words, so colour is never the only thing telling two apart.
 const FIXED_COLOURS: Record<string, string> = {

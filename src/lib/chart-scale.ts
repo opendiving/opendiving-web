@@ -49,6 +49,43 @@ export function niceDomain(values: number[], targetTicks = 5): Domain {
   };
 }
 
+// A rounded domain covering `values` in exactly `steps` gaps, so its ticks land
+// at the same heights as those of another axis with that many - which is what
+// lets two scales share one edge, a pair of numbers per height.
+//
+// Walks `niceDomain`'s ladder up from the smallest step that could span the
+// values until one does, floor included. For non-negative values that always
+// terminates; the cap is for anything else, which gets an unrounded domain.
+// Values that never change get whole units around them, as `niceDomain` gives
+// them a band, rather than a ladder that starts at nothing.
+export function alignedDomain(values: number[], steps: number): Domain {
+  if (values.length === 0 || steps < 1) return niceDomain(values);
+
+  const lowest = Math.min(...values);
+  const highest = Math.max(...values);
+  const range = highest - lowest;
+  if (range === 0) {
+    const min = Math.floor(lowest) - Math.floor(steps / 2);
+    return { min, max: min + steps, step: 1 };
+  }
+
+  let magnitude = 10 ** Math.floor(Math.log10(range / steps));
+  for (let attempt = 0; attempt < 12; attempt += 1, magnitude *= 10) {
+    for (const candidate of [1, 2, 2.5, 5]) {
+      const step = candidate * magnitude;
+      const min = Math.floor(lowest / step) * step;
+      if (min + steps * step >= highest) {
+        return { min, max: min + steps * step, step };
+      }
+    }
+  }
+  return { min: lowest, max: lowest + range, step: range / steps };
+}
+
+// How many gaps a domain's ticks divide it into.
+export const stepCount = ({ min, max, step }: Domain) =>
+  Math.round((max - min) / step);
+
 // The 1/2/5 progression `niceDomain` picks its step from, as whole numbers.
 const COUNT_STEPS = [1, 2, 5];
 

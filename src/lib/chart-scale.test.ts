@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   CHART_FULL_WIDTH_PX,
+  alignedDomain,
   axisTicks,
   countDomain,
   fittedChartWidth,
   labelCapacity,
   niceDomain,
+  stepCount,
 } from "@/lib/chart-scale";
 
 // Moved verbatim from `dive-gas.test.ts` along with the functions themselves;
@@ -42,6 +44,41 @@ describe("niceDomain", () => {
 
   it("survives an empty series", () => {
     expect(niceDomain([])).toEqual({ min: 0, max: 1, step: 1 });
+  });
+});
+
+describe("alignedDomain", () => {
+  it("covers the values in exactly the steps asked for", () => {
+    // A tank's pressures under a 28-30 °C axis of four steps.
+    expect(alignedDomain([46.11, 199.06], 4)).toEqual({
+      min: 0,
+      max: 200,
+      step: 50,
+    });
+  });
+
+  it("goes coarser rather than break the count", () => {
+    // 650-2 900 psi in four steps: 500 would end at 2 500, short of the top.
+    const domain = alignedDomain([650, 2900], 4);
+    expect(domain).toEqual({ min: 0, max: 4000, step: 1000 });
+    expect(stepCount(domain)).toBe(4);
+  });
+
+  it("gives values that never change whole units around them", () => {
+    // A cylinder whose gauge never moved: a ladder starting from a zero range
+    // would print 200.0000000001.
+    expect(alignedDomain([200, 200], 4)).toEqual({
+      min: 198,
+      max: 202,
+      step: 1,
+    });
+  });
+
+  it("lands every tick on another axis's height", () => {
+    const temperature = niceDomain([21.6, 26.4]);
+    const pressure = alignedDomain([30, 210], stepCount(temperature));
+
+    expect(axisTicks(pressure)).toHaveLength(axisTicks(temperature).length);
   });
 });
 

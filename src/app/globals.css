@@ -178,17 +178,18 @@
     --coral-foreground: 0 0% 100%;
     --teal-foreground: 0 0% 100%;
 
-    /* Third chart accent, for the dive profile's tank-pressure curve. Depth is
-       teal and temperature is coral; pressure needs a hue that's separable from
-       both at a glance, since all three are thin lines sharing one plot. Violet
-       sits roughly opposite the coral/teal pair on the wheel and is the only
-       family that does.
+    /* Third chart accent, for the dive profile's tank-pressure curve. A neutral
+       grey beside depth's teal and temperature's coral: the gauge reading is the
+       supporting line on that plot, and grey keeps it there while staying
+       separable from both by hue.
 
        Declared here and deliberately *not* redeclared under .dark, the same
        property that makes coral and teal hold their contrast in both themes:
-       62% lightness reads against a white card and against the dark theme's 13%
-       one. A per-theme pair would have to be tuned twice and would drift. */
-    --pressure: 265 70% 62%;
+       52% lightness is 3.9:1 against a white card and 4.2:1 against the dark
+       theme's 13% one, and still 3.3:1 under a gas-switch marker's resting 0.9
+       opacity on white. A per-theme pair would have to be tuned twice and would
+       drift. */
+    --pressure: 220 6% 52%;
 
     /* Fourth chart accent, for the dive profile's deco ceiling. Red, which is
        what every dive computer and every other dive log uses for the ceiling,
@@ -238,9 +239,9 @@
        a plot are told apart by which plot they are in, and the legend and the
        crosshair both name them in words. Colour is doing the least of the work.
 
-       Hues chosen around the four already spoken for (0 ceiling, 16 coral, 180
-       teal, 265 pressure) rather than through them, so no new accent has to be
-       told apart from an old one by lightness alone. */
+       Hues chosen around the three already spoken for (0 ceiling, 16 coral,
+       180 teal; --pressure is grey) rather than through them, so no new accent
+       has to be told apart from an old one by lightness alone. */
     --ndl: 150 65% 38%;
     --tts: 35 95% 40%;
     --ppo2: 205 85% 45%;

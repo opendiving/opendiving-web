@@ -63,7 +63,7 @@ const WIDTHS = { phone: 293, smallPhone: 238, desktop: 582 };
 function renderAt(width: number) {
   const { container } = render(
     <div style={{ width }}>
-      <DiveProfileChart profile={PROFILE} />
+      <DiveProfileChart profile={PROFILE} menuContainer={null} />
     </div>,
   );
   const frame = container.firstElementChild as HTMLElement;

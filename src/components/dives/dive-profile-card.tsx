@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { LineChart } from "lucide-react";
 import {
+  CARD_TITLE_ACTION,
+  CARD_TITLE_ROW,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -121,6 +122,8 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   // deletion or a promotion reorders the list, and an index would quietly point
   // at a different device's curves afterwards.
   const [shownUuid, setShownUuid] = useState<string | null>(null);
+  // The title row's slot for the chart's channel menu - see `menuContainer`.
+  const [menuSlot, setMenuSlot] = useState<HTMLDivElement | null>(null);
 
   // Only recordings that actually carry samples: a recording whose files held
   // none has nothing to draw, and a switcher button leading to a permanent 404
@@ -197,13 +200,13 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h2" className="flex items-center gap-2">
-          <LineChart className="h-5 w-5" />
-          Dive Profile
-        </CardTitle>
-        <CardDescription>
-          {describeProfileContents(info, units)}
-        </CardDescription>
+        <div className={CARD_TITLE_ROW}>
+          <CardTitle as="h2" className="flex items-center gap-2">
+            <LineChart className="h-5 w-5" />
+            Dive Profile
+          </CardTitle>
+          <div ref={setMenuSlot} className={CARD_TITLE_ACTION} />
+        </div>
       </CardHeader>
       <CardContent>
         {charted.length > 1 && (
@@ -241,7 +244,11 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
         ) : result.status === "ready" ? (
           // Every recording's labels join the dive's own cylinders - the API
           // maps a second computer's onto them - so one list names them all.
-          <DiveProfileChart profile={result.profile} mixtures={dive.mixtures} />
+          <DiveProfileChart
+            profile={result.profile}
+            mixtures={dive.mixtures}
+            menuContainer={menuSlot}
+          />
         ) : (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">{result.message}</p>
@@ -259,6 +266,11 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
             )}
           </div>
         )}
+        {/* At the foot, as the Gas Consumption card puts its own note: it
+            describes the recording, and the chart is what the card is for. */}
+        <p className="mt-4 text-xs text-muted-foreground">
+          {describeProfileContents(info, units)}
+        </p>
       </CardContent>
     </Card>
   );

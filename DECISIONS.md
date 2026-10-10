@@ -1126,9 +1126,11 @@ anchors at the surface by arithmetic — feeding the surface's own `0` into the 
 Same CSP reasoning as the air-consumption chart, restated in the component so nobody reaches for
 Recharts; the arithmetic lives in `lib/dive-profile.ts`, Vitest-tested.
 
-Depth is inverted, surface-anchored and filled (`text-teal`, `opacity-15`). Temperature gets its own
-domain, since 21.6–21.9 °C is flat on a depth-wide axis. Pressure shares the right edge without
-labels; every cylinder shares one pressure domain.
+Depth is inverted, surface-anchored and drawn as its fill alone (`text-teal`, `opacity-15`), with no
+line along the edge, by the owner's choice. That makes it the one mark under the 3:1 bar the chart's
+other marks clear, knowingly: no fill reaches 3:1 short of opaque, the depth axis and the crosshair
+carry the reading, and the fill only says which side is water. Temperature gets its own domain,
+since 21.6–21.9 °C is flat on a depth-wide axis. Every cylinder shares one pressure domain.
 
 One hovered time, not index: channels are sampled independently, so a full-plot transparent `<rect>`
 maps the cursor to an instant on the profile's millisecond axis once and each channel resolves its
@@ -1138,7 +1140,7 @@ own sample with `nearestSampleIndex`. Readouts are real readings, never interpol
 readings: card height depends on channel count, so offsetting from a point overflows the chart.
 
 Keyboard scrubbing is out of scope. The `aria-label` uses `formatDurationHoursMinutes`, not `MM:SS`.
-`--pressure` is a third theme-stable token in `globals.css`, violet.
+`--pressure` is a third theme-stable token in `globals.css`, grey.
 
 ## The profile's line breaks are derived from the series' own cadence
 
@@ -1667,8 +1669,9 @@ as inert as a `setTimeout` constant is a measurement error first.
 
 Every mark on both charts is toggled from its legend entry, which names it and carries its swatch.
 Entries are `<button aria-pressed>`, not checkboxes; the label stays the mark's name in both states,
-and a hidden mark's swatch turns muted. Hiding everything is allowed and replaces the plot with a
-one-line message.
+and a hidden mark's swatch turns muted. The profile's ten channels and markers would wrap to three
+lines on a phone, so its legend is a menu on the card's title row, grouped by graph. Hiding
+everything is allowed and replaces the plot with a one-line message.
 
 The profile chart toggles by channel, not plotted line: both pressure lines share `--pressure`, and
 "tank pressure" survives across dives where "gas 2" does not.
@@ -1864,9 +1867,9 @@ disappearing before it reads as a button.
 (`bg-destructive-solid`) for `overdue`; `warning` and `outline` are out of it. The scale reads by
 hue, not weight: an outline beside two fills reads as an absence, and "In service" is a verdict.
 
-The palette has three accents (`--coral` 16, `--teal` 180, `--pressure` 265); `--warning`'s amber on
-a status chip was a fourth hue for one badge. Coral and `destructive` are six degrees apart, so they
-separate by lightness.
+The palette has two accents (`--coral` 16, `--teal` 180) and a chart grey (`--pressure`);
+`--warning`'s amber on a status chip was a third hue for one badge. Coral and `destructive` are six
+degrees apart, so they separate by lightness.
 
 `--coral-foreground` and `--teal-foreground` are both white so the three chips share one label
 colour. Coral pays 2.50:1 on the label, under AA; the fix if wanted is near-black on
@@ -2172,8 +2175,10 @@ toggled off; not a fifth `PROFILE_CHANNELS` entry (switch: _"The markers have a 
 it is not a fifth channel"_).
 
 Three glyph families, not five. Colour marks only what joins elsewhere: a gas switch is `--pressure`
-violet for its `gas_number`. A stop is not the ceiling's red: both types are the Suunto app's
-`Notify` values as the `divejson` package's reader maps them (`STOP_TYPES`), a recommended pause.
+for its `gas_number`. With pressure grey that sits close to the other markers' `--muted-foreground`,
+and the diamond is what tells a gas switch apart. A stop is not the ceiling's red: both types are
+the Suunto app's `Notify` values as the `divejson` package's reader maps them (`STOP_TYPES`), a
+recommended pause.
 
 `describeEvent` passes an `other`'s label through unchanged; `gas_number` is tested with `== null`.
 `label` is free text, so the tooltip line is `max-w-64 whitespace-normal`.
@@ -2428,10 +2433,11 @@ floor is 1.0 by decision: below it a figure is a CCR setpoint, not a MOD ceiling
 
 The plot holds at most three scales: depth and ceiling share one (see "The deco ceiling rides
 depth's axis"), so the rule is over scales, not channels. With two scales, sides are fixed (position
-reads faster than colour): meters left, temperature right, pressure taking whichever is free,
-unlabelled when all three are on. A single scale goes left, right edge empty; mirroring it invites
-reading two scales. Invariant: the left edge is labelled whenever anything is plotted, the right
-exactly when a second scale is on.
+reads faster than colour): meters left, temperature right, pressure taking whichever is free. With
+all three on, pressure's numbers sit under temperature's (`underRight`), its domain fitted by
+`alignedDomain` to temperature's step count so each pair labels one height. A single scale goes
+left, right edge empty; mirroring it invites reading two scales. Invariant: the left edge is
+labelled whenever anything is plotted, the right exactly when a second scale is on.
 
 `DiveProfileChart vertical axes` sweeps every non-empty selection, computing the expected right edge
 with `distinctScales`; see "The deco readouts got a panel" for what "the plot" means now. Switching
@@ -5347,11 +5353,11 @@ sentence talks to is fine; what it claims the reader _is_ is the defect.
 ## Errors are coral at hue 10, and the lightness is the load-bearing half
 
 `--destructive` is `10 88% 42%` light and `10 100% 68%` dark; `--destructive-solid` is `10 88% 40%`
-in both. Every other accent is warm-or-cool — `--coral` at 16, `--teal` at 180, `--pressure` at 265
-— and a saturated hue-0 red beside them reads as imported. Hue 10, not 16: same family, still a
-distinguishable pigment where they meet. They do meet (sign-in is `bg-coral`, delete is
-`bg-destructive-solid`), and the collision is accepted: a destructive control that must be
-unmistakable carries it in the label or a confirm step, as `ConfirmDialog` does.
+in both. Every other accent is warm-or-cool — `--coral` at 16, `--teal` at 180 — and a saturated
+hue-0 red beside them reads as imported. Hue 10, not 16: same family, still a distinguishable
+pigment where they meet. They do meet (sign-in is `bg-coral`, delete is `bg-destructive-solid`), and
+the collision is accepted: a destructive control that must be unmistakable carries it in the label
+or a confirm step, as `ConfirmDialog` does.
 
 The lightness is the load-bearing half. `text-destructive` is body text in `FormMessage`, every
 per-field validation message; shadcn's 60.2% default is 3.76:1 on `--background` (AA fails), hue 10
