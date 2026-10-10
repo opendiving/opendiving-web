@@ -8,6 +8,7 @@ import {
   axisUnitSuffix,
   channelWord,
   channelsOnAxis,
+  cutAtDiveEnd,
   depthDomain,
   displayChannel,
   cylinderName,
@@ -54,6 +55,69 @@ function profile(overrides: Partial<DiveProfile> = {}): DiveProfile {
 function event(overrides: Partial<DiveProfileEvent> = {}): DiveProfileEvent {
   return { time: 0, type: "gas_switch", ...overrides };
 }
+
+describe("cutAtDiveEnd", () => {
+  // A dive that ends at 20 s on the axis and a recorder that went on to 40 s at
+  // the surface.
+  const recorded = profile({
+    duration: 40_000,
+    dive_end_time: 20_000,
+    depth: {
+      times: [0, 10_000, 20_000, 30_000, 40_000],
+      values: [0, 1800, 90, 10, 0],
+    },
+    temperature: {
+      times: [5_000, 15_000, 25_000, 35_000],
+      values: [219, 218, 300, 310],
+    },
+    ndl: { times: [25_000, 35_000], values: [5940, 5940] },
+    pressures: [
+      { gas_number: 2, times: [0, 20_000, 40_000], values: [2000, 1500, 1500] },
+    ],
+    events: [event({ time: 30_000, type: "pressure_low" })],
+  });
+
+  it("moves the profile's duration to the dive's end", () => {
+    expect(cutAtDiveEnd(recorded).duration).toBe(20_000);
+  });
+
+  it("keeps the sample at the end and drops every one after it", () => {
+    const cut = cutAtDiveEnd(recorded);
+
+    expect(cut.depth).toEqual({
+      times: [0, 10_000, 20_000],
+      values: [0, 1800, 90],
+    });
+    expect(cut.pressures).toEqual([
+      { gas_number: 2, times: [0, 20_000], values: [2000, 1500] },
+    ]);
+  });
+
+  it("stops a channel with no sample at the end at its last kept one", () => {
+    expect(cutAtDiveEnd(recorded).temperature).toEqual({
+      times: [5_000, 15_000],
+      values: [219, 218],
+    });
+  });
+
+  it("empties a channel that only recorded after the end", () => {
+    expect(cutAtDiveEnd(recorded).ndl).toEqual({ times: [], values: [] });
+  });
+
+  it("leaves the events for the chart's own clip", () => {
+    expect(cutAtDiveEnd(recorded).events).toEqual(recorded.events);
+  });
+
+  it.each([
+    ["null", null],
+    ["absent", undefined],
+    ["at the recording's end", 40_000],
+  ])("returns the profile whole where the end is %s", (_, end) => {
+    const whole = { ...recorded, dive_end_time: end };
+
+    expect(cutAtDiveEnd(whole)).toBe(whole);
+  });
+});
 
 describe("toChannelSeries", () => {
   it("divides by the channel's scale exactly", () => {

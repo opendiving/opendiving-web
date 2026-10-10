@@ -2258,10 +2258,10 @@ means. `dive-profile-chart.render.test.tsx` covers the component wiring the `lib
 
 ## Markers are clipped to the plot, because the API leaves their high end alone
 
-The API's `shape_events` clamps an event's time at zero and leaves the high end alone: the profile's
-`duration` spans the samples, a device keeps recording after the last one, and a FIT `user_marker`
-can be pressed after surfacing. A chart that draws past its x domain is therefore the chart's to
-clip.
+The API's `shape_events` clamps an event's time at zero and leaves the high end alone: a FIT
+`user_marker` can sit past the profile's last sample. The chart's axis also ends at the dive's end
+(`dive_end_time`) rather than at the recording's last sample, so a low-pressure alarm logged at the
+surface sits past it too. Clipping to the visible end is the chart's job.
 
 Unclipped, a marker at 6 000 s on a 3 000 s dive lands outside the viewBox and one at 3 200 s inside
 it, in the axis-label gutter aligned with no time — while `describeProfile` names both. One filtered

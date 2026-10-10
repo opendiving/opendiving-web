@@ -51,6 +51,7 @@ import {
   formatChannelValue,
   formatElapsed,
   formatElapsedSpoken,
+  cutAtDiveEnd,
   drawnSampleIndexAt,
   gapThreshold,
   nearestEvent,
@@ -286,11 +287,17 @@ function drawnValues(
 }
 
 export function DiveProfileChart({
-  profile,
+  profile: recorded,
   mixtures = NO_CYLINDERS,
   menuContainer,
 }: DiveProfileChartProps) {
   const units = useUnits();
+  // Everything below reads this rather than the prop: the recording cut at the
+  // dive's end, with `duration` moved to that instant. Cutting the samples
+  // before anything derives from them, rather than ending only the x scale, is
+  // what keeps the surface stretch out of the vertical scales, the crosshair
+  // and the summary as well as off the plot.
+  const profile = useMemo(() => cutAtDiveEnd(recorded), [recorded]);
   // Names the clip paths below, so two charts on one page cannot clip each other
   // - the trap `components/icons/google-icon.tsx` already records for the mask and
   // filter ids it namespaces the same way.
@@ -366,17 +373,18 @@ export function DiveProfileChart({
   const temperature = toChannelSeries(profile, "temperature", units);
   const pressure = toPressureSeries(profile, units);
 
+  // The axis's span: the dive's end, or the recording's where there is none.
   const duration = profile.duration;
   const x = (at: number) =>
     PADDING.left + (duration > 0 ? at / duration : 0) * plotWidth;
 
   // Markers that land inside the plot, which is this chart's job rather than the
   // API's: its `shape_events` clamps the low side at zero and leaves the high side
-  // alone - the profile's `duration` is the span of the *samples*, and a device
-  // goes on recording after the last one, so a FIT `user_marker` pressed after
-  // surfacing happened when the file says it did. This is the clip. The DiveJSON
-  // spec blesses the same arrangement (§6.4), so the rename that brought
-  // `duration` here changed the word and nothing about which markers exist.
+  // alone - a device goes on recording after the dive, and after its last sample,
+  // so a FIT `user_marker` pressed after surfacing happened when the file says it
+  // did. The DiveJSON spec blesses the same arrangement (§6.4). This is the clip,
+  // at `duration`, which is the dive's end where the response carries one (see
+  // `cutAtDiveEnd`) and the recording's last sample otherwise.
   //
   // Dropped rather than clamped to the plot's last instant, which would invent a
   // time to keep a marker on screen, and rather than left to the SVG's own clipping,

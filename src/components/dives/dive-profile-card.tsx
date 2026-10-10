@@ -61,10 +61,11 @@ interface DiveProfileCardProps {
 // and 0 is one that looked and found none, and neither is worth a sentence.
 //
 // So this count can exceed the ticks on the chart, and that is intended rather
-// than a drift to fix. The API leaves an event past the profile's `duration`
-// where the file put it - a FIT `user_marker` pressed after surfacing - and the
-// DiveJSON spec blesses that (§6.4), rather than clamping. The chart clips
-// those to its own x domain. **This line describes what the dive computer
+// than a drift to fix. The chart's axis ends where the dive does, so a marker the
+// computer logged at the surface afterwards - a low-pressure alarm, or a FIT
+// `user_marker` pressed after the recording's last sample, which the API leaves
+// where the file put it as the DiveJSON spec allows (§6.4) - is clipped from the
+// chart and still counted here. **This line describes what the dive computer
 // recorded; the chart describes what fits on the axis.** Reconciling them would
 // mean either the card waiting on the series it deliberately doesn't wait for, or
 // the chart drawing past its plot.

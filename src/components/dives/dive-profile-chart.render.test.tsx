@@ -1065,6 +1065,146 @@ describe("DiveProfileChart markers past the end of the recorded profile", () => 
   });
 });
 
+describe("DiveProfileChart ending at the dive's end", () => {
+  // A 50-minute dive and ten more minutes of the recorder at the surface, where
+  // the water is far warmer than anything the dive went through. Temperature has
+  // no sample at the end, so it stops short of it.
+  const surfaceTimes = [3_000_000, 3_300_000, 3_600_000];
+  const recorded = (end: number | null | undefined): DiveProfile =>
+    longProfile({
+      duration: 3_600_000,
+      dive_end_time: end,
+      depth: {
+        times: [
+          0,
+          300_000,
+          600_000,
+          900_000,
+          1_200_000,
+          1_500_000,
+          1_800_000,
+          2_100_000,
+          2_400_000,
+          2_700_000,
+          ...surfaceTimes,
+        ],
+        values: [
+          0, 2000, 3000, 3000, 3000, 3000, 3000, 2000, 1000, 500, 90, 0, 0,
+        ],
+      },
+      temperature: {
+        times: [
+          150_000, 750_000, 1_350_000, 1_950_000, 2_550_000, 3_150_000,
+          3_450_000,
+        ],
+        values: [260, 245, 235, 232, 238, 320, 330],
+      },
+      events: [
+        { time: 1_500_000, type: "bookmark" },
+        { time: 3_300_000, type: "pressure_low" },
+      ],
+    });
+  const dive = recorded(3_000_000);
+
+  // Every x a curve or a fill is drawn through, in viewBox units.
+  const curveXs = (root: HTMLElement) =>
+    [...root.querySelectorAll("polyline, path")]
+      .filter((shape) => shape.closest("svg[role='img']"))
+      .flatMap((shape) =>
+        [
+          ...(
+            shape.getAttribute("points") ??
+            shape.getAttribute("d") ??
+            ""
+          ).matchAll(/(-?[\d.]+),-?[\d.]+/g),
+        ].map((match) => Number(match[1])),
+      );
+  const elapsedLabels = (root: HTMLElement) =>
+    [...root.querySelectorAll("text[text-anchor='middle']")].map(
+      (label) => label.textContent,
+    );
+  const PLOT_RIGHT = 720 - 46; // WIDTH - PADDING.right
+
+  it("draws nothing right of the plot, and depth reaches its edge", () => {
+    const { container } = render(<DiveProfileChart profile={dive} />);
+    const xs = curveXs(container);
+
+    expect(xs.length).toBeGreaterThan(0);
+    expect(Math.max(...xs)).toBeCloseTo(PLOT_RIGHT, 6);
+  });
+
+  it("stops temperature at its last sample before the end, on the dive's axis", () => {
+    const { container } = render(<DiveProfileChart profile={dive} />);
+    const xs = [...container.querySelectorAll("polyline")].flatMap((line) =>
+      [...(line.getAttribute("points") ?? "").matchAll(/(-?[\d.]+),/g)].map(
+        (match) => Number(match[1]),
+      ),
+    );
+
+    // 2 550 000 ms of a 3 000 000 ms axis over the 630-unit plot.
+    expect(Math.max(...xs)).toBeCloseTo(44 + (2_550_000 / 3_000_000) * 630, 1);
+  });
+
+  it("fits the temperature axis without the surface stretch", () => {
+    const highest = (profile: DiveProfile) => {
+      const { container, unmount } = render(
+        <DiveProfileChart profile={profile} />,
+      );
+      const ticks = rightAxisTicks(container).map((tick) =>
+        Number.parseFloat(tick ?? ""),
+      );
+      unmount();
+      return Math.max(...ticks);
+    };
+
+    expect(highest(dive)).toBeLessThan(30);
+    // The same recording with no end reaches past it, so the line above is
+    // measuring the cut rather than a scale that never went that far.
+    expect(highest(recorded(undefined))).toBeGreaterThanOrEqual(32);
+  });
+
+  it("puts no elapsed tick past the end", () => {
+    const { container } = render(<DiveProfileChart profile={dive} />);
+
+    expect(elapsedLabels(container)).toEqual([
+      "0:00",
+      "10:00",
+      "20:00",
+      "30:00",
+      "40:00",
+      "50:00",
+    ]);
+  });
+
+  it("neither draws nor names a marker past the end", () => {
+    const { container } = render(<DiveProfileChart profile={dive} />);
+
+    expect(
+      container.querySelectorAll("g[aria-hidden][opacity] line"),
+    ).toHaveLength(1);
+    const name = screen.getByRole("img").getAttribute("aria-label") ?? "";
+    expect(name).toContain("Bookmark at 25min");
+    expect(name).not.toContain("55min");
+  });
+
+  it("speaks the dive's span in the summary", () => {
+    render(<DiveProfileChart profile={dive} />);
+
+    expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(
+      /^Dive profile over 50min,/,
+    );
+  });
+
+  it("draws the whole recording where the response names no end", () => {
+    const { container } = render(<DiveProfileChart profile={recorded(null)} />);
+
+    expect(elapsedLabels(container)).toContain("60:00");
+    expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(
+      /^Dive profile over 1h/,
+    );
+  });
+});
+
 describe("DiveProfileChart naming cylinders", () => {
   // Labels count from 0 and the Tanks card numbers its tanks from 1, so a bare
   // label would name the card's next tank. The chart names the joined tank by the

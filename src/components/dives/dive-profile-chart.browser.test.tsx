@@ -179,3 +179,48 @@ describe("the dive profile chart under a finger", () => {
     expect(card()).toHaveTextContent("20:00 elapsed");
   });
 });
+
+describe("the dive profile chart's crosshair on a dive that ended early", () => {
+  // The same 50-minute dive, recorded on for ten more minutes at the surface.
+  const RECORDED: DiveProfile = {
+    ...PROFILE,
+    duration: 3_600_000,
+    dive_end_time: 3_000_000,
+    depth: {
+      times: [...times, 3_300_000, 3_600_000],
+      values: [...(PROFILE.depth?.values ?? []), 0, 0],
+    },
+  };
+
+  // Where the pointer is, in client pixels, given the hit target's box.
+  function hover(at: (box: DOMRect) => number) {
+    const { container } = render(
+      <div style={{ width: WIDTHS.phone }}>
+        <DiveProfileChart profile={RECORDED} menuContainer={null} />
+      </div>,
+    );
+    const target = container.querySelector(
+      'rect[fill="transparent"]',
+    ) as Element;
+    const box = target.getBoundingClientRect();
+    fireEvent.mouseMove(target, {
+      clientX: at(box),
+      clientY: box.top + box.height / 3,
+    });
+    return container.querySelector('[role="presentation"]');
+  }
+
+  it("reads the dive's end at the plot's right edge", () => {
+    expect(hover((box) => Math.ceil(box.right))).toHaveTextContent(
+      "50:00 elapsed",
+    );
+  });
+
+  it("spreads the dive, not the recording, across the plot", () => {
+    // Two fifths of the 50-minute dive, give or take the whole pixel the event's
+    // `clientX` is rounded to; of the hour recorded it would be 24:00.
+    expect(hover((box) => box.left + box.width * 0.4)?.textContent).toMatch(
+      /^(19:5\d|20:0\d) elapsed/,
+    );
+  });
+});
