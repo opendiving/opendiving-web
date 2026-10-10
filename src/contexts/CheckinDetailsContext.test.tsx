@@ -125,7 +125,8 @@ describe("CheckinDetailsProvider", () => {
     act(() => state().reload());
 
     expect(await screen.findByText("a@example.org")).toBeInTheDocument();
-    expect(state().loadFailed).toBe(false);
+    // The DOM can commit before the consumer's effect hands the new value out.
+    await waitFor(() => expect(state().loadFailed).toBe(false));
   });
 });
 
