@@ -1127,8 +1127,7 @@ Same CSP reasoning as the air-consumption chart, restated in the component so no
 Recharts; the arithmetic lives in `lib/dive-profile.ts`, Vitest-tested.
 
 Depth is inverted, surface-anchored and filled (`text-teal`, `opacity-15`). Temperature gets its own
-domain, since 21.6–21.9 °C is flat on a depth-wide axis. Pressure shares the right edge without
-labels; every cylinder shares one pressure domain.
+domain, since 21.6–21.9 °C is flat on a depth-wide axis. Every cylinder shares one pressure domain.
 
 One hovered time, not index: channels are sampled independently, so a full-plot transparent `<rect>`
 maps the cursor to an instant on the profile's millisecond axis once and each channel resolves its
@@ -1138,7 +1137,7 @@ own sample with `nearestSampleIndex`. Readouts are real readings, never interpol
 readings: card height depends on channel count, so offsetting from a point overflows the chart.
 
 Keyboard scrubbing is out of scope. The `aria-label` uses `formatDurationHoursMinutes`, not `MM:SS`.
-`--pressure` is a third theme-stable token in `globals.css`, violet.
+`--pressure` is a third theme-stable token in `globals.css`, grey.
 
 ## The profile's line breaks are derived from the series' own cadence
 
@@ -2172,8 +2171,8 @@ toggled off; not a fifth `PROFILE_CHANNELS` entry (switch: _"The markers have a 
 it is not a fifth channel"_).
 
 Three glyph families, not five. Colour marks only what joins elsewhere: a gas switch is `--pressure`
-violet for its `gas_number`. A stop is not the ceiling's red: both types are the Suunto app's
-`Notify` values as the `divejson` package's reader maps them (`STOP_TYPES`), a recommended pause.
+grey for its `gas_number`. A stop is not the ceiling's red: both types are the Suunto app's `Notify`
+values as the `divejson` package's reader maps them (`STOP_TYPES`), a recommended pause.
 
 `describeEvent` passes an `other`'s label through unchanged; `gas_number` is tested with `== null`.
 `label` is free text, so the tooltip line is `max-w-64 whitespace-normal`.
@@ -2428,10 +2427,11 @@ floor is 1.0 by decision: below it a figure is a CCR setpoint, not a MOD ceiling
 
 The plot holds at most three scales: depth and ceiling share one (see "The deco ceiling rides
 depth's axis"), so the rule is over scales, not channels. With two scales, sides are fixed (position
-reads faster than colour): meters left, temperature right, pressure taking whichever is free,
-unlabelled when all three are on. A single scale goes left, right edge empty; mirroring it invites
-reading two scales. Invariant: the left edge is labelled whenever anything is plotted, the right
-exactly when a second scale is on.
+reads faster than colour): meters left, temperature right, pressure taking whichever is free. With
+all three on, pressure's numbers sit under temperature's (`underRight`), its domain fitted by
+`alignedDomain` to temperature's step count so each pair labels one height. A single scale goes
+left, right edge empty; mirroring it invites reading two scales. Invariant: the left edge is
+labelled whenever anything is plotted, the right exactly when a second scale is on.
 
 `DiveProfileChart vertical axes` sweeps every non-empty selection, computing the expected right edge
 with `distinctScales`; see "The deco readouts got a panel" for what "the plot" means now. Switching

@@ -16,9 +16,11 @@ import type {
   DiveProfileEventType,
 } from "@/lib/api/dives";
 import {
+  alignedDomain,
   axisTicks,
   labelCapacity,
   niceDomain,
+  stepCount,
   type Domain,
 } from "@/lib/chart-scale";
 import { buildAreaPath } from "@/lib/chart-path";
@@ -118,6 +120,10 @@ const plotHeightFor = (width: number) =>
 // wide in 11-unit Inter, plus air. At the design width the axis is never short of
 // it, so this only thins the labels on a phone.
 const ELAPSED_LABEL_SPACING = 44;
+
+// How far above and below its height each of two stacked edge numbers sits:
+// 11-unit type is about 8 units of ink, so 12 between centres leaves air.
+const STACKED_LABEL_OFFSET = 6;
 
 // The deco panel: one short plot per unit the depth plot's two edges cannot
 // carry, stacked under it and sharing its elapsed-time axis. See
@@ -708,11 +714,32 @@ export function DiveProfileChart({
   // The shown channels, now that there is a scale and a rect for each. A deco
   // channel's row is its axis's position among the panels, which is exactly the
   // thing that could not be known while `channels` was being built.
+  // The domain of the scale numbered under the right edge's, when there is one:
+  // fitted to the right edge's gridline count, so each pair of numbers labels
+  // one height. Across every cylinder, as the pressure domain always is.
+  const rightDomain = channels.find(
+    (channel) => channel.channelKey === placement.right,
+  )?.domain;
+  const underRightDomain =
+    placement.underRight && rightDomain
+      ? alignedDomain(
+          channels
+            .filter((channel) => channel.channelKey === placement.underRight)
+            .flatMap((channel) => channel.series.values),
+          stepCount(rightDomain),
+        )
+      : null;
+
   const shown: PositionedChannel[] = channels
     .filter((channel) => visible.includes(channel.channelKey))
     .flatMap((channel) => {
       const panelIndex = placement.panels.indexOf(channel.axis);
-      const domain = channel.domain ?? panelDomains.get(channel.axis);
+      const domain =
+        (channel.channelKey === placement.underRight
+          ? underRightDomain
+          : null) ??
+        channel.domain ??
+        panelDomains.get(channel.axis);
       // Unreachable: a channel is either on the depth plot with a domain of its
       // own, or on a panel row that `placement` grew *because* it is shown.
       if (!domain) return [];
@@ -772,6 +799,9 @@ export function DiveProfileChart({
   // `profileScalePlacement`, and what is left here is looking the channel up.
   const leftChannel = placement.left ? shownChannel(placement.left) : null;
   const rightChannel = placement.right ? shownChannel(placement.right) : null;
+  const underRightChannel = placement.underRight
+    ? shownChannel(placement.underRight)
+    : null;
 
   // The water column: one filled region per run of consecutive depth samples,
   // from the surface down to the curve.
@@ -993,12 +1023,35 @@ export function DiveProfileChart({
                 key={tick}
                 aria-hidden
                 x={width - PADDING.right + 6}
-                y={rightChannel.y(tick)}
+                y={
+                  rightChannel.y(tick) -
+                  (underRightChannel ? STACKED_LABEL_OFFSET : 0)
+                }
                 textAnchor="start"
                 dominantBaseline="middle"
                 fontSize={11}
                 fill="currentColor"
                 className={rightChannel.series.channel.colorClass}
+              >
+                {tick}
+              </text>
+            ))}
+
+          {/* The third scale, a number under each of the second's at the same
+              height - see `underRight`. */}
+          {underRightChannel &&
+            axisTicks(underRightChannel.domain).map((tick) => (
+              <text
+                key={tick}
+                aria-hidden
+                data-under-right
+                x={width - PADDING.right + 6}
+                y={underRightChannel.y(tick) + STACKED_LABEL_OFFSET}
+                textAnchor="start"
+                dominantBaseline="middle"
+                fontSize={11}
+                fill="currentColor"
+                className={underRightChannel.series.channel.colorClass}
               >
                 {tick}
               </text>
@@ -1302,7 +1355,7 @@ interface Readout {
 //
 // Colours are borrowed, not new, and they answer a narrower question than the
 // shapes do: **does this marker join to something else on the chart?** A gas
-// switch is violet because that is the cylinders' colour here and the marker
+// switch is `--pressure` because that is the cylinders' colour here and the marker
 // carries the `gas_number` that joins it to one. Nothing else joins to anything,
 // so nothing else is coloured.
 //
@@ -1589,7 +1642,7 @@ function groupByPanel(readouts: Readout[]): Readout[][] {
 //
 // One toggle per *channel*, not per plotted line, which is only a distinction on
 // a dive with two cylinders. Both pressure lines draw in the same `--pressure`
-// violet, so listing them separately never distinguished them by eye anyway, and
+// grey, so listing them separately never distinguished them by eye anyway, and
 // the crosshair readout still names each cylinder ("Tank pressure (tank 2)").
 // Toggling by channel is also what makes the choice worth remembering: "tank 2"
 // means a different cylinder on the next dive, while "tank pressure" doesn't.
@@ -1723,7 +1776,7 @@ function LegendToggles({
               //
               // Deliberately uncoloured in both states, unlike every swatch
               // above. Marker colour answers "does this join to something else
-              // on the chart" - only a gas switch does, in the cylinders' violet
+              // on the chart" - only a gas switch does, in the cylinders' grey
               // - so a coloured legend swatch would be making that claim on
               // behalf of every other type, for which it is false.
               <span aria-hidden className="inline-flex w-4 justify-center">

@@ -450,6 +450,12 @@ export interface ProfileScalePlacement {
   left: ProfileChannelKey | null;
   /** Labels its right edge, exactly when the plot holds a second scale. */
   right: ProfileChannelKey | null;
+  /**
+   * Labels the right edge too, a number under each of `right`'s, when the plot
+   * holds a third scale - pressure under temperature, its domain fitted to
+   * temperature's ticks.
+   */
+  underRight: ProfileChannelKey | null;
   /** One row per axis the selection puts below the depth plot, in `PANEL_AXES` order. */
   panels: ProfileAxisKey[];
 }
@@ -484,6 +490,7 @@ export function profileScalePlacement(
     // temperature means depth (or the ceiling) and pressure - so this can never
     // hand pressure to both edges at once.
     right: hasTwoScales ? (temperature ?? pressure) : null,
+    underRight: scales.length === 3 ? pressure : null,
     panels: PANEL_AXES.filter((axis) =>
       shown.some((key) => CHANNEL_AXIS[key] === axis),
     ),

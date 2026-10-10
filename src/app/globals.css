@@ -178,17 +178,17 @@
     --coral-foreground: 0 0% 100%;
     --teal-foreground: 0 0% 100%;
 
-    /* Third chart accent, for the dive profile's tank-pressure curve. Depth is
-       teal and temperature is coral; pressure needs a hue that's separable from
-       both at a glance, since all three are thin lines sharing one plot. Violet
-       sits roughly opposite the coral/teal pair on the wheel and is the only
-       family that does.
+    /* Third chart accent, for the dive profile's tank-pressure curve. A neutral
+       grey beside depth's teal and temperature's coral: the gauge reading is the
+       supporting line on that plot, and grey keeps it there while staying
+       separable from both by hue.
 
        Declared here and deliberately *not* redeclared under .dark, the same
        property that makes coral and teal hold their contrast in both themes:
-       62% lightness reads against a white card and against the dark theme's 13%
-       one. A per-theme pair would have to be tuned twice and would drift. */
-    --pressure: 265 70% 62%;
+       55% lightness is 3.5:1 against a white card and 4.6:1 against the dark
+       theme's 13% one. A per-theme pair would have to be tuned twice and would
+       drift. */
+    --pressure: 220 6% 55%;
 
     /* Fourth chart accent, for the dive profile's deco ceiling. Red, which is
        what every dive computer and every other dive log uses for the ceiling,
