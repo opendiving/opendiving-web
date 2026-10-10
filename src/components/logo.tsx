@@ -10,7 +10,9 @@ import * as React from "react";
  * entry for it.
  *
  * Drawn in the same language as the lucide icons it sits beside - 24x24 box,
- * 2px stroke, round caps - so it reads as part of the same set. `currentColor`
+ * 2px stroke, round caps - so it reads as part of the same set. Like theirs, it
+ * spans the 2-22 keyline (top to bottom) and is centred in the box, so every
+ * stroke weight leaves equal padding on opposite sides. `currentColor`
  * means it drops in anywhere an icon would (e.g.
  * `<Logo className="h-8 w-8 text-coral" />`) and follows the active theme.
  * The smallest bubble is filled rather than hollow. Its hole was the first
@@ -34,9 +36,9 @@ export function Logo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
       className={className}
       {...props}
     >
-      <circle cx="6.5" cy="18.5" r="1.6" fill="currentColor" />
-      <circle cx="11.5" cy="12.5" r="2.6" />
-      <circle cx="17" cy="5.5" r="3.4" />
+      <circle cx="5.17" cy="20.22" r="1.78" fill="currentColor" />
+      <circle cx="10.72" cy="13.56" r="2.89" />
+      <circle cx="16.83" cy="5.78" r="3.78" />
     </svg>
   );
 }
