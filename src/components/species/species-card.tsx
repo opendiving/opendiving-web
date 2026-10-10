@@ -18,10 +18,12 @@ import { cn } from "@/lib/utils";
 
 // Species cards in whatever column holds them - the life list's, a dive's, a
 // site's side column - as many to a row as fit at a width that keeps a card
-// wider than it is tall: three on the life list, two on a dive, one beside a
-// site and on a phone.
+// wider than it is tall: up to three on the life list, two on a dive, one
+// beside a site and on a phone. 20rem is the life list's three figures with a
+// date the last of them: `BackdropCardFigures`' columns are 5rem, and a date
+// is wider than its column and never wraps.
 export const SPECIES_CARD_GRID =
-  "grid grid-cols-[repeat(auto-fill,minmax(min(16rem,100%),1fr))] gap-3 max-sm:gap-2.5";
+  "grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-3 max-sm:gap-2.5";
 
 // A species' photo behind its names, on its card and across its page's hero -
 // the map's water and a fish where it has none, as a dive with no place is

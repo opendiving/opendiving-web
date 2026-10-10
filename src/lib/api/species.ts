@@ -355,8 +355,8 @@ export const speciesAPI = {
   },
 
   /**
-   * The signed-in diver's history with one species: its life-list row plus
-   * `dive_site_count`. `null` when none of their live dives records it - the
+   * The signed-in diver's history with one species: its life-list row. `null`
+   * when none of their live dives records it - the
    * API's 404, which is an answer here rather than a failure, since every
    * thumbnail in the app links a species page, logged or not.
    */
