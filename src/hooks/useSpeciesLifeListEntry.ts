@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { speciesAPI, type SpeciesLifeListDetail } from "@/lib/api/species";
+import { speciesAPI, type SpeciesLifeListEntry } from "@/lib/api/species";
 
 /**
  * The signed-in diver's history with one species, for the species page's
@@ -13,13 +13,13 @@ import { speciesAPI, type SpeciesLifeListDetail } from "@/lib/api/species";
  * previous one's figures for the round trip in between.
  */
 export function useSpeciesLifeListEntry(uuid: string | undefined): {
-  entry: SpeciesLifeListDetail | null;
+  entry: SpeciesLifeListEntry | null;
   isLoading: boolean;
   failed: boolean;
 } {
   const [loaded, setLoaded] = useState<{
     uuid: string;
-    entry: SpeciesLifeListDetail | null;
+    entry: SpeciesLifeListEntry | null;
     failed: boolean;
   } | null>(null);
 

@@ -102,6 +102,7 @@ export function SpeciesPageContent() {
           species={entry}
           figures={[
             { label: "Dives", value: entry.dive_count },
+            { label: "Dive sites", value: entry.dive_site_count },
             { label: "Last seen", value: speciesSeenOn(entry.last_seen) },
           ]}
         />

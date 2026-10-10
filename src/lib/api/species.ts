@@ -120,17 +120,12 @@ export interface SpeciesLifeListEntry {
   rank: string;
   photo_sha256: string | null;
   dive_count: number;
+  // The distinct dive sites those dives name at any position, as a site's
+  // summary counts its dives - 0 when none names one. On a list narrowed to a
+  // site it counts over the narrowed dives, so it says nothing there.
+  dive_site_count: number;
   first_seen: string;
   last_seen: string;
-}
-
-/**
- * `GET /user/species/{uuid}` - one species' life-list entry, with the figures the
- * list carries for it, plus the distinct dive sites those dives name at any
- * position, as a site's summary counts its dives.
- */
-export interface SpeciesLifeListDetail extends SpeciesLifeListEntry {
-  dive_site_count: number;
 }
 
 /**
@@ -365,9 +360,9 @@ export const speciesAPI = {
    * API's 404, which is an answer here rather than a failure, since every
    * thumbnail in the app links a species page, logged or not.
    */
-  async getLifeListEntry(uuid: string): Promise<SpeciesLifeListDetail | null> {
+  async getLifeListEntry(uuid: string): Promise<SpeciesLifeListEntry | null> {
     try {
-      const response = await apiClient.get<SpeciesLifeListDetail>(
+      const response = await apiClient.get<SpeciesLifeListEntry>(
         `/user/species/${uuid}`,
       );
       return response.data;

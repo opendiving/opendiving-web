@@ -277,6 +277,7 @@ describe("DiveSiteSpeciesCard", () => {
     rank: "Species",
     photo_sha256: null,
     dive_count,
+    dive_site_count: 1,
     first_seen: "2026-01-01T09:00:00+09:00",
     last_seen: "2026-09-14T09:00:00+09:00",
   });
@@ -304,6 +305,10 @@ describe("DiveSiteSpeciesCard", () => {
     expect(figure("Dives")).toHaveTextContent("3");
     // In the zone the dive was logged in, not the viewer's.
     expect(figure("Last seen")).toHaveTextContent("Sep 14, 2026");
+    // Narrowed to this site, the site count says nothing.
+    expect(
+      within(clownfish.closest("li")!).queryByText("Dive sites"),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Chromodoris willani/ }),
     ).toHaveAttribute("href", "/species/sp-2");
