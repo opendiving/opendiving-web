@@ -11,12 +11,18 @@
 // Deliberately not in `components/ui/`, which is where shadcn's primitives live
 // and where anything added is implicitly app-wide. This is the header of a
 // chart card, and both of the cards that want it are dives.
+//
+// `detail` is a line under the figure. It sits outside the figure's flex row
+// so the stat's width is the wider of the two lines rather than their sum,
+// which is what lets a row of three fit at phone width.
 export function ChartStat({
   label,
   children,
+  detail,
 }: {
   label: string;
   children: React.ReactNode;
+  detail?: React.ReactNode;
 }) {
   return (
     <div>
@@ -26,6 +32,7 @@ export function ChartStat({
       <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
         {children}
       </div>
+      {detail}
     </div>
   );
 }
