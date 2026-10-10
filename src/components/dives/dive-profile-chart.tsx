@@ -1478,7 +1478,8 @@ function EventMarker({
       // `--muted-foreground` at **2.37:1** in light - all under the 3:1 WCAG
       // asks of a graphical object, despite every one of those tokens clearing
       // it on its own. 0.9 brings the worst case, `--pressure` on white, to
-      // **3.26:1**; 0.85 would put it under the line.
+      // **3.26:1**; 0.85 would clear at 3.01:1, close enough to the line that a
+      // rounding difference in compositing could put it under.
       //
       // The picket-fence worry is answered by the marks being thin ticks on the
       // baseline rather than by making them faint, and the hover still reads: it

@@ -239,9 +239,9 @@
        a plot are told apart by which plot they are in, and the legend and the
        crosshair both name them in words. Colour is doing the least of the work.
 
-       Hues chosen around the four already spoken for (0 ceiling, 16 coral, 180
-       teal, 265 pressure) rather than through them, so no new accent has to be
-       told apart from an old one by lightness alone. */
+       Hues chosen around the three already spoken for (0 ceiling, 16 coral,
+       180 teal; --pressure is grey) rather than through them, so no new accent
+       has to be told apart from an old one by lightness alone. */
     --ndl: 150 65% 38%;
     --tts: 35 95% 40%;
     --ppo2: 205 85% 45%;
