@@ -19,10 +19,23 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 // The chart draws SVG against measured geometry, which jsdom has none of. This
-// suite is about the switcher above it.
-vi.mock("./dive-profile-chart", () => ({
-  DiveProfileChart: () => <div data-testid="profile-chart" />,
-}));
+// suite is about the switcher above it, and where the card gives the chart's
+// menu a place - which the stand-in fills the way the chart does, by portal.
+vi.mock("./dive-profile-chart", async () => {
+  const { createPortal } = await import("react-dom");
+  return {
+    DiveProfileChart: ({
+      menuContainer,
+    }: {
+      menuContainer: HTMLElement | null;
+    }) => (
+      <div data-testid="profile-chart">
+        {menuContainer &&
+          createPortal(<button type="button">Channels</button>, menuContainer)}
+      </div>
+    ),
+  };
+});
 
 const { divesAPI } = await import("@/lib/api/dives");
 
@@ -109,6 +122,26 @@ describe("DiveProfileCard", () => {
         expect.stringContaining("p1"),
       ),
     );
+  });
+
+  it("puts the chart's menu on the title row, and the recording's summary at the foot", async () => {
+    render(
+      <DiveProfileCard
+        dive={dive({
+          recordings: [recording({ profile: profileInfo("p1") })],
+        })}
+      />,
+    );
+
+    const menu = await screen.findByRole("button", { name: "Channels" });
+    const heading = screen.getByRole("heading", { name: "Dive Profile" });
+    expect(heading.parentElement).toContainElement(menu);
+
+    const summary = screen.getByText(/314 depth samples recorded/);
+    expect(
+      screen.getByTestId("profile-chart").compareDocumentPosition(summary) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("offers no switcher on a dive one computer recorded", () => {

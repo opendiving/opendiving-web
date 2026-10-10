@@ -1073,11 +1073,14 @@ describe("profileScalePlacement", () => {
       // the right exactly when that plot holds a second scale.
       expect(placement.left !== null).toBe(scales > 0);
       expect(placement.right !== null).toBe(scales > 1);
-      // And never the same channel twice, which would put one scale on both
-      // edges and invite the reading that they are two.
-      if (placement.right !== null) {
-        expect(placement.right).not.toBe(placement.left);
-      }
+      // A third scale is numbered under the right edge's, exactly when the
+      // plot holds three.
+      expect(placement.underRight !== null).toBe(scales > 2);
+      // And never the same channel twice, which would put one scale on two
+      // sets of numbers and invite the reading that they are two.
+      const labelled = [placement.left, placement.right, placement.underRight];
+      const named = labelled.filter((key) => key !== null);
+      expect(new Set(named).size).toBe(named.length);
     },
   );
 
@@ -1127,11 +1130,14 @@ describe("profileScalePlacement", () => {
     expect(profileScalePlacement(["temperature", "pressure"]).left).toBe(
       "pressure",
     );
-    // Three scales, two edges: pressure is the one that goes unlabelled, and the
-    // crosshair gives its exact figure for any instant.
+    // Three scales, two edges: pressure is numbered under temperature.
     expect(
       profileScalePlacement(["depth", "temperature", "pressure"]),
-    ).toMatchObject({ left: "depth", right: "temperature" });
+    ).toMatchObject({
+      left: "depth",
+      right: "temperature",
+      underRight: "pressure",
+    });
   });
 
   it("puts a lone scale on the left and leaves the right empty", () => {
@@ -1147,6 +1153,7 @@ describe("profileScalePlacement", () => {
     expect(profileScalePlacement(["ndl", "cns"])).toEqual({
       left: null,
       right: null,
+      underRight: null,
       panels: ["duration", "percent"],
     });
   });

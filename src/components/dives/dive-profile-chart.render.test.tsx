@@ -1,6 +1,16 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
-import { DiveProfileChart } from "./dive-profile-chart";
+import { useState, type ReactElement } from "react";
+import {
+  cleanup,
+  render as renderUi,
+  screen,
+  fireEvent,
+  within,
+} from "@testing-library/react";
+import {
+  DiveProfileChart as Chart,
+  type DiveProfileChartProps,
+} from "./dive-profile-chart";
 import { DIVE_PROFILE_SERIES_KEY } from "@/lib/chart-series-view";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
 import type { DiveProfile, DiveProfileEvent } from "@/lib/api/dives";
@@ -19,6 +29,29 @@ vi.mock("@/contexts/AuthContext", () => ({
 afterEach(() => {
   auth.units = "metric";
 });
+
+// The chart puts its legend in a menu on the card's title row. This stands in
+// for the card, giving it that slot.
+function DiveProfileChart(props: Omit<DiveProfileChartProps, "menuContainer">) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  return (
+    <>
+      <div ref={setSlot} />
+      <Chart {...props} menuContainer={slot} />
+    </>
+  );
+}
+
+// Renders with the legend menu open, so its toggles are on screen for every
+// test that reads or clicks one.
+function render(ui: ReactElement) {
+  const result = renderUi(ui);
+  const trigger = within(result.container).queryByRole("button", {
+    name: /^Channels/,
+  });
+  if (trigger) fireEvent.click(trigger);
+  return result;
+}
 
 // The chart's arithmetic is covered in `lib/dive-profile.test.ts`, where it belongs.
 // What a render adds is the handful of things that are only true once the component
@@ -121,6 +154,17 @@ const firstX = (root: HTMLElement, selector: string) =>
     root.querySelector(selector)?.getAttribute("points")?.split(",")[0] ??
       Number.NaN,
   );
+
+// The x of the first point of the first filled area a selector matches.
+const firstFillX = (root: HTMLElement, selector: string) =>
+  Number(
+    /^M(-?[\d.]+),/.exec(
+      root.querySelector(selector)?.getAttribute("d") ?? "",
+    )?.[1] ?? Number.NaN,
+  );
+
+// Depth is drawn as its water column alone, so a drawn depth is a teal fill.
+const DEPTH_FILL = "path[class*='text-teal']";
 
 // The toggles, addressed the way the legend names them.
 const CHANNEL_BUTTONS = {
@@ -234,7 +278,7 @@ describe("DiveProfileChart on the millisecond axis", () => {
 
     // 160 ms of a 4 000 020 ms profile over the 630-unit plot, past the 44-unit
     // left padding - a hair right of the axis, and not on it.
-    const x = firstX(container, "g[class*='text-teal'] polyline");
+    const x = firstFillX(container, DEPTH_FILL);
     expect(x).toBeGreaterThan(44);
     expect(x).toBeCloseTo(44 + (160 / 4_000_020) * 630, 6);
   });
@@ -396,7 +440,7 @@ describe("DiveProfileChart ceiling", () => {
     expect(shaded).toHaveLength(2);
   });
 
-  it("draws the ceiling dashed and every other curve solid", () => {
+  it("draws the ceiling dashed, and depth as a fill with no line", () => {
     const { container } = render(<DiveProfileChart profile={withCeiling} />);
 
     const dashed = container.querySelectorAll("polyline[stroke-dasharray]");
@@ -405,7 +449,8 @@ describe("DiveProfileChart ceiling", () => {
     );
 
     expect(dashed).toHaveLength(2); // one per ceiling run
-    expect(solid.length).toBeGreaterThan(0); // depth
+    expect(solid).toHaveLength(0);
+    expect(container.querySelectorAll(DEPTH_FILL).length).toBeGreaterThan(0);
   });
 
   it("gives the legend a dashed swatch for the ceiling and solid ones elsewhere", () => {
@@ -633,9 +678,7 @@ describe("DiveProfileChart with a two-sample measured channel", () => {
     );
 
     expect(container.textContent).not.toContain("recorded no samples to plot");
-    expect(
-      container.querySelectorAll("g[class*='text-teal'] polyline"),
-    ).toHaveLength(1);
+    expect(container.querySelectorAll(DEPTH_FILL)).toHaveLength(1);
     expect(screen.getByRole("button", { name: /Depth/ })).toBeInTheDocument();
   });
 
@@ -721,18 +764,12 @@ describe("DiveProfileChart depth fill across a dropout", () => {
     },
   });
 
-  it("breaks the fill where it breaks the line", () => {
-    // The fill was built from the whole series while the line was built from its
-    // segments, so the teal area ran straight across a gap the curve above it
-    // correctly refused to cross - a filled region claiming the diver was in water
-    // the device recorded nothing about.
+  it("breaks the fill at the dropout", () => {
+    // A fill built from the whole series runs straight across the gap - a filled
+    // region claiming the diver was in water the device recorded nothing about.
     const { container } = render(<DiveProfileChart profile={withDropout} />);
 
-    const fills = container.querySelectorAll("path[class*='text-teal']");
-    const lines = container.querySelectorAll("g[class*='text-teal'] polyline");
-
-    expect(lines).toHaveLength(2);
-    expect(fills).toHaveLength(2);
+    expect(container.querySelectorAll(DEPTH_FILL)).toHaveLength(2);
   });
 
   it("leaves the dropout unfilled rather than spanning it", () => {
@@ -1143,7 +1180,9 @@ describe("DiveProfileChart marker toggle", () => {
 
     fireEvent.click(markerToggle());
 
-    expect(container.querySelectorAll("polyline").length).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll(`polyline, ${DEPTH_FILL}`).length,
+    ).toBeGreaterThan(0);
     expect(leftAxisTicks(container).length).toBeGreaterThan(0);
   });
 
@@ -1282,6 +1321,71 @@ describe("DiveProfileChart legend group name", () => {
   });
 });
 
+describe("DiveProfileChart legend menu", () => {
+  it("groups its entries by the graph each is drawn on", () => {
+    render(
+      <DiveProfileChart
+        profile={everyChannel({
+          events: [{ time: 600_000, type: "bookmark" }],
+        })}
+      />,
+    );
+
+    const groups = [
+      ...screen.getByRole("group", { name: "Channels and markers" }).children,
+    ].map((group) =>
+      within(group as HTMLElement)
+        .getAllByRole("button")
+        .map((button) => button.textContent?.replace(/ \(.*\)$/, "")),
+    );
+
+    expect(groups).toEqual([
+      ["Depth", "Deco ceiling", "Temperature", "Tank pressure", "Markers"],
+      ["No-deco time", "Time to surface"],
+      ["ppO₂"],
+      ["CNS", "Gradient factor", "Surface gradient factor"],
+    ]);
+  });
+});
+
+describe("DiveProfileChart with three scales on the depth plot", () => {
+  const stacked = (root: HTMLElement) =>
+    [...root.querySelectorAll("text[data-under-right]")].map((label) => ({
+      text: label.textContent,
+      y: Number(label.getAttribute("y")),
+    }));
+  const temperatureLabels = (root: HTMLElement) =>
+    [...root.querySelectorAll("text[text-anchor='start']")]
+      .filter(outsideThePanel)
+      .filter((label) => !label.hasAttribute("data-under-right"))
+      .map((label) => Number(label.getAttribute("y")));
+
+  it("numbers pressure under each of temperature's numbers", () => {
+    const { container } = render(<DiveProfileChart profile={everyChannel()} />);
+
+    const pressure = stacked(container);
+    const temperature = temperatureLabels(container);
+
+    expect(pressure.length).toBeGreaterThan(1);
+    expect(pressure).toHaveLength(temperature.length);
+    // One pair per height, temperature above and pressure below it.
+    pressure.forEach((label, index) => {
+      expect(label.y - temperature[index]).toBeCloseTo(12, 6);
+    });
+  });
+
+  it("gives pressure an edge of its own once temperature is off", () => {
+    const { container } = render(<DiveProfileChart profile={everyChannel()} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: CHANNEL_BUTTONS.temperature }),
+    );
+
+    expect(stacked(container)).toHaveLength(0);
+    expect(rightAxisTicks(container).length).toBeGreaterThan(0);
+  });
+});
+
 describe("DiveProfileChart with markers but nothing plottable", () => {
   // `available` counts the markers now, so the "no samples" guard had to move to
   // the channels or it would stop firing here - leaving a plot box with a time
@@ -1325,7 +1429,9 @@ describe("DiveProfileChart remembered selection that plots no curve here", () =>
       <DiveProfileChart profile={depthAndMarkers} />,
     );
 
-    expect(container.querySelectorAll("polyline").length).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll(`polyline, ${DEPTH_FILL}`).length,
+    ).toBeGreaterThan(0);
     expect(leftAxisTicks(container).length).toBeGreaterThan(0);
   });
 
@@ -1342,7 +1448,9 @@ describe("DiveProfileChart remembered selection that plots no curve here", () =>
       <DiveProfileChart profile={depthAndMarkers} />,
     );
 
-    expect(container.querySelectorAll("polyline").length).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll(`polyline, ${DEPTH_FILL}`).length,
+    ).toBeGreaterThan(0);
     expect(
       container.querySelectorAll("g[aria-hidden][opacity] line"),
     ).toHaveLength(0);
@@ -1368,6 +1476,22 @@ describe("DiveProfileChart deco readouts", () => {
     expect(readoutText()).toMatch(/2\.4% CNS/);
     expect(readoutText()).toMatch(/12% Gradient factor/);
     expect(readoutText()).toMatch(/30% Surface gradient factor/);
+  });
+
+  it("groups the readings by the graph each is drawn on", () => {
+    hoverOverTheThirdSample();
+
+    // The card's first line is the elapsed time; a block per graph follows.
+    const groups = [...screen.getByRole("presentation").children]
+      .slice(1)
+      .filter((child) => !child.textContent?.match(/elapsed/))
+      .map((group) => group.textContent ?? "");
+
+    expect(groups).toHaveLength(4);
+    expect(groups[0]).toMatch(/Depth.*Temperature.*Tank pressure/);
+    expect(groups[1]).toMatch(/No-deco time.*Time to surface/);
+    expect(groups[2]).toMatch(/ppO₂/);
+    expect(groups[3]).toMatch(/CNS.*Gradient factor.*Surface gradient factor/);
   });
 
   it("stops quoting a channel the diver switched off", () => {
@@ -1656,7 +1780,7 @@ describe("DiveProfileChart with a gradient factor past the percent axis's bound"
     // construction and whose readout dots sit on its edges - a clip there would
     // halve them.
     expect(
-      container.querySelector("g.text-teal")?.getAttribute("clip-path"),
+      container.querySelector(DEPTH_FILL)?.closest("[clip-path]"),
     ).toBeNull();
   });
 
