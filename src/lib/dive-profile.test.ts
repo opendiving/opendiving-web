@@ -24,6 +24,7 @@ import {
   readoutTolerance,
   sampleIndexAt,
   segmentByTimeGap,
+  temperatureDomain,
   toChannelSeries,
   toPressureSeries,
   tooltipVerticalAnchor,
@@ -309,6 +310,36 @@ describe("axisDomain", () => {
     axisDomain("percent", values);
 
     expect(values).toEqual([0, 170, SUUNTO_GF99_PEAK]);
+  });
+});
+
+describe("temperatureDomain", () => {
+  it("widens a dive whose water barely moved to at least two degrees", () => {
+    // A Suunto Ocean dive's 3 807 readings, 27.1 down to 26.7 °C in tenths.
+    expect(temperatureDomain([27.1, 26.9, 26.7], "metric")).toEqual({
+      min: 25.5,
+      max: 28,
+      step: 0.5,
+    });
+  });
+
+  it("fits a dive spanning more than that exactly as niceDomain does", () => {
+    const readings = [18.2, 21.4, 24.6];
+
+    expect(temperatureDomain(readings, "metric")).toEqual(niceDomain(readings));
+  });
+
+  it("measures the two degrees in the diver's units", () => {
+    // Two Celsius degrees are 3.6 Fahrenheit ones.
+    const domain = temperatureDomain([80.1, 80.8], "imperial");
+
+    expect(domain.max - domain.min).toBeGreaterThanOrEqual(3.6);
+    expect(domain.min).toBeLessThanOrEqual(80.1);
+    expect(domain.max).toBeGreaterThanOrEqual(80.8);
+  });
+
+  it("gives a channel with no readings niceDomain's band", () => {
+    expect(temperatureDomain([], "metric")).toEqual(niceDomain([]));
   });
 });
 
