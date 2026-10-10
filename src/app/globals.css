@@ -134,9 +134,9 @@
 
        --coral-text (6.1:1 on white -> 2.5:1, light theme only; the dark theme is
        untouched, since --coral-text already resolved to the brand coral there):
-       the landing hero's accent word, the header's nav items active and on hover
-       in both the desktop and the mobile menu, the Home page stat cell's label on
-       group-hover, and the species card's hover border.
+       the landing hero's accent word, the header's nav items active in both the
+       desktop and the mobile menu and on hover in the desktop one, the Home page
+       stat cell's label on group-hover, and the species card's hover border.
 
        --coral-solid (5.1:1 under white -> 2.5:1, in *both* themes - neither token
        was ever redeclared under .dark, so fill and white label are theme-constant
@@ -389,10 +389,8 @@
      is the same sum. It therefore tracks the root font size the same way the
      header does, which a px literal would not.
 
-     Note `header.tsx`'s mobile menu caps itself at `calc(100dvh-4.5rem)`. That
-     is deliberately a different, slightly generous number - it is slack on a
-     max-height, where being a few px out is invisible - so it is not the same
-     quantity and is not worth unifying with this one.
+     `header.tsx`'s mobile menu and its backdrop start at this line too, so the
+     header above them stays undimmed and its burger stays tappable.
 
      The combobox listboxes are unaffected either way: they `scrollIntoView({
      block: "nearest" })` inside their own overflow container, which has its own
