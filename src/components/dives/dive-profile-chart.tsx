@@ -77,8 +77,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
 import { useKeepInside } from "@/hooks/useKeepInside";
@@ -1714,8 +1712,6 @@ function LegendToggles({
   onToggle: (key: ProfileViewKey) => void;
   units: UnitSystem;
 }) {
-  const idPrefix = useId();
-
   // One group per graph, as the crosshair's readout is grouped: the depth plot
   // with the markers that stand on its baseline, then each deco panel row.
   const onGraph = (key: ProfileViewKey) =>
@@ -1739,81 +1735,75 @@ function LegendToggles({
               key === "events"
                 ? null
                 : displayChannel(PROFILE_CHANNELS[key], units);
-            const id = `${idPrefix}-${key}`;
+            const on = visible.includes(key);
 
             return (
-              // A switch, as every remembered setting in the app is - see
-              // "Selection is a checkbox, and a setting is a switch". The label
-              // stays the channel's name in both states; the switch says
-              // whether it is on.
-              <div
+              <button
                 key={key}
-                className="flex items-center justify-between gap-4 px-2 py-1.5 touch:min-h-11"
+                type="button"
+                // `aria-pressed` rather than a checkbox: these are buttons that
+                // change the picture in place, and the pressed state is what a
+                // screen reader needs to hear. The label stays the channel's
+                // name in both states - "Show Depth" on a control that is
+                // currently showing depth reads as a description of what it
+                // does, not of what it is.
+                aria-pressed={on}
+                onClick={() => onToggle(key)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch:min-h-11",
+                  on ? "text-foreground" : "text-muted-foreground/60",
+                )}
               >
-                <Label
-                  htmlFor={id}
-                  className="flex cursor-pointer items-center gap-2 font-normal leading-5"
-                >
-                  {channel ? (
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "inline-block w-4",
-                        // A dashed curve gets a dashed swatch. The legend is the
-                        // only thing that says the red dashed line is the
-                        // ceiling, so a solid swatch beside it would be
-                        // describing a curve that isn't on the chart - and the
-                        // dash is what separates the ceiling from temperature
-                        // when hue alone is close (see `--ceiling`).
-                        //
-                        // A top border rather than a background, because CSS
-                        // has no way to dash a fill: `border-current` picks up
-                        // the same `currentColor` `bg-current` does, so both
-                        // branches inherit the colour the same way.
-                        channel.dashed
-                          ? "border-t-2 border-dashed border-current"
-                          : "h-0.5 rounded-full bg-current",
-                        // Coloured whether on or off: the switch carries the
-                        // state, and the swatch is the key to a curve the diver
-                        // may be deciding to switch on.
-                        channel.colorClass,
-                      )}
-                    />
-                  ) : (
-                    // The markers' swatch is a mark, not a line, because that
-                    // is what they are on the plot - a swatch of the same width
-                    // so the labels stay in one column, with the glyph centred
-                    // in it.
-                    //
-                    // A circle rather than the diamond or the triangle: those
-                    // two mean "gas switch" and "a stop" specifically, and one
-                    // entry standing for every type in the vocabulary has no
-                    // business claiming to be one of them. The circle is
-                    // already what the general types draw, and the crosshair
-                    // names the particular one in words.
-                    //
-                    // Uncoloured, unlike every swatch above. Marker colour
-                    // answers "does this join to something else on the chart" -
-                    // only a gas switch does, in the cylinders' grey - so a
-                    // coloured legend swatch would be making that claim on
-                    // behalf of every other type, for which it is false.
-                    <span
-                      aria-hidden
-                      className="inline-flex w-4 justify-center text-muted-foreground"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                    </span>
-                  )}
-                  {channel
-                    ? `${channel.label} (${channel.unit})`
-                    : EVENTS_LABEL}
-                </Label>
-                <Switch
-                  id={id}
-                  checked={visible.includes(key)}
-                  onCheckedChange={() => onToggle(key)}
-                />
-              </div>
+                {channel ? (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "inline-block w-4",
+                      // A dashed curve gets a dashed swatch. The legend is the
+                      // only thing that says the red dashed line is the
+                      // ceiling, so a solid swatch beside it would be
+                      // describing a curve that isn't on the chart - and the
+                      // dash is what separates the ceiling from temperature
+                      // when hue alone is close (see `--ceiling`).
+                      //
+                      // A top border rather than a background, because CSS
+                      // has no way to dash a fill: `border-current` picks up
+                      // the same `currentColor` `bg-current` does, so both
+                      // branches inherit the colour the same way.
+                      channel.dashed
+                        ? "border-t-2 border-dashed border-current"
+                        : "h-0.5 rounded-full bg-current",
+                      // Hidden channels keep their swatch, in the button's
+                      // own muted colour rather than the channel's: a grey
+                      // line where the teal one was is the whole of "this is
+                      // off, and this is what it would be".
+                      on && channel.colorClass,
+                    )}
+                  />
+                ) : (
+                  // The markers' swatch is a mark, not a line, because that
+                  // is what they are on the plot - a swatch of the same width
+                  // so the labels stay in one column, with the glyph centred
+                  // in it.
+                  //
+                  // A circle rather than the diamond or the triangle: those
+                  // two mean "gas switch" and "a stop" specifically, and one
+                  // entry standing for every type in the vocabulary has no
+                  // business claiming to be one of them. The circle is
+                  // already what the general types draw, and the crosshair
+                  // names the particular one in words.
+                  //
+                  // Uncoloured, unlike every swatch above. Marker colour
+                  // answers "does this join to something else on the chart" -
+                  // only a gas switch does, in the cylinders' grey - so a
+                  // coloured legend swatch would be making that claim on
+                  // behalf of every other type, for which it is false.
+                  <span aria-hidden className="inline-flex w-4 justify-center">
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  </span>
+                )}
+                {channel ? `${channel.label} (${channel.unit})` : EVENTS_LABEL}
+              </button>
             );
           })}
         </div>
