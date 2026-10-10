@@ -321,7 +321,7 @@ export function Header() {
                       size="sm"
                       className="px-3 max-[370px]:px-2 max-[360px]:touch:min-w-10"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-4 w-4 touch:h-5 touch:w-5" />
                     </Button>
                   </DropdownMenuTrigger>
                 </IconTooltip>
@@ -468,7 +468,7 @@ export function Header() {
                 aria-controls="mobile-menu"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
-                <Menu className="h-4 w-4" />
+                <Menu className="h-4 w-4 touch:h-5 touch:w-5" />
               </Button>
             </IconTooltip>
           </div>

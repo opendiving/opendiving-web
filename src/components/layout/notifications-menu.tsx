@@ -168,20 +168,24 @@ export function NotificationsMenu() {
               // The narrow padding and gap are for the 320px header row. The wider gap
               // after it is the chip's: it hangs off the bell's right edge, and the
               // avatar beside it has no padding of its own to keep it off.
-              className="relative me-3 px-3 max-[370px]:me-2 max-[370px]:px-2 max-[360px]:touch:me-0 max-[360px]:touch:min-w-10"
+              className="me-3 px-3 max-[370px]:me-2 max-[370px]:px-2 max-[360px]:touch:me-0 max-[360px]:touch:min-w-10"
             >
-              <Bell className="h-4 w-4" />
-              {/* The count is in the trigger's name already, so the chip is the
-                  sighted half of it and hidden from assistive tech. Capped at two
-                  characters to stay a dot-sized chip. */}
-              {count > 0 && (
-                <span
-                  aria-hidden="true"
-                  className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive-solid px-1 text-[10px] font-semibold leading-none text-destructive-foreground ring-2 ring-background"
-                >
-                  {count > 9 ? "9+" : count}
-                </span>
-              )}
+              {/* The chip is placed off the bell rather than the button, which a
+                  finger's 44px floor makes larger than the mouse's. */}
+              <span className="relative flex">
+                <Bell className="h-4 w-4 touch:h-5 touch:w-5" />
+                {/* The count is in the trigger's name already, so the chip is the
+                    sighted half of it and hidden from assistive tech. Capped at two
+                    characters to stay a dot-sized chip. */}
+                {count > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive-solid px-1 text-[10px] font-semibold leading-none text-destructive-foreground ring-2 ring-background"
+                  >
+                    {count > 9 ? "9+" : count}
+                  </span>
+                )}
+              </span>
             </Button>
           </PopoverTrigger>
         </IconTooltip>
