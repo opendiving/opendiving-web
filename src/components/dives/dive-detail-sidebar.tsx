@@ -38,6 +38,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
+import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatAltitude, formatTemperature } from "@/lib/units";
@@ -159,7 +160,10 @@ export function DiveDetailSidebar({
                 while those were the only two things in it: a dive with GPS but
                 no trip and no site is now one of the cases it renders for, and
                 the blocks inside are each labelled anyway. */}
-            <CardTitle as="h2">Location</CardTitle>
+            <CardTitle as="h2" className="flex items-center gap-2">
+              <DiveSectionIcon group="Location" />
+              Location
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {trip && (
@@ -318,7 +322,10 @@ export function DiveDetailSidebar({
       {course && (
         <Card>
           <CardHeader>
-            <CardTitle as="h2">Training</CardTitle>
+            <CardTitle as="h2" className="flex items-center gap-2">
+              <DiveSectionIcon group="Training" />
+              Training
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-sm font-medium text-muted-foreground mb-1">
@@ -341,7 +348,10 @@ export function DiveDetailSidebar({
       {hasPeople && (
         <Card>
           <CardHeader>
-            <CardTitle as="h2">People</CardTitle>
+            <CardTitle as="h2" className="flex items-center gap-2">
+              <DiveSectionIcon group="People" />
+              People
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <PeopleList people={divePeople} resolved={people} />
@@ -352,7 +362,10 @@ export function DiveDetailSidebar({
       {hasEnvironmentInfo && (
         <Card>
           <CardHeader>
-            <CardTitle as="h2">Environment</CardTitle>
+            <CardTitle as="h2" className="flex items-center gap-2">
+              <DiveSectionIcon group="Environment" />
+              Environment
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {dive.air_temperature != null && (
