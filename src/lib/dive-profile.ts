@@ -620,6 +620,43 @@ function channelSeparator(key: ProfileChannelKey): string {
   return typeof entry === "string" ? unitSeparator(entry) : entry.separator;
 }
 
+// The profile as the chart draws it: every channel ends at `dive_end_time` and
+// `duration` becomes that instant, so the axis, every scale fitted from the
+// series, the crosshair and the accessible summary all stop where the dive did.
+// A computer goes on recording at the surface for minutes after a dive, in case
+// the diver descends again; those samples stay in the data and off the chart.
+//
+// A sample at the end is kept, so depth ends on the reading that closed the
+// dive, and nothing is invented to reach the edge. Events are left alone: the
+// chart clips its markers to `duration`. With no end in the response - null, or
+// a body from a build that did not send one - the profile comes back whole.
+export function cutAtDiveEnd(profile: DiveProfile): DiveProfile {
+  const end = profile.dive_end_time;
+  if (end == null || end >= profile.duration) return profile;
+
+  const cut = <S extends DiveProfileSeries>(series: S): S => {
+    const past = series.times.findIndex((time) => time > end);
+    return past === -1
+      ? series
+      : {
+          ...series,
+          times: series.times.slice(0, past),
+          values: series.values.slice(0, past),
+        };
+  };
+
+  const visible: DiveProfile = {
+    ...profile,
+    duration: end,
+    pressures: (profile.pressures ?? []).map(cut),
+  };
+  for (const key of PROFILE_SERIES_KEYS) {
+    const series = profile[key];
+    if (series) visible[key] = cut(series);
+  }
+  return visible;
+}
+
 // A channel's stored integers as display units, or `null` when the profile
 // doesn't carry that channel.
 //
@@ -631,6 +668,10 @@ function channelSeparator(key: ProfileChannelKey): string {
 // `toPressureSeries` below. Derived rather than spelled out, so a channel added
 // to `ProfileChannelKey` is one this accepts without a second edit.
 export type ProfileSeriesKey = Exclude<ProfileChannelKey, "pressure">;
+
+const PROFILE_SERIES_KEYS = PROFILE_CHANNEL_KEYS.filter(
+  (key): key is ProfileSeriesKey => key !== "pressure",
+);
 
 export function toChannelSeries(
   profile: DiveProfile,
