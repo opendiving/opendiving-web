@@ -49,10 +49,12 @@ export const FORM_COLUMN = "w-auto max-w-2xl box-content";
 export const FORM_BODY = cn(HERO_BODY, FORM_COLUMN);
 
 // The figures, as many to a line as fit - three on a phone - and the map's
-// credit at the row's far end, at the details' foot. Where the figures leave it
-// no room, it wraps onto a line of its own under them, still at the right.
-const FIGURES_ROW = "mt-3 flex flex-wrap items-end gap-x-6 gap-y-2 md:mt-4";
-const FIGURES = "flex flex-wrap gap-x-3 gap-y-3";
+// credit at the far end of their last line, on the values' baseline. Where that
+// line leaves it no room, it wraps onto a line of its own, still at the right.
+// The list lays its figures out in the row rather than in a box of its own: a
+// wrapped box is as wide as the row, which left the credit no line to share.
+const FIGURES_ROW = "mt-3 flex flex-wrap items-baseline-last gap-3 md:mt-4";
+const FIGURES = "contents";
 
 // The figures at a card's sizes below `md`, where a phone's width would
 // otherwise put one on a line of its own, and at the dive page's above it. The
@@ -264,10 +266,12 @@ export function MapHero({
           {/* A chip as it is over a card's map, so without the details'
               glow. */}
           {credited && (
-            <MapCredit
-              value={credit}
-              className="ml-auto rounded-sm opacity-75 [text-shadow:none]"
-            />
+            <div className="ml-auto pl-3">
+              <MapCredit
+                value={credit}
+                className="rounded-sm opacity-75 [text-shadow:none]"
+              />
+            </div>
           )}
         </HeroDetails>
       </div>
@@ -519,7 +523,7 @@ function HeroDetailsSkeleton({
         </div>
       </div>
       {!figureless && (
-        <div className={cn(FIGURES_ROW, FIGURES)}>
+        <div className={FIGURES_ROW}>
           {[0, 1, 2].map((figure) => (
             <div key={figure} className={FIGURE}>
               <Skeleton className={cn("h-4 w-16 md:mb-1 md:h-5", bar)} />
