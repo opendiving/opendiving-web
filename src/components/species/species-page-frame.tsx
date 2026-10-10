@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SPECIES_CARD_GRID } from "@/components/species/species-card";
+import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export interface SpeciesPageFrameProps {
@@ -41,34 +42,10 @@ const noop = () => {};
 // A grid rather than the list pages' table, and more per page than their ten.
 // These rows are photographs, so they tile where a table would leave most of
 // each row empty, and a life list is a thing to look at rather than to scan a
-// column of. Lives here so the page reads the figure from the frame it renders
-// rather than repeating it.
+// column of. 24 fills whole rows of the one, two or three the grid takes. Lives
+// here so the page reads the figure from the frame it renders rather than
+// repeating it.
 export const SPECIES_PER_PAGE = 24;
-
-// A card-shaped placeholder for one species, sized like the real one so the
-// grid does not move when the page lands.
-//
-// The bars match `LifeListCard`'s four lines: the `h-36` photo band, the name,
-// the italic binomial under it, and the two `text-xs` lines. `animate-skeleton-
-// reveal` goes on the bordered box rather than only on the bars, because the
-// border is a real one and would otherwise paint instantly - a grid of empty
-// ruled boxes is the exact flash the delay exists to prevent.
-function LifeListCardSkeleton() {
-  return (
-    <div
-      className="rounded-lg border bg-card overflow-hidden animate-skeleton-reveal motion-reduce:animate-none"
-      aria-hidden
-    >
-      <Skeleton className="h-36 w-full rounded-none" />
-      <div className="p-3 space-y-1">
-        <Skeleton className="h-5 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-3 w-16 mt-2" />
-        <Skeleton className="h-3 w-28" />
-      </div>
-    </div>
-  );
-}
 
 // Everything /species draws before its cards exist, kept apart from the data render so
 // the page's first render is this frame. Every data-varying prop is optional,
@@ -158,8 +135,8 @@ export function SpeciesPageFrame({
               // `itemsPerPage` rather than a fixed number: the page size is known
               // before the first response, so the grid can be drawn at the size it
               // is about to be.
-              <div
-                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-sm:gap-2.5"
+              <ul
+                className={SPECIES_CARD_GRID}
                 // Busy on the outside, hidden on each placeholder within - the
                 // split `ListRowsSkeleton` documents. Announcing two dozen empty
                 // boxes tells a screen reader nothing.
@@ -167,10 +144,10 @@ export function SpeciesPageFrame({
               >
                 {cards.length === 0
                   ? Array.from({ length: itemsPerPage }, (_, card) => (
-                      <LifeListCardSkeleton key={card} />
+                      <BackdropCardSkeleton key={card} />
                     ))
                   : cards}
-              </div>
+              </ul>
             )}
 
             <LoadMoreTrigger

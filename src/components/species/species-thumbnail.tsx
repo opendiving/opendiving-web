@@ -36,7 +36,7 @@ interface SpeciesThumbnailProps {
  * species' own name in the same row or card, so a real alt would make a screen
  * reader read the name twice; an image whose information is already in adjacent
  * text is exactly the decorative case. Callers that link the thumbnail must
- * therefore name that link some other way - see how the dive card does it.
+ * therefore name that link some other way.
  */
 export function SpeciesThumbnail({
   uuid,

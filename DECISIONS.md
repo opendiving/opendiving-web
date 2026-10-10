@@ -5312,19 +5312,6 @@ the rest of `vitest.setup.ts`, which stands in for browser APIs jsdom lacks; thi
 An empty `env` is correct: every value Next looks for there is optional, and real ones would be
 inventing build configuration. The jsdom project is unaffected.
 
-## The row-height guard can only fail with the stylesheet loaded, and an assertion pins the import
-
-`dive-detail-main.browser.test.tsx` pins that a species with no photo still reserves the thumbnail's
-box — `SpeciesThumbnail` renders an empty div, never `null` — so rows stay level down the dive
-card's table. Nothing about that is checkable in jsdom; the render test pins only whether an `<img>`
-is present. The file imports `@/app/globals.css` and carries a third assertion whose only purpose is
-to fail when that import goes: the row must be taller than a bare line of text, which is true only
-with Tailwind loaded. Without it the two row-height guards pass with the collapse in the markup —
-the vacuous pass "jsdom answers no layout question, and the browser lane only answers one with the
-stylesheet loaded" describes. Rows are compared within a pixel, not for equality, because the
-table's last-row border makes them 81 and 80.5. The all-rows-photo-less case needs two distinct
-uuids: React keys two identically-keyed rows as one.
-
 ## The author and the operator are two roles, and one party may hold both
 
 `/privacy` and `/terms` treat author and operator as two roles one party may hold, not two parties.
@@ -5467,11 +5454,11 @@ three brand fills now_).
 
 The cost is contrast: coral text on white and white on a coral fill are 2.5:1 at the hero accent
 word (`landing-page.tsx`), header nav active/hover (`header.tsx`), the Home hero's Species seen link
-on hover, the species card hover border, and, in both themes since both tokens are theme-constant,
-the sign-in button and `AuthForm`'s submit. Teal is 4.8:1 on white and 3.4:1 on the dark card, past
-3:1 for graphical objects. `--destructive`/`--destructive-solid` keep their tuned pair because that
-colour carries meaning. `code-quality.yml`'s axe step ends in `|| true`, so its `color-contrast`
-violation fails nothing.
+on hover, and, in both themes since both tokens are theme-constant, the sign-in button and
+`AuthForm`'s submit. Teal is 4.8:1 on white and 3.4:1 on the dark card, past 3:1 for graphical
+objects. `--destructive`/`--destructive-solid` keep their tuned pair because that colour carries
+meaning. `code-quality.yml`'s axe step ends in `|| true`, so its `color-contrast` violation fails
+nothing.
 
 ## `dives/(detail)/layout.tsx` owns the dive fetch, so a step keeps the page mounted
 

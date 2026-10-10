@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { Dive } from "@/lib/api/dives";
 import { gearTypeLabel } from "@/lib/api/gear";
-import { speciesDisplayName, speciesNameWithRank } from "@/lib/species";
-import { SpeciesThumbnail } from "@/components/species/species-thumbnail";
+import {
+  SPECIES_CARD_GRID,
+  SpeciesCard,
+} from "@/components/species/species-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveProfileCard } from "@/components/dives/dive-profile-card";
@@ -44,10 +46,6 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
   const units = useUnits();
   const withReturnTo = useWithReturnTo();
   const sightings = dive.sightings ?? [];
-  // A column only when some row fills it, so a dive whose species were logged
-  // without a count or a note shows the names alone.
-  const hasCounts = sightings.some((sighting) => sighting.count != null);
-  const hasNotes = sightings.some((sighting) => Boolean(sighting.notes));
 
   return (
     <div className="lg:col-span-2 space-y-6 max-sm:space-y-2.5">
@@ -125,12 +123,8 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
         </Card>
       )}
 
-      {/* Between the kit and the notes, mirroring where the form puts the picker.
-          A `Table` for the same reason the Gear card above is one: a real dive
-          can carry a dozen sightings, and a list of glued-together strings gives
-          the eye nothing to scan down. Common name leads the two text columns,
-          because that is the one a diver reads - the binomial is what makes it
-          unambiguous, not what makes it findable. */}
+      {/* Between the kit and the notes, mirroring where the form puts the
+          picker, in spotting order. */}
       {sightings.length > 0 && (
         <Card>
           <CardHeader>
@@ -140,92 +134,28 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {/* The image column's header is a name for screen readers and
-                      nothing for the eye: a word over a column of photographs
-                      labels what needs no label. */}
-                  <TableHead className="w-16">
-                    <span className="sr-only">Photo</span>
-                  </TableHead>
-                  <TableHead>Common name</TableHead>
-                  <TableHead>Scientific name</TableHead>
-                  {hasCounts && (
-                    <TableHead className="text-right">Count</TableHead>
+            <ul className={SPECIES_CARD_GRID}>
+              {sightings.map((sighting) => (
+                <SpeciesCard
+                  key={sighting.uuid}
+                  species={sighting}
+                  // None for "seen, not counted", which is not 1.
+                  figures={
+                    sighting.count != null
+                      ? [{ label: "Count", value: sighting.count }]
+                      : []
+                  }
+                >
+                  {/* Pre-wrap, as the Notes card below keeps the dive's own: a
+                      merge or an import can put line breaks in a note. */}
+                  {sighting.notes && (
+                    <span className="whitespace-pre-wrap">
+                      {sighting.notes}
+                    </span>
                   )}
-                  {hasNotes && <TableHead>Notes</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sightings.map((sighting) => (
-                  <TableRow key={sighting.uuid}>
-                    {/* Every row gets this cell, and `SpeciesThumbnail` reserves
-                        its box whether or not there is a photo to put in it - so
-                        the rows stay the same height down the table instead of a
-                        photo-less one collapsing to the height of its text. */}
-                    <TableCell className="w-16">
-                      <Link
-                        href={withReturnTo(`/species/${sighting.uuid}`)}
-                        // The name cell beside this links to the same page and
-                        // carries the accessible name. Two adjacent links to one
-                        // destination is a tab stop nobody wants and a link list
-                        // entry that says nothing, so this one is taken out of
-                        // both while staying clickable for the mouse.
-                        aria-hidden="true"
-                        tabIndex={-1}
-                      >
-                        <SpeciesThumbnail
-                          uuid={sighting.uuid}
-                          photoSha256={sighting.photo_sha256}
-                          className="h-12 w-12"
-                        />
-                      </Link>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {/* The link the card's comment used to say did not exist
-                          yet. It is also the attribution route: the photo beside
-                          it carries no credit of its own, and this is the page
-                          that does.
-
-                          `aria-label` because the visible content is an em-dash
-                          for the many species with no English name, and "—" is
-                          not a link name. Where there *is* a common name the
-                          label is that same string, so nothing diverges from
-                          what is on screen. */}
-                      <Link
-                        href={withReturnTo(`/species/${sighting.uuid}`)}
-                        className="relative hover:underline touch:tap-target"
-                        aria-label={speciesDisplayName(sighting)}
-                      >
-                        {sighting.common_name || (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </Link>
-                    </TableCell>
-                    {/* Italic by the binomial convention, and the rank comes
-                        along when the row isn't one - "Muraenidae" on its own
-                        reads as a species and isn't. */}
-                    <TableCell className="italic text-muted-foreground">
-                      {speciesNameWithRank(sighting)}
-                    </TableCell>
-                    {/* Blank for "seen, not counted", which is not 1. */}
-                    {hasCounts && (
-                      <TableCell className="text-right tabular-nums">
-                        {sighting.count}
-                      </TableCell>
-                    )}
-                    {/* Pre-wrap, as the Notes card below keeps the dive's own:
-                        a merge or an import can put line breaks in a note. */}
-                    {hasNotes && (
-                      <TableCell className="whitespace-pre-wrap text-muted-foreground">
-                        {sighting.notes}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </SpeciesCard>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}

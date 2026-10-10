@@ -17,10 +17,11 @@ import { cn } from "@/lib/utils";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { SpeciesPhotoCredit } from "@/components/species/species-photo-credit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SpeciesBackdrop } from "@/components/species/species-card";
 import {
   HERO_BODY,
+  MapHero,
   MapHeroPageSkeleton,
-  PlainHero,
   type MapHeroFigure,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
@@ -46,8 +47,8 @@ function InfoRow({
 }
 
 /**
- * One species: its photo and credit, what the catalog knows about it, and the
- * dives this diver saw it on.
+ * One species: its photo across the hero and its credit in a card, what the
+ * catalog knows about it, and the dives this diver saw it on.
  *
  * **This page is what makes the photos licence-clean**, and that is its reason
  * for existing as much as the dive list is. A grid of fifty thumbnails cannot
@@ -96,7 +97,6 @@ export function SpeciesDetailPageContent() {
   if (isLoadingSpecies || history.isLoading) {
     return (
       <MapHeroPageSkeleton
-        plain
         backHref={back.href}
         backLabel={back.label}
         icon={Fish}
@@ -149,10 +149,20 @@ export function SpeciesDetailPageContent() {
 
   return (
     <div>
-      <PlainHero
+      <MapHero
         backHref={back.href}
         backLabel={back.label}
         icon={Fish}
+        // The photo across the band, as a site's map is; its credit is the
+        // body's first card, where it reads as text rather than over a photo.
+        backdrop={({ covered }) => (
+          <SpeciesBackdrop
+            hero
+            photo={photoSrc}
+            coveredBottom={covered.bottom}
+            coveredTop={covered.top}
+          />
+        )}
         title={displayName}
         subtitle={
           (scientificName || rank) && (
@@ -169,10 +179,24 @@ export function SpeciesDetailPageContent() {
       <div
         className={cn(
           HERO_BODY,
-          "grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5",
+          "grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-[auto_1fr] gap-6 max-sm:gap-2.5",
         )}
       >
-        <div className="lg:col-span-2 space-y-6 max-sm:space-y-2.5">
+        {/* The hero's photo's credit, first in the body so that where the
+            columns stack it sits under the photo rather than after every dive,
+            and at the head of the side column where they don't. Visible without
+            hovering, and it must stay that way at every width - see the
+            component's own docs for why a tooltip does not satisfy the
+            licence. */}
+        {photoSrc && (
+          <Card className="lg:col-start-3 lg:row-start-1">
+            <CardContent className="pt-(--card-pad)">
+              <SpeciesPhotoCredit species={species} />
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="lg:col-span-2 lg:col-start-1 lg:row-span-2 lg:row-start-1 space-y-6 max-sm:space-y-2.5">
           {/* Scoped to this species by the filter `getDives` gained for it -
               the same shape the trip, site, gear and course pages use, which is
               what a life-list row leads to instead of a filtered /dives. */}
@@ -190,29 +214,7 @@ export function SpeciesDetailPageContent() {
           />
         </div>
 
-        <div className="space-y-6 max-sm:space-y-2.5">
-          {photoSrc && (
-            <Card>
-              <CardContent className="pt-(--card-pad) space-y-3">
-                {/* At its stored size rather than a thumbnail: this is the one
-                    place the photo is the subject rather than a label. A real
-                    alt, unlike the thumbnails elsewhere - here the picture is
-                    the content of its own card rather than a decoration beside
-                    the name it repeats. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photoSrc}
-                  alt={displayName}
-                  className="w-full rounded-md"
-                />
-                {/* Visible without hovering, and it must stay that way at every
-                    width - see the component's own docs for why a tooltip does
-                    not satisfy the licence. */}
-                <SpeciesPhotoCredit species={species} />
-              </CardContent>
-            </Card>
-          )}
-
+        <div className="lg:col-start-3 space-y-6 max-sm:space-y-2.5">
           <Card>
             <CardHeader>
               <CardTitle as="h2" className="flex items-center gap-2">
