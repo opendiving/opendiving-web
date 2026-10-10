@@ -171,7 +171,8 @@ export function NotificationsMenu() {
               className="me-3 px-3 max-[370px]:me-2 max-[370px]:px-2 max-[360px]:touch:me-0 max-[360px]:touch:min-w-10"
             >
               {/* The chip is placed off the bell rather than the button, which a
-                  finger's 44px floor makes larger than the mouse's. */}
+                  finger's 44px floor makes larger than the mouse's. It sits closer
+                  in on touch so it covers as much of the larger bell's shoulder. */}
               <span className="relative flex">
                 <Bell className="h-4 w-4 touch:h-5 touch:w-5" />
                 {/* The count is in the trigger's name already, so the chip is the
@@ -180,7 +181,7 @@ export function NotificationsMenu() {
                 {count > 0 && (
                   <span
                     aria-hidden="true"
-                    className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive-solid px-1 text-[10px] font-semibold leading-none text-destructive-foreground ring-2 ring-background"
+                    className="absolute -right-2.5 -top-2 flex touch:-right-2 touch:-top-1.5 h-4 min-w-4 items-center justify-center rounded-full bg-destructive-solid px-1 text-[10px] font-semibold leading-none text-destructive-foreground ring-2 ring-background"
                   >
                     {count > 9 ? "9+" : count}
                   </span>
