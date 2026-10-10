@@ -19,16 +19,16 @@ const sizes = [16, 32, 48];
 // its own coral, which reads on a home screen where a white tile sits unnoticed among
 // the system's white icons. The whole mark sits inside the maskable safe zone - the
 // centred circle whose diameter is 80% of the side - so one file serves `any` and
-// `maskable`, and iOS's corner rounding cuts nothing off. Centred on its painted
-// extent, the mark's farthest point is 12.47 units from the tile's centre (the small
-// bubble: centre 9.62 away, radius 1.6, plus half the 2.5 stroke), so a 5-unit margin
-// makes a 34-unit tile whose safe radius is 13.6. No alpha channel: iOS renders a
+// `maskable`, and iOS's corner rounding cuts nothing off. The mark is centred in its
+// own box, and its farthest point is 13.72 units from that centre (the small bubble:
+// centre 10.69 away, radius 1.78, plus half the 2.5 stroke), so a 6.5-unit margin
+// makes a 37-unit tile whose safe radius is 14.8. No alpha channel: iOS renders a
 // transparent pixel black.
 //
 // The root `/apple-touch-icon.png` is for iOS adding a page it has not loaded, which is
 // what Firefox and other third-party browsers ask for: iOS then reads no `<link>` or
 // manifest, only probes that fixed path, and draws a letter when it 404s.
-const TILE_MARGIN = 5;
+const TILE_MARGIN = 6.5;
 const tiles = [
   { size: 192, file: path.join(root, "public", "icon-192.png") },
   { size: 512, file: path.join(root, "public", "icon-512.png") },
@@ -36,39 +36,15 @@ const tiles = [
   { size: 180, file: path.join(root, "public", "apple-touch-icon.png") },
 ];
 
-// The box the mark's circles paint, stroke included, in its own viewBox. The mark
-// sits right of and above that viewBox's centre, so a tile centring the viewBox
-// shows unequal margins. Only circles are read: a mark drawn with anything else
-// needs this extending.
-function paintedBounds(markSvg) {
-  const halfStroke = Number(markSvg.match(/stroke-width="([\d.]+)"/)[1]) / 2;
-  const circles = [
-    ...markSvg.matchAll(/<circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"/g),
-  ].map((match) => match.slice(1).map(Number));
-  if (circles.length === 0) throw new Error("No <circle> found in the mark");
-  const reach = ([cx, cy, r], axis, sign) =>
-    (axis === "x" ? cx : cy) + sign * (r + halfStroke);
-  return {
-    minX: Math.min(...circles.map((c) => reach(c, "x", -1))),
-    maxX: Math.max(...circles.map((c) => reach(c, "x", 1))),
-    minY: Math.min(...circles.map((c) => reach(c, "y", -1))),
-    maxY: Math.max(...circles.map((c) => reach(c, "y", 1))),
-  };
-}
-
 function tileSvg(markSvg, size) {
   const side = 24 + 2 * TILE_MARGIN;
   // The mark is nested as its own 24x24 viewport, so it is drawn exactly as the
-  // favicon draws it, shifted so its painted box rather than its viewBox is centred;
-  // the outer viewBox only adds the margin around it. The file's leading comment comes
-  // along, which is legal inside an element and renders nothing.
-  const { minX, maxX, minY, maxY } = paintedBounds(markSvg);
-  const x = 12 - (minX + maxX) / 2;
-  const y = 12 - (minY + maxY) / 2;
+  // favicon draws it; the outer viewBox only adds the margin around it. The file's
+  // leading comment comes along, which is legal inside an element and renders nothing.
   const coral = markColour(markSvg);
   const mark = markSvg
     .replaceAll(coral, "#FFFFFF")
-    .replace("<svg ", `<svg x="${x}" y="${y}" width="24" height="24" `);
+    .replace("<svg ", `<svg width="24" height="24" `);
   return Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${-TILE_MARGIN} ${-TILE_MARGIN} ${side} ${side}">` +
       `<rect x="${-TILE_MARGIN}" y="${-TILE_MARGIN}" width="${side}" height="${side}" fill="${coral}"/>` +
