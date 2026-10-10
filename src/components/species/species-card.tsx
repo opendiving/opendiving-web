@@ -21,6 +21,46 @@ import { useWithReturnTo } from "@/hooks/useReturnTo";
 export const SPECIES_CARD_GRID =
   "grid grid-cols-[repeat(auto-fill,minmax(min(16rem,100%),1fr))] gap-3 max-sm:gap-2.5";
 
+// A species' photo behind its names, on its card and across its page's hero -
+// the map's water and a fish where it has none, as a dive with no place is
+// drawn. Faded as a map is, into the colour the names glow in, so they read
+// over a photo as over a map. Decorative: the name over it says what it is.
+export function SpeciesBackdrop({
+  photo,
+  coveredBottom,
+  coveredTop,
+}: {
+  photo: string | null;
+  coveredBottom: number;
+  coveredTop?: number;
+}) {
+  if (!photo) {
+    return (
+      <UnplacedBackdrop
+        coveredBottom={coveredBottom}
+        coveredTop={coveredTop}
+        icon={Fish}
+      />
+    );
+  }
+  return (
+    <div
+      aria-hidden
+      className="absolute inset-0 overflow-hidden rounded-[inherit]"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- see SpeciesThumbnail */}
+      <img src={photo} alt="" className="size-full object-cover" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to bottom, transparent, var(--backdrop-fade))",
+        }}
+      />
+    </div>
+  );
+}
+
 interface SpeciesCardProps {
   species: SpeciesSummary;
   // What the page knows of this species on the diver's dives: how many there
@@ -47,27 +87,9 @@ export function SpeciesCard({
 
   return (
     <BackdropCard
-      backdrop={(coveredBottom) =>
-        photo ? (
-          <div
-            aria-hidden
-            className="absolute inset-0 overflow-hidden rounded-[inherit]"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- see SpeciesThumbnail */}
-            <img src={photo} alt="" className="size-full object-cover" />
-            {/* The map's fade, so the names read over a photo as over a map. */}
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(to bottom, transparent, var(--backdrop-fade))",
-              }}
-            />
-          </div>
-        ) : (
-          <UnplacedBackdrop coveredBottom={coveredBottom} icon={Fish} />
-        )
-      }
+      backdrop={(coveredBottom) => (
+        <SpeciesBackdrop photo={photo} coveredBottom={coveredBottom} />
+      )}
     >
       <Link
         href={withReturnTo(`/species/${species.uuid}`)}
