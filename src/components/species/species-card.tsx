@@ -13,6 +13,8 @@ import {
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
+import { HERO_CANVAS_WIDTH, SIDE_FADE_WIDTH } from "@/lib/map-frame";
+import { cn } from "@/lib/utils";
 
 // Species cards in whatever column holds them - the life list's, a dive's, a
 // site's side column - as many to a row as fit at a width that keeps a card
@@ -24,15 +26,19 @@ export const SPECIES_CARD_GRID =
 // A species' photo behind its names, on its card and across its page's hero -
 // the map's water and a fish where it has none, as a dive with no place is
 // drawn. Faded as a map is, into the colour the names glow in, so they read
-// over a photo as over a map. Decorative: the name over it says what it is.
+// over a photo as over a map; on a hero, as wide as a hero's map and
+// dissolving into the page at its sides as that does. Decorative: the name
+// over it says what it is.
 export function SpeciesBackdrop({
   photo,
   coveredBottom,
   coveredTop,
+  hero = false,
 }: {
   photo: string | null;
   coveredBottom: number;
   coveredTop?: number;
+  hero?: boolean;
 }) {
   if (!photo) {
     return (
@@ -43,20 +49,35 @@ export function SpeciesBackdrop({
       />
     );
   }
+  const fade = (direction: string, stops: string) => (
+    <div
+      className="absolute inset-0"
+      style={{
+        background: `linear-gradient(${direction}, ${stops})`,
+      }}
+    />
+  );
   return (
     <div
       aria-hidden
       className="absolute inset-0 overflow-hidden rounded-[inherit]"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- see SpeciesThumbnail */}
-      <img src={photo} alt="" className="size-full object-cover" />
       <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to bottom, transparent, var(--backdrop-fade))",
-        }}
-      />
+        className={cn(
+          "absolute inset-y-0",
+          hero ? "left-1/2 -translate-x-1/2" : "inset-x-0",
+        )}
+        style={hero ? { width: HERO_CANVAS_WIDTH } : undefined}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- see SpeciesThumbnail */}
+        <img src={photo} alt="" className="size-full object-cover" />
+        {hero &&
+          fade(
+            "to right",
+            `var(--backdrop-fade), transparent ${SIDE_FADE_WIDTH}px, transparent ${HERO_CANVAS_WIDTH - SIDE_FADE_WIDTH}px, var(--backdrop-fade)`,
+          )}
+      </div>
+      {fade("to bottom", "transparent, var(--backdrop-fade)")}
     </div>
   );
 }

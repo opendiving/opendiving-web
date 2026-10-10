@@ -157,6 +157,7 @@ export function SpeciesDetailPageContent() {
         // its own card below, where it reads as text rather than over a photo.
         backdrop={({ covered }) => (
           <SpeciesBackdrop
+            hero
             photo={photoSrc}
             coveredBottom={covered.bottom}
             coveredTop={covered.top}
