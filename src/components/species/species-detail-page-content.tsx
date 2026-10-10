@@ -153,8 +153,8 @@ export function SpeciesDetailPageContent() {
         backHref={back.href}
         backLabel={back.label}
         icon={Fish}
-        // The photo across the band, as a site's map is; its credit stays in
-        // its own card below, where it reads as text rather than over a photo.
+        // The photo across the band, as a site's map is; its credit is the
+        // body's first card, where it reads as text rather than over a photo.
         backdrop={({ covered }) => (
           <SpeciesBackdrop
             hero
@@ -179,10 +179,24 @@ export function SpeciesDetailPageContent() {
       <div
         className={cn(
           HERO_BODY,
-          "grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5",
+          "grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-[auto_1fr] gap-6 max-sm:gap-2.5",
         )}
       >
-        <div className="lg:col-span-2 space-y-6 max-sm:space-y-2.5">
+        {/* The hero's photo's credit, first in the body so that where the
+            columns stack it sits under the photo rather than after every dive,
+            and at the head of the side column where they don't. Visible without
+            hovering, and it must stay that way at every width - see the
+            component's own docs for why a tooltip does not satisfy the
+            licence. */}
+        {photoSrc && (
+          <Card className="lg:col-start-3 lg:row-start-1">
+            <CardContent className="pt-(--card-pad)">
+              <SpeciesPhotoCredit species={species} />
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="lg:col-span-2 lg:col-start-1 lg:row-span-2 lg:row-start-1 space-y-6 max-sm:space-y-2.5">
           {/* Scoped to this species by the filter `getDives` gained for it -
               the same shape the trip, site, gear and course pages use, which is
               what a life-list row leads to instead of a filtered /dives. */}
@@ -200,18 +214,7 @@ export function SpeciesDetailPageContent() {
           />
         </div>
 
-        <div className="space-y-6 max-sm:space-y-2.5">
-          {photoSrc && (
-            <Card>
-              <CardContent className="pt-(--card-pad)">
-                {/* The hero's photo's credit. Visible without hovering, and it
-                    must stay that way at every width - see the component's own
-                    docs for why a tooltip does not satisfy the licence. */}
-                <SpeciesPhotoCredit species={species} />
-              </CardContent>
-            </Card>
-          )}
-
+        <div className="lg:col-start-3 space-y-6 max-sm:space-y-2.5">
           <Card>
             <CardHeader>
               <CardTitle as="h2" className="flex items-center gap-2">
