@@ -39,7 +39,7 @@ const PROFILE: DiveProfile = {
   },
   temperature: {
     times,
-    values: [260, 250, 240, 235, 232, 230, 230, 232, 238, 245, 252],
+    values: [2600, 2500, 2400, 2350, 2320, 2300, 2300, 2320, 2380, 2450, 2520],
   },
   pressures: [],
   ndl: {

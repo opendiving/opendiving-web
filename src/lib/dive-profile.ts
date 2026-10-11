@@ -79,7 +79,10 @@ export interface ProfileChannel {
   scale: number;
   // How many decimals a reading of this channel is worth showing. Same
   // resolution as the stored scale: showing more digits than were stored is a
-  // false claim about the sensor.
+  // false claim about the sensor. Temperature's is the most it is ever quoted
+  // to: the format fills hundredths with zeros for a source that states tenths
+  // or whole degrees, so `toChannelSeries` narrows it to the grain each
+  // recording's readings actually carry.
   decimals: number;
   // The Tailwind text color class the curve, its axis and its readout all use.
   colorClass: string;
@@ -158,8 +161,8 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
     key: "temperature",
     label: "Temperature",
     unit: "°C",
-    scale: 10, // tenths of a degree
-    decimals: 1,
+    scale: 100, // hundredths of a degree
+    decimals: 2,
     colorClass: "text-coral",
     inverted: false,
     dashed: false,
@@ -399,10 +402,10 @@ export function axisDomain(
     : niceDomain([0, bound]);
 }
 
-// The least a temperature axis spans, in degrees Celsius. Readings are tenths of
-// a degree, and fitted tight a dive whose water moved 0.4 °C draws each tenth as
-// a quarter of the plot - a staircase that reads as a swing. Twenty tenths keeps
-// one step to a twentieth of the height.
+// The least a temperature axis spans, in degrees Celsius. Many sources state
+// tenths of a degree, and fitted tight a dive whose water moved 0.4 °C draws each
+// tenth as a quarter of the plot - a staircase that reads as a swing. Twenty
+// tenths keeps one step to a twentieth of the height.
 const MIN_TEMPERATURE_SPAN_C = 2;
 
 /**
@@ -588,9 +591,11 @@ const CHANNEL_DIMENSION: Record<ProfileChannelKey, Dimension | InvariantUnit> =
  * A channel as it is labelled and quoted for one system.
  *
  * The metric channel unchanged, or one carrying the imperial unit and no decimals
- * at all: a foot, a degree Fahrenheit and a psi are each finer than the tenth of a
- * metric unit the stored scale resolves to, so a decimal there would be inventing
- * precision rather than preserving it.
+ * at all: a foot and a psi are each finer than the tenth of a metric unit the
+ * stored scale resolves to, so a decimal there would be inventing precision
+ * rather than preserving it. A degree Fahrenheit is coarser than a tenth of a
+ * degree Celsius, and is quoted whole all the same, which is how a diver reads
+ * one.
  *
  * A channel with no dimension is returned unchanged in **both** systems - there is
  * no imperial spelling of a percent, and dropping its decimals would round every
@@ -706,18 +711,45 @@ export function toChannelSeries(
   if (!series || series.times.length === 0) return null;
 
   const channel = PROFILE_CHANNELS[key];
+  const display = displayChannel(channel, units);
   // Converted here, once, rather than at each of the dozen places downstream that
   // read `values`. Everything past this point - the domains, the axis ticks, the
   // crosshair, the accessible extremes - is then already in the units it renders
   // in, so `niceDomain` picks round numbers in the system the diver is reading
   // and there is nowhere left for a conversion to be forgotten.
   return {
-    channel: displayChannel(channel, units),
+    channel:
+      key === "temperature"
+        ? {
+            ...display,
+            decimals: Math.min(
+              display.decimals,
+              grainDecimals(series.values, channel.scale),
+            ),
+          }
+        : display,
     t: series.times,
     values: series.values.map((value) =>
       toChannelDisplay(value / channel.scale, key, units),
     ),
   };
+}
+
+// The fewest decimals that state every one of a series' stored integers exactly
+// once divided by `scale`, a power of ten: 2 for hundredths with any odd
+// hundredth among them, 1 where every reading is a whole tenth, 0 where every
+// one is a whole unit. A source coarser than the format's grain arrives with the
+// grain filled by zeros, and this is how the readout tells those apart from
+// digits a sensor measured.
+export function grainDecimals(
+  values: readonly number[],
+  scale: number,
+): number {
+  let decimals = 0;
+  for (let step = scale; step > 1; step /= 10, decimals += 1) {
+    if (values.every((value) => value % step === 0)) return decimals;
+  }
+  return decimals;
 }
 
 // Same, per cylinder. Each cylinder is its own line on the chart, keyed by its
