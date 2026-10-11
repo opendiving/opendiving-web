@@ -35,13 +35,13 @@ interface DiveGasConsumptionCardProps {
 }
 
 /**
- * Gas consumption for the dive, derived by the API from duration, depth and cylinder
+ * Gas consumption for the dive, derived by the API from dive time, depth and cylinder
  * pressures.
  *
  * Two shapes, chosen by whether the API attributed the dive per cylinder. Three headline
  * figures where it did not, which is one tank as it always was - and now also a flagged
  * parallel set, where the API summed the cylinders' litres against the dive's own
- * duration and average depth, so there is one whole-dive figure to show and no split to
+ * dive time and average depth, so there is one whole-dive figure to show and no split to
  * show it against. An attributed dive is a table with a row per cylinder and a total
  * beneath, because the per-tank numbers *are* the answer there - a deco bottle emptied
  * at 6 m and a back gas breathed at 40 m have almost nothing to say to each other, and a
@@ -329,7 +329,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
  * litres" looks broken rather than brief.
  *
  * `<1min` says the same thing honestly. Deliberately not a change to the shared formatter,
- * which is also what prints the dive's own duration, where a sub-minute value is not a
+ * which is also what prints the dive time, where a sub-minute value is not a
  * shape worth spending a special case on.
  */
 function formatTimeOnGas(seconds: number): string {
@@ -340,7 +340,7 @@ function formatTimeOnGas(seconds: number): string {
  * The dive-wide total under the per-tank rows. Rendered only where two or more cylinders
  * were attributed — see the caller for why one makes it redundant.
  *
- * Time is the attributed span rather than the dive's duration, so it adds up with the
+ * Time is the attributed span rather than the dive time, so it adds up with the
  * column above it. Depth and SAC are dashed rather than filled: a mean depth across
  * cylinders would be a fourth kind of average on a card that already has three, and a
  * bar/min summed over an 11 L stage and a 22 L twinset is not a rate of anything - the

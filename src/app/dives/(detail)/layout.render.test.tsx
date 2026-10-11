@@ -103,7 +103,7 @@ function makeDive(overrides: Partial<Dive> = {}): Dive {
     uuid: "dive-a",
     dive_number: 458,
     start_time: "2025-10-25T10:04:47+02:00",
-    duration: 2700,
+    submerged_time: 2700,
     created_at: "2025-10-26T08:00:00+02:00",
     user_uuid: "user-1",
     notes: "",

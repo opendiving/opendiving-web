@@ -33,7 +33,7 @@ interface DiveDetailMainProps {
 
 /**
  * The dive detail page's main column, ordered so each card's inputs are already on screen
- * by the time a card derived from them appears: under the hero's duration and depth
+ * by the time a card derived from them appears: under the hero's dive time and depth
  * numbers, the profile that is their detailed form, then the tanks whose pressures its
  * third curve traces, then the consumption figures derived from all three, then the
  * exposure those same tanks produced.

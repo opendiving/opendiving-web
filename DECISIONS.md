@@ -184,10 +184,10 @@ The dive form lists its trip's and course's people, and the course's contact, fi
 a heading would teach the combobox unselectable rows. A pin the lookup matched by username or city
 stays where the lookup put it.
 
-## Duration is a free-typed, regex-validated "MM" or "MM:SS" string in the form
+## Dive time is a free-typed, regex-validated "MM" or "MM:SS" string in the form
 
-`Dive.duration` is seconds on the API types (`Dive`/`DiveCreate`/`DiveUpdate`); the form field holds
-a plain string (`"45"`, `"45:30"`) — see `dateTimeField()`/`durationField()` in
+`Dive.submerged_time` is seconds on the API types (`Dive`/`DiveCreate`/`DiveUpdate`); the form field
+holds a plain string (`"45"`, `"45:30"`) — see `dateTimeField()`/`durationField()` in
 `lib/validations/dive.ts` (no `.transform()`). `durationField()`'s regex (`^\d{1,3}(?::[0-5]\d)?$`)
 is the only validation, via `<FormMessage />`, with no live reformatting. The seconds half is
 optional: dive computers report whole minutes. A colonless value is minutes (`"130"` is 130 minutes,
@@ -199,9 +199,10 @@ Seconds convert right before submit and after fetch via
 as zero, and the formatter always writes `"MM:SS"`. Reuse them elsewhere; a "total minutes" number
 input loses sub-minute precision.
 
-The `<FormLabel>` is a bare `Duration`. Two prose strings move with `DURATION_REGEX`: the
-placeholder in `dive-form-fields.tsx` and `durationField()`'s default message; a test pins the
-message, the placeholder has no guard.
+The `<FormLabel>` is a bare `Dive time`, the word on the diver's wrist; the key stays
+`submerged_time`, which nobody reads as end minus start. Two prose strings move with
+`DURATION_REGEX`: the placeholder in `dive-form-fields.tsx` and `durationField()`'s default message;
+a test pins the message, the placeholder has no guard.
 
 ## Occasional `.next` cache corruption during builds
 
@@ -647,8 +648,9 @@ Every "quick add" dialog — gear item, gear set, dive site, trip — renders fr
 and each contains its own `<form>`. Radix portals `DialogContent` to `document.body`, so the DOM has
 no nested forms, but React bubbles through the React tree: the dialog's submit lands in the dive
 form's `onSubmit`, and `handleSubmit` calls `preventDefault()` but never `stopPropagation()`. Saving
-in the dialog then submits the dive form too, which fails validation on an unfilled field ("Duration
-is required") and scrolls to it; Enter in any dialog input does the same via implicit submission.
+in the dialog then submits the dive form too, which fails validation on an unfilled field ("Dive
+time is required") and scrolls to it; Enter in any dialog input does the same via implicit
+submission.
 
 `lib/dialog-form.ts`'s `dialogFormSubmit()` stops propagation before handling:
 
@@ -2338,12 +2340,13 @@ Per-tank figures are an inference that can leave a remainder — a file recordin
 entry gas has nothing to assign the descent to — and figures covering 38 of 42 minutes presented as
 the dive understate every one. `gasAttributionNote` says so from `attributed_seconds`/`duration`,
 and says nothing below a one-minute remainder, which is rounding and would print two spans rendering
-identically. The denominator is the profile's span, not `Dive.duration`: it is what the attribution
-ran over, and `Dive.duration` may be hand-edited, making the fraction unfalsifiable. It returns null
-when `attributed >= total` rather than printing "covers 45min of the 40min recorded" — unreachable
-from a correct API, but the shape a degenerate profile takes. The sentence names the dive computer
-("the 1h 12min the dive computer recorded") because `DiveGasUse.duration` routinely outruns the
-header's `Duration`; two right numbers for two spans must not read as one being wrong.
+identically. The denominator is the profile's span, not `Dive.submerged_time`: it is what the
+attribution ran over, and `Dive.submerged_time` may be hand-edited, making the fraction
+unfalsifiable. It returns null when `attributed >= total` rather than printing "covers 45min of the
+40min recorded" — unreachable from a correct API, but the shape a degenerate profile takes. The
+sentence names the dive computer ("the 1h 12min the dive computer recorded") because
+`DiveGasUse.duration` routinely outruns the header's `Dive time`; two right numbers for two spans
+must not read as one being wrong.
 
 ## The total row is dropped when it would restate the only row above it
 
@@ -2413,8 +2416,8 @@ own timezone (see "A dive's `start_time` displays/edits in its own timezone, nev
 then the place. `formatDiveStartTime` - weekday, month in full, and the offset appended so `10:04`
 can be checked - is rejected there so a dive reads the same on its page as in every list; it stays
 on the import's match rows, where telling two dives apart is the point. A bare date prints no clock
-in either. The hero's figures are the duration, maximum depth, water temperature and visibility,
-each but the duration where the dive records it, in whole units as the card rounds them, and the
+in either. The hero's figures are the dive time, maximum depth, water temperature and visibility,
+each but the dive time where the dive records it, in whole units as the card rounds them, and the
 average depth after the maximum only while the rest leave fewer than four.
 
 ## The ppO₂ limit is picked from a list, and an unlisted one is added to it
@@ -4727,16 +4730,16 @@ computes; the tank card only quotes the choice back.
 ## `gasUseUnavailableReason` nudges toward Parallel, and where the nudge sits is the whole design
 
 Flagged-parallel reasons come first in `lib/dive-gas.ts`'s multi-mixture branch:
-`compute_parallel_gas_use` sums a set flagged `parallel` throughout against the dive's duration and
-`avg_depth` without a profile, so the attribution sentences are false of it and `avg_depth` is a
-multi-cylinder input. Its first ask names depth and pressures together, a sidemount diver's opening
-state. Then the nudge: an unflagged multi-cylinder dive is told that flagging Parallel would add the
-gas up — as a condition, not an instruction, so a genuinely staged pair with both pressures is not
-walked into misattribution. It precedes the no-profile branch, which otherwise captures every
-hand-logged pair, and the attribution-shortfall sentence. Two gates: every cylinder carries both
-pressures with a positive total drop — the staged-bottle tell; a missing depth is one follow-up ask,
-not a gate — and none is flagged `staged`, since gating on any explicit `usage` silences the
-half-flagged pair. `dive-gas.test.ts` pins the split.
+`compute_parallel_gas_use` sums a set flagged `parallel` throughout against the dive's
+`submerged_time` and `avg_depth` without a profile, so the attribution sentences are false of it and
+`avg_depth` is a multi-cylinder input. Its first ask names depth and pressures together, a sidemount
+diver's opening state. Then the nudge: an unflagged multi-cylinder dive is told that flagging
+Parallel would add the gas up — as a condition, not an instruction, so a genuinely staged pair with
+both pressures is not walked into misattribution. It precedes the no-profile branch, which otherwise
+captures every hand-logged pair, and the attribution-shortfall sentence. Two gates: every cylinder
+carries both pressures with a positive total drop — the staged-bottle tell; a missing depth is one
+follow-up ask, not a gate — and none is flagged `staged`, since gating on any explicit `usage`
+silences the half-flagged pair. `dive-gas.test.ts` pins the split.
 
 ## `diveModWarning` judges a flagged parallel set of one gas as that one gas
 
@@ -5602,7 +5605,7 @@ dive detail summarises on `recordings[].profile`. Both surfaces speak DiveJSON's
 consistency, both meaning the profile's span. Rejected: export-local schemas on the API, two
 vocabularies forever.
 
-`duration` is overloaded: `Dive.duration` is the logged length, the others the profile's span, which
+`Dive.submerged_time` is the logged time in the water; every `duration` is the profile's span, which
 runs longer, in milliseconds on the profile shapes and in seconds on `DiveGasUse`; comments in
 `lib/api/dives.ts` say which. `gasAttributionNote` reads `DiveGasUse.duration` from
 `schemas/dive.py`, not the profile schemas. Events past `duration` are not clamped (spec §6.4);
@@ -5891,7 +5894,7 @@ grey. Off is `bg-muted-foreground`, not `bg-input`, which the `bg-background` th
 from.
 
 Always-shown rows are switches too: on, disabled, named, not `aria-hidden`; `page.render.test.tsx`
-reaches the duplicated "Duration" and "Start time" by role.
+reaches the duplicated "Dive time" and "Start time" by role.
 
 Section switches are rejected: ARIA forbids `aria-checked="mixed"` on `role="switch"`, so a part-on
 group cannot be one.
@@ -6730,9 +6733,9 @@ leaves one half-width field at the bottom.
 `gap-x-4 gap-y-6`: the row gap matches the section's `space-y-6`, so a full row is pixel-identical
 to a pair, where `gap-4` would pull reading rows 8px closer.
 
-Dive number pairs with Duration, `dive_number`, `start_time` and `duration` having no `isVisible`
-guard. `DIVE_FORM_ALWAYS_ON_FIELDS` must list them in the form's order — a hand-checked invariant,
-per `DIVE_FORM_FIELD_GROUPS`' doc.
+Dive number pairs with Dive time, `dive_number`, `start_time` and `submerged_time` having no
+`isVisible` guard. `DIVE_FORM_ALWAYS_ON_FIELDS` must list them in the form's order — a hand-checked
+invariant, per `DIVE_FORM_FIELD_GROUPS`' doc.
 
 Only the Trip/Course grid carries `md:[&>:only-child]:col-span-2`, widening a lone Trip to match the
 site picker; `md:` matters because below it the grid is one column, and `FormField` rendering

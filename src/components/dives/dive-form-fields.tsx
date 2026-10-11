@@ -122,7 +122,7 @@ export interface DiveFormValues extends FieldValues {
   // offset pair its two underlying inputs actually edit - see
   // `lib/date-time.ts`.
   start_time?: string;
-  duration?: string;
+  submerged_time?: string;
   max_depth?: number | null;
   avg_depth?: number | null;
   bottom_temperature?: number | null;
@@ -165,7 +165,7 @@ export interface DiveFormValues extends FieldValues {
 
 export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   control: Control<TFieldValues>;
-  // In "create" mode, dive number/start time/duration are required by the
+  // In "create" mode, dive number/start time/dive time are required by the
   // schema and marked with a "*" in the UI. In "edit" mode these fields are
   // optional at the schema level (a PATCH only needs to send what changed),
   // so no asterisks are shown and a cleared value resolves to `undefined`
@@ -466,7 +466,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             )}
           />
 
-          {/* Dive number & Duration. Paired because both are always rendered -
+          {/* Dive number & Dive time. Paired because both are always rendered -
           neither is in the Fields dialog - so this row is the one pair no
           visibility choice can break, and neither field has to sit half-width
           beside a hole. Dive number was alone in a grid of its own until then,
@@ -475,7 +475,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           that should be. The pair keeps that width without the empty column.
 
           Unequal heights are expected here: `diveNumberNotice` adds a line
-          under the number when the suggestion is already taken, and Duration
+          under the number when the suggestion is already taken, and Dive time
           has nothing to match it with. */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -525,10 +525,10 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 
             <FormField
               control={control}
-              name={"duration" as Path<TFieldValues>}
+              name={"submerged_time" as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Duration{requiredMark}</FormLabel>
+                  <FormLabel>Dive time{requiredMark}</FormLabel>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                     <FormControl>

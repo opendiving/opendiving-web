@@ -80,7 +80,7 @@ function NewDiveForm() {
     defaultValues: {
       dive_number: 1,
       start_time: nowStartTime(),
-      duration: "",
+      submerged_time: "",
       max_depth: undefined,
       avg_depth: undefined,
       bottom_temperature: undefined,
@@ -359,7 +359,7 @@ function NewDiveForm() {
             // for a back-dated dive.
             dive_number: form.getValues("dive_number"),
             start_time: nowStartTime(),
-            duration: "",
+            submerged_time: "",
             max_depth: undefined,
             avg_depth: undefined,
             bottom_temperature: undefined,
@@ -427,7 +427,7 @@ function NewDiveForm() {
       // Convert form data to API format
       const diveData = {
         ...data,
-        duration: parseFormDuration(data.duration),
+        submerged_time: parseFormDuration(data.submerged_time),
         notes: data.notes || "",
         // The picker clears to `null` so the *edit* form can tell "detach this
         // dive from its trip" apart from "field untouched" (see

@@ -34,7 +34,7 @@ const DIVE: Dive = {
   uuid: "dive-1",
   dive_number: 42,
   start_time: "2026-04-04T10:04:47+02:00",
-  duration: 2730,
+  submerged_time: 2730,
   max_depth: 31.4,
   trip_uuid: "trip-7",
   course_uuid: "course-3",
@@ -90,7 +90,7 @@ function Harness({
     defaultValues: {
       dive_number: undefined,
       start_time: "",
-      duration: "",
+      submerged_time: "",
       notes: "",
       mixtures: [],
     },
@@ -192,7 +192,7 @@ describe("the edit form's round trip", () => {
       expect(onSave).toHaveBeenCalledWith({
         dive_number: 42,
         start_time: "2026-04-04T10:04:47+02:00",
-        duration: 2730,
+        submerged_time: 2730,
         max_depth: 31.4,
         trip_uuid: "trip-7",
         course_uuid: "course-3",

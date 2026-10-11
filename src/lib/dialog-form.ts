@@ -12,7 +12,7 @@ import type { BaseSyntheticEvent, FormEventHandler } from "react";
 //
 // The visible symptom: create a gear item from the dive form and the item saves
 // fine, then the dive form behind the dialog runs its own `handleSubmit`,
-// fails validation on whatever isn't filled in yet ("Duration is required") and
+// fails validation on whatever isn't filled in yet ("Dive time is required") and
 // scrolls to that field. `handleSubmit` calls `preventDefault()` but never
 // `stopPropagation()`, so the outer handler runs regardless.
 //

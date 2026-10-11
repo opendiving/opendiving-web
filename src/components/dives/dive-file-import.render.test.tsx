@@ -43,7 +43,7 @@ function parsedDive(
   return {
     dive_number: null,
     start_time: null,
-    duration: null,
+    submerged_time: null,
     max_depth: null,
     avg_depth: null,
     bottom_temperature: null,

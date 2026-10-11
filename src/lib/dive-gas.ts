@@ -345,7 +345,7 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
   if (mixtures.length > 1) {
     // **The flagged-parallel block comes first, and its position is load-bearing.**
     // A set the diver has flagged `parallel` throughout is summed by
-    // `compute_parallel_gas_use` against the dive's own duration and average
+    // `compute_parallel_gas_use` against the dive's own submerged time and average
     // depth, with no profile and no attribution anywhere in it - so every
     // attribution sentence below is false of it, and the no-profile branch that
     // fires before any of them would tell a diver who needs an average depth to
@@ -812,8 +812,8 @@ const UNATTRIBUTED_NOTE_SECONDS = 60;
  *
  * **The denominator is attributed to the dive computer in so many words**, and
  * has to be. It is `DiveGasUse.duration` - the profile's span, not the dive's own
- * `duration`, which the two now share a name with - and it routinely runs longer
- * than the duration the same page prints at the top: a computer keeps sampling
+ * `submerged_time` - and it routinely runs longer than the dive time the same page
+ * prints at the top: a computer keeps sampling
  * after the diver surfaces, by five minutes on dive #493. An unattributed "of the
  * 1h 12min recorded" under a header reading "1h 7min" reads as one of the two
  * being wrong, when both are right about different things.

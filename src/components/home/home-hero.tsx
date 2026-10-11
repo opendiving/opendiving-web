@@ -63,11 +63,11 @@ function homeFigures(
         value: value((s) => formatDepth(s.max_depth, units, { decimals: 0 })),
       },
       {
-        label: "Total time",
+        label: "Total dive time",
         value: value((s) =>
-          s.total_time >= 3600
-            ? `${Math.round(s.total_time / 3600)}h`
-            : formatDurationHoursMinutes(s.total_time),
+          s.total_submerged_time >= 3600
+            ? `${Math.round(s.total_submerged_time / 3600)}h`
+            : formatDurationHoursMinutes(s.total_submerged_time),
         ),
       },
     );

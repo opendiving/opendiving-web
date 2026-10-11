@@ -31,7 +31,7 @@ function dive(mixtures: DiveMixture[], maxDepth: number | null): Dive {
     uuid: "test",
     dive_number: 1,
     start_time: "2026-06-03T12:15:00+02:00",
-    duration: 3600,
+    submerged_time: 3600,
     max_depth: maxDepth,
     mixtures,
   } as Dive;

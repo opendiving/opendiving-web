@@ -65,7 +65,7 @@ const LEADING_GROUP_FIELD: Partial<
  *
  * **The always-shown rows read like every other row** - same label colour, no note -
  * because the switch being on and unavailable is the whole of what marks them, and a
- * diver looking for Duration should find it where they would look rather than in a gap.
+ * diver looking for Dive time should find it where they would look rather than in a gap.
  */
 export function DiveFormFieldSwitches({
   visibility,

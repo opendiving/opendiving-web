@@ -84,8 +84,8 @@ const updatedDateTimeField = () =>
 const DURATION_REGEX = /^\d{1,3}(?::[0-5]\d)?$/;
 
 const durationField = (
-  message = "Duration must be minutes or MM:SS, e.g. 45 or 67:30",
-) => z.string().min(1, "Duration is required").regex(DURATION_REGEX, message);
+  message = "Dive time must be minutes or MM:SS, e.g. 45 or 67:30",
+) => z.string().min(1, "Dive time is required").regex(DURATION_REGEX, message);
 
 // Total ballast carried on the dive, in kilograms. Identical in the create and
 // update schemas (it's optional in both), so it lives in one helper rather than
@@ -503,7 +503,7 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
     // preserves that state: anything normalizing it here would be inventing the
     // offset before the diver ever saw the field.
     start_time: dive.start_time,
-    duration: formatDurationForForm(dive.duration),
+    submerged_time: formatDurationForForm(dive.submerged_time),
     max_depth: dive.max_depth,
     avg_depth: dive.avg_depth,
     bottom_temperature: dive.bottom_temperature,
@@ -546,7 +546,7 @@ export const diveCreateSchema = z.object({
     .int()
     .positive("Dive number must be a positive integer"),
   start_time: dateTimeField(),
-  duration: durationField(),
+  submerged_time: durationField(),
   max_depth: z
     .number()
     .positive("Max depth must be positive")
@@ -597,7 +597,7 @@ export const diveUpdateSchema = z.object({
     .positive("Dive number must be a positive integer")
     .optional(),
   start_time: updatedDateTimeField().optional(),
-  duration: durationField().optional(),
+  submerged_time: durationField().optional(),
   max_depth: z
     .number()
     .positive("Max depth must be positive")
@@ -673,7 +673,7 @@ export function boatNameOrNull(value: string): string | null {
 // edit form submits the whole dive, because the read is the whole dive" in
 // DECISIONS.md.
 //
-// `duration` is the only shape change: the form edits it as an "MM:SS" string
+// `submerged_time` is the only shape change: the form edits it as an "MM:SS" string
 // and the API takes seconds. Done here rather than in the schema because
 // `z.transform()` on a field feeding a `z.input<>`-derived form type breaks
 // `useForm()`'s binding - see CONTRIBUTING.md.
@@ -682,8 +682,8 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
 
   if (data.dive_number !== undefined) update.dive_number = data.dive_number;
   if (data.start_time !== undefined) update.start_time = data.start_time;
-  if (data.duration !== undefined) {
-    update.duration = parseFormDuration(data.duration);
+  if (data.submerged_time !== undefined) {
+    update.submerged_time = parseFormDuration(data.submerged_time);
   }
   if (data.max_depth !== undefined) update.max_depth = data.max_depth;
   if (data.avg_depth !== undefined) update.avg_depth = data.avg_depth;

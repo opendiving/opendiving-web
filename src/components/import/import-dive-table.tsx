@@ -71,7 +71,7 @@ export function ImportDiveTable({
               scope="col"
               className="hidden md:table-cell font-medium py-1 px-3 text-right"
             >
-              Duration
+              Dive time
             </th>
             <th scope="col" className="font-medium py-1 px-3 text-right">
               Depth
@@ -104,9 +104,9 @@ export function ImportDiveTable({
             const files = dive.members
               .map((member) => members[member]?.name)
               .filter((name): name is string => Boolean(name));
-            const duration =
-              dive.duration != null
-                ? formatDurationForForm(dive.duration)
+            const diveTime =
+              dive.submerged_time != null
+                ? formatDurationForForm(dive.submerged_time)
                 : null;
             const device = dive.device
               ? (recordingDeviceLabel(dive.device) ?? UNNAMED_DEVICE_LABEL)
@@ -138,11 +138,11 @@ export function ImportDiveTable({
                   )}
                   {/* The columns a phone has no room for, folded under the start. */}
                   <span className="md:hidden block text-xs text-muted-foreground">
-                    {[duration, device].filter(Boolean).join(" · ")}
+                    {[diveTime, device].filter(Boolean).join(" · ")}
                   </span>
                 </th>
                 <td className="hidden md:table-cell py-1.5 px-3 text-right tabular-nums whitespace-nowrap">
-                  {duration ?? "—"}
+                  {diveTime ?? "—"}
                 </td>
                 <td className="py-1.5 px-3 text-right tabular-nums whitespace-nowrap">
                   {dive.max_depth != null

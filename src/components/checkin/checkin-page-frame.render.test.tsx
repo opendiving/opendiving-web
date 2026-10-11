@@ -104,7 +104,7 @@ const stats: UserDiveStats = {
   user_uuid: "user-1",
   total_dives: 142,
   max_depth: 39.6,
-  total_time: 360000,
+  total_submerged_time: 360000,
   species_seen: 12,
   dive_site_count: 9,
   first_dive_on: "2019-05-02",
