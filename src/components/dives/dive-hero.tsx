@@ -21,9 +21,9 @@ import type { ReturnTarget } from "@/lib/return-to";
 
 /**
  * The dive page's heading: the dive's card drawn the width of the window, with
- * its figures in whole units as the card rounds them - its duration, its
+ * its figures in whole units as the card rounds them - its dive time, its
  * maximum depth, the water's temperature and the visibility, each but the
- * duration only where the dive records it, and the average depth after the
+ * dive time only where the dive records it, and the average depth after the
  * maximum only while those leave fewer than four.
  */
 export function DiveHero({
@@ -43,7 +43,10 @@ export function DiveHero({
   const wholeDepth = (meters: number) =>
     formatDepth(meters, units, { decimals: 0 });
   const figures: MapHeroFigure[] = [
-    { label: "Duration", value: formatDurationHoursMinutes(dive.duration) },
+    {
+      label: "Dive time",
+      value: formatDurationHoursMinutes(dive.submerged_time),
+    },
   ];
   if (dive.max_depth != null) {
     figures.push({ label: "Max depth", value: wholeDepth(dive.max_depth) });

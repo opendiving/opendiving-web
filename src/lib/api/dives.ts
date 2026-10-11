@@ -281,7 +281,7 @@ export interface DiveTankGasUse {
 }
 
 // Surface-normalized gas consumption for a dive, derived by the API from the
-// dive's duration, average depth and cylinder pressures - see the API's
+// dive's submerged time, average depth and cylinder pressures - see the API's
 // `services/dive_gas.py` for the arithmetic and the assumptions baked into it.
 //
 // Deliberately *not* recomputed in the browser, unlike gear service status:
@@ -319,7 +319,7 @@ export interface DiveGasUse {
   //
   // **Empty is no longer synonymous with single-tank.** It also arrives on the
   // additive parallel path, where a flagged sidemount pair is summed against the
-  // dive's own duration and average depth: that derivation needs no attribution and
+  // dive's own submerged time and average depth: that derivation needs no attribution and
   // so has none to break down. The non-empty test still selects the right layout -
   // an additive dive genuinely has one set of whole-dive figures to show - but
   // anything reading `[]` as "one cylinder" is now wrong.
@@ -339,18 +339,16 @@ export interface DiveGasUse {
   //
   // Both null wherever the whole dive is accounted for and there is no fraction to
   // report: a single-cylinder dive, and a flagged parallel set summed over the
-  // dive's own duration. Seconds, matching `Dive.duration`.
+  // dive's own submerged time. Seconds, matching `Dive.submerged_time`.
   //
-  // **The `duration` below is the profile's span, not `Dive.duration`** - that is
-  // what the attribution actually ran over, and a hand-edited dive duration would
-  // make the fraction unfalsifiable. The two carry the same word since the profile
-  // shape started speaking DiveJSON, so anything reading either has to say which
-  // one it means.
+  // **The `duration` below is the profile's span, not `Dive.submerged_time`** - that
+  // is what the attribution actually ran over, and a hand-edited dive time would
+  // make the fraction unfalsifiable.
   //
   // They are routinely different, and the profile's span is usually the larger: a
   // dive computer goes on recording after the diver surfaces (4300 against a
   // logged 4001 on dive #493). Anything rendering this denominator has to say
-  // whose number it is, or it reads as contradicting the duration shown at the top
+  // whose number it is, or it reads as contradicting the dive time shown at the top
   // of the same page - see `gasAttributionNote`.
   attributed_seconds?: number | null;
   duration?: number | null;
@@ -398,7 +396,7 @@ export interface Dive {
   // day was never recorded. The shape is the whole signal - no flag comes with
   // it - and the same helpers render it as the date alone.
   start_time: string;
-  duration: number;
+  submerged_time: number;
   max_depth?: number;
   avg_depth?: number;
   bottom_temperature?: number;
@@ -688,7 +686,7 @@ export type DiveProfileProvenance = "file" | "divejson_import" | "merge";
 export interface DiveProfileInfo {
   uuid: string;
   // Span of the recorded samples in **milliseconds**, the profile's own
-  // `duration` - which is *not* `dive.duration` despite sharing the word: that one
+  // `duration` - which is *not* `dive.submerged_time`: that one
   // is seconds, the diver's own record, and may have been hand-edited, while a
   // dive computer keeps logging for minutes after the dive ends.
   duration: number;
@@ -920,7 +918,7 @@ export interface DiveCreate {
   // import is the only thing that may create a dive with no offset, so a new one
   // entered here always has a zone to state.
   start_time: string;
-  duration: number;
+  submerged_time: number;
   max_depth?: number | null;
   avg_depth?: number | null;
   bottom_temperature?: number | null;
@@ -976,7 +974,7 @@ export interface DiveUpdate {
   // A bare date is accepted the same way, only on a dive that already has one;
   // any date-time ends that state.
   start_time?: string;
-  duration?: number;
+  submerged_time?: number;
   max_depth?: number | null;
   avg_depth?: number | null;
   bottom_temperature?: number | null;
@@ -1169,7 +1167,8 @@ export interface ParsedDiveMixture {
 }
 
 // A figure of `ParsedDive` the reader can derive rather than read off the file.
-export type ParsedDiveInferredField = "duration" | "avg_depth" | "max_depth";
+export type ParsedDiveInferredField =
+  "submerged_time" | "avg_depth" | "max_depth";
 
 // Result of reading one dive's file, in any format the API reads, via /dive/parse.
 // Most fields are nullable since not every dive-computer format populates every field.
@@ -1182,7 +1181,7 @@ export interface ParsedDive {
   // in `lib/date-time.ts` for how this is normalized before it ever reaches
   // the create/edit form.
   start_time: string | null;
-  duration: number | null;
+  submerged_time: number | null;
   max_depth: number | null;
   avg_depth: number | null;
   bottom_temperature: number | null;
@@ -1223,7 +1222,7 @@ export interface ParsedDive {
   // `POST /dive` forbids the member, so a prefilled form cannot hand it back.
   device?: RecordingDevice | null;
   // The figures above the reader worked out from the samples because the file
-  // states none - a Suunto FIT's duration and average depth - rather than read.
+  // states none - a Suunto FIT's submerged time and average depth - rather than read.
   // Absent from an API build older than the field, which reads as "all stated".
   inferred?: ParsedDiveInferredField[];
   // Proof that the API parsed this exact file for this user. Hand it back to

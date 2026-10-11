@@ -47,7 +47,7 @@ const dive = (
     uuid: "dive-1",
     dive_number: 128,
     start_time: "2026-04-18T09:30:00+02:00",
-    duration: 3120,
+    submerged_time: 3120,
     max_depth: 31.4,
     avg_depth: 17.2,
     mixtures: [],

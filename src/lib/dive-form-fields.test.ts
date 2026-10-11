@@ -21,7 +21,7 @@ import {
 } from "./dive-form-fields";
 import { diveCreateSchema, diveMixtureSchema } from "./validations/dive";
 
-// Optionality is measured, not read off `.optional()`: `start_time` and `duration`
+// Optionality is measured, not read off `.optional()`: `start_time` and `submerged_time`
 // are built by helpers, and a `.default()` accepts `undefined` too. `safeParse` is
 // the only question that gets all of those right.
 const acceptsUndefined = (schema: ZodType) =>
@@ -96,7 +96,11 @@ describe("the vocabulary is the form's own optional fields", () => {
         ),
     );
 
-    expect(required.sort()).toEqual(["dive_number", "duration", "start_time"]);
+    expect(required.sort()).toEqual([
+      "dive_number",
+      "start_time",
+      "submerged_time",
+    ]);
   });
 });
 
@@ -119,7 +123,7 @@ describe("diveFormFieldGroup", () => {
   it("names the section of an always-on field, a hideable one and a list", () => {
     expect(diveFormFieldGroup("start_time")).toBe("Dive info");
     expect(diveFormFieldGroup("dive_number")).toBe("Dive info");
-    expect(diveFormFieldGroup("duration")).toBe("Dive info");
+    expect(diveFormFieldGroup("submerged_time")).toBe("Dive info");
     expect(diveFormFieldGroup("entry_type")).toBe("Location");
     expect(diveFormFieldGroup("mixtures")).toBe("Tanks");
     expect(diveFormFieldGroup("sightings")).toBe("Marine life");
@@ -262,7 +266,7 @@ describe("the keys a failed submit puts back on screen", () => {
     expect(
       diveFormFieldsWithErrors({
         altitude: { message: "out of range" },
-        duration: { message: "required" },
+        submerged_time: { message: "required" },
       }),
     ).toEqual(["altitude"]);
   });

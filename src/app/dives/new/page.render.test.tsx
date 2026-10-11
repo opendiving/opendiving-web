@@ -277,7 +277,7 @@ const storedDive = (overrides: Partial<Dive> = {}): Dive =>
     user_uuid: "user-1",
     dive_number: 41,
     start_time: "2026-07-01T09:30:00+02:00",
-    duration: 2700,
+    submerged_time: 2700,
     max_depth: 18.3,
     notes: "",
     mixtures: [],
@@ -409,7 +409,7 @@ beforeEach(() => {
 });
 
 // Everything the create schema requires that the page doesn't already seed. Dive
-// number and start time arrive filled in; duration does not.
+// number and start time arrive filled in; the dive time does not.
 //
 // `fireEvent.change` rather than `userEvent.type`, for the same reason the O₂
 // box below uses it: nothing here is about the keystrokes. The box is a
@@ -418,10 +418,10 @@ beforeEach(() => {
 // ~3ms. Where the typing itself is the point (the depth warning below), the
 // tests still type.
 function fillRequiredFields() {
-  // Role-scoped, not `getByLabelText`: the Fields dialog puts a "Duration" switch on
+  // Role-scoped, not `getByLabelText`: the Fields dialog puts a "Dive time" switch on
   // the page beside the form's own box, and both answer to the label. Several of
   // these tests fill the form with the panel already open.
-  fireEvent.change(screen.getByRole("textbox", { name: /duration/i }), {
+  fireEvent.change(screen.getByRole("textbox", { name: /dive time/i }), {
     target: { value: "45:00" },
   });
 }
@@ -432,7 +432,7 @@ const logDive = () =>
 describe("logging a dive without touching the gas card", () => {
   it("sends no mixtures at all", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await logDive();
@@ -457,7 +457,7 @@ describe("logging a dive without touching the gas card", () => {
     // this form warn about gas the diver never entered - the worst kind of wrong,
     // since it trains a diver to ignore the real ones.
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await userEvent.type(screen.getByLabelText(/maximum depth/i), "60");
 
@@ -469,7 +469,7 @@ describe("logging a dive without touching the gas card", () => {
 describe("the gas card, once the diver opens it", () => {
   it("proposes a cylinder on Add tank, and lets it be taken back off", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
     // The proposal is still `DEFAULT_MIXTURE` - that is what the button is for.
@@ -490,7 +490,7 @@ describe("the gas card, once the diver opens it", () => {
 
   it("stores an empty list when the only cylinder is removed before saving", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
@@ -509,7 +509,7 @@ describe("the gas card, once the diver opens it", () => {
     // The other half of the same rule: nothing here suppresses gas, it only stops
     // the page supplying it.
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
@@ -784,7 +784,7 @@ describe("opening the form again", () => {
     await waitFor(() =>
       expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
     );
-    expect(screen.getByRole("textbox", { name: /duration/i })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: /dive time/i })).toHaveValue("");
     expect(divesAPI.getDive).toHaveBeenCalledTimes(2);
 
     fillRequiredFields();
@@ -805,7 +805,7 @@ describe("opening the form again", () => {
 
     rerender(<NewDivePage />);
 
-    expect(screen.getByRole("textbox", { name: /duration/i })).toHaveValue(
+    expect(screen.getByRole("textbox", { name: /dive time/i })).toHaveValue(
       "45:00",
     );
     expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
@@ -817,7 +817,7 @@ describe("opening the form again", () => {
 describe("the water type on the way to the API", () => {
   it("omits the field when the picker was left at Not recorded", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await logDive();
@@ -829,7 +829,7 @@ describe("the water type on the way to the API", () => {
 
   it("sends the water type the diver chose", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await userEvent.selectOptions(
@@ -848,7 +848,7 @@ describe("the water type on the way to the API", () => {
     // EN13319 is the density a computer divides pressure by, a setting that lives
     // on its recording - not an answer to "what water was this".
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     const options = [
       ...screen.getByLabelText(/water type/i).querySelectorAll("option"),
@@ -861,7 +861,7 @@ describe("the water type on the way to the API", () => {
 describe("the Dive type select", () => {
   it("offers every dive type but freediving and snorkeling, which wait", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     const options = [
       ...screen.getByLabelText(/^dive type$/i).querySelectorAll("option"),
@@ -884,7 +884,7 @@ describe.each([
 ] as const)("the %s select", (label, values, labels) => {
   it("offers Not recorded, then every member of the API's vocabulary", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     const options = [
       ...screen
@@ -903,7 +903,7 @@ describe.each([
 describe("the classification and conditions on the way to the API", () => {
   it("sends no blank for a select left at Not recorded or an empty boat name", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await logDive();
@@ -925,7 +925,7 @@ describe("the classification and conditions on the way to the API", () => {
 
   it("sends what the diver chose, the boat's name trimmed", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await userEvent.selectOptions(
@@ -965,7 +965,7 @@ describe("the classification and conditions on the way to the API", () => {
 
   it("keeps a typed boat name on screen, and sends it, when the entry changes", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     expect(screen.queryByLabelText(/^boat name$/i)).not.toBeInTheDocument();
@@ -993,7 +993,7 @@ describe("the classification and conditions on the way to the API", () => {
 
   it("takes a stored tag's spelling for one typed in another case, and adds a new one as typed", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     const picker = screen.getByRole("combobox", { name: /^tags$/i });
@@ -1091,7 +1091,7 @@ describe("what the create form carries over from the last dive", () => {
       }),
     );
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
     fillRequiredFields();
 
@@ -1136,7 +1136,7 @@ describe("saving while a species pick is still resolving", () => {
     );
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await userEvent.click(screen.getByLabelText("Species spotted"));
@@ -1216,7 +1216,7 @@ describe("a stored hidden set", () => {
   it("leaves the field out of the first render, not on screen and then away", async () => {
     stable.auth.user.dive_form_hidden_fields = ["altitude"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(
       screen.queryByRole("spinbutton", { name: /altitude/i }),
@@ -1229,7 +1229,7 @@ describe("a stored hidden set", () => {
   it("takes the whole Tanks section with `mixtures`", async () => {
     stable.auth.user.dive_form_hidden_fields = ["mixtures"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(screen.queryByText(/^tanks$/i)).not.toBeInTheDocument();
     expect(
@@ -1243,7 +1243,7 @@ describe("a stored hidden set", () => {
   it("takes one input off every tank card for a per-cylinder key", async () => {
     stable.auth.user.dive_form_hidden_fields = ["mixture.role"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
     await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
@@ -1257,7 +1257,7 @@ describe("a stored hidden set", () => {
     // that nesting used to be the reason they could not come apart.
     stable.auth.user.dive_form_hidden_fields = ["weight"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(screen.getByLabelText(/^gear$/i)).toBeInTheDocument();
     expect(
@@ -1268,7 +1268,7 @@ describe("a stored hidden set", () => {
   it("hides Gear without taking Weight with it", async () => {
     stable.auth.user.dive_form_hidden_fields = ["gear_item_uuids"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(screen.queryByLabelText(/^gear$/i)).not.toBeInTheDocument();
     expect(
@@ -1307,7 +1307,7 @@ describe("what the prefill does to a hidden field", () => {
     stable.auth.user.dive_form_hidden_fields = ["weight"];
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
 
     await openFieldsPanel();
@@ -1401,7 +1401,7 @@ describe("what the prefill does to a hidden field", () => {
     stable.auth.user.dive_form_hidden_fields = ["mixtures"];
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
     expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
 
@@ -1451,7 +1451,7 @@ describe("what the prefill does to a hidden field", () => {
     stable.auth.user.dive_form_hidden_fields = ["mixture.helium"];
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
     await waitFor(() =>
       expect(screen.getByLabelText(/O₂ \(%\)/)).toHaveValue(32),
@@ -1516,7 +1516,7 @@ describe("persisting a toggle", () => {
     );
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
@@ -1534,7 +1534,7 @@ describe("persisting a toggle", () => {
 
   it("debounces a burst into one request", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await openFieldsPanel();
 
@@ -1586,7 +1586,7 @@ describe("a course handed in the URL", () => {
     stable.auth.user.dive_form_hidden_fields = ["course_uuid"];
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(
       screen.getByRole("combobox", { name: /^course$/i }),
@@ -1612,7 +1612,7 @@ describe("a course handed in the URL", () => {
     stable.auth.user.dive_form_hidden_fields = [];
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^course$/i }));
@@ -1718,7 +1718,7 @@ describe("the dive center", () => {
 
   it("keeps a dive center the diver chose when the course changes", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await pickCourse("Advanced Open Water");
     await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
@@ -1775,7 +1775,7 @@ describe("the dive center", () => {
   it("puts a hidden dive center on screen when a course fills it", async () => {
     stable.auth.user.dive_form_hidden_fields = ["contact_uuid"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     expect(
       screen.queryByRole("combobox", { name: /^dive center$/i }),
     ).not.toBeInTheDocument();
@@ -1794,7 +1794,7 @@ describe("the dive center", () => {
     // unlike one a URL or a file put there - so hiding the field empties it.
     stable.auth.user.dive_form_hidden_fields = ["contact_uuid"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await pickCourse("Advanced Open Water");
     await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
 
@@ -1987,7 +1987,7 @@ describe("the people", () => {
       "course-10": [{ person_uuid: CLASSMATE.uuid, role: "student" }],
     });
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await pickCourse("Advanced Open Water");
     await roleOf(CLASSMATE.name);
 
@@ -2083,7 +2083,7 @@ describe("the people", () => {
 
   it("adds a picked person as a buddy, and lets the role change on the row", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await userEvent.click(screen.getByRole("combobox", { name: /^people$/i }));
     await userEvent.click(
@@ -2109,7 +2109,7 @@ describe("the pickers", () => {
 
   it("rank every lookup at the dive's start time", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await userEvent.click(screen.getByRole("combobox", { name: /^people$/i }));
 
@@ -2186,7 +2186,7 @@ describe("the pickers", () => {
   it("list the course's contact first in the dive center picker", async () => {
     stable.searchParams = new URLSearchParams("course_uuid=course-10");
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await waitFor(() =>
       expect(contactsAPI.getContact).toHaveBeenCalledWith(OTHER_SHOP.uuid),
     );
@@ -2210,27 +2210,29 @@ describe("the form's sections", () => {
 
   it("collapse from their heading and keep what they hold", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await userEvent.click(heading(/^dive info$/i));
 
     expect(heading(/^dive info$/i)).toHaveAttribute("aria-expanded", "false");
     expect(
-      screen.queryByRole("textbox", { name: /duration/i }),
+      screen.queryByRole("textbox", { name: /dive time/i }),
     ).not.toBeInTheDocument();
 
     await logDive();
 
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
-    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].duration).toBe(2700);
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].submerged_time).toBe(
+      2700,
+    );
   });
 
   // A collapsed field is unmounted, so an error in it would otherwise block the
   // save with no message on the page - always-on fields included.
   it("open again on a failed save, with the refused field focused", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await userEvent.click(heading(/^dive info$/i));
     await logDive();
@@ -2239,7 +2241,7 @@ describe("the form's sections", () => {
       expect(heading(/^dive info$/i)).toHaveAttribute("aria-expanded", "true"),
     );
     await waitFor(() =>
-      expect(screen.getByRole("textbox", { name: /duration/i })).toHaveFocus(),
+      expect(screen.getByRole("textbox", { name: /dive time/i })).toHaveFocus(),
     );
     expect(divesAPI.createDive).not.toHaveBeenCalled();
   });
@@ -2295,7 +2297,7 @@ describe("the depth entry-unit toggle", () => {
 
   it("sits on both depths, and either one flips both", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(depthToggles()).toHaveLength(2);
     await userEvent.click(depthToggles()[1]);
@@ -2311,7 +2313,7 @@ describe("the depth entry-unit toggle", () => {
   it("stays on Average depth when Maximum depth is hidden", async () => {
     stable.auth.user.dive_form_hidden_fields = ["max_depth"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(depthToggles()).toHaveLength(1);
     expect(
@@ -2325,7 +2327,7 @@ describe("the depth entry-unit toggle", () => {
   it("leaves the form with no depth control when both are hidden", async () => {
     stable.auth.user.dive_form_hidden_fields = ["max_depth", "avg_depth"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(depthToggles()).toHaveLength(0);
 
@@ -2338,7 +2340,7 @@ describe("the depth entry-unit toggle", () => {
   it("comes back with Maximum depth as soon as it is shown again", async () => {
     stable.auth.user.dive_form_hidden_fields = ["max_depth"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await openFieldsPanel();
     await userEvent.click(
@@ -2365,7 +2367,7 @@ describe("the temperature entry-unit toggle", () => {
 
   it("sits on both temperatures, though they are apart", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(temperatureToggles()).toHaveLength(2);
     expect(
@@ -2379,7 +2381,7 @@ describe("the temperature entry-unit toggle", () => {
   it("stays on Air temperature when Bottom temperature is hidden", async () => {
     stable.auth.user.dive_form_hidden_fields = ["bottom_temperature"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(temperatureToggles()).toHaveLength(1);
     expect(
@@ -2393,7 +2395,7 @@ describe("the temperature entry-unit toggle", () => {
       "air_temperature",
     ];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(temperatureToggles()).toHaveLength(0);
   });
@@ -2401,7 +2403,7 @@ describe("the temperature entry-unit toggle", () => {
   it("stores an air temperature typed in °F as °C", async () => {
     stable.auth.user.dive_form_hidden_fields = ["bottom_temperature"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     fillRequiredFields();
 
     await userEvent.click(temperatureToggles()[0]);
@@ -2423,7 +2425,7 @@ describe("the Fields control", () => {
     // `type="button"` is the guard: this renders on a card whose content is a
     // `<form>`, where the default type submits.
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     const control = screen.getByRole("button", { name: /fields/i });
     expect(control).toHaveAttribute("type", "button");
@@ -2438,7 +2440,7 @@ describe("the Fields control", () => {
 
   it("lists every field as a switch, and the always-on ones as switches it will not move", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
 
     expect(screen.getAllByRole("switch")).toHaveLength(
@@ -2462,7 +2464,7 @@ describe("the Fields control", () => {
     // while it is off. Listing it in that order would put the reason those rows are
     // unavailable below the rows it explains.
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
 
     const section = screen.getByRole("group", { name: /^tanks$/i });
@@ -2490,7 +2492,7 @@ describe("the Fields control", () => {
   it("disables the per-cylinder rows while the gas section is off screen", async () => {
     stable.auth.user.dive_form_hidden_fields = ["mixtures"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
 
     expect(screen.getByRole("switch", { name: /^role$/i })).toBeDisabled();
@@ -2554,7 +2556,7 @@ describe("the preset list", () => {
       "mixture.role",
     ];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsMenu();
 
     expect(
@@ -2570,7 +2572,7 @@ describe("the preset list", () => {
   it("leaves the Presets tab unmarked, current set or not", async () => {
     stable.auth.user.dive_form_hidden_fields = TECHNICAL.hidden_fields;
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
     await openPresetsTab();
 
@@ -2588,7 +2590,7 @@ describe("the preset list", () => {
   it("marks nothing once the diver toggles a field of their own", async () => {
     stable.auth.user.dive_form_hidden_fields = [];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     // Nothing hidden is the built-in "All", which a fresh account starts on.
     await openFieldsMenu();
@@ -2614,7 +2616,7 @@ describe("the preset list", () => {
     // presets are, and a second Apply there would put the quick path behind two
     // clicks and a dialog. The pick goes with the set, in the same request.
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await userEvent.click(screen.getByRole("button", { name: /fields/i }));
     await userEvent.click(
@@ -2635,7 +2637,7 @@ describe("the preset list", () => {
   it("names the trigger after the preset the stored set matches", async () => {
     stable.auth.user.dive_form_hidden_fields = RECREATIONAL.hidden_fields;
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await waitFor(() =>
       expect(
@@ -2649,7 +2651,7 @@ describe("the preset list", () => {
     // preset at all - and the trigger is the only place that says so.
     stable.auth.user.dive_form_hidden_fields = [];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     // Nothing hidden is the built-in "All", which needs no fetch to be named.
     expect(
@@ -2675,7 +2677,7 @@ describe("the preset list", () => {
     stable.auth.user.dive_form_hidden_fields = RECREATIONAL.hidden_fields;
     stable.auth.user.dive_form_preset_uuid = twin.uuid;
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await waitFor(() =>
       expect(
@@ -2706,7 +2708,7 @@ describe("the preset list", () => {
     const everything = aPreset("Everything", []);
     vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([everything]);
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await waitFor(() =>
       expect(presets.fetchAllDiveFormPresets).toHaveBeenCalled(),
     );
@@ -2740,7 +2742,7 @@ describe("the preset list", () => {
     stable.auth.user.dive_form_hidden_fields = RECREATIONAL.hidden_fields;
     stable.auth.user.dive_form_preset_uuid = RECREATIONAL.uuid;
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
@@ -2766,7 +2768,7 @@ describe("the preset list", () => {
 
   it("lists All on the Presets tab with nothing to do to it", async () => {
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
     await openPresetsTab();
 
@@ -2784,7 +2786,7 @@ describe("the preset list", () => {
   it("refuses to save over All, in any case", async () => {
     stable.auth.user.dive_form_hidden_fields = ["notes"];
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
 
     await userEvent.type(
@@ -2805,7 +2807,7 @@ describe("the preset list", () => {
     );
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
 
     await userEvent.type(
@@ -2842,7 +2844,7 @@ describe("the preset list", () => {
     });
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
 
     // A name that matches an existing preset is an overwrite, and the line under
@@ -2883,7 +2885,7 @@ describe("the preset list", () => {
     });
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
     await openPresetsTab();
 
@@ -2919,7 +2921,7 @@ describe("the preset list", () => {
     // Delete becomes Cancel while a row is being edited: a delete button beside a
     // half-typed rename is one mis-click from destroying the row being renamed.
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
     await openPresetsTab();
 
@@ -2950,7 +2952,7 @@ describe("the preset list", () => {
     });
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
     await openPresetsTab();
 
@@ -2986,7 +2988,7 @@ describe("the preset list", () => {
     ]);
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     await openFieldsPanel();
     await openPresetsTab();
 
@@ -3035,7 +3037,7 @@ describe("importing a file onto a form with fields hidden", () => {
     vi.mocked(divesAPI.parseDiveFile).mockResolvedValue({
       dive_number: null,
       start_time: null,
-      duration: null,
+      submerged_time: null,
       max_depth: 32.1,
       avg_depth: null,
       bottom_temperature: null,
@@ -3053,7 +3055,7 @@ describe("importing a file onto a form with fields hidden", () => {
     } as Awaited<ReturnType<typeof divesAPI.parseDiveFile>>);
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
 
     importFile();
@@ -3075,7 +3077,7 @@ describe("importing a file", () => {
     vi.mocked(divesAPI.parseDiveFile).mockResolvedValue({
       dive_number: null,
       start_time: null,
-      duration: null,
+      submerged_time: null,
       max_depth: 32.1,
       avg_depth: null,
       bottom_temperature: null,
@@ -3096,7 +3098,7 @@ describe("importing a file", () => {
       );
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     importFile();
 
@@ -3128,7 +3130,7 @@ describe("loading a gear set onto a form with Weight hidden", () => {
     ]);
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
     expect(
       screen.queryByRole("spinbutton", { name: /^weight/i }),
     ).not.toBeInTheDocument();
@@ -3176,7 +3178,7 @@ describe("hiding the species picker while it is still resolving a pick", () => {
     vi.mocked(speciesAPI.resolveSpecies).mockReturnValue(new Promise(() => {}));
 
     render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     await userEvent.type(
       screen.getByLabelText(/species spotted/i),

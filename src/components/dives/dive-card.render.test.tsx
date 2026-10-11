@@ -73,7 +73,7 @@ function dive(overrides: Partial<Dive> = {}): Dive {
     uuid: "dive-1",
     dive_number: 212,
     start_time: "2026-04-04T10:04:47+02:00",
-    duration: 2700,
+    submerged_time: 2700,
     max_depth: 30.52,
     avg_depth: 18.2,
     bottom_temperature: 24.4,
@@ -207,7 +207,7 @@ describe("DiveCard", () => {
 
   it("titles its figures", () => {
     expect(figuresOf(card())).toEqual([
-      ["Duration", "45min"],
+      ["Dive time", "45min"],
       ["Max depth", "31 m"],
       ["Water temp", "24°C"],
     ]);
@@ -217,7 +217,7 @@ describe("DiveCard", () => {
     const item = card({ dive: dive({ bottom_temperature: undefined }) });
 
     expect(figuresOf(item)).toEqual([
-      ["Duration", "45min"],
+      ["Dive time", "45min"],
       ["Max depth", "31 m"],
       ["Avg depth", "18 m"],
     ]);
@@ -233,7 +233,7 @@ describe("DiveCard", () => {
     });
 
     expect(figuresOf(item)).toEqual([
-      ["Duration", "45min"],
+      ["Dive time", "45min"],
       ["Max depth", "-"],
     ]);
   });

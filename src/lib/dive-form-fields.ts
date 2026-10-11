@@ -229,7 +229,7 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
 ];
 
 /**
- * The inputs the Fields dialog lists as always shown, so a diver looking for "Duration"
+ * The inputs the Fields dialog lists as always shown, so a diver looking for "Dive time"
  * finds it rather than a gap where it should be.
  *
  * Three of them are required by the create schema; the two cylinder fields are exempt
@@ -242,10 +242,10 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   group: DiveFormFieldGroup;
 }[] = [
   // Form order, which is the invariant above: Start time is its own row under Dive
-  // type, and Dive number and Duration are the pair below it, left to right.
+  // type, and Dive number and Dive time are the pair below it, left to right.
   { label: "Start time", group: "Dive info" },
   { label: "Dive number", group: "Dive info" },
-  { label: "Duration", group: "Dive info" },
+  { label: "Dive time", group: "Dive info" },
   { label: "Volume", group: "Tanks" },
   { label: "O₂", group: "Tanks" },
 ];
@@ -254,7 +254,7 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
 const ALWAYS_ON_FIELD_GROUPS: Readonly<Record<string, DiveFormFieldGroup>> = {
   start_time: "Dive info",
   dive_number: "Dive info",
-  duration: "Dive info",
+  submerged_time: "Dive info",
 };
 
 /**

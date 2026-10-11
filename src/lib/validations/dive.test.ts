@@ -29,7 +29,7 @@ import { TAG_NAME_MAX } from "@/lib/api/tags";
 const validDive = {
   dive_number: 1,
   start_time: "2024-06-01T09:05:03+02:00",
-  duration: "45:30",
+  submerged_time: "45:30",
   dive_site_uuids: [],
   notes: "",
   mixtures: [],
@@ -139,33 +139,37 @@ describe("a bare-date start_time", () => {
   });
 });
 
-describe("diveCreateSchema duration", () => {
+describe("diveCreateSchema submerged_time", () => {
   it("accepts MM:SS with 1-3 digit minutes", () => {
     expect(
-      diveCreateSchema.safeParse({ ...validDive, duration: "5:00" }).success,
+      diveCreateSchema.safeParse({ ...validDive, submerged_time: "5:00" })
+        .success,
     ).toBe(true);
     expect(
-      diveCreateSchema.safeParse({ ...validDive, duration: "120:00" }).success,
+      diveCreateSchema.safeParse({ ...validDive, submerged_time: "120:00" })
+        .success,
     ).toBe(true);
   });
 
   it("rejects seconds >= 60", () => {
     const result = diveCreateSchema.safeParse({
       ...validDive,
-      duration: "10:60",
+      submerged_time: "10:60",
     });
     expect(result.success).toBe(false);
   });
 
   it("accepts bare minutes, the shape the placeholder promises", () => {
     expect(
-      diveCreateSchema.safeParse({ ...validDive, duration: "45" }).success,
+      diveCreateSchema.safeParse({ ...validDive, submerged_time: "45" })
+        .success,
     ).toBe(true);
     expect(
-      diveCreateSchema.safeParse({ ...validDive, duration: "7" }).success,
+      diveCreateSchema.safeParse({ ...validDive, submerged_time: "7" }).success,
     ).toBe(true);
     expect(
-      diveCreateSchema.safeParse({ ...validDive, duration: "120" }).success,
+      diveCreateSchema.safeParse({ ...validDive, submerged_time: "120" })
+        .success,
     ).toBe(true);
   });
 
@@ -175,7 +179,7 @@ describe("diveCreateSchema duration", () => {
   it("rejects more than three digits of minutes", () => {
     const result = diveCreateSchema.safeParse({
       ...validDive,
-      duration: "1030",
+      submerged_time: "1030",
     });
     expect(result.success).toBe(false);
   });
@@ -183,7 +187,7 @@ describe("diveCreateSchema duration", () => {
   it("rejects a trailing colon with no seconds", () => {
     const result = diveCreateSchema.safeParse({
       ...validDive,
-      duration: "45:",
+      submerged_time: "45:",
     });
     expect(result.success).toBe(false);
   });
@@ -191,16 +195,19 @@ describe("diveCreateSchema duration", () => {
   it("names both accepted shapes in its error message", () => {
     const result = diveCreateSchema.safeParse({
       ...validDive,
-      duration: "abc",
+      submerged_time: "abc",
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toBe(
-      "Duration must be minutes or MM:SS, e.g. 45 or 67:30",
+      "Dive time must be minutes or MM:SS, e.g. 45 or 67:30",
     );
   });
 
-  it("rejects an empty duration", () => {
-    const result = diveCreateSchema.safeParse({ ...validDive, duration: "" });
+  it("rejects an empty dive time", () => {
+    const result = diveCreateSchema.safeParse({
+      ...validDive,
+      submerged_time: "",
+    });
     expect(result.success).toBe(false);
   });
 });
@@ -1102,12 +1109,14 @@ describe("buildDiveUpdate", () => {
     expect(update.altitude).toBe(0);
   });
 
-  it("converts the MM:SS duration to seconds", () => {
-    expect(buildDiveUpdate({ duration: "45:30" }).duration).toBe(2730);
+  it("converts the MM:SS dive time to seconds", () => {
+    expect(buildDiveUpdate({ submerged_time: "45:30" }).submerged_time).toBe(
+      2730,
+    );
   });
 
-  it("reads a bare-minutes duration as whole minutes", () => {
-    expect(buildDiveUpdate({ duration: "45" }).duration).toBe(2700);
+  it("reads a bare-minutes dive time as whole minutes", () => {
+    expect(buildDiveUpdate({ submerged_time: "45" }).submerged_time).toBe(2700);
   });
 
   it("normalizes mixtures, dropping the empty-string pressure placeholders", () => {
@@ -1144,7 +1153,7 @@ describe("buildDiveUpdate", () => {
   it("sends every field the form holds, not just the edited one", () => {
     const update = buildDiveUpdate({
       dive_number: 42,
-      duration: "45:30",
+      submerged_time: "45:30",
       trip_uuid: "trip-7",
       dive_site_uuids: ["site-1", "site-2"],
       notes: "Thermocline at 18m",
@@ -1152,7 +1161,7 @@ describe("buildDiveUpdate", () => {
 
     expect(update).toEqual({
       dive_number: 42,
-      duration: 2730,
+      submerged_time: 2730,
       trip_uuid: "trip-7",
       dive_site_uuids: ["site-1", "site-2"],
       notes: "Thermocline at 18m",
@@ -1178,7 +1187,7 @@ describe("diveToFormValues", () => {
     uuid: "dive-1",
     dive_number: 42,
     start_time: "2026-04-04T10:04:47+02:00",
-    duration: 2730,
+    submerged_time: 2730,
     max_depth: 31.4,
     trip_uuid: "trip-7",
     course_uuid: "course-3",
@@ -1208,11 +1217,11 @@ describe("diveToFormValues", () => {
     expect(diveToFormValues(DIVE).mixtures).toEqual([]);
   });
 
-  it("carries the scalars over, converting the duration to MM:SS", () => {
+  it("carries the scalars over, converting the dive time to MM:SS", () => {
     expect(diveToFormValues(DIVE)).toMatchObject({
       dive_number: 42,
       start_time: "2026-04-04T10:04:47+02:00",
-      duration: "45:30",
+      submerged_time: "45:30",
       max_depth: 31.4,
       trip_uuid: "trip-7",
       course_uuid: "course-3",
@@ -1361,7 +1370,7 @@ const DIVE_FOR_SIGHTINGS: Dive = {
   uuid: "dive-1",
   dive_number: 42,
   start_time: "2026-04-04T10:04:47+02:00",
-  duration: 2730,
+  submerged_time: 2730,
   dive_sites: [],
   gear_items: [],
   notes: "",

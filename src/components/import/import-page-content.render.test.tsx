@@ -161,7 +161,7 @@ function dive(overrides: Partial<ImportDiveReport> = {}): ImportDiveReport {
     recordings_added: 0,
     reason: null,
     start_time: "2026-09-07T11:04:58.880+03:00",
-    duration: 4063,
+    submerged_time: 4063,
     max_depth: 21.8,
     device: {
       brand: "suunto",
@@ -510,7 +510,7 @@ describe("the dive rows", () => {
     member(1, "1.json", { format: "suunto_json" }),
   ];
 
-  it("show start, duration, depth, device, files and outcome", async () => {
+  it("show start, dive time, depth, device, files and outcome", async () => {
     await readWith(preview({ members, dives: [dive()] }));
 
     const cells = within(screen.getAllByRole("row")[1]);

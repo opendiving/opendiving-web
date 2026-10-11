@@ -79,7 +79,7 @@ const dive = (index: number): Dive =>
     uuid: `dive-${index}`,
     dive_number: index,
     start_time: "2026-04-18T09:30:00+02:00",
-    duration: 3120,
+    submerged_time: 3120,
     max_depth: 31.4,
     mixtures: [],
     dive_sites: [

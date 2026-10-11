@@ -177,7 +177,7 @@ describe("noteIsWarning", () => {
         // The tags an import adds to the diver's list: the dives carry them, so
         // nothing is lost.
         "tags_created",
-        // A duration or bottom temperature worked out from the profile: nothing
+        // A dive time or bottom temperature worked out from the profile: nothing
         // is lost, and it lands on nearly every dive of a dive-computer file.
         "value_derived",
       ].some(noteIsWarning),
@@ -356,7 +356,7 @@ function dive(overrides: Partial<ImportDiveReport> = {}): ImportDiveReport {
     recordings_added: 0,
     reason: null,
     start_time: "2026-09-07T11:04:58+03:00",
-    duration: 4063,
+    submerged_time: 4063,
     max_depth: 21.8,
     device: null,
     members: [0],

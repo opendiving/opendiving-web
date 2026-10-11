@@ -154,7 +154,7 @@ function importedDive(
     recordings_added: 0,
     reason: null,
     start_time,
-    duration: null,
+    submerged_time: null,
     max_depth: null,
     device: null,
     members: [],

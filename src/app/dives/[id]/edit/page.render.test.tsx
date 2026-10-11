@@ -137,7 +137,7 @@ const storedDive = (overrides: Partial<Dive> = {}): Dive =>
     user_uuid: "user-1",
     dive_number: 41,
     start_time: "2026-07-01T09:30:00+02:00",
-    duration: 2700,
+    submerged_time: 2700,
     max_depth: 18.3,
     notes: "",
     mixtures: [],
@@ -596,7 +596,7 @@ describe("a dive's sightings", () => {
     stable.auth.user.dive_form_hidden_fields = ["sightings"];
 
     render(<EditDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(screen.queryByLabelText("Species spotted")).not.toBeInTheDocument();
   });
@@ -714,7 +714,7 @@ describe("removing a file the dive already holds", () => {
     stable.auth.user.dive_form_hidden_fields = ["file_import"];
 
     render(<EditDivePage />);
-    await screen.findByLabelText(/duration/i);
+    await screen.findByLabelText(/dive time/i);
 
     expect(
       screen.queryByRole("button", { name: /upload dive files/i }),

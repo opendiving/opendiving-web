@@ -53,7 +53,7 @@ export function EditDivePageContent() {
     defaultValues: {
       dive_number: undefined,
       start_time: "",
-      duration: "",
+      submerged_time: "",
       max_depth: undefined,
       avg_depth: undefined,
       bottom_temperature: undefined,
@@ -236,7 +236,7 @@ export function EditDivePageContent() {
         backHref={returnTo.href}
         backLabel={returnTo.label}
         // The dive form's first card is deeper than the six-field default -
-        // date, duration, depths, temperature, site and trip all land above
+        // date, dive time, depths, temperature, site and trip all land above
         // the fold, and undersizing the placeholder puts the jump back.
         fields={8}
       />

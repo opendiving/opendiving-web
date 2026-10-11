@@ -65,7 +65,7 @@ function dive(overrides: Partial<Dive> = {}): Dive {
     uuid: "d1",
     dive_number: 2,
     start_time: "2026-09-08T15:18:10",
-    duration: 3163,
+    submerged_time: 3163,
     dive_sites: [],
     gear_items: [],
     notes: "",

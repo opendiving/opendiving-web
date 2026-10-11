@@ -53,7 +53,7 @@ function dive(overrides: Partial<Dive> = {}): Dive {
     uuid: "d1",
     dive_number: 493,
     start_time: "2026-06-03T12:15:00+02:00",
-    duration: 2700,
+    submerged_time: 2700,
     avg_depth: 26.4,
     max_depth: 45.91,
     dive_sites: [],
@@ -107,7 +107,7 @@ function twoTankDive(overrides: Partial<Dive> = {}): Dive {
 // 19 of 19 in the corpus - and the one a `tanks.length > 1` test would get wrong.
 function oneTransmitterDive(overrides: Partial<Dive> = {}): Dive {
   return dive({
-    duration: 4001,
+    submerged_time: 4001,
     mixtures: [
       mixture({ gas_number: 0, start_pressure: 212, end_pressure: 127 }),
       mixture({

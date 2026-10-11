@@ -40,7 +40,7 @@ function dive(overrides: Partial<Dive> = {}): Dive {
     uuid: "d1",
     dive_number: 1,
     start_time: "2026-04-04T10:04:47+02:00",
-    duration: 2700,
+    submerged_time: 2700,
     avg_depth: 18,
     dive_sites: [],
     gear_items: [],
@@ -879,9 +879,9 @@ describe("gasAttributionNote", () => {
     );
   });
 
-  it("attributes the denominator, which outruns the dive's own duration", () => {
+  it("attributes the denominator, which outruns the dive's own dive time", () => {
     // Dive #493's real numbers: 2075 s attributed against a 4300 s profile span,
-    // on a dive whose logged duration is 4001 s and prints as "1h 7min" at the
+    // on a dive whose logged dive time is 4001 s and prints as "1h 7min" at the
     // top of the same page. Unattributed, "of the 1h 12min recorded" reads as
     // contradicting that header rather than as the computer's own span.
     const note = gasAttributionNote(

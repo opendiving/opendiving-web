@@ -40,7 +40,7 @@ export const DIVE_A: Dive = {
   uuid: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   dive_number: 212,
   start_time: "2026-04-17T11:49:23+02:00",
-  duration: 47,
+  submerged_time: 47,
   max_depth: 28.4,
   // Named so the dive page makes its contact lookup, which the mock answers 404:
   // the lookup is non-fatal, and the page has to draw without the card.
@@ -61,7 +61,7 @@ export const DIVE_B: Dive = {
   uuid: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
   dive_number: 211,
   start_time: "2026-04-16T09:12:00+02:00",
-  duration: 52,
+  submerged_time: 52,
   max_depth: 18.2,
   dive_sites: [
     { uuid: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", name: "The Canyon" },

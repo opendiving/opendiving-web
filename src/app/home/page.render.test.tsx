@@ -88,7 +88,7 @@ const stats = (overrides: Partial<UserDiveStats> = {}): UserDiveStats => ({
   user_uuid: "user-1",
   total_dives: 212,
   max_depth: 39.4,
-  total_time: 561600,
+  total_submerged_time: 561600,
   species_seen: 17,
   dive_site_count: 48,
   first_dive_on: "2014-03-08",
@@ -175,7 +175,7 @@ describe("Home hero figures", () => {
     await screen.findByText("Species seen");
 
     expect(figure("Total dives")).toHaveTextContent("212");
-    expect(figure("Total time")).toHaveTextContent(/^156h$/);
+    expect(figure("Total dive time")).toHaveTextContent(/^156h$/);
     expect(figure("Max depth")).toHaveTextContent(/^39 m$/);
     expect(
       within(figure("Species seen") as HTMLElement).getByRole("link", {
@@ -186,16 +186,16 @@ describe("Home hero figures", () => {
 
   it("rounds the time to whole hours past the first, and minutes under it", async () => {
     // 156h 31min.
-    getDiveStats.mockResolvedValue(stats({ total_time: 563460 }));
+    getDiveStats.mockResolvedValue(stats({ total_submerged_time: 563460 }));
     const { unmount } = render(<HomePage />);
     await screen.findByText("Total dives");
-    expect(figure("Total time")).toHaveTextContent(/^157h$/);
+    expect(figure("Total dive time")).toHaveTextContent(/^157h$/);
     unmount();
 
-    getDiveStats.mockResolvedValue(stats({ total_time: 2400 }));
+    getDiveStats.mockResolvedValue(stats({ total_submerged_time: 2400 }));
     render(<HomePage />);
     await screen.findByText("Total dives");
-    expect(figure("Total time")).toHaveTextContent(/^40min$/);
+    expect(figure("Total dive time")).toHaveTextContent(/^40min$/);
   });
 
   it("counts the dive sites, and leaves them out at zero", async () => {
@@ -221,7 +221,7 @@ describe("Home hero figures", () => {
       [
         "Total dives",
         "Max depth",
-        "Total time",
+        "Total dive time",
         "Destinations",
         "Dive sites",
         "Species seen",

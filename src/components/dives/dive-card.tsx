@@ -48,7 +48,7 @@ interface DiveCardProps {
 
 // One dive as a card, in every list of dives: a map of its sites and fixes as
 // the backdrop - the map's water where it has none - with
-// its depth curve across the foot of it, and its duration, deepest point and
+// its depth curve across the foot of it, and its dive time, deepest point and
 // water temperature - or its average depth where it has no temperature.
 export function DiveCard({
   dive,
@@ -65,7 +65,10 @@ export function DiveCard({
   const depth = (meters?: number) =>
     meters ? formatDepth(meters, units, { decimals: 0 }) : "-";
   const figures: BackdropCardFigure[] = [
-    { label: "Duration", value: formatDurationHoursMinutes(dive.duration) },
+    {
+      label: "Dive time",
+      value: formatDurationHoursMinutes(dive.submerged_time),
+    },
     { label: "Max depth", value: depth(dive.max_depth) },
   ];
   // `!= null`, since 0 °C is a reading.

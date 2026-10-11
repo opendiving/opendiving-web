@@ -251,8 +251,8 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   if (normalizedStartTime && writes("start_time")) {
     setValue("start_time", normalizedStartTime);
   }
-  if (parsed.duration != null && writesFigure("duration")) {
-    setFigure("duration", formatDurationForForm(parsed.duration));
+  if (parsed.submerged_time != null && writesFigure("submerged_time")) {
+    setFigure("submerged_time", formatDurationForForm(parsed.submerged_time));
   }
   if (parsed.max_depth != null && writesFigure("max_depth")) {
     setFigure("max_depth", parsed.max_depth);
