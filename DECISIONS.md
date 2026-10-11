@@ -1173,11 +1173,12 @@ toast: nothing the diver did caused it and nothing they can do fixes it.
 
 The profile summary rides on `recordings[].profile`; there is no `Dive.profile` member.
 
-The series stay integer-scaled on the wire (depth in cm, temperature in tenths of a degree, pressure
-in tenths of a bar) and are divided in `toChannelSeries`. Divided, never multiplied by a reciprocal:
-`1234 / 100` is the correctly rounded `12.34`, whereas `1234 * 0.01` is `12.340000000000002`,
-exactly the noise the integer encoding removes. `PROFILE_CHANNELS` holds the divisors and mirrors
-the API's `DEPTH_SCALE`/`TEMPERATURE_SCALE`/`PRESSURE_SCALE`; the two lists are a pair.
+The series stay integer-scaled on the wire (depth in cm, temperature in hundredths of a degree,
+pressure in tenths of a bar) and are divided in `toChannelSeries`. Divided, never multiplied by a
+reciprocal: `1234 / 100` is the correctly rounded `12.34`, whereas `1234 * 0.01` is
+`12.340000000000002`, exactly the noise the integer encoding removes. `PROFILE_CHANNELS` holds the
+divisors and mirrors the API's `DEPTH_SCALE`/`TEMPERATURE_SCALE`/`PRESSURE_SCALE`; the two lists are
+a pair.
 
 ## The support form posts to the API, and the page it lives on claims only what exists
 

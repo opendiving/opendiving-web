@@ -16,6 +16,7 @@ import {
   drawnSampleIndexAt,
   elapsedTicks,
   formatChannelValue,
+  grainDecimals,
   formatElapsed,
   formatElapsedSpoken,
   gapThreshold,
@@ -44,7 +45,7 @@ function profile(overrides: Partial<DiveProfile> = {}): DiveProfile {
     },
     temperature: {
       times: [0, 10_000, 20_000, 30_000],
-      values: [219, 219, 218, 220],
+      values: [2190, 2190, 2180, 2200],
     },
     pressures: [{ gas_number: 1, times: [0, 10_000], values: [2052, 2041] }],
     events: [],
@@ -68,7 +69,7 @@ describe("cutAtDiveEnd", () => {
     },
     temperature: {
       times: [5_000, 15_000, 25_000, 35_000],
-      values: [219, 218, 300, 310],
+      values: [2190, 2180, 3000, 3100],
     },
     ndl: { times: [25_000, 35_000], values: [5940, 5940] },
     pressures: [
@@ -96,7 +97,7 @@ describe("cutAtDiveEnd", () => {
   it("stops a channel with no sample at the end at its last kept one", () => {
     expect(cutAtDiveEnd(recorded).temperature).toEqual({
       times: [5_000, 15_000],
-      values: [219, 218],
+      values: [2190, 2180],
     });
   });
 
@@ -128,14 +129,50 @@ describe("toChannelSeries", () => {
     expect(series?.values).toEqual([1.39, 3.72, 6.32, 0.88]);
   });
 
-  it("converts tenths of a degree without floating-point noise", () => {
+  it("converts hundredths of a degree without floating-point noise", () => {
     const series = toChannelSeries(
-      profile({ temperature: { times: [0], values: [206] } }),
+      profile({ temperature: { times: [0, 1], values: [2069, 2060] } }),
       "temperature",
       "metric",
     );
 
-    expect(series?.values).toEqual([20.6]);
+    expect(series?.values).toEqual([20.69, 20.6]);
+  });
+
+  // The format writes every source in hundredths, a coarser one with its last
+  // digits zero, so the readout quotes what the recording's readings carry.
+  it.each([
+    ["hundredths", [2669, 2711, 2690], 2],
+    ["tenths", [2360, 2350, 2340], 1],
+    ["whole degrees", [2700, 2600, 2700], 0],
+  ])("quotes a recording in %s at that grain", (_, values, decimals) => {
+    const series = toChannelSeries(
+      profile({ temperature: { times: [0, 1, 2], values } }),
+      "temperature",
+      "metric",
+    );
+
+    expect(series?.channel.decimals).toBe(decimals);
+  });
+
+  it("quotes a temperature whole in Fahrenheit whatever its grain", () => {
+    const series = toChannelSeries(
+      profile({ temperature: { times: [0, 1], values: [2669, 2711] } }),
+      "temperature",
+      "imperial",
+    );
+
+    expect(series?.channel.decimals).toBe(0);
+  });
+
+  it("keeps every other channel's fixed decimals", () => {
+    const series = toChannelSeries(
+      profile({ depth: { times: [0, 1], values: [1000, 2000] } }),
+      "depth",
+      "metric",
+    );
+
+    expect(series?.channel.decimals).toBe(PROFILE_CHANNELS.depth.decimals);
   });
 
   it("returns null for a channel the profile doesn't carry", () => {
@@ -315,7 +352,7 @@ describe("axisDomain", () => {
 
 describe("temperatureDomain", () => {
   it("widens a dive whose water barely moved to at least two degrees", () => {
-    // A Suunto Ocean dive's 3 807 readings, 27.1 down to 26.7 °C in tenths.
+    // A dive stated in tenths, its water moving from 27.1 down to 26.7 °C.
     expect(temperatureDomain([27.1, 26.9, 26.7], "metric")).toEqual({
       min: 25.5,
       max: 28,
@@ -981,13 +1018,28 @@ describe("the imperial display layer", () => {
   });
 });
 
+describe("grainDecimals", () => {
+  it.each([
+    ["every value a multiple of the scale", [2700, 2600, -100, 0], 0],
+    ["every value a whole tenth", [2360, 2350, -10], 1],
+    ["a single odd hundredth", [2700, 2600, 2601, 2700], 2],
+    ["an odd hundredth below zero", [-150, -151], 2],
+  ])("takes %s", (_, values, decimals) => {
+    expect(grainDecimals(values, 100)).toBe(decimals);
+  });
+
+  it("has nothing to narrow on a channel stored in whole units", () => {
+    expect(grainDecimals([87, 90], 1)).toBe(0);
+  });
+});
+
 describe("formatChannelValue", () => {
   it("shows each channel at the resolution it was stored in", () => {
     expect(formatChannelValue(16.9, PROFILE_CHANNELS.depth)).toBe("16.9 m");
     // Attached, not spaced. This was the app's one spaced degree symbol before
     // `unitSeparator` became the single answer to that question.
     expect(formatChannelValue(21.62, PROFILE_CHANNELS.temperature)).toBe(
-      "21.6°C",
+      "21.62°C",
     );
     expect(formatChannelValue(205.2, PROFILE_CHANNELS.pressure)).toBe(
       "205 bar",

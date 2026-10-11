@@ -939,6 +939,7 @@ export function DiveProfileChart({
             cylinders: mixtures,
             duration,
             units,
+            temperatureDecimals: temperature?.channel.decimals ?? 0,
           })}
         >
           {/* One clip per panel row, because a panel row's axis can declare a
@@ -1835,6 +1836,7 @@ function describeProfile({
   cylinders,
   duration,
   units,
+  temperatureDecimals,
 }: {
   // A channel's readings that are on screen, in display units - not its raw
   // series. Every one of these comes through `drawnValues`, because this
@@ -1850,6 +1852,8 @@ function describeProfile({
   // rather than abbreviated throughout - "ft" is read aloud as a word and "°C"
   // not at all, which is the whole reason `unitWord` exists.
   units: UnitSystem;
+  // The grain the recording's temperatures carry - see `toChannelSeries`.
+  temperatureDecimals: number;
 }): string {
   // `formatElapsedSpoken` here rather than the axis's `MM:SS`: read aloud,
   // "84:36" is not a length of time, whereas "1h 25min" is. The axis keeps
@@ -1859,7 +1863,11 @@ function describeProfile({
   // At the channel's own resolution, which is the same rule the crosshair follows
   // and the same one the numbers were stored under.
   const say = (key: ProfileChannelKey, value: number) =>
-    value.toFixed(displayChannel(PROFILE_CHANNELS[key], units).decimals);
+    value.toFixed(
+      key === "temperature"
+        ? temperatureDecimals
+        : displayChannel(PROFILE_CHANNELS[key], units).decimals,
+    );
   const word = (key: ProfileChannelKey) => channelWord(key, units);
 
   // **Which extreme says something is per quantity**, and the NDL is the one

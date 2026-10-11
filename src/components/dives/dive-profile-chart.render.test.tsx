@@ -116,7 +116,9 @@ function everyChannel(overrides: Partial<DiveProfile> = {}): DiveProfile {
     },
     temperature: {
       times,
-      values: [260, 250, 240, 235, 232, 230, 230, 232, 238, 245, 252],
+      values: [
+        2600, 2500, 2400, 2350, 2320, 2300, 2300, 2320, 2380, 2450, 2520,
+      ],
     },
     pressures: [
       {
@@ -324,7 +326,7 @@ describe("DiveProfileChart in imperial", () => {
     // quote at the moment it is over.
     temperature: {
       times: [0, 60_000, 120_000, 180_000, 240_000, 300_000],
-      values: [250, 245, 240, 238, 236, 235],
+      values: [2500, 2450, 2400, 2380, 2360, 2350],
     },
     pressures: [
       {
@@ -367,6 +369,59 @@ describe("DiveProfileChart in imperial", () => {
     expect(summary).toMatch(/maximum depth 98 feet/);
     expect(summary).toMatch(/degrees Fahrenheit/);
     expect(summary).toMatch(/psi/);
+  });
+});
+
+describe("DiveProfileChart quoting a temperature", () => {
+  // Hundredths on the wire whatever the source stated, so a coarser source
+  // arrives with its last digits zero; the crosshair and the summary quote the
+  // grain the recording's readings carry, never the wire's.
+  const dive = (values: number[]) =>
+    profile({
+      temperature: {
+        times: [0, 60_000, 120_000, 180_000, 240_000, 300_000],
+        values,
+      },
+    });
+
+  it.each([
+    [
+      "hundredths",
+      [2711, 2705, 2690, 2669, 2672, 2680],
+      "26.90°C",
+      "temperature 26.69 to 27.11 degrees Celsius",
+    ],
+    [
+      "tenths",
+      [2360, 2350, 2340, 2330, 2330, 2340],
+      "23.4°C",
+      "temperature 23.3 to 23.6 degrees Celsius",
+    ],
+    [
+      "whole degrees",
+      [2700, 2700, 2600, 2600, 2600, 2700],
+      "26°C",
+      "temperature 26 to 27 degrees Celsius",
+    ],
+  ])("quotes a recording in %s at that grain", (_, values, reading, spoken) => {
+    render(<DiveProfileChart profile={dive(values)} />);
+    hoverAt(120 / 300);
+
+    expect(readoutText()).toContain(`${reading} Temperature`);
+    expect(screen.getByRole("img").getAttribute("aria-label")).toContain(
+      spoken,
+    );
+  });
+
+  it("quotes whole degrees Fahrenheit whatever the grain", () => {
+    auth.units = "imperial";
+    render(
+      <DiveProfileChart profile={dive([2711, 2705, 2690, 2669, 2672, 2680])} />,
+    );
+    hoverAt(120 / 300);
+
+    // 26.90 °C is 80.42 °F.
+    expect(readoutText()).toContain("80°F Temperature");
   });
 });
 
@@ -686,7 +741,7 @@ describe("DiveProfileChart with a two-sample measured channel", () => {
     render(
       <DiveProfileChart
         profile={longProfile({
-          temperature: { times: [100_000, 160_000], values: [220, 219] },
+          temperature: { times: [100_000, 160_000], values: [2200, 2190] },
         })}
       />,
     );
@@ -1097,7 +1152,7 @@ describe("DiveProfileChart ending at the dive's end", () => {
           150_000, 750_000, 1_350_000, 1_950_000, 2_550_000, 3_150_000,
           3_450_000,
         ],
-        values: [260, 245, 235, 232, 238, 320, 330],
+        values: [2600, 2450, 2350, 2320, 2380, 3200, 3300],
       },
       events: [
         { time: 1_500_000, type: "bookmark" },
@@ -1376,13 +1431,13 @@ describe("DiveProfileChart selection across dives", () => {
   const noMarkers = longProfile({
     temperature: {
       times: [0, 300_000, 600_000, 900_000],
-      values: [260, 250, 240, 235],
+      values: [2600, 2500, 2400, 2350],
     },
   });
   const withMarkers = longProfile({
     temperature: {
       times: [0, 300_000, 600_000, 900_000],
-      values: [260, 250, 240, 235],
+      values: [2600, 2500, 2400, 2350],
     },
     events: [{ time: 600_000, type: "bookmark" }],
   });
