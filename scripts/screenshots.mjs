@@ -20,7 +20,7 @@
 // Chromium comes from CHROME_PATH, or from the usual Chrome install; playwright-core
 // only drives it, so `npm install` never downloads a browser.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
@@ -59,30 +59,18 @@ const CHROME_CANDIDATES = [
 const WIDTH = 1024;
 
 // Height is per page, because the boundary to cut on is. Every entry here is the frame
-// the page *loads* at - see `CUT_BELOW` and `CUT_AFTER_CARD` for the two rules that
-// measure the real one in the page moments before the shutter - except `gear-item`, whose
-// entry is also the height it is shot at.
+// the page *loads* at - see `CUT_BELOW` for the rule that measures the real one in the
+// page moments before the shutter - except the README row's right-hand pair.
 //
-// 688 is written down because it is not a property of the gear page at all: it is the
-// height at which `gear-item.png` stacked over `dive-site.png` comes level with
-// `dive-detail.png` beside them in the README row. That makes it the one figure in this
-// file that goes stale when a *different* image is re-framed, which is a real cost and is
-// argued out in DECISIONS.md rather than here.
-//
-// It is the gap between the first two entries of the `Service` card's history, the stop
-// nearest the height that would balance the row exactly, which falls a line below it.
-// DECISIONS.md has the residual.
-//
-// What it has to be on this page is a height that does not end through a row - the same
-// thing `cutAfterCard()` guarantees for the shot that measures. Nothing here can guarantee
-// it, because the rows are that account's service schedules and dives and they move: the
-// figure this replaced, 1086, had been cutting a dive row through the middle of its date
-// for as long as anyone had been looking at it. So the page is asked before the shutter -
-// `refuseSlicedRow()` below.
+// `gear-item.png` stacks over `dive-site.png` beside `dive-detail.png`, and the pair has to
+// come level with it. `gear-item` is written down: 697 ends in the gap below the first
+// entry of the `Service` card's history, so that entry is whole. `refuseSlicedRow()` checks
+// it before the shutter, because those rows are that account's service schedules and they
+// move. `dive-site` takes whatever is left of the dive shot's height - see `README_BR`.
 const HEIGHT = {
   home: 1564,
   "dive-detail": 1086,
-  "gear-item": 688,
+  "gear-item": 697,
   "dive-site": 1086,
 };
 
@@ -101,22 +89,11 @@ const HEIGHT = {
 // and not something to write down here.
 const CUT_BELOW = { home: "Gas Consumption", "dive-detail": "Recordings" };
 
-// The other framing rule, for a shot that is about one column: the frame ends at the foot
-// of the named card and whatever is beside it runs on past the edge.
-//
-// `CUT_BELOW` exists so that nothing is ever sliced, and this deliberately gives that up,
-// so it is worth saying where the line is. Under its hero the dive-site page is two
-// columns - the whole list of dives at the site in the main one, the site's details, then
-// its notes and its species, in the sidebar - and they finish together in exactly one
-// place: the bottom of the page. A seam there is the entire page, which is not what this
-// shot is for. The hero is, with its map, and the sidebar's first card under it ends a
-// little way down the list of dives beside it.
-//
-// What gets sliced is the one shape a cut can honestly land in: a list of rows, which
-// reads as a page that goes on rather than as a frame that stopped by accident - the
-// distinction the section this rule is recorded under already draws. Do not reach for
-// this where the far column is prose or a chart.
-const CUT_AFTER_CARD = { "dive-site": "Dive Site Information" };
+// What a `<br>` between the README row's stacked images adds, in this script's CSS px:
+// 6px of unscaled descent on GitHub, with each column about 459px wide, against images
+// shot 1024 wide. `dive-site` is cut to `dive-detail`'s height less `gear-item`'s and
+// this, and is allowed to end through a dive card to land there.
+const README_BR = 13;
 const frame = (name) => ({ width: WIDTH, height: HEIGHT[name] });
 // The year both Home charts are parked on, on their `Year` scope - twelve months of
 // one season in each. One constant, because the two cards showing the *same* period is
@@ -430,71 +407,8 @@ async function cutBelow(page, label) {
   return measured.height;
 }
 
-// The foot of the named card, nudged clear of any row it would have cut through - the
-// other rule, the one that lets the far column run on past the frame. See `CUT_AFTER_CARD`
-// for when that is the right thing to do and when it is not.
-//
-// **A card may be cut through; a row may not.** Those are different things even though
-// the first shot to use this rule ran the line four pixels above a dive row's bottom
-// border, which looks like a clipped row rather than a list that continues - the whole
-// claim this rule rests on. So the cut moves down past a row it lands inside, to the top
-// of the one after it, which is where `cutBelow` seeds from for the same reason: the gap
-// is fully drawn and the next row contributes no sliver.
-//
-// Rows are bordered boxes like cards are, and nesting is what tells them apart - the dive
-// list's rows are `<li class="rounded-lg border">` inside the card, so a row has a bordered
-// ancestor and a card does not. Looping rather than sweeping once because a pass that
-// moves the cut can land it inside a row of some other list; each pass clears one row's
-// bottom, so it is bounded by the rows on the page and cannot spin.
-//
-// The gutter is read off the grid the card sits in rather than off a neighbour, because the
-// card need not have one: a site with no notes and no species is a sidebar of one card.
-// `rowGap` is a resolved length whatever the breakpoint, so the figure is still measured
-// in the page being photographed and not written down here.
-async function cutAfterCard(page, label) {
-  const measured = await page.evaluate((text) => {
-    const CARD = "div.rounded-lg.border.bg-card";
-    const BOXED = ".rounded-lg.border";
-    const box = (element) => {
-      const rect = element.getBoundingClientRect();
-      return { top: rect.top + scrollY, bottom: rect.bottom + scrollY };
-    };
-
-    const anchor = [...document.querySelectorAll("h2, h3")]
-      .find((node) => node.textContent.trim().startsWith(text))
-      ?.closest(CARD);
-    if (!anchor) return { height: null, why: "no card carries that heading" };
-
-    const grid = anchor.closest("div.grid");
-    const gutter = grid ? parseFloat(getComputedStyle(grid).rowGap) : NaN;
-    if (!Number.isFinite(gutter))
-      return {
-        height: null,
-        why: "that card sits in no grid with a row gap to measure",
-      };
-
-    const rows = [...document.querySelectorAll(BOXED)].filter((element) =>
-      element.parentElement?.closest(BOXED),
-    );
-
-    let cut = box(anchor).bottom + gutter;
-    for (let pass = 0; pass <= rows.length; pass++) {
-      const sliced = rows.find(
-        (row) => box(row).top < cut && box(row).bottom > cut,
-      );
-      if (!sliced) return { height: Math.round(cut), why: null };
-      const next = sliced.nextElementSibling;
-      cut = next ? box(next).top : box(sliced).bottom + gutter;
-    }
-    return { height: null, why: "the cut never cleared the rows below it" };
-  }, label);
-  if (measured.height === null)
-    throw new Error(`cannot cut after the ${label} card: ${measured.why}`);
-  return measured.height;
-}
-
 // The one check a written-down height cannot do for itself: that it does not end inside a
-// row. `cutAfterCard()` gets this for free because it measures; `HEIGHT["gear-item"]` is a
+// row. `CUT_BELOW` gets this for free because it measures; `HEIGHT["gear-item"]` is a
 // figure about the README row rather than about the gear page, so nothing moves it when
 // the page moves under it - and the page does move, because those rows are the account's
 // service schedules and dives.
@@ -502,8 +416,9 @@ async function cutAfterCard(page, label) {
 // Loud rather than corrected, deliberately. Snapping the frame to the nearest gap would
 // keep the shot clean and silently change the height the README row is balanced against,
 // which is the failure this script has already had twice with heights that were merely
-// stale. Same definition of a row as `cutAfterCard()`: a bordered box nested inside
-// another.
+// stale. A row is a bordered box nested inside another: the dive list's
+// `<li class="rounded-lg border">` sits inside its card, and a card has no bordered
+// ancestor.
 async function refuseSlicedRow(page, name, height) {
   const sliced = await page.evaluate((cut) => {
     const BOXED = ".rounded-lg.border";
@@ -555,6 +470,15 @@ async function heroMapPictured(page) {
   );
   // Their `duration-300` fade-in.
   await page.waitForTimeout(400);
+}
+
+// `dive-site`'s height: what `dive-detail.png` stands at, less `gear-item` above it and the
+// `<br>` between them. Read off the committed PNG's header rather than kept from this run,
+// so the shot can be retaken on its own; this file shoots `dive-detail` first.
+function besideDiveDetail() {
+  const png = readFileSync(path.join(OUT, "dive-detail.png"));
+  const detail = png.readUInt32BE(20) / 2;
+  return detail - HEIGHT["gear-item"] - README_BR;
 }
 
 // One shutter press, written to both trees from the buffer it returns. Shooting twice
@@ -725,12 +649,10 @@ if (wanted("gear-item")) {
 
 if (wanted("dive-site")) {
   await visit(page, "dive-site", `${WEB}/sites/${site}`);
-  await page
-    .getByRole("heading", { name: CUT_AFTER_CARD["dive-site"] })
-    .waitFor();
+  await page.getByRole("heading", { name: "Dive Site Information" }).waitFor();
   // The frame is settled before the map is checked, rather than leaving it to `shot()`:
   // a frame of another size is fitted again, and may need other tiles.
-  const height = await cutAfterCard(page, CUT_AFTER_CARD["dive-site"]);
+  const height = besideDiveDetail();
   await page.setViewportSize({ width: WIDTH, height });
   await atTop(page);
   await heroMapPictured(page);
