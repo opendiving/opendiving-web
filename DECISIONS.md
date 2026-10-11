@@ -1779,37 +1779,22 @@ The frame can end well below the card that named it; that distance is the subjec
 A one-column page settles on the first pass, seeded from the neighbour's top, at exactly the
 single-line answer; 3px is a sliver of the next card.
 
-## The dive-site shot cuts at the foot of one column, not at a seam
+## The README row's right-hand pair is framed to come level with the dive shot
 
-Its two columns finish together only at the page's bottom, so a seam frames most of the page. The
-image exists for the hero and its map, so `CUT_AFTER_CARD` names the sidebar's first card under it
-and the frame ends at its foot (gutter: the grid's `rowGap`).
+`gear-item.png` stacks over `dive-site.png` beside `dive-detail.png`, so the pair is framed against
+the row rather than against its own pages. `gear-item`'s `HEIGHT` is written down: 697 ends in the
+gap below the first entry of the _Service_ card's history, so that entry is whole, and
+`refuseSlicedRow()` throws before the shutter if the account's schedules have moved a row onto it.
+`dive-site` takes what is left: `dive-detail.png`'s height, read off its header, less `gear-item`
+and `README_BR`. It ends wherever that lands, through a dive card if need be.
 
-A card may be cut through; a row may not, since a line just above its border reads as clipped, so
-the cut moves down past any row it lands inside to the next row's top. Rows are bordered boxes with
-a bordered ancestor (`RecentDivesCard`'s `<li class="rounded-lg border">`); cards have none.
+`README_BR` is 13: a `<br>` between stacked images adds 6px of unscaled descent on GitHub, at a
+column about 459px wide against images shot 1024 wide. The balance is exact at that width and a few
+pixels out at others.
 
 The subject is the placed site with the most dives; a position is required, since a site without
 coordinates has no map at the head of its page. `/dive-sites?sort=dive_count` is paged (capped
 at 100) to the first placed site.
-
-## The gear frame's `HEIGHT` is the lever under the README row, written down rather than measured
-
-`gear-item`'s `HEIGHT` is 688, the one figure written down rather than measured: the README row sets
-it, not the page, because `gear-item.png` stacks over `dive-site.png` beside `dive-detail.png` and
-the pair must come level.
-
-Measured, not reasoned: the row's markdown through GitHub's `/markdown` API, styled with
-`github-markdown-css`, with the committed PNGs in a doctype document (quirks mode collapses the line
-box). A `<br>` between stacked images adds 6px of unscaled descent.
-
-688 is the gap between the first two entries of the _Service_ card's history. The exact balance,
-about 700, falls inside the second entry, so the pair ends a few pixels above the dive shot; the
-next gap is 60px further down.
-
-`HEIGHT` stays a number and goes stale when `dive-detail` or `dive-site` is re-framed.
-`refuseSlicedRow()` throws before the shutter if the height lands inside a row; snapping to a gap
-would silently move the balanced height.
 
 ## `visit()` fails loudly when a navigation lands on `/signin`
 
