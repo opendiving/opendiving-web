@@ -8,7 +8,7 @@ import {
   SpeciesCard,
 } from "@/components/species/species-card";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import { DiveProfileCard } from "@/components/dives/dive-profile-card";
 import { DiveMixturesCard } from "@/components/dives/dive-mixtures-card";
 import { DiveExposureCard } from "@/components/dives/dive-exposure-card";
@@ -25,6 +25,7 @@ import { Weight } from "lucide-react";
 import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import type { DiveCardSection } from "@/components/dives/dive-section-dialog";
 import { useUnits } from "@/hooks/useUnits";
+import { cn } from "@/lib/utils";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatWeight } from "@/lib/units";
 
@@ -75,43 +76,47 @@ export function DiveDetailMain({ dive, onEdit }: DiveDetailMainProps) {
             title="Gear"
             onEdit={onEdit && (() => onEdit("Gear"))}
           />
-          <CardContent className="space-y-4">
+          <CardContent className={cn(CARD_SECTION_CONTENT, "space-y-4")}>
+            {/* Up by the header row's inset - a 48px row around a 20px line - so the
+                column labels sit where every other card's first line does. */}
             {dive.gear_items && dive.gear_items.length > 0 && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Brand</TableHead>
-                    <TableHead>Name</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dive.gear_items.map((item) => (
-                    <TableRow key={item.uuid}>
-                      <TableCell className="text-muted-foreground">
-                        {gearTypeLabel(item.type) ?? "-"}
-                      </TableCell>
-                      <TableCell>{item.brand || "-"}</TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Link
-                            href={withReturnTo(`/gear/${item.uuid}`)}
-                            className="relative hover:underline touch:tap-target"
-                          >
-                            {item.name}
-                          </Link>
-                          {item.rented && (
-                            <Badge variant="secondary">Rented</Badge>
-                          )}
-                          {item.is_archived && (
-                            <Badge variant="outline">Archived</Badge>
-                          )}
-                        </div>
-                      </TableCell>
+              <div className="-mt-3.5">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Brand</TableHead>
+                      <TableHead>Name</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {dive.gear_items.map((item) => (
+                      <TableRow key={item.uuid}>
+                        <TableCell className="text-muted-foreground">
+                          {gearTypeLabel(item.type) ?? "-"}
+                        </TableCell>
+                        <TableCell>{item.brand || "-"}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              href={withReturnTo(`/gear/${item.uuid}`)}
+                              className="relative hover:underline touch:tap-target"
+                            >
+                              {item.name}
+                            </Link>
+                            {item.rented && (
+                              <Badge variant="secondary">Rented</Badge>
+                            )}
+                            {item.is_archived && (
+                              <Badge variant="outline">Archived</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
             {dive.weight != null && (
               <div>
@@ -137,7 +142,7 @@ export function DiveDetailMain({ dive, onEdit }: DiveDetailMainProps) {
             title="Species Spotted"
             onEdit={onEdit && (() => onEdit("Marine life"))}
           />
-          <CardContent>
+          <CardContent className={CARD_SECTION_CONTENT}>
             <ul className={SPECIES_CARD_GRID}>
               {sightings.map((sighting) => (
                 <SpeciesCard
@@ -171,7 +176,7 @@ export function DiveDetailMain({ dive, onEdit }: DiveDetailMainProps) {
             title="Notes"
             onEdit={onEdit && (() => onEdit("Notes"))}
           />
-          <CardContent>
+          <CardContent className={CARD_SECTION_CONTENT}>
             <div className="prose max-w-none">
               <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
                 {dive.notes}

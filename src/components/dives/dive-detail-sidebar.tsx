@@ -17,7 +17,7 @@ import type { Person } from "@/lib/api/people";
 import { formatContactAddress, formatWebsite } from "@/lib/contact";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
-import { Card, CardContent } from "@/components/ui/card";
+import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
@@ -29,6 +29,7 @@ import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import type { DiveCardSection } from "@/components/dives/dive-section-dialog";
 import { useUnits } from "@/hooks/useUnits";
+import { cn } from "@/lib/utils";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatAltitude, formatTemperature } from "@/lib/units";
 
@@ -127,7 +128,7 @@ export function DiveDetailSidebar({
             title="Training"
             onEdit={onEdit && (() => onEdit("Training"))}
           />
-          <CardContent>
+          <CardContent className={CARD_SECTION_CONTENT}>
             <div className="text-sm font-medium text-muted-foreground mb-1">
               Course
             </div>
@@ -159,7 +160,7 @@ export function DiveDetailSidebar({
             title="Location"
             onEdit={onEdit && (() => onEdit("Location"))}
           />
-          <CardContent className="space-y-4">
+          <CardContent className={cn(CARD_SECTION_CONTENT, "space-y-4")}>
             {trip && (
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">
@@ -319,7 +320,7 @@ export function DiveDetailSidebar({
             title="People"
             onEdit={onEdit && (() => onEdit("People"))}
           />
-          <CardContent>
+          <CardContent className={CARD_SECTION_CONTENT}>
             <PeopleList people={divePeople} resolved={people} />
           </CardContent>
         </Card>
@@ -332,7 +333,7 @@ export function DiveDetailSidebar({
             title="Environment"
             onEdit={onEdit && (() => onEdit("Environment"))}
           />
-          <CardContent>
+          <CardContent className={CARD_SECTION_CONTENT}>
             <CardFigures className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]">
               {dive.air_temperature != null && (
                 <CardFigure

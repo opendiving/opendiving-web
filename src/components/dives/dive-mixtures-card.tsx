@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Dive, DiveMixture } from "@/lib/api/dives";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import {
   GAS_ROLE_LABELS,
   TANK_USAGE_LABELS,
@@ -217,7 +217,7 @@ export function DiveMixturesCard({ dive, onEdit }: DiveMixturesCardProps) {
   return (
     <Card>
       <DiveCardHeader group="Tanks" title="Tanks" onEdit={onEdit} />
-      <CardContent>
+      <CardContent className={CARD_SECTION_CONTENT}>
         {/* Columns from the card's own width rather than the window's: the slot
             this card sits in is narrowest at `lg`, and 19rem holds a card's
             three figures on one line. One column never outgrows the card. */}

@@ -2,7 +2,13 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CARD_SECTION_CONTENT,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
 import {
   DiveFormSectionsTrigger,
@@ -201,10 +207,7 @@ export function DiveFormSection(props: DiveFormSectionProps) {
       <CardContent
         id={contentId}
         hidden={!open}
-        className={cn(
-          "space-y-6 pt-[calc(--spacing(6)-var(--card-pad))]",
-          empty && "p-0",
-        )}
+        className={cn("space-y-6", CARD_SECTION_CONTENT, empty && "p-0")}
       >
         {open && children}
       </CardContent>

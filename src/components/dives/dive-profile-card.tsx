@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { LineChart } from "lucide-react";
 import {
-  CARD_TITLE_ACTION,
-  CARD_TITLE_ROW,
+  CARD_SECTION_CONTENT,
   Card,
   CardContent,
   CardHeader,
@@ -201,15 +200,20 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   return (
     <Card>
       <CardHeader>
-        <div className={CARD_TITLE_ROW}>
+        <div className="flex items-center justify-between gap-2">
           <CardTitle as="h2" className="flex items-center gap-2">
             <LineChart className="h-5 w-5" />
             Dive Profile
           </CardTitle>
-          <div ref={setMenuSlot} className={CARD_TITLE_ACTION} />
+          {/* The chart's 36px menu button, overhanging the title's line as the
+              other cards' pencils do - see `DiveCardHeader`. */}
+          <div
+            ref={setMenuSlot}
+            className="-my-(--card-title-lift) -mr-2 flex touch:-mr-3"
+          />
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className={CARD_SECTION_CONTENT}>
         {charted.length > 1 && (
           // A named group rather than loose buttons: these are one control with
           // several settings, and a screen reader meeting them in the middle of
