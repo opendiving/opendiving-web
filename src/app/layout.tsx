@@ -6,6 +6,7 @@ import { CheckinDetailsProvider } from "@/contexts/CheckinDetailsContext";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
+import { LaunchSplash } from "@/components/layout/launch-splash";
 import { Toaster } from "@/components/ui/toaster";
 import { NonceProvider } from "@/components/nonce-provider";
 import { DeviceMemoryInstaller } from "@/components/device-memory-installer";
@@ -120,6 +121,7 @@ export default async function RootLayout({
                   <AppShell>{children}</AppShell>
                 </CheckinDetailsProvider>
                 <Toaster />
+                <LaunchSplash nonce={nonce} />
               </AuthProvider>
             </ThemeProvider>
           </ConfigProvider>
