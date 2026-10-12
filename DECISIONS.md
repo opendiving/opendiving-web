@@ -6291,11 +6291,12 @@ Wikidata rows the catalog never stored.
 
 ## The deco readouts have a panel, because the depth plot has two edges and they need three
 
-The six deco channels carry three units the depth plot's two edges cannot hold, so a second plot
-beneath it shares the time axis, one row per unit: minutes for NDL and TTS, bar for ppO₂, percent
-for CNS and both gradient factors. A row exists only while a channel on it is shown. No curve is
-drawn against nothing. `profileScalePlacement` in `lib/dive-profile.ts` is a pure function over
-channel keys, so a test sweeps its 1 024 cells.
+The six deco channels carry four scales the depth plot's two edges cannot hold, so a second plot
+beneath it shares the time axis, one row per scale: NDL, TTS, ppO₂, and percent for CNS and both
+gradient factors. NDL and TTS are both minutes and still two rows: a few minutes of TTS under a
+99-minute NDL is a flat line. A row exists only while a channel on it is shown. No curve is drawn
+against nothing. `profileScalePlacement` in `lib/dive-profile.ts` is a pure function over channel
+keys, so a test sweeps its 1 024 cells.
 
 Rejected: the six on the depth plot (ppO₂ on the pressure axis is a flat line; `ProfileAxisKey`
 names the quantity, not the unit); a row per channel, splitting paired readings; normalising onto

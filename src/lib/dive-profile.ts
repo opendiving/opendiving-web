@@ -55,7 +55,7 @@ export type ProfileChannelKey =
   // The six the device's own decompression arithmetic produces. They are
   // channels on exactly the terms the first four are - a domain, a scale, a
   // unit and a toggle - and they are drawn away from the depth plot only
-  // because the plot has two edges and these carry three more units between
+  // because the plot has two edges and these carry four more scales between
   // them. See `CHANNEL_AXIS`.
   | "ndl"
   | "tts"
@@ -304,15 +304,23 @@ export const EVENTS_LABEL = "Markers";
 // both bar and are emphatically **not** one axis, because 1.3 bar of oxygen on a
 // 230-bar tank scale is a flat line along the baseline.
 export type ProfileAxisKey =
-  "depth" | "temperature" | "pressure" | "duration" | "ppo2" | "percent";
+  | "depth"
+  | "temperature"
+  | "pressure"
+  | "no_deco"
+  | "time_to_surface"
+  | "ppo2"
+  | "percent";
 
 const CHANNEL_AXIS: Record<ProfileChannelKey, ProfileAxisKey> = {
   depth: "depth",
   ceiling: "depth",
   temperature: "temperature",
   pressure: "pressure",
-  ndl: "duration",
-  tts: "duration",
+  // Minutes both, and still two rows: a no-deco limit runs to 99 while time to
+  // surface is a few minutes on most dives, so on one scale it is a flat line.
+  ndl: "no_deco",
+  tts: "time_to_surface",
   ppo2: "ppo2",
   cns: "percent",
   gradient_factor: "percent",
@@ -323,12 +331,13 @@ const CHANNEL_AXIS: Record<ProfileChannelKey, ProfileAxisKey> = {
 // panel underneath it - in the order their rows stack.
 //
 // **The split is forced, not stylistic.** The depth plot has two edges and holds
-// at most three scales; the ten channels carry six axes between them. So three of
+// at most three scales; the ten channels carry seven axes between them. So four of
 // them are housed where a labelled scale can be given them, and the panel is one
 // row per axis so that every curve on the chart is drawn against numbers that
 // belong to it.
 export const PANEL_AXES: readonly ProfileAxisKey[] = [
-  "duration",
+  "no_deco",
+  "time_to_surface",
   "ppo2",
   "percent",
 ];
@@ -364,7 +373,8 @@ const AXIS_BOUND: Record<ProfileAxisKey, number | null> = {
   depth: null,
   temperature: null,
   pressure: null,
-  duration: null,
+  no_deco: null,
+  time_to_surface: null,
   ppo2: null,
   percent: 200,
 };

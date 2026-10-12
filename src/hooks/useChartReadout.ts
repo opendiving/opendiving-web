@@ -1,7 +1,10 @@
 "use client";
 
 import {
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
+  type RefCallback,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -34,7 +37,9 @@ export interface ChartReadout<T> {
   hover: (value: T | null) => void;
   /** Spread on the plot a finger scrubs - the chart's `<svg>`. */
   scrubProps: {
-    style: { touchAction: "pan-y pinch-zoom" };
+    ref: RefCallback<Element>;
+    style: CSSProperties;
+    onContextMenu: (event: { preventDefault: () => void }) => void;
     onPointerDown: (event: ReactPointerEvent<Element>) => void;
     onPointerMove: (event: ReactPointerEvent<Element>) => void;
     onPointerUp: (event: ReactPointerEvent<Element>) => void;
@@ -92,6 +97,19 @@ export function useChartReadout<T>(
   const lastTap = useRef<{ at: number; before: T | null } | null>(null);
   const lifted = useRef(-Infinity);
 
+  // Once a finger is scrubbing, the page stays put however its path drifts up or
+  // down. `touch-action` is settled when the finger lands, and Safari will still
+  // turn a later vertical drift into a scroll that cancels the scrub. Native and
+  // non-passive because React's touch listeners are passive and cannot cancel.
+  const holdPage = useCallback((element: Element | null) => {
+    if (!element) return;
+    const hold = (event: Event) => {
+      if (press.current?.scrubbing) event.preventDefault();
+    };
+    element.addEventListener("touchmove", hold, { passive: false });
+    return () => element.removeEventListener("touchmove", hold);
+  }, []);
+
   const pinned = readout?.pinned ?? false;
   useEffect(() => {
     if (!pinned) return;
@@ -121,10 +139,22 @@ export function useChartReadout<T>(
     pinned,
     hover,
     scrubProps: {
+      ref: holdPage,
       // A vertical swipe scrolls the page and a pinch zooms it; a sideways one
-      // is left to the chart. A style rather than a class, so
-      // spreading these cannot replace the plot's own `className`.
-      style: { touchAction: "pan-y pinch-zoom" },
+      // is left to the chart. A long press reads out like a tap, so it must not
+      // select the plot's labels or raise the system's callout either. A style
+      // rather than a class, so spreading these cannot replace the plot's own
+      // `className`.
+      style: {
+        touchAction: "pan-y pinch-zoom",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
+      },
+      // A long press on a link - a gas dot - opens a menu on Android.
+      onContextMenu: (event) => {
+        if (press.current) event.preventDefault();
+      },
       onPointerDown: (event) => {
         lastTap.current = null;
         if (event.pointerType === "mouse" || !event.isPrimary) {
