@@ -650,12 +650,29 @@ describe("cylinderName", () => {
 });
 
 describe("describeEvent", () => {
+  // Ten minutes in, past the opening seconds where a switch is the dive's start.
+  const SWITCH_AT = 600_000;
+
+  it("names the gas a computer logs as the dive opens as the dive's start", () => {
+    expect(
+      describeEvent(event({ time: 910, type: "gas_switch", gas_number: 0 }), [
+        { gas_number: 0 },
+      ]),
+    ).toBe("Dive started");
+    expect(
+      describeEvent(
+        event({ time: 30_001, type: "gas_switch", gas_number: 0 }),
+        [{ gas_number: 0 }],
+      ),
+    ).toBe("Gas switch to tank 1");
+  });
+
   it("names the tank a switch went to", () => {
     expect(
-      describeEvent(event({ type: "gas_switch", gas_number: 1 }), [
-        { gas_number: 0 },
-        { gas_number: 1 },
-      ]),
+      describeEvent(
+        event({ time: SWITCH_AT, type: "gas_switch", gas_number: 1 }),
+        [{ gas_number: 0 }, { gas_number: 1 }],
+      ),
     ).toBe("Gas switch to tank 2");
   });
 
@@ -663,23 +680,30 @@ describe("describeEvent", () => {
     // The reader labels the first cylinder 0, so a falsiness check here would
     // drop the name off every switch to it.
     expect(
-      describeEvent(event({ type: "gas_switch", gas_number: 0 }), [
-        { gas_number: 0 },
-      ]),
+      describeEvent(
+        event({ time: SWITCH_AT, type: "gas_switch", gas_number: 0 }),
+        [{ gas_number: 0 }],
+      ),
     ).toBe("Gas switch to tank 1");
   });
 
   it("names a switch to a label no cylinder carries by the label, word kept", () => {
-    expect(describeEvent(event({ type: "gas_switch", gas_number: 0 }))).toBe(
-      "Gas switch to gas 0",
-    );
+    expect(
+      describeEvent(
+        event({ time: SWITCH_AT, type: "gas_switch", gas_number: 0 }),
+      ),
+    ).toBe("Gas switch to gas 0");
   });
 
   it("says only that a switch happened when the file didn't say to what", () => {
-    expect(describeEvent(event({ type: "gas_switch" }))).toBe("Gas switch");
-    expect(describeEvent(event({ type: "gas_switch", gas_number: null }))).toBe(
+    expect(describeEvent(event({ time: SWITCH_AT, type: "gas_switch" }))).toBe(
       "Gas switch",
     );
+    expect(
+      describeEvent(
+        event({ time: SWITCH_AT, type: "gas_switch", gas_number: null }),
+      ),
+    ).toBe("Gas switch");
   });
 
   it("spells out the types that speak for themselves", () => {

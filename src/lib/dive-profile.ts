@@ -932,12 +932,18 @@ export function nearestEvent(
 // `aria-label`. It is also where a null type lands, and where an older build's
 // `"other"` lands - three arrivals, one honest answer, and deliberately one
 // `return` rather than three copies of it.
+// How far into the recording a gas switch is the computer logging the gas the
+// dive starts on rather than a switch. Every first switch in the local corpus
+// sits inside the opening 10 s, and every later one minutes in.
+const STARTING_GAS_MS = 30 * MILLISECONDS_PER_SECOND;
+
 export function describeEvent(
   event: DiveProfileEvent,
   cylinders: CylinderLabels = [],
 ): string {
   switch (event.type) {
     case "gas_switch":
+      if (event.time <= STARTING_GAS_MS) return "Dive started";
       // Named as the pressure curves name the cylinder - and `0` is a real
       // label, the first the reader gives, so this tests for null rather than
       // for falsiness.
