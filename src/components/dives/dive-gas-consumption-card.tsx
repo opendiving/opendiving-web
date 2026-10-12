@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Activity } from "lucide-react";
+import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 import { useUnits } from "@/hooks/useUnits";
 import {
   formatDepth,
@@ -235,7 +236,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
           </>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardFigures>
               {/* The two rates named for what they each are, rather than the old
                   "SAC / RMV" over the litres and "Pressure Rate" over the bar - which
                   had the hedged label on the one figure that is unambiguous. RMV is the
@@ -243,43 +244,26 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                   on; SAC is how fast *this* cylinder emptied, and is the field the API
                   already calls `sac_bar_per_min`. Units stay with the values, never
                   doubled in the label. */}
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  RMV
-                </div>
-                <div className="text-2xl font-bold">
-                  {formatRmv(gasUse.rmv, units)}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  SAC
-                </div>
-                {/* Guarded, and this branch is now reachable: an additive
-                    parallel set whose cylinders are of *unequal* volume gets a
-                    null SAC alongside an empty `tanks`, because a mean pressure
-                    drop across two different volumes is not a rate of anything.
-                    `rmv` and `gas_used` still compute and are still worth
-                    showing, so the tile renders its muted dash rather than
-                    vanishing - an unguarded null leaves a bare "bar/min" under
-                    the heading, which reads as broken rather than as absent.
-                    (It was written before there was any way to reach it: the
-                    API used to pair a null SAC only with a non-empty `tanks`.) */}
-                <div className="text-2xl font-bold">
-                  {gasUse.sac_bar_per_min != null
+              <CardFigure label="RMV" value={formatRmv(gasUse.rmv, units)} />
+              {/* Nullable: an additive parallel set whose cylinders are of
+                  *unequal* volume gets a null SAC alongside an empty `tanks`,
+                  because a mean pressure drop across two different volumes is not
+                  a rate of anything. `rmv` and `gas_used` still compute and are
+                  still worth showing, so the figure renders its muted dash rather
+                  than vanishing. */}
+              <CardFigure
+                label="SAC"
+                value={
+                  gasUse.sac_bar_per_min != null
                     ? formatSac(gasUse.sac_bar_per_min, units)
-                    : "-"}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">
-                  Gas used
-                </div>
-                <div className="text-2xl font-bold">
-                  {formatGasVolume(gasUse.gas_used, units)}
-                </div>
-              </div>
-            </div>
+                    : null
+                }
+              />
+              <CardFigure
+                label="Gas used"
+                value={formatGasVolume(gasUse.gas_used, units)}
+              />
+            </CardFigures>
             {/* **Not** gated on the SAC, though it was until the additive
                 parallel path existed. This sentence *names the denominator*, so
                 on a figure derived per cylinder it would assert the dive's

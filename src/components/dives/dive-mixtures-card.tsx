@@ -19,6 +19,7 @@ import {
   TankIcon,
   TwinTankIcon,
 } from "@/components/icons/tank-icon";
+import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { isTwinSetVolume } from "@/components/dives/volume-combobox";
@@ -32,24 +33,6 @@ import {
 
 interface DiveMixturesCardProps {
   dive: Dive;
-}
-
-// A figure a cylinder may not record, muted where it records none: an absence at
-// full contrast reads as a value.
-function Figure({ label, value }: { label: ReactNode; value: ReactNode }) {
-  return (
-    <div className="min-w-20">
-      <dt className="text-xs">{label}</dt>
-      <dd
-        className={cn(
-          "whitespace-nowrap text-base font-bold",
-          value == null && "text-muted-foreground",
-        )}
-      >
-        {value ?? "-"}
-      </dd>
-    </div>
-  );
 }
 
 interface TankCardProps {
@@ -133,11 +116,8 @@ function TankCard({
           )}
         </div>
       </div>
-      {/* Each figure about as wide as "211.44 bar", so they line up from
-          card to card, and wrapping onto a second line on a phone too narrow
-          for three, as the dive hero's figures do. */}
-      <dl className="mt-3 flex flex-wrap gap-x-3 gap-y-2">
-        <Figure
+      <CardFigures className="mt-3">
+        <CardFigure
           label="Start"
           value={
             mixture.start_pressure != null
@@ -145,7 +125,7 @@ function TankCard({
               : null
           }
         />
-        <Figure
+        <CardFigure
           label="End"
           value={
             mixture.end_pressure != null
@@ -155,7 +135,7 @@ function TankCard({
         />
         {/* The limit beside the label rather than the depth, so the depth is the
             figure: muted, as the condition the depth holds under. */}
-        <Figure
+        <CardFigure
           label={
             <>
               MOD
@@ -180,7 +160,7 @@ function TankCard({
             ) : null
           }
         />
-      </dl>
+      </CardFigures>
     </li>
   );
 }
