@@ -5,7 +5,6 @@ import type { Dive } from "@/lib/api/dives";
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
-import { FactsLine } from "@/components/ui/icon-fact";
 import { diveFacts } from "@/components/dives/dive-facts";
 import { diveChips } from "@/components/dives/dive-chips";
 import { DiveTitle } from "@/components/dives/dive-title";
@@ -86,7 +85,7 @@ export function DiveHero({
           rating={dive.rating}
         />
       }
-      subtitle={<FactsLine facts={facts} />}
+      subtitle={facts}
       overline={diveChips(dive)}
       figures={figures}
       mapCredit={isPlaced}

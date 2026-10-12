@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -126,16 +126,7 @@ export function PersonDetailPageContent() {
         backLabel={back.label}
         icon={User}
         title={person.name}
-        subtitle={
-          subtitle.length > 0
-            ? subtitle.map((part, index) => (
-                <Fragment key={index}>
-                  {index > 0 && " · "}
-                  {part}
-                </Fragment>
-              ))
-            : undefined
-        }
+        subtitle={subtitle}
         figures={[]}
         actions={
           <>

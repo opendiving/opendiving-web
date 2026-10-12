@@ -24,9 +24,7 @@ export function GearItemHero({
     gearItem.brand,
     gearItem.rented ? "Rented" : null,
     gearItem.is_archived ? "Archived" : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ];
 
   const figures: MapHeroFigure[] = [
     { label: "Dives", value: gearItem.dive_count },
@@ -51,7 +49,7 @@ export function GearItemHero({
       icon={Backpack}
       actions={actions}
       title={gearItem.name}
-      subtitle={subtitle || undefined}
+      subtitle={subtitle}
       figures={figures}
     />
   );

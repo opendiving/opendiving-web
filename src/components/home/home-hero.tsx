@@ -14,7 +14,6 @@ import type { Location } from "@/lib/api/location";
 import { DEFAULT_BASEMAP_ATTRIBUTION } from "@/lib/basemap";
 import { formatDaysAgo, formatDurationHoursMinutes } from "@/lib/date-time";
 import { daysBetweenIsoDates, todayIsoDate } from "@/lib/gear-service";
-import { FactsLine } from "@/components/ui/icon-fact";
 import { formatDepth, type UnitSystem } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
@@ -134,7 +133,7 @@ export function HomeHero({
     <MapHero
       icon={DiverAvatar}
       title={title}
-      subtitle={facts.length > 0 && <FactsLine facts={facts} />}
+      subtitle={facts}
       actions={actions}
       figures={homeFigures(stats, places, units)}
       credit={DEFAULT_BASEMAP_ATTRIBUTION}
