@@ -281,9 +281,11 @@ export function MapHero({
           figures={figures}
         >
           {/* A chip as it is over a card's map, so without the details'
-              glow. */}
+              glow. Out to the column's edge, and only the row's gap from
+              the figures, so the details' inset costs it no room on their
+              line. */}
           {credited && (
-            <div className="ml-auto pl-3">
+            <div className="ml-auto -mr-(--card-pad)">
               <MapCredit
                 value={credit}
                 className="rounded-sm opacity-75 [text-shadow:none]"
