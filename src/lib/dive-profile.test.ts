@@ -30,7 +30,7 @@ import {
   toPressureSeries,
   tooltipVerticalAnchor,
   profileScalePlacement,
-  withoutSurfaceNdl,
+  withoutSpuriousZeros,
   PROFILE_CHANNELS,
 } from "@/lib/dive-profile";
 import { niceDomain } from "@/lib/chart-scale";
@@ -223,39 +223,43 @@ describe("toPressureSeries", () => {
   });
 });
 
-describe("withoutSurfaceNdl", () => {
-  const ndl = (values: number[]) => ({
+describe("withoutSpuriousZeros", () => {
+  const series = (values: number[]) => ({
     times: values.map((_, index) => index * 10_000),
     values,
   });
 
-  it("drops a zero that comes straight after the 100-minute cap", () => {
-    expect(withoutSurfaceNdl(ndl([6000, 6000, 0]))).toEqual({
+  it("drops a zero that comes straight after the reading it cannot fall from", () => {
+    expect(withoutSpuriousZeros(series([6000, 6000, 0]), 6000)).toEqual({
       times: [0, 10_000],
       values: [6000, 6000],
     });
   });
 
   it("drops the whole run of zeros, up to the next reading", () => {
-    expect(withoutSurfaceNdl(ndl([6000, 0, 0, 0, 6000, 5880]))).toEqual({
+    expect(
+      withoutSpuriousZeros(series([6000, 0, 0, 0, 6000, 5880]), 6000),
+    ).toEqual({
       times: [0, 40_000, 50_000],
       values: [6000, 6000, 5880],
     });
   });
 
-  it("keeps a zero the limit counted down to", () => {
-    const counted = ndl([6000, 300, 60, 0, 0]);
+  it("keeps a zero the series counted down to", () => {
+    const counted = series([6000, 300, 60, 0, 0]);
 
-    expect(withoutSurfaceNdl(counted)).toBe(counted);
+    expect(withoutSpuriousZeros(counted, 6000)).toBe(counted);
   });
 
   it("keeps a zero the series opens with", () => {
-    const opening = ndl([0, 6000]);
+    const opening = series([0, 6000]);
 
-    expect(withoutSurfaceNdl(opening)).toBe(opening);
+    expect(withoutSpuriousZeros(opening, 6000)).toBe(opening);
   });
+});
 
-  it("is applied to the NDL channel and no other", () => {
+describe("toChannelSeries without spurious zeros", () => {
+  it("drops an NDL zero straight after the 100-minute cap", () => {
     const capped = { times: [0, 10_000], values: [6000, 0] };
 
     expect(
@@ -264,6 +268,36 @@ describe("withoutSurfaceNdl", () => {
     expect(
       toChannelSeries(profile({ tts: capped }), "tts", "metric")?.values,
     ).toEqual([100, 0]);
+  });
+
+  it("drops the surface gradient factor's sudden zeros and keeps one it fell to", () => {
+    // Dive #494's glitch, and a reading of 1 % rounding down to none.
+    const glitched = {
+      times: [0, 10_000, 20_000, 30_000, 40_000, 50_000, 60_000, 70_000],
+      values: [29, 0, 30, 0, 30, 2, 1, 0],
+    };
+
+    expect(
+      toChannelSeries(
+        profile({ surface_gradient_factor: glitched }),
+        "surface_gradient_factor",
+        "metric",
+      )?.values,
+    ).toEqual([29, 30, 30, 2, 1, 0]);
+  });
+
+  it("leaves the gradient factor at depth its zeros", () => {
+    // Its zeros are real: a few metres of descent puts every tissue under the
+    // ambient pressure in one sample.
+    const descending = { times: [0, 10_000], values: [40, 0] };
+
+    expect(
+      toChannelSeries(
+        profile({ gradient_factor: descending }),
+        "gradient_factor",
+        "metric",
+      )?.values,
+    ).toEqual([40, 0]);
   });
 });
 

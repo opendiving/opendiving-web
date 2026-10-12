@@ -722,8 +722,11 @@ export function toChannelSeries(
   units: UnitSystem,
 ): ChannelSeries | null {
   const recorded: DiveProfileSeries | null | undefined = profile[key];
+  const after = SPURIOUS_ZERO_AFTER[key];
   const series =
-    recorded && key === "ndl" ? withoutSurfaceNdl(recorded) : recorded;
+    recorded && after !== undefined
+      ? withoutSpuriousZeros(recorded, after)
+      : recorded;
   if (!series || series.times.length === 0) return null;
 
   const channel = PROFILE_CHANNELS[key];
@@ -751,26 +754,35 @@ export function toChannelSeries(
   };
 }
 
-// The no-deco limit a computer shows while it has nothing to count down, in the
-// wire's seconds.
-const NDL_CAP_S = 100 * 60;
+// The channels a computer writes a zero into when it has stopped computing them
+// - at the end of the dive, on a surface swim, or for a glitched sample - and the
+// reading, in the wire's units, from which a fall to zero in one sample cannot
+// be real. Neither quantity can drop that far that fast, so the zero is not a
+// reading.
+const SPURIOUS_ZERO_AFTER: Partial<Record<ProfileSeriesKey, number>> = {
+  // The 100-minute cap a no-deco limit shows while it has nothing to count
+  // down. A zero after it would plot as an obligation the diver never had.
+  ndl: 100 * 60,
+  // A surface gradient factor falls only as fast as the fastest tissue
+  // off-gases, a few percent of itself in a sample. From 1 % a zero is a
+  // reading rounding down; across the corpus nothing falls to zero from 2-5 %,
+  // and everything from 6 % up is a device writing nothing.
+  surface_gradient_factor: 5,
+};
 
-// An NDL series without the zeros a computer writes at the surface. A limit
-// cannot fall from its 100-minute cap to nothing in one sample: the device has
-// stopped computing one, at the end of the dive or on a surface swim, and a zero
-// there would plot as an obligation the diver never had. So a run of zeros that
-// starts straight after the cap is dropped whole, while one reached by counting
-// down - a minute, then none - is a real limit and stays.
-export function withoutSurfaceNdl(
+// A series without its spurious zeros: a run of zeros that starts straight after
+// a reading of at least `after` is dropped whole, up to the next reading, while
+// one reached by counting down - a minute, then none - is real and stays.
+export function withoutSpuriousZeros(
   series: DiveProfileSeries,
+  after: number,
 ): DiveProfileSeries {
   const kept: number[] = [];
-  let surfaced = false;
+  let spurious = false;
   series.values.forEach((value, index) => {
-    if (value !== 0) surfaced = false;
-    else if (index > 0 && series.values[index - 1] >= NDL_CAP_S)
-      surfaced = true;
-    if (!surfaced) kept.push(index);
+    if (value !== 0) spurious = false;
+    else if (index > 0 && series.values[index - 1] >= after) spurious = true;
+    if (!spurious) kept.push(index);
   });
   if (kept.length === series.values.length) return series;
 
