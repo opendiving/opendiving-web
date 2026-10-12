@@ -8,7 +8,6 @@ import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import { MapHero } from "@/components/ui/map-hero";
 import { tripPartLocations } from "@/lib/trip-parts";
 import { tripFacts } from "@/components/trips/trip-facts";
-import { FactsLine } from "@/components/ui/icon-fact";
 import { tripFigures } from "@/lib/trip-figures";
 import { useUnits } from "@/hooks/useUnits";
 import type { ReturnTarget } from "@/lib/return-to";
@@ -34,7 +33,7 @@ export function TripHero({
       icon={Luggage}
       actions={actions}
       title={trip.name}
-      subtitle={facts.length > 0 && <FactsLine facts={facts} />}
+      subtitle={facts}
       figures={tripFigures(trip, units)}
       mapCredit
       // The whole world for a trip with no place on the map yet, as its card

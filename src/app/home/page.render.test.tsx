@@ -306,9 +306,10 @@ describe("Home hero line", () => {
     getDiveStats.mockResolvedValue(stats());
     render(<HomePage />);
 
+    await screen.findByText(/Diving since/);
     expect(
-      await screen.findByText("Diving since 2014 · Last dive 3 days ago"),
-    ).toBeInTheDocument();
+      screen.getByRole("heading", { level: 1 }).nextElementSibling,
+    ).toHaveTextContent(/^Diving since 2014 · Last dive 3 days ago$/);
   });
 
   it("is left out until the stats are in", async () => {

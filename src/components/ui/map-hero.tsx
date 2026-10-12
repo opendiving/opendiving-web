@@ -65,6 +65,15 @@ const FIGURES = "contents";
 // glow behind them is what lifts them off the map.
 const TITLE = "text-xl font-bold md:text-3xl print:text-3xl";
 const SUBTITLE = "text-sm md:mt-1 md:text-base";
+
+// A subtitle of parts wraps only between them, and no line ends or starts on a
+// dot: every part leads with its dot's box - the first one's empty, so the text
+// reads as one line - and the line starts a box's width to the left of a clip,
+// which cuts off whichever dot opens a line. The clip reaches
+// past the other three sides for the glow.
+const PARTS_CLIP = "[clip-path:inset(-1em_-1em_-1em_0)]";
+const PARTS = "-ml-[0.75em] flex flex-wrap";
+const PART_DOT = "inline-block w-[0.75em] text-center";
 const LABEL = "text-xs md:mb-1 md:text-sm md:font-medium";
 const VALUE = "text-base md:text-2xl";
 
@@ -93,6 +102,10 @@ interface Known {
   // The kind's icon, as the header's New menu marks it.
   icon: ComponentType<{ className?: string }>;
 }
+
+// The details inset from the column as a card's content is from the card's
+// edge, so they line up with the cards under them.
+const DETAILS_INSET = "px-(--card-pad)";
 
 // The icon and the title block beside it, closer where the details are small.
 // Aligned at the top rather than centred, so a line that wraps does not pull
@@ -154,7 +167,8 @@ interface MapHeroProps
   actions?: ReactNode;
   // Usually the record's name; a node for a dive's, which links its sites.
   title: ReactNode;
-  // One line under the title, as the record's card has under its name.
+  // The line under the title, as the record's card has under its name. Its
+  // parts, dot-separated, where it lists them.
   subtitle?: ReactNode;
   // A tag above the title, as the record's card has above its name.
   overline?: ReactNode;
@@ -311,39 +325,61 @@ function HeroDetails({
   );
   return (
     <div className={className}>
-      {overline && <div className={OVERLINE}>{overline}</div>}
-      <div className={HEADING}>
-        {Icon && <Icon aria-hidden className={ICON} />}
-        <div className="min-w-0 flex-1">
-          {info || aside ? (
-            <div className="flex items-center gap-1">
-              {heading}
-              {info}
-              {aside && <div className="ml-auto pl-2">{aside}</div>}
-            </div>
-          ) : (
-            heading
-          )}
-          {subtitle && <p className={SUBTITLE}>{subtitle}</p>}
-        </div>
-      </div>
-      {(figures.length > 0 || children) && (
-        <div className={FIGURES_ROW}>
-          {/* Every figure the record has, at the dive page's size. A value
-              never breaks, so "30 m" is one figure. */}
-          <dl className={FIGURES}>
-            {figures.map(({ label, value }) => (
-              <div key={label} className={FIGURE}>
-                <dt className={LABEL}>{label}</dt>
-                <dd className={cn(VALUE, "whitespace-nowrap font-bold")}>
-                  {value}
-                </dd>
+      <div className={DETAILS_INSET}>
+        {overline && <div className={OVERLINE}>{overline}</div>}
+        <div className={HEADING}>
+          {Icon && <Icon aria-hidden className={ICON} />}
+          <div className="min-w-0 flex-1">
+            {info || aside ? (
+              <div className="flex items-center gap-1">
+                {heading}
+                {info}
+                {aside && <div className="ml-auto pl-2">{aside}</div>}
               </div>
-            ))}
-          </dl>
-          {children}
+            ) : (
+              heading
+            )}
+            <Subtitle subtitle={subtitle} />
+          </div>
         </div>
-      )}
+        {(figures.length > 0 || children) && (
+          <div className={FIGURES_ROW}>
+            {/* Every figure the record has, at the dive page's size. A value
+              never breaks, so "30 m" is one figure. */}
+            <dl className={FIGURES}>
+              {figures.map(({ label, value }) => (
+                <div key={label} className={FIGURE}>
+                  <dt className={LABEL}>{label}</dt>
+                  <dd className={cn(VALUE, "whitespace-nowrap font-bold")}>
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            {children}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Subtitle({ subtitle }: Pick<MapHeroProps, "subtitle">) {
+  if (!Array.isArray(subtitle)) {
+    return subtitle ? <p className={SUBTITLE}>{subtitle}</p> : null;
+  }
+  const parts = subtitle.filter(Boolean);
+  if (parts.length === 0) return null;
+  return (
+    <div className={cn(SUBTITLE, PARTS_CLIP)}>
+      <p className={PARTS}>
+        {parts.map((part, index) => (
+          <span key={index}>
+            <span className={PART_DOT}>{index > 0 && " · "}</span>
+            {part}
+          </span>
+        ))}
+      </p>
     </div>
   );
 }
@@ -511,27 +547,29 @@ function HeroDetailsSkeleton({
 }) {
   return (
     <div className={cn(COLUMN, className)}>
-      <div className={HEADING}>
-        <Icon aria-hidden className={cn(ICON, "text-muted-foreground")} />
-        <div className="min-w-0">
-          <h1 className={TITLE}>
-            <Skeleton className={cn("h-7 w-48 md:h-9 md:w-64", bar)} />
-          </h1>
-          <p className="md:mt-1">
-            <Skeleton className={cn("h-5 w-36 md:h-6 md:w-44", bar)} />
-          </p>
+      <div className={DETAILS_INSET}>
+        <div className={HEADING}>
+          <Icon aria-hidden className={cn(ICON, "text-muted-foreground")} />
+          <div className="min-w-0">
+            <h1 className={TITLE}>
+              <Skeleton className={cn("h-7 w-48 md:h-9 md:w-64", bar)} />
+            </h1>
+            <p className="md:mt-1">
+              <Skeleton className={cn("h-5 w-36 md:h-6 md:w-44", bar)} />
+            </p>
+          </div>
         </div>
+        {!figureless && (
+          <div className={FIGURES_ROW}>
+            {[0, 1, 2].map((figure) => (
+              <div key={figure} className={FIGURE}>
+                <Skeleton className={cn("h-4 w-16 md:mb-1 md:h-5", bar)} />
+                <Skeleton className={cn("h-6 w-12 md:h-8", bar)} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      {!figureless && (
-        <div className={FIGURES_ROW}>
-          {[0, 1, 2].map((figure) => (
-            <div key={figure} className={FIGURE}>
-              <Skeleton className={cn("h-4 w-16 md:mb-1 md:h-5", bar)} />
-              <Skeleton className={cn("h-6 w-12 md:h-8", bar)} />
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

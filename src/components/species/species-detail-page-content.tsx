@@ -164,15 +164,7 @@ export function SpeciesDetailPageContent() {
           />
         )}
         title={displayName}
-        subtitle={
-          (scientificName || rank) && (
-            <>
-              {scientificName}
-              {scientificName && rank && " · "}
-              {rank}
-            </>
-          )
-        }
+        subtitle={[scientificName, rank]}
         figures={figures}
       />
 

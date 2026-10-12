@@ -138,9 +138,7 @@ export function CourseDetailPageContent() {
       course.end_date ?? undefined,
     ),
     courseStatusLabel(course.status),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ];
 
   return (
     <div>
@@ -149,7 +147,7 @@ export function CourseDetailPageContent() {
         backLabel={back.label}
         icon={GraduationCap}
         title={course.name}
-        subtitle={subtitle || undefined}
+        subtitle={subtitle}
         figures={[]}
         actions={
           <>
