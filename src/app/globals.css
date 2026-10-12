@@ -233,11 +233,12 @@
        **What has to be separable is what shares a row**, and the panel is one
        row per scale: no-deco time, time to surface, ppO2, and the three
        percentages. Within that last row the hues are 90 degrees apart or more.
-       Across rows they are not always - --surface-gradient-factor's 230 sits 25 degrees
-       from --ppo2's 205 - and that is the same trade --ceiling already makes at
-       16 degrees from --coral, for the same reason: two curves that never share
-       a plot are told apart by which plot they are in, and the legend and the
-       crosshair both name them in words. Colour is doing the least of the work.
+       Across rows they are not always - --surface-gradient-factor's 230 sits
+       25 degrees from --ppo2's 205 - and that is the same trade --ceiling
+       already makes at 16 degrees from --coral, for the same reason: two curves
+       that never share a plot are told apart by which plot they are in, and the
+       legend and the crosshair both name them in words. Colour is doing the
+       least of the work.
 
        Hues chosen around the three already spoken for (0 ceiling, 16 coral,
        180 teal; --pressure is grey) rather than through them, so no new accent

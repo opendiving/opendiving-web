@@ -535,8 +535,7 @@ export function DiveProfileChart({
     // The deco panel's channels, one axis at a time. Nothing here is special-
     // cased per channel: they differ from the four above only in sharing an axis
     // with whichever siblings are scaled against the same quantity, so the loop
-    // is over the axes
-    // and the channels fall out of `channelsOnAxis`.
+    // is over the axes and the channels fall out of `channelsOnAxis`.
     for (const axis of PANEL_AXES) {
       const built = channelsOnAxis(PROFILE_CHANNEL_KEYS, axis)
         // Tank pressure is the one channel the API serves as a list rather than

@@ -6298,8 +6298,8 @@ nothing. `profileScalePlacement` in `lib/dive-profile.ts` is a pure function ove
 test sweeps its 1 024 cells.
 
 Rejected: the six on the depth plot (ppO₂ on the pressure axis is a flat line; `ProfileAxisKey`
-names the quantity, not the unit); a row per channel, splitting paired readings; normalising onto
-0–100.
+names the quantity, not the unit); a row per channel, splitting the gradient-factor pair a diver
+reads together; normalising onto 0–100.
 
 Panel axes are numbered in `--muted-foreground`, since three curves share the percent row. A row is
 scaled from its shown channels only, unlike `depthDomain`: a hidden `gf99` of 12 575 would flatten a
