@@ -1426,7 +1426,7 @@ export function DiveProfileChart({
         returnFocusRef={enterButtonRef}
         controls={controls(true)}
         readout={
-          <div className="rounded-md border px-3 py-2">
+          <div className="rounded-md border px-2 py-2">
             <ReadoutGrid
               at={hoveredMs}
               readouts={readouts}
@@ -1751,9 +1751,9 @@ function ReadoutGrid({
         "grid items-baseline gap-x-2 gap-y-0.5 text-sm",
         // A floor under the values in the panel, which stays put while the
         // crosshair moves: without it the labels shift as a reading gains a
-        // digit.
+        // digit. As wide as the widest reading set, "3000 psi".
         tone === "panel"
-          ? "grid-cols-[minmax(5rem,auto)_1fr]"
+          ? "grid-cols-[minmax(3.75rem,auto)_1fr]"
           : "grid-cols-[auto_auto]",
       )}
     >
