@@ -205,8 +205,9 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
             <LineChart className="h-5 w-5" />
             Dive Profile
           </CardTitle>
-          {/* The chart's 36px menu button, overhanging the title's line as the
-              other cards' pencils do - see `DiveCardHeader`. */}
+          {/* The chart's 36px buttons - its channel menu and full screen -
+              overhanging the title's line as the other cards' pencils do; see
+              `DiveCardHeader`. */}
           <div
             ref={setMenuSlot}
             className="-my-(--card-title-lift) -mr-2 flex touch:-mr-3"
