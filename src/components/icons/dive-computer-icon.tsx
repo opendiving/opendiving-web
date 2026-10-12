@@ -1,8 +1,8 @@
 import { createLucideIcon } from "lucide-react";
 
-// A wrist dive computer with a rising bar graph on its screen, which is wider than
+// A wrist dive computer with a peaked bar graph on its screen, which is wider than
 // tall as a Shearwater Perdix's is. The bars' pitch equals the face's corner radius,
-// 3.5, and the outer caps are concentric with the corners, so every gap - bar to bar,
+// 3.5, and their ends sit level with the corners' centres, so every gap - bar to bar,
 // bar to face - is 3.5 less the stroke, at 1.5px and at 2px alike. A fourth bar
 // would stretch the face further, and crowds at 16px.
 export const DiveComputerIcon = createLucideIcon({
@@ -18,8 +18,8 @@ export const DiveComputerIcon = createLucideIcon({
       "path",
       { d: "M9 18v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2", key: "strap-bottom" },
     ],
-    ["path", { d: "M8.5 14.5v-2", key: "bar-1" }],
-    ["path", { d: "M12 14.5v-3.5", key: "bar-2" }],
-    ["path", { d: "M15.5 14.5v-5", key: "bar-3" }],
+    ["path", { d: "M8.5 14.5v-3.5", key: "bar-1" }],
+    ["path", { d: "M12 14.5v-5", key: "bar-2" }],
+    ["path", { d: "M15.5 14.5v-2", key: "bar-3" }],
   ],
 });
