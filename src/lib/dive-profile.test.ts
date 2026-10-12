@@ -30,6 +30,7 @@ import {
   toPressureSeries,
   tooltipVerticalAnchor,
   profileScalePlacement,
+  withoutSurfaceNdl,
   PROFILE_CHANNELS,
 } from "@/lib/dive-profile";
 import { niceDomain } from "@/lib/chart-scale";
@@ -219,6 +220,50 @@ describe("toPressureSeries", () => {
 
   it("is an empty list when no transmitter recorded anything", () => {
     expect(toPressureSeries(profile({ pressures: [] }), "metric")).toEqual([]);
+  });
+});
+
+describe("withoutSurfaceNdl", () => {
+  const ndl = (values: number[]) => ({
+    times: values.map((_, index) => index * 10_000),
+    values,
+  });
+
+  it("drops a zero that comes straight after the 100-minute cap", () => {
+    expect(withoutSurfaceNdl(ndl([6000, 6000, 0]))).toEqual({
+      times: [0, 10_000],
+      values: [6000, 6000],
+    });
+  });
+
+  it("drops the whole run of zeros, up to the next reading", () => {
+    expect(withoutSurfaceNdl(ndl([6000, 0, 0, 0, 6000, 5880]))).toEqual({
+      times: [0, 40_000, 50_000],
+      values: [6000, 6000, 5880],
+    });
+  });
+
+  it("keeps a zero the limit counted down to", () => {
+    const counted = ndl([6000, 300, 60, 0, 0]);
+
+    expect(withoutSurfaceNdl(counted)).toBe(counted);
+  });
+
+  it("keeps a zero the series opens with", () => {
+    const opening = ndl([0, 6000]);
+
+    expect(withoutSurfaceNdl(opening)).toBe(opening);
+  });
+
+  it("is applied to the NDL channel and no other", () => {
+    const capped = { times: [0, 10_000], values: [6000, 0] };
+
+    expect(
+      toChannelSeries(profile({ ndl: capped }), "ndl", "metric")?.values,
+    ).toEqual([100]);
+    expect(
+      toChannelSeries(profile({ tts: capped }), "tts", "metric")?.values,
+    ).toEqual([100, 0]);
   });
 });
 

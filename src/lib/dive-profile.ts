@@ -717,7 +717,9 @@ export function toChannelSeries(
   key: ProfileSeriesKey,
   units: UnitSystem,
 ): ChannelSeries | null {
-  const series: DiveProfileSeries | null | undefined = profile[key];
+  const recorded: DiveProfileSeries | null | undefined = profile[key];
+  const series =
+    recorded && key === "ndl" ? withoutSurfaceNdl(recorded) : recorded;
   if (!series || series.times.length === 0) return null;
 
   const channel = PROFILE_CHANNELS[key];
@@ -742,6 +744,35 @@ export function toChannelSeries(
     values: series.values.map((value) =>
       toChannelDisplay(value / channel.scale, key, units),
     ),
+  };
+}
+
+// The no-deco limit a computer shows while it has nothing to count down, in the
+// wire's seconds.
+const NDL_CAP_S = 100 * 60;
+
+// An NDL series without the zeros a computer writes at the surface. A limit
+// cannot fall from its 100-minute cap to nothing in one sample: the device has
+// stopped computing one, at the end of the dive or on a surface swim, and a zero
+// there would plot as an obligation the diver never had. So a run of zeros that
+// starts straight after the cap is dropped whole, while one reached by counting
+// down - a minute, then none - is a real limit and stays.
+export function withoutSurfaceNdl(
+  series: DiveProfileSeries,
+): DiveProfileSeries {
+  const kept: number[] = [];
+  let surfaced = false;
+  series.values.forEach((value, index) => {
+    if (value !== 0) surfaced = false;
+    else if (index > 0 && series.values[index - 1] >= NDL_CAP_S) surfaced = true;
+    if (!surfaced) kept.push(index);
+  });
+  if (kept.length === series.values.length) return series;
+
+  return {
+    ...series,
+    times: kept.map((index) => series.times[index]),
+    values: kept.map((index) => series.values[index]),
   };
 }
 
