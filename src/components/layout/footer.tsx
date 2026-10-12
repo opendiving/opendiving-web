@@ -11,146 +11,150 @@ export function Footer() {
   // `print:hidden` for the same reason as the header's: `/checkin` prints the
   // summary alone, and no page wants the chrome on paper.
   return (
-    <footer className="bg-muted text-foreground py-12 print:hidden">
-      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
-        {/* Three tiers, not two. Below `sm:` everything stacks; from `md:` up the brand
+    <footer className="bg-muted text-foreground py-8 print:hidden">
+      {/* The page's column, inset as a card's content is from the card's edge, so
+          the footer's text starts where a hero's details do. */}
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8">
+        <div className="px-(--card-pad)">
+          {/* Three tiers, not two. Below `sm:` everything stacks; from `md:` up the brand
             block is the first of four equal columns. Between the two - the tablet widths
             this footer used to spend four stacked rows on - the three link columns share
             a row and the brand block spans it: the links would fit four-up at 640px, but
             the sentence under the wordmark drops to four lines in a quarter of that width.
             `md:col-span-1` is the reset - without it the span carries on up. */}
-        <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-8">
-          <div className="sm:col-span-3 md:col-span-1">
-            <div className="flex items-center space-x-2 mb-4">
-              <Logo className="h-6 w-6 text-coral" />
-              <span className="font-wordmark text-lg font-bold tracking-wordmark">
-                OpenDiving
-              </span>
+          <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-8">
+            <div className="sm:col-span-3 md:col-span-1">
+              <div className="flex items-center space-x-2 mb-4">
+                <Logo className="h-6 w-6 text-coral" />
+                <span className="font-wordmark text-lg font-bold tracking-wordmark">
+                  OpenDiving
+                </span>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Open source diving platform for the global diving community.
+              </p>
             </div>
-            <p className="text-muted-foreground text-sm">
-              Open source diving platform for the global diving community.
-            </p>
+            <nav aria-labelledby="footer-platform">
+              <p id="footer-platform" className="font-semibold mb-4">
+                Platform
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground touch:space-y-0">
+                <li>
+                  <Link
+                    href="/dives"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    Dive Log
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/trips"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    Trips
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/sites"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    Dive Sites
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/gear"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    Equipment
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+            <nav aria-labelledby="footer-resources">
+              <p id="footer-resources" className="font-semibold mb-4">
+                Resources
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground touch:space-y-0">
+                <li>
+                  <a
+                    href="https://github.com/opendiving"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    GitHub
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/opendiving/opendiving-api"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    API
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    Contributing
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/opendiving/opendiving-web/blob/main/CODE_OF_CONDUCT.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    Code of Conduct
+                  </a>
+                </li>
+              </ul>
+            </nav>
+            <nav aria-labelledby="footer-support">
+              <p id="footer-support" className="font-semibold mb-4">
+                Support
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground touch:space-y-0">
+                <li>
+                  <Link
+                    href="/support"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    Support
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/privacy"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    Privacy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/terms"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    Terms of Service
+                  </Link>
+                </li>
+              </ul>
+            </nav>
           </div>
-          <nav aria-labelledby="footer-platform">
-            <p id="footer-platform" className="font-semibold mb-4">
-              Platform
-            </p>
-            <ul className="space-y-2 text-sm text-muted-foreground touch:space-y-0">
-              <li>
-                <Link
-                  href="/dives"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  Dive Log
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/trips"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  Trips
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/sites"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  Dive Sites
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/gear"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  Equipment
-                </Link>
-              </li>
-            </ul>
-          </nav>
-          <nav aria-labelledby="footer-resources">
-            <p id="footer-resources" className="font-semibold mb-4">
-              Resources
-            </p>
-            <ul className="space-y-2 text-sm text-muted-foreground touch:space-y-0">
-              <li>
-                <a
-                  href="https://github.com/opendiving"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  GitHub
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/opendiving/opendiving-api"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  API
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  Contributing
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/opendiving/opendiving-web/blob/main/CODE_OF_CONDUCT.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  Code of Conduct
-                </a>
-              </li>
-            </ul>
-          </nav>
-          <nav aria-labelledby="footer-support">
-            <p id="footer-support" className="font-semibold mb-4">
-              Support
-            </p>
-            <ul className="space-y-2 text-sm text-muted-foreground touch:space-y-0">
-              <li>
-                <Link
-                  href="/support"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  Support
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/privacy"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  Privacy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/terms"
-                  className="hover:text-foreground touch:block touch:py-3"
-                >
-                  Terms of Service
-                </Link>
-              </li>
-            </ul>
-          </nav>
-        </div>
-        <div className="border-t mt-12 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2026 OpenDiving. Open source diving platform.</p>
+          <div className="border-t mt-8 pt-6 text-center text-sm text-muted-foreground">
+            <p>&copy; 2026 OpenDiving. Open source diving platform.</p>
+          </div>
         </div>
       </div>
     </footer>
