@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 // A conveyor of bubbles: each climbs to the next one's place and takes on its size.
@@ -84,10 +85,17 @@ function shownAt() {
  * `MIN_VISIBLE_MS` and until the session is resolved, in place of the header skeleton
  * and centred spinner the auth gate otherwise shows. It lives in the root layout,
  * which client navigation never remounts, so it plays once per load.
+ *
+ * Not over the landing page, which is the product's pitch to a visitor rather than
+ * the app starting. Decided by the path the document loaded on, so a signed-in diver
+ * redirected from there to `/home` does not get it late.
  */
 export function LaunchSplash() {
   const { isLoading } = useAuth();
-  const [phase, setPhase] = useState<"shown" | "leaving" | "gone">("shown");
+  const pathname = usePathname();
+  const [phase, setPhase] = useState<"shown" | "leaving" | "gone">(() =>
+    pathname === "/" ? "gone" : "shown",
+  );
 
   useEffect(() => {
     if (isLoading || phase !== "shown") return;
