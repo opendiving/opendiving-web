@@ -121,7 +121,7 @@ export default async function RootLayout({
                   <AppShell>{children}</AppShell>
                 </CheckinDetailsProvider>
                 <Toaster />
-                <LaunchSplash />
+                <LaunchSplash nonce={nonce} />
               </AuthProvider>
             </ThemeProvider>
           </ConfigProvider>

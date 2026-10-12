@@ -6,15 +6,18 @@ import { useAuth } from "@/contexts/AuthContext";
 
 // A conveyor of bubbles: each climbs to the next one's place and takes on its size.
 // The top one settles in its slot and fades there while the next rises into it, and a
-// new one grows at the bottom. At every whole step the last three bubbles sit exactly
-// where the mark's circles do. One bubble per slot, so the four circles drawn below match these four.
+// new one grows at the bottom. At every whole step the last three bubbles are the
+// circles of `Logo` (`components/logo.tsx`), smallest filled; the first slot sits on
+// their line, as far below the smallest as 0.6 of the gap above it. `hole` is the
+// radius left unpainted inside each ring. One bubble per slot, so the four circles
+// drawn below match these four.
 const SLOTS = [
-  { x: 3.5, y: 22.1, r: 0 },
-  { x: 6.5, y: 18.5, r: 1.6 },
-  { x: 11.5, y: 12.5, r: 2.6 },
-  { x: 17, y: 5.5, r: 3.4 },
+  { x: 1.84, y: 24.22, r: 0, hole: 0 },
+  { x: 5.17, y: 20.22, r: 1.78, hole: 0 },
+  { x: 10.72, y: 13.56, r: 2.89, hole: 1.89 },
+  { x: 16.83, y: 5.78, r: 3.78, hole: 2.78 },
 ];
-type Key = "x" | "y" | "r";
+type Key = "x" | "y" | "r" | "hole";
 const STEP_MS = 800;
 const STROKE = 2;
 const TOP = SLOTS.length - 1;
@@ -59,10 +62,9 @@ function bubble(i: number, elapsed: number) {
   // mark, so this one fades from where it sits, across the first step.
   const lead = i === TOP && elapsed < STEP_MS ? 0 : FADE_LEAD;
   const fade = 1 - ease(Math.min(1, Math.max(0, p - (TOP - lead))));
-  // A ring STROKE thick, drawn from its outer edge and its hole: a solid dot until it
-  // is twice STROKE across, when the hole starts to open.
+  // Drawn from its outer edge and its hole, so a dot opens into a ring STROKE thick.
   const outer = at("r") + (STROKE / 2) * grow;
-  const hole = Math.max(0, outer - STROKE);
+  const hole = Math.max(0, Math.min(at("hole"), outer - STROKE));
   return {
     cx: at("x").toFixed(3),
     cy: at("y").toFixed(3),
@@ -93,7 +95,7 @@ function shownAt() {
  * the app starting. Decided by the path the document loaded on, so a signed-in diver
  * redirected from there to `/home` does not get it late.
  */
-export function LaunchSplash() {
+export function LaunchSplash({ nonce }: { nonce?: string }) {
   const { isLoading } = useAuth();
   const pathname = usePathname();
   const [phase, setPhase] = useState<"shown" | "leaving" | "gone">(() =>
@@ -115,7 +117,16 @@ export function LaunchSplash() {
 
   if (phase === "gone") return null;
 
-  return <Splash leaving={phase === "leaving"} />;
+  return (
+    <>
+      {/* Only an effect takes the splash down, so without scripts it would cover the
+          page for good. */}
+      <noscript>
+        <style nonce={nonce}>{"#launch-splash{display:none}"}</style>
+      </noscript>
+      <Splash leaving={phase === "leaving"} />
+    </>
+  );
 }
 
 function Splash({ leaving }: { leaving: boolean }) {
@@ -146,6 +157,7 @@ function Splash({ leaving }: { leaving: boolean }) {
 
   return (
     <div
+      id="launch-splash"
       role="status"
       aria-label="Loading OpenDiving"
       className="fixed inset-0 z-[100] grid place-items-center bg-coral text-white transition-opacity ease-out motion-reduce:transition-none data-[leaving]:pointer-events-none data-[leaving]:opacity-0"
@@ -165,12 +177,12 @@ function Splash({ leaving }: { leaving: boolean }) {
       >
         {/* The viewBox is cropped to the circles' painted extent, stroke included,
             rather than the mark's 24-unit box, so the grid centres what is drawn.
-            `--mark` is the width of 26 units; the crop is 18 of them. */}
+            `--mark` is the width of 26 units; the crop is 19.72 of them. */}
         <svg
-          viewBox="3.65 0.85 18 20.5"
+          viewBox="2.14 0.75 19.72 22.5"
           fill="none"
           stroke="currentColor"
-          className="h-auto w-[calc(var(--mark)*18/26)] overflow-visible"
+          className="h-auto w-[calc(var(--mark)*19.72/26)] overflow-visible"
         >
           {FIRST_FRAME.map((b, i) => (
             <circle
