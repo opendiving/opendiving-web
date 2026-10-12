@@ -205,8 +205,8 @@ export function GasUseCard() {
                     which usually matches no option, and a `<select>` whose value
                     matches no option shows the first one instead. Fixed width
                     so the chart doesn't shift sideways between "May 2026" and
-                    "September 2026". */}
-              <div className="w-40 shrink-0">
+                    "Sep 2026". */}
+              <div className="w-36 shrink-0">
                 <NativeSelect
                   aria-label="Gas consumption: period"
                   className="h-9 pl-2 font-medium"
@@ -322,7 +322,7 @@ function GasUseSummaryRow({
   units: UnitSystem;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-start gap-x-8 gap-y-3">
+    <div className="mb-5 flex flex-wrap items-start gap-x-6 gap-y-3">
       <ChartStat label="Average" detail={<Change summary={summary} />}>
         <Figure value={summary.average} units={units} />
       </ChartStat>

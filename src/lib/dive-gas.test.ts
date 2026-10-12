@@ -1103,7 +1103,7 @@ describe("summarizeGasUse", () => {
     const summary = summarizeGasUse(times, rmvs, "month", times[2]);
 
     expect(summary?.changePercent).toBeCloseTo(-25);
-    expect(summary?.previousLabel).toBe("April 2025");
+    expect(summary?.previousLabel).toBe("Apr 2025");
   });
 
   it("compares against the previous period with dives, not the previous calendar one", () => {
@@ -1111,7 +1111,7 @@ describe("summarizeGasUse", () => {
     // February" would be comparing against nothing.
     const summary = summarizeGasUse(times, rmvs, "month", times[4]);
 
-    expect(summary?.previousLabel).toBe("October 2025");
+    expect(summary?.previousLabel).toBe("Oct 2025");
     expect(summary?.changePercent).toBeCloseTo(-20);
   });
 

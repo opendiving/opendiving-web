@@ -207,7 +207,7 @@ export function DiveActivityCard() {
                     matches no option shows the first one instead. Fixed width -
                     the gas card's, since both now show "September 2026" - so the
                     chart doesn't shift sideways as the label changes. */}
-              <div className="w-40 shrink-0">
+              <div className="w-36 shrink-0">
                 <NativeSelect
                   aria-label="Dive activity: period"
                   className="h-9 pl-2 font-medium"
@@ -316,7 +316,7 @@ function DiveActivitySummaryRow({
   scope: ChartScope;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-3">
+    <div className="mb-5 flex flex-wrap items-end gap-x-6 gap-y-3">
       <ChartStat label="Dives">
         <span className="text-base font-semibold tabular-nums">
           {summary.dives}

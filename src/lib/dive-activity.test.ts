@@ -210,7 +210,7 @@ describe("summarizeActivity", () => {
     expect(summarizeActivity(LOGBOOK, "month", day(2025, 8, 12))).toMatchObject(
       {
         change: 3,
-        previousLabel: "February 2025",
+        previousLabel: "Feb 2025",
       },
     );
   });
