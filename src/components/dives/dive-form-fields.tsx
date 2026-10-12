@@ -210,6 +210,9 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // landed in.
   collapsedGroups: ReadonlySet<DiveFormFieldGroup>;
   onGroupOpenChange: (group: DiveFormFieldGroup, open: boolean) => void;
+  // That one section's fields alone, with no card around them: what a dive page
+  // card's edit dialog holds.
+  only?: DiveFormFieldGroup;
 }
 
 export function DiveFormFields<TFieldValues extends DiveFormValues>({
@@ -224,6 +227,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   diveNumberNotice,
   collapsedGroups,
   onGroupOpenChange,
+  only,
 }: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
@@ -259,15 +263,20 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   });
   const until: string | undefined = startTime || undefined;
   const roster = useDiveRoster(tripUuid, courseUuid);
-  const section = (group: DiveFormFieldGroup, children: ReactNode) => (
-    <DiveFormSection
-      title={group}
-      open={!collapsedGroups.has(group)}
-      onOpenChange={(open) => onGroupOpenChange(group, open)}
-    >
-      {children}
-    </DiveFormSection>
-  );
+  const section = (group: DiveFormFieldGroup, children: ReactNode) => {
+    if (only) {
+      return group === only && <div className="space-y-6">{children}</div>;
+    }
+    return (
+      <DiveFormSection
+        title={group}
+        open={!collapsedGroups.has(group)}
+        onOpenChange={(open) => onGroupOpenChange(group, open)}
+      >
+        {children}
+      </DiveFormSection>
+    );
+  };
 
   // Every field with a unit carries its own toggle, and the fields of one dimension
   // share it: flipping Maximum depth flips Average depth too, since both read the one

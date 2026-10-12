@@ -8,7 +8,7 @@ import {
   SpeciesCard,
 } from "@/components/species/species-card";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { DiveProfileCard } from "@/components/dives/dive-profile-card";
 import { DiveMixturesCard } from "@/components/dives/dive-mixtures-card";
 import { DiveExposureCard } from "@/components/dives/dive-exposure-card";
@@ -22,13 +22,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Weight } from "lucide-react";
-import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
+import { DiveCardHeader } from "@/components/dives/dive-card-header";
+import type { DiveCardSection } from "@/components/dives/dive-section-dialog";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatWeight } from "@/lib/units";
 
 interface DiveDetailMainProps {
   dive: Dive;
+  /** Opens a section's edit dialog; absent, the cards have no edit control. */
+  onEdit?: (section: DiveCardSection) => void;
 }
 
 /**
@@ -41,7 +44,7 @@ interface DiveDetailMainProps {
  * Every card renders only when the dive carries the relevant data, so a hand-logged dive
  * shows whatever else was filled in.
  */
-export function DiveDetailMain({ dive }: DiveDetailMainProps) {
+export function DiveDetailMain({ dive, onEdit }: DiveDetailMainProps) {
   const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
   const units = useUnits();
   const withReturnTo = useWithReturnTo();
@@ -52,7 +55,10 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
       {/* Renders nothing for a dive logged by hand. */}
       <DiveProfileCard dive={dive} />
 
-      <DiveMixturesCard dive={dive} />
+      <DiveMixturesCard
+        dive={dive}
+        onEdit={onEdit && (() => onEdit("Tanks"))}
+      />
 
       <DiveGasConsumptionCard dive={dive} />
 
@@ -64,12 +70,11 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
           any gear items listed, and vice versa. */}
       {hasGearInfo && (
         <Card>
-          <CardHeader>
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="Gear" />
-              Gear
-            </CardTitle>
-          </CardHeader>
+          <DiveCardHeader
+            group="Gear"
+            title="Gear"
+            onEdit={onEdit && (() => onEdit("Gear"))}
+          />
           <CardContent className="space-y-4">
             {dive.gear_items && dive.gear_items.length > 0 && (
               <Table>
@@ -127,12 +132,11 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
           picker, in spotting order. */}
       {sightings.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="Marine life" />
-              Species Spotted
-            </CardTitle>
-          </CardHeader>
+          <DiveCardHeader
+            group="Marine life"
+            title="Species Spotted"
+            onEdit={onEdit && (() => onEdit("Marine life"))}
+          />
           <CardContent>
             <ul className={SPECIES_CARD_GRID}>
               {sightings.map((sighting) => (
@@ -162,12 +166,11 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
 
       {dive.notes && (
         <Card>
-          <CardHeader>
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="Notes" />
-              Notes
-            </CardTitle>
-          </CardHeader>
+          <DiveCardHeader
+            group="Notes"
+            title="Notes"
+            onEdit={onEdit && (() => onEdit("Notes"))}
+          />
           <CardContent>
             <div className="prose max-w-none">
               <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
