@@ -47,12 +47,17 @@ export function periodRange(
 }
 
 // What to call the period on screen: "All time", "2026", "Apr 2026". The month
-// is short so the period picker and the "vs <period>" line fit at phone width.
-export function periodLabel(anchor: number, scope: ChartScope): string {
+// is short by default so the "vs <period>" line fits at phone width; the period
+// picker has a fixed width of its own and names it in full.
+export function periodLabel(
+  anchor: number,
+  scope: ChartScope,
+  month: "short" | "long" = "short",
+): string {
   if (scope === "all") return "All time";
 
   return new Date(anchor).toLocaleDateString("en-US", {
-    ...(scope === "month" ? { month: "short" } : {}),
+    ...(scope === "month" ? { month } : {}),
     year: "numeric",
     timeZone: "UTC",
   });

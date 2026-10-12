@@ -205,9 +205,10 @@ export function DiveActivityCard() {
                     itself: the anchor is whichever day you happened to land on,
                     which usually matches no option, and a `<select>` whose value
                     matches no option shows the first one instead. Fixed width -
-                    the gas card's, since both show "Sep 2026" - so the
-                    chart doesn't shift sideways as the label changes. */}
-              <div className="w-36 shrink-0">
+                    the gas card's, since both show "September 2026" - so the
+                    chart doesn't shift sideways as the label changes, and wider
+                    once it wraps onto a line of its own. */}
+              <div className="w-40 shrink-0 @max-2xl:w-56">
                 <NativeSelect
                   aria-label="Dive activity: period"
                   className="h-9 pl-2 font-medium"
@@ -221,7 +222,7 @@ export function DiveActivityCard() {
                 >
                   {periods.map((period) => (
                     <option key={period.start} value={String(period.start)}>
-                      {periodLabel(period.start, scope)}
+                      {periodLabel(period.start, scope, "long")}
                     </option>
                   ))}
                 </NativeSelect>

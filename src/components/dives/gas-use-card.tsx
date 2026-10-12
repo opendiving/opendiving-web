@@ -205,8 +205,9 @@ export function GasUseCard() {
                     which usually matches no option, and a `<select>` whose value
                     matches no option shows the first one instead. Fixed width
                     so the chart doesn't shift sideways between "May 2026" and
-                    "Sep 2026". */}
-              <div className="w-36 shrink-0">
+                    "September 2026", and wider once it wraps onto a line of its
+                    own. */}
+              <div className="w-40 shrink-0 @max-2xl:w-56">
                 <NativeSelect
                   aria-label="Gas consumption: period"
                   className="h-9 pl-2 font-medium"
@@ -220,7 +221,7 @@ export function GasUseCard() {
                 >
                   {periods.map((period) => (
                     <option key={period.start} value={String(period.start)}>
-                      {periodLabel(period.start, scope)}
+                      {periodLabel(period.start, scope, "long")}
                     </option>
                   ))}
                 </NativeSelect>
