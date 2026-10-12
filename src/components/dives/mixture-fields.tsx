@@ -31,6 +31,7 @@ import {
 } from "@/lib/dive-mixtures";
 import { GAS_ROLES, TANK_USAGE } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
+import { MixtureTankIcon } from "@/components/dives/mixture-tank-icon";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
 import { useEntryUnits } from "@/hooks/useEntryUnits";
@@ -141,6 +142,43 @@ function MixtureGasHint({
   if (parts.length === 0) return null;
 
   return <p className="text-xs text-muted-foreground">{parts.join(" · ")}</p>;
+}
+
+// The cylinder drawn beside a tank's title, as the dive page draws it, redrawn as its
+// volume, mix and usage are typed. `""` is the form's cleared state, unrecorded here
+// as it is on the wire, so a blank box draws the single in air colours.
+//
+// Its own component for `MixtureGasHint`'s reason. Whether it is the left of a
+// parallel pair depends on the rows above it, so it watches their usage and nothing
+// else of theirs.
+function MixtureTitleIcon({
+  control,
+  index,
+}: {
+  control: Control<MixtureFieldsValues>;
+  index: number;
+}) {
+  const volume = useWatch({ control, name: `mixtures.${index}.volume` });
+  const oxygen = useWatch({ control, name: `mixtures.${index}.oxygen` });
+  const helium = useWatch({ control, name: `mixtures.${index}.helium` });
+  const usages = useWatch({
+    control,
+    name: Array.from(
+      { length: index + 1 },
+      (_, row) => `mixtures.${row}.usage` as const,
+    ),
+  });
+  const left = usages.findIndex((usage) => usage === "parallel") === index;
+
+  return (
+    <MixtureTankIcon
+      volume={volume === "" ? null : volume}
+      oxygen={oxygen === "" ? null : oxygen}
+      helium={helium === "" ? null : helium}
+      left={left}
+      className="size-6 shrink-0 stroke-[1.5] text-foreground"
+    />
+  );
 }
 
 // The ppO₂ ceilings a cylinder is actually planned to, offered in place of a free
@@ -309,7 +347,15 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
         // common case for a dive logged by hand".
         <RepeatableRow
           key={field.id}
-          title={`Tank ${index + 1}`}
+          title={
+            <span className="flex items-center gap-2">
+              <MixtureTitleIcon
+                control={control as unknown as Control<MixtureFieldsValues>}
+                index={index}
+              />
+              Tank {index + 1}
+            </span>
+          }
           removeLabel={`Remove tank ${index + 1}`}
           onRemove={() => remove(index)}
         >

@@ -673,3 +673,74 @@ describe("Add tank", () => {
     expect(document.activeElement).toBe(add);
   });
 });
+
+// The drawing itself is `DiveMixturesCard`'s; what the form adds is that it follows
+// the boxes as they are typed into, `""` included.
+describe("MixtureFields tank icon", () => {
+  // `\b` would let `lucide-tank` match `lucide-tank-nitrox`.
+  function iconClass(tank: number): string {
+    return screen
+      .getByText(new RegExp(`^tank ${tank}$`, "i"))
+      .querySelector("svg")!
+      .getAttribute("class")!;
+  }
+
+  it("draws a tank added by hand as a single holding air", async () => {
+    render(<Harness mixtures={[]} maxDepth={20} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /add tank/i }));
+
+    expect(iconClass(1)).toMatch(/lucide-tank(\s|$)/);
+  });
+
+  it("draws an unrecorded cylinder as a single holding air", () => {
+    render(
+      <Harness
+        mixtures={[{ volume: "", oxygen: "", helium: "" }]}
+        maxDepth={20}
+      />,
+    );
+
+    expect(iconClass(1)).toMatch(/lucide-tank(\s|$)/);
+  });
+
+  it("draws a twin set and its gas from the cylinder's own fields", () => {
+    render(
+      <Harness
+        mixtures={[{ volume: 22.2, oxygen: 18, helium: 45 }]}
+        maxDepth={60}
+      />,
+    );
+
+    expect(iconClass(1)).toMatch(/lucide-twin-tank-trimix\b/);
+  });
+
+  it("draws the first parallel cylinder as the left of the pair", () => {
+    render(
+      <Harness
+        mixtures={[
+          { ...EAN54, usage: "staged" },
+          { ...EAN54, usage: "parallel" },
+          { ...EAN54, usage: "parallel" },
+        ]}
+        maxDepth={20}
+      />,
+    );
+
+    expect([iconClass(1), iconClass(2), iconClass(3)]).toEqual([
+      expect.stringMatching(/lucide-tank-nitrox\b/),
+      expect.stringMatching(/lucide-left-tank-nitrox\b/),
+      expect.stringMatching(/lucide-tank-nitrox\b/),
+    ]);
+  });
+
+  it("redraws as the mix is typed", async () => {
+    render(<Harness mixtures={[{ ...EAN54 }]} maxDepth={20} />);
+
+    const oxygen = screen.getByLabelText(/^o₂/i);
+    await userEvent.clear(oxygen);
+    await userEvent.type(oxygen, "21");
+
+    expect(iconClass(1)).toMatch(/lucide-tank(\s|$)/);
+  });
+});
