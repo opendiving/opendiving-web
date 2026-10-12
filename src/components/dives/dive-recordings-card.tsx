@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Download, Loader2, Paperclip, Star, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -177,9 +178,8 @@ export function DiveRecordingsCard({
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle as="h2">Recordings</CardTitle>
-        </CardHeader>
+        {/* The form's Import glyph: the files that section attaches are these. */}
+        <DiveCardHeader group="Import" title="Recordings" />
         <CardContent className="space-y-6">
           {recordings.map((recording) => {
             const device = recordingDeviceLabel(recording.device);
