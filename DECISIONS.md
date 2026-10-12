@@ -6289,14 +6289,13 @@ in the card that is also a destination says so. Wikidata gets no line: its half 
 CC0 asks for nothing, and the picker's second credit exists only for search results naming upstream
 Wikidata rows the catalog never stored.
 
-## The deco readouts have a panel, because the depth plot has two edges and they need three
+## The deco readouts have a panel, because the depth plot has two edges and they need four
 
 The six deco channels carry four scales the depth plot's two edges cannot hold, so a second plot
 beneath it shares the time axis, one row per scale: NDL, TTS, ppO₂, and percent for CNS and both
-gradient factors. NDL and TTS are both minutes and still two rows: a few minutes of TTS under a
-99-minute NDL is a flat line. A row exists only while a channel on it is shown. No curve is drawn
-against nothing. `profileScalePlacement` in `lib/dive-profile.ts` is a pure function over channel
-keys, so a test sweeps its 1 024 cells.
+gradient factors. A row exists only while a channel on it is shown. No curve is drawn against
+nothing. `profileScalePlacement` in `lib/dive-profile.ts` is a pure function over channel keys, so a
+test sweeps its 1 024 cells.
 
 Rejected: the six on the depth plot (ppO₂ on the pressure axis is a flat line; `ProfileAxisKey`
 names the quantity, not the unit); a row per channel, splitting paired readings; normalising onto
@@ -6350,10 +6349,10 @@ Six chart tokens in `globals.css` — `--ndl`, `--tts`, `--ppo2`, `--cns`, `--gr
 `--surface-gradient-factor` — are declared once, never under `.dark`, like `--pressure` and
 `--ceiling`. Each clears WCAG's 3:1 against both cards; the measured figures are on the block.
 
-Separation matters within a panel row: minutes holds two curves, percent three, and within each the
-hues are 90 degrees apart or more. Across rows they need not be (`--surface-gradient-factor` at 230
-is 25 degrees from `--ppo2` at 205), the trade `--ceiling` makes with `--coral`: the plot, legend
-and crosshair name each curve, so colour does least.
+Separation matters within a panel row: percent holds three curves, 90 degrees apart or more. Across
+rows they need not be (`--surface-gradient-factor` at 230 is 25 degrees from `--ppo2` at 205), the
+trade `--ceiling` makes with `--coral`: the plot, legend and crosshair name each curve, so colour
+does least.
 
 The two gradient factors are not one hue at two lightnesses: olives far enough apart put the lighter
 at 1.97:1 on the light card. The panel's curves are solid: the ceiling's dash marks the one

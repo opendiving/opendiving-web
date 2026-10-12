@@ -231,9 +231,9 @@
          --surface-gradient-factor   4.29:1 light, 3.79:1 dark
 
        **What has to be separable is what shares a row**, and the panel is one
-       row per unit: the two minutes curves, the one bar curve, and the three
-       percentages. Within each row the hues are 90 degrees apart or more. Across
-       rows they are not always - --surface-gradient-factor's 230 sits 25 degrees
+       row per scale: no-deco time, time to surface, ppO2, and the three
+       percentages. Within that last row the hues are 90 degrees apart or more.
+       Across rows they are not always - --surface-gradient-factor's 230 sits 25 degrees
        from --ppo2's 205 - and that is the same trade --ceiling already makes at
        16 degrees from --coral, for the same reason: two curves that never share
        a plot are told apart by which plot they are in, and the legend and the
