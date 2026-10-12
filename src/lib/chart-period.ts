@@ -46,12 +46,13 @@ export function periodRange(
   return { start: Date.UTC(year, month, 1), end: Date.UTC(year, month + 1, 1) };
 }
 
-// What to call the period on screen: "All time", "2026", "April 2026".
+// What to call the period on screen: "All time", "2026", "Apr 2026". The month
+// is short so the period picker and the "vs <period>" line fit at phone width.
 export function periodLabel(anchor: number, scope: ChartScope): string {
   if (scope === "all") return "All time";
 
   return new Date(anchor).toLocaleDateString("en-US", {
-    ...(scope === "month" ? { month: "long" } : {}),
+    ...(scope === "month" ? { month: "short" } : {}),
     year: "numeric",
     timeZone: "UTC",
   });
