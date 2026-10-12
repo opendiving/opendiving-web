@@ -233,7 +233,9 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
   },
   gradient_factor: {
     key: "gradient_factor",
-    label: "Gradient factor",
+    // Says where it was read, beside the surface reading and the "GF 30/85"
+    // settings the recordings card names.
+    label: "Gradient factor at depth",
     unit: "%",
     scale: 1, // whole percent
     decimals: 0,

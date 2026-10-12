@@ -1542,7 +1542,7 @@ describe("DiveProfileChart legend menu", () => {
       ["No-deco time"],
       ["Time to surface"],
       ["ppO₂"],
-      ["CNS", "Surface gradient factor", "Gradient factor"],
+      ["CNS", "Surface gradient factor", "Gradient factor at depth"],
     ]);
   });
 });
@@ -1673,7 +1673,7 @@ describe("DiveProfileChart deco readouts", () => {
     expect(readoutText()).toMatch(/0 min Time to surface/);
     expect(readoutText()).toMatch(/1\.10 bar ppO₂/);
     expect(readoutText()).toMatch(/2\.4% CNS/);
-    expect(readoutText()).toMatch(/12% Gradient factor/);
+    expect(readoutText()).toMatch(/12% Gradient factor at depth/);
     expect(readoutText()).toMatch(/30% Surface gradient factor/);
   });
 
@@ -1725,13 +1725,13 @@ describe("DiveProfileChart deco readouts", () => {
     expect(summary()).toMatch(/time to surface up to 18 minutes/);
     expect(summary()).toMatch(/oxygen partial pressure up to 1\.32 bar/);
     expect(summary()).toMatch(/CNS to 12\.4 percent/);
-    expect(summary()).toMatch(/gradient factor to 98 percent/);
+    expect(summary()).toMatch(/gradient factor at depth to 98 percent/);
     expect(summary()).toMatch(/surface gradient factor to 84 percent/);
 
     fireEvent.click(screen.getByRole("button", { name: CHANNEL_BUTTONS.cns }));
 
     expect(summary()).not.toMatch(/CNS to/);
-    expect(summary()).toMatch(/gradient factor to 98 percent/);
+    expect(summary()).toMatch(/gradient factor at depth to 98 percent/);
   });
 
   it("numbers each panel row in the unit its curves are in", () => {
@@ -1768,7 +1768,7 @@ describe("DiveProfileChart deco readouts", () => {
     );
 
     expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(
-      /gradient factor to 12575 percent/,
+      /gradient factor at depth to 12575 percent/,
     );
   });
 
@@ -1995,7 +1995,7 @@ describe("DiveProfileChart with a gradient factor past the percent axis's bound"
     const { container } = render(<DiveProfileChart profile={brokenGf} />);
     hoverAt(1500 / 3000);
 
-    expect(readoutText()).toMatch(/14060% Gradient factor/);
+    expect(readoutText()).toMatch(/14060% Gradient factor at depth/);
     expect(
       container.querySelectorAll("circle.text-gradient-factor"),
     ).toHaveLength(0);

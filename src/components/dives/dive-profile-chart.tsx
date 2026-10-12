@@ -2087,7 +2087,7 @@ function describeProfile({
       case "cns":
         return `CNS to ${high} ${word(key)}`;
       case "gradient_factor":
-        return `gradient factor to ${high} ${word(key)}`;
+        return `gradient factor at depth to ${high} ${word(key)}`;
       case "surface_gradient_factor":
         return `surface gradient factor to ${high} ${word(key)}`;
     }
