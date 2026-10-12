@@ -1757,7 +1757,7 @@ function ReadoutGrid({
           : "grid-cols-[auto_auto]",
       )}
     >
-      <div className={cn("col-span-2 text-xs", quiet)}>
+      <div className={cn("col-start-2 text-xs", quiet)}>
         {at === null ? "—" : formatElapsed(at)} elapsed
       </div>
       {/* One group per graph the readings come from, ruled off from each
