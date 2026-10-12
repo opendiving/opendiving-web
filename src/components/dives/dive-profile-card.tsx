@@ -122,7 +122,7 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   // deletion or a promotion reorders the list, and an index would quietly point
   // at a different device's curves afterwards.
   const [shownUuid, setShownUuid] = useState<string | null>(null);
-  // The title row's slot for the chart's channel menu - see `menuContainer`.
+  // The title row's slot for the chart's controls - see `menuContainer`.
   const [menuSlot, setMenuSlot] = useState<HTMLDivElement | null>(null);
 
   // Only recordings that actually carry samples: a recording whose files held
@@ -205,8 +205,9 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
             <LineChart className="h-5 w-5" />
             Dive Profile
           </CardTitle>
-          {/* The chart's 36px menu button, overhanging the title's line as the
-              other cards' pencils do - see `DiveCardHeader`. */}
+          {/* The chart's 36px buttons - its channel menu and full screen -
+              overhanging the title's line as the other cards' pencils do; see
+              `DiveCardHeader`. */}
           <div
             ref={setMenuSlot}
             className="-my-(--card-title-lift) -mr-2 flex touch:-mr-3"
