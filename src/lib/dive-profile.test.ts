@@ -1188,8 +1188,8 @@ describe("channelsOnAxis", () => {
   it("groups the channels that share one scale", () => {
     expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "percent")).toEqual([
       "cns",
-      "gradient_factor",
       "surface_gradient_factor",
+      "gradient_factor",
     ]);
     expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "depth")).toEqual([
       "depth",

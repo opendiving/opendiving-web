@@ -255,11 +255,13 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
   },
 };
 
-// The channels in the order they're plotted and listed in the legend, which is
-// the order the API's `PROFILE_CHANNEL_ORDER` sorts a profile's `channels` by and
-// the order DiveJSON §6.4 declares its members in. A separate list rather than
-// `Object.keys` on the record above, which gives this order only by accident of
-// how the object happens to be written.
+// The channels in the order they're plotted, listed in the legend and read out.
+// That is the order the API's `PROFILE_CHANNEL_ORDER` sorts a profile's
+// `channels` by and DiveJSON §6.4 declares its members in, but for the surface
+// gradient factor ahead of the gradient factor. Nothing here reads the API's
+// order, so the two can differ. A separate list rather than `Object.keys` on
+// the record above, which gives an order only by accident of how the object
+// happens to be written.
 export const PROFILE_CHANNEL_KEYS: readonly ProfileChannelKey[] = [
   "depth",
   "ceiling",
@@ -269,8 +271,8 @@ export const PROFILE_CHANNEL_KEYS: readonly ProfileChannelKey[] = [
   "tts",
   "ppo2",
   "cns",
-  "gradient_factor",
   "surface_gradient_factor",
+  "gradient_factor",
 ];
 
 // Everything the legend switches, which is every channel plus the event
@@ -764,7 +766,8 @@ export function withoutSurfaceNdl(
   let surfaced = false;
   series.values.forEach((value, index) => {
     if (value !== 0) surfaced = false;
-    else if (index > 0 && series.values[index - 1] >= NDL_CAP_S) surfaced = true;
+    else if (index > 0 && series.values[index - 1] >= NDL_CAP_S)
+      surfaced = true;
     if (!surfaced) kept.push(index);
   });
   if (kept.length === series.values.length) return series;
