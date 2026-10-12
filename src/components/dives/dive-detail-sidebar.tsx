@@ -23,21 +23,9 @@ import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
 import { PeopleList } from "@/components/people/people-list";
 import { fixPoint } from "@/components/dives/dive-map-locations";
-import {
-  Building2,
-  CloudSun,
-  Globe,
-  GraduationCap,
-  Luggage,
-  Mountain,
-  Phone,
-  ThermometerSun,
-  Waves,
-  WavesArrowUp,
-  Wind,
-  type LucideIcon,
-} from "lucide-react";
+import { Building2, Globe, GraduationCap, Luggage, Phone } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
+import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
@@ -63,29 +51,6 @@ interface DiveDetailSidebarProps {
 }
 
 const NO_PEOPLE: Readonly<Record<string, Person>> = {};
-
-// One row of the Environment card: what it is, and the value beside its icon.
-function Reading({
-  label,
-  icon: Icon,
-  children,
-}: {
-  label: string;
-  icon: LucideIcon;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <div className="text-sm font-medium text-muted-foreground mb-1">
-        {label}
-      </div>
-      <div className="flex items-center gap-2 text-xl font-semibold">
-        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 break-words">{children}</span>
-      </div>
-    </div>
-  );
-}
 
 // A stored vocabulary value's label, falling back to the wire value, like
 // `gearTypeLabel` and the tank cards' role badge: the API can grow a member
@@ -367,37 +332,45 @@ export function DiveDetailSidebar({
               Environment
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {dive.air_temperature != null && (
-              <Reading label="Air temperature" icon={ThermometerSun}>
-                {formatTemperature(dive.air_temperature, units)}
-              </Reading>
-            )}
-            {dive.water_type != null && (
-              <Reading label="Water type" icon={Waves}>
-                {labelOf(WATER_TYPE_LABELS, dive.water_type)}
-              </Reading>
-            )}
-            {dive.altitude != null && (
-              <Reading label="Altitude" icon={Mountain}>
-                {formatAltitude(dive.altitude, units)}
-              </Reading>
-            )}
-            {dive.current != null && (
-              <Reading label="Current" icon={Wind}>
-                {labelOf(CURRENT_LABELS, dive.current)}
-              </Reading>
-            )}
-            {dive.waves != null && (
-              <Reading label="Waves" icon={WavesArrowUp}>
-                {labelOf(WAVES_LABELS, dive.waves)}
-              </Reading>
-            )}
-            {dive.weather != null && (
-              <Reading label="Weather" icon={CloudSun}>
-                {labelOf(WEATHER_LABELS, dive.weather)}
-              </Reading>
-            )}
+          <CardContent>
+            <CardFigures className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]">
+              {dive.air_temperature != null && (
+                <CardFigure
+                  label="Air temperature"
+                  value={formatTemperature(dive.air_temperature, units)}
+                />
+              )}
+              {dive.water_type != null && (
+                <CardFigure
+                  label="Water type"
+                  value={labelOf(WATER_TYPE_LABELS, dive.water_type)}
+                />
+              )}
+              {dive.altitude != null && (
+                <CardFigure
+                  label="Altitude"
+                  value={formatAltitude(dive.altitude, units)}
+                />
+              )}
+              {dive.current != null && (
+                <CardFigure
+                  label="Current"
+                  value={labelOf(CURRENT_LABELS, dive.current)}
+                />
+              )}
+              {dive.waves != null && (
+                <CardFigure
+                  label="Waves"
+                  value={labelOf(WAVES_LABELS, dive.waves)}
+                />
+              )}
+              {dive.weather != null && (
+                <CardFigure
+                  label="Weather"
+                  value={labelOf(WEATHER_LABELS, dive.weather)}
+                />
+              )}
+            </CardFigures>
           </CardContent>
         </Card>
       )}
