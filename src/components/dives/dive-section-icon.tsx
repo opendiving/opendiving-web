@@ -5,12 +5,12 @@ import {
   Fish,
   Gauge,
   GraduationCap,
-  Import as ImportIcon,
   MapPin,
   Users,
   type LucideProps,
 } from "lucide-react";
 import type { ComponentType } from "react";
+import { DiveComputerIcon } from "@/components/icons/dive-computer-icon";
 import { TwinTankIcon } from "@/components/icons/tank-icon";
 import type { DiveFormFieldGroup } from "@/lib/dive-form-fields";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 export const DIVE_SECTION_ICONS: Readonly<
   Record<DiveFormFieldGroup, ComponentType<LucideProps>>
 > = {
-  Import: ImportIcon,
+  Import: DiveComputerIcon,
   Training: GraduationCap,
   Location: MapPin,
   People: Users,

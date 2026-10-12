@@ -9,7 +9,13 @@ import {
 import { GAS_BADGE_CLASS, GAS_ROLE_LABELS } from "@/lib/dive-mixtures";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CARD_SECTION_CONTENT,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -85,7 +91,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
           Gas Consumption
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className={CARD_SECTION_CONTENT}>
         {!gasUse ? (
           <p className="text-sm text-muted-foreground">{reason}</p>
         ) : rows.length > 0 ? (

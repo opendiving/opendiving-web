@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Dive, DiveMixture } from "@/lib/api/dives";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import {
   GAS_ROLE_LABELS,
   TANK_USAGE_LABELS,
@@ -20,7 +20,7 @@ import {
   TwinTankIcon,
 } from "@/components/icons/tank-icon";
 import { CardFigure, CardFigures } from "@/components/dives/card-figure";
-import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
+import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { isTwinSetVolume } from "@/components/dives/volume-combobox";
 import { useUnits } from "@/hooks/useUnits";
@@ -33,6 +33,8 @@ import {
 
 interface DiveMixturesCardProps {
   dive: Dive;
+  /** Opens the Tanks edit dialog; absent, the card has no edit control. */
+  onEdit?: () => void;
 }
 
 interface TankCardProps {
@@ -178,7 +180,7 @@ function TankCard({
  * `lib/dive-mixtures.ts` rather than asked of the API - see that module's header for
  * why the maths lives client-side.
  */
-export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
+export function DiveMixturesCard({ dive, onEdit }: DiveMixturesCardProps) {
   const units = useUnits();
 
   if (!dive.mixtures || dive.mixtures.length === 0) return null;
@@ -214,13 +216,8 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle as="h2" className="flex items-center gap-2">
-          <DiveSectionIcon group="Tanks" />
-          Tanks
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+      <DiveCardHeader group="Tanks" title="Tanks" onEdit={onEdit} />
+      <CardContent className={CARD_SECTION_CONTENT}>
         {/* Columns from the card's own width rather than the window's: the slot
             this card sits in is narrowest at `lg`, and 19rem holds a card's
             three figures on one line. One column never outgrows the card. */}

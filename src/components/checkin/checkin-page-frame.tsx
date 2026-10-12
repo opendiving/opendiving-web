@@ -15,7 +15,6 @@ import {
   Phone,
   Printer,
   Share2,
-  SquarePen,
   UserSquare,
   type LucideIcon,
 } from "lucide-react";
@@ -56,6 +55,7 @@ import { DivingFiguresDialog } from "@/components/checkin/diving-figures-dialog"
 import { Logo } from "@/components/logo";
 import { PortraitFrame, PortraitImage } from "@/components/user/portrait-image";
 import { Button } from "@/components/ui/button";
+import { EditControl } from "@/components/ui/edit-control";
 import { Card, CardContent } from "@/components/ui/card";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -937,35 +937,6 @@ function LinkPicture({
   const { url } = useAuthedBlobUrl(fetchBlob);
   // eslint-disable-next-line @next/next/no-img-element
   return url && <img src={url} alt={alt} className={className} />;
-}
-
-// Every section's edit control, and the one on the name row: an icon button whose
-// hover hint is also its accessible name, and which never reaches the page a diver
-// hands over.
-function EditControl({
-  label,
-  onClick,
-  className,
-}: {
-  label: string;
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <div className="print:hidden">
-      <IconTooltip label={label}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className={className}
-          onClick={onClick}
-        >
-          <SquarePen className="h-4 w-4" />
-        </Button>
-      </IconTooltip>
-    </div>
-  );
 }
 
 // What a section with nothing in it says on screen. It never prints: the section

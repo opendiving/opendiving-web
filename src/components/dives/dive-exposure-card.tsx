@@ -1,6 +1,12 @@
 import { Dive } from "@/lib/api/dives";
 import { primaryRecording } from "@/lib/dive-recordings";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CARD_SECTION_CONTENT,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Gauge } from "lucide-react";
 import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 
@@ -64,7 +70,7 @@ export function DiveExposureCard({ dive }: DiveExposureCardProps) {
           Exposure &amp; Pressure
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className={CARD_SECTION_CONTENT}>
         <CardFigures>
           {hasCns && (
             <Reading

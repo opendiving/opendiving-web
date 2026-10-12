@@ -8,7 +8,7 @@ import {
   SpeciesCard,
 } from "@/components/species/species-card";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import { DiveProfileCard } from "@/components/dives/dive-profile-card";
 import { DiveMixturesCard } from "@/components/dives/dive-mixtures-card";
 import { DiveExposureCard } from "@/components/dives/dive-exposure-card";
@@ -22,13 +22,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Weight } from "lucide-react";
-import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
+import { DiveCardHeader } from "@/components/dives/dive-card-header";
+import type { DiveCardSection } from "@/components/dives/dive-section-dialog";
 import { useUnits } from "@/hooks/useUnits";
+import { cn } from "@/lib/utils";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatWeight } from "@/lib/units";
 
 interface DiveDetailMainProps {
   dive: Dive;
+  /** Opens a section's edit dialog; absent, the cards have no edit control. */
+  onEdit?: (section: DiveCardSection) => void;
 }
 
 /**
@@ -41,7 +45,7 @@ interface DiveDetailMainProps {
  * Every card renders only when the dive carries the relevant data, so a hand-logged dive
  * shows whatever else was filled in.
  */
-export function DiveDetailMain({ dive }: DiveDetailMainProps) {
+export function DiveDetailMain({ dive, onEdit }: DiveDetailMainProps) {
   const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
   const units = useUnits();
   const withReturnTo = useWithReturnTo();
@@ -52,7 +56,10 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
       {/* Renders nothing for a dive logged by hand. */}
       <DiveProfileCard dive={dive} />
 
-      <DiveMixturesCard dive={dive} />
+      <DiveMixturesCard
+        dive={dive}
+        onEdit={onEdit && (() => onEdit("Tanks"))}
+      />
 
       <DiveGasConsumptionCard dive={dive} />
 
@@ -64,49 +71,52 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
           any gear items listed, and vice versa. */}
       {hasGearInfo && (
         <Card>
-          <CardHeader>
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="Gear" />
-              Gear
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <DiveCardHeader
+            group="Gear"
+            title="Gear"
+            onEdit={onEdit && (() => onEdit("Gear"))}
+          />
+          <CardContent className={cn(CARD_SECTION_CONTENT, "space-y-4")}>
+            {/* Up by the header row's inset - a 48px row around a 20px line - so the
+                column labels sit where every other card's first line does. */}
             {dive.gear_items && dive.gear_items.length > 0 && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Brand</TableHead>
-                    <TableHead>Name</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dive.gear_items.map((item) => (
-                    <TableRow key={item.uuid}>
-                      <TableCell className="text-muted-foreground">
-                        {gearTypeLabel(item.type) ?? "-"}
-                      </TableCell>
-                      <TableCell>{item.brand || "-"}</TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Link
-                            href={withReturnTo(`/gear/${item.uuid}`)}
-                            className="relative hover:underline touch:tap-target"
-                          >
-                            {item.name}
-                          </Link>
-                          {item.rented && (
-                            <Badge variant="secondary">Rented</Badge>
-                          )}
-                          {item.is_archived && (
-                            <Badge variant="outline">Archived</Badge>
-                          )}
-                        </div>
-                      </TableCell>
+              <div className="-mt-3.5">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Brand</TableHead>
+                      <TableHead>Name</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {dive.gear_items.map((item) => (
+                      <TableRow key={item.uuid}>
+                        <TableCell className="text-muted-foreground">
+                          {gearTypeLabel(item.type) ?? "-"}
+                        </TableCell>
+                        <TableCell>{item.brand || "-"}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              href={withReturnTo(`/gear/${item.uuid}`)}
+                              className="relative hover:underline touch:tap-target"
+                            >
+                              {item.name}
+                            </Link>
+                            {item.rented && (
+                              <Badge variant="secondary">Rented</Badge>
+                            )}
+                            {item.is_archived && (
+                              <Badge variant="outline">Archived</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
             {dive.weight != null && (
               <div>
@@ -127,13 +137,12 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
           picker, in spotting order. */}
       {sightings.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="Marine life" />
-              Species Spotted
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <DiveCardHeader
+            group="Marine life"
+            title="Species Spotted"
+            onEdit={onEdit && (() => onEdit("Marine life"))}
+          />
+          <CardContent className={CARD_SECTION_CONTENT}>
             <ul className={SPECIES_CARD_GRID}>
               {sightings.map((sighting) => (
                 <SpeciesCard
@@ -162,13 +171,12 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
 
       {dive.notes && (
         <Card>
-          <CardHeader>
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="Notes" />
-              Notes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <DiveCardHeader
+            group="Notes"
+            title="Notes"
+            onEdit={onEdit && (() => onEdit("Notes"))}
+          />
+          <CardContent className={CARD_SECTION_CONTENT}>
             <div className="prose max-w-none">
               <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
                 {dive.notes}
