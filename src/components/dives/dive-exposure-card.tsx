@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
 import { Dive } from "@/lib/api/dives";
 import { primaryRecording } from "@/lib/dive-recordings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gauge } from "lucide-react";
+import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 
 interface DiveExposureCardProps {
   dive: Dive;
@@ -65,7 +65,7 @@ export function DiveExposureCard({ dive }: DiveExposureCardProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardFigures>
           {hasCns && (
             <Reading
               label="CNS"
@@ -91,26 +91,14 @@ export function DiveExposureCard({ dive }: DiveExposureCardProps) {
             />
           )}
           {hasPressure && (
-            <div>
-              <ReadingLabel>Surface pressure</ReadingLabel>
-              <div className="text-2xl font-bold">
-                {readouts.surface_pressure_bar} bar
-              </div>
-            </div>
+            <CardFigure
+              label="Surface pressure"
+              value={`${readouts.surface_pressure_bar} bar`}
+            />
           )}
-        </div>
+        </CardFigures>
       </CardContent>
     </Card>
-  );
-}
-
-// Shared by the pair readings and the single-valued surface pressure, which are
-// laid out differently below the label but have to read as one row of headings.
-function ReadingLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="text-sm font-medium text-muted-foreground mb-1">
-      {children}
-    </div>
   );
 }
 
@@ -143,35 +131,36 @@ function Reading({
   alert?: string;
 }) {
   return (
-    <div>
-      <ReadingLabel>{label}</ReadingLabel>
-      <div className="flex items-baseline gap-2">
-        <span className="text-muted-foreground">
-          {start != null ? `${start}${unit}` : "—"}
-        </span>
-        {/* Decorative: the accessible name comes from the label above and the two
-            values read in order, so announcing "right arrow" between them adds
-            nothing. */}
-        <span className="text-muted-foreground" aria-hidden>
-          →
-        </span>
-        {/* `text-warning`, not `text-warning-foreground` - the latter is the white
-            that sits *on* `bg-warning` and is invisible as text on a card in light
-            mode. Same trap as the MOD warnings on the Tanks card. */}
-        <span
-          className={`text-2xl font-bold ${alert ? "text-warning" : ""}`.trim()}
-        >
-          {end != null ? `${end}${unit}` : "—"}
-          {/* The colour is emphasis, and emphasis alone is not a channel: greyscale,
-              red/green-deficient and screen-reader users all get "105%" with nothing
-              distinguishing it (WCAG 2.1 SC 1.4.1). An `sr-only` span rather than the
-              `AlertTriangle` used elsewhere on this feature, because the card's whole
-              argument is that passing this line is emphasis rather than advice - and
-              an icon would be visible advice. This says the same thing to a reader
-              who cannot see the colour, and nothing to one who can. */}
-          {alert && <span className="sr-only"> — {alert}</span>}
-        </span>
-      </div>
-    </div>
+    <CardFigure
+      label={label}
+      value={
+        <>
+          <span className="font-normal text-muted-foreground">
+            {start != null ? `${start}${unit}` : "—"}
+          </span>
+          {/* Decorative: the accessible name comes from the label above and the
+              two values read in order, so announcing "right arrow" between them
+              adds nothing. */}
+          <span className="font-normal text-muted-foreground" aria-hidden>
+            {" → "}
+          </span>
+          {/* `text-warning`, not `text-warning-foreground` - the latter is the
+              white that sits *on* `bg-warning` and is invisible as text on a card
+              in light mode. Same trap as the MOD warnings on the Tanks card. */}
+          <span className={alert ? "text-warning" : undefined}>
+            {end != null ? `${end}${unit}` : "—"}
+            {/* The colour is emphasis, and emphasis alone is not a channel:
+                greyscale, red/green-deficient and screen-reader users all get
+                "105%" with nothing distinguishing it (WCAG 2.1 SC 1.4.1). An
+                `sr-only` span rather than the `AlertTriangle` used elsewhere on
+                this feature, because the card's whole argument is that passing
+                this line is emphasis rather than advice - and an icon would be
+                visible advice. This says the same thing to a reader who cannot
+                see the colour, and nothing to one who can. */}
+            {alert && <span className="sr-only"> — {alert}</span>}
+          </span>
+        </>
+      }
+    />
   );
 }
