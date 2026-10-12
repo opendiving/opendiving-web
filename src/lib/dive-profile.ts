@@ -1263,6 +1263,27 @@ export function tooltipVerticalAnchor(
       { y: plotTop, translateY: "4px" };
 }
 
+// How far the readout card stands off the crosshair when it sits beside it, in
+// CSS pixels.
+export const TOOLTIP_GAP_PX = 12;
+
+/**
+ * Which side of the crosshair the readout card sits on, so it never covers the
+ * line and the dots it is reading: the right where it fits inside the frame,
+ * the left where only that fits, and null where neither does and the card has
+ * to sit over the line. All three in CSS pixels, the crosshair measured from
+ * the frame's left edge.
+ */
+export function tooltipSide(
+  crosshairPx: number,
+  cardPx: number,
+  framePx: number,
+): "right" | "left" | null {
+  if (crosshairPx + TOOLTIP_GAP_PX + cardPx <= framePx) return "right";
+  if (crosshairPx - TOOLTIP_GAP_PX - cardPx >= 0) return "left";
+  return null;
+}
+
 // `Point` and `buildAreaPath` used to live here. They moved, unchanged, to
 // `lib/chart-path.ts` once the gas chart needed them too - same reasoning as the
 // `chart-scale.ts` move noted at the top of `lib/dive-gas.ts`. Their tests moved

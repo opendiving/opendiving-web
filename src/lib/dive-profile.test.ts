@@ -28,7 +28,9 @@ import {
   temperatureDomain,
   toChannelSeries,
   toPressureSeries,
+  tooltipSide,
   tooltipVerticalAnchor,
+  TOOLTIP_GAP_PX,
   profileScalePlacement,
   withoutSpuriousZeros,
   PROFILE_CHANNELS,
@@ -1014,6 +1016,28 @@ describe("formatElapsedSpoken", () => {
   it("reads a span aloud in hours and minutes", () => {
     expect(formatElapsedSpoken(1_500_000)).toBe("25min");
     expect(formatElapsedSpoken(5_100_000)).toBe("1h 25min");
+  });
+});
+
+describe("tooltipSide", () => {
+  // A 200px card in a 700px frame.
+  const CARD = 200;
+  const FRAME = 700;
+
+  it("sits right of the crosshair where it fits there", () => {
+    expect(tooltipSide(100, CARD, FRAME)).toBe("right");
+    expect(tooltipSide(FRAME - TOOLTIP_GAP_PX - CARD, CARD, FRAME)).toBe(
+      "right",
+    );
+  });
+
+  it("sits left of it where only the left has room", () => {
+    expect(tooltipSide(600, CARD, FRAME)).toBe("left");
+  });
+
+  it("sits over it where neither side has room", () => {
+    // A phone: 360px of frame, the crosshair in the middle.
+    expect(tooltipSide(180, CARD, 360)).toBeNull();
   });
 });
 

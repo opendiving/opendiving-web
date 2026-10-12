@@ -4,6 +4,7 @@ import {
   Fragment,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -62,7 +63,9 @@ import {
   temperatureDomain,
   toChannelSeries,
   toPressureSeries,
+  tooltipSide,
   tooltipVerticalAnchor,
+  TOOLTIP_GAP_PX,
 } from "@/lib/dive-profile";
 import {
   DIVE_PROFILE_SERIES_KEY,
@@ -85,7 +88,6 @@ import { useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
 import { type ElementSize, useElementSize } from "@/hooks/useElementSize";
 import { useFullscreen } from "@/hooks/useFullscreen";
-import { useKeepInside } from "@/hooks/useKeepInside";
 import { useUnits } from "@/hooks/useUnits";
 import type { UnitSystem } from "@/lib/units";
 
@@ -1686,34 +1688,54 @@ function ProfileTooltip({
   //
   // Vertically that is guaranteed by anchoring to the plot's own top or bottom
   // edge rather than offsetting from a data point - see `tooltipVerticalAnchor`
-  // for why offsetting from a point cannot be made safe here. Horizontally the
-  // card is centred on the crosshair and flips to hug whichever edge it is near,
-  // and `useKeepInside` pulls back in whatever a phone-width chart still leaves
-  // hanging over.
+  // for why offsetting from a point cannot be made safe here.
+  //
+  // Horizontally the card stands beside the crosshair wherever the chart is
+  // wide enough for it (`tooltipSide`), so it never covers the line and the
+  // dots it is reading. Where it is not, it is centred on the crosshair and held
+  // inside the frame, aligned to its left edge if it is wider than the frame.
+  // Measured and written after every render and before paint, since the side
+  // depends on how wide the readings came out - to the `translate` property,
+  // which composes with the vertical `transform` below and which React leaves
+  // alone because no `style` prop names it.
   const cardRef = useRef<HTMLDivElement>(null);
-  useKeepInside(cardRef);
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    const frame = card?.offsetParent;
+    if (!card || !frame) return;
+
+    const line = card.offsetLeft;
+    const width = card.offsetWidth;
+    const room = frame.clientWidth;
+    const side = tooltipSide(line, width, room);
+    const left =
+      side === "right"
+        ? line + TOOLTIP_GAP_PX
+        : side === "left"
+          ? line - TOOLTIP_GAP_PX - width
+          : Math.max(0, Math.min(line - width / 2, room - width));
+    card.style.translate = `${left - line}px`;
+  });
   const { y, translateY } = tooltipVerticalAnchor(
     topmostY,
     PADDING.top,
     plotBottom,
   );
-  const translateX =
-    cx < chartWidth * 0.2
-      ? "-12px"
-      : cx > chartWidth * 0.8
-        ? "calc(-100% + 12px)"
-        : "-50%";
 
   return (
     <div
       ref={cardRef}
       // Never a hover target itself - it sits over the plot, and letting it take
       // the pointer would make it flicker as it steals its own trigger's hover.
-      className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
+      //
+      // `w-max` so its width is its text's wherever it is placed: a box this
+      // far right in its frame would otherwise shrink to the room left of it,
+      // and the measurement above would answer for a narrower card.
+      className="pointer-events-none absolute z-10 w-max whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
       style={{
         left: `${(cx / chartWidth) * 100}%`,
         top: `${(y / chartHeight) * 100}%`,
-        transform: `translate(${translateX}, ${translateY})`,
+        transform: `translateY(${translateY})`,
       }}
       role="presentation"
     >
