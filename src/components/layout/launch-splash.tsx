@@ -20,7 +20,7 @@ const STROKE = 2;
 const TOP = SLOTS.length - 1;
 // How far ahead of the top slot, as a share of a step, the top bubble starts to fade.
 const FADE_LEAD = 0.75;
-const MIN_VISIBLE_MS = 2000;
+const MIN_VISIBLE_MS = 1000;
 const FADE_OUT_MS = 300;
 
 // Hermite tangents keep position and speed continuous through each slot, so the
