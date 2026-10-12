@@ -24,6 +24,7 @@ const TOP = SLOTS.length - 1;
 // How far ahead of the top slot, as a share of a step, the top bubble starts to fade.
 const FADE_LEAD = 0.75;
 const MIN_VISIBLE_MS = 1000;
+const LANDING_PATHS = ["/", "/join"];
 const FADE_OUT_MS = 300;
 
 // Hermite tangents keep position and speed continuous through each slot, so the
@@ -91,15 +92,16 @@ function shownAt() {
  * and centred spinner the auth gate otherwise shows. It lives in the root layout,
  * which client navigation never remounts, so it plays once per load.
  *
- * Not over the landing page, which is the product's pitch to a visitor rather than
- * the app starting. Decided by the path the document loaded on, so a signed-in diver
- * redirected from there to `/home` does not get it late.
+ * Not over the landing page, at `/` or under `/join`'s invite form, which is the
+ * product's pitch to a visitor rather than the app starting. Decided by the path the
+ * document loaded on, so a signed-in diver redirected from there to `/home` does not
+ * get it late.
  */
 export function LaunchSplash({ nonce }: { nonce?: string }) {
   const { isLoading } = useAuth();
   const pathname = usePathname();
   const [phase, setPhase] = useState<"shown" | "leaving" | "gone">(() =>
-    pathname === "/" ? "gone" : "shown",
+    LANDING_PATHS.includes(pathname) ? "gone" : "shown",
   );
 
   useEffect(() => {
