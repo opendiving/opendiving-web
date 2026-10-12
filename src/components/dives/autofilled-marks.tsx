@@ -36,7 +36,7 @@ export function AutofilledLegend() {
   return (
     <p
       aria-hidden
-      className="flex items-center gap-1.5 text-sm text-muted-foreground"
+      className="flex items-center gap-1.5 px-(--card-pad) text-sm text-muted-foreground"
     >
       <span className="inline-block size-1.5 rounded-full bg-teal" />
       Filled in for you
