@@ -51,7 +51,7 @@ describe("periodLabel", () => {
   it("names the scope's period", () => {
     expect(periodLabel(Date.UTC(2026, 3, 17), "all")).toBe("All time");
     expect(periodLabel(Date.UTC(2026, 3, 17), "year")).toBe("2026");
-    expect(periodLabel(Date.UTC(2026, 3, 17), "month")).toBe("April 2026");
+    expect(periodLabel(Date.UTC(2026, 3, 17), "month")).toBe("Apr 2026");
   });
 });
 
