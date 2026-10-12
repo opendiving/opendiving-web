@@ -178,7 +178,6 @@ export function DiveRecordingsCard({
       )}
 
       <Card>
-        {/* The form's Import glyph: the files that section attaches are these. */}
         <DiveCardHeader group="Import" title="Recordings" />
         <CardContent className="space-y-6">
           {recordings.map((recording) => {
