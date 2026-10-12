@@ -119,15 +119,9 @@ export function SpeciesDetailPageContent() {
   const displayName = speciesDisplayName(species);
   const rank = speciesRankLabel(species.rank);
   const photoSrc = speciesPhotoUrl(species.uuid, species.photo_sha256);
-  // The scientific name with its authority, as a citation writes it - the
-  // authority alone where the title already is the name.
-  const scientificName = species.common_name ? (
-    <>
-      <span className="italic">{species.scientific_name}</span>
-      {species.authority && ` ${species.authority}`}
-    </>
-  ) : (
-    species.authority
+  // Nothing where the title already is the scientific name.
+  const scientificName = species.common_name && (
+    <span className="italic">{species.scientific_name}</span>
   );
 
   // Zeroes for a species none of the diver's dives records, since that is what
@@ -232,6 +226,9 @@ export function SpeciesDetailPageContent() {
               )}
               {species.genus && (
                 <InfoRow label="Genus">{species.genus}</InfoRow>
+              )}
+              {species.authority && (
+                <InfoRow label="Authority">{species.authority}</InfoRow>
               )}
               {/* The identity the catalog is keyed on, and the one number that
                   means anything outside this database - which is why the export
