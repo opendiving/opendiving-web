@@ -73,7 +73,10 @@ const SUBTITLE = "text-sm md:mt-1 md:text-base";
 // past the other three sides for the glow.
 const PARTS_CLIP = "[clip-path:inset(-1em_-1em_-1em_0)]";
 const PARTS = "-ml-[0.75em] flex flex-wrap";
-const PART_DOT = "inline-block w-[0.75em] text-center";
+// A part too long for a line wraps beside its dot rather than under it, so its
+// own next line starts clear of the clip.
+const PART = "flex min-w-0";
+const PART_DOT = "w-[0.75em] shrink-0 text-center";
 const LABEL = "text-xs md:mb-1 md:text-sm md:font-medium";
 const VALUE = "text-base md:text-2xl";
 
@@ -374,9 +377,9 @@ function Subtitle({ subtitle }: Pick<MapHeroProps, "subtitle">) {
     <div className={cn(SUBTITLE, PARTS_CLIP)}>
       <p className={PARTS}>
         {parts.map((part, index) => (
-          <span key={index}>
+          <span key={index} className={PART}>
             <span className={PART_DOT}>{index > 0 && " · "}</span>
-            {part}
+            <span className="min-w-0">{part}</span>
           </span>
         ))}
       </p>
