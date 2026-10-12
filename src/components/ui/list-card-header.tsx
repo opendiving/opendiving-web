@@ -66,9 +66,6 @@ export interface ListCardHeaderProps {
  * but the card is still a section of it, and the empty state's `h3` below would
  * skip a level without it (`app/list-card-headings.render.test.tsx`).
  *
- * Padded evenly, without the lift and the gap a visible title is given: the
- * count's row is the header's only line.
- *
  * An empty list keeps the heading and loses the rest, padding included, so the
  * empty state below is the top of the card: "0 total trips" beside a box that
  * would search nothing is furniture around the one sentence worth reading. A
@@ -81,7 +78,7 @@ export function ListCardHeader({
   children,
 }: ListCardHeaderProps) {
   return (
-    <CardHeader className={cn("space-y-0 pt-(--card-pad)", isEmpty && "p-0")}>
+    <CardHeader className={cn("space-y-0", isEmpty && "p-0")}>
       <CardTitle as="h2" className="sr-only">
         {title}
       </CardTitle>

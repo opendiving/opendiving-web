@@ -17,19 +17,14 @@ const Card = React.forwardRef<
 ));
 Card.displayName = "Card";
 
-// Each section pads `--card-pad` (`globals.css`), 12px on a phone. The header
-// pads its top by the title's lift as well, so a control on the title's line sits
-// as far from the card's top as from its side.
+// Each section pads `--card-pad` (`globals.css`), 12px on a phone.
 const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      "flex flex-col space-y-1.5 p-(--card-pad) pt-[calc(var(--card-pad)+var(--card-title-lift))]",
-      className,
-    )}
+    className={cn("flex flex-col space-y-1.5 p-(--card-pad)", className)}
     {...props}
   />
 ));
@@ -58,13 +53,17 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
 CardTitle.displayName = "CardTitle";
 
 // A title line that also holds a control. A `size="sm"` button is taller than the
-// title's line, so centring the two let the button set the line's height and
-// dropped the title below where a card without one has it. Top-aligned, with the
-// control lifted by `--card-title-lift`, the title stays put and the control stays
-// centred on it; the row gap is that lift plus 12px, which keeps a control that
-// wraps onto its own line 12px clear of the title.
+// title's line, so the row drops the title by `--card-title-lift` and lifts the
+// control by as much: the control sits as far from the card's top as from its
+// side, and stays centred on the title. Top-aligned rather than centred, so the
+// button never sets the line's height. The row gap is that lift plus 12px, which
+// keeps a control that wraps onto its own line 12px clear of the title.
+//
+// The drop belongs to the row, not to whether the control is showing, so a card
+// whose control comes and goes - Dive Activity's period arrows - keeps its title
+// where it is. A card with no control at all skips the row and sits higher.
 const CARD_TITLE_ROW =
-  "flex flex-wrap items-start justify-between gap-x-3 gap-y-[calc(var(--card-title-lift)+0.75rem)]";
+  "flex flex-wrap items-start justify-between gap-x-3 gap-y-[calc(var(--card-title-lift)+0.75rem)] pt-(--card-title-lift)";
 const CARD_TITLE_ACTION = "-mt-(--card-title-lift)";
 
 // The smaller title of a card that flags something above a page's main content, such

@@ -33,7 +33,8 @@ export function FormPageSkeleton({
       />
       <div className={FORM_BODY}>
         <Card className="animate-skeleton-reveal motion-reduce:animate-none">
-          <CardHeader className="pb-[calc(var(--card-pad)+var(--card-title-lift))]">
+          {/* The section's heading plus the 24px its fields start below it. */}
+          <CardHeader className="pb-6">
             <Skeleton className="h-6 w-40 max-sm:h-4.5" />
           </CardHeader>
           <CardContent className="space-y-6">
