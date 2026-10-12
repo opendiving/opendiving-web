@@ -2169,7 +2169,8 @@ the Suunto app's `Notify` values as the `divejson` package's reader maps them (`
 recommended pause.
 
 `describeEvent` passes an `other`'s label through unchanged; `gas_number` is tested with `== null`.
-`label` is free text, so the tooltip line is `max-w-64 whitespace-normal`.
+`label` is free text, so its line wraps: `max-w-56` in the hover card, and in the full-screen panel
+`w-0 min-w-full`, which wraps it inside the column the labels set rather than widening it.
 
 `glyphFor` takes a `string` with a grey-circle fallback and `describeEvent` has a `default`:
 `ProfileEventType` is closed only here, and with no `error.tsx` under `src/app` an unknown
@@ -2183,8 +2184,9 @@ Resting opacity is 0.9; 0.55 puts `--ceiling` and `--pressure` under 3:1.
 has no samples for — on the ceiling that invents a deco obligation.
 `sampleIndexAt(t, at, maxDeltaMs)` is `nearestSampleIndex` bounded by the channel's `gapMs`, the
 same threshold that breaks its line, so plot and readout cut the same stretch; beyond it the channel
-drops out of the card as its line drops out of the plot. `PlottedChannel` carries `gapMs`, and every
-call site goes through one local `runs(t)` returning segments and threshold together.
+keeps its row in the card with a dash, as its line keeps its place on the plot with nothing drawn.
+`PlottedChannel` carries `gapMs`, and every call site goes through one local `runs(t)` returning
+segments and threshold together.
 
 `gapThreshold` answers `Infinity` below three samples — right for segmenting ("never break this
 line"), wrong for quoting ("no distance is too far"). `readoutTolerance(t)` replaces that infinity

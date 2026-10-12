@@ -122,7 +122,7 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   // deletion or a promotion reorders the list, and an index would quietly point
   // at a different device's curves afterwards.
   const [shownUuid, setShownUuid] = useState<string | null>(null);
-  // The title row's slot for the chart's channel menu - see `menuContainer`.
+  // The title row's slot for the chart's controls - see `menuContainer`.
   const [menuSlot, setMenuSlot] = useState<HTMLDivElement | null>(null);
 
   // Only recordings that actually carry samples: a recording whose files held

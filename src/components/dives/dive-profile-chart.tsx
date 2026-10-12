@@ -220,9 +220,10 @@ export interface DiveProfileChartProps {
   // The dive's cylinders, which a pressure curve and a gas switch are named by -
   // see `cylinderName`. Absent, every label is named as one no cylinder carries.
   mixtures?: CylinderLabels;
-  // Where the menu of channel toggles goes: a slot on the card's title row,
-  // which the card owns while the selection stays here with everything derived
-  // from it. Null until that slot has mounted, and the menu waits for it.
+  // Where the channel menu and the full-screen button go: a slot on the card's
+  // title row, which the card owns while the selection stays here with
+  // everything derived from it. Null until that slot has mounted, and both
+  // controls wait for it.
   menuContainer: HTMLElement | null;
 }
 
