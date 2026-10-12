@@ -10,7 +10,6 @@ import {
 } from "@/components/dives/dive-section-dialog";
 import { cn } from "@/lib/utils";
 
-// In the form's order, which is the order a keyboard meets the cards in.
 const CARD_SECTIONS: readonly DiveCardSection[] = [
   "Training",
   "Location",
