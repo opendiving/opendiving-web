@@ -5,6 +5,7 @@ import {
   render as renderUi,
   screen,
   fireEvent,
+  waitFor,
   within,
 } from "@testing-library/react";
 import {
@@ -546,7 +547,8 @@ describe("DiveProfileChart crosshair over a short deco obligation", () => {
     render(<DiveProfileChart profile={shortObligation} />);
     hoverAt(0.05); // 150 s, twenty minutes before the obligation existed
 
-    expect(readoutText()).not.toMatch(/Deco ceiling/);
+    // The row stays, with a dash where a reading would be.
+    expect(readoutText()).toMatch(/— Deco ceiling/);
   });
 
   it("still quotes it while the crosshair is on it", () => {
@@ -706,11 +708,11 @@ describe("DiveProfileChart summary over a partly-drawn channel", () => {
     expect(readoutText()).toMatch(/3\.0 m Deco ceiling/);
   });
 
-  it("says nothing at the undrawn sample", () => {
+  it("quotes nothing at the undrawn sample", () => {
     render(<DiveProfileChart profile={partlyDrawn} />);
     hoverAt(2000 / 3000);
 
-    expect(readoutText()).not.toMatch(/Deco ceiling/);
+    expect(readoutText()).toMatch(/— Deco ceiling/);
   });
 });
 
@@ -1540,7 +1542,7 @@ describe("DiveProfileChart legend menu", () => {
       ["No-deco time"],
       ["Time to surface"],
       ["ppO₂"],
-      ["CNS", "Gradient factor", "Surface gradient factor"],
+      ["CNS", "Surface gradient factor", "Gradient factor at depth"],
     ]);
   });
 });
@@ -1671,25 +1673,28 @@ describe("DiveProfileChart deco readouts", () => {
     expect(readoutText()).toMatch(/0 min Time to surface/);
     expect(readoutText()).toMatch(/1\.10 bar ppO₂/);
     expect(readoutText()).toMatch(/2\.4% CNS/);
-    expect(readoutText()).toMatch(/12% Gradient factor/);
+    expect(readoutText()).toMatch(/12% Gradient factor at depth/);
     expect(readoutText()).toMatch(/30% Surface gradient factor/);
   });
 
   it("groups the readings by the graph each is drawn on", () => {
     hoverOverTheThirdSample();
 
-    // The card's first line is the elapsed time; a block per graph follows.
-    const groups = [...screen.getByRole("presentation").children]
-      .slice(1)
-      .filter((child) => !child.textContent?.match(/elapsed/))
-      .map((group) => group.textContent ?? "");
+    // The card is one grid: the elapsed time, then the readings with a rule -
+    // an `aria-hidden` cell - between one graph's and the next.
+    const grid = screen.getByRole("presentation").firstElementChild;
+    const groups = [""];
+    for (const cell of [...(grid?.children ?? [])].slice(1)) {
+      if (cell.getAttribute("aria-hidden") === "true") groups.push("");
+      else groups[groups.length - 1] += `${cell.textContent} `;
+    }
 
     expect(groups).toHaveLength(5);
     expect(groups[0]).toMatch(/Depth.*Temperature.*Tank pressure/);
     expect(groups[1]).toMatch(/No-deco time/);
     expect(groups[2]).toMatch(/Time to surface/);
     expect(groups[3]).toMatch(/ppO₂/);
-    expect(groups[4]).toMatch(/CNS.*Gradient factor.*Surface gradient factor/);
+    expect(groups[4]).toMatch(/CNS.*Surface gradient factor.*Gradient factor/);
   });
 
   it("stops quoting a channel the diver switched off", () => {
@@ -1720,13 +1725,13 @@ describe("DiveProfileChart deco readouts", () => {
     expect(summary()).toMatch(/time to surface up to 18 minutes/);
     expect(summary()).toMatch(/oxygen partial pressure up to 1\.32 bar/);
     expect(summary()).toMatch(/CNS to 12\.4 percent/);
-    expect(summary()).toMatch(/gradient factor to 98 percent/);
+    expect(summary()).toMatch(/gradient factor at depth to 98 percent/);
     expect(summary()).toMatch(/surface gradient factor to 84 percent/);
 
     fireEvent.click(screen.getByRole("button", { name: CHANNEL_BUTTONS.cns }));
 
     expect(summary()).not.toMatch(/CNS to/);
-    expect(summary()).toMatch(/gradient factor to 98 percent/);
+    expect(summary()).toMatch(/gradient factor at depth to 98 percent/);
   });
 
   it("numbers each panel row in the unit its curves are in", () => {
@@ -1763,7 +1768,7 @@ describe("DiveProfileChart deco readouts", () => {
     );
 
     expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(
-      /gradient factor to 12575 percent/,
+      /gradient factor at depth to 12575 percent/,
     );
   });
 
@@ -1990,7 +1995,7 @@ describe("DiveProfileChart with a gradient factor past the percent axis's bound"
     const { container } = render(<DiveProfileChart profile={brokenGf} />);
     hoverAt(1500 / 3000);
 
-    expect(readoutText()).toMatch(/14060% Gradient factor/);
+    expect(readoutText()).toMatch(/14060% Gradient factor at depth/);
     expect(
       container.querySelectorAll("circle.text-gradient-factor"),
     ).toHaveLength(0);
@@ -2011,6 +2016,69 @@ describe("DiveProfileChart with a gradient factor past the percent axis's bound"
     );
     expect(curveYs(container, "gradient-factor").every((y) => y >= top)).toBe(
       true,
+    );
+  });
+});
+
+describe("DiveProfileChart over a gap in one channel", () => {
+  // A transmitter that went quiet after ten minutes, under a depth series that
+  // runs the whole dive.
+  const dropout = longProfile({
+    pressures: [
+      {
+        gas_number: 1,
+        times: [0, 300_000, 600_000],
+        values: [2000, 1900, 1800],
+      },
+    ],
+  });
+
+  it("keeps the channel's row, with a dash for the reading", () => {
+    const { container } = render(<DiveProfileChart profile={dropout} />);
+    hoverAt(0.8);
+
+    expect(readoutText()).toMatch(/\d m Depth/);
+    expect(readoutText()).toMatch(/— Tank pressure/);
+    expect(
+      container.querySelectorAll("circle[class*='text-pressure']"),
+    ).toHaveLength(0);
+  });
+});
+
+describe("DiveProfileChart in full screen", () => {
+  const openFullscreen = () => {
+    render(<DiveProfileChart profile={longProfile()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    return screen.getByRole("dialog", { name: "Dive Profile" });
+  };
+
+  it("reads out into a panel beside the plot rather than over it", () => {
+    const dialog = openFullscreen();
+
+    // Nothing under the crosshair yet: every row is there, with a dash.
+    expect(dialog.textContent).toMatch(/— elapsed/);
+    expect(dialog.textContent).toMatch(/— Depth/);
+
+    hoverAt(0.5);
+
+    expect(dialog.textContent).toMatch(/25:00 elapsed/);
+    expect(dialog.textContent).toMatch(/30\.0 m Depth/);
+    expect(screen.queryByRole("presentation")).toBeNull();
+  });
+
+  it("hands focus back to the button that opened it on the way out", async () => {
+    const dialog = openFullscreen();
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Exit full screen" }),
+    );
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // Radix moves focus on the tick after the dialog unmounts.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Full screen" }),
+      ),
     );
   });
 });

@@ -233,7 +233,9 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
   },
   gradient_factor: {
     key: "gradient_factor",
-    label: "Gradient factor",
+    // Says where it was read, beside the surface reading and the "GF 30/85"
+    // settings the recordings card names.
+    label: "Gradient factor at depth",
     unit: "%",
     scale: 1, // whole percent
     decimals: 0,
@@ -255,11 +257,13 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
   },
 };
 
-// The channels in the order they're plotted and listed in the legend, which is
-// the order the API's `PROFILE_CHANNEL_ORDER` sorts a profile's `channels` by and
-// the order DiveJSON §6.4 declares its members in. A separate list rather than
-// `Object.keys` on the record above, which gives this order only by accident of
-// how the object happens to be written.
+// The channels in the order they're plotted, listed in the legend and read out.
+// That is the order the API's `PROFILE_CHANNEL_ORDER` sorts a profile's
+// `channels` by and DiveJSON §6.4 declares its members in, but for the surface
+// gradient factor ahead of the gradient factor. Nothing here reads the API's
+// order, so the two can differ. A separate list rather than `Object.keys` on
+// the record above, which gives an order only by accident of how the object
+// happens to be written.
 export const PROFILE_CHANNEL_KEYS: readonly ProfileChannelKey[] = [
   "depth",
   "ceiling",
@@ -269,8 +273,8 @@ export const PROFILE_CHANNEL_KEYS: readonly ProfileChannelKey[] = [
   "tts",
   "ppo2",
   "cns",
-  "gradient_factor",
   "surface_gradient_factor",
+  "gradient_factor",
 ];
 
 // Everything the legend switches, which is every channel plus the event
@@ -717,7 +721,12 @@ export function toChannelSeries(
   key: ProfileSeriesKey,
   units: UnitSystem,
 ): ChannelSeries | null {
-  const series: DiveProfileSeries | null | undefined = profile[key];
+  const recorded: DiveProfileSeries | null | undefined = profile[key];
+  const after = SPURIOUS_ZERO_AFTER[key];
+  const series =
+    recorded && after !== undefined
+      ? withoutSpuriousZeros(recorded, after)
+      : recorded;
   if (!series || series.times.length === 0) return null;
 
   const channel = PROFILE_CHANNELS[key];
@@ -742,6 +751,45 @@ export function toChannelSeries(
     values: series.values.map((value) =>
       toChannelDisplay(value / channel.scale, key, units),
     ),
+  };
+}
+
+// The channels a computer writes a zero into when it has stopped computing them
+// - at the end of the dive, on a surface swim, or for a glitched sample - and the
+// reading, in the wire's units, from which a fall to zero in one sample cannot
+// be real. Neither quantity can drop that far that fast, so the zero is not a
+// reading.
+const SPURIOUS_ZERO_AFTER: Partial<Record<ProfileSeriesKey, number>> = {
+  // The 100-minute cap a no-deco limit shows while it has nothing to count
+  // down. A zero after it would plot as an obligation the diver never had.
+  ndl: 100 * 60,
+  // A surface gradient factor falls only as fast as the fastest tissue
+  // off-gases, a few percent of itself in a sample. From 1 % a zero is a
+  // reading rounding down; across the corpus nothing falls to zero from 2-5 %,
+  // and everything from 6 % up is a device writing nothing.
+  surface_gradient_factor: 5,
+};
+
+// A series without its spurious zeros: a run of zeros that starts straight after
+// a reading of at least `after` is dropped whole, up to the next reading, while
+// one reached by counting down - a minute, then none - is real and stays.
+export function withoutSpuriousZeros(
+  series: DiveProfileSeries,
+  after: number,
+): DiveProfileSeries {
+  const kept: number[] = [];
+  let spurious = false;
+  series.values.forEach((value, index) => {
+    if (value !== 0) spurious = false;
+    else if (index > 0 && series.values[index - 1] >= after) spurious = true;
+    if (!spurious) kept.push(index);
+  });
+  if (kept.length === series.values.length) return series;
+
+  return {
+    ...series,
+    times: kept.map((index) => series.times[index]),
+    values: kept.map((index) => series.values[index]),
   };
 }
 
@@ -870,6 +918,11 @@ export function nearestEvent(
   return best;
 }
 
+// How far into the recording a gas switch is the computer logging the gas the
+// dive starts on rather than a switch. Every first switch in the local corpus
+// sits inside the opening 10 s, and every later one minutes in.
+const STARTING_GAS_MS = 30 * MILLISECONDS_PER_SECOND;
+
 // What a marker says, in words - for the crosshair readout and for the chart's
 // accessible summary.
 //
@@ -902,6 +955,7 @@ export function describeEvent(
 ): string {
   switch (event.type) {
     case "gas_switch":
+      if (event.time <= STARTING_GAS_MS) return "Dive started";
       // Named as the pressure curves name the cylinder - and `0` is a real
       // label, the first the reader gives, so this tests for null rather than
       // for falsiness.
@@ -1207,6 +1261,27 @@ export function tooltipVerticalAnchor(
       { y: plotBottom, translateY: "calc(-100% - 4px)" }
     : // Card's top edge on the plot's top edge.
       { y: plotTop, translateY: "4px" };
+}
+
+// How far the readout card stands off the crosshair when it sits beside it, in
+// CSS pixels.
+export const TOOLTIP_GAP_PX = 12;
+
+/**
+ * Which side of the crosshair the readout card sits on, so it never covers the
+ * line and the dots it is reading: the right where it fits inside the frame,
+ * the left where only that fits, and null where neither does and the card has
+ * to sit over the line. All three in CSS pixels, the crosshair measured from
+ * the frame's left edge.
+ */
+export function tooltipSide(
+  crosshairPx: number,
+  cardPx: number,
+  framePx: number,
+): "right" | "left" | null {
+  if (crosshairPx + TOOLTIP_GAP_PX + cardPx <= framePx) return "right";
+  if (crosshairPx - TOOLTIP_GAP_PX - cardPx >= 0) return "left";
+  return null;
 }
 
 // `Point` and `buildAreaPath` used to live here. They moved, unchanged, to

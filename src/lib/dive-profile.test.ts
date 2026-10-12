@@ -28,8 +28,11 @@ import {
   temperatureDomain,
   toChannelSeries,
   toPressureSeries,
+  tooltipSide,
   tooltipVerticalAnchor,
+  TOOLTIP_GAP_PX,
   profileScalePlacement,
+  withoutSpuriousZeros,
   PROFILE_CHANNELS,
 } from "@/lib/dive-profile";
 import { niceDomain } from "@/lib/chart-scale";
@@ -219,6 +222,84 @@ describe("toPressureSeries", () => {
 
   it("is an empty list when no transmitter recorded anything", () => {
     expect(toPressureSeries(profile({ pressures: [] }), "metric")).toEqual([]);
+  });
+});
+
+describe("withoutSpuriousZeros", () => {
+  const series = (values: number[]) => ({
+    times: values.map((_, index) => index * 10_000),
+    values,
+  });
+
+  it("drops a zero that comes straight after the reading it cannot fall from", () => {
+    expect(withoutSpuriousZeros(series([6000, 6000, 0]), 6000)).toEqual({
+      times: [0, 10_000],
+      values: [6000, 6000],
+    });
+  });
+
+  it("drops the whole run of zeros, up to the next reading", () => {
+    expect(
+      withoutSpuriousZeros(series([6000, 0, 0, 0, 6000, 5880]), 6000),
+    ).toEqual({
+      times: [0, 40_000, 50_000],
+      values: [6000, 6000, 5880],
+    });
+  });
+
+  it("keeps a zero the series counted down to", () => {
+    const counted = series([6000, 300, 60, 0, 0]);
+
+    expect(withoutSpuriousZeros(counted, 6000)).toBe(counted);
+  });
+
+  it("keeps a zero the series opens with", () => {
+    const opening = series([0, 6000]);
+
+    expect(withoutSpuriousZeros(opening, 6000)).toBe(opening);
+  });
+});
+
+describe("toChannelSeries without spurious zeros", () => {
+  it("drops an NDL zero straight after the 100-minute cap", () => {
+    const capped = { times: [0, 10_000], values: [6000, 0] };
+
+    expect(
+      toChannelSeries(profile({ ndl: capped }), "ndl", "metric")?.values,
+    ).toEqual([100]);
+    expect(
+      toChannelSeries(profile({ tts: capped }), "tts", "metric")?.values,
+    ).toEqual([100, 0]);
+  });
+
+  it("drops the surface gradient factor's sudden zeros and keeps one it fell to", () => {
+    // Dive #494's glitch, and a reading of 1 % rounding down to none.
+    const glitched = {
+      times: [0, 10_000, 20_000, 30_000, 40_000, 50_000, 60_000, 70_000],
+      values: [29, 0, 30, 0, 30, 2, 1, 0],
+    };
+
+    expect(
+      toChannelSeries(
+        profile({ surface_gradient_factor: glitched }),
+        "surface_gradient_factor",
+        "metric",
+      )?.values,
+    ).toEqual([29, 30, 30, 2, 1, 0]);
+  });
+
+  it("leaves the gradient factor at depth its zeros", () => {
+    // Its zeros are real: a few metres of descent puts every tissue under the
+    // ambient pressure in one sample.
+    const descending = { times: [0, 10_000], values: [40, 0] };
+
+    expect(
+      toChannelSeries(
+        profile({ gradient_factor: descending }),
+        "gradient_factor",
+        "metric",
+      )?.values,
+    ).toEqual([40, 0]);
   });
 });
 
@@ -605,12 +686,29 @@ describe("cylinderName", () => {
 });
 
 describe("describeEvent", () => {
+  // Ten minutes in, past the opening seconds where a switch is the dive's start.
+  const SWITCH_AT = 600_000;
+
+  it("names the gas a computer logs as the dive opens as the dive's start", () => {
+    expect(
+      describeEvent(event({ time: 910, type: "gas_switch", gas_number: 0 }), [
+        { gas_number: 0 },
+      ]),
+    ).toBe("Dive started");
+    expect(
+      describeEvent(
+        event({ time: 30_001, type: "gas_switch", gas_number: 0 }),
+        [{ gas_number: 0 }],
+      ),
+    ).toBe("Gas switch to tank 1");
+  });
+
   it("names the tank a switch went to", () => {
     expect(
-      describeEvent(event({ type: "gas_switch", gas_number: 1 }), [
-        { gas_number: 0 },
-        { gas_number: 1 },
-      ]),
+      describeEvent(
+        event({ time: SWITCH_AT, type: "gas_switch", gas_number: 1 }),
+        [{ gas_number: 0 }, { gas_number: 1 }],
+      ),
     ).toBe("Gas switch to tank 2");
   });
 
@@ -618,23 +716,30 @@ describe("describeEvent", () => {
     // The reader labels the first cylinder 0, so a falsiness check here would
     // drop the name off every switch to it.
     expect(
-      describeEvent(event({ type: "gas_switch", gas_number: 0 }), [
-        { gas_number: 0 },
-      ]),
+      describeEvent(
+        event({ time: SWITCH_AT, type: "gas_switch", gas_number: 0 }),
+        [{ gas_number: 0 }],
+      ),
     ).toBe("Gas switch to tank 1");
   });
 
   it("names a switch to a label no cylinder carries by the label, word kept", () => {
-    expect(describeEvent(event({ type: "gas_switch", gas_number: 0 }))).toBe(
-      "Gas switch to gas 0",
-    );
+    expect(
+      describeEvent(
+        event({ time: SWITCH_AT, type: "gas_switch", gas_number: 0 }),
+      ),
+    ).toBe("Gas switch to gas 0");
   });
 
   it("says only that a switch happened when the file didn't say to what", () => {
-    expect(describeEvent(event({ type: "gas_switch" }))).toBe("Gas switch");
-    expect(describeEvent(event({ type: "gas_switch", gas_number: null }))).toBe(
+    expect(describeEvent(event({ time: SWITCH_AT, type: "gas_switch" }))).toBe(
       "Gas switch",
     );
+    expect(
+      describeEvent(
+        event({ time: SWITCH_AT, type: "gas_switch", gas_number: null }),
+      ),
+    ).toBe("Gas switch");
   });
 
   it("spells out the types that speak for themselves", () => {
@@ -914,6 +1019,28 @@ describe("formatElapsedSpoken", () => {
   });
 });
 
+describe("tooltipSide", () => {
+  // A 200px card in a 700px frame.
+  const CARD = 200;
+  const FRAME = 700;
+
+  it("sits right of the crosshair where it fits there", () => {
+    expect(tooltipSide(100, CARD, FRAME)).toBe("right");
+    expect(tooltipSide(FRAME - TOOLTIP_GAP_PX - CARD, CARD, FRAME)).toBe(
+      "right",
+    );
+  });
+
+  it("sits left of it where only the left has room", () => {
+    expect(tooltipSide(600, CARD, FRAME)).toBe("left");
+  });
+
+  it("sits over it where neither side has room", () => {
+    // A phone: 360px of frame, the crosshair in the middle.
+    expect(tooltipSide(180, CARD, 360)).toBeNull();
+  });
+});
+
 describe("tooltipVerticalAnchor", () => {
   // The chart's own plot bounds.
   const TOP = 14;
@@ -1143,8 +1270,8 @@ describe("channelsOnAxis", () => {
   it("groups the channels that share one scale", () => {
     expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "percent")).toEqual([
       "cns",
-      "gradient_factor",
       "surface_gradient_factor",
+      "gradient_factor",
     ]);
     expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "depth")).toEqual([
       "depth",
