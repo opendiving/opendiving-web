@@ -1572,8 +1572,6 @@ function EventMarker({
   hovered: boolean;
 }) {
   const { colorClass, shape } = glyphFor(event.type);
-  const cy = baseline - EVENT_TICK_HEIGHT - EVENT_GLYPH_GAP;
-  const r = EVENT_GLYPH_RADIUS;
 
   return (
     <g
@@ -1612,23 +1610,44 @@ function EventMarker({
         stroke="currentColor"
         strokeWidth={hovered ? 1.5 : 1}
       />
-      {shape === "diamond" && (
+      <GlyphShape
+        shape={shape}
+        cx={cx}
+        cy={baseline - EVENT_TICK_HEIGHT - EVENT_GLYPH_GAP}
+      />
+    </g>
+  );
+}
+
+// A marker's glyph, centred on (cx, cy) and filled in the current colour.
+function GlyphShape({
+  shape,
+  cx,
+  cy,
+}: {
+  shape: EventGlyph["shape"];
+  cx: number;
+  cy: number;
+}) {
+  const r = EVENT_GLYPH_RADIUS;
+  switch (shape) {
+    case "diamond":
+      return (
         <path
           d={`M${cx},${cy - r} L${cx + r},${cy} L${cx},${cy + r} L${cx - r},${cy} Z`}
           fill="currentColor"
         />
-      )}
-      {shape === "triangle" && (
+      );
+    case "triangle":
+      return (
         <path
           d={`M${cx},${cy - r} L${cx + r},${cy + r - 1} L${cx - r},${cy + r - 1} Z`}
           fill="currentColor"
         />
-      )}
-      {shape === "circle" && (
-        <circle cx={cx} cy={cy} r={r - 1} fill="currentColor" />
-      )}
-    </g>
-  );
+      );
+    case "circle":
+      return <circle cx={cx} cy={cy} r={r - 1} fill="currentColor" />;
+  }
 }
 
 // The hover card: HTML rather than SVG `<text>`, so it gets the app's tooltip
@@ -1790,20 +1809,37 @@ function ReadoutGrid({
           an instant where they merely coincide. */}
       {(event || markers) && <div aria-hidden className={rule} />}
       {event ? (
-        // `whitespace-normal` against the card's own `nowrap`, and a width to
-        // wrap inside. An `other`'s text comes off the uploaded file - the only
-        // free text on this chart - and while the API caps it at 120
-        // characters, 120 characters on one line is several times the plot's
-        // width, far past anything `useKeepInside` can pull back.
-        <div
-          className={cn(
-            "col-span-2 whitespace-normal font-semibold",
-            tone === "tooltip" && "max-w-64",
-            glyphFor(event.type).colorClass,
-          )}
-        >
-          {describeEvent(event, cylinders)}
-        </div>
+        <>
+          {/* The glyph the marker is drawn with on the plot, where a value
+              would be, so the row says which mark it is naming. */}
+          <span className="text-right">
+            <svg
+              aria-hidden
+              viewBox={`${-EVENT_GLYPH_RADIUS} ${-EVENT_GLYPH_RADIUS} ${2 * EVENT_GLYPH_RADIUS} ${2 * EVENT_GLYPH_RADIUS}`}
+              className={cn(
+                "inline-block h-2.5 w-2.5",
+                glyphFor(event.type).colorClass,
+              )}
+            >
+              <GlyphShape shape={glyphFor(event.type).shape} cx={0} cy={0} />
+            </svg>
+          </span>{" "}
+          {/* `whitespace-normal` against the card's own `nowrap`, and a width
+              to wrap inside. An `other`'s text comes off the uploaded file -
+              the only free text on this chart - and while the API caps it at
+              120 characters, 120 characters on one line is several times the
+              plot's width. In the card it is capped; in the panel it takes no
+              width of its own and wraps inside the column the labels set. */}
+          <span
+            className={cn(
+              "whitespace-normal font-semibold",
+              tone === "tooltip" ? "max-w-56" : "w-0 min-w-full",
+              glyphFor(event.type).colorClass,
+            )}
+          >
+            {describeEvent(event, cylinders)}
+          </span>
+        </>
       ) : (
         markers && (
           <>

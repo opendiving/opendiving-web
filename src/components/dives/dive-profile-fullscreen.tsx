@@ -60,7 +60,7 @@ export function DiveProfileFullscreen({
           }}
           className="fixed inset-0 z-50 flex gap-4 bg-background p-4 text-foreground outline-none portrait:flex-col landscape:flex-row"
         >
-          <div className="flex shrink-0 flex-col gap-3 landscape:w-72">
+          <div className="flex shrink-0 flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
               <DialogPrimitive.Title className="flex items-center gap-2 text-lg font-semibold leading-none tracking-tight">
                 <LineChart className="h-5 w-5" aria-hidden="true" />
