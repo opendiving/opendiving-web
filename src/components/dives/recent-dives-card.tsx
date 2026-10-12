@@ -154,7 +154,8 @@ export function RecentDivesCard({
           </CardTitle>
         ) : (
           <>
-            <div className={CARD_TITLE_ROW}>
+            {/* A detail page's card has no link, and sits as high as its neighbours. */}
+            <div className={cn(viewAllHref && CARD_TITLE_ROW)}>
               <CardTitle as="h2" className="flex items-center gap-2">
                 <DiveIcon className="h-5 w-5" />
                 {title}

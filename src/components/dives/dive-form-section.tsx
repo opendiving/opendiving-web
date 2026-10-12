@@ -117,12 +117,11 @@ export function DiveFormSection(props: DiveFormSectionProps) {
         className="pointer-events-none absolute -top-(--header-height) h-px w-px"
       />
       {/* Squared off at the foot while content shows, so content scrolling under the
-          stuck heading cannot show through its corners. Padded evenly rather than
-          with the title's lift, which would leave the chevron off the heading's
-          middle. A card that is all heading never sticks and takes no rule. */}
+          stuck heading cannot show through its corners. A card that is all heading
+          never sticks and takes no rule. */}
       <CardHeader
         className={cn(
-          "sticky top-[var(--header-height)] z-10 rounded-t-lg bg-card pt-(--card-pad)",
+          "sticky top-[var(--header-height)] z-10 rounded-t-lg bg-card",
           !shown && "rounded-b-lg",
           // A shadow rather than a border: it takes no height, so the rule appearing
           // neither nudges the fields nor pulls the chevron off the middle.
