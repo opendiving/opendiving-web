@@ -296,7 +296,7 @@ describe("axisDomain", () => {
     // A time to surface of 900 minutes is a device saying something strange and
     // not a fault this chart can name, so nothing caps it: the only axis carrying
     // a bound is the one whose channels have a known way of being wrong.
-    expect(axisDomain("duration", [0, 18, 900])).toEqual(
+    expect(axisDomain("time_to_surface", [0, 18, 900])).toEqual(
       niceDomain([0, 18, 900]),
     );
   });
@@ -1141,10 +1141,6 @@ describe("the deco channels", () => {
 
 describe("channelsOnAxis", () => {
   it("groups the channels that share one scale", () => {
-    expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "duration")).toEqual([
-      "ndl",
-      "tts",
-    ]);
     expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "percent")).toEqual([
       "cns",
       "gradient_factor",
@@ -1165,6 +1161,14 @@ describe("channelsOnAxis", () => {
     ]);
   });
 
+  it("keeps time to surface off the no-deco scale though both are minutes", () => {
+    // A few minutes of time to surface under a 99-minute limit is a flat line.
+    expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "no_deco")).toEqual(["ndl"]);
+    expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "time_to_surface")).toEqual([
+      "tts",
+    ]);
+  });
+
   it("answers in the legend's order, and only for what is shown", () => {
     expect(
       channelsOnAxis(["surface_gradient_factor", "cns"], "percent"),
@@ -1174,7 +1178,8 @@ describe("channelsOnAxis", () => {
 
 describe("axisUnitSuffix", () => {
   it("carries the separator as well as the unit", () => {
-    expect(axisUnitSuffix("duration", "metric")).toBe(" min");
+    expect(axisUnitSuffix("no_deco", "metric")).toBe(" min");
+    expect(axisUnitSuffix("time_to_surface", "metric")).toBe(" min");
     expect(axisUnitSuffix("ppo2", "metric")).toBe(" bar");
     expect(axisUnitSuffix("percent", "metric")).toBe("%");
   });
@@ -1301,16 +1306,14 @@ describe("profileScalePlacement", () => {
       left: null,
       right: null,
       underRight: null,
-      panels: ["duration", "percent"],
+      panels: ["no_deco", "percent"],
     });
   });
 
   it("stacks the rows in one order however the selection was made", () => {
-    expect(profileScalePlacement(["cns", "ppo2", "tts"]).panels).toEqual([
-      "duration",
-      "ppo2",
-      "percent",
-    ]);
+    expect(profileScalePlacement(["cns", "ppo2", "tts", "ndl"]).panels).toEqual(
+      ["no_deco", "time_to_surface", "ppo2", "percent"],
+    );
   });
 
   it("grows no row for an axis nothing is on", () => {

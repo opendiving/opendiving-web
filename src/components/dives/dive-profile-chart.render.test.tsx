@@ -906,7 +906,8 @@ describe("DiveProfileChart vertical axes", () => {
       );
 
       const expectedRows = [
-        keys.some((key) => key === "ndl" || key === "tts") ? "duration" : null,
+        keys.includes("ndl") ? "no_deco" : null,
+        keys.includes("tts") ? "time_to_surface" : null,
         keys.includes("ppo2") ? "ppo2" : null,
         keys.some((key) =>
           ["cns", "gradient_factor", "surface_gradient_factor"].includes(key),
@@ -1536,7 +1537,8 @@ describe("DiveProfileChart legend menu", () => {
 
     expect(groups).toEqual([
       ["Depth", "Deco ceiling", "Temperature", "Tank pressure", "Markers"],
-      ["No-deco time", "Time to surface"],
+      ["No-deco time"],
+      ["Time to surface"],
       ["ppO₂"],
       ["CNS", "Gradient factor", "Surface gradient factor"],
     ]);
@@ -1682,11 +1684,12 @@ describe("DiveProfileChart deco readouts", () => {
       .filter((child) => !child.textContent?.match(/elapsed/))
       .map((group) => group.textContent ?? "");
 
-    expect(groups).toHaveLength(4);
+    expect(groups).toHaveLength(5);
     expect(groups[0]).toMatch(/Depth.*Temperature.*Tank pressure/);
-    expect(groups[1]).toMatch(/No-deco time.*Time to surface/);
-    expect(groups[2]).toMatch(/ppO₂/);
-    expect(groups[3]).toMatch(/CNS.*Gradient factor.*Surface gradient factor/);
+    expect(groups[1]).toMatch(/No-deco time/);
+    expect(groups[2]).toMatch(/Time to surface/);
+    expect(groups[3]).toMatch(/ppO₂/);
+    expect(groups[4]).toMatch(/CNS.*Gradient factor.*Surface gradient factor/);
   });
 
   it("stops quoting a channel the diver switched off", () => {
@@ -1735,7 +1738,8 @@ describe("DiveProfileChart deco readouts", () => {
       container.querySelector(`[data-deco-panel="${axis}"] text`)
         ?.textContent ?? "";
 
-    expect(topTick("duration")).toMatch(/ min$/);
+    expect(topTick("no_deco")).toMatch(/ min$/);
+    expect(topTick("time_to_surface")).toMatch(/ min$/);
     expect(topTick("ppo2")).toMatch(/ bar$/);
     expect(topTick("percent")).toMatch(/%$/);
   });

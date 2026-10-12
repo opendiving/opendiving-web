@@ -28,8 +28,9 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 // A 19 m dive with a full deco panel. Depth's axis ends on 20 and the NDL row's
-// begins at 100 min, which is the pair that touched; the ppO₂ and percent rows
-// put two more row boundaries under it, and temperature labels the right edge.
+// begins at 100 min, which is the pair that touched; the time-to-surface, ppO₂
+// and percent rows put three more row boundaries under it, and temperature
+// labels the right edge.
 const times = Array.from({ length: 11 }, (_, index) => index * 300_000);
 const PROFILE: DiveProfile = {
   duration: 3_000_000,

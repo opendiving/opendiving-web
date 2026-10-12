@@ -128,7 +128,7 @@ const ELAPSED_LABEL_SPACING = 44;
 // 11-unit type is about 8 units of ink, so 12 between centres leaves air.
 const STACKED_LABEL_OFFSET = 6;
 
-// The deco panel: one short plot per unit the depth plot's two edges cannot
+// The deco panel: one short plot per scale the depth plot's two edges cannot
 // carry, stacked under it and sharing its elapsed-time axis. See
 // `profileScalePlacement` for why the split is forced rather than chosen.
 //
@@ -534,8 +534,8 @@ export function DiveProfileChart({
 
     // The deco panel's channels, one axis at a time. Nothing here is special-
     // cased per channel: they differ from the four above only in sharing an axis
-    // with whichever siblings carry the same unit, so the loop is over the axes
-    // and the channels fall out of `channelsOnAxis`.
+    // with whichever siblings are scaled against the same quantity, so the loop
+    // is over the axes and the channels fall out of `channelsOnAxis`.
     for (const axis of PANEL_AXES) {
       const built = channelsOnAxis(PROFILE_CHANNEL_KEYS, axis)
         // Tank pressure is the one channel the API serves as a list rather than
