@@ -1,8 +1,10 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Download, Loader2, Paperclip, Star, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
+import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -177,10 +179,8 @@ export function DiveRecordingsCard({
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle as="h2">Recordings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        <DiveCardHeader group="Import" title="Recordings" />
+        <CardContent className={cn(CARD_SECTION_CONTENT, "space-y-6")}>
           {recordings.map((recording) => {
             const device = recordingDeviceLabel(recording.device);
             // What this computer was set to, where the file said: its mode and

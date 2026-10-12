@@ -17,7 +17,7 @@ import type { Person } from "@/lib/api/people";
 import { formatContactAddress, formatWebsite } from "@/lib/contact";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
@@ -26,8 +26,10 @@ import { fixPoint } from "@/components/dives/dive-map-locations";
 import { Building2, Globe, GraduationCap, Luggage, Phone } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { CardFigure, CardFigures } from "@/components/dives/card-figure";
-import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
+import { DiveCardHeader } from "@/components/dives/dive-card-header";
+import type { DiveCardSection } from "@/components/dives/dive-section-dialog";
 import { useUnits } from "@/hooks/useUnits";
+import { cn } from "@/lib/utils";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatAltitude, formatTemperature } from "@/lib/units";
 
@@ -48,6 +50,8 @@ interface DiveDetailSidebarProps {
   people?: Readonly<Record<string, Person>>;
   /** Called after a recording or one of its files changes, so the dive can be re-read. */
   onRecordingsChanged: () => void;
+  /** Opens a section's edit dialog; absent, the cards have no edit control. */
+  onEdit?: (section: DiveCardSection) => void;
 }
 
 const NO_PEOPLE: Readonly<Record<string, Person>> = {};
@@ -76,6 +80,7 @@ export function DiveDetailSidebar({
   contact,
   people = NO_PEOPLE,
   onRecordingsChanged,
+  onEdit,
 }: DiveDetailSidebarProps) {
   const units = useUnits();
   const withReturnTo = useWithReturnTo();
@@ -112,6 +117,32 @@ export function DiveDetailSidebar({
 
   return (
     <div className="space-y-6 max-sm:space-y-2.5">
+      {/* Its own card rather than a row in "Location" below: a course is not a
+          place, and the card it would otherwise join renders on the strength of
+          the dive having one. A dive with no course looks exactly as it did
+          before courses existed. */}
+      {course && (
+        <Card>
+          <DiveCardHeader
+            group="Training"
+            title="Training"
+            onEdit={onEdit && (() => onEdit("Training"))}
+          />
+          <CardContent className={CARD_SECTION_CONTENT}>
+            <div className="text-sm font-medium text-muted-foreground mb-1">
+              Course
+            </div>
+            <Link
+              href={withReturnTo(`/courses/${course.uuid}`)}
+              className="flex items-center gap-2 text-sm font-medium hover:underline touch:min-h-11"
+            >
+              <GraduationCap className="h-4 w-4 text-muted-foreground" />
+              {course.name}
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
       {(trip ||
         contact ||
         dive.dive_sites.length > 0 ||
@@ -120,17 +151,16 @@ export function DiveDetailSidebar({
         entryCoordinates ||
         exitCoordinates) && (
         <Card>
-          <CardHeader>
-            {/* "Location", not the "Trip & Dive Site" this card was called
+          {/* "Location", not the "Trip & Dive Site" this card was called
                 while those were the only two things in it: a dive with GPS but
                 no trip and no site is now one of the cases it renders for, and
                 the blocks inside are each labelled anyway. */}
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="Location" />
-              Location
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <DiveCardHeader
+            group="Location"
+            title="Location"
+            onEdit={onEdit && (() => onEdit("Location"))}
+          />
+          <CardContent className={cn(CARD_SECTION_CONTENT, "space-y-4")}>
             {trip && (
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">
@@ -280,45 +310,17 @@ export function DiveDetailSidebar({
         </Card>
       )}
 
-      {/* Its own card rather than a row in "Location" above: a course is not a
-          place, and the card it would otherwise join renders on the strength of
-          the dive having one. A dive with no course looks exactly as it did
-          before courses existed. */}
-      {course && (
-        <Card>
-          <CardHeader>
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="Training" />
-              Training
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm font-medium text-muted-foreground mb-1">
-              Course
-            </div>
-            <Link
-              href={withReturnTo(`/courses/${course.uuid}`)}
-              className="flex items-center gap-2 text-sm font-medium hover:underline touch:min-h-11"
-            >
-              <GraduationCap className="h-4 w-4 text-muted-foreground" />
-              {course.name}
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Its own card rather than a row on "Training" or "Location": who the
           diver was with is a fact about the dive whether or not a shop ran it
           or a course taught it. */}
       {hasPeople && (
         <Card>
-          <CardHeader>
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="People" />
-              People
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <DiveCardHeader
+            group="People"
+            title="People"
+            onEdit={onEdit && (() => onEdit("People"))}
+          />
+          <CardContent className={CARD_SECTION_CONTENT}>
             <PeopleList people={divePeople} resolved={people} />
           </CardContent>
         </Card>
@@ -326,13 +328,12 @@ export function DiveDetailSidebar({
 
       {hasEnvironmentInfo && (
         <Card>
-          <CardHeader>
-            <CardTitle as="h2" className="flex items-center gap-2">
-              <DiveSectionIcon group="Environment" />
-              Environment
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <DiveCardHeader
+            group="Environment"
+            title="Environment"
+            onEdit={onEdit && (() => onEdit("Environment"))}
+          />
+          <CardContent className={CARD_SECTION_CONTENT}>
             <CardFigures className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]">
               {dive.air_temperature != null && (
                 <CardFigure

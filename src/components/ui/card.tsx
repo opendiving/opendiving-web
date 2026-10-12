@@ -66,6 +66,10 @@ const CARD_TITLE_ROW =
   "flex flex-wrap items-start justify-between gap-x-3 gap-y-[calc(var(--card-title-lift)+0.75rem)] pt-(--card-title-lift)";
 const CARD_TITLE_ACTION = "-mt-(--card-title-lift)";
 
+// A card's content 24px under its title at every width, as the dive form's sections
+// set theirs: `--card-pad` halves on a phone, and the content makes up the rest.
+const CARD_SECTION_CONTENT = "pt-[calc(--spacing(6)-var(--card-pad))]";
+
 // The smaller title of a card that flags something above a page's main content, such
 // as Home's notices, led by an `h-4 w-4` icon. A trailing count takes `ml-auto`.
 const CARD_TITLE_SMALL = "flex items-center gap-2 text-base max-sm:text-base";
@@ -103,6 +107,7 @@ const CardFooter = React.forwardRef<
 CardFooter.displayName = "CardFooter";
 
 export {
+  CARD_SECTION_CONTENT,
   CARD_TITLE_ACTION,
   CARD_TITLE_ROW,
   CARD_TITLE_SMALL,
