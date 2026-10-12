@@ -205,7 +205,7 @@ export function DiveActivityCard() {
                     itself: the anchor is whichever day you happened to land on,
                     which usually matches no option, and a `<select>` whose value
                     matches no option shows the first one instead. Fixed width -
-                    the gas card's, since both now show "September 2026" - so the
+                    the gas card's, since both show "Sep 2026" - so the
                     chart doesn't shift sideways as the label changes. */}
               <div className="w-36 shrink-0">
                 <NativeSelect
