@@ -11,18 +11,12 @@ import {
   isSingleGasParallelSet,
   mod,
   ppO2Limit,
-  tankGas,
 } from "@/lib/dive-mixtures";
 import { AlertTriangle } from "lucide-react";
-import {
-  LeftTankIcon,
-  TankIcon,
-  TwinTankIcon,
-} from "@/components/icons/tank-icon";
+import { MixtureTankIcon } from "@/components/dives/mixture-tank-icon";
 import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import { FactsLine } from "@/components/ui/icon-fact";
-import { isTwinSetVolume } from "@/components/dives/volume-combobox";
 import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
 import {
@@ -80,19 +74,14 @@ function TankCard({
   if (mixture.usage) {
     facts.push(TANK_USAGE_LABELS[mixture.usage] ?? mixture.usage);
   }
-  // A twin set is recorded as one cylinder holding a twin-set preset's litres.
-  const Icon = left
-    ? LeftTankIcon
-    : isTwinSetVolume(mixture.volume)
-      ? TwinTankIcon
-      : TankIcon;
-
   return (
     <li className="rounded-lg border p-3">
       <div className="flex items-start gap-3">
-        <Icon
-          gas={tankGas(mixture.oxygen, mixture.helium)}
-          aria-hidden
+        <MixtureTankIcon
+          volume={mixture.volume}
+          oxygen={mixture.oxygen}
+          helium={mixture.helium}
+          left={left}
           className="size-10 shrink-0 stroke-[1.5]"
         />
         <div className="min-w-0">
