@@ -20,7 +20,8 @@ import * as React from "react";
  * favicon sizes and a ring everywhere else; filling it deliberately makes the
  * mark the same shape at every size. The fill sits inside the stroke, so the
  * silhouette is unchanged. `src/app/icon.svg` is the same three circles at a
- * heavier stroke, which is what keeps that bubble crisp at 16px.
+ * heavier stroke, which is what keeps that bubble crisp at 16px, and
+ * `layout/launch-splash.tsx` animates the same three as its slots.
  */
 export function Logo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
   return (
