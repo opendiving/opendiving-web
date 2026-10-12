@@ -6,8 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 // A conveyor of bubbles: each climbs to the next one's place and takes on its size.
 // The top one settles in its slot and fades there while the next rises into it, and a
-// new one grows at the bottom. At every whole step the last three slots are exactly
-// the mark. One bubble per slot, so the four circles drawn below match these four.
+// new one grows at the bottom. At every whole step the last three bubbles sit exactly
+// where the mark's circles do. One bubble per slot, so the four circles drawn below match these four.
 const SLOTS = [
   { x: 3.5, y: 22.1, r: 0 },
   { x: 6.5, y: 18.5, r: 1.6 },
@@ -55,7 +55,10 @@ function bubble(i: number, elapsed: number) {
 
   const grow = k === 0 ? ease(f) : 1;
   // A step-long fade, started FADE_LEAD early while the bubble still rises into its slot.
-  const fade = 1 - ease(Math.min(1, Math.max(0, p - (TOP - FADE_LEAD))));
+  // Except for the bubble the first frame puts in the top slot: that frame is the whole
+  // mark, so this one fades from where it sits, across the first step.
+  const lead = i === TOP && elapsed < STEP_MS ? 0 : FADE_LEAD;
+  const fade = 1 - ease(Math.min(1, Math.max(0, p - (TOP - lead))));
   // A ring STROKE thick, drawn from its outer edge and its hole: a solid dot until it
   // is twice STROKE across, when the hole starts to open.
   const outer = at("r") + (STROKE / 2) * grow;
