@@ -341,7 +341,10 @@ export function CheckInPageFrame({
           be telling them whose page it is. */}
       <IndexHero
         title="Diver Check-in"
-        className={cn(INK, "print:px-0")}
+        className={cn(
+          INK,
+          "print:px-0 print:pb-4 print:[&_h1]:flex-1 print:[&_h1]:text-center print:[&_h1~div]:p-0",
+        )}
         // The link's end is the shop's to see, where the diver's own page only
         // says what it is for.
         subtitle={
@@ -352,8 +355,18 @@ export function CheckInPageFrame({
           )
         }
         description={
-          !link &&
-          "What a dive shop asks for at the desk, on one page you can hand over"
+          !link && (
+            <>
+              <p>
+                What a dive shop asks for at the desk, on one page you can hand
+                over.
+              </p>
+              <p className="mt-2">
+                Your browser&rsquo;s print dialog can save this as a PDF too
+                &mdash; worth keeping on your phone for a desk with no signal.
+              </p>
+            </>
+          )
         }
         actions={
           <>
@@ -392,13 +405,6 @@ export function CheckInPageFrame({
           "space-y-6 max-sm:space-y-2.5 print:px-0 print:pb-0",
         )}
       >
-        {!link && (
-          <p className="text-sm text-muted-foreground print:hidden">
-            Your browser&rsquo;s print dialog can save this as a PDF too &mdash;
-            worth keeping on your phone for a desk with no signal.
-          </p>
-        )}
-
         {sharing && !link && <CheckInLinkPanel sharing={sharing} />}
 
         {/* On screen only: a sheet handed across a desk should not carry this app's
