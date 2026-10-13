@@ -58,6 +58,9 @@ describe("mergeMixture", () => {
       // Cleared, and it can be nothing else: no format this app parses carries
       // the flag, so `ParsedDiveMixture` has no `usage` for a file to supply.
       usage: "",
+      // Nor does any file name the diver's own gear.
+      gear_item_uuid: "",
+      gear_item: null,
     });
   });
 
@@ -228,6 +231,8 @@ describe("describeMixtureImport", () => {
     guessed,
     keptPressures: false,
     discardedPressures: false,
+    keptLinkedVolume: false,
+    droppedLinks: false,
     ...rest,
   });
 
@@ -336,5 +341,110 @@ describe("describeMixtureImport", () => {
     expect(
       describeMixtureImport(notesFor({}, { discardedPressures: true })),
     ).toContain("were cleared");
+  });
+});
+
+// A tank linked to one of the diver's cylinders, as the form holds it after a pick.
+const AL80 = {
+  uuid: "vessel-1",
+  name: "AL80",
+  type: "cylinder" as const,
+  rented: false,
+  is_archived: false,
+  volume: 11.1,
+  working_pressure: 207,
+  material: "aluminium",
+};
+const linked = (overrides: Partial<DiveMixtureInput> = {}) =>
+  onForm({
+    volume: 11.1,
+    gear_item_uuid: AL80.uuid,
+    gear_item: AL80,
+    ...overrides,
+  });
+
+describe("the first file's apply over a linked tank", () => {
+  it("keeps the link and the tank's own volume where the counts match", () => {
+    const merged = mergeMixture(parsed({ volume: 12, oxygen: 32 }), linked());
+
+    expect(merged.value.gear_item_uuid).toBe(AL80.uuid);
+    expect(merged.value.gear_item).toEqual(AL80);
+    expect(merged.value.volume).toBe(11.1);
+    // The rest is the file's, as on any tank.
+    expect(merged.value.oxygen).toBe(32);
+    expect(merged.sources.volume).toBe("vessel");
+  });
+
+  it("keeps the document's volume a link an import made", () => {
+    // Not the vessel's: an import keeps the cylinder volume its document stated.
+    const merged = mergeMixture(
+      parsed({ volume: 12, oxygen: 32 }),
+      linked({ volume: 10 }),
+    );
+    expect(merged.value.volume).toBe(10);
+  });
+
+  it("takes the vessel's capacity for a linked tank holding none", () => {
+    const merged = mergeMixture(
+      parsed({ volume: 12, oxygen: 32 }),
+      linked({ volume: "" }),
+    );
+    expect(merged.value.volume).toBe(11.1);
+  });
+
+  it("takes the file's volume for a tank whose vessel records no capacity", () => {
+    const merged = mergeMixture(
+      parsed({ volume: 12 }),
+      linked({ volume: "", gear_item: { ...AL80, volume: null } }),
+    );
+    expect(merged.value.volume).toBe(12);
+    expect(merged.value.gear_item_uuid).toBe(AL80.uuid);
+  });
+
+  it("says the file's different size was not taken, and only then", () => {
+    const parsedRows = [parsed({ volume: 12, oxygen: 32 })];
+    const differing = mixtureImportNotes(
+      parsedRows,
+      [mergeMixture(parsedRows[0], linked())],
+      [linked()],
+    );
+    expect(differing.keptLinkedVolume).toBe(true);
+    expect(describeMixtureImport(differing)).toMatch(
+      /kept that cylinder's size; the file's different size was not taken/,
+    );
+
+    const sameRows = [parsed({ volume: 11.1, oxygen: 32, helium: 0 })];
+    const same = mixtureImportNotes(
+      sameRows,
+      [mergeMixture(sameRows[0], linked())],
+      [linked()],
+    );
+    expect(same.keptLinkedVolume).toBe(false);
+    expect(describeMixtureImport(same)).toBeNull();
+  });
+
+  it("replaces the tanks, links included, where the counts differ, and says so", () => {
+    const existing = [linked()];
+    const parsedRows = [parsed({ volume: 12 }), parsed({ volume: 7 })];
+    // The apply pairs nothing when the counts differ (`existingMixtureFor`).
+    const merged = parsedRows.map((row) => mergeMixture(row));
+
+    expect(merged.map((row) => row.value.gear_item_uuid)).toEqual(["", ""]);
+    expect(merged.map((row) => row.value.volume)).toEqual([12, 7]);
+    const notes = mixtureImportNotes(parsedRows, merged, existing);
+    expect(notes.droppedLinks).toBe(true);
+    expect(describeMixtureImport(notes)).toMatch(
+      /tanks were replaced .* no longer linked to your gear/,
+    );
+  });
+
+  it("says nothing about links where none stood", () => {
+    const parsedRows = [parsed({ volume: 12 }), parsed({ volume: 7 })];
+    const notes = mixtureImportNotes(
+      parsedRows,
+      parsedRows.map((row) => mergeMixture(row)),
+      [onForm()],
+    );
+    expect(notes.droppedLinks).toBe(false);
   });
 });

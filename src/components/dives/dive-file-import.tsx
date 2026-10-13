@@ -35,6 +35,7 @@ import {
   fillMixtures,
   mergeMixture,
   mixtureImportNotes,
+  NO_MIXTURE_NOTES,
   type MixtureImportNotes,
 } from "@/lib/dive-import";
 import { isNonEmptyFieldValue } from "@/lib/dive-form-fields";
@@ -271,7 +272,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
     }
   }
   if (parsed.mixtures.length === 0) {
-    return { guessed: {}, keptPressures: false, discardedPressures: false };
+    return NO_MIXTURE_NOTES;
   }
 
   const existing = getDiveFormMixtures(form);
@@ -294,7 +295,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
       const filled = fillMixtures(parsed.mixtures, existing);
       if (filled) replace(filled);
     }
-    return { guessed: {}, keptPressures: false, discardedPressures: false };
+    return NO_MIXTURE_NOTES;
   }
 
   const merged = parsed.mixtures.map((mixture, index) =>

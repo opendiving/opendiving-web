@@ -7,6 +7,7 @@ import {
   METERS_PER_FOOT,
   PSI_PER_BAR,
   UNIT_SYSTEMS,
+  cylinderCubicFeet,
   displayBound,
   displayNumber,
   formatAltitude,
@@ -373,5 +374,14 @@ describe("displayBound", () => {
   it("passes a metric bound through untouched", () => {
     expect(displayBound(-450, "altitude", "metric", "min")).toBe(-450);
     expect(displayBound(0.5, "depth", "metric", "min")).toBe(0.5);
+  });
+});
+
+describe("cylinderCubicFeet", () => {
+  it("names a cylinder by its gas at the working pressure, as Subsurface does", () => {
+    // Catalina's S80: 11.1 L at 3000 psi.
+    expect(cylinderCubicFeet(11.1, 207)).toBe(80);
+    // A 12 L 232 bar steel.
+    expect(cylinderCubicFeet(12, 232)).toBe(97);
   });
 });

@@ -374,3 +374,34 @@ describe("DiveMixturesCard icon", () => {
     ]);
   });
 });
+
+describe("DiveMixturesCard linked vessel", () => {
+  const VESSEL = {
+    uuid: "vessel-1",
+    name: "AL80",
+    brand: "Catalina",
+    type: "cylinder" as const,
+    rented: false,
+    is_archived: false,
+    volume: 11.1,
+    working_pressure: 207,
+    material: "aluminium",
+  };
+
+  it("names the tank's vessel on its line, linking to the vessel's page", () => {
+    render(
+      <DiveMixturesCard dive={dive([{ ...EAN54, gear_item: VESSEL }], 10)} />,
+    );
+
+    const link = screen.getByRole("link", { name: "Catalina AL80" });
+    expect(link.getAttribute("href")).toMatch(/^\/gear\/vessel-1/);
+    // Litres still, and once: the tank's own figure, beside the vessel's name.
+    expect(link.closest("p")).toHaveTextContent("Catalina AL80 · 11.1 L");
+  });
+
+  it("names nothing for a tank linked to no vessel", () => {
+    render(<DiveMixturesCard dive={dive([EAN54], 10)} />);
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+});

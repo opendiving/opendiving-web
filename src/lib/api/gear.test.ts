@@ -46,6 +46,6 @@ describe("gearTypeLabel", () => {
   it("falls back to the raw value for a type this build doesn't know", () => {
     // The API may grow a category before the frontend does; a blank cell would
     // be worse than showing the slug.
-    expect(gearTypeLabel("rebreather")).toBe("rebreather");
+    expect(gearTypeLabel("hookah")).toBe("hookah");
   });
 });

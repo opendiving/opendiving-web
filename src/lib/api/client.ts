@@ -309,10 +309,14 @@ export interface PaginatedResponse<T> {
  * ISO start time with or without an offset, or a bare `YYYY-MM-DD` - and the API
  * ranks each row by its last use on a dive at or before it. Left off, every dive
  * counts.
+ *
+ * `type` narrows to one category, on the lookups that have one - the gear lookup,
+ * which a tank's cylinder picker asks for cylinders.
  */
 export interface LookupQuery {
   search?: string;
   until?: string;
+  type?: string;
 }
 
 /**
@@ -332,7 +336,7 @@ export interface UuidLookupQuery extends LookupQuery {
 export function lookupRequest(
   page: number,
   items_per_page: number,
-  { search, until, uuids }: UuidLookupQuery = {},
+  { search, until, type, uuids }: UuidLookupQuery = {},
 ) {
   return {
     params: {
@@ -340,6 +344,7 @@ export function lookupRequest(
       items_per_page,
       ...(search ? { search } : {}),
       ...(until ? { until } : {}),
+      ...(type ? { type } : {}),
       ...(uuids?.length ? { uuid: [...uuids] } : {}),
     },
     paramsSerializer: { indexes: null },

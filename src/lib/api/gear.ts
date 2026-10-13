@@ -26,9 +26,12 @@ export const GEAR_TYPES = [
   "boots",
   "bcd",
   "regulator",
+  "rebreather",
   "computer",
+  "transmitter",
   "cylinder",
   "light",
+  "scooter",
   "smb",
   "mirror",
   "whistle",
@@ -58,9 +61,12 @@ const GEAR_TYPE_LABELS: Record<GearType, string> = {
   boots: "Boots",
   bcd: "BCD",
   regulator: "Regulator",
+  rebreather: "Rebreather",
   computer: "Dive computer",
+  transmitter: "Transmitter",
   cylinder: "Cylinder",
   light: "Light",
+  scooter: "Scooter",
   smb: "SMB",
   mirror: "Mirror",
   whistle: "Whistle",
@@ -82,8 +88,41 @@ export function gearTypeLabel(type: string | null | undefined): string | null {
   return GEAR_TYPE_LABELS[type as GearType] ?? type;
 }
 
+/**
+ * What a cylinder is made of. Mirrors the API's `CylinderMaterial`, UDDF's
+ * `tankmaterial` spellings in their order.
+ */
+export const CYLINDER_MATERIALS = ["steel", "aluminium", "carbon"] as const;
+
+export type CylinderMaterial = (typeof CYLINDER_MATERIALS)[number];
+
+const CYLINDER_MATERIAL_LABELS: Record<CylinderMaterial, string> = {
+  steel: "Steel",
+  aluminium: "Aluminium",
+  carbon: "Carbon",
+};
+
+/** A material's label, or the stored value where this build has none yet. */
+export function cylinderMaterialLabel(material: string): string {
+  return CYLINDER_MATERIAL_LABELS[material as CylinderMaterial] ?? material;
+}
+
+/**
+ * The vessel's own facts, recorded once on the gear item rather than on every dive
+ * that used it. Allowed on any type and meaningful on a cylinder, which is the only
+ * type the dialog shows them for. Every one is `null` when unrecorded.
+ */
+export interface VesselFacts {
+  // Litres of water capacity - a manifolded twinset's combined.
+  volume?: number | null;
+  // Bar, what the vessel is rated to - never what was in it on a dive.
+  working_pressure?: number | null;
+  // A stored-vocabulary string on reads, so a value this build lacks still arrives.
+  material?: string | null;
+}
+
 // A single piece of diving equipment (regulator, BCD, drysuit, computer, ...).
-export interface GearItem {
+export interface GearItem extends VesselFacts {
   uuid: string;
   name: string;
   brand?: string | null;
@@ -97,6 +136,9 @@ export interface GearItem {
   // Number of the owner's dives this item was used on, maintained by the API
   // after every dive create/update/delete.
   dive_count: number;
+  // Seconds: the summed dive time of those same dives, which an hours-based service
+  // rule counts against. Derived by the API alongside `dive_count`.
+  dive_time: number;
   // This item's servicing rules, embedded by the API so the gear list can badge
   // "service due" without a request per row. Optional so a client built against an
   // older API (or a cached response predating the field) still type-checks.
@@ -118,12 +160,22 @@ export interface GearItemSummary {
   is_archived: boolean;
 }
 
+/**
+ * A gear item as a dive's cylinder carries it (the API's `GearItemInfo`): the summary
+ * plus the vessel facts, so the tank picker and the Tanks card read the vessel off the
+ * row they hold rather than fetching it.
+ */
+export interface GearItemInfo extends GearItemSummary, VesselFacts {}
+
 export interface GearItemCreate {
   name: string;
   brand?: string;
   type?: GearType;
   notes?: string;
   rented?: boolean;
+  volume?: number | null;
+  working_pressure?: number | null;
+  material?: CylinderMaterial | null;
 }
 
 export interface GearItemUpdate {
@@ -133,6 +185,10 @@ export interface GearItemUpdate {
   notes?: string;
   rented?: boolean;
   is_archived?: boolean;
+  // `null` clears each of the three.
+  volume?: number | null;
+  working_pressure?: number | null;
+  material?: CylinderMaterial | null;
 }
 
 // A named, reusable grouping of gear items ("Sidemount", "Tech - trimix", ...).
@@ -166,9 +222,10 @@ export type PaginatedGearItemsResponse = PaginatedResponse<GearItem>;
 
 /**
  * One row of `GET /gear-items/lookup`: the members of `GearItemSummary`, which a
- * picker stores for its label and its Rented and Archived badges.
+ * picker stores for its label and its Rented and Archived badges, and the vessel
+ * facts, which the tank picker copies its capacity from.
  */
-export type GearItemLookupItem = GearItemSummary;
+export type GearItemLookupItem = GearItemInfo;
 
 export type PaginatedGearSetsResponse = PaginatedResponse<GearSet>;
 

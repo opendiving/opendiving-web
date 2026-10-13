@@ -196,6 +196,7 @@ export function GearItemsCard({
                       status={worstServiceStatus(
                         item.service ?? [],
                         item.dive_count,
+                        item.dive_time,
                       )}
                     />
                   </TableCell>

@@ -220,10 +220,20 @@ describe("lookupRequest", () => {
     expect(url).toContain("?page=1&items_per_page=2&uuid=a&uuid=b");
   });
 
-  it("leaves an empty search, date and uuid list off", () => {
-    expect(lookupRequest(1, 25, { search: "", uuids: [] }).params).toEqual({
+  it("leaves an empty search, date, type and uuid list off", () => {
+    expect(
+      lookupRequest(1, 25, { search: "", type: "", uuids: [] }).params,
+    ).toEqual({
       page: 1,
       items_per_page: 25,
+    });
+  });
+
+  it("sends a type when one narrows the lookup", () => {
+    expect(lookupRequest(1, 25, { type: "cylinder" }).params).toEqual({
+      page: 1,
+      items_per_page: 25,
+      type: "cylinder",
     });
   });
 });

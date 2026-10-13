@@ -3,11 +3,14 @@ import type { GearServiceScheduleSummary } from "@/lib/api/gear-service";
 import {
   SERVICE_DUE_SOON_DAYS,
   SERVICE_DUE_SOON_DIVES,
+  SERVICE_DUE_SOON_HOURS,
+  countOf,
   daysBetweenIsoDates,
   defaultSchedulesForGearType,
   divesSince,
   formatServiceDue,
   formatServiceDueQualifier,
+  hoursOfDiving,
   nextService,
   serviceStatus,
   serviceStatusBadgeVariant,
@@ -17,6 +20,7 @@ import {
 } from "@/lib/gear-service";
 
 const TODAY = "2026-08-10";
+const HOUR = 3600;
 
 function schedule(
   overrides: Partial<GearServiceScheduleSummary> = {},
@@ -75,54 +79,78 @@ describe("daysBetweenIsoDates", () => {
 
 describe("serviceStatus", () => {
   it("is ok when nothing is tracked", () => {
-    expect(serviceStatus(schedule(), 0, TODAY)).toBe("ok");
+    expect(serviceStatus(schedule(), 0, 0, TODAY)).toBe("ok");
   });
 
   it("is ok when the due date is far away", () => {
     expect(
-      serviceStatus(schedule({ next_due_on: "2027-08-10" }), 0, TODAY),
+      serviceStatus(schedule({ next_due_on: "2027-08-10" }), 0, 0, TODAY),
     ).toBe("ok");
   });
 
   it("is due_soon inside the window", () => {
     expect(
-      serviceStatus(schedule({ next_due_on: "2026-08-20" }), 0, TODAY),
+      serviceStatus(schedule({ next_due_on: "2026-08-20" }), 0, 0, TODAY),
     ).toBe("due_soon");
   });
 
   it("is overdue on and after the due date", () => {
     expect(
-      serviceStatus(schedule({ next_due_on: "2026-08-10" }), 0, TODAY),
+      serviceStatus(schedule({ next_due_on: "2026-08-10" }), 0, 0, TODAY),
     ).toBe("overdue");
     expect(
-      serviceStatus(schedule({ next_due_on: "2026-08-09" }), 0, TODAY),
+      serviceStatus(schedule({ next_due_on: "2026-08-09" }), 0, 0, TODAY),
     ).toBe("overdue");
   });
 
   it("has an exact date boundary", () => {
     // 30 days out is due soon; 31 is not.
     expect(
-      serviceStatus(schedule({ next_due_on: "2026-09-09" }), 0, TODAY),
+      serviceStatus(schedule({ next_due_on: "2026-09-09" }), 0, 0, TODAY),
     ).toBe("due_soon");
     expect(daysBetweenIsoDates(TODAY, "2026-09-09")).toBe(
       SERVICE_DUE_SOON_DAYS,
     );
     expect(
-      serviceStatus(schedule({ next_due_on: "2026-09-10" }), 0, TODAY),
+      serviceStatus(schedule({ next_due_on: "2026-09-10" }), 0, 0, TODAY),
     ).toBe("ok");
   });
 
   it("tracks the dive arm on its own", () => {
     const s = schedule({ next_due_at_dive_count: 140 });
-    expect(serviceStatus(s, 40, TODAY)).toBe("ok");
-    expect(serviceStatus(s, 140 - SERVICE_DUE_SOON_DIVES, TODAY)).toBe(
+    expect(serviceStatus(s, 40, 0, TODAY)).toBe("ok");
+    expect(serviceStatus(s, 140 - SERVICE_DUE_SOON_DIVES, 0, TODAY)).toBe(
       "due_soon",
     );
-    expect(serviceStatus(s, 140 - SERVICE_DUE_SOON_DIVES - 1, TODAY)).toBe(
+    expect(serviceStatus(s, 140 - SERVICE_DUE_SOON_DIVES - 1, 0, TODAY)).toBe(
       "ok",
     );
-    expect(serviceStatus(s, 140, TODAY)).toBe("overdue");
-    expect(serviceStatus(s, 207, TODAY)).toBe("overdue");
+    expect(serviceStatus(s, 140, 0, TODAY)).toBe("overdue");
+    expect(serviceStatus(s, 207, 0, TODAY)).toBe("overdue");
+  });
+
+  it("tracks the hours arm on its own, in seconds of dive time", () => {
+    const s = schedule({ next_due_at_dive_time: 50 * HOUR });
+    expect(serviceStatus(s, 0, 30 * HOUR, TODAY)).toBe("ok");
+    expect(
+      serviceStatus(s, 0, (50 - SERVICE_DUE_SOON_HOURS) * HOUR, TODAY),
+    ).toBe("due_soon");
+    expect(
+      serviceStatus(s, 0, (50 - SERVICE_DUE_SOON_HOURS) * HOUR - 1, TODAY),
+    ).toBe("ok");
+    expect(serviceStatus(s, 0, 50 * HOUR, TODAY)).toBe("overdue");
+    expect(serviceStatus(s, 0, 50 * HOUR + 1, TODAY)).toBe("overdue");
+  });
+
+  it("lets the hours arm win when it is the more urgent", () => {
+    const all = schedule({
+      next_due_on: "2027-08-10",
+      next_due_at_dive_count: 140,
+      next_due_at_dive_time: 50 * HOUR,
+    });
+    expect(serviceStatus(all, 40, 51 * HOUR, TODAY)).toBe("overdue");
+    expect(serviceStatus(all, 40, 45 * HOUR, TODAY)).toBe("due_soon");
+    expect(serviceStatus(all, 40, 10 * HOUR, TODAY)).toBe("ok");
   });
 
   it("lets the more urgent arm win", () => {
@@ -131,15 +159,16 @@ describe("serviceStatus", () => {
       next_due_on: "2027-08-10",
       next_due_at_dive_count: 140,
     });
-    expect(serviceStatus(both, 150, TODAY)).toBe("overdue");
-    expect(serviceStatus(both, 135, TODAY)).toBe("due_soon");
-    expect(serviceStatus(both, 40, TODAY)).toBe("ok");
+    expect(serviceStatus(both, 150, 0, TODAY)).toBe("overdue");
+    expect(serviceStatus(both, 135, 0, TODAY)).toBe("due_soon");
+    expect(serviceStatus(both, 40, 0, TODAY)).toBe("ok");
   });
 
   it("treats a paused schedule as ok", () => {
     expect(
       serviceStatus(
         schedule({ next_due_on: "2020-01-01", is_active: false }),
+        0,
         0,
         TODAY,
       ),
@@ -151,13 +180,14 @@ describe("worstServiceStatus", () => {
   it("is null when nothing is tracked", () => {
     // Distinct from "ok" on purpose: no schedules means nothing is being watched,
     // which is not the same as everything being fine.
-    expect(worstServiceStatus([], 0, TODAY)).toBeNull();
+    expect(worstServiceStatus([], 0, 0, TODAY)).toBeNull();
   });
 
   it("is null when every schedule is paused", () => {
     expect(
       worstServiceStatus(
         [schedule({ next_due_on: "2020-01-01", is_active: false })],
+        0,
         0,
         TODAY,
       ),
@@ -169,11 +199,11 @@ describe("worstServiceStatus", () => {
     const soon = schedule({ uuid: "b", next_due_on: "2026-08-20" });
     const late = schedule({ uuid: "c", next_due_on: "2020-01-01" });
 
-    expect(worstServiceStatus([ok], 0, TODAY)).toBe("ok");
-    expect(worstServiceStatus([ok, soon], 0, TODAY)).toBe("due_soon");
-    expect(worstServiceStatus([ok, soon, late], 0, TODAY)).toBe("overdue");
+    expect(worstServiceStatus([ok], 0, 0, TODAY)).toBe("ok");
+    expect(worstServiceStatus([ok, soon], 0, 0, TODAY)).toBe("due_soon");
+    expect(worstServiceStatus([ok, soon, late], 0, 0, TODAY)).toBe("overdue");
     // Order must not matter.
-    expect(worstServiceStatus([late, soon, ok], 0, TODAY)).toBe("overdue");
+    expect(worstServiceStatus([late, soon, ok], 0, 0, TODAY)).toBe("overdue");
   });
 });
 
@@ -214,6 +244,7 @@ describe("nextService", () => {
           schedule({ next_due_at_dive_count: 50 }),
         ],
         10,
+        0,
         TODAY,
       ),
     ).toEqual({ kind: "date", on: "2026-01-01" });
@@ -227,9 +258,56 @@ describe("nextService", () => {
           schedule({ next_due_on: "2026-09-01" }),
         ],
         120,
+        0,
         TODAY,
       ),
     ).toEqual({ kind: "overdue" });
+  });
+
+  it("is overdue when an hours figure has run out, whatever the dates say", () => {
+    expect(
+      nextService(
+        [
+          schedule({ next_due_at_dive_time: 6300 }),
+          schedule({ next_due_on: "2026-09-01" }),
+        ],
+        1,
+        7200,
+        TODAY,
+      ),
+    ).toEqual({ kind: "overdue" });
+  });
+
+  it("counts the fewest hours left, rounded up, with only hours to go on", () => {
+    // Verification's own figures: a rule of 1 hour from 45 minutes in.
+    expect(
+      nextService([schedule({ next_due_at_dive_time: 6300 })], 1, 2700, TODAY),
+    ).toEqual({ kind: "hours", remaining: 1 });
+    expect(
+      nextService(
+        [
+          schedule({ next_due_at_dive_time: 100 * HOUR }),
+          schedule({ next_due_at_dive_time: 20 * HOUR }),
+        ],
+        0,
+        8 * HOUR,
+        TODAY,
+      ),
+    ).toEqual({ kind: "hours", remaining: 12 });
+  });
+
+  it("prefers dives to hours when neither has run out", () => {
+    expect(
+      nextService(
+        [
+          schedule({ next_due_at_dive_time: 2 * HOUR }),
+          schedule({ next_due_at_dive_count: 30 }),
+        ],
+        20,
+        0,
+        TODAY,
+      ),
+    ).toEqual({ kind: "dives", remaining: 10 });
   });
 
   it("counts the fewest dives left when no schedule has a date", () => {
@@ -240,16 +318,18 @@ describe("nextService", () => {
           schedule({ next_due_at_dive_count: 30 }),
         ],
         20,
+        0,
         TODAY,
       ),
     ).toEqual({ kind: "dives", remaining: 10 });
   });
 
   it("is null without an active schedule that has a due point", () => {
-    expect(nextService([], 0, TODAY)).toBeNull();
+    expect(nextService([], 0, 0, TODAY)).toBeNull();
     expect(
       nextService(
         [schedule(), schedule({ next_due_on: "2026-01-01", is_active: false })],
+        0,
         0,
         TODAY,
       ),
@@ -260,33 +340,33 @@ describe("nextService", () => {
 describe("formatServiceDue", () => {
   it("counts down to a due date", () => {
     expect(
-      formatServiceDue(schedule({ next_due_on: "2026-08-20" }), 0, TODAY),
+      formatServiceDue(schedule({ next_due_on: "2026-08-20" }), 0, 0, TODAY),
     ).toBe("Due in 10 days");
     expect(
-      formatServiceDue(schedule({ next_due_on: "2026-08-11" }), 0, TODAY),
+      formatServiceDue(schedule({ next_due_on: "2026-08-11" }), 0, 0, TODAY),
     ).toBe("Due in 1 day");
   });
 
   it("calls a schedule due today overdue, not merely due", () => {
-    expect(formatServiceDue(schedule({ next_due_on: TODAY }), 0, TODAY)).toBe(
-      "Overdue (due today)",
-    );
+    expect(
+      formatServiceDue(schedule({ next_due_on: TODAY }), 0, 0, TODAY),
+    ).toBe("Overdue (due today)");
   });
 
   it("counts up once a due date has passed", () => {
     expect(
-      formatServiceDue(schedule({ next_due_on: "2026-08-09" }), 0, TODAY),
+      formatServiceDue(schedule({ next_due_on: "2026-08-09" }), 0, 0, TODAY),
     ).toBe("Overdue by 1 day");
     expect(
-      formatServiceDue(schedule({ next_due_on: "2026-07-11" }), 0, TODAY),
+      formatServiceDue(schedule({ next_due_on: "2026-07-11" }), 0, 0, TODAY),
     ).toBe("Overdue by 30 days");
   });
 
   it("describes a dive-only schedule in dives", () => {
     const s = schedule({ next_due_at_dive_count: 140 });
-    expect(formatServiceDue(s, 135, TODAY)).toBe("Due in 5 dives");
-    expect(formatServiceDue(s, 139, TODAY)).toBe("Due in 1 dive");
-    expect(formatServiceDue(s, 143, TODAY)).toBe("Overdue by 3 dives");
+    expect(formatServiceDue(s, 135, 0, TODAY)).toBe("Due in 5 dives");
+    expect(formatServiceDue(s, 139, 0, TODAY)).toBe("Due in 1 dive");
+    expect(formatServiceDue(s, 143, 0, TODAY)).toBe("Overdue by 3 dives");
   });
 
   it("names the dive arm when that is the one that ran out", () => {
@@ -296,7 +376,7 @@ describe("formatServiceDue", () => {
       next_due_on: "2027-03-01",
       next_due_at_dive_count: 140,
     });
-    expect(formatServiceDue(s, 143, TODAY)).toBe("Overdue by 3 dives");
+    expect(formatServiceDue(s, 143, 0, TODAY)).toBe("Overdue by 3 dives");
   });
 
   it("prefers the date arm when both are still in the future", () => {
@@ -304,11 +384,39 @@ describe("formatServiceDue", () => {
       next_due_on: "2026-08-20",
       next_due_at_dive_count: 140,
     });
-    expect(formatServiceDue(s, 40, TODAY)).toBe("Due in 10 days");
+    expect(formatServiceDue(s, 40, 0, TODAY)).toBe("Due in 10 days");
+  });
+
+  it("describes an hours-only schedule in hours of diving, rounded up", () => {
+    const s = schedule({ next_due_at_dive_time: 50 * HOUR });
+    expect(formatServiceDue(s, 0, 38 * HOUR, TODAY)).toBe(
+      "Due in 12 hours of diving",
+    );
+    // Forty minutes left is an hour, never "0 hours".
+    expect(formatServiceDue(s, 0, 50 * HOUR - 40 * 60, TODAY)).toBe(
+      "Due in 1 hour of diving",
+    );
+    expect(formatServiceDue(s, 0, 53 * HOUR, TODAY)).toBe(
+      "Overdue by 3 hours of diving",
+    );
+  });
+
+  it("names the dive arm before the hours arm, as the digest does", () => {
+    const s = schedule({
+      next_due_at_dive_count: 140,
+      next_due_at_dive_time: 50 * HOUR,
+    });
+    expect(formatServiceDue(s, 143, 53 * HOUR, TODAY)).toBe(
+      "Overdue by 3 dives",
+    );
+    expect(formatServiceDue(s, 135, 40 * HOUR, TODAY)).toBe("Due in 5 dives");
+    expect(formatServiceDue(s, 135, 53 * HOUR, TODAY)).toBe(
+      "Overdue by 3 hours of diving",
+    );
   });
 
   it("handles a schedule with no thresholds at all", () => {
-    expect(formatServiceDue(schedule(), 0, TODAY)).toBe("No due date");
+    expect(formatServiceDue(schedule(), 0, 0, TODAY)).toBe("No due date");
   });
 });
 
@@ -324,15 +432,29 @@ describe("formatServiceDueQualifier", () => {
       [{ next_due_at_dive_count: 140 }, 135, "in 5 dives"],
       [{ next_due_at_dive_count: 140 }, 143, "by 3 dives"],
       [
+        { next_due_at_dive_time: 50 * HOUR },
+        38 * HOUR,
+        "in 12 hours of diving",
+      ],
+      [{ next_due_at_dive_time: 50 * HOUR }, 53 * HOUR, "by 3 hours of diving"],
+      [
         { next_due_on: "2027-03-01", next_due_at_dive_count: 140 },
         143,
         "by 3 dives",
       ],
     ];
 
-    for (const [overrides, diveCount, expected] of cases) {
+    // The figure is a dive count for a dive arm and seconds of dive time for an hours
+    // arm; each case has only one of the two.
+    for (const [overrides, figure, expected] of cases) {
+      const hours = overrides.next_due_at_dive_time != null;
       expect(
-        formatServiceDueQualifier(schedule(overrides), diveCount, TODAY),
+        formatServiceDueQualifier(
+          schedule(overrides),
+          hours ? 0 : figure,
+          hours ? figure : 0,
+          TODAY,
+        ),
       ).toBe(expected);
     }
   });
@@ -353,20 +475,41 @@ describe("formatServiceDue agrees with serviceStatus", () => {
       name: "out of dives exactly",
       schedule: schedule({ next_due_at_dive_count: 140 }),
     },
+    {
+      name: "out of hours exactly",
+      schedule: schedule({ next_due_at_dive_time: 50 * HOUR }),
+    },
   ];
 
   for (const { name, schedule: s } of cases) {
     it(`describes "${name}" as overdue in both the badge and the text`, () => {
       const diveCount = s.next_due_at_dive_count ?? 0;
-      expect(serviceStatus(s, diveCount, TODAY)).toBe("overdue");
-      expect(formatServiceDue(s, diveCount, TODAY)).toMatch(/^Overdue/);
+      const diveTime = s.next_due_at_dive_time ?? 0;
+      expect(serviceStatus(s, diveCount, diveTime, TODAY)).toBe("overdue");
+      expect(formatServiceDue(s, diveCount, diveTime, TODAY)).toMatch(
+        /^Overdue/,
+      );
     });
   }
 
   it("does not call anything still in the future overdue", () => {
     const s = schedule({ next_due_on: "2026-08-11" });
-    expect(serviceStatus(s, 0, TODAY)).not.toBe("overdue");
-    expect(formatServiceDue(s, 0, TODAY)).not.toMatch(/Overdue/);
+    expect(serviceStatus(s, 0, 0, TODAY)).not.toBe("overdue");
+    expect(formatServiceDue(s, 0, 0, TODAY)).not.toMatch(/Overdue/);
+  });
+});
+
+describe("hoursOfDiving / countOf", () => {
+  it("rounds a remainder up to whole hours, as the API does", () => {
+    expect(hoursOfDiving(1)).toBe(1);
+    expect(hoursOfDiving(HOUR)).toBe(1);
+    expect(hoursOfDiving(HOUR + 1)).toBe(2);
+  });
+
+  it("says an hours figure is diving, never clock hours", () => {
+    expect(countOf(1, "hour")).toBe("1 hour of diving");
+    expect(countOf(50, "hour")).toBe("50 hours of diving");
+    expect(countOf(1, "dive")).toBe("1 dive");
   });
 });
 
@@ -387,12 +530,16 @@ describe("defaultSchedulesForGearType", () => {
 
   it("suggests nothing for gear with no convention, or no type", () => {
     expect(defaultSchedulesForGearType("mask")).toEqual([]);
+    // No maker states a general hours figure for these, so there is no preset.
+    expect(defaultSchedulesForGearType("rebreather")).toEqual([]);
+    expect(defaultSchedulesForGearType("scooter")).toEqual([]);
+    expect(defaultSchedulesForGearType("transmitter")).toEqual([]);
     expect(defaultSchedulesForGearType(null)).toEqual([]);
     expect(defaultSchedulesForGearType(undefined)).toEqual([]);
     expect(defaultSchedulesForGearType("")).toEqual([]);
   });
 
   it("tolerates a gear type this build doesn't know about", () => {
-    expect(defaultSchedulesForGearType("rebreather")).toEqual([]);
+    expect(defaultSchedulesForGearType("hookah")).toEqual([]);
   });
 });

@@ -51,6 +51,7 @@ export const DIVE_FORM_FIELDS = [
   "rating",
   "tags",
   "notes",
+  "mixture.gear_item_uuid",
   "mixture.po2_limit",
   "mixture.helium",
   "mixture.start_pressure",
@@ -117,7 +118,9 @@ export const MIXTURE_FORM_FIELDS =
  * restating it, so an exemption cannot be made silently.
  *
  * `id` and `gas_number` have no input at all - the first is stripped on submit, the
- * second round-trips untouched from an imported file.
+ * second round-trips untouched from an imported file. `gear_item` has none either: it
+ * is the linked vessel as the read embeds it, carried to show the link, while the link
+ * itself is `gear_item_uuid`, which is hideable.
  *
  * `volume` and `oxygen` became blank-able when a cylinder was allowed to record a mix
  * with no vessel, and they are exempt on the substance rather than on the type: they
@@ -136,6 +139,7 @@ export const MIXTURE_FORM_FIELDS =
 export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
   "id",
   "gas_number",
+  "gear_item",
   "volume",
   "oxygen",
 ] as const;
@@ -216,6 +220,7 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
   { key: "rating", label: "Rating", group: "Notes" },
   { key: "tags", label: "Tags", group: "Notes" },
   { key: "notes", label: "Notes", group: "Notes" },
+  { key: "mixture.gear_item_uuid", label: "Cylinder", group: "Tanks" },
   { key: "mixture.po2_limit", label: "ppO₂ limit", group: "Tanks" },
   { key: "mixture.helium", label: "He", group: "Tanks" },
   {
@@ -332,6 +337,7 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
   rating: null,
   tags: [],
   notes: "",
+  "mixture.gear_item_uuid": "",
   "mixture.po2_limit": "",
   // The one column that clears to a *number*, and the only one whose absence means
   // something. Hiding He is the diver saying they dive air and nitrox - which is what

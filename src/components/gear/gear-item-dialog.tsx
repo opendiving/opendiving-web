@@ -4,16 +4,19 @@ import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Save } from "lucide-react";
 import { gearItemSchema, GearItemInput } from "@/lib/validations/gear";
 import {
+  CYLINDER_MATERIALS,
+  cylinderMaterialLabel,
   gearAPI,
   GearItem,
   GearType,
   GEAR_TYPES,
   gearTypeLabel,
+  type CylinderMaterial,
 } from "@/lib/api/gear";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
@@ -37,6 +40,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
+import { VolumeCombobox } from "@/components/dives/volume-combobox";
+import { UnitNumberInput } from "@/components/unit-number-input";
+import { useUnits } from "@/hooks/useUnits";
+import { unitLabel } from "@/lib/units";
 
 interface GearItemDialogProps {
   open: boolean;
@@ -49,18 +56,53 @@ interface GearItemDialogProps {
   // Prefills the name field, e.g. with whatever the user had typed into the
   // picker before hitting "Add gear...".
   initialName?: string;
+  // Presets the type of a new item - a tank's cylinder picker opens it as a cylinder.
+  initialType?: GearType;
+}
+
+const CYLINDER: GearType = "cylinder";
+
+/**
+ * The vessel facts a save sends, given the type it saves and the type the item had.
+ *
+ * The fields are on screen only for a cylinder, so that is the one case the form's
+ * values are sent. An item this edit moved away from `cylinder` sends `null` for all
+ * three, keeping no capacity nobody can see; any other item leaves them as stored
+ * (omitted from the PATCH), so renaming an untyped item whose import carried facts
+ * keeps them. A new item that is not a cylinder sends none.
+ */
+export function vesselFactsToSave(
+  data: Pick<GearItemInput, "volume" | "working_pressure" | "material">,
+  savedType: GearType | null,
+  storedType: GearType | null | undefined,
+): {
+  volume?: number | null;
+  working_pressure?: number | null;
+  material?: CylinderMaterial | null;
+} {
+  if (savedType === CYLINDER) {
+    return {
+      volume: data.volume === "" ? null : (data.volume ?? null),
+      working_pressure: data.working_pressure ?? null,
+      material: data.material ? data.material : null,
+    };
+  }
+  if (storedType === CYLINDER) {
+    return { volume: null, working_pressure: null, material: null };
+  }
+  return {};
 }
 
 // Create/edit dialog for a single gear item, used both by the gear management
-// page and by the dive form's picker. Gear has only four fields, so a dialog is
-// less disruptive than navigating away from a half-filled dive form to a
-// dedicated page and back.
+// page and by the dive form's pickers - a dialog is less disruptive than navigating
+// away from a half-filled dive form to a dedicated page and back.
 export function GearItemDialog({
   open,
   onOpenChange,
   gearItem,
   onSaved,
   initialName,
+  initialType,
 }: GearItemDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useDialogApiError(open);
@@ -68,8 +110,19 @@ export function GearItemDialog({
 
   const form = useForm<GearItemInput>({
     resolver: zodResolver(gearItemSchema),
-    defaultValues: { name: "", brand: "", type: "", notes: "", rented: false },
+    defaultValues: {
+      name: "",
+      brand: "",
+      type: "",
+      notes: "",
+      rented: false,
+      volume: "",
+      working_pressure: null,
+      material: "",
+    },
   });
+  const isCylinder =
+    useWatch({ control: form.control, name: "type" }) === CYLINDER;
 
   // Reload the form whenever the dialog is opened, so it shows the item being
   // edited (or a clean slate prefilled with the picker's typed text) rather than
@@ -80,11 +133,14 @@ export function GearItemDialog({
     reset({
       name: gearItem?.name ?? initialName ?? "",
       brand: gearItem?.brand ?? "",
-      type: gearItem?.type ?? "",
+      type: gearItem ? (gearItem.type ?? "") : (initialType ?? ""),
       notes: gearItem?.notes ?? "",
       rented: gearItem?.rented ?? false,
+      volume: gearItem?.volume ?? "",
+      working_pressure: gearItem?.working_pressure ?? null,
+      material: (gearItem?.material as CylinderMaterial | null) ?? "",
     });
-  }, [open, gearItem, initialName, reset]);
+  }, [open, gearItem, initialName, initialType, reset]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setApiError(null);
@@ -100,6 +156,7 @@ export function GearItemDialog({
       // an explicit null so clearing one actually clears it rather than being
       // ignored as an omitted key, and on create they're simply left off.
       const type = (data.type || null) as GearType | null;
+      const vessel = vesselFactsToSave(data, type, gearItem?.type);
 
       if (gearItem) {
         await gearAPI.updateGearItem(gearItem.uuid, {
@@ -108,6 +165,7 @@ export function GearItemDialog({
           type,
           notes: data.notes || "",
           rented: data.rented ?? false,
+          ...vessel,
         });
         onSaved({
           ...gearItem,
@@ -116,6 +174,7 @@ export function GearItemDialog({
           type,
           notes: data.notes || "",
           rented: data.rented ?? false,
+          ...vessel,
         });
       } else {
         const created = await gearAPI.createGearItem({
@@ -124,6 +183,7 @@ export function GearItemDialog({
           type: type ?? undefined,
           notes: data.notes || undefined,
           rented: data.rented ?? false,
+          ...vessel,
         });
         onSaved(created);
       }
@@ -208,6 +268,10 @@ export function GearItemDialog({
               )}
             />
 
+            {/* The dialog's one type-conditional block: a cylinder's facts are
+                recorded once here and copied onto the tanks that link it. */}
+            {isCylinder && <CylinderFactFields control={form.control} />}
+
             <FormField
               control={form.control}
               name="rented"
@@ -285,5 +349,77 @@ export function GearItemDialog({
         </Form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// A cylinder's three facts. Its own component so only a dialog showing them reads the
+// diver's units, which the pressure box converts.
+function CylinderFactFields({ control }: { control: Control<GearItemInput> }) {
+  const units = useUnits();
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={control}
+          name="volume"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Volume (L)</FormLabel>
+              <FormControl>
+                <VolumeCombobox
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="e.g. 11.1"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name="working_pressure"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Working pressure ({unitLabel("pressure", units)})
+              </FormLabel>
+              <FormControl>
+                <UnitNumberInput
+                  dimension="pressure"
+                  units={units}
+                  min={0}
+                  placeholderValue={232}
+                  {...field}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+      <FormField
+        control={control}
+        name="material"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Material</FormLabel>
+            <FormControl>
+              <NativeSelect {...field} value={field.value ?? ""}>
+                <option value="">Not recorded</option>
+                {CYLINDER_MATERIALS.map((material) => (
+                  <option key={material} value={material}>
+                    {cylinderMaterialLabel(material)}
+                  </option>
+                ))}
+              </NativeSelect>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </>
   );
 }

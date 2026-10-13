@@ -523,7 +523,7 @@ describe("the gas card, once the diver opens it", () => {
 
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
     expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].mixtures).toEqual([
-      { volume: 11.1, oxygen: 32, helium: 0 },
+      { volume: 11.1, oxygen: 32, helium: 0, gear_item_uuid: null },
     ]);
   });
 });
@@ -2478,6 +2478,7 @@ describe("the Fields control", () => {
 
     expect(rows).toEqual([
       "Tanks",
+      "Cylinder",
       "Volume",
       "O₂",
       "ppO₂ limit",

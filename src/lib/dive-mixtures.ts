@@ -63,6 +63,8 @@ export const DEFAULT_MIXTURE = {
   // reason too: how the cylinders were breathed is a fact about the dive only the
   // diver knows, and no import can ever supply it.
   usage: "" as const,
+  // No vessel: a hand-added tank links one only when the diver picks it.
+  gear_item_uuid: "",
 };
 
 // How each `GasRole` is written for a diver. Separate from the wire values, which are

@@ -20,7 +20,7 @@ import {
   type GearServiceRecord,
   type GearServiceSchedule,
 } from "@/lib/api/gear-service";
-import { formatServiceDue, serviceStatus } from "@/lib/gear-service";
+import { countOf, formatServiceDue, serviceStatus } from "@/lib/gear-service";
 import { isAbortError } from "@/lib/api/client";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { formatDateOnly } from "@/lib/date-time";
@@ -209,7 +209,11 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
             ) : (
               <div className="space-y-3">
                 {schedules.map((schedule) => {
-                  const status = serviceStatus(schedule, gearItem.dive_count);
+                  const status = serviceStatus(
+                    schedule,
+                    gearItem.dive_count,
+                    gearItem.dive_time,
+                  );
                   const isBusy = busyUuid === schedule.uuid;
                   return (
                     <div
@@ -232,7 +236,11 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                           status={schedule.is_active ? status : null}
                           detail={
                             schedule.is_active
-                              ? formatServiceDue(schedule, gearItem.dive_count)
+                              ? formatServiceDue(
+                                  schedule,
+                                  gearItem.dive_count,
+                                  gearItem.dive_time,
+                                )
                               : undefined
                           }
                         />
@@ -243,6 +251,9 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                               : null,
                             schedule.interval_dives
                               ? `every ${schedule.interval_dives} dives`
+                              : null,
+                            schedule.interval_hours
+                              ? `every ${countOf(schedule.interval_hours, "hour")}`
                               : null,
                           ]
                             .filter(Boolean)

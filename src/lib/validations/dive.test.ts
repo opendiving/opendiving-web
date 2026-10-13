@@ -758,6 +758,7 @@ describe("toDiveMixtureInput", () => {
     gas_number: null,
     role: null,
     usage: null,
+    gear_item: null,
   };
 
   it("converts a mixture the API recorded nothing optional for into a valid row", () => {
@@ -778,6 +779,8 @@ describe("toDiveMixtureInput", () => {
       gas_number: undefined,
       role: "",
       usage: "",
+      gear_item_uuid: "",
+      gear_item: null,
     });
   });
 
@@ -805,6 +808,8 @@ describe("toDiveMixtureInput", () => {
       gas_number: 0,
       role: "deco",
       usage: "parallel",
+      gear_item_uuid: "",
+      gear_item: null,
     });
     expect(
       diveMixtureSchema.safeParse(toDiveMixtureInput(recorded)).success,
@@ -826,8 +831,30 @@ describe("toDiveMixtureInput", () => {
         gas_number: undefined,
         role: undefined,
         usage: undefined,
+        gear_item_uuid: null,
       },
     ]);
+  });
+
+  it("round-trips a linked cylinder's vessel, sending it by uuid", () => {
+    const vessel = {
+      uuid: "11111111-1111-4111-8111-111111111111",
+      name: "AL80",
+      type: "cylinder" as const,
+      rented: false,
+      is_archived: false,
+      volume: 11.1,
+      working_pressure: 207,
+      material: "aluminium",
+    };
+    const asForm = toDiveMixtureInput({ ...fromApi, gear_item: vessel });
+
+    expect(asForm.gear_item_uuid).toBe(vessel.uuid);
+    expect(asForm.gear_item).toEqual(vessel);
+    expect(diveMixtureSchema.safeParse(asForm).success).toBe(true);
+    const sent = normalizeMixtures([asForm])[0];
+    expect(sent.gear_item_uuid).toBe(vessel.uuid);
+    expect(sent).not.toHaveProperty("gear_item");
   });
 
   it("round-trips a mix-only cylinder without inventing a size", () => {
@@ -892,8 +919,53 @@ describe("normalizeMixtures", () => {
         end_pressure: undefined,
         oxygen: 21,
         helium: 0,
+        po2_limit: undefined,
+        gas_number: undefined,
+        role: undefined,
+        usage: undefined,
+        gear_item_uuid: null,
       },
     ]);
+  });
+
+  it("sends a linked tank's blank volume as its vessel's capacity", () => {
+    // The figure the read-only box shows is the figure saved, overwriting nothing:
+    // a link an import made where the document stated no volume.
+    const vessel = {
+      uuid: "v1",
+      name: "AL80",
+      rented: false,
+      is_archived: false,
+      volume: 11.1,
+    };
+    const [linked, unlinked] = normalizeMixtures([
+      { volume: "", oxygen: 21, gear_item_uuid: "v1", gear_item: vessel },
+      { volume: "", oxygen: 21, gear_item_uuid: "", gear_item: vessel },
+    ]);
+    expect(linked.volume).toBe(11.1);
+    expect(linked.gear_item_uuid).toBe("v1");
+    expect(unlinked.volume).toBeUndefined();
+    expect(unlinked.gear_item_uuid).toBeNull();
+  });
+
+  it("keeps a linked tank's own volume where it records one", () => {
+    // An import's link keeps the document's cylinder volume (UDDF's per-dive
+    // `<tankvolume>` overrides the tank's) until the vessel's capacity is next edited.
+    const [linked] = normalizeMixtures([
+      {
+        volume: 12,
+        oxygen: 21,
+        gear_item_uuid: "v1",
+        gear_item: {
+          uuid: "v1",
+          name: "AL80",
+          rented: false,
+          is_archived: false,
+          volume: 11.1,
+        },
+      },
+    ]);
+    expect(linked.volume).toBe(12);
   });
 
   it("preserves numeric pressures untouched", () => {
@@ -1268,6 +1340,8 @@ describe("diveToFormValues", () => {
         gas_number: 0,
         role: "bottom",
         usage: "parallel",
+        gear_item_uuid: "",
+        gear_item: null,
       },
     ]);
 
@@ -1281,6 +1355,7 @@ describe("diveToFormValues", () => {
         helium: 0,
         po2_limit: 1.4,
         usage: "parallel",
+        gear_item_uuid: null,
         gas_number: 0,
         role: "bottom",
       },

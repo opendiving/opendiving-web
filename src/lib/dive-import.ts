@@ -9,6 +9,7 @@
 
 import type { ParsedDiveMixture } from "@/lib/api/dives";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
+import { tankVolume } from "@/lib/tank-vessel";
 
 // A mixture field an export may not have recorded, and that the form can therefore
 // only fill from the cylinder it already held. `start_pressure`/`end_pressure` are
@@ -29,8 +30,12 @@ export type CarriedMixtureField = "volume" | "oxygen" | "helium";
  * API stores and what the dive page then shows as an absence. It is deliberately not
  * reported in the note below; an empty box is its own notice, and the note exists for
  * numbers on screen that no dive recorded.
+ *
+ * `"vessel"` is a tank linked to one of the diver's cylinders keeping its own volume
+ * over a different one the file recorded: the size is the vessel's fact, and the
+ * diver is told the file's was not taken.
  */
-export type MixtureValueSource = "file" | "form" | "blank";
+export type MixtureValueSource = "file" | "form" | "blank" | "vessel";
 
 /**
  * What filling the form in from a file left standing that the file did not say, so
@@ -83,7 +88,26 @@ export interface MixtureImportNotes {
    * dive's `gas_use` away with it.
    */
   discardedPressures: boolean;
+  /**
+   * Whether a tank linked to one of the diver's cylinders kept its volume over a
+   * different one the file recorded.
+   */
+  keptLinkedVolume: boolean;
+  /**
+   * Whether tanks linked to the diver's cylinders were replaced by the file's, which
+   * carry no link: the file brought a different number of cylinders, so nothing pairs.
+   */
+  droppedLinks: boolean;
 }
+
+/** What an apply that touched no cylinder has to say about them: nothing. */
+export const NO_MIXTURE_NOTES: MixtureImportNotes = {
+  guessed: {},
+  keptPressures: false,
+  discardedPressures: false,
+  keptLinkedVolume: false,
+  droppedLinks: false,
+};
 
 /** One cylinder merged onto the form, and where each carryable field came from. */
 export interface MergedMixture {
@@ -148,7 +172,22 @@ export function mergeMixture(
     return { value: "", source: "blank" };
   };
 
-  const volume = pick("volume");
+  // A tank linked to a vessel keeps the volume it holds - the vessel's, for a link
+  // made in the form - over the file's: the size is the vessel's fact, and the box
+  // showing it is read-only. A linked row holding none takes the file's like any.
+  const keptVolume = existing?.gear_item_uuid ? tankVolume(existing) : "";
+  const volume: { value: number | ""; source: MixtureValueSource } =
+    typeof keptVolume === "number"
+      ? {
+          value: keptVolume,
+          source:
+            mixture.volume == null
+              ? "form"
+              : mixture.volume === keptVolume
+                ? "file"
+                : "vessel",
+        }
+      : pick("volume");
   const oxygen = pick("oxygen");
   const helium = pick("helium");
 
@@ -184,6 +223,10 @@ export function mergeMixture(
       // records. A diver who flagged a pair Parallel and then imported the dive's
       // computer file would have watched both flags disappear.
       usage: existing?.usage ?? "",
+      // Form, then nothing, for `usage`'s reason: no file names the diver's own gear.
+      // Carried only where the row pairs, so a list the file reshaped links nothing.
+      gear_item_uuid: existing?.gear_item_uuid ?? "",
+      gear_item: existing?.gear_item ?? null,
     },
     sources: {
       volume: volume.source,
@@ -424,6 +467,12 @@ export function mixtureImportNotes(
       existing.length !== parsed.length &&
       existing.some(hasPressure) &&
       merged.every((cylinder) => !hasPressure(cylinder.value)),
+    keptLinkedVolume: merged.some(
+      (cylinder) => cylinder.sources.volume === "vessel",
+    ),
+    droppedLinks:
+      existing.length !== parsed.length &&
+      existing.some((cylinder) => !!cylinder.gear_item_uuid),
   };
 }
 
@@ -493,6 +542,16 @@ export function describeMixtureImport(
   if (notes.discardedPressures) {
     sentences.push(
       "The tank pressures on this dive were cleared — the file has a different number of cylinders.",
+    );
+  }
+  if (notes.keptLinkedVolume) {
+    sentences.push(
+      "A tank linked to a cylinder in your gear kept that cylinder's size; the file's different size was not taken.",
+    );
+  }
+  if (notes.droppedLinks) {
+    sentences.push(
+      "The tanks were replaced with the file's, which has a different number of cylinders, so they are no longer linked to your gear.",
     );
   }
   return sentences.length > 0 ? sentences.join(" ") : null;
