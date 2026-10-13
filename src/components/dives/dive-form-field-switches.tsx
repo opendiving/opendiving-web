@@ -33,7 +33,8 @@ import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 const SWITCH_LABEL = "font-normal leading-5";
 
 /**
- * The hideable field a group lists ahead of everything else, where it has one.
+ * The hideable fields a group lists ahead of everything else, in order, where it has
+ * any.
  *
  * `type` leads Dive info because the form renders it first, above the always-on rows.
  *
@@ -42,16 +43,17 @@ const SWITCH_LABEL = "font-normal leading-5";
  * always-on cylinder columns as much as the per-cylinder ones, which this list disables
  * outright while it is off. Listing it after them would put the reason
  * they are unavailable below the rows it explains. It is the form's own order too: the
- * section exists before any cylinder in it does.
+ * section exists before any cylinder in it does. `mixture.gear_item_uuid` follows it,
+ * ahead of the always-on Volume and O₂, because a tank's Cylinder row sits above them.
  *
  * The registry stays in form order for the guard's sake; presentation order is this
  * file's business, which is why the exception lives here and not beside it.
  */
-const LEADING_GROUP_FIELD: Partial<
-  Record<DiveFormFieldGroup, DiveFormFieldKey>
+const LEADING_GROUP_FIELDS: Partial<
+  Record<DiveFormFieldGroup, readonly DiveFormFieldKey[]>
 > = {
-  "Dive info": "type",
-  Tanks: "mixtures",
+  "Dive info": ["type"],
+  Tanks: ["mixtures", "mixture.gear_item_uuid"],
 };
 
 /**
@@ -93,10 +95,12 @@ export function DiveFormFieldSwitches({
     const hideable = DIVE_FORM_FIELD_REGISTRY.filter(
       (entry) => entry.group === group,
     );
-    const leadingKey = LEADING_GROUP_FIELD[group];
+    const leadingKeys = LEADING_GROUP_FIELDS[group] ?? [];
     return {
-      leading: hideable.filter((entry) => entry.key === leadingKey),
-      fields: hideable.filter((entry) => entry.key !== leadingKey),
+      leading: leadingKeys.flatMap((key) =>
+        hideable.filter((entry) => entry.key === key),
+      ),
+      fields: hideable.filter((entry) => !leadingKeys.includes(entry.key)),
       alwaysOn: alwaysOnRows.filter((row) => row.entry.group === group),
     };
   };

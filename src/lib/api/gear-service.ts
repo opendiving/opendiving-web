@@ -69,12 +69,17 @@ export interface GearServiceScheduleSummary {
   label?: string | null;
   interval_months?: number | null;
   interval_dives?: number | null;
+  // Hours of diving between services, counted against the item's `dive_time`.
+  interval_hours?: number | null;
   last_service_on?: string | null;
   // "YYYY-MM-DD". Null when the schedule has no time-based interval.
   next_due_on?: string | null;
   // An absolute lifetime-dive-count threshold, not a remaining count. Null when the
   // schedule has no dive-based interval.
   next_due_at_dive_count?: number | null;
+  // An absolute lifetime `dive_time` threshold in seconds, exact. Null when the
+  // schedule has no hours-based interval.
+  next_due_at_dive_time?: number | null;
   is_active: boolean;
 }
 
@@ -84,6 +89,8 @@ export interface GearServiceSchedule extends GearServiceScheduleSummary {
   // Baseline the first due date is measured from, until a service is logged against it.
   starts_on: string;
   dive_count_at_start: number;
+  // The item's `dive_time` in seconds when the rule began - the hours arm's baseline.
+  dive_time_at_start: number;
   gear_item_uuid: string;
   user_uuid: string;
   created_at: string;
@@ -96,6 +103,7 @@ export interface GearServiceScheduleCreate {
   label?: string | null;
   interval_months?: number | null;
   interval_dives?: number | null;
+  interval_hours?: number | null;
 }
 
 export interface GearServiceScheduleUpdate {
@@ -104,6 +112,7 @@ export interface GearServiceScheduleUpdate {
   starts_on?: string;
   interval_months?: number | null;
   interval_dives?: number | null;
+  interval_hours?: number | null;
   // Pauses reminders without deleting the rule.
   is_active?: boolean;
 }
@@ -123,6 +132,8 @@ export interface GearServiceRecord {
   // The item's lifetime dive count when the work was done - the baseline the next
   // dive-based threshold counts up from. Set server-side, never sent by the client.
   dive_count_at_service: number;
+  // The item's `dive_time` in seconds when the work was done, likewise server-side.
+  dive_time_at_service: number;
   gear_item_uuid: string;
   // Null when the record isn't attached to a schedule.
   gear_service_schedule_uuid?: string | null;
@@ -161,10 +172,13 @@ export interface GearServiceDueEntry {
   last_service_on?: string | null;
   next_due_on?: string | null;
   next_due_at_dive_count?: number | null;
+  next_due_at_dive_time?: number | null;
   gear_item_uuid: string;
   gear_item_name: string;
   gear_item_brand?: string | null;
   gear_item_dive_count: number;
+  // Seconds - the figure `next_due_at_dive_time` is compared against.
+  gear_item_dive_time: number;
 }
 
 export interface GearServiceDueResponse {
@@ -191,6 +205,7 @@ export function scheduleFromDueEntry(
     last_service_on: entry.last_service_on,
     next_due_on: entry.next_due_on,
     next_due_at_dive_count: entry.next_due_at_dive_count,
+    next_due_at_dive_time: entry.next_due_at_dive_time,
     is_active: true,
   };
 }

@@ -601,10 +601,11 @@ but skips archived items, since the picker would not offer them either.
 A dive gets `/dives/new` and `/dives/[id]/edit` pages; nothing else does — trips and dive sites are
 dialogs for the reason below, and so is gear. `GearItemDialog` and `GearSetDialog` handle both
 create and edit — passing an existing record edits it in place, omitting one creates — and `/gear`
-is one page listing items and sets together. A gear item is four fields (name, brand, rented,
-notes), and the flow that matters most is adding one from inside a half-filled dive form, where
-navigating away would lose the form or need draft persistence. `/gear/[id]` remains as a detail page
-because it hosts the "Dives with This Gear" list.
+is one page listing items and sets together. A gear item is a handful of fields (name, brand, type,
+rented, notes, and a cylinder's volume, working pressure and material), and the flow that matters
+most is adding one from inside a half-filled dive form, where navigating away would lose the form or
+need draft persistence. `/gear/[id]` remains as a detail page because it hosts the "Dives with This
+Gear" list.
 
 ## The gear delete dialog offers "Archive instead", and its wording is pinned by a test
 
@@ -773,18 +774,20 @@ subscriptions to one name for no benefit.
 ## Service status is derived in the browser, because a cached "days remaining" is a lie
 
 The API returns only clock-stable facts — `next_due_on`, `next_due_at_dive_count`,
-`last_service_on`, `dive_count` — and no service status. Status depends on today's date, and the
-single-item cache is an hour (the list 60s), so a server-computed "due in 1 day" would still say so
-tomorrow.
+`next_due_at_dive_time`, `last_service_on`, `dive_count`, `dive_time` — and no service status.
+Status depends on today's date, and the single-item cache is an hour (the list 60s), so a
+server-computed "due in 1 day" would still say so tomorrow.
 
 `serviceStatus()` in `src/lib/gear-service.ts` does the arithmetic at render time. It is a
 line-for-line twin of `service_status` in the API's `services/gear_service.py`, which exists only
 for the reminder email; the constants are named identically on both sides
-(`SERVICE_DUE_SOON_DAYS = 30`, `SERVICE_DUE_SOON_DIVES = 10`) so `grep SERVICE_DUE_SOON` finds the
-pair. Both interval arms are evaluated and the more urgent wins ("annually or every 100 dives,
-whichever comes first"). `worstServiceStatus()` collapses an item's schedules into the gear list's
-one badge and returns `null`, not `"ok"`, when there are no schedules: nothing tracked is not
-everything fine, and `ServiceStatusBadge` renders it as a muted dash.
+(`SERVICE_DUE_SOON_DAYS = 30`, `SERVICE_DUE_SOON_DIVES = 10`, `SERVICE_DUE_SOON_HOURS = 10`) so
+`grep SERVICE_DUE_SOON` finds the trio. Every interval arm is evaluated and the most urgent wins
+("annually or every 100 dives, whichever comes first"); an hours remainder is compared in seconds
+and shown rounded up to whole hours of diving, as the digest shows it. `worstServiceStatus()`
+collapses an item's schedules into the gear list's one badge and returns `null`, not `"ok"`, when
+there are no schedules: nothing tracked is not everything fine, and `ServiceStatusBadge` renders it
+as a muted dash.
 
 ## `lib/gear-service.ts` holds the logic, `lib/api/gear-service.ts` holds the transport
 
@@ -821,7 +824,7 @@ editing).
 Both contain a `<form>` and wrap their submit in `dialogFormSubmit()`. They are not opened from the
 dive form today, but the rule is about the React tree, not the call sites, and costs nothing.
 
-Both interval fields use the `""`-means-cleared convention of `gearSetSchema.weight`, mapped to an
+Every interval field uses the `""`-means-cleared convention of `gearSetSchema.weight`, mapped to an
 explicit `null` on PATCH so an interval can be removed rather than ignored as an omitted key. The
 "at least one interval" rule is an object-level `.refine()`, which unlike
 `z.preprocess()`/`.transform()` leaves `z.input<>` untouched.
@@ -1377,9 +1380,9 @@ so one grep finds the pair.
 ## Service status is derived in the browser, and so is a timezone off the digest
 
 The API returns only clock-stable facts about a schedule (`next_due_on`, `next_due_at_dive_count`,
-`last_service_on`) and never a computed status: `ServiceStatus` in the API's
-`schemas/gear_service.py` is neither a stored column nor a field on any read schema, because those
-routes are cached for 60 seconds and a cached status is wrong the next morning. Deriving it in
+`next_due_at_dive_time`, `last_service_on`) and never a computed status: `ServiceStatus` in the
+API's `schemas/gear_service.py` is neither a stored column nor a field on any read schema, because
+those routes are cached for 60 seconds and a cached status is wrong the next morning. Deriving it in
 `lib/gear-service.ts` is the intended price of cacheable responses, not drift.
 
 The browser computes "today" in the viewer's timezone (`todayIsoDate` uses local date parts on
@@ -5891,8 +5894,8 @@ Each section is one column; from `md` up sections flow through CSS multi-column 
 than `space-y-*`.
 
 Groups keep form order, so a diver finds a field where they would look for it;
-`DIVE_FORM_FIELD_GROUPS`' doc states the rule. `mixtures` leads its group via `LEADING_GROUP_FIELD`
-in the dialog, and a test pins that order.
+`DIVE_FORM_FIELD_GROUPS`' doc states the rule. `mixtures`, then a tank's Cylinder row, lead their
+group via `LEADING_GROUP_FIELDS` in the dialog, and a test pins that order.
 
 ## `DIVE_FORM_FIELDS` is a fifth hand-kept vocabulary mirror, guarded from both ends
 

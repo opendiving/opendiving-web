@@ -238,6 +238,68 @@ describe("applyParsedDiveToForm", () => {
     expect(describeMixtureImport(notes)).toContain("were cleared");
   });
 
+  describe("over a tank linked to the diver's cylinder", () => {
+    const vessel = {
+      uuid: "vessel-1",
+      name: "AL80",
+      rented: false,
+      is_archived: false,
+      volume: 11.1,
+    };
+    const linked = onForm({
+      volume: 11.1,
+      gear_item_uuid: vessel.uuid,
+      gear_item: vessel,
+    });
+
+    it("keeps the link and its volume where the counts match", () => {
+      let applied: DiveMixtureInput[] = [];
+      const notes = applyParsedDiveToForm(
+        formHolding([linked]),
+        parsedDive([parsed({ volume: 12, oxygen: 32, helium: 0 })]),
+        (mixtures) => {
+          applied = mixtures;
+        },
+      );
+
+      expect(applied[0].gear_item_uuid).toBe(vessel.uuid);
+      expect(applied[0].volume).toBe(11.1);
+      expect(applied[0].oxygen).toBe(32);
+      expect(notes.keptLinkedVolume).toBe(true);
+    });
+
+    it("replaces the tanks and their links where the counts differ", () => {
+      let applied: DiveMixtureInput[] = [];
+      const notes = applyParsedDiveToForm(
+        formHolding([linked]),
+        parsedDive([parsed({ volume: 12 }), parsed({ volume: 7 })]),
+        (mixtures) => {
+          applied = mixtures;
+        },
+      );
+
+      expect(applied.map((row) => row.gear_item_uuid)).toEqual(["", ""]);
+      expect(applied.map((row) => row.volume)).toEqual([12, 7]);
+      expect(notes.droppedLinks).toBe(true);
+    });
+
+    it("keeps the link on a later file's fill, which touches only blanks", () => {
+      const replaced: DiveMixtureInput[][] = [];
+      const { form } = formHoldingValues({}, [{ ...linked, oxygen: "" }]);
+
+      applyParsedDiveToForm(
+        form,
+        parsedDive([parsed({ volume: 12, oxygen: 32 })]),
+        (mixtures) => replaced.push(mixtures),
+        "fill-only",
+      );
+
+      expect(replaced[0][0].gear_item_uuid).toBe(vessel.uuid);
+      expect(replaced[0][0].volume).toBe(11.1);
+      expect(replaced[0][0].oxygen).toBe(32);
+    });
+  });
+
   it("returns empty notes when the file carries no mixtures at all", () => {
     const notes = applyParsedDiveToForm(seededForm(), parsedDive([]), () => {});
 
@@ -245,6 +307,8 @@ describe("applyParsedDiveToForm", () => {
       guessed: {},
       keptPressures: false,
       discardedPressures: false,
+      keptLinkedVolume: false,
+      droppedLinks: false,
     });
   });
 

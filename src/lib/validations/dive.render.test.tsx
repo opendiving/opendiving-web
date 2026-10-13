@@ -177,6 +177,7 @@ describe("the edit form's round trip", () => {
         po2_limit: 1.4,
         gas_number: 0,
         role: "bottom",
+        gear_item_uuid: null,
       },
     ]);
   });
@@ -345,7 +346,7 @@ describe("the edit form's round trip", () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
     expect(onSave.mock.calls[0][0].mixtures).toEqual([
-      { volume: 15, oxygen: 32, helium: 0 },
+      { volume: 15, oxygen: 32, helium: 0, gear_item_uuid: null },
     ]);
   });
 

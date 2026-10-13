@@ -63,9 +63,11 @@ one.
   dives there — how many, the last and the deepest, the species you saw and your average rating —
   beside every dive you've logged at it, and a dive logged there starts from its water, altitude and
   entry. Sort the list by name, by dives or by the last dive, and filter it by a tag.
-- **Gear tracking** — your equipment with per-item dive counts, groupable into gear sets you can
-  attach to a dive in one click, plus **service schedules** (annual service, visual inspection,
-  hydro test…) with due-soon reminders under the notifications bell and by email.
+- **Gear tracking** — your equipment with per-item dive counts and dive time, groupable into gear
+  sets you can attach to a dive in one click; a cylinder records its volume, working pressure and
+  material once, and a dive's tank links it. Plus **service schedules** (annual service, visual
+  inspection, hydro test…) by months, dives or hours of diving, with due-soon reminders under the
+  notifications bell and by email.
 - **Marine life** — record what you saw against a real species catalog, resolved live against the
   World Register of Marine Species and Wikidata so a name you half-remember still finds the animal,
   with how many you counted and a note on each. Your **life list** collects every species you have

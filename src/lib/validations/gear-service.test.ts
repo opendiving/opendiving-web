@@ -46,15 +46,40 @@ describe("gearServiceScheduleSchema", () => {
     expect(result.error?.issues[0].message).toContain("Set an interval");
   });
 
-  it("rejects a rule whose intervals were both cleared in the form", () => {
+  it("rejects a rule whose intervals were all cleared in the form", () => {
     // `""` is what a cleared number input holds, and must not satisfy the refine.
     const result = gearServiceScheduleSchema.safeParse({
       kind: "service",
       starts_on: "2026-01-01",
       interval_months: "",
       interval_dives: "",
+      interval_hours: "",
     });
     expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe(
+      "Set an interval in months, in dives or in hours of diving",
+    );
+  });
+
+  it("accepts an hours-only rule", () => {
+    const result = gearServiceScheduleSchema.safeParse({
+      kind: "service",
+      starts_on: "2026-01-01",
+      interval_months: "",
+      interval_dives: "",
+      interval_hours: 50,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("bounds the hours interval at the API's ceiling", () => {
+    const hours = (interval_hours: number) =>
+      gearServiceScheduleSchema.safeParse({ ...validSchedule, interval_hours })
+        .success;
+    expect(hours(1_000_000)).toBe(true);
+    expect(hours(1_000_001)).toBe(false);
+    expect(hours(0)).toBe(false);
+    expect(hours(1.5)).toBe(false);
   });
 
   it("accepts one arm cleared as long as the other is set", () => {

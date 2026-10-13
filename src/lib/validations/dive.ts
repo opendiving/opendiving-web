@@ -24,6 +24,8 @@ import {
 } from "@/lib/api/dives";
 import { TAG_NAME_MAX } from "@/lib/api/tags";
 import { barToPsi, displayBound } from "@/lib/units";
+import type { GearItemInfo } from "@/lib/api/gear";
+import { tankVolume } from "@/lib/tank-vessel";
 
 // Same ISO 8601 shape as the API's `Dive.start_time`, e.g.
 // "2021-04-04T10:04:47+02:00" - produced/consumed by `DiveStartTimeField`
@@ -183,7 +185,7 @@ export const altitudeField = () =>
 // Using "" as the empty state avoids that; callers are responsible for
 // converting "" to `undefined` right before sending data to the API (see
 // `normalizeMixtures` usage in the dive form pages).
-const MAX_PRESSURE_BAR = 350;
+export const MAX_PRESSURE_BAR = 350;
 
 // The ceiling in both systems, so an imperial diver who typed 5,500 psi is told
 // about the limit they crossed rather than about a bar figure they never entered.
@@ -191,7 +193,7 @@ const MAX_PRESSURE_BAR = 350;
 // altitude range is: a hand-written 5,076 is a second place for the number to be
 // wrong. One string, not one per system - the rare violation then reads correctly
 // whichever mode the form is in, and the schema stays unaware of the preference.
-const PRESSURE_CEILING_CLAUSE =
+export const PRESSURE_CEILING_CLAUSE =
   `must be at most ${MAX_PRESSURE_BAR} bar ` +
   `(${Math.round(barToPsi(MAX_PRESSURE_BAR)).toLocaleString("en-US")} psi) — ` +
   `check the units on that reading.`;
@@ -303,6 +305,13 @@ export const diveMixtureSchema = z
     // has to survive being chosen. The vocabulary is the API's `TankUsage`, so an
     // invented member would be rejected on save rather than here.
     usage: z.union([z.literal(""), z.enum(TANK_USAGE)]).optional(),
+    // The diver's gear item this cylinder is, `""` for none - the picker's cleared
+    // state, converted to `null` at the edge. Its own key, rather than read off
+    // `gear_item` below, because it is what the Fields dialog hides and what is sent.
+    gear_item_uuid: z.string().optional(),
+    // The linked item as the read embeds it, carried so the picker can name it and the
+    // Volume box can show its capacity without fetching the record. Never sent.
+    gear_item: z.custom<GearItemInfo>().nullable().optional(),
   })
   .refine(
     (mixture) => {
@@ -397,6 +406,7 @@ export interface NormalizedDiveMixture {
   gas_number?: number;
   role?: GasRole;
   usage?: TankUsage;
+  gear_item_uuid: string | null;
 }
 
 // Converts any "" placeholders (used to represent a cleared optional field
@@ -423,24 +433,34 @@ export function normalizeMixtures(
     gas_number?: number;
     role?: GasRole | "";
     usage?: TankUsage | "";
+    gear_item_uuid?: string | "";
+    gear_item?: GearItemInfo | null;
   }[],
 ): NormalizedDiveMixture[] {
-  return mixtures.map((mixture) => ({
-    volume: mixture.volume === "" ? undefined : mixture.volume,
-    start_pressure:
-      mixture.start_pressure === "" ? undefined : mixture.start_pressure,
-    end_pressure:
-      mixture.end_pressure === "" ? undefined : mixture.end_pressure,
-    oxygen: mixture.oxygen === "" ? undefined : mixture.oxygen,
-    helium: mixture.helium === "" ? undefined : mixture.helium,
-    po2_limit: mixture.po2_limit === "" ? undefined : mixture.po2_limit,
-    // Passed straight through: unlike the fields above it has no cleared state,
-    // because no input writes to it. It is either the number an import put there or
-    // absent, which is why its type carries no `""` to normalize away.
-    gas_number: mixture.gas_number,
-    role: mixture.role === "" ? undefined : mixture.role,
-    usage: mixture.usage === "" ? undefined : mixture.usage,
-  }));
+  return mixtures.map((mixture) => {
+    // A linked tank's blank volume goes as its vessel's capacity, the figure its
+    // read-only box shows - see `tankVolume`.
+    const volume = tankVolume(mixture);
+    return {
+      volume: volume === "" ? undefined : volume,
+      start_pressure:
+        mixture.start_pressure === "" ? undefined : mixture.start_pressure,
+      end_pressure:
+        mixture.end_pressure === "" ? undefined : mixture.end_pressure,
+      oxygen: mixture.oxygen === "" ? undefined : mixture.oxygen,
+      helium: mixture.helium === "" ? undefined : mixture.helium,
+      po2_limit: mixture.po2_limit === "" ? undefined : mixture.po2_limit,
+      // Passed straight through: unlike the fields above it has no cleared state,
+      // because no input writes to it. It is either the number an import put there or
+      // absent, which is why its type carries no `""` to normalize away.
+      gas_number: mixture.gas_number,
+      role: mixture.role === "" ? undefined : mixture.role,
+      usage: mixture.usage === "" ? undefined : mixture.usage,
+      // An explicit `null` for no vessel: the API replaces the rows from the body, so
+      // the key is sent either way.
+      gear_item_uuid: mixture.gear_item_uuid || null,
+    };
+  });
 }
 
 // The inverse of `normalizeMixtures`: a saved mixture as the API returns it,
@@ -469,6 +489,8 @@ export function toDiveMixtureInput(mixture: DiveMixture): DiveMixtureInput {
     gas_number: mixture.gas_number ?? undefined,
     role: mixture.role ?? "",
     usage: mixture.usage ?? "",
+    gear_item_uuid: mixture.gear_item?.uuid ?? "",
+    gear_item: mixture.gear_item ?? null,
   };
 }
 

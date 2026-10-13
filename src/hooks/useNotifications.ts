@@ -113,6 +113,7 @@ export function useNotifications(): NotificationsState {
               serviceStatus(
                 scheduleFromDueEntry(entry),
                 entry.gear_item_dive_count,
+                entry.gear_item_dive_time,
               ) !== "ok",
           ),
         },

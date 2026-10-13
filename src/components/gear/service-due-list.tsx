@@ -58,12 +58,17 @@ export function ServiceDueList({
             subtitle={`${serviceKindLabel(entry.kind)}${entry.label ? ` (${entry.label})` : ""}`}
             badge={
               <ServiceStatusBadge
-                status={serviceStatus(schedule, entry.gear_item_dive_count)}
+                status={serviceStatus(
+                  schedule,
+                  entry.gear_item_dive_count,
+                  entry.gear_item_dive_time,
+                )}
               />
             }
             qualifier={formatServiceDueQualifier(
               schedule,
               entry.gear_item_dive_count,
+              entry.gear_item_dive_time,
             )}
             // Named after the item as well as the kind, because this list spans items:
             // the gear detail card's `Log service for Service (First stage)` is unique

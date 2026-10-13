@@ -124,6 +124,7 @@ const due = (
   gear_item_name: "MK25 EVO",
   gear_item_brand: "Scubapro",
   gear_item_dive_count: 12,
+  gear_item_dive_time: 43200,
   ...overrides,
 });
 

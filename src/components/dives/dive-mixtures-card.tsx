@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Dive, DiveMixture } from "@/lib/api/dives";
+import { gearItemLabel } from "@/lib/api/gear";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { Badge } from "@/components/ui/badge";
 import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import {
@@ -41,6 +44,8 @@ interface TankCardProps {
   warned: boolean;
   // The first cylinder flagged parallel, drawn as the left of the pair.
   left: boolean;
+  // A path with the way back to this dive attached - see `useWithReturnTo`.
+  withReturnTo: (href: string) => string;
 }
 
 // One cylinder, drawn as a dive's card is - its name, a line under it and its
@@ -53,6 +58,7 @@ function TankCard({
   showHelium,
   warned,
   left,
+  withReturnTo,
 }: TankCardProps) {
   const name = gasName(mixture.oxygen, mixture.helium);
   // A MOD only means something for a mix that could exist - the rule `gasHintParts`
@@ -65,7 +71,18 @@ function TankCard({
   // The fractions unrounded, matching the API's two decimals: the name is the
   // rounded shorthand. Litres in both systems: a cylinder's litres are its water
   // capacity, and its cubic feet would be gas at a rated pressure it does not record.
+  // The vessel leads, by name, where the tank links one of the diver's own.
   const facts: ReactNode[] = [];
+  if (mixture.gear_item) {
+    facts.push(
+      <Link
+        href={withReturnTo(`/gear/${mixture.gear_item.uuid}`)}
+        className="relative hover:underline touch:tap-target"
+      >
+        {gearItemLabel(mixture.gear_item)}
+      </Link>,
+    );
+  }
   if (mixture.volume != null) facts.push(`${mixture.volume} L`);
   if (mixture.oxygen != null) facts.push(`O₂ ${mixture.oxygen}%`);
   if (showHelium && mixture.helium != null) facts.push(`He ${mixture.helium}%`);
@@ -171,6 +188,7 @@ function TankCard({
  */
 export function DiveMixturesCard({ dive, onEdit }: DiveMixturesCardProps) {
   const units = useUnits();
+  const withReturnTo = useWithReturnTo();
 
   if (!dive.mixtures || dive.mixtures.length === 0) return null;
 
@@ -220,6 +238,7 @@ export function DiveMixturesCard({ dive, onEdit }: DiveMixturesCardProps) {
               showHelium={showHelium}
               warned={attributable}
               left={index === firstParallel}
+              withReturnTo={withReturnTo}
             />
           ))}
         </ul>

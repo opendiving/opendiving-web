@@ -25,6 +25,38 @@ describe("gearItemSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts a cylinder's vessel facts, and their cleared states", () => {
+    expect(
+      gearItemSchema.safeParse({
+        name: "AL80",
+        type: "cylinder",
+        volume: 11.1,
+        working_pressure: 207,
+        material: "aluminium",
+      }).success,
+    ).toBe(true);
+    expect(
+      gearItemSchema.safeParse({
+        name: "AL80",
+        volume: "",
+        working_pressure: null,
+        material: "",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("bounds the vessel facts as the API does", () => {
+    const issue = (values: Record<string, unknown>) => {
+      const result = gearItemSchema.safeParse({ name: "Tank", ...values });
+      return result.success ? null : result.error.issues[0].path[0];
+    };
+    expect(issue({ volume: 0 })).toBe("volume");
+    expect(issue({ working_pressure: 0 })).toBe("working_pressure");
+    expect(issue({ working_pressure: 351 })).toBe("working_pressure");
+    expect(issue({ working_pressure: 350 })).toBeNull();
+    expect(issue({ material: "titanium" })).toBe("material");
+  });
+
   it("rejects an empty name", () => {
     const result = gearItemSchema.safeParse({ name: "" });
 

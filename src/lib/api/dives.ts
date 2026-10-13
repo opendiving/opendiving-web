@@ -1,6 +1,6 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
-import { GearItemSummary } from "./gear";
+import { GearItemInfo, GearItemSummary } from "./gear";
 import type { Location } from "./location";
 import { SpeciesSummary } from "./species";
 import type { PersonReference } from "./people";
@@ -214,6 +214,21 @@ export interface DiveMixture {
   // is the one mixture field that changes what the API can derive: a dive whose
   // cylinders are all `parallel` gets its consumption summed across them.
   usage?: TankUsage | null;
+  // The diver's gear item this cylinder is - its vessel - with the vessel's facts,
+  // or `null` for a rental or a vessel never recorded. Read-only; a write names it
+  // by `gear_item_uuid` (`DiveMixtureWrite`). No vessel is linked from two
+  // cylinders of one dive.
+  gear_item?: GearItemInfo | null;
+}
+
+// A cylinder as a create or update sends it: the read's members less the two the
+// API derives, and the vessel by uuid. `null` is "no vessel", which is what an
+// unlinked tank sends rather than leaving the key off.
+export interface DiveMixtureWrite extends Omit<
+  DiveMixture,
+  "id" | "gear_item"
+> {
+  gear_item_uuid?: string | null;
 }
 
 // A dive site visited during a dive, as embedded in a `Dive`. Dives are
@@ -958,7 +973,7 @@ export interface DiveCreate {
   // decides which stored spelling a name meets, not this app's.
   tags?: string[];
   notes?: string;
-  mixtures?: DiveMixture[];
+  mixtures?: DiveMixtureWrite[];
 }
 
 export interface DiveUpdate {
@@ -1020,7 +1035,7 @@ export interface DiveUpdate {
   // And again, by name - see `DiveCreate.tags`.
   tags?: string[];
   notes?: string;
-  mixtures?: DiveMixture[];
+  mixtures?: DiveMixtureWrite[];
 }
 
 // What to prefill a new dive's number with, from `/dives/next-number`.

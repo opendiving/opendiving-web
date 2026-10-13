@@ -217,6 +217,11 @@ export interface VolumeComboboxProps extends FormControlSlotProps {
   /** The dive's start time; bounds the "Recently used" group like a lookup's `until`. */
   until?: string;
   disabled?: boolean;
+  /**
+   * Shows `value` and takes no input: no typing, and no menu. A tank linked to a
+   * vessel that records its capacity reads the figure off the vessel.
+   */
+  readOnly?: boolean;
   placeholder?: string;
 }
 
@@ -238,6 +243,7 @@ export function VolumeCombobox({
   onChange,
   until,
   disabled,
+  readOnly = false,
   placeholder = "Select or enter volume...",
   ...slotProps
 }: VolumeComboboxProps) {
@@ -358,7 +364,9 @@ export function VolumeCombobox({
         placeholder={placeholder}
         value={draft ?? (typeof value === "number" ? String(value) : "")}
         disabled={disabled}
+        readOnly={readOnly}
         onChange={(e) => {
+          if (readOnly) return;
           const raw = e.target.value;
           setDraft(raw);
           const parsed = parseDecimal(raw);
@@ -370,8 +378,8 @@ export function VolumeCombobox({
         aria-activedescendant={
           isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined
         }
-        onFocus={() => setIsOpen(true)}
-        onClick={() => setIsOpen(true)}
+        onFocus={() => setIsOpen(!readOnly)}
+        onClick={() => setIsOpen(!readOnly)}
         onBlur={() => {
           setDraft(null);
           closeMenu();
@@ -386,6 +394,7 @@ export function VolumeCombobox({
             // a volume by a hundredth of a litre. The keys still do the same
             // thing; only what they are being taken *from* has changed.
             e.preventDefault();
+            if (readOnly) return;
             if (!isOpen) {
               setIsOpen(true);
               return;

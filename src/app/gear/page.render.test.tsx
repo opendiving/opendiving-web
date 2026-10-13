@@ -60,6 +60,7 @@ const gearItem = (overrides: Partial<GearItem> = {}): GearItem => ({
   rented: false,
   is_archived: false,
   dive_count: 12,
+  dive_time: 43200,
   user_uuid: "user-1",
   created_at: "2026-01-01T00:00:00+00:00",
   ...overrides,

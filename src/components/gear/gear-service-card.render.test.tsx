@@ -45,6 +45,7 @@ const gearItem: GearItem = {
   rented: false,
   is_archived: false,
   dive_count: 12,
+  dive_time: 43200,
   user_uuid: "user-1",
   created_at: "2026-01-01T00:00:00+00:00",
 };
@@ -57,6 +58,7 @@ const schedule = (
   is_active: true,
   starts_on: "2025-01-01",
   dive_count_at_start: 0,
+  dive_time_at_start: 0,
   gear_item_uuid: gearItem.uuid,
   user_uuid: "user-1",
   created_at: "2026-01-01T00:00:00+00:00",
@@ -72,6 +74,7 @@ const record = (
   serviced_on: "2025-03-12",
   notes: "",
   dive_count_at_service: 4,
+  dive_time_at_service: 14400,
   gear_item_uuid: gearItem.uuid,
   user_uuid: "user-1",
   created_at: "2026-01-01T00:00:00+00:00",
@@ -136,6 +139,37 @@ describe("GearServiceCard and the header's bell", () => {
     );
     await vi.waitFor(() => expect(getSchedules).toHaveBeenCalledTimes(2));
     expect(getRecords).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("GearServiceCard schedules", () => {
+  it("states an hours interval as hours of diving, beside the others", async () => {
+    // The item has dived 12 hours, so an hour-a-time rule from 0 is long overdue
+    // and one at 50 is due in 38.
+    await renderCard(
+      [
+        schedule({
+          interval_months: 12,
+          interval_hours: 50,
+          next_due_at_dive_time: 50 * 3600,
+        }),
+      ],
+      [],
+    );
+
+    expect(
+      screen.getByText(/Every 12 months or every 50 hours of diving/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Due in 38 hours of diving")).toBeInTheDocument();
+  });
+
+  it("says one hour in the singular", async () => {
+    await renderCard(
+      [schedule({ interval_months: null, interval_hours: 1 })],
+      [],
+    );
+
+    expect(screen.getByText(/^every 1 hour of diving/)).toBeInTheDocument();
   });
 });
 

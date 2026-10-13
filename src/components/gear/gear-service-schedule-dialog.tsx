@@ -52,7 +52,7 @@ interface GearServiceScheduleDialogProps {
 }
 
 // Create/edit dialog for one servicing rule. A dialog rather than a page for the same
-// reason gear itself uses one: it's five fields, and it's always reached from the gear
+// reason gear itself uses one: it's six fields, and it's always reached from the gear
 // detail page you want to stay on.
 export function GearServiceScheduleDialog({
   gearItem,
@@ -73,6 +73,7 @@ export function GearServiceScheduleDialog({
       starts_on: "",
       interval_months: "",
       interval_dives: "",
+      interval_hours: "",
     },
   });
 
@@ -87,6 +88,7 @@ export function GearServiceScheduleDialog({
         starts_on: schedule.starts_on,
         interval_months: schedule.interval_months ?? "",
         interval_dives: schedule.interval_dives ?? "",
+        interval_hours: schedule.interval_hours ?? "",
       });
     } else {
       // Prefill from the gear type's usual convention, so adding a rule to a cylinder
@@ -102,6 +104,7 @@ export function GearServiceScheduleDialog({
         starts_on: todayIsoDate(),
         interval_months: preset?.interval_months ?? "",
         interval_dives: preset?.interval_dives ?? "",
+        interval_hours: "",
       });
     }
   }, [open, schedule, gearItem.type, reset]);
@@ -113,13 +116,15 @@ export function GearServiceScheduleDialog({
 
   const onSubmit = async (data: GearServiceScheduleInput) => {
     setApiError(null);
-    // `""` is the form's "not set" for both intervals; the API spells that as an
+    // `""` is the form's "not set" for every interval; the API spells that as an
     // explicit null on a PATCH so an interval can actually be removed rather than
     // being ignored as an omitted key.
     const months =
       data.interval_months === "" ? null : (data.interval_months ?? null);
     const dives =
       data.interval_dives === "" ? null : (data.interval_dives ?? null);
+    const hours =
+      data.interval_hours === "" ? null : (data.interval_hours ?? null);
 
     try {
       setIsSubmitting(true);
@@ -131,6 +136,7 @@ export function GearServiceScheduleDialog({
           starts_on: data.starts_on,
           interval_months: months,
           interval_dives: dives,
+          interval_hours: hours,
         });
       } else {
         await gearServiceAPI.createSchedule({
@@ -140,6 +146,7 @@ export function GearServiceScheduleDialog({
           starts_on: data.starts_on,
           interval_months: months,
           interval_dives: dives,
+          interval_hours: hours,
         });
       }
 
@@ -235,7 +242,9 @@ export function GearServiceScheduleDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Three clocks on one rule, told apart by what they count. Two to a
+                row on a phone, where three boxes would squeeze their labels. */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <FormField
                 control={form.control}
                 name="interval_months"
@@ -287,12 +296,40 @@ export function GearServiceScheduleDialog({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="interval_hours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Every (hours)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min="1"
+                        step="1"
+                        placeholder="e.g. 50"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          field.onChange(Number.isNaN(val) ? "" : val);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Set either or both — whichever comes first is what makes this due.
-              These are common starting points, not manufacturer or legal
-              advice: check what your kit and your local rules actually require.
+              Set any of the three — whichever comes first is what makes this
+              due. Hours count the time spent diving with this item, from your
+              logged dives. These are common starting points, not manufacturer
+              or legal advice: check what your kit and your local rules actually
+              require.
             </p>
 
             <FormApiError error={apiError} />

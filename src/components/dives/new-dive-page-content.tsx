@@ -20,6 +20,7 @@ import {
   normalizeMixtures,
 } from "@/lib/validations/dive";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
+import { carriedVessel } from "@/lib/tank-vessel";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { useDiveSitePrefill } from "@/hooks/useDiveSitePrefill";
 import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
@@ -316,35 +317,43 @@ function NewDiveForm() {
           // empty card rather than acquiring a cylinder on dive two. See
           // `defaultValues` above.
           mixtures:
-            lastDive.mixtures?.map((m) => ({
-              // `?? ""` on all three, like `po2_limit` below and for the reason
-              // recorded under "The API sends `null`, the form schema only understood
-              // `""`" in DECISIONS.md: these are nullable on the wire now that a
-              // cylinder may record a mix with no vessel, `null` is a member of no
-              // field's union in `diveMixtureSchema`, and a `reset()` seeded with one
-              // fails validation on a value the diver never entered - silently, since
-              // `handleSubmit`'s valid callback simply never fires. A last dive
-              // imported from a file that recorded no cylinder size carries that
-              // absence forward rather than acquiring an 11.1 L on the way.
-              volume: m.volume ?? ("" as const),
-              oxygen: m.oxygen ?? ("" as const),
-              helium: m.helium ?? ("" as const),
-              // Same reasoning as the gas fractions above - a diver on the same
-              // 32/1.4 back gas and EAN50/1.6 deco bottle plans them the same way
-              // dive after dive. `gas_number` is deliberately *not* carried: it
-              // identifies a cylinder inside the previous dive's export file, and
-              // this dive has no file for it to point into.
-              po2_limit: m.po2_limit ?? ("" as const),
-              role: m.role ?? ("" as const),
-              // Carried for the same reason, and it is the field the carry-over
-              // helps most: a sidemount diver's next dive is sidemount, and no
-              // import will ever fill this in for them. Re-flagging both
-              // cylinders by hand every dive is exactly the friction that would
-              // stop the flag being used at all.
-              usage: m.usage ?? ("" as const),
-              start_pressure: "" as const,
-              end_pressure: "" as const,
-            })) ?? [],
+            lastDive.mixtures?.map((m) => {
+              // The same tank the same vessel, where the vessel can still be
+              // linked - see `carriedVessel`.
+              const vessel = carriedVessel(m);
+              return {
+                ...vessel,
+                // `?? ""` on all three, like `po2_limit` below and for the reason
+                // recorded under "The API sends `null`, the form schema only understood
+                // `""`" in DECISIONS.md: these are nullable on the wire now that a
+                // cylinder may record a mix with no vessel, `null` is a member of no
+                // field's union in `diveMixtureSchema`, and a `reset()` seeded with one
+                // fails validation on a value the diver never entered - silently, since
+                // `handleSubmit`'s valid callback simply never fires. A last dive
+                // imported from a file that recorded no cylinder size carries that
+                // absence forward rather than acquiring an 11.1 L on the way.
+                // A linked tank takes its vessel's capacity, as a pick does, so a
+                // link the form makes never carries an import's differing figure.
+                volume: vessel.gear_item?.volume ?? m.volume ?? ("" as const),
+                oxygen: m.oxygen ?? ("" as const),
+                helium: m.helium ?? ("" as const),
+                // Same reasoning as the gas fractions above - a diver on the same
+                // 32/1.4 back gas and EAN50/1.6 deco bottle plans them the same way
+                // dive after dive. `gas_number` is deliberately *not* carried: it
+                // identifies a cylinder inside the previous dive's export file, and
+                // this dive has no file for it to point into.
+                po2_limit: m.po2_limit ?? ("" as const),
+                role: m.role ?? ("" as const),
+                // Carried for the same reason, and it is the field the carry-over
+                // helps most: a sidemount diver's next dive is sidemount, and no
+                // import will ever fill this in for them. Re-flagging both
+                // cylinders by hand every dive is exactly the friction that would
+                // stop the flag being used at all.
+                usage: m.usage ?? ("" as const),
+                start_pressure: "" as const,
+                end_pressure: "" as const,
+              };
+            }) ?? [],
         };
 
         if (courseContact) autofill("contact_uuid", courseContact);

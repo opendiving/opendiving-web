@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { notesField } from "./notes";
-import { GEAR_TYPES } from "@/lib/api/gear";
+import { CYLINDER_MATERIALS, GEAR_TYPES } from "@/lib/api/gear";
+import { MAX_PRESSURE_BAR, PRESSURE_CEILING_CLAUSE } from "./dive";
 
 export const gearItemSchema = z.object({
   name: z
@@ -14,6 +15,20 @@ export const gearItemSchema = z.object({
   type: z.union([z.literal(""), z.enum(GEAR_TYPES)]).optional(),
   notes: notesField().optional(),
   rented: z.boolean().optional(),
+  // The vessel facts, mirroring `GearItemCreate`'s bounds: a capacity above zero, and
+  // a working pressure under the same 350 bar ceiling a dive's cylinder pressures
+  // carry, which is a unit check rather than an opinion. `""` is the cleared volume and
+  // material, as on a dive's cylinder; the pressure box clears to `null`.
+  volume: z
+    .union([z.literal(""), z.number().positive("Volume must be positive")])
+    .optional(),
+  working_pressure: z
+    .number()
+    .positive("Working pressure must be positive")
+    .max(MAX_PRESSURE_BAR, `Working pressure ${PRESSURE_CEILING_CLAUSE}`)
+    .nullable()
+    .optional(),
+  material: z.union([z.literal(""), z.enum(CYLINDER_MATERIALS)]).optional(),
 });
 
 export const gearSetSchema = z.object({

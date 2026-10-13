@@ -7,6 +7,7 @@ import {
   Path,
   UseFieldArrayReturn,
   useFieldArray,
+  useFormContext,
   useWatch,
 } from "react-hook-form";
 import { AddRowButton, RepeatableRow } from "@/components/ui/repeatable-row";
@@ -31,6 +32,14 @@ import {
 } from "@/lib/dive-mixtures";
 import { GAS_ROLES, TANK_USAGE } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
+import { CylinderCombobox } from "@/components/dives/cylinder-combobox";
+import type { FormControlSlotProps } from "@/components/ui/form";
+import type { GearItemInfo } from "@/lib/api/gear";
+import {
+  isVolumeFromVessel,
+  linkedVessel,
+  tankVolume,
+} from "@/lib/tank-vessel";
 import { MixtureTankIcon } from "@/components/dives/mixture-tank-icon";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
@@ -177,6 +186,112 @@ function MixtureTitleIcon({
       helium={helium === "" ? null : helium}
       left={left}
       className="size-6 shrink-0 stroke-[1.5] text-foreground"
+    />
+  );
+}
+
+// Which of the diver's cylinders a tank is. A pick copies the vessel's capacity into
+// Volume, which then reads it off the vessel; unlinking leaves the figure the box was
+// showing, editable again. A vessel another tank links is not offered.
+//
+// Its own component for `MixtureGasHint`'s reason, and it writes three fields of the
+// row at once, which is why it reaches the form through its context.
+function MixtureCylinderPicker({
+  control,
+  index,
+  count,
+  until,
+  ...slotProps
+}: {
+  control: Control<MixtureFieldsValues>;
+  index: number;
+  count: number;
+  until?: string;
+} & FormControlSlotProps) {
+  const { getValues, setValue } = useFormContext<MixtureFieldsValues>();
+  const gearItemUuid = useWatch({
+    control,
+    name: `mixtures.${index}.gear_item_uuid`,
+  });
+  const gearItem = useWatch({ control, name: `mixtures.${index}.gear_item` });
+  const links = useWatch({
+    control,
+    name: Array.from(
+      { length: count },
+      (_, other) => `mixtures.${other}.gear_item_uuid` as const,
+    ),
+  });
+  const vessel = linkedVessel({
+    gear_item_uuid: gearItemUuid,
+    gear_item: gearItem,
+  });
+  const linkedElsewhere = links.filter(
+    (uuid, other): uuid is string => other !== index && !!uuid,
+  );
+
+  const write = { shouldDirty: true, shouldValidate: true } as const;
+  const handleChange = (picked: GearItemInfo | null) => {
+    if (picked) {
+      setValue(`mixtures.${index}.gear_item_uuid`, picked.uuid, write);
+      setValue(`mixtures.${index}.gear_item`, picked, write);
+      if (picked.volume != null) {
+        setValue(`mixtures.${index}.volume`, picked.volume, write);
+      }
+      return;
+    }
+    // The figure the read-only box was showing stays, now the tank's own.
+    const shown = tankVolume(getValues(`mixtures.${index}`) ?? {});
+    setValue(`mixtures.${index}.volume`, shown, write);
+    setValue(`mixtures.${index}.gear_item_uuid`, "", write);
+    setValue(`mixtures.${index}.gear_item`, null, write);
+  };
+
+  return (
+    <CylinderCombobox
+      {...slotProps}
+      value={vessel}
+      onChange={handleChange}
+      excludeIds={linkedElsewhere}
+      until={until}
+    />
+  );
+}
+
+// The Volume box, read-only while the tank's link stands to a vessel recording its
+// capacity, and then showing the figure the save sends - `tankVolume` says which.
+function MixtureVolumeInput({
+  control,
+  index,
+  value,
+  onChange,
+  until,
+  ...slotProps
+}: {
+  control: Control<MixtureFieldsValues>;
+  index: number;
+  value: number | "" | undefined;
+  onChange: (value: number | "") => void;
+  until?: string;
+} & FormControlSlotProps) {
+  const gearItemUuid = useWatch({
+    control,
+    name: `mixtures.${index}.gear_item_uuid`,
+  });
+  const gearItem = useWatch({ control, name: `mixtures.${index}.gear_item` });
+  const link = {
+    volume: value,
+    gear_item_uuid: gearItemUuid,
+    gear_item: gearItem,
+  };
+  const fromVessel = isVolumeFromVessel(link);
+
+  return (
+    <VolumeCombobox
+      {...slotProps}
+      value={fromVessel ? tankVolume(link) : value}
+      onChange={onChange}
+      readOnly={fromVessel}
+      until={until}
     />
   );
 }
@@ -360,6 +475,32 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           onRemove={() => remove(index)}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {isVisible("mixture.gear_item_uuid") && (
+              <FormField
+                control={control}
+                name={`mixtures.${index}.gear_item_uuid` as Path<TFieldValues>}
+                render={() => (
+                  // A row of its own above the boxes, which is what keeps the
+                  // pairs below intact: it is a fact about the whole tank, and in
+                  // a pair it would push every box after it a column along.
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Cylinder</FormLabel>
+                    <FormControl>
+                      <MixtureCylinderPicker
+                        control={
+                          control as unknown as Control<MixtureFieldsValues>
+                        }
+                        index={index}
+                        count={fields.length}
+                        until={until}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               control={control}
               name={`mixtures.${index}.volume` as Path<TFieldValues>}
@@ -373,13 +514,18 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 // span cost was the last row, where Usage sat alone.
                 //
                 // Volume | ppO₂, O₂ | He, start | end, Role | Usage: four full
-                // rows, and each pair is two facts about the same thing - what
-                // the cylinder holds and what it was planned to, the mix, the
-                // gauge readings, what it was for and how it was carried.
+                // rows under the Cylinder row, and each pair is two facts about
+                // the same thing - what the cylinder holds and what it was
+                // planned to, the mix, the gauge readings, what it was for and
+                // how it was carried.
                 <FormItem>
                   <FormLabel>Volume (L)</FormLabel>
                   <FormControl>
-                    <VolumeCombobox
+                    <MixtureVolumeInput
+                      control={
+                        control as unknown as Control<MixtureFieldsValues>
+                      }
+                      index={index}
                       value={field.value}
                       onChange={field.onChange}
                       until={until}

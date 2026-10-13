@@ -12,6 +12,7 @@ import {
   writeEntryUnits,
 } from "@/lib/entry-units";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
+import { gearAPI, type GearItemInfo } from "@/lib/api/gear";
 
 // The pressure boxes and their labels read the diver's units, so these renders need
 // an auth context. Held in a mutable box rather than a fixed literal so a test can
@@ -25,6 +26,26 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 afterEach(() => {
   auth.units = "metric";
+});
+
+// The tank's cylinder picker asks the gear lookup, and the volume box the diver's
+// recent volumes, only once opened; the picker tests below open both.
+vi.mock("@/lib/api/gear", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/gear")>();
+  return {
+    ...actual,
+    gearAPI: { ...actual.gearAPI, lookupGearItems: vi.fn() },
+  };
+});
+vi.mock("@/lib/api/dives", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/dives")>();
+  return {
+    ...actual,
+    divesAPI: {
+      ...actual.divesAPI,
+      getRecentVolumes: vi.fn(async () => []),
+    },
+  };
 });
 
 // The warning sentence is unit-tested in `lib/dive-mixtures.test.ts`. What only a
@@ -742,5 +763,211 @@ describe("MixtureFields tank icon", () => {
     await userEvent.type(oxygen, "21");
 
     expect(iconClass(1)).toMatch(/lucide-tank(\s|$)/);
+  });
+});
+
+describe("MixtureFields cylinder picker", () => {
+  const vessel = (uuid: string, name: string, volume: number | null) =>
+    ({
+      uuid,
+      name,
+      type: "cylinder",
+      rented: false,
+      is_archived: false,
+      volume,
+      working_pressure: 232,
+      material: "steel",
+    }) satisfies GearItemInfo;
+  const LEFT = vessel("vessel-left", "Left 12", 12);
+  const RIGHT = vessel("vessel-right", "Right 12", 12);
+  const BARE = vessel("vessel-bare", "Unmeasured", null);
+
+  beforeEach(() => {
+    vi.mocked(gearAPI.lookupGearItems).mockReset();
+    vi.mocked(gearAPI.lookupGearItems).mockResolvedValue({
+      data: [LEFT, RIGHT, BARE],
+      total_count: 3,
+      has_more: false,
+      page: 1,
+      items_per_page: 25,
+    });
+  });
+
+  // The Harness with a way to read what the form would save.
+  function Saving({
+    mixtures,
+    onValues,
+  }: {
+    mixtures: DiveFormValues["mixtures"];
+    onValues: (values: DiveFormValues) => void;
+  }) {
+    const form = useForm<DiveFormValues>({
+      defaultValues: { mixtures, max_depth: 20 } as DiveFormValues,
+    });
+    const fieldArray = useMixtureFieldArray(form.control);
+    return (
+      <FormProvider {...form}>
+        <MixtureFields control={form.control} fieldArray={fieldArray} />
+        <button type="button" onClick={() => onValues(form.getValues())}>
+          Read
+        </button>
+      </FormProvider>
+    );
+  }
+
+  const pickers = () => screen.getAllByLabelText("Cylinder");
+  const volumes = () => screen.getAllByLabelText("Volume (L)");
+
+  // An option reads its name, then the capacity as a hint: "Left 12, 12 L".
+  const named = (name: string) => new RegExp(`^${name}(,|$)`);
+
+  async function pick(picker: HTMLElement, name: string) {
+    await userEvent.click(picker);
+    await userEvent.click(
+      await screen.findByRole("option", { name: named(name) }),
+    );
+  }
+
+  it("sits on a row of its own above the tank's boxes", () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={10} />);
+
+    // The field's item: the element holding its label.
+    const item = screen.getByText("Cylinder", {
+      selector: "label",
+    }).parentElement!;
+    expect(item.className).toContain("md:col-span-2");
+    // First in the grid, so the eight boxes below keep their pairs.
+    expect(item.parentElement!.firstElementChild).toBe(item);
+    expect(item.parentElement!.className).toContain("md:grid-cols-2");
+  });
+
+  it("copies the vessel's capacity on a pick, and reads it off the vessel", async () => {
+    const onValues = vi.fn();
+    render(
+      <Saving mixtures={[{ ...EAN54, volume: 15 }]} onValues={onValues} />,
+    );
+
+    await pick(pickers()[0], "Left 12");
+
+    expect(volumes()[0]).toHaveValue("12");
+    expect(volumes()[0]).toHaveAttribute("readonly");
+    await userEvent.click(screen.getByText("Read"));
+    expect(onValues.mock.lastCall![0].mixtures[0]).toMatchObject({
+      volume: 12,
+      gear_item_uuid: LEFT.uuid,
+      gear_item: LEFT,
+    });
+  });
+
+  it("leaves the figure in place and editable when unlinked", async () => {
+    const onValues = vi.fn();
+    render(
+      <Saving
+        mixtures={[
+          {
+            ...EAN54,
+            volume: "",
+            gear_item_uuid: LEFT.uuid,
+            gear_item: LEFT,
+          },
+        ]}
+        onValues={onValues}
+      />,
+    );
+    // A blank stored volume shows the vessel's, which the save would write.
+    expect(volumes()[0]).toHaveValue("12");
+
+    await userEvent.clear(pickers()[0]);
+    await userEvent.tab();
+
+    expect(volumes()[0]).toHaveValue("12");
+    expect(volumes()[0]).not.toHaveAttribute("readonly");
+    await userEvent.click(screen.getByText("Read"));
+    expect(onValues.mock.lastCall![0].mixtures[0]).toMatchObject({
+      volume: 12,
+      gear_item_uuid: "",
+      gear_item: null,
+    });
+  });
+
+  it("leaves the box editable for a vessel recording no capacity", async () => {
+    render(<Harness mixtures={[{ ...EAN54, volume: 15 }]} maxDepth={10} />);
+
+    await pick(pickers()[0], "Unmeasured");
+
+    expect(volumes()[0]).toHaveValue("15");
+    expect(volumes()[0]).not.toHaveAttribute("readonly");
+  });
+
+  it("does not offer a vessel another tank links, until it is unlinked", async () => {
+    render(
+      <Harness
+        mixtures={[
+          { ...EAN54, gear_item_uuid: LEFT.uuid, gear_item: LEFT },
+          EAN54,
+        ]}
+        maxDepth={10}
+      />,
+    );
+
+    await userEvent.click(pickers()[1]);
+    await screen.findByRole("option", { name: named("Right 12") });
+    expect(
+      screen.queryByRole("option", { name: named("Left 12") }),
+    ).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.clear(pickers()[0]);
+    await userEvent.tab();
+    await userEvent.click(pickers()[1]);
+    expect(
+      await screen.findByRole("option", { name: named("Left 12") }),
+    ).toBeInTheDocument();
+  });
+
+  it("asks the lookup for cylinders only", async () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={10} />);
+
+    await userEvent.click(pickers()[0]);
+
+    await vi.waitFor(() =>
+      expect(gearAPI.lookupGearItems).toHaveBeenCalledWith(1, 25, {
+        search: "",
+        until: undefined,
+        type: "cylinder",
+      }),
+    );
+  });
+
+  it("keeps naming an archived vessel the lookup no longer lists", () => {
+    render(
+      <Harness
+        mixtures={[
+          {
+            ...EAN54,
+            gear_item_uuid: "vessel-old",
+            gear_item: {
+              ...vessel("vessel-old", "Retired 15", 15),
+              is_archived: true,
+            },
+          },
+        ]}
+        maxDepth={10}
+      />,
+    );
+
+    expect(pickers()[0]).toHaveValue("Retired 15");
+  });
+
+  it("is off every tank card while hidden", () => {
+    render(
+      <Harness
+        mixtures={[EAN54, EAN54]}
+        maxDepth={10}
+        hidden={["mixture.gear_item_uuid"]}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Cylinder")).not.toBeInTheDocument();
   });
 });

@@ -83,6 +83,7 @@ export const GEAR_ITEM: GearItem = {
   rented: false,
   is_archived: false,
   dive_count: 212,
+  dive_time: 763200,
   service: [],
   user_uuid: USER.uuid,
   created_at: "2024-01-05T10:00:00+01:00",
@@ -177,6 +178,8 @@ function respond(method: string, path: string): unknown | undefined {
   if (path === "/dives/numbering") return NUMBERING;
   if (path === "/dives") return page1([DIVE_A, DIVE_B]);
   if (path === "/gear-items") return page1([GEAR_ITEM]);
+  // What a gear picker lists, a tank's cylinder picker included.
+  if (path === "/gear-items/lookup") return page1([GEAR_ITEM]);
   if (path === "/gear-sets") return page1([GEAR_SET]);
   // The header's notifications bell reads both on every page, and the check-in
   // details once per session for the policies; nothing is due.

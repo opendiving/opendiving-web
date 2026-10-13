@@ -96,6 +96,25 @@ export const litersToCubicFeet = (liters: number): number =>
 export const cubicFeetToLiters = (cubicFeet: number): number =>
   cubicFeet * LITERS_PER_CUBIC_FOOT;
 
+// Standard atmospheres in a bar.
+const BAR_PER_ATMOSPHERE = 1.01325;
+
+/**
+ * A cylinder's gas capacity in whole cubic feet, the figure it is named by: its water
+ * capacity times its working pressure in atmospheres, compressibility ignored -
+ * Subsurface's own naming arithmetic, so 11.1 L at 207 bar is the "80" of an AL80.
+ * Only for a vessel recording both facts, which a gear item can and a dive's
+ * cylinder cannot.
+ */
+export function cylinderCubicFeet(
+  volumeLiters: number,
+  workingPressureBar: number,
+): number {
+  return Math.round(
+    litersToCubicFeet(volumeLiters * (workingPressureBar / BAR_PER_ATMOSPHERE)),
+  );
+}
+
 /**
  * Every measurement this module knows how to convert or label.
  *
@@ -105,8 +124,10 @@ export const cubicFeetToLiters = (cubicFeet: number): number =>
  *
  * Deliberately absent: ppO₂ and surface pressure (bar in both systems, as every dive
  * computer shows them), tank volume (litres is water capacity and cubic feet is gas
- * at a rated pressure the mixture doesn't record - converting between them would be
- * fake maths), O₂/He percentages, CNS/OTU, coordinates and duration.
+ * at a rated pressure - a dive's cylinder records no such pressure, so the dive side
+ * stays in litres, and only a gear item, which records its working pressure, can be
+ * named in cubic feet: `cylinderCubicFeet`), O₂/He percentages, CNS/OTU, coordinates
+ * and duration.
  */
 export type Dimension =
   | "depth"
