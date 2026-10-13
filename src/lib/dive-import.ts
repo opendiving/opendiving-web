@@ -9,7 +9,7 @@
 
 import type { ParsedDiveMixture } from "@/lib/api/dives";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
-import { tankVolume } from "@/lib/tank-vessel";
+import { isVolumeFromVessel, tankVolume } from "@/lib/tank-vessel";
 
 // A mixture field an export may not have recorded, and that the form can therefore
 // only fill from the cylinder it already held. `start_pressure`/`end_pressure` are
@@ -172,10 +172,12 @@ export function mergeMixture(
     return { value: "", source: "blank" };
   };
 
-  // A tank linked to a vessel keeps the volume it holds - the vessel's, for a link
-  // made in the form - over the file's: the size is the vessel's fact, and the box
-  // showing it is read-only. A linked row holding none takes the file's like any.
-  const keptVolume = existing?.gear_item_uuid ? tankVolume(existing) : "";
+  // A tank linked to a vessel that records its capacity keeps the volume it shows -
+  // its own, else the vessel's - over the file's: the size is the vessel's fact, and
+  // the box showing it is read-only. A vessel recording none leaves the box editable,
+  // and the file's figure is taken as on any tank.
+  const keptVolume =
+    existing && isVolumeFromVessel(existing) ? tankVolume(existing) : "";
   const volume: { value: number | ""; source: MixtureValueSource } =
     typeof keptVolume === "number"
       ? {

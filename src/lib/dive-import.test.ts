@@ -401,6 +401,17 @@ describe("the first file's apply over a linked tank", () => {
     expect(merged.value.gear_item_uuid).toBe(AL80.uuid);
   });
 
+  it("takes the file's volume over a typed one where the vessel records no capacity", () => {
+    // The box was editable, so the figure is the tank's own, as on an unlinked tank.
+    const merged = mergeMixture(
+      parsed({ volume: 15 }),
+      linked({ volume: 12, gear_item: { ...AL80, volume: null } }),
+    );
+    expect(merged.value.volume).toBe(15);
+    expect(merged.sources.volume).toBe("file");
+    expect(merged.value.gear_item_uuid).toBe(AL80.uuid);
+  });
+
   it("says the file's different size was not taken, and only then", () => {
     const parsedRows = [parsed({ volume: 12, oxygen: 32 })];
     const differing = mixtureImportNotes(

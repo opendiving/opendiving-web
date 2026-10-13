@@ -5894,8 +5894,8 @@ Each section is one column; from `md` up sections flow through CSS multi-column 
 than `space-y-*`.
 
 Groups keep form order, so a diver finds a field where they would look for it;
-`DIVE_FORM_FIELD_GROUPS`' doc states the rule. `mixtures` leads its group via `LEADING_GROUP_FIELD`
-in the dialog, and a test pins that order.
+`DIVE_FORM_FIELD_GROUPS`' doc states the rule. `mixtures`, then a tank's Cylinder row, lead their
+group via `LEADING_GROUP_FIELDS` in the dialog, and a test pins that order.
 
 ## `DIVE_FORM_FIELDS` is a fifth hand-kept vocabulary mirror, guarded from both ends
 
