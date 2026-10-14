@@ -5545,11 +5545,11 @@ a request made anyway. `InviteLinkBlock` mounts only once the list is `ready`, s
 only mean no link.
 
 A send prepends the row `POST /user/invitations` returns rather than re-reading; a revoke re-reads,
-since `revoked_at` is the server's. Refusals show verbatim in the form's error slot, not a fading
-toast. Only this list is paginated, since only invitations grow uncapped. Appending dedupes by uuid:
-a prepended row, local or another tab's, shifts offset page 2 onto page 1's last row, which a plain
-append would render twice under one key. `fetchAllPages` in `lib/api/client.ts` carries the same
-`keyOf` dedup; the gap a removed row leaves cannot arise here, since a revoke never deletes.
+since `revoked_at` is the server's. Refusals show verbatim in the error slot, not a toast. Only this
+list is paginated, since only invitations grow uncapped. Appending dedupes by uuid: a prepended row
+from any tab shifts offset page 2 onto page 1's last row, which a plain append would render twice
+under one key. `fetchAllPages` (`lib/api/client.ts`) dedupes the same way; the gap a removed row
+leaves cannot arise here, since a revoke never deletes.
 
 ## `Course` has no `cost`: money is modelled once, and a course references it
 
