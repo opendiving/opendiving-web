@@ -5,12 +5,12 @@ import { useSearchParams } from "next/navigation";
 
 import { LandingPage } from "@/components/layout/landing-page";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { useJoinChannel } from "@/hooks/useJoinChannel";
+import { useJoinVia } from "@/hooks/useJoinVia";
 
-// The body of `/join?via=<slug>`: the landing page, with its hero holding the
-// sign-in form for a join link the API says is live, and exactly the landing page
-// for anything else - no `via`, a slug nobody configured or one since removed, or
-// an API that did not answer. Silently: a visitor holding a dead link is best served
+// The body of `/join?via=<x>`: the landing page, with its hero holding the sign-in
+// form for a member's invite link or a join link the API says is live, and exactly
+// the landing page for anything else - no `via`, a token or slug that is not live,
+// or an API that did not answer. Silently: a visitor holding a dead link is best served
 // by the page they would have reached anyway, whose request form is the next thing
 // for them to try.
 //
@@ -30,18 +30,19 @@ export function JoinPage() {
 }
 
 // The landing page's own spinner, so the hand-over to it draws nothing new: the
-// hero never paints one form and then swaps it for the other, and the channel is
-// part of which form.
+// hero never paints one form and then swaps it for the other, and what `via` names
+// is part of which form.
 function JoinSpinner() {
   return <PageSpinner className="bg-background" />;
 }
 
 function JoinContent() {
   const via = useSearchParams().get("via");
-  const { channel, isLoading } = useJoinChannel(via);
+  const { inviteLink, channel, isLoading } = useJoinVia(via);
 
   // Resolved before the landing page mounts, which then holds the same spinner
   // until its own reads - the session and `/config` - have answered too.
   if (isLoading) return <JoinSpinner />;
+  if (inviteLink) return <LandingPage inviteLink={inviteLink} />;
   return channel ? <LandingPage channel={channel} /> : <LandingPage />;
 }

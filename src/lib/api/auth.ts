@@ -175,7 +175,8 @@ export interface GoogleAuthorizationGrant {
   // own `FRONTEND_URL` derives - which is what makes a misconfigured deployment
   // this app's own named error rather than an opaque rejection from Google.
   redirectUri: string;
-  // The join link the attempt started from, carried on its stored record.
+  // The join link or invite link the attempt started from, carried on its stored
+  // record.
   via?: string | null;
 }
 
@@ -208,12 +209,13 @@ export const authAPI = {
   // it names the request row the email is about, and is what `verifyEmailCode`
   // needs - keep it for as long as the "check your email" card is on screen.
   //
-  // `via` is the slug of the join link the form is on. The API keeps it on the
-  // request row, so the link and the code both carry it to the gate whichever
-  // device redeems them, and nothing here has to remember it past this call. The
-  // key is left out entirely without one, so every other sign-in sends the body it
-  // always did. On an invite-only copy a link that has since been removed is a
-  // `403` here, with a sentence the form shows as it is.
+  // `via` is the join link's slug or the invite link's token the form is on - one
+  // field for both, which the API tells apart. The API keeps it on the request
+  // row, so the link and the code both carry it to the gate whichever device
+  // redeems them, and nothing here has to remember it past this call. The key is
+  // left out entirely without one, so every other sign-in sends the body it always
+  // did. On an invite-only copy a join link since removed, or an invite link since
+  // reset or removed, is a `403` here, with a sentence the form shows as it is.
   async requestEmailLink(
     email: string,
     via?: string,

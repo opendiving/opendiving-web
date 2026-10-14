@@ -25,6 +25,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { invitationsAPI, type Invitation } from "@/lib/api/invitations";
+import { InviteLinkBlock } from "@/components/settings/invite-link-block";
 import { formatDateTime } from "@/lib/date-time";
 import {
   emailAuthSchema,
@@ -54,7 +55,8 @@ const LIST_FAILED = "Couldn't load the invitations you have sent.";
 const DAY = { year: "numeric", month: "short", day: "numeric" } as const;
 
 /**
- * The invitations the diver has sent, and the form for sending another.
+ * The invitations the diver has sent, their invite link, and the form for sending
+ * another.
  *
  * **Every refusal here is the API's sentence, shown verbatim.** There are four -
  * the address already has an account, this account has already invited it, the
@@ -62,10 +64,13 @@ const DAY = { year: "numeric", month: "short", day: "numeric" } as const;
  * says what to do about it. Rewording any of them here would put a second copy of
  * a rule this app does not own next to the copy that enforces it.
  *
- * An invitation carries no code and no link the sender could forward: it is an
- * allow-list entry keyed on the address, and the invitee signs in with that
- * address the ordinary way. So there is nothing on a row to copy, and revoking is
- * the only control a pending row needs.
+ * An invitation typed as an address carries no code and no link the sender could
+ * forward: it is an allow-list entry keyed on the address, and the invitee signs
+ * in with that address the ordinary way. So there is nothing on a row to copy,
+ * and revoking is the only control a pending row needs. The invite link is the one
+ * forwardable thing here, and lives in its own block above the form; a row made by
+ * somebody joining through it shows their name and never their address, which the
+ * diver was never given.
  */
 export function InvitationsCard() {
   const { toast } = useToast();
@@ -227,6 +232,11 @@ export function InvitationsCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Only once the list has loaded: on an `open` instance the list's 404
+            removes this card, and the block, mounted any sooner, would read its
+            own 404 as "no link yet" and offer one in the meantime. */}
+        {list.status === "ready" && <InviteLinkBlock />}
+
         <form onSubmit={handleSubmit(onSend)} className="space-y-4">
           {sendError && (
             <StatusMessage variant="error">{sendError}</StatusMessage>
@@ -279,53 +289,57 @@ export function InvitationsCard() {
           </p>
         )}
 
-        {invitations.map((invitation) => (
-          <div
-            key={invitation.uuid}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
-          >
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium break-all">
-                  {invitation.email}
-                </span>
-                {invitation.accepted_at ? (
-                  <Badge variant="teal">
-                    Accepted {formatDateTime(invitation.accepted_at, DAY)}
-                  </Badge>
-                ) : invitation.revoked_at ? (
-                  <Badge variant="secondary">Revoked</Badge>
-                ) : (
-                  <Badge variant="outline">Pending</Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Invited {formatDateTime(invitation.created_at, DAY)}
-              </p>
-            </div>
-            {/* Only on a row that could still be used. An accepted invitation
-                cannot be taken back - the account exists - and the API refuses
-                it with a 409; a revoked one is already revoked. */}
-            {!invitation.accepted_at && !invitation.revoked_at && (
-              <IconTooltip
-                label={`Revoke the invitation to ${invitation.email}`}
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={deletingId === invitation.uuid}
-                  onClick={() => requestDelete(invitation.uuid)}
-                >
-                  {deletingId === invitation.uuid ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+        {invitations.map((invitation) =>
+          invitation.from_invite_link ? (
+            <LinkRow key={invitation.uuid} invitation={invitation} />
+          ) : (
+            <div
+              key={invitation.uuid}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium break-all">
+                    {invitation.email}
+                  </span>
+                  {invitation.accepted_at ? (
+                    <Badge variant="teal">
+                      Accepted {formatDateTime(invitation.accepted_at, DAY)}
+                    </Badge>
+                  ) : invitation.revoked_at ? (
+                    <Badge variant="secondary">Revoked</Badge>
                   ) : (
-                    <Trash2 className="h-4 w-4" />
+                    <Badge variant="outline">Pending</Badge>
                   )}
-                </Button>
-              </IconTooltip>
-            )}
-          </div>
-        ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Invited {formatDateTime(invitation.created_at, DAY)}
+                </p>
+              </div>
+              {/* Only on a row that could still be used. An accepted invitation
+                  cannot be taken back - the account exists - and the API refuses
+                  it with a 409; a revoked one is already revoked. */}
+              {!invitation.accepted_at && !invitation.revoked_at && (
+                <IconTooltip
+                  label={`Revoke the invitation to ${invitation.email}`}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={deletingId === invitation.uuid}
+                    onClick={() => requestDelete(invitation.uuid)}
+                  >
+                    {deletingId === invitation.uuid ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </IconTooltip>
+              )}
+            </div>
+          ),
+        )}
 
         {list.status === "ready" && list.hasMore && (
           <Button
@@ -361,5 +375,21 @@ export function InvitationsCard() {
         onConfirm={confirmDelete}
       />
     </Card>
+  );
+}
+
+// Somebody who joined through the diver's invite link: their current name and the
+// day, never their address, and no Revoke - the row is accepted from birth. The
+// name is null once the API can no longer say whose account it is.
+function LinkRow({ invitation }: { invitation: Invitation }) {
+  return (
+    <div className="rounded-lg border p-3">
+      <p className="font-medium break-words">
+        {invitation.member_name ?? "Someone"} joined through your link
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {formatDateTime(invitation.accepted_at ?? invitation.created_at, DAY)}
+      </p>
+    </div>
   );
 }

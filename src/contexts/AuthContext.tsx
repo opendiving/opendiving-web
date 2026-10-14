@@ -64,7 +64,7 @@ interface AuthContextType {
   // Step 1 of the email flow - always resolves with the same generic message,
   // regardless of whether `email` belongs to an existing account. The `request_id`
   // it resolves with is what `verifyEmailCode` below needs. `via` is the join link
-  // the form is on, if it is on one.
+  // or invite link the form is on, if it is on one.
   requestEmailLink: (
     email: string,
     via?: string,

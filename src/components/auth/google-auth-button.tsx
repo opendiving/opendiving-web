@@ -15,7 +15,8 @@ interface GoogleAuthButtonProps {
   // `beginGoogleSignIn`, which stores it inside the attempt it mints: this flow
   // leaves the tab, so a prop alone would not survive the trip to Google.
   redirectTo?: string | null;
-  // The join link's slug on `/join`, stored in the attempt the same way.
+  // The join link's slug or invite-link token on `/join`, stored in the attempt
+  // the same way.
   via?: string;
 }
 
