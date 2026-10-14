@@ -925,6 +925,54 @@ describe("MixtureFields cylinder picker", () => {
     ).toBeInTheDocument();
   });
 
+  it("tells no cylinders apart from every cylinder on another tank", async () => {
+    vi.mocked(gearAPI.lookupGearItems).mockResolvedValue({
+      data: [LEFT],
+      total_count: 1,
+      has_more: false,
+      page: 1,
+      items_per_page: 25,
+    });
+    render(
+      <Harness
+        mixtures={[
+          { ...EAN54, gear_item_uuid: LEFT.uuid, gear_item: LEFT },
+          EAN54,
+        ]}
+        maxDepth={10}
+      />,
+    );
+
+    await userEvent.click(pickers()[1]);
+    expect(
+      await screen.findByText(
+        "Every cylinder in your gear is already on another tank.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "New gear item..." }),
+    ).toBeInTheDocument();
+  });
+
+  it("says the diver has no cylinders when the lookup lists none", async () => {
+    vi.mocked(gearAPI.lookupGearItems).mockResolvedValue({
+      data: [],
+      total_count: 0,
+      has_more: false,
+      page: 1,
+      items_per_page: 25,
+    });
+    render(<Harness mixtures={[EAN54]} maxDepth={10} />);
+
+    await userEvent.click(pickers()[0]);
+    expect(
+      await screen.findByText("No cylinders in your gear yet."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "New gear item..." }),
+    ).toBeInTheDocument();
+  });
+
   it("asks the lookup for cylinders only", async () => {
     render(<Harness mixtures={[EAN54]} maxDepth={10} />);
 

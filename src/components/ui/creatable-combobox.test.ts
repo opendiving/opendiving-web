@@ -257,6 +257,21 @@ describe("emptyMenuLabel", () => {
     ).toBe(base.searchErrorLabel);
   });
 
+  it("says when every row is excluded, but only before anything is typed", () => {
+    const excluded = {
+      ...base,
+      allExcluded: true,
+      allExcludedLabel: "Every dive site is already picked.",
+    };
+    expect(emptyMenuLabel(excluded)).toBe(excluded.allExcludedLabel);
+    expect(emptyMenuLabel({ ...excluded, query: "dahab" })).toBe(
+      base.noMatchesLabel,
+    );
+    expect(emptyMenuLabel({ ...base, allExcluded: true })).toBe(
+      base.noItemsLabel,
+    );
+  });
+
   it("falls back to the no-items text when a field has no no-matches text", () => {
     expect(
       emptyMenuLabel({ ...base, query: "dahab", noMatchesLabel: undefined }),
