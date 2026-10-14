@@ -1,3 +1,4 @@
+import { announceServiceDueChanged } from "@/lib/service-due";
 import { apiClient, fetchAllPages, lookupRequest } from "./client";
 import type { LookupQuery, PaginatedResponse } from "./client";
 // Type-only, so it erases at compile time - `gear-service.ts` has no import back to
@@ -294,11 +295,13 @@ export const gearAPI = {
       `/gear-item/${gearItemUuid}`,
       updateData,
     );
+    announceServiceDueChanged();
     return response.data;
   },
 
   async deleteGearItem(gearItemUuid: string): Promise<{ message: string }> {
     const response = await apiClient.delete(`/gear-item/${gearItemUuid}`);
+    announceServiceDueChanged();
     return response.data;
   },
 

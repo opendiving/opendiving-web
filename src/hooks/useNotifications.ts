@@ -20,6 +20,7 @@ import {
   type Renewable,
 } from "@/lib/certification";
 import { serviceStatus } from "@/lib/gear-service";
+import { onServiceDueChanged } from "@/lib/service-due";
 
 /** One source of notifications, as its last read left it. */
 export interface NotificationFeed<T> {
@@ -79,9 +80,10 @@ function feedFrom<T>(
  * policies about to run out. Both endpoints return every dated row with no
  * horizon, so the bucketing into "worth saying" happens here.
  *
- * Read again on every navigation. The header that asks for this outlives the
- * pages, and those pages are where a service gets logged or an expiry date
- * moves; both reads are cached by the API, so the repeat is cheap. The
+ * Read again on every navigation, and whenever a save announces that what is due
+ * may have moved. The header that asks for this outlives the pages, and those pages
+ * are where a service gets logged or an expiry date moves; both reads are cached by
+ * the API, so the repeat is cheap. The
  * policies' rows are derived during render from the shared check-in details, so a
  * policy saved anywhere shows here without a read at all.
  */
@@ -138,6 +140,7 @@ export function useNotifications(): NotificationsState {
   }, [pathname, reloadKey, reloadDetails]);
 
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
+  useEffect(() => onServiceDueChanged(reload), [reload]);
 
   const serviceDue = reads?.serviceDue ?? EMPTY;
   const renewals = reads

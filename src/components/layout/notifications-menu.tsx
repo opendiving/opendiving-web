@@ -282,11 +282,9 @@ export function NotificationsMenu() {
           open
           onOpenChange={stopEditing}
           schedule={loggingSchedule}
-          // A logged service resets the schedule's due date, so the row this was opened
-          // from usually leaves the list, and the count drops with it. The page under
-          // the bell may be that item's, or the gear list.
+          // The bell reads its list again on its own, as after any service save. The
+          // page under it may be that item's, or the gear list.
           onSaved={() => {
-            reload();
             announceSavedElsewhere("gear-service", {
               gearItemUuid: editing.entry.gear_item_uuid,
             });
