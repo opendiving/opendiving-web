@@ -242,6 +242,7 @@ describe("the edit form's round trip", () => {
               common_name: "Giant manta ray",
               rank: "Species",
               count: 3,
+              abundance: null,
               notes: "Cleaning station\nat 18 m",
             },
             {
@@ -250,6 +251,7 @@ describe("the edit form's round trip", () => {
               common_name: "Green sea turtle",
               rank: "Species",
               count: null,
+              abundance: null,
               notes: "",
             },
           ],

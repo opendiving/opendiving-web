@@ -511,6 +511,7 @@ describe("a dive's sightings", () => {
     common_name: "Giant manta ray",
     rank: "Species",
     count: 2,
+    abundance: null,
     notes: "Overhead at the cleaning station",
   };
   const TURTLE = {
@@ -519,6 +520,7 @@ describe("a dive's sightings", () => {
     common_name: "Green sea turtle",
     rank: "Species",
     count: null,
+    abundance: null,
     notes: "",
   };
 

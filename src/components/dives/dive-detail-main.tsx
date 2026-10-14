@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { Dive } from "@/lib/api/dives";
+import {
+  ABUNDANCES,
+  ABUNDANCE_LABELS,
+  ABUNDANCE_RANGES,
+  Dive,
+  type Sighting,
+  vocabularyLabel,
+} from "@/lib/api/dives";
 import { gearTypeLabel } from "@/lib/api/gear";
 import {
   SPECIES_CARD_GRID,
   SpeciesCard,
 } from "@/components/species/species-card";
+import type { BackdropCardFigure } from "@/components/ui/backdrop-card";
 import { Badge } from "@/components/ui/badge";
 import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import { DiveProfileCard } from "@/components/dives/dive-profile-card";
@@ -28,6 +36,32 @@ import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatWeight } from "@/lib/units";
+
+// One figure per sighting: its count, or its band with the band's range, and none for
+// "seen, not counted", which is not 1.
+function sightingFigures(sighting: Sighting): BackdropCardFigure[] {
+  if (sighting.count != null) {
+    return [{ label: "Count", value: sighting.count }];
+  }
+  if (sighting.abundance != null) {
+    // A band this build has no range for yet reads as its slug alone.
+    const range = ABUNDANCES.includes(sighting.abundance)
+      ? ABUNDANCE_RANGES[sighting.abundance]
+      : undefined;
+    return [
+      {
+        label: "Abundance",
+        value: (
+          <>
+            {vocabularyLabel(ABUNDANCE_LABELS, sighting.abundance)}
+            {range && <span className="text-xs font-normal"> {range}</span>}
+          </>
+        ),
+      },
+    ];
+  }
+  return [];
+}
 
 interface DiveDetailMainProps {
   dive: Dive;
@@ -148,12 +182,7 @@ export function DiveDetailMain({ dive, onEdit }: DiveDetailMainProps) {
                 <SpeciesCard
                   key={sighting.uuid}
                   species={sighting}
-                  // None for "seen, not counted", which is not 1.
-                  figures={
-                    sighting.count != null
-                      ? [{ label: "Count", value: sighting.count }]
-                      : []
-                  }
+                  figures={sightingFigures(sighting)}
                 >
                   {/* Pre-wrap, as the Notes card below keeps the dive's own: a
                       merge or an import can put line breaks in a note. */}

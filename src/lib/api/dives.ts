@@ -371,8 +371,39 @@ export interface DiveGasUse {
 }
 
 /**
+ * How many were seen, as a band where there is no count: the API's `Abundance`, in the
+ * picker's order, with no "other". One animal is a count of 1, never a band.
+ */
+export const ABUNDANCES = ["few", "many", "abundant"] as const;
+export type SightingAbundance = (typeof ABUNDANCES)[number];
+
+export const ABUNDANCE_LABELS: Record<SightingAbundance, string> = {
+  few: "Few",
+  many: "Many",
+  abundant: "Abundant",
+};
+
+/** Each band's range, as the form and the dive page show it beside the band's word. */
+export const ABUNDANCE_RANGES: Record<SightingAbundance, string> = {
+  few: "2–10",
+  many: "11–100",
+  abundant: "101+",
+};
+
+/**
+ * The band a count falls in, or `null` for a count of 1, which is one animal and falls
+ * in none. The floors are the format's: 2, 11 and 101.
+ */
+export function abundanceOfCount(count: number): SightingAbundance | null {
+  if (count >= 101) return "abundant";
+  if (count >= 11) return "many";
+  if (count >= 2) return "few";
+  return null;
+}
+
+/**
  * One species seen on a dive, as a dive read carries it: the species' summary, how
- * many were counted and what the diver wrote about it.
+ * many were seen and what the diver wrote about it.
  *
  * `uuid` is the species' own, so this is also a `SpeciesSummary`; a write names the
  * same species as `species_uuid` (`SightingWrite`).
@@ -380,6 +411,8 @@ export interface DiveGasUse {
 export interface Sighting extends SpeciesSummary {
   // `null` is "seen, not counted", which is not 1.
   count: number | null;
+  // The band where there is no count; never set beside `count`.
+  abundance: SightingAbundance | null;
   // `""` when the diver wrote nothing.
   notes: string;
 }
@@ -392,6 +425,8 @@ export interface SightingWrite {
   species_uuid: string;
   // A positive whole number. Omitted, never 0 or 1, for "seen, not counted".
   count?: number;
+  // At most one of `count` and `abundance`: the API refuses a sighting carrying both.
+  abundance?: SightingAbundance;
   notes?: string;
 }
 

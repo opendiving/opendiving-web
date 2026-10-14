@@ -7,6 +7,7 @@ import {
   parseUtcOffsetMinutes,
 } from "@/lib/date-time";
 import {
+  ABUNDANCES,
   CURRENTS,
   DIVE_TYPES,
   ENTRY_TYPES,
@@ -368,30 +369,42 @@ export const SIGHTING_COUNT_MAX = 2 ** 31 - 1;
 
 /**
  * One species seen on the dive, as the form holds it - the wire shape exactly, so it
- * goes out as it is. No `count` is "seen, not counted": the picker takes the key off
- * when its box is emptied rather than writing a `0` or a `1` there. The bounds are the
- * API's, mirrored the way the altitude range is.
+ * goes out as it is. Neither `count` nor `abundance` is "seen, not counted": the picker
+ * takes the keys off rather than writing a `0` or a `1` there. The bounds and the
+ * one-of-the-two rule are the API's, mirrored the way the altitude range is; the
+ * refusal sits on the band, whose error renders under the row as the count's does.
  */
-export const sightingSchema = z.object({
-  species_uuid: z.string(),
-  count: z
-    .number()
-    .int("A count is a whole number")
-    .min(1, "A count is at least 1 — leave it blank if you didn't count")
-    .max(SIGHTING_COUNT_MAX, "That's more than a count can hold")
-    .optional(),
-  notes: notesField().optional(),
-});
+export const sightingSchema = z
+  .object({
+    species_uuid: z.string(),
+    count: z
+      .number()
+      .int("A count is a whole number")
+      .min(1, "A count is at least 1 — leave it blank if you didn't count")
+      .max(SIGHTING_COUNT_MAX, "That's more than a count can hold")
+      .optional(),
+    abundance: z.enum(ABUNDANCES).optional(),
+    notes: notesField().optional(),
+  })
+  .refine(
+    (sighting) =>
+      sighting.count === undefined || sighting.abundance === undefined,
+    {
+      message: "A sighting carries a count or a band, not both",
+      path: ["abundance"],
+    },
+  );
 
 export type SightingInput = z.input<typeof sightingSchema>;
 
 // A stored sighting as the picker edits it: the species under the key a write names
-// it by, and a count only where one was recorded - `null` is "seen, not counted",
-// which the form spells by leaving the key off.
+// it by, and a count or a band only where one was recorded - `null` is "seen, not
+// counted", which the form spells by leaving the key off.
 function toSightingInput(sighting: Sighting): SightingInput {
   return {
     species_uuid: sighting.uuid,
     ...(sighting.count != null && { count: sighting.count }),
+    ...(sighting.abundance != null && { abundance: sighting.abundance }),
     notes: sighting.notes,
   };
 }

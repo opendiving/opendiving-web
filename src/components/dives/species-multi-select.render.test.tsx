@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useState } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SpeciesMultiSelect } from "./species-multi-select";
 import type { SightingWrite } from "@/lib/api/dives";
@@ -821,5 +821,133 @@ describe("SpeciesMultiSelect counts and notes", () => {
     expect(
       screen.getByRole("textbox", { name: "Count of Giant manta ray" }),
     ).not.toHaveAttribute("aria-invalid");
+  });
+});
+
+describe("SpeciesMultiSelect asks how many as one question", () => {
+  beforeEach(() => {
+    submitted = [];
+  });
+
+  const oneRow = (initial: SightingWrite) =>
+    render(<Field initial={[initial]} known={[MANTA_SUMMARY]} />);
+
+  const choices = () =>
+    within(screen.getByRole("group", { name: "How many Giant manta ray" }));
+  const choice = (name: RegExp) => choices().getByRole("button", { name });
+  const countBox = () =>
+    screen.getByRole("textbox", { name: "Count of Giant manta ray" });
+
+  it("labels each band with its range", () => {
+    oneRow({ species_uuid: "species-manta" });
+
+    expect(
+      choices()
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["One", "Few, 2–10", "Many, 11–100", "Abundant, 101+"]);
+    for (const button of choices().getAllByRole("button")) {
+      expect(button).toHaveAttribute("aria-pressed", "false");
+    }
+  });
+
+  it("stores a chosen band alone, clearing the count box", async () => {
+    oneRow({ species_uuid: "species-manta", count: 4 });
+
+    await userEvent.click(choice(/^Many/));
+
+    expect(submitted).toEqual([
+      { species_uuid: "species-manta", abundance: "many" },
+    ]);
+    expect(countBox()).toHaveValue("");
+    expect(choice(/^Many/)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("stores one as a count of 1 and no band", async () => {
+    oneRow({ species_uuid: "species-manta", abundance: "few" });
+
+    await userEvent.click(choice(/^One/));
+
+    expect(submitted).toEqual([{ species_uuid: "species-manta", count: 1 }]);
+    expect(countBox()).toHaveValue("1");
+    expect(choice(/^One/)).toHaveAttribute("aria-pressed", "true");
+    expect(choice(/^Few/)).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("takes the answer off when the chosen choice is chosen again", async () => {
+    oneRow({ species_uuid: "species-manta", abundance: "abundant" });
+
+    await userEvent.click(choice(/^Abundant/));
+    expect(submitted).toEqual([{ species_uuid: "species-manta" }]);
+
+    await userEvent.click(choice(/^One/));
+    await userEvent.click(choice(/^One/));
+    expect(submitted).toEqual([{ species_uuid: "species-manta" }]);
+    expect(countBox()).toHaveValue("");
+  });
+
+  it("clears a chosen band when a count is typed", async () => {
+    oneRow({ species_uuid: "species-manta", abundance: "few" });
+
+    await userEvent.type(countBox(), "37");
+
+    expect(submitted).toEqual([{ species_uuid: "species-manta", count: 37 }]);
+    expect(choice(/^Few/)).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("marks the band a typed count falls in without choosing it", async () => {
+    oneRow({ species_uuid: "species-manta", count: 37 });
+
+    const many = choice(/^Many/);
+    expect(many).toHaveAttribute("aria-pressed", "false");
+    expect(many).toHaveClass("border-dashed");
+    expect(choice(/^Few/)).not.toHaveClass("border-dashed");
+
+    await userEvent.click(many);
+
+    expect(submitted).toEqual([
+      { species_uuid: "species-manta", abundance: "many" },
+    ]);
+    expect(countBox()).toHaveValue("");
+    expect(choice(/^Many/)).toHaveAttribute("aria-pressed", "true");
+    expect(choice(/^Many/)).not.toHaveClass("border-dashed");
+  });
+
+  it("marks no band for a count of one", () => {
+    oneRow({ species_uuid: "species-manta", count: 1 });
+
+    for (const name of [/^Few/, /^Many/, /^Abundant/]) {
+      expect(choice(name)).not.toHaveClass("border-dashed");
+    }
+  });
+
+  it("carries neither once the box is emptied", async () => {
+    oneRow({ species_uuid: "species-manta", count: 12 });
+
+    await userEvent.clear(countBox());
+
+    expect(submitted).toEqual([{ species_uuid: "species-manta" }]);
+  });
+
+  it("says a band's refusal under its row", () => {
+    render(
+      <SpeciesMultiSelect
+        value={[{ species_uuid: "species-manta", abundance: "few" }]}
+        knownSpecies={[MANTA_SUMMARY]}
+        onChange={() => {}}
+        errors={[
+          { abundance: "A sighting carries a count or a band, not both" },
+        ]}
+      />,
+    );
+
+    expect(
+      choices().getByRole("button", { name: /^Few/ }).closest("li"),
+    ).toHaveTextContent("A sighting carries a count or a band, not both");
+    expect(
+      screen.getByRole("group", { name: "How many Giant manta ray" }),
+    ).toHaveAccessibleDescription(
+      "A sighting carries a count or a band, not both",
+    );
   });
 });

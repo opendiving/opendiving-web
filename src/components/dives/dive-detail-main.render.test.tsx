@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveDetailMain } from "./dive-detail-main";
-import type { Dive } from "@/lib/api/dives";
+import type { Dive, Sighting } from "@/lib/api/dives";
 
 // These renders read the diver's units, so they need an auth context.
 vi.mock("@/contexts/AuthContext", () => ({
@@ -31,6 +31,7 @@ function sighting(
     common_name: "Ocellaris clownfish",
     rank: "Species",
     count: null,
+    abundance: null,
     notes: "",
     ...overrides,
   };
@@ -106,5 +107,32 @@ describe("DiveDetailMain species card counts and notes", () => {
     expect(
       cardOf("Green sea turtle").queryByText("Count", { selector: "dt" }),
     ).not.toBeInTheDocument();
+    expect(cardOf("Green sea turtle").queryByRole("term")).toBeNull();
+  });
+
+  it("shows a band with its range, as the one figure", () => {
+    const banded = { ...TURTLE, abundance: "many" as const };
+    render(<DiveDetailMain dive={dive({ sightings: [banded] })} />);
+
+    const turtle = cardOf("Green sea turtle");
+    expect(turtle.getAllByRole("term").map((term) => term.textContent)).toEqual(
+      ["Abundance"],
+    );
+    expect(
+      turtle.getByText("Abundance", { selector: "dt" }).nextElementSibling,
+    ).toHaveTextContent("Many 11–100");
+  });
+
+  it("shows a band this build has no label for as its slug, with no range", () => {
+    const unknown = {
+      ...TURTLE,
+      abundance: "teeming" as unknown as Sighting["abundance"],
+    };
+    render(<DiveDetailMain dive={dive({ sightings: [unknown] })} />);
+
+    expect(
+      cardOf("Green sea turtle").getByText("Abundance", { selector: "dt" })
+        .nextElementSibling,
+    ).toHaveTextContent(/^teeming$/);
   });
 });
