@@ -1,3 +1,4 @@
+import { announceServiceDueChanged } from "@/lib/service-due";
 import { apiClient, fetchAllPages } from "./client";
 import type { PaginatedResponse } from "./client";
 
@@ -228,6 +229,7 @@ export const gearServiceAPI = {
     data: GearServiceScheduleCreate,
   ): Promise<GearServiceSchedule> {
     const response = await apiClient.post(`/gear-service-schedule`, data);
+    announceServiceDueChanged();
     return response.data;
   },
 
@@ -261,6 +263,7 @@ export const gearServiceAPI = {
       `/gear-service-schedule/${scheduleUuid}`,
       updateData,
     );
+    announceServiceDueChanged();
     return response.data;
   },
 
@@ -268,6 +271,7 @@ export const gearServiceAPI = {
     const response = await apiClient.delete(
       `/gear-service-schedule/${scheduleUuid}`,
     );
+    announceServiceDueChanged();
     return response.data;
   },
 
@@ -275,6 +279,7 @@ export const gearServiceAPI = {
     data: GearServiceRecordCreate,
   ): Promise<GearServiceRecord> {
     const response = await apiClient.post(`/gear-service-record`, data);
+    announceServiceDueChanged();
     return response.data;
   },
 
@@ -301,6 +306,7 @@ export const gearServiceAPI = {
       `/gear-service-record/${recordUuid}`,
       updateData,
     );
+    announceServiceDueChanged();
     return response.data;
   },
 
@@ -308,6 +314,7 @@ export const gearServiceAPI = {
     const response = await apiClient.delete(
       `/gear-service-record/${recordUuid}`,
     );
+    announceServiceDueChanged();
     return response.data;
   },
 
