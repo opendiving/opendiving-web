@@ -5541,18 +5541,15 @@ frame destination.
 `InvitationsCard` never asks the instance's mode: `GET /user/invitations` answers `404` on an `open`
 instance, and the card maps that to `absent`, returning `null` like `SessionsCard` and
 `PasskeysCard`. Not `useInstanceConfig`: a second source could disagree with the API; the 404 rides
-a request made anyway. `InviteLinkBlock` mounts only once the list is `ready` and reads its own
-route's 404 as "no link yet", which is correct only because it never renders where that 404 could
-mean `open` mode; mounted while the list loads, it would offer a link for the moment before the card
-went.
+a request made anyway. `InviteLinkBlock` mounts only once the list is `ready`, so its own 404 can
+only mean no link.
 
 A send prepends the row `POST /user/invitations` returns rather than re-reading; a revoke re-reads,
 since `revoked_at` is the server's. Refusals show verbatim in the form's error slot, not a fading
-toast. Only this list is paginated, since only invitations grow uncapped; "Show older invitations"
-fetches the rest. Appending dedupes by uuid: offset paging over newest-first ordering means a
-prepended row, local or another tab's, shifts page 2 onto page 1's last row, so a plain append
-renders it twice under one key. `fetchAllPages` in `lib/api/client.ts` carries the same `keyOf`
-dedup; the gap a removed row leaves cannot arise here, since a revoke never deletes.
+toast. Only this list is paginated, since only invitations grow uncapped. Appending dedupes by uuid:
+a prepended row, local or another tab's, shifts offset page 2 onto page 1's last row, which a plain
+append would render twice under one key. `fetchAllPages` in `lib/api/client.ts` carries the same
+`keyOf` dedup; the gap a removed row leaves cannot arise here, since a revoke never deletes.
 
 ## `Course` has no `cost`: money is modelled once, and a course references it
 
