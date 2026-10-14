@@ -1,6 +1,6 @@
 import type { ExternalId } from "@/lib/api/dive-sites";
 
-// The two registries DiveJSON names, each with the identifier form its schema holds
+// The registries DiveJSON names, each with the identifier form its schema holds
 // it to and the page that identifier opens. A registry outside them is carried as
 // written and shown as text, since nothing says what its identifier looks like.
 //
@@ -24,6 +24,15 @@ const REGISTRIES = new Map<
       label: "Wikidata",
       form: /^Q[1-9][0-9]*$/,
       href: (identifier) => `https://www.wikidata.org/wiki/${identifier}`,
+    },
+  ],
+  [
+    "worms",
+    {
+      label: "WoRMS",
+      form: /^[1-9][0-9]*$/,
+      href: (identifier) =>
+        `https://www.marinespecies.org/aphia.php?p=taxdetails&id=${identifier}`,
     },
   ],
 ]);

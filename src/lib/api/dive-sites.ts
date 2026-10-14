@@ -5,8 +5,8 @@ import type { Location } from "./location";
 
 /**
  * The site's entry in a registry outside the logbook - DiveJSON's External Id. The
- * format names `wikidata` and `openstreetmap` and holds their identifiers to a
- * form; any other registry is carried as written. Two sites may share one, so it is
+ * registries the format names hold their identifiers to a form; any other
+ * registry is carried as written. Two sites may share one, so it is
  * evidence that two records are one place, never a key.
  */
 export interface ExternalId {

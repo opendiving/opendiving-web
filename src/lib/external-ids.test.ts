@@ -11,6 +11,7 @@ const osm = (identifier: string) => ({
   identifier,
 });
 const wikidata = (identifier: string) => ({ registry: "wikidata", identifier });
+const worms = (identifier: string) => ({ registry: "worms", identifier });
 
 describe("pickExternalId", () => {
   it("adds the row's entry to a site that carries none", () => {
@@ -109,6 +110,12 @@ describe("externalIdHref", () => {
     );
   });
 
+  it("links a WoRMS record to its page", () => {
+    expect(externalIdHref(worms("127160"))).toBe(
+      "https://www.marinespecies.org/aphia.php?p=taxdetails&id=127160",
+    );
+  });
+
   it("links nothing the format names no form for", () => {
     expect(
       externalIdHref({ registry: "wrecksite", identifier: "10021" }),
@@ -128,13 +135,18 @@ describe("externalIdHref", () => {
   it("links nothing whose identifier is not its registry's form", () => {
     expect(externalIdHref(osm("255316037"))).toBeNull();
     expect(externalIdHref(wikidata("Q0"))).toBeNull();
+    expect(
+      externalIdHref(worms("urn:lsid:marinespecies.org:taxname:127160")),
+    ).toBeNull();
+    expect(externalIdHref(worms("0127160"))).toBeNull();
   });
 });
 
 describe("registryLabel", () => {
-  it("names the two registries the format names, and writes any other as stored", () => {
+  it("names the registries the format names, and writes any other as stored", () => {
     expect(registryLabel("openstreetmap")).toBe("OpenStreetMap");
     expect(registryLabel("wikidata")).toBe("Wikidata");
+    expect(registryLabel("worms")).toBe("WoRMS");
     expect(registryLabel("wrecksite")).toBe("wrecksite");
   });
 });
