@@ -528,8 +528,15 @@ describe("defaultSchedulesForGearType", () => {
     ]);
   });
 
+  it("suggests the BCD's annual service for a wing", () => {
+    expect(defaultSchedulesForGearType("wing")).toEqual([
+      { kind: "service", interval_months: 12 },
+    ]);
+  });
+
   it("suggests nothing for gear with no convention, or no type", () => {
     expect(defaultSchedulesForGearType("mask")).toEqual([]);
+    expect(defaultSchedulesForGearType("backplate")).toEqual([]);
     // No maker states a general hours figure for these, so there is no preset.
     expect(defaultSchedulesForGearType("rebreather")).toEqual([]);
     expect(defaultSchedulesForGearType("scooter")).toEqual([]);
