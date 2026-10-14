@@ -113,6 +113,7 @@ export function CylinderCombobox({
         placeholder="Not linked to your gear"
         noItemsLabel="No cylinders in your gear yet."
         noMatchesLabel="No cylinders match."
+        allExcludedLabel="Every cylinder in your gear is already on another tank."
         addNewLabel="New gear item..."
         onAddNew={() => setShowNewDialog(true)}
       />

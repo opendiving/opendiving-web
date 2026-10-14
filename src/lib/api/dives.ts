@@ -1,3 +1,4 @@
+import { announceServiceDueChanged } from "@/lib/service-due";
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
 import { GearItemInfo, GearItemSummary } from "./gear";
@@ -1291,6 +1292,7 @@ export const divesAPI = {
   // Create a new dive, owned by the signed-in user.
   async createDive(diveData: DiveCreate): Promise<Dive> {
     const response = await apiClient.post(`/dive`, diveData);
+    announceServiceDueChanged();
     return response.data;
   },
 
@@ -1406,12 +1408,14 @@ export const divesAPI = {
     updateData: DiveUpdate,
   ): Promise<{ message: string }> {
     const response = await apiClient.patch(`/dive/${diveUuid}`, updateData);
+    announceServiceDueChanged();
     return response.data;
   },
 
   // Delete a dive
   async deleteDive(diveUuid: string): Promise<{ message: string }> {
     const response = await apiClient.delete(`/dive/${diveUuid}`);
+    announceServiceDueChanged();
     return response.data;
   },
 
@@ -1515,6 +1519,7 @@ export const divesAPI = {
     const response = await apiClient.post("/dives/merge", {
       dive_uuids: diveUuids,
     });
+    announceServiceDueChanged();
     return response.data;
   },
 
