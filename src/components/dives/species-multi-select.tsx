@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 import { Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   RepeatableRow,
@@ -41,6 +40,11 @@ import {
   speciesSeenOn,
 } from "@/lib/species";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
+import {
+  SightingQuantityField,
+  type SightingQuantity,
+  withQuantity,
+} from "@/components/dives/sighting-quantity-field";
 import { cn } from "@/lib/utils";
 
 // Menu-row id for a species that isn't in the catalog yet, and so has no uuid to
@@ -175,22 +179,10 @@ function equalsIgnoringCase(a: string, b: string | null): boolean {
   return b !== null && a.toLowerCase() === b.toLowerCase();
 }
 
-// What a count box takes: a positive whole number and nothing else. A keystroke that
-// would leave anything else in it is refused rather than committed, so a count is never
-// a `0` or a fraction waiting for the schema to object.
-const COUNT_TEXT = /^[1-9]\d*$/;
-
-// A sighting with its count taken off, which is how an emptied box says "seen, not
-// counted" - never with a `0` or a `1`.
-function withoutCount(sighting: SightingWrite): SightingWrite {
-  const next = { ...sighting };
-  delete next.count;
-  return next;
-}
-
-/** What the form refused on one sighting's two inputs. */
+/** What the form refused on one sighting's inputs. */
 export interface SightingErrors {
   count?: string;
+  abundance?: string;
   notes?: string;
 }
 
@@ -235,7 +227,7 @@ export interface SpeciesMultiSelectProps extends FormControlSlotProps {
  * Wraps the generic `CreatableCombobox` the way `DiveSiteMultiSelect` does (see
  * DECISIONS.md) - the combobox is the "add a species" input, with a
  * drag-sortable list of what's already added above it, each row carrying how
- * many were counted and a note.
+ * many were seen and a note.
  *
  * The one thing this picker does that no other does: **a pick can require a
  * round trip before it has a value at all.** A species the catalog has never
@@ -477,16 +469,8 @@ export function SpeciesMultiSelect({
     onChange(next);
   };
 
-  const setCount = (uuid: string, text: string) => {
-    if (text === "") {
-      updateSighting(uuid, withoutCount);
-    } else if (COUNT_TEXT.test(text)) {
-      updateSighting(uuid, (sighting) => ({
-        ...sighting,
-        count: Number(text),
-      }));
-    }
-  };
+  const setQuantity = (uuid: string, quantity: SightingQuantity) =>
+    updateSighting(uuid, (sighting) => withQuantity(sighting, quantity));
 
   const setNotes = (uuid: string, notes: string) =>
     updateSighting(uuid, (sighting) => ({ ...sighting, notes }));
@@ -520,7 +504,6 @@ export function SpeciesMultiSelect({
             const rowErrors = errors?.[index];
             const countId = `${idPrefix}-${uuid}-count`;
             const notesId = `${idPrefix}-${uuid}-notes`;
-            const countErrorId = `${countId}-error`;
             const notesErrorId = `${notesId}-error`;
             return (
               <RepeatableRow
@@ -559,37 +542,15 @@ export function SpeciesMultiSelect({
                 }
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <RepeatableRowField
+                  <SightingQuantityField
                     id={countId}
-                    label="Count"
-                    labelSuffix={`of ${label}`}
-                  >
-                    {/* Text with a numeric keypad rather than `type="number"`,
-                        which lets "e", "-" and "1.5" into the box and reports
-                        them as an empty value - so a refused keystroke would
-                        read as a cleared count. */}
-                    <Input
-                      id={countId}
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      aria-invalid={rowErrors?.count ? true : undefined}
-                      aria-describedby={
-                        rowErrors?.count ? countErrorId : undefined
-                      }
-                      disabled={disabled}
-                      value={sighting.count === undefined ? "" : sighting.count}
-                      onChange={(event) => setCount(uuid, event.target.value)}
-                    />
-                    {rowErrors?.count && (
-                      <p
-                        id={countErrorId}
-                        className="text-sm font-medium text-destructive"
-                      >
-                        {rowErrors.count}
-                      </p>
-                    )}
-                  </RepeatableRowField>
+                    speciesLabel={label}
+                    value={sighting}
+                    onChange={(quantity) => setQuantity(uuid, quantity)}
+                    countError={rowErrors?.count}
+                    abundanceError={rowErrors?.abundance}
+                    disabled={disabled}
+                  />
                   <RepeatableRowField
                     id={notesId}
                     label="Notes"

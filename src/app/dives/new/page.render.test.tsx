@@ -1085,6 +1085,7 @@ describe("what the create form carries over from the last dive", () => {
             common_name: "Green sea turtle",
             rank: "Species",
             count: 2,
+            abundance: null,
             notes: "Resting under the ledge",
           },
         ],

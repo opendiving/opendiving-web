@@ -102,7 +102,12 @@ function sightingErrors(
 ): (SightingErrors | undefined)[] | undefined {
   if (!Array.isArray(error)) return undefined;
   return error.map(
-    (row) => row && { count: row.count?.message, notes: row.notes?.message },
+    (row) =>
+      row && {
+        count: row.count?.message,
+        abundance: row.abundance?.message,
+        notes: row.notes?.message,
+      },
   );
 }
 

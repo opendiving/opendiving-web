@@ -12,11 +12,12 @@ import type { SpeciesSummary } from "@/lib/api/species";
 // test below passes against any markup at all. The third test is the canary.
 import "@/app/globals.css";
 
-// One claim about the picker's rows that jsdom cannot check (DECISIONS.md, "jsdom
+// Two claims about the picker's rows that jsdom cannot check (DECISIONS.md, "jsdom
 // answers no layout question"): **a row whose note fits one line stands as tall
-// as a row with no note.** Both inputs are on every row whatever they hold, and
-// the notes box is one line until its note needs more - so typing the first word
-// of a note does not push the rest of the form down.
+// as a row with no note, and a row carrying a band as tall as one carrying a
+// count.** Every input is on every row whatever it holds, and the notes box is one
+// line until its note needs more - so typing the first word of a note, or
+// choosing a band, does not push the rest of the form down.
 
 const MANTA: SpeciesSummary = {
   uuid: "species-manta",
@@ -74,8 +75,10 @@ describe("the species picker's rows stay level", () => {
 
   it("grows a row whose note runs past one line", async () => {
     // The control for the test above: a notes box of fixed height would pass it
-    // too, while clipping every longer note to its first line.
-    await page.viewport(WIDE, 800);
+    // too, while clipping every longer note to its first line. Narrow, where the
+    // notes box stacks under the count: side by side, the count's quick choices
+    // stand taller than a three-line note.
+    await page.viewport(NARROW, 800);
 
     const [noted, bare] = rowHeights([
       { species_uuid: MANTA.uuid, notes: "Cleaning station\nat 18 m\ntwo" },
@@ -86,13 +89,29 @@ describe("the species picker's rows stay level", () => {
   });
 
   it("stands a bare row taller than its padding, header and boxes, which only the stylesheet makes true", async () => {
-    // The stylesheet canary. At `md` the row's `p-4`, its 36px header and the
-    // labelled 40px boxes side by side come to 148px; without Tailwind a bare row
-    // is three lines of text, under 80px, and the level test measures nothing.
+    // The stylesheet canary. At `md` the row's `p-4`, its 36px header, the
+    // labelled count box over its quick choices and the notes box beside them
+    // come to about 200px; without Tailwind a bare row is a few lines of text and
+    // bare controls, about 100px, and the level tests measure nothing.
     await page.viewport(WIDE, 800);
 
     const [bare] = rowHeights([{ species_uuid: CLOWNFISH.uuid }]);
 
     expect(bare).toBeGreaterThan(120);
   });
+
+  for (const width of [NARROW, WIDE]) {
+    it(`gives a row carrying a band the height of a row carrying a count at ${width}px`, async () => {
+      // The quick choices are on every row whatever it carries, and a count
+      // marking its band changes the border's style, never its width.
+      await page.viewport(width, 800);
+
+      const [banded, counted] = rowHeights([
+        { species_uuid: MANTA.uuid, abundance: "abundant" },
+        { species_uuid: CLOWNFISH.uuid, count: 37 },
+      ]);
+
+      expectLevel(banded, counted);
+    });
+  }
 });

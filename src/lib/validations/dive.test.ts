@@ -1460,6 +1460,7 @@ const sighting = (overrides: Partial<Sighting>): Sighting => ({
   common_name: "Green sea turtle",
   rank: "Species",
   count: null,
+  abundance: null,
   notes: "",
   ...overrides,
 });
@@ -1505,6 +1506,48 @@ describe("sightings", () => {
     }).sightings!;
 
     expect("count" in seeded).toBe(false);
+  });
+
+  it("seeds a band where the sighting was read in one, and no count beside it", () => {
+    const [seeded] = diveToFormValues({
+      ...DIVE_FOR_SIGHTINGS,
+      sightings: [sighting({ abundance: "many" })],
+    }).sightings!;
+
+    expect(seeded).toEqual({
+      species_uuid: "species-1",
+      abundance: "many",
+      notes: "",
+    });
+  });
+
+  it("seeds no band at all for a sighting carrying none", () => {
+    const [seeded] = diveToFormValues({
+      ...DIVE_FOR_SIGHTINGS,
+      sightings: [sighting({ count: 3 })],
+    }).sightings!;
+
+    expect("abundance" in seeded).toBe(false);
+  });
+
+  it("takes each band, and refuses one it does not list", () => {
+    for (const abundance of ["few", "many", "abundant"]) {
+      expect(createWith([{ species_uuid: "a", abundance }]).success).toBe(true);
+    }
+    expect(
+      createWith([{ species_uuid: "a", abundance: "single" }]).success,
+    ).toBe(false);
+  });
+
+  it("refuses a sighting carrying a count and a band, on the band", () => {
+    // On the band's path, so the per-row error map puts it under the row.
+    const both = createWith([
+      { species_uuid: "a", count: 3, abundance: "few" },
+    ]);
+
+    expect(both.success).toBe(false);
+    expect(both.error?.issues).toHaveLength(1);
+    expect(both.error?.issues[0].path).toEqual(["sightings", 0, "abundance"]);
   });
 
   it("seeds an empty list for a dive payload that carries no sightings", () => {
