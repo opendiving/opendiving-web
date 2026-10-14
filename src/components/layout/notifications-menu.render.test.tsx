@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render as rtlRender, screen, within } from "@testing-library/react";
+import {
+  act,
+  render as rtlRender,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NotificationsMenu } from "./notifications-menu";
 import { CheckInPageFrame } from "@/components/checkin/checkin-page-frame";
@@ -24,6 +29,7 @@ import {
   type GearServiceDueEntry,
 } from "@/lib/api/gear-service";
 import { onSavedElsewhere } from "@/lib/saved-elsewhere";
+import { announceServiceDueChanged } from "@/lib/service-due";
 import { isoDaysFromNow } from "@/test/local-day";
 
 // The bell holds two lists behind one count: gear due a service, and anything about to
@@ -250,6 +256,20 @@ describe("the bell's count", () => {
     await vi.waitFor(() => expect(getDue).toHaveBeenCalledTimes(2));
     expect(getExpiring).toHaveBeenCalledTimes(2);
   });
+
+  it("reads again when a save on the page moves what is due", async () => {
+    // A schedule made on the gear page is due at once, and no navigation follows.
+    render(<NotificationsMenu />);
+    await vi.waitFor(() => expect(getDue).toHaveBeenCalledTimes(1));
+    getDue.mockResolvedValue({ data: [due()] });
+
+    act(() => announceServiceDueChanged());
+
+    expect(
+      await screen.findByRole("button", { name: "Notifications (1)" }),
+    ).toBeInTheDocument();
+    expect(getDue).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("a failed read", () => {
@@ -387,9 +407,11 @@ describe("the service-due rows", () => {
   it("tells the page under it which item a logged service was for", async () => {
     // The page may be that item's, showing the schedule this service just moved.
     getDue.mockResolvedValue({ data: [due()] });
-    vi.mocked(gearServiceAPI.createRecord).mockResolvedValue(
-      {} as Awaited<ReturnType<typeof gearServiceAPI.createRecord>>,
-    );
+    // As the real call does, which is what reads the bell's list again.
+    vi.mocked(gearServiceAPI.createRecord).mockImplementation(async () => {
+      announceServiceDueChanged();
+      return {} as Awaited<ReturnType<typeof gearServiceAPI.createRecord>>;
+    });
     const heard = vi.fn();
     const stop = onSavedElsewhere("gear-service", heard);
 

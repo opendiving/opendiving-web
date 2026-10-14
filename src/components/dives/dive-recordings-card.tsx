@@ -13,7 +13,6 @@ import { Dive, DiveFileInfo, divesAPI, Recording } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { importSourceLabel } from "@/lib/api/logbook-import";
 import {
-  deleteFileConfirmation,
   deleteRecordingConfirmation,
   diveRecordings,
   noFileKeptSentence,
@@ -33,19 +32,14 @@ interface DiveRecordingsCardProps {
   // delete can take a recording with it, promote the next one and re-derive what
   // the dive shows by default, so nothing here predicts the new state.
   onChanged: () => void | Promise<void>;
+  /** Opens the Import section's edit dialog. */
+  onEdit?: () => void;
 }
-
-// What the diver is about to remove, and by which route. A file and a whole
-// recording are different requests with different consequences, and the dialog
-// has to say which one it is about.
-type PendingRemoval =
-  | { kind: "file"; recording: Recording; file: DiveFileInfo }
-  | { kind: "recording"; recording: Recording };
 
 /**
  * What recorded this dive, on the dive detail page: one block per recording,
  * with its device, what it was set to and what it reported, its own start where
- * that differs from the dive's, and its files to download or delete.
+ * that differs from the dive's, and its files to download.
  *
  * Renders nothing when the dive has no recordings at all - most dives are logged
  * by hand, and there is no empty state worth showing for a thing the diver
@@ -59,11 +53,13 @@ type PendingRemoval =
 export function DiveRecordingsCard({
   dive,
   onChanged,
+  onEdit,
 }: DiveRecordingsCardProps) {
   const { toast } = useToast();
   const [downloadingUuid, setDownloadingUuid] = useState<string | null>(null);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
-  const [removal, setRemoval] = useState<PendingRemoval | null>(null);
+  // A recording with no files left, about to be deleted.
+  const [removal, setRemoval] = useState<Recording | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
 
   const recordings = diveRecordings(dive);
@@ -128,19 +124,13 @@ export function DiveRecordingsCard({
     if (!removal) return;
     try {
       setIsRemoving(true);
-      if (removal.kind === "file") {
-        await divesAPI.deleteDiveFile(dive.uuid, removal.file.uuid);
-      } else {
-        await divesAPI.deleteRecording(dive.uuid, removal.recording.uuid);
-      }
+      await divesAPI.deleteRecording(dive.uuid, removal.uuid);
       await onChanged();
       setRemoval(null);
       toast({
-        title: removal.kind === "file" ? "File deleted" : "Recording deleted",
+        title: "Recording deleted",
         description:
-          removal.kind === "file"
-            ? "The file was removed from this dive."
-            : "The recording and its profile were removed from this dive.",
+          "The recording and its profile were removed from this dive.",
       });
     } catch (error) {
       toast({
@@ -161,17 +151,12 @@ export function DiveRecordingsCard({
   return (
     <>
       {/* Mounted only while a removal is pending, so the strings are derived
-          from it rather than from a nullable one. Both routes say what else
-          goes: a file deletion can take the recording, the primary slot and the
-          dive's positions with it, and a recording deletion moves the last two -
-          none of which "the dive itself is unaffected" covered. */}
+          from it rather than from a nullable one. */}
       {removal && (
         <ConfirmDialog
           open
           onOpenChange={(open) => !open && setRemoval(null)}
-          {...(removal.kind === "recording"
-            ? deleteRecordingConfirmation(recordings, removal.recording.uuid)
-            : deleteFileConfirmation(recordings, removal.file.uuid))}
+          {...deleteRecordingConfirmation(recordings, removal.uuid)}
           confirmText="Delete"
           isLoading={isRemoving}
           onConfirm={confirmRemoval}
@@ -179,7 +164,7 @@ export function DiveRecordingsCard({
       )}
 
       <Card>
-        <DiveCardHeader group="Import" title="Recordings" />
+        <DiveCardHeader group="Import" title="Recordings" onEdit={onEdit} />
         <CardContent className={cn(CARD_SECTION_CONTENT, "space-y-6")}>
           {recordings.map((recording) => {
             const device = recordingDeviceLabel(recording.device);
@@ -269,44 +254,29 @@ export function DiveRecordingsCard({
                             </div>
                           </div>
                         </div>
-                        {/* Both named by the file rather than by the verb: a
-                            dive with two recordings and three files between them
-                            renders six of these, and a controls list reading
-                            "Download, Delete, Download, Delete..." names none of
-                            them. */}
-                        <div className="flex shrink-0 items-center">
-                          <IconTooltip
-                            label={`Download ${file.original_filename}`}
+                        {/* Named by the file rather than by the verb: a dive
+                            with two recordings and three files between them
+                            renders three of these, and "Download, Download..."
+                            names none of them. Removing a file is the edit
+                            dialog's, beside importing one. */}
+                        <IconTooltip
+                          label={`Download ${file.original_filename}`}
+                        >
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0"
+                            onClick={() => handleDownload(file)}
+                            disabled={downloadingUuid === file.uuid}
                           >
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDownload(file)}
-                              disabled={downloadingUuid === file.uuid}
-                            >
-                              {downloadingUuid === file.uuid ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Download className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </IconTooltip>
-                          <IconTooltip
-                            label={`Delete ${file.original_filename}`}
-                          >
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                setRemoval({ kind: "file", recording, file })
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </IconTooltip>
-                        </div>
+                            {downloadingUuid === file.uuid ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Download className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </IconTooltip>
                       </li>
                     ))}
                   </ul>
@@ -341,9 +311,7 @@ export function DiveRecordingsCard({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() =>
-                        setRemoval({ kind: "recording", recording })
-                      }
+                      onClick={() => setRemoval(recording)}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete recording
