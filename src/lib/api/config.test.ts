@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { configAPI } from "./config";
 
-// Two calls. For `/config` what matters is the path and that the body reaches the
+// Three calls. For `/config` what matters is the path and that the body reaches the
 // caller unreshaped - the landing page decides which form to show and which voice
 // it speaks in from it, and `hooks/useInstanceConfig.test.tsx` pins that the hook
 // hands it on whole.
@@ -81,6 +81,44 @@ describe("getJoinChannel", () => {
     get.mockRejectedValue(new Error("Network Error"));
 
     await expect(configAPI.getJoinChannel("scubaboard")).rejects.toThrow(
+      "Network Error",
+    );
+  });
+});
+
+describe("getInviteLink", () => {
+  const TOKEN = "0123456789abcdef0123456789abcdef";
+
+  it("resolves a live token to the member who made it", async () => {
+    get.mockResolvedValue({ data: { inviter_name: "Sam Diver" } });
+
+    await expect(configAPI.getInviteLink(TOKEN)).resolves.toEqual({
+      token: TOKEN,
+      inviterName: "Sam Diver",
+    });
+    expect(get).toHaveBeenCalledWith(`/invite-link/${TOKEN}`);
+  });
+
+  // Unknown, reset, removed, a deleted owner and an open-mode instance are one
+  // indistinguishable 404, and all of them are the ordinary landing page.
+  it("answers null for a token the API does not know", async () => {
+    get.mockRejectedValue({ response: { status: 404 } });
+
+    await expect(configAPI.getInviteLink(TOKEN)).resolves.toBeNull();
+  });
+
+  it.each(["", "../user", "A".repeat(32), "a".repeat(33)])(
+    "answers null for %j without asking",
+    async (token) => {
+      await expect(configAPI.getInviteLink(token)).resolves.toBeNull();
+      expect(get).not.toHaveBeenCalled();
+    },
+  );
+
+  it("lets any other failure reach the caller", async () => {
+    get.mockRejectedValue(new Error("Network Error"));
+
+    await expect(configAPI.getInviteLink(TOKEN)).rejects.toThrow(
       "Network Error",
     );
   });

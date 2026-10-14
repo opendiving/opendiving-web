@@ -243,3 +243,47 @@ describe("the landing hero on a join link", () => {
     expect(signInButton()).toBeNull();
   });
 });
+
+// A member's invite link, resolved by `/join` and handed in as `inviteLink`. The
+// same door as a join link, titled by the member, and with the one sentence the
+// member's Invitations card relies on: that they will see the name you join under.
+describe("the landing hero on a member's invite link", () => {
+  const inviteLink = {
+    token: "0123456789abcdef0123456789abcdef",
+    inviterName: "Sam Diver",
+  };
+  const heading = () =>
+    screen.queryByRole("heading", { name: "Sam Diver invited you" });
+
+  it.each(["invite", "open"] as const)(
+    "holds the sign-in form and never the request form in %s mode",
+    (mode) => {
+      known({ registration_mode: mode, project_operated: false });
+
+      render(<LandingPage inviteLink={inviteLink} />);
+
+      expect(heading()).toBeInTheDocument();
+      expect(heading()!.tagName).toBe("H2");
+      expect(signInButton()).toBeInTheDocument();
+      expect(requestButton()).toBeNull();
+    },
+  );
+
+  it.each([
+    [true, "Enter your email to join the OpenDiving beta."],
+    [false, "Enter your email to create your account."],
+  ])(
+    "says the member will see your name, in either voice (project-operated: %s)",
+    (projectOperated, line) => {
+      known({ registration_mode: "invite", project_operated: projectOperated });
+
+      render(<LandingPage inviteLink={inviteLink} />);
+
+      expect(
+        screen.getByText(
+          `${line} Sam Diver will see the name on your account.`,
+        ),
+      ).toBeInTheDocument();
+    },
+  );
+});

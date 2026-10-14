@@ -274,7 +274,7 @@ describe("join links", () => {
     expect(
       screen.getByText(/registering also needs an invitation/),
     ).toHaveTextContent(
-      /unless you came by one of the join links the operator has\s+published/,
+      /unless you came\s+by a member’s invite link or by one of the join links the operator has\s+published, either of which/,
     );
     const block = screen
       .getByRole("heading", { name: /Who Runs This Copy/ })
@@ -300,11 +300,49 @@ describe("the date on this page", () => {
       await renderPage(projectOperated);
 
       expect(
-        screen.getByText(/Last updated: September 2026/),
+        screen.getByText(/Last updated: October 2026/),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/effective as of September 2026/),
+        screen.getByText(/effective as of October 2026/),
       ).toBeInTheDocument();
     },
   );
+});
+
+// A member's invite link shows the member's name to whoever opens it, and the
+// joiner's name to the member, so both people's grants are in §5 - and the
+// registration sentence names the link whether or not the copy has join links.
+describe("the invite link", () => {
+  it.each([[false], [true]])(
+    "is named where registration needs an invitation, join links: %s",
+    async (joinLinks) => {
+      await renderPage(false, joinLinks);
+
+      expect(
+        screen.getByText(/registering also needs an invitation/),
+      ).toHaveTextContent(/unless you came\s+by a member’s invite link/);
+    },
+  );
+
+  it("carries the inviter's grant and the joiner's in §5", async () => {
+    await renderPage(false);
+
+    const grant = screen.getByText(
+      /Where this copy is invite-only and you invite somebody/,
+    );
+    expect(grant).toHaveTextContent(
+      /where you make an invite link,\s+to show your name to whoever opens it/,
+    );
+    expect(grant).toHaveTextContent(
+      /except\s+that whoever holds your invite link, however it reached them,\s+sees your name/,
+    );
+    expect(grant).toHaveTextContent(
+      /create your account through a\s+member’s invite link, you grant the operator/,
+    );
+    expect(grant).toHaveTextContent(/as it is and as you change it/);
+    // Still three paragraphs of things shown across accounts.
+    expect(
+      screen.getByText(/The next three paragraphs are the three things/),
+    ).toBeInTheDocument();
+  });
 });

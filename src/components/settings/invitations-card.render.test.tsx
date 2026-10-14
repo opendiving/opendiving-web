@@ -6,12 +6,14 @@ import { localDay } from "@/test/local-day";
 
 // What only a render can reach: that the three statuses are legible, that a send
 // costs one request rather than two, that revoking asks first, and that the whole
-// card removes itself on an instance where anyone may register. The four calls
-// behind it are pinned in `lib/api/invitations.test.ts`.
+// card removes itself on an instance where anyone may register. The calls behind
+// it are pinned in `lib/api/invitations.test.ts`, and the invite-link block's own
+// behaviour in `invite-link-block.render.test.tsx`.
 const mocks = vi.hoisted(() => ({
   listInvitations: vi.fn(),
   sendInvitation: vi.fn(),
   revokeInvitation: vi.fn(),
+  inviteLink: vi.fn(),
   toast: vi.fn(),
 }));
 
@@ -20,7 +22,12 @@ vi.mock("@/lib/api/invitations", () => ({
     listInvitations: mocks.listInvitations,
     sendInvitation: mocks.sendInvitation,
     revokeInvitation: mocks.revokeInvitation,
+    inviteLink: mocks.inviteLink,
   },
+}));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { name: "Sam Diver" } }),
 }));
 
 vi.mock("@/components/ui/use-toast", () => ({
@@ -33,6 +40,8 @@ const PENDING = {
   created_at: "2026-09-01T09:00:00Z",
   accepted_at: null,
   revoked_at: null,
+  from_invite_link: false,
+  member_name: null,
 };
 
 const ACCEPTED = {
@@ -42,6 +51,8 @@ const ACCEPTED = {
   // Midday UTC on purpose: the date renders in the reader's own timezone.
   accepted_at: "2026-08-22T12:00:00Z",
   revoked_at: null,
+  from_invite_link: false,
+  member_name: null,
 };
 
 const REVOKED = {
@@ -50,6 +61,19 @@ const REVOKED = {
   created_at: "2026-08-10T09:00:00Z",
   accepted_at: null,
   revoked_at: "2026-08-11T12:00:00Z",
+  from_invite_link: false,
+  member_name: null,
+};
+
+// Somebody who joined through the diver's link: no address on the wire at all.
+const JOINED = {
+  uuid: "inv-5",
+  email: null,
+  created_at: "2026-10-01T12:00:00Z",
+  accepted_at: "2026-10-01T12:00:00Z",
+  revoked_at: null,
+  from_invite_link: true,
+  member_name: "Alex Reef",
 };
 
 const page = (
@@ -79,6 +103,7 @@ beforeEach(() => {
     Promise.resolve(page([PENDING, ACCEPTED, REVOKED])),
   );
   mocks.revokeInvitation.mockResolvedValue({ message: "Invitation revoked" });
+  mocks.inviteLink.mockResolvedValue(null);
 });
 
 describe("InvitationsCard", () => {
@@ -283,5 +308,63 @@ describe("InvitationsCard", () => {
     // The assertion that fails without the dedup: `getAllByText` returns two
     // nodes for the boundary address, which is also two children under one key.
     expect(screen.getAllByText("accepted@example.com")).toHaveLength(1);
+  });
+
+  it("shows somebody who joined through the link by name, with the day and nothing else", async () => {
+    mocks.listInvitations.mockResolvedValue(
+      page([JOINED, { ...JOINED, uuid: "inv-6", member_name: null }, PENDING]),
+    );
+
+    render(<InvitationsCard />);
+
+    const named = (
+      await screen.findByText("Alex Reef joined through your link")
+    ).closest("div.rounded-lg") as HTMLElement;
+    expect(named).toHaveTextContent(localDay(JOINED.accepted_at));
+    expect(within(named).queryByRole("button")).toBeNull();
+    // Once nothing can say whose account it is, the row still stands.
+    expect(
+      screen.getByText("Someone joined through your link"),
+    ).toBeInTheDocument();
+    // And a typed row beside them is exactly as it was.
+    expect(
+      within(row("pending@example.com")).getByText("Pending"),
+    ).toBeVisible();
+  });
+
+  it("puts the invite link above the form once the list has loaded", async () => {
+    render(<InvitationsCard />);
+
+    const create = await screen.findByRole("button", {
+      name: /create your invite link/i,
+    });
+    expect(
+      create.compareDocumentPosition(emailField()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  // On an `open` instance both routes answer 404. Asked any sooner than the list,
+  // the block would read its own 404 as "no link yet" and offer one for the
+  // moment before the card goes.
+  it("asks nothing about the link while the list is loading, nor where the feature is absent", async () => {
+    let answer!: (value: unknown) => void;
+    mocks.listInvitations.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        answer = reject;
+      }),
+    );
+
+    const { container } = render(<InvitationsCard />);
+
+    expect(emailField()).toBeInTheDocument();
+    expect(mocks.inviteLink).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: /create your invite link/i }),
+    ).toBeNull();
+
+    answer({ response: { status: 404 } });
+    await waitFor(() => expect(container).toBeEmptyDOMElement());
+    expect(mocks.inviteLink).not.toHaveBeenCalled();
   });
 });

@@ -132,6 +132,15 @@ describe("consuming an attempt", () => {
     expect(consumeGoogleAttempt(stateOf(url))?.via).toBe("reddit");
   });
 
+  // A member's invite-link token rides the same field, and fits the slug's shape.
+  it("hands back an invite-link token the same way", async () => {
+    const token = "0123456789abcdef0123456789abcdef";
+    const url = await beginGoogleSignIn({ clientId: CLIENT_ID, via: token });
+
+    expect(stateOf(url)).not.toContain(token);
+    expect(consumeGoogleAttempt(stateOf(url))?.via).toBe(token);
+  });
+
   it("is single-use: a second read of the same state finds nothing", async () => {
     const url = await beginGoogleSignIn({ clientId: CLIENT_ID });
     const state = stateOf(url);

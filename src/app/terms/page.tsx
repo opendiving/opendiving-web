@@ -48,7 +48,7 @@ export default async function TermsPage() {
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Terms of Service
         </h1>
-        <p className="text-muted-foreground">Last updated: September 2026</p>
+        <p className="text-muted-foreground">Last updated: October 2026</p>
       </div>
 
       <Card>
@@ -299,12 +299,16 @@ export default async function TermsPage() {
               <p className="text-foreground mb-4">
                 Where the operator of this copy has closed it to new accounts,
                 registering also needs an invitation, and the address you
-                register with must be the one that was invited
-                {joinLinks && (
+                register with must be the one that was invited, unless you came
+                by a member&rsquo;s invite link
+                {joinLinks ? (
                   <>
-                    , unless you came by one of the join links the operator has
-                    published, which lets in whoever follows it
+                    {" "}
+                    or by one of the join links the operator has published,
+                    either of which lets in whoever follows it
                   </>
+                ) : (
+                  <>, which lets in whoever follows it</>
                 )}
                 . The exception is the very first account on a copy that has
                 none: whoever signs in first is its operator, and needs no
@@ -429,11 +433,20 @@ export default async function TermsPage() {
                 you grant the operator the further permission that act needs,
                 and only that: to tell the address you invited that <em>you</em>{" "}
                 invited them, naming you, and to tell you whether that address
-                went on to register here. Nothing you have logged is involved
-                &mdash; no dive, site, trip, gear item, course, certification,
-                contact, person or tag &mdash; and nobody you have not invited
-                learns anything either way. The privacy policy&rsquo;s section
-                4.8 sets out the same in its own register.
+                went on to register here; and, where you make an invite link, to
+                show your name to whoever opens it, and to show you the name on
+                the account of anyone who creates one through it. Nothing you
+                have logged is involved &mdash; no dive, site, trip, gear item,
+                course, certification, contact, person or tag &mdash; and nobody
+                you have not invited learns anything either way, except that
+                whoever holds your invite link, however it reached them, sees
+                your name. And where you create your account through a
+                member&rsquo;s invite link, you grant the operator the
+                permission that needs, and only that: to show that member the
+                name on your account, as it is and as you change it, for as long
+                as both accounts exist &mdash; never your address, and nothing
+                you log. The privacy policy&rsquo;s section 4.8 sets out the
+                same in its own register.
               </p>
               <p className="text-foreground mb-4">
                 Where you make a check-in link, you grant the operator the
@@ -731,7 +744,7 @@ export default async function TermsPage() {
           <div className="mt-8 pt-8 border-t border-border">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
-                These Terms are effective as of September 2026 and apply to this
+                These Terms are effective as of October 2026 and apply to this
                 copy of OpenDiving.
               </p>
               <Link

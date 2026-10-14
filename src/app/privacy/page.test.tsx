@@ -668,7 +668,9 @@ describe.each([
       row.includes("opendiving:google-sign-in-attempts"),
     );
     if (google) {
-      expect(entry).toMatch(/if you came by a join link, which link/);
+      expect(entry).toMatch(
+        /if you came by a join link or a member’s invite link, which one/,
+      );
       expect(joinParagraph()).toHaveTextContent(/section 10\.2/);
     } else {
       expect(entry).toBeUndefined();
@@ -1097,4 +1099,83 @@ describe("the date on this page", () => {
       ).toBeInTheDocument();
     },
   );
+});
+
+// Every member of an invite-only copy has an invite link, so its sentences are
+// unconditional - hedged in prose, as the rest of the invitation text is, since this
+// page cannot know the mode - and none of them calls it a join link, which the pins
+// above forbid on a copy without any.
+describe.each([
+  ["with Google sign-in configured", true],
+  ["without Google sign-in", false],
+])("the invite link %s", (_label, google) => {
+  it("is described in §4.8 as forwardable where a typed invitation is not", async () => {
+    await renderPage({ google });
+
+    expect(
+      screen.getByText(/An invitation you make by typing an address/),
+    ).toHaveTextContent(/nothing\s+to forward/);
+    const paragraph = screen.getByText(/you also have an/).closest("p")!;
+    expect(paragraph).toHaveTextContent(/Where this copy is invite-only/);
+    expect(paragraph).toHaveTextContent(/anyone holding it can\s+use it/);
+    expect(paragraph).toHaveTextContent(/until you reset or\s+remove it/);
+    expect(paragraph).toHaveTextContent(/written onto no account/);
+    if (google) expect(paragraph).toHaveTextContent(/section 10\.2/);
+    else expect(paragraph).not.toHaveTextContent(/Google/);
+  });
+
+  it("says who sees which name, in both directions", async () => {
+    await renderPage({ google });
+
+    const told = screen
+      .getByText(/What the person you invite is told:/)
+      .closest("p")!;
+    expect(told).toHaveTextContent(
+      /whoever opens your invite\s+link sees your name too, whether or not they go on to register/,
+    );
+    expect(told).toHaveTextContent(
+      /joined\s+through your invite link, the name on their account and when\s+they joined, and never their address/,
+    );
+  });
+
+  it("is named in the records, the purposes, the exceptions and the switches", async () => {
+    await renderPage({ google });
+
+    expect(
+      screen.getByText(/stored while the request is pending/),
+    ).toHaveTextContent(/whether it came by that\s+account’s invite link/);
+    expect(screen.getByText(/this is the whole\s+list/)).toHaveTextContent(
+      /an invite link made; an invite link\s+removed/,
+    );
+    const uses = listAfterHeading(/3\. How We Use Your Information/).join(" ");
+    expect(uses).toMatch(/show your name to whoever\s+opens your invite link/);
+    expect(uses).toMatch(
+      /keep each member’s invite link, and let\s+in whoever follows one/,
+    );
+    expect(screen.getByText(/And nothing else\./)).toBeInTheDocument();
+    expect(screen.getByText(/There are three exceptions\./)).toHaveTextContent(
+      /an invite link you make shows your name to whoever\s+opens it/,
+    );
+    expect(screen.getByText(/nothing to switch off/)).toHaveTextContent(
+      /your invite link, which Remove on the Invitations card/,
+    );
+    expect(
+      screen.getByText(/does not expire: it is kept until you reset/),
+    ).toHaveTextContent(/never swept/);
+  });
+
+  it("never calls itself a join link where there are none", async () => {
+    await renderPage({ google, joinLinks: false });
+
+    expect(document.body.textContent).toMatch(/invite link/);
+    expect(document.body.textContent).not.toMatch(/join link/i);
+    if (google) {
+      const entry = storageEntries().find((row) =>
+        row.includes("opendiving:google-sign-in-attempts"),
+      );
+      expect(entry).toMatch(
+        /where this copy is invite-only and you came by a\s+member’s invite link, which link/,
+      );
+    }
+  });
 });

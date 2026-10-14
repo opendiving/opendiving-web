@@ -45,9 +45,10 @@ const SIGN_IN_FAILED = "We couldn't finish signing you in with Google.";
 const UNKNOWN_ATTEMPT =
   "This sign-in didn't come from a Google sign-in started in this browser, or it took too long to come back.";
 
-// Where a visitor goes to try again. An attempt started on a join link goes back
-// to that link rather than to `/signin`, which knows nothing of it: a new visitor
-// signing in there is refused as uninvited while the link is still live.
+// Where a visitor goes to try again. An attempt started on a join link or an
+// invite link goes back to that link rather than to `/signin`, which knows nothing
+// of it: a new visitor signing in there is refused as uninvited while the link is
+// still live. `/join` tells the two apart again by asking the API.
 function retryHref(via: string | null): string {
   return via ? `/join?via=${via}` : "/signin";
 }

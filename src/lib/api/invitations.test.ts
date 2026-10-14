@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { invitationsAPI } from "./invitations";
 
-// The four calls at the level this module works at: which path each one hits and
+// The calls at the level this module works at: which path each one hits and
 // what it hands back. The behaviour on top of them is in
 // `components/settings/invitations-card.render.test.tsx` and
 // `components/auth/invite-request-form.render.test.tsx`.
@@ -144,5 +144,51 @@ describe("revokeInvitation", () => {
     await expect(
       invitationsAPI.revokeInvitation("inv-1"),
     ).rejects.toMatchObject({ response: { status: 409 } });
+  });
+});
+
+describe("the invite link", () => {
+  const LINK = {
+    token: "0123456789abcdef0123456789abcdef",
+    created_at: "2026-10-14T09:00:00Z",
+  };
+
+  it("reads the caller's link", async () => {
+    get.mockResolvedValue({ data: LINK });
+
+    await expect(invitationsAPI.inviteLink()).resolves.toEqual(LINK);
+    expect(get).toHaveBeenCalledWith("/user/invite-link");
+  });
+
+  // The card asks only once its list has loaded, so a 404 here can only mean the
+  // caller has made no link.
+  it("answers null for a caller with no link", async () => {
+    get.mockRejectedValue({ response: { status: 404 } });
+
+    await expect(invitationsAPI.inviteLink()).resolves.toBeNull();
+  });
+
+  it("lets any other failure reach the caller", async () => {
+    get.mockRejectedValue({ response: { status: 500 } });
+
+    await expect(invitationsAPI.inviteLink()).rejects.toMatchObject({
+      response: { status: 500 },
+    });
+  });
+
+  it("makes or resets it with one bodiless post", async () => {
+    post.mockResolvedValue({ data: LINK });
+
+    await expect(invitationsAPI.createInviteLink()).resolves.toEqual(LINK);
+    expect(post).toHaveBeenCalledWith("/user/invite-link");
+  });
+
+  it("removes it", async () => {
+    remove.mockResolvedValue({ data: { message: "Invite link removed" } });
+
+    await expect(invitationsAPI.removeInviteLink()).resolves.toEqual({
+      message: "Invite link removed",
+    });
+    expect(remove).toHaveBeenCalledWith("/user/invite-link");
   });
 });
