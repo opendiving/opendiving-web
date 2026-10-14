@@ -353,6 +353,9 @@ export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
   // Where the form goes back to, which the dive a file is attached to instead
   // leads back to as well, as a saved dive does.
   returnTo?: string;
+  // The section's content with no card around it: what the Recordings card's
+  // edit dialog holds.
+  bare?: boolean;
 }
 
 export function DiveFileImport<TFieldValues extends DiveFormValues>({
@@ -369,6 +372,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   onRestoreStored,
   diveUuid,
   returnTo,
+  bare = false,
 }: DiveFileImportProps<TFieldValues>) {
   const { toast } = useToast();
   const router = useRouter();
@@ -626,17 +630,8 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
     </>
   );
 
-  return (
-    <DiveFormSection
-      title="Import"
-      titleAdornment={<DiveFileImportInfo />}
-      action={uploadButton}
-      empty={
-        !importNote &&
-        pending.length === 0 &&
-        diveFileRows(recordings).length === 0
-      }
-    >
+  const content = (
+    <>
       {offer && (
         <ConfirmDialog
           open
@@ -685,6 +680,33 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
         onRemoveStored={onRemoveStored}
         onRestoreStored={onRestoreStored}
       />
+    </>
+  );
+
+  if (bare) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          {uploadButton}
+          <DiveFileImportInfo />
+        </div>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <DiveFormSection
+      title="Import"
+      titleAdornment={<DiveFileImportInfo />}
+      action={uploadButton}
+      empty={
+        !importNote &&
+        pending.length === 0 &&
+        diveFileRows(recordings).length === 0
+      }
+    >
+      {content}
     </DiveFormSection>
   );
 }

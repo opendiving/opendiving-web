@@ -52,6 +52,8 @@ interface DiveDetailSidebarProps {
   onRecordingsChanged: () => void;
   /** Opens a section's edit dialog; absent, the cards have no edit control. */
   onEdit?: (section: DiveCardSection) => void;
+  /** Opens the Recordings card's edit dialog. */
+  onEditRecordings?: () => void;
 }
 
 const NO_PEOPLE: Readonly<Record<string, Person>> = {};
@@ -81,6 +83,7 @@ export function DiveDetailSidebar({
   people = NO_PEOPLE,
   onRecordingsChanged,
   onEdit,
+  onEditRecordings,
 }: DiveDetailSidebarProps) {
   const units = useUnits();
   const withReturnTo = useWithReturnTo();
@@ -377,7 +380,11 @@ export function DiveDetailSidebar({
       )}
 
       {/* What recorded this dive, and what the account still holds from each */}
-      <DiveRecordingsCard dive={dive} onChanged={onRecordingsChanged} />
+      <DiveRecordingsCard
+        dive={dive}
+        onChanged={onRecordingsChanged}
+        onEdit={onEditRecordings}
+      />
     </div>
   );
 }

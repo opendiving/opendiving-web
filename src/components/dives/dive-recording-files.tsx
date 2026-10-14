@@ -73,9 +73,7 @@ interface DiveRecordingFilesProps {
  * Three rounds of review found three different ways for a local model of that to
  * be wrong, each in a dialog whose whole job is to be right about a destructive
  * action, so there is no local model: past the first mark this says what is
- * certain and stops. `deleteFileConfirmation` itself is untouched — the dive
- * page's recordings card shares it, and there the delete really is immediate and
- * the re-read really does happen.
+ * certain and stops.
  */
 function removeFileConfirmation(
   recordings: Recording[],
@@ -143,8 +141,7 @@ export function DiveRecordingFiles({
           other files, it survives file-less because nothing could re-read its
           samples, or **it is deleted along with the file** - and they differ in
           what the dive shows afterwards. `deleteFileConfirmation` is the single
-          place that decides which, shared with the recordings card on the dive
-          page so two routes to one endpoint cannot drift apart.
+          place that decides which.
 
           Mounted only while a row is pending, so both strings come from that
           row: the nullable-prop idiom used elsewhere would let the heading fall

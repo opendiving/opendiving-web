@@ -6494,20 +6494,19 @@ dive" resumes and dismissing drops the rest. One toast per pick, counting what l
 is cleared once per pick and only ever assigned a non-`null` note; a later file's `null` would wipe
 the first file's note mid-batch.
 
-## The edit form deletes a stored file on save, beside the attaches
+## The edit forms delete a stored file on save, beside the attaches
 
-`dives/[id]/edit` holds `removedFileUuids` beside `pendingFiles`: a marked row stays struck through
-saying `Deleted when you save`, and the Trash icon becomes an Undo. Deleting on confirm would make
-Cancel a lie. On submit deletions run first, then attaches, one toast per failure and none stopping
-the next.
+`dives/[id]/edit` and the Recordings card's edit dialog hold `removedFileUuids` beside
+`pendingFiles`: a marked row stays struck through saying `Deleted when you save`, and the Trash icon
+becomes an Undo. Deleting on confirm would make Cancel a lie. On submit deletions run first, then
+attaches, one toast per failure and none stopping the next.
 
-`deleteFileConfirmation` in `lib/dive-recordings.ts` is untouched — the dive page's recordings card
-shares it and deletes immediately. The form wraps it as `removeFileConfirmation`: the first mark
-keeps the three-outcome text, the dive on screen being the one the save finds; later marks state
-only what is certain — the file goes on save, a recording may be left file-less, an emptied
-recording goes with its profile and samples, and what the dive shows can change. No local model of
-the save-time cascade (`renumber_ordinals` promotion, profile re-derivation) gets every field right.
-`deleteStoredFile` does no re-read; nothing mid-edit changes the server's dive.
+The forms wrap `deleteFileConfirmation` in `lib/dive-recordings.ts` as `removeFileConfirmation`: the
+first mark keeps the three-outcome text, the dive on screen being the one the save finds; later
+marks state only what is certain — the file goes on save, a recording may be left file-less, an
+emptied recording goes with its profile and samples, and what the dive shows can change. No local
+model of the save-time cascade (`renumber_ordinals` promotion, profile re-derivation) gets every
+field right. `deleteStoredFile` does no re-read; nothing mid-edit changes the server's dive.
 
 ## A field under 16px zooms an iPhone in, and it stays zoomed
 
