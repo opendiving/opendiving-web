@@ -415,9 +415,9 @@ _Rejected:_ counting mounts, which cannot tell a return from a genuine change.
 
 There is one auth form, `components/auth/AuthForm.tsx` (email, "Continue", "Continue with Google"),
 for the passwordless flow; Settings has no "Change Password" card. Its host page depends on
-`REGISTRATION_MODE` and on join links; see "The landing hero holds one of two forms, and the API is
-what says which" and "`/signin` is a dedicated sign-in page, and carries where the visitor was
-headed".
+`REGISTRATION_MODE` and on join and invite links; see "The landing hero holds one of two forms, and
+the API is what says which" and "`/signin` is a dedicated sign-in page, and carries where the
+visitor was headed".
 
 - `/auth/verify` (`components/auth/verify-page-content.tsx`) is the magic-link target
   (`{FRONTEND_URL}/auth/verify?token=...`): a page rather than the `POST /auth/email/verify` call,
@@ -1212,8 +1212,8 @@ after the auth bootstrap resolves. The page is a Server Component for `metadata`
 expired session onto the marketing page, where the form is one section among many and nothing
 records the destination. There is still exactly one form and one entry point, not a password-based
 `/signin`/`/signup` pair. On an `open`-mode instance the landing hero hosts its own `AuthForm`; on
-`invite`-mode, the default, the hero holds the invite-request form and, outside a join link's
-`/join`, `/signin` is `AuthForm`'s only mount, which makes this page load-bearing.
+`invite`-mode, the default, the hero holds the invite-request form and, outside a join link's or
+invite link's `/join`, `/signin` is `AuthForm`'s only mount, which makes this page load-bearing.
 
 `Header`'s signed-out state shows a coral "Sign in" button linking here, kept in the actions row at
 every breakpoint rather than folded into the mobile menu: on a phone it is the most important thing
@@ -3811,7 +3811,7 @@ failed verify covers a challenge expired in an open page.
 It arms in the landing hero too (`AuthForm` in `open` mode), one POST per signed-out page view; the
 lever, if ever needed, is arming on first focus of the email input, not a lower ceiling. In `invite`
 mode the hero's `InviteRequestForm` (plain `autoComplete="email"`) arms nothing unless a join link
-puts `AuthForm` there; `/signin` covers the returning member. The email input's
+or invite link puts `AuthForm` there; `/signin` covers the returning member. The email input's
 `autoComplete="username webauthn"` is load-bearing; v13 will not arm conditionally without
 `webauthn`.
 
@@ -4329,7 +4329,8 @@ disclosed by hand in §10.1.
 `via` rides `opendiving:google-sign-in-attempts` beside the verifier, and the consent clause of the
 rule above does not reach it. On an invite-only copy it is what admits the visitor, part of the
 sign-in they asked for; on an open one, where it only counts, the owner ruled for §10.2's disclosure
-over a consent step. No new key, so `storage-keys.test.ts` is unchanged.
+over a consent step. A member's invite-link token rides the same field, fitting the slug's shape,
+and only ever admits. No new key, so `storage-keys.test.ts` is unchanged.
 
 ## Privacy page: §6.3 enumerates every email, and the enumeration is exhaustive on purpose
 
@@ -5509,12 +5510,12 @@ repository drops it.
 ## The landing hero holds one of two forms, and the API is what says which
 
 Registration mode is `open` or `invite`; the hero holds `InviteRequestForm` in `invite` and
-`AuthForm` only in `open`, since sign-in there ends in refusal. On `/join` a live join link
-overrides the mode with `AuthForm`, since the link admits. The mode comes from `GET /config` via
-`useInstanceConfig`, not this container's environment: a mirrored variable is a server fact the web
-cannot check, `runtimeConfig()` (`lib/runtime-config.ts`) is memoised per process, so a flip
-restarts the web too, and the bundle hands this container a curated variable list. Rejected: a
-`PublicConfig` field fed from a web-side `REGISTRATION_MODE`.
+`AuthForm` only in `open`, since sign-in there ends in refusal. On `/join` a live join link or
+invite link overrides the mode with `AuthForm`, since the link admits. The mode comes from
+`GET /config` via `useInstanceConfig`, not this container's environment: a mirrored variable is a
+server fact the web cannot check, `runtimeConfig()` (`lib/runtime-config.ts`) is memoised per
+process, so a flip restarts the web too, and the bundle hands this container a curated variable
+list. Rejected: a `PublicConfig` field fed from a web-side `REGISTRATION_MODE`.
 
 The fetch shares the auth bootstrap's gate, so the hero never swaps forms. A failed fetch resolves
 `mode: null` and sign-in renders, which works anywhere and is what the API-less axe scan in
@@ -5524,21 +5525,26 @@ so a flip shows within a minute.
 
 ## `/join` is the landing page with a join link's form, and its canonical is `/`
 
-`/join?via=<slug>` resolves the slug through `GET /join-channel/{slug}` and renders `LandingPage`
-with `channel`, or plain `<LandingPage />` for no slug, an unknown one or a failed request. One slug
-per request, never a list in `GET /config`: a visitor holding one link learns nothing of the others.
-The address bar keeps the slug; a rewrite to `/` loses the channel on reload, and `/privacy`
-promises no `sessionStorage`. `metadata` names `/` as canonical, which hands forum links' weight to
-the home page; `noindex` would discard it, and `robots.txt` leaves the page fetchable because an
-unfetched page's canonical is never seen. Next renders a root canonical as the bare origin, the same
-URL. The body is `join-page.tsx`, not `-page-content`, so like `/` it is no frame destination.
+`/join?via=<x>` resolves `x` as a member's invite link (`GET /invite-link/{token}`) and, only on its
+404, as a channel (`GET /join-channel/{slug}`), rendering `LandingPage` with `inviteLink` or
+`channel`, else plain. The order is load-bearing: the channel route is publicly cacheable, so a live
+bearer token must never reach it first, and a failed link request stops there. One value per
+request, never a list: a visitor holding one link learns nothing of the others. The address bar
+keeps it; `/privacy` promises no `sessionStorage`. `metadata` names `/` as canonical, handing forum
+links' weight to the home page; `noindex` would discard it, and `robots.txt` leaves the page
+fetchable because an unfetched page's canonical is never seen. Next renders a root canonical as the
+bare origin, the same URL. The body is `join-page.tsx`, not `-page-content`, so like `/` it is no
+frame destination.
 
 ## The invitations card learns the registration mode from a 404, and knows nothing else
 
 `InvitationsCard` never asks the instance's mode: `GET /user/invitations` answers `404` on an `open`
 instance, and the card maps that to `absent`, returning `null` like `SessionsCard` and
 `PasskeysCard`. Not `useInstanceConfig`: a second source could disagree with the API; the 404 rides
-a request made anyway.
+a request made anyway. `InviteLinkBlock` mounts only once the list is `ready` and reads its own
+route's 404 as "no link yet", which is correct only because it never renders where that 404 could
+mean `open` mode; mounted while the list loads, it would offer a link for the moment before the card
+went.
 
 A send prepends the row `POST /user/invitations` returns rather than re-reading; a revoke re-reads,
 since `revoked_at` is the server's. Refusals show verbatim in the form's error slot, not a fading

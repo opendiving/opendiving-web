@@ -327,10 +327,15 @@ export default async function PrivacyPage() {
                 request, or an account is created here with that address. Being
                 invited does not erase it &mdash; it becomes an{" "}
                 <strong>invitation</strong> instead, which records the address
-                invited, the account that sent it, whether it has been used,
-                and, until it is used, whether it answered a request to be
-                invited; it is what lets you create an account here. Section 4.8
-                is about both, and section 7 says how long each is kept.
+                invited, the account that sent it, whether it came by that
+                account&rsquo;s invite link, whether it has been used, and,
+                until it is used, whether it answered a request to be invited;
+                it is what lets you create an account here. Where this copy is
+                invite-only, every account can also make an{" "}
+                <strong>invite link</strong>, a token kept on that
+                account&rsquo;s record until its owner resets or removes it.
+                Section 4.8 is about all three, and section 7 says how long each
+                is kept.
               </p>
               <p className="text-foreground mb-4">
                 There are no photos of dives, no bio, no experience level, and
@@ -373,30 +378,30 @@ export default async function PrivacyPage() {
                   <strong>Account security events:</strong> A record of things
                   that happen to accounts on this copy, and this is the whole
                   list &mdash; a sign-in link requested; an invitation asked
-                  for; an invitation sent; a sign-in succeeding, or a sign-in
-                  code got wrong; a verified sign-in being offered a new account
-                  to make, or a deleted one to bring back; an account created or
-                  restored; a second way of signing in attached to an existing
-                  account; a passkey added or removed; a passkey reporting a use
-                  count that suggests it has been copied; an email address
-                  change asked for or completed; an account asked to be deleted;
-                  a sign-out; one device signed out, or every other one at once;
-                  and a spent sign-in cookie turning up again. Each entry holds
-                  what happened and when, the IP address and user agent it came
-                  from, which way of signing in it was about &mdash; email,
-                  Google or a passkey &mdash; where that applies, and the
-                  account it was about, or, for something that happened before
-                  any account existed, the email address that was typed. An
-                  invitation sent is the one entry that carries both, because
-                  both are the point of it: the account that sent the
-                  invitation, and the address it went to. Never a link, a code
-                  or a token itself, only the fact that one was issued or used.
-                  Nothing in the app shows these to you; they are there for
-                  whoever runs this copy to look into a break-in or a burst of
-                  sign-in attempts, and section 6.2 says what that means for
-                  asking for a copy. The successful sign-ins among them are also
-                  counted into the day&rsquo;s total of accounts that signed in,
-                  below
+                  for; an invitation sent; an invite link made; an invite link
+                  removed; a sign-in succeeding, or a sign-in code got wrong; a
+                  verified sign-in being offered a new account to make, or a
+                  deleted one to bring back; an account created or restored; a
+                  second way of signing in attached to an existing account; a
+                  passkey added or removed; a passkey reporting a use count that
+                  suggests it has been copied; an email address change asked for
+                  or completed; an account asked to be deleted; a sign-out; one
+                  device signed out, or every other one at once; and a spent
+                  sign-in cookie turning up again. Each entry holds what
+                  happened and when, the IP address and user agent it came from,
+                  which way of signing in it was about &mdash; email, Google or
+                  a passkey &mdash; where that applies, and the account it was
+                  about, or, for something that happened before any account
+                  existed, the email address that was typed. An invitation sent
+                  is the one entry that carries both, because both are the point
+                  of it: the account that sent the invitation, and the address
+                  it went to. Never a link, a code or a token itself, only the
+                  fact that one was issued or used. Nothing in the app shows
+                  these to you; they are there for whoever runs this copy to
+                  look into a break-in or a burst of sign-in attempts, and
+                  section 6.2 says what that means for asking for a copy. The
+                  successful sign-ins among them are also counted into the
+                  day&rsquo;s total of accounts that signed in, below
                 </li>
                 <li>
                   <strong>Rate-limit counters:</strong> To stop sign-in, the
@@ -509,9 +514,10 @@ export default async function PrivacyPage() {
                   <strong>Provide the Service:</strong> Store your dives, sites,
                   trips, gear, courses, certifications, contacts, people, tags
                   and check-in details, show them back to you, show you the
-                  current username of an account you linked a person to, and
-                  show your check-in page to whoever holds a check-in link you
-                  made
+                  current username of an account you linked a person to, show
+                  your check-in page to whoever holds a check-in link you made,
+                  and, where this copy is invite-only, show your name to whoever
+                  opens your invite link
                 </li>
                 <li>
                   <strong>Account Management:</strong> Sign you in, keep you
@@ -535,7 +541,8 @@ export default async function PrivacyPage() {
                   copy is invite-only, keep its invitations and the requests
                   waiting on them, so that the address that was invited is the
                   one that gets in, and so that whoever runs this copy can see
-                  who has asked
+                  who has asked; keep each member&rsquo;s invite link, and let
+                  in whoever follows one
                   {joinLinks && (
                     <>, and let in whoever follows one of its join links</>
                   )}
@@ -586,9 +593,12 @@ export default async function PrivacyPage() {
                 contact, person and tag belongs to one account and is visible to
                 that account alone. There is no setting that makes any of it
                 public, because there is nothing for such a setting to do. The
-                one exception is one you make yourself, a page at a time: a
-                check-in link shows your check-in page to whoever holds it, for
-                a day, and section 4.9 says exactly what that shows.
+                exceptions are ones you make yourself: a check-in link shows
+                your check-in page to whoever holds it, for a day, and section
+                4.9 says exactly what that shows; and, where this copy is
+                invite-only, an invite link shows your name &mdash; and nothing
+                you entered &mdash; to whoever opens it, until you reset or
+                remove it, as section 4.8 says.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -610,16 +620,18 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 There are three exceptions. The first is not about anything you
                 entered: inviting somebody shows them your name, and shows you
-                whether they went on to register. Section 4.8 sets out exactly
-                what that discloses, in both directions. The second is exactly
-                about what you entered: a check-in link you make shows your
-                check-in page to whoever holds the link, another diver included,
-                until it expires or you revoke it. Section 4.9 sets out what
-                that shows. The third runs the other way and is about another
-                account rather than yours: linking a person you recorded to an
-                account here shows you that account&rsquo;s current username,
-                and tells the account nothing. Section 4.10 sets out what that
-                discloses.
+                whether they went on to register; and, where this copy is
+                invite-only, an invite link you make shows your name to whoever
+                opens it, and shows you the name on the account of anyone who
+                creates one through it. Section 4.8 sets out exactly what that
+                discloses, in both directions. The second is exactly about what
+                you entered: a check-in link you make shows your check-in page
+                to whoever holds the link, another diver included, until it
+                expires or you revoke it. Section 4.9 sets out what that shows.
+                The third runs the other way and is about another account rather
+                than yours: linking a person you recorded to an account here
+                shows you that account&rsquo;s current username, and tells the
+                account nothing. Section 4.10 sets out what that discloses.
               </p>
               <p className="text-foreground mb-4">
                 The one thing every account on this copy does draw on is the
@@ -865,22 +877,49 @@ export default async function PrivacyPage() {
                 section is the whole of it.
               </p>
               <p className="text-foreground mb-4">
-                An invitation carries no code, no link and no token &mdash; it
-                is simply a note that this copy will let a particular address
-                create an account. So there is nothing to forward and nothing to
-                keep secret, and the person invited still has to prove they can
-                read that mailbox in the ordinary way.
+                An invitation you make by typing an address carries no code, no
+                link and no token &mdash; it is simply a note that this copy
+                will let a particular address create an account. So there is
+                nothing to forward and nothing to keep secret, and the person
+                invited still has to prove they can read that mailbox in the
+                ordinary way.
+              </p>
+              <p className="text-foreground mb-4">
+                Where this copy is invite-only, you also have an{" "}
+                <strong>invite link</strong> of your own, on the Invitations
+                card in your settings: an address on this site, shown as a QR
+                code or sent, that lets whoever follows it create an account
+                here, counted as your invitation. It is the opposite of a typed
+                invitation in the one way that matters: anyone holding it can
+                use it, whatever address they sign in with, until you reset or
+                remove it, and each account made through it counts against the
+                same limit as the invitations you send. What it carries is kept
+                only where letting somebody in needs it: signing in by email, on
+                the sign-in link&rsquo;s own record, which is deleted within
+                about a week
+                {googleClientId && (
+                  <>
+                    ; signing in with Google, in your browser until Google sends
+                    you back, as section 10.2 says
+                  </>
+                )}
+                . It is written onto no account.
               </p>
               <p className="text-foreground mb-4">
                 <strong>What the person you invite is told:</strong> your name,
                 as it is on your account, and that you invited them to this
-                copy. Nothing else about you, and nothing you have logged.{" "}
-                <strong>What you are told:</strong> the address you invited,
-                when you invited it, and whether it has been used to create an
-                account &mdash; which is a fact about them, arriving because of
-                something you did. Whoever runs this copy can see the same,
-                because they can read the database on their own machine, which
-                is true of everything on this page.
+                copy. Where this copy is invite-only, whoever opens your invite
+                link sees your name too, whether or not they go on to register,
+                and is told, before they sign in, that you will see the name on
+                their account. Nothing else about you, and nothing you have
+                logged. <strong>What you are told:</strong> the address you
+                invited, when you invited it, and whether it has been used to
+                create an account &mdash; which is a fact about them, arriving
+                because of something you did; and, for somebody who joined
+                through your invite link, the name on their account and when
+                they joined, and never their address. Whoever runs this copy can
+                see the same, because they can read the database on their own
+                machine, which is true of everything on this page.
               </p>
               <p className="text-foreground mb-4">
                 One thing more is disclosed, and only to the person doing the
@@ -890,9 +929,9 @@ export default async function PrivacyPage() {
                 registered, so what bounds it is a limit on how many invitations
                 one account may <em>attempt</em> in a quarter of an hour,
                 counted with the other rate limits in section 2.2 &mdash; not
-                the separate limit on how many invitations you may send in a
-                day, which counts only invitations that were actually sent and
-                so never counts a refusal.
+                the separate limit on how many invitations you may make in a
+                day, by address or through your invite link, which counts only
+                invitations actually made and so never counts a refusal.
               </p>
               <p className="text-foreground mb-4">
                 If this copy is not taking new accounts on its own, its home
@@ -1187,9 +1226,10 @@ export default async function PrivacyPage() {
                   them out
                 </li>
                 <li>
-                  Where this copy is invite-only, invite someone, see the
-                  invitations you have sent, and take back one that has not been
-                  used
+                  Where this copy is invite-only, invite someone, make, reset or
+                  remove your invite link, see the invitations you have sent and
+                  who joined through your link, and take back one that has not
+                  been used
                 </li>
                 <li>Export everything you have entered</li>
                 <li>
@@ -1203,9 +1243,11 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 There are no privacy settings for your dive logs, and their
                 absence is the point: nothing is public or shared, so there is
-                nothing to switch off. The one exception is a check-in link you
-                made, and Revoke on your check-in page switches that off at once
-                &mdash; section 4.9.
+                nothing to switch off. The exceptions are a check-in link you
+                made, which Revoke on your check-in page switches off at once
+                &mdash; section 4.9 &mdash; and, where this copy is invite-only,
+                your invite link, which Remove on the Invitations card switches
+                off at once &mdash; section 4.8.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1311,7 +1353,8 @@ export default async function PrivacyPage() {
                 makes it unpreventable is that this copy has no way to know,
                 before sending, that an address would rather not hear from it.
                 What bounds it instead is the limit in section 4.8 on how many
-                invitations one account may send.
+                invitations one account may make, by address or through its
+                invite link.
               </p>
               <p className="text-foreground mb-4">
                 Being sent to your own address is not the same as being sent
@@ -1428,6 +1471,13 @@ export default async function PrivacyPage() {
                 every hour once it has stopped working: 24 hours after you made
                 it, or sooner if you revoked it or made another.
               </p>
+              <p className="text-foreground mb-4">
+                Where this copy is invite-only, an <strong>invite link</strong>{" "}
+                does not expire: it is kept until you reset or remove it, or
+                your account goes. An invitation made through one is used from
+                the start, so it is never swept either, and goes when either
+                account does.
+              </p>
               {mapTiles && (
                 <p className="text-foreground mb-4">
                   The <strong>map tiles</strong> this copy draws, which section
@@ -1465,11 +1515,12 @@ export default async function PrivacyPage() {
                   with them
                 </li>
                 <li>
-                  Any invitations you sent go with it, used or not. Somebody you
-                  invited who has not created an account yet loses the
-                  invitation and would have to be invited again by someone else.
-                  Any invitation or pending request naming <em>your</em> address
-                  is found by that address and removed as well
+                  Any invitations you sent go with it, used or not, and so does
+                  your invite link. Somebody you invited who has not created an
+                  account yet loses the invitation and would have to be invited
+                  again by someone else. Any invitation or pending request
+                  naming <em>your</em> address is found by that address and
+                  removed as well
                 </li>
                 <li>
                   Every person another diver linked to your account is unlinked.
@@ -1649,8 +1700,18 @@ export default async function PrivacyPage() {
                     &mdash; the one-time secret that proves a &ldquo;Continue
                     with Google&rdquo; sign-in coming back from Google is the
                     one you started here, along with where you were headed
-                    {joinLinks && (
-                      <> and, if you came by a join link, which link</>
+                    {joinLinks ? (
+                      <>
+                        {" "}
+                        and, if you came by a join link or a member&rsquo;s
+                        invite link, which one
+                      </>
+                    ) : (
+                      <>
+                        {" "}
+                        and, where this copy is invite-only and you came by a
+                        member&rsquo;s invite link, which link
+                      </>
                     )}
                     . Written only when you press that button, one entry per
                     attempt so that two tabs cannot spoil each other&rsquo;s,
