@@ -221,6 +221,8 @@ export function emptyMenuLabel({
   isBusy,
   noItemsLabel,
   noMatchesLabel,
+  allExcluded,
+  allExcludedLabel,
   queryTooLongLabel,
   searchErrorLabel,
 }: {
@@ -233,6 +235,9 @@ export function emptyMenuLabel({
   isBusy: boolean;
   noItemsLabel: string;
   noMatchesLabel?: string;
+  // The answer had rows, and `excludeIds` left out every one of them.
+  allExcluded?: boolean;
+  allExcludedLabel?: string;
   queryTooLongLabel?: string;
   searchErrorLabel: string;
 }): string {
@@ -248,7 +253,8 @@ export function emptyMenuLabel({
   if (isBusy) return "Searching...";
   // An answer, at last: nothing matched what was typed, or the field is empty
   // and the list itself is.
-  return query ? (noMatchesLabel ?? noItemsLabel) : noItemsLabel;
+  if (query) return noMatchesLabel ?? noItemsLabel;
+  return (allExcluded && allExcludedLabel) || noItemsLabel;
 }
 
 // Stable identity for the default `items`, so the sync-from-`value` effect below
@@ -308,6 +314,10 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   // `noItemsLabel`, which reads as a lie once the list is server-filtered:
   // "no dive sites yet" and "none matching 'dahab'" are different answers.
   noMatchesLabel?: string;
+  // Shown instead of `noItemsLabel` when nothing is typed and the menu is empty
+  // only because `excludeIds` left out every row: the user has some, they are
+  // just picked elsewhere.
+  allExcludedLabel?: string;
   // The shortest query this field's search can actually answer. Below it the
   // menu keeps saying `noItemsLabel` ("Type to search places.") rather than
   // `noMatchesLabel`, which would be asserting a negative nobody checked: the
@@ -387,6 +397,7 @@ export function CreatableCombobox({
   disabled,
   noItemsLabel = "No items.",
   noMatchesLabel,
+  allExcludedLabel,
   minSearchLength = 1,
   maxSearchLength = Infinity,
   queryTooLongLabel,
@@ -998,6 +1009,8 @@ export function CreatableCombobox({
                   isBusy: isSearching || searchPending,
                   noItemsLabel,
                   noMatchesLabel,
+                  allExcluded: availableItems.length > 0,
+                  allExcludedLabel,
                   queryTooLongLabel,
                   searchErrorLabel,
                 })}
