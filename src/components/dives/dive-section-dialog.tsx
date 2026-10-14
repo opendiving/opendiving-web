@@ -42,7 +42,7 @@ import { useToast } from "@/components/ui/use-toast";
 /**
  * The dive form's sections a dive page card is edited through. Dive info has no
  * card - the hero carries it, and the Edit page edits it - and Import is the
- * Recordings card, which has controls of its own.
+ * Recordings card's, which `DiveImportDialog` edits.
  */
 export type DiveCardSection = Exclude<
   DiveFormFieldGroup,

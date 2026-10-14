@@ -316,80 +316,27 @@ describe("DiveRecordingsCard", () => {
     expect(screen.getByText(/^UDDF ·/)).toBeVisible();
   });
 
-  it("asks the file route for the file, not the dive", async () => {
-    // The old route took the dive alone because a dive had one file. A dive now
-    // has several across its recordings, so the uuid in the path is the file's.
-    vi.mocked(divesAPI.deleteDiveFile).mockResolvedValue(undefined);
-
+  it("leaves removing a file to the edit dialog its pencil opens", async () => {
+    // Striking a file off sits beside importing one, in the Import section's
+    // dialog, where Cancel can still take it back.
+    const onEdit = vi.fn();
     render(
       <DiveRecordingsCard
         dive={dive({
           recordings: [recording({ files: [file({ uuid: "file-uuid" })] })],
         })}
         onChanged={vi.fn()}
+        onEdit={onEdit}
       />,
     );
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Delete ocean.fit" }),
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
-
-    expect(divesAPI.deleteDiveFile).toHaveBeenCalledWith("d1", "file-uuid");
-  });
-
-  it("distinguishes the file deletion the recording survives from the one it does not", async () => {
-    // The Suunto that exported one dive twice, beside a second computer. The
-    // same Trash icon on the FIT and then on the JSON does two different things
-    // - the second takes the recording, the primary slot and the dive's
-    // readings with it - and nothing in the row says which.
-    const suunto = recording({
-      uuid: "a",
-      ordinal: 0,
-      files: [
-        file({ uuid: "sj", original_filename: "ocean.json" }),
-        file({ uuid: "sf", original_filename: "ocean.fit" }),
-      ],
-    });
-    const perdix = recording({
-      uuid: "b",
-      ordinal: 1,
-      files: [file({ uuid: "pf", original_filename: "perdix.uddf" })],
-    });
-
-    const { rerender } = render(
-      <DiveRecordingsCard
-        dive={dive({ recordings: [suunto, perdix] })}
-        onChanged={vi.fn()}
-      />,
-    );
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Delete ocean.fit" }),
-    );
     expect(
-      screen.getByRole("heading", { name: "Delete this file?" }),
-    ).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-
-    rerender(
-      <DiveRecordingsCard
-        dive={dive({
-          recordings: [{ ...suunto, files: [suunto.files[0]] }, perdix],
-        })}
-        onChanged={vi.fn()}
-      />,
-    );
-
+      screen.queryByRole("button", { name: "Delete ocean.fit" }),
+    ).not.toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: "Delete ocean.json" }),
+      screen.getByRole("button", { name: "Edit recordings" }),
     );
-    expect(
-      screen.getByRole("heading", {
-        name: "Delete this file and its recording?",
-      }),
-    ).toBeVisible();
-    expect(screen.getByText(/the next one takes over/i)).toBeVisible();
+    expect(onEdit).toHaveBeenCalled();
   });
 
   it("says what a whole-recording delete moves, rather than that the dive is unaffected", async () => {

@@ -8,6 +8,7 @@ import {
   type DiveCardSection,
   DiveSectionDialog,
 } from "@/components/dives/dive-section-dialog";
+import { DiveImportDialog } from "@/components/dives/dive-import-dialog";
 import { cn } from "@/lib/utils";
 
 const CARD_SECTIONS: readonly DiveCardSection[] = [
@@ -35,10 +36,10 @@ export function DiveDetailCards() {
   // from the dive being left must close when the next lands rather than save its
   // values over it.
   const [editing, setEditing] = useState<{
-    section: DiveCardSection;
+    section: DiveCardSection | "Import";
     diveUuid: string;
   } | null>(null);
-  const edit = (section: DiveCardSection) =>
+  const edit = (section: DiveCardSection | "Import") =>
     setEditing({ section, diveUuid: dive.uuid });
 
   // Dimmed, not replaced, while the next dive loads: these cards still describe
@@ -62,6 +63,13 @@ export function DiveDetailCards() {
         people={people}
         onRecordingsChanged={refreshDive}
         onEdit={edit}
+        onEditRecordings={() => edit("Import")}
+      />
+      <DiveImportDialog
+        open={editing?.section === "Import" && editing.diveUuid === dive.uuid}
+        onOpenChange={(open) => (open ? edit("Import") : setEditing(null))}
+        dive={dive}
+        onSaved={refreshDive}
       />
       {CARD_SECTIONS.map((section) => (
         <DiveSectionDialog
