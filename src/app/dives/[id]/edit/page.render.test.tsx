@@ -346,6 +346,36 @@ describe("a dive whose fields the diver keeps hidden", () => {
     );
   });
 
+  it("keeps the notes on screen when the diver hides a different field", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["notes"];
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ notes: "Thistlegorm, holds 2 and 4" }),
+    );
+
+    render(<EditDivePage />);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^notes$/i)).toHaveValue(
+        "Thistlegorm, holds 2 and 4",
+      ),
+    );
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
+    // The preview is what Apply will do: Notes is still on, and still says why.
+    expect(screen.getByRole("switch", { name: /^notes$/i })).toBeChecked();
+    expect(
+      screen.getByText(/shown because it holds a value/i),
+    ).toBeInTheDocument();
+    await closeFieldsPanel();
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/^altitude/i)).not.toBeInTheDocument(),
+    );
+
+    expect(screen.getByRole("textbox", { name: /^notes$/i })).toHaveValue(
+      "Thistlegorm, holds 2 and 4",
+    );
+  });
+
   it("brings the gas section back for a dive that records cylinders", async () => {
     stable.auth.user.dive_form_hidden_fields = [
       "mixtures",

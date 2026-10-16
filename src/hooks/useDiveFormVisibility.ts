@@ -70,11 +70,18 @@ export interface DiveFormVisibility {
   isVisible: (key: DiveFormFieldKey) => boolean;
   /**
    * Replaces the stored hidden set: the Configure dialog's switches on Apply or Save
-   * preset, or a preset applied from the Fields menu. Applies to the form at once,
-   * persists debounced, and drops every newly hidden key from the revealed set - those
-   * surfaces edit what the diver sees.
+   * preset, or a preset applied from the Fields menu. Applies to the form at once and
+   * persists debounced.
+   *
+   * `turnedOff` names the keys the diver switched off, and only those leave the
+   * revealed set. A revealed key is in the stored set already, so the set alone cannot
+   * say which of them the diver meant to put away; every other revealed field stays on
+   * screen, a preset's included, because the value in it is the diver's.
    */
-  setHidden: (next: readonly DiveFormFieldKey[]) => void;
+  setHidden: (
+    next: readonly DiveFormFieldKey[],
+    turnedOff?: readonly DiveFormFieldKey[],
+  ) => void;
   /**
    * The saved preset the diver last applied, or `null` for none or the built-in "All".
    * Kept when a switch changes the set; whoever shows it checks the set still matches.
@@ -468,7 +475,10 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   );
 
   const setHidden = useCallback(
-    (next: readonly DiveFormFieldKey[]) => {
+    (
+      next: readonly DiveFormFieldKey[],
+      turnedOff: readonly DiveFormFieldKey[] = [],
+    ) => {
       const canonical = canonicalHiddenFields(next);
       const previousHidden = new Set(hiddenRef.current);
       const previousRevealed = revealedRef.current;
@@ -478,7 +488,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
       // revealed set - otherwise a field revealed by an edit load could not be put
       // away again from the dialog that offered the switch.
       const nextRevealed = new Set(
-        [...previousRevealed].filter((key) => !nextHiddenSet.has(key)),
+        [...previousRevealed].filter((key) => !turnedOff.includes(key)),
       );
 
       const wasVisible = (key: DiveFormFieldKey) =>

@@ -31,6 +31,12 @@ import {
 import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
+interface Draft {
+  hidden: readonly DiveFormFieldKey[];
+  /** The draft's keys whose switch the diver turned off, in the order of `hidden`. */
+  turnedOff: readonly DiveFormFieldKey[];
+}
+
 interface DiveFormFieldsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -74,9 +80,10 @@ function matchingPresetName(
  * **The switches edit a draft.** Nothing reaches the form until Apply or Save preset;
  * Cancel, the X and Escape drop it, as they do in every other dialog. So there is
  * nothing to undo, and no hide has emptied a value it would have to bring back. The switches
- * preview what applying the draft will do, revealed fields included: `setHidden` drops
- * every key it hides from the revealed set. Preset writes on the Presets tab go to the
- * server at once and are not part of the draft.
+ * preview what applying the draft will do, revealed fields included: the draft keeps
+ * which switches were turned off, and those are the only fields `setHidden` takes off
+ * screen when they hold a value. Preset writes on the Presets tab go to the server at
+ * once and are not part of the draft.
  *
  * **A dialog rather than a panel on the card.** Nothing in it is a form control of the
  * dive. Radix portals the content to `document.body`, so the DOM has no nested `<form>`;
@@ -92,24 +99,32 @@ export function DiveFormFieldsDialog({
 }: DiveFormFieldsDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   // `null` until a switch is flipped, so an untouched dialog follows the live set.
-  const [draft, setDraft] = useState<readonly DiveFormFieldKey[] | null>(null);
-  // A draft equal to the stored set still changes the form when it hides a field that
-  // is on screen only because it holds a value - `setHidden` takes those back off.
+  const [draft, setDraft] = useState<Draft | null>(null);
+  // A draft equal to the stored set still changes the form when it turns off a field
+  // that is on screen only because it holds a value - `setHidden` takes that back off.
   const changed =
     draft !== null &&
-    (!hiddenFieldsEqual(draft, visibility.hidden) ||
-      draft.some((key) => visibility.isRevealed(key)));
+    (!hiddenFieldsEqual(draft.hidden, visibility.hidden) ||
+      draft.turnedOff.some((key) => visibility.isRevealed(key)));
 
   const fields = useMemo<DiveFormFieldsView>(() => {
-    // Canonical, as `setHidden` stores it - a preset saved from the draft gets it as is.
-    const setHidden = (next: readonly DiveFormFieldKey[]) =>
-      setDraft(canonicalHiddenFields(next));
+    const setHidden = (
+      next: readonly DiveFormFieldKey[],
+      turnedOff: readonly DiveFormFieldKey[] = [],
+    ) =>
+      setDraft((previous) => {
+        // Canonical, as `setHidden` stores it - a preset saved from the draft gets it
+        // as is. A key switched back on is no longer one the diver turned off.
+        const hidden = canonicalHiddenFields(next);
+        const off = new Set([...(previous?.turnedOff ?? []), ...turnedOff]);
+        return { hidden, turnedOff: hidden.filter((key) => off.has(key)) };
+      });
     if (!changed) return { ...visibility, setHidden };
-    const hidden = new Set(draft);
+    const hidden = new Set(draft.hidden);
     const isRevealed = (key: DiveFormFieldKey) =>
-      visibility.isRevealed(key) && !hidden.has(key);
+      visibility.isRevealed(key) && !draft.turnedOff.includes(key);
     return {
-      hidden: draft,
+      hidden: draft.hidden,
       isHidden: (key) => hidden.has(key),
       isRevealed,
       isVisible: (key) => !hidden.has(key) || isRevealed(key),
@@ -118,7 +133,7 @@ export function DiveFormFieldsDialog({
   }, [changed, draft, visibility]);
 
   const close = (apply: boolean) => {
-    if (apply && changed) visibility.setHidden(draft);
+    if (apply && changed) visibility.setHidden(draft.hidden, draft.turnedOff);
     setDraft(null);
     onOpenChange(false);
   };
