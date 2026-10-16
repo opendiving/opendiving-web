@@ -193,7 +193,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
               <DiveFormSectionIndex className="sticky top-[calc(var(--header-height)+--spacing(6))]" />
             </div>
             <form
-              // The browser no longer cancels this submit on its own - see
+              // The browser doesn't cancel this submit on its own - see
               // `handleSubmitEvent`, which asks it the same question and reports
               // the answer rather than leaving the diver with a dead button.
               noValidate

@@ -388,11 +388,8 @@ export function VolumeCombobox({
           if (e.key === "ArrowDown" || e.key === "ArrowUp") {
             // These navigate the preset list, so the caret doesn't get them:
             // `preventDefault` stops the jump to the start or end of the text.
-            // Back when this was `type="number"` they natively stepped the value
-            // by `step` (0.01), and taking them for the list was the deliberate
-            // behaviour change recorded here - browsing the presets beats nudging
-            // a volume by a hundredth of a litre. The keys still do the same
-            // thing; only what they are being taken *from* has changed.
+            // Browsing the presets beats nudging a volume by a hundredth of
+            // a litre, so the keys never step the value either.
             e.preventDefault();
             if (readOnly) return;
             if (!isOpen) {

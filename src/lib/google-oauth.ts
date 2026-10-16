@@ -209,8 +209,7 @@ interface BeginGoogleSignIn {
  *
  * `access_type` is deliberately never set to `offline`, so Google issues no
  * refresh token and this app is never handed a Google credential it could store.
- * `scope` and `prompt` are parity with what Google's own script used to request
- * from this app.
+ * `scope` and `prompt` are the ones Google's own sign-in script requests.
  *
  * There is no `nonce`. A nonce binds an ID token to the request that asked for
  * it, and the threat it answers is replay of a token that travelled through the

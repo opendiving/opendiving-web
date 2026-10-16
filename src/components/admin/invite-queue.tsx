@@ -26,10 +26,9 @@ type PendingAction = "invite" | "remove";
  * by what it holds instead.
  *
  * Selection lives here and is cleared after either action, so an address is
- * never carried into a batch the operator has stopped looking at. It used to be
- * cleared on a page turn too, which is what kept it inside the API's cap without
- * this page having to repeat the number; the queue loads on scroll now and
- * accumulates, so `MAX_SELECTED` states the cap outright.
+ * never carried into a batch the operator has stopped looking at. The queue
+ * loads on scroll and accumulates, so `MAX_SELECTED` states the API's cap
+ * outright.
  */
 
 export function InviteQueue() {

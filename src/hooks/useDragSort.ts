@@ -143,9 +143,8 @@ export function useDragSort({
 
   // Detaches the window listeners belonging to the gesture currently in flight.
   // They are closures created inside `startDrag`, so nothing outside it can name
-  // them - which is why `endDrag` used to leave them attached despite the unmount
-  // effect below claiming otherwise. Holding the remover here is what makes that
-  // claim true.
+  // them. Holding the remover here is what lets `endDrag` and the unmount effect
+  // below detach them.
   const detachRef = useRef<(() => void) | null>(null);
 
   const endDrag = useCallback(() => {

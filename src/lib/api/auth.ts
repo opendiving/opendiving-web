@@ -199,7 +199,7 @@ export function captureSession(outcome: AuthOutcome): AuthOutcome {
  *
  * Every entry point (the magic link, the code printed beside it, Google) can land on
  * any of three outcomes - an existing user is signed in, a verified identity with no
- * account yet gets an onboarding token to hand to `completeOnboarding`, or an account
+ * account yet gets an onboarding token to hand to `completeProfile`, or an account
  * inside its deletion grace period gets a restore token to hand to `restoreAccount`.
  * Callers have to branch on `status` rather than assuming a session came back.
  */

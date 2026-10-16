@@ -100,9 +100,8 @@ describe("useDeleteResource", () => {
     );
   });
 
-  // The bug this hook's detail-page callers used to have: only `gear/[id]` ran the
-  // failure through `getApiErrorMessage`, so a 409 explaining *why* the delete was
-  // refused was replaced by "Please try again." on dives, sites and trips.
+  // A 409 explains *why* the delete was refused, and "Please try again." in its
+  // place leaves the diver nothing to act on.
   it("shows the API's own message when the delete is refused", async () => {
     const deleteFn = vi.fn().mockRejectedValue({
       response: { data: { detail: "This dive site is used by 3 dives." } },

@@ -445,11 +445,11 @@ describe("TripPartsField", () => {
   });
 
   it("keeps the credit's line reserved before any search has run", async () => {
-    // The credit used to appear with the first result, growing the field and
-    // shoving the map - and the Notes field under it - down the dialog while
-    // the diver was mid-edit. Its line is held open instead, so nothing below
-    // it moves. Counted as elements rather than measured, since jsdom lays
-    // nothing out: what must not happen is a paragraph arriving.
+    // Pins that the credit's line is held open before the first result, so the
+    // field does not grow and shove the map - and the Notes field under it -
+    // down the dialog while the diver is mid-edit. Counted as elements rather
+    // than measured, since jsdom lays nothing out: what must not happen is a
+    // paragraph arriving.
     searchPlaces.mockResolvedValue([DAHAB]);
     const { container } = render(<Field initial={[{ location: null }]} />);
     const before = container.querySelectorAll("p").length;
@@ -558,10 +558,10 @@ describe("TripPartsField", () => {
   });
 
   it("says it is searching while the debounce is still running", async () => {
-    // The menu used to read "No places found - press Enter to add as text" for
-    // the whole 450 ms before the request even goes out. A diver typing "Bohol"
-    // briskly and pressing Enter took that invitation and got a name-only place
-    // the geocoder knows - one that never reaches the map.
+    // Pins that the menu does not read "No places found - press Enter to add as
+    // text" for the 450 ms before the request goes out: a diver typing "Bohol"
+    // briskly and pressing Enter would take that invitation and get a name-only
+    // place the geocoder knows - one that never reaches the map.
     render(<Field initial={[{ location: null }]} />);
 
     await userEvent.click(placeInput());

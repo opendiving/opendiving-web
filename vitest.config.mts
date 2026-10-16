@@ -72,9 +72,8 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      // Was `src/lib/**` only, which made `hooks/`, `contexts/`, `components/` and
-      // `app/` invisible to the report - so "coverage is fine" said nothing about
-      // the layers where the divergent-error-handling and stale-state bugs lived.
+      // Every layer is in scope, so "coverage is fine" says something about the
+      // layers where error handling and stale state go wrong, not only about `lib/`.
       include: [
         "src/lib/**/*.{ts,tsx}",
         "src/hooks/**/*.{ts,tsx}",
@@ -94,10 +93,9 @@ export default defineConfig({
       // make a run pass is the thing they exist to prevent.
       //
       // The global numbers look low because `components/` and `app/` are in scope and
-      // almost entirely untested. That is deliberate: the point of widening the scope
-      // was to make the gap *visible* in the report rather than to flatter the
-      // headline figure. The per-directory floors below are what actually hold the
-      // tested layers to account.
+      // almost entirely untested. That is deliberate: the scope makes the gap *visible*
+      // in the report rather than flattering the headline figure. The per-directory
+      // floors below are what actually hold the tested layers to account.
       thresholds: {
         statements: 24,
         branches: 19,

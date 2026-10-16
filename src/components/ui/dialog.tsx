@@ -30,20 +30,16 @@ const DialogOverlay = React.forwardRef<
       // iOS clips a `position: fixed` box to the layout viewport. With the
       // keyboard up it also keeps a band between that viewport's bottom edge and
       // the top of the keyboard, and goes on painting page content into it - so
-      // the page showed through under an open modal in a strip no fixed element
-      // could reach. Measured on the device with two stripes portalled beside
-      // the scrim, one of each kind: the absolute one ran the full height of the
-      // screen, the fixed one stopped dead on the exact line the undimmed strip
-      // began.
+      // the page shows through under an open modal in a strip no fixed element
+      // can reach.
       //
-      // Two earlier attempts aimed at the wrong thing and are worth naming so
-      // that nobody retries them. `inset-0` was the original, sized to a window
-      // the diver is no longer looking at. Sizing to `--visual-viewport-height`
-      // tracked what they *can* see and still failed - which read as bad
-      // arithmetic and was not: a hit test at the very bottom of the viewport
-      // returned the scrim, so it was already covering everything it was allowed
-      // to, and the strip was simply outside. No `fixed` geometry fixes this,
-      // however generous, and the second attempt's extra slack bought nothing.
+      // Neither `fixed` alternative works, so neither is worth retrying.
+      // `inset-0` is sized to a window the diver is no longer looking at. Sizing
+      // to `--visual-viewport-height` tracks what they *can* see and still fails,
+      // and not from bad arithmetic: a hit test at the very bottom of the
+      // viewport returns the scrim, so it covers everything it is allowed to,
+      // and the strip is simply outside. No `fixed` geometry fixes this, however
+      // generous its slack.
       //
       // `body` is `position: relative` while a dialog is open, so this resolves
       // against the document. `--visual-viewport-doc-top` is the visible top in
@@ -193,8 +189,8 @@ const DialogContent = React.forwardRef<
           // scrolling on the page behind it.
           //
           // `w-[calc(100%-2rem)]` rather than `w-full`, and `rounded-lg` rather
-          // than `sm:rounded-lg`: the dialog used to run edge to edge on a phone,
-          // with its close button in the corner of the screen.
+          // than `sm:rounded-lg`, so the dialog does not run edge to edge on a
+          // phone with its close button in the corner of the screen.
           //
           // `px-(--card-pad)` is `Card`'s own side padding, so a form reads the
           // same width in a dialog as in the card it also appears in.

@@ -432,8 +432,8 @@ export interface NormalizedDiveMixture {
 // Fields are listed out explicitly (rather than spreading the input and
 // overriding start_pressure/end_pressure) because TypeScript doesn't reliably
 // narrow a spread-then-overridden property away from its original generic
-// union type, which previously let the "" placeholder type leak into the
-// inferred return type.
+// union type, which lets the "" placeholder type leak into the inferred
+// return type.
 export function normalizeMixtures(
   mixtures: {
     id?: number;
@@ -693,20 +693,15 @@ export function boatNameOrNull(value: string): string | null {
 // The one rule, and the whole reason this isn't a plain spread: a field that is
 // `undefined` was never touched and must not appear in the request at all,
 // while a field that is `null` is a value the diver deliberately cleared and
-// must be sent so the API can null it out. Collapsing those two together is
-// what previously made a dive's trip impossible to remove - the picker cleared
-// to `undefined`, the field was dropped, and the trip survived a save that
-// reported success.
+// must be sent so the API can null it out. Collapsing those two together makes
+// a dive's trip impossible to remove - a picker cleared to `undefined` drops
+// the field, and the trip survives a save that reports success.
 //
-// It used to take react-hook-form's `dirtyFields` as well, and drop every field
-// the diver had not touched. That existed because the API soft-deleted trips
-// and dive sites and then hid them from a dive read, which made the form's own
-// seed a lie: a dive whose trip had been deleted came back with
-// `trip_uuid: null`, and echoing that null back unlinked the trip for real. The
-// API hard-deletes those rows now and hides nothing, so a read is the whole
-// truth and an echo of it says exactly what the dive already holds - see "The
-// edit form submits the whole dive, because the read is the whole dive" in
-// DECISIONS.md.
+// It does not take react-hook-form's `dirtyFields` and drop every field the
+// diver has not touched: the API hard-deletes trips and dive sites and hides
+// nothing from a dive read, so a read is the whole truth and an echo of it says
+// exactly what the dive already holds - see "The edit form submits the whole
+// dive, because the read is the whole dive" in DECISIONS.md.
 //
 // `submerged_time` is the only shape change: the form edits it as an "MM:SS" string
 // and the API takes seconds. Done here rather than in the schema because

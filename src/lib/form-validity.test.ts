@@ -32,7 +32,7 @@ function formWith(
 
 // The value out of the bug report: a float32 depth artefact the UDDF reader
 // produces and the API stores unrounded. It is a `stepMismatch` against any step
-// finer than itself, which is what used to cancel the save with nothing on screen.
+// finer than itself, which is enough to cancel the save with nothing on screen.
 const IMPORTED_DEPTH = "2.70000029";
 
 describe("refusedControls", () => {

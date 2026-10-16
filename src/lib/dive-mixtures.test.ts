@@ -126,9 +126,9 @@ describe("mod", () => {
   });
 
   it("returns null for a mix already past its limit at the surface", () => {
-    // Reachable only since `po2_limit` became diver-editable across [0.4, 2.0]: with
-    // the 1.4/1.6 constants this needed oxygen above 140 %. EAN50 planned to 0.4
-    // used to render "-2.0 m" on the mixtures card and in the form hint.
+    // Reachable because `po2_limit` is diver-editable across [0.4, 2.0]: at 1.4 or
+    // 1.6 this would need oxygen above 140 %. Pins that EAN50 planned to 0.4 does
+    // not render "-2.0 m" on the mixtures card or in the form hint.
     expect(mod(50, 0.4)).toBeNull();
     expect(mod(100, 0.4)).toBeNull();
   });
@@ -362,8 +362,8 @@ describe("gasHintParts", () => {
   });
 
   it("treats the whole air band as air, not just exactly 21", () => {
-    // Guards the rule against `gasName`'s label: this used to be a `!== "Air"`
-    // string comparison, which would have broken silently if that label changed.
+    // Guards the rule against `gasName`'s label: a `!== "Air"` string comparison
+    // would break silently if that label changed.
     expect(
       gasHintParts({ oxygen: 20.99, helium: 0, depth: 30, units: "metric" }),
     ).toHaveLength(2);
@@ -550,11 +550,10 @@ describe("diveModWarning", () => {
 
   it("says nothing for a dive logging no cylinders", () => {
     expect(diveModWarning([], 40, "metric")).toBeNull();
-    // Pinned at a depth that *would* warn against air, which is what the create form
-    // used to seed: 60 m is past air's 56.66 m working limit, so a dive whose gas card
-    // the diver never opened raised a warning about a cylinder the page invented.
-    // Both forms can now hold zero cylinders, so this guard is reachable rather than
-    // theoretical.
+    // Pinned at a depth that *would* warn against air: 60 m is past air's 56.66 m
+    // working limit, so a form that seeded an air cylinder would warn about a
+    // cylinder the page invented. Both forms can hold zero cylinders, so this guard
+    // is reachable rather than theoretical.
     expect(diveModWarning([], 60, "metric")).toBeNull();
     expect(diveModWarning([AIR], 60, "metric")).toContain("working limit");
   });

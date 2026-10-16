@@ -8,9 +8,9 @@ import {
 } from "./auth-redirect";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
 
-// Four entry points route through this and no longer branch on a boolean of their
-// own, so a status mapped wrong here is mapped wrong at every one of them at once -
-// which is exactly why it is one function and exactly why it is tested directly.
+// Every entry point routes through this rather than branching on a boolean of its
+// own, so a status mapped wrong here is mapped wrong at all of them at once -
+// which is exactly why it is one function and why it is tested directly.
 describe("destinationForOutcome", () => {
   it("honours where the visitor was headed, but only for a session", () => {
     expect(destinationForOutcome("authenticated", "/dives/abc")).toBe(
@@ -20,8 +20,8 @@ describe("destinationForOutcome", () => {
   });
 
   it("sanitizes the destination on the way through", () => {
-    // The same guard every call site used to apply itself: a crafted `?next=`
-    // reaches three of the four as a prop.
+    // Sanitized here rather than at each call site: a crafted `?next=` reaches
+    // them as a prop.
     expect(destinationForOutcome("authenticated", "//evil.example")).toBe(
       "/home",
     );

@@ -11,7 +11,8 @@ import type { UserDiveStats } from "@/lib/api/dive-stats";
 // keeps one identity across renders, and this page's stats effect lists `user` in its
 // dependencies. A mock handing back a fresh `user` per render re-runs that effect on
 // every render, and the effect's own `setStats` causes one. See "The new-dive render
-// test was in a loop with itself" in DECISIONS.md, and "reads the stats once" below.
+// test's mocks are identity-stable, so the prefill effect runs once" in DECISIONS.md,
+// and "reads the stats once" below.
 //
 // Both hooks are pinned, but only the guard's `user` can start the loop - the page
 // reads the context for `units` alone, and a string has no identity to churn.

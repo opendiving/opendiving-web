@@ -224,9 +224,9 @@ describe("the visible-text rule", () => {
   });
 
   it("is not fooled by braces in the icon's own attributes", () => {
-    // The scanner used to find this `{` before tags were taken out, hand
-    // `cn("h-4 w-4", danger && "text-destructive")` to the expression rule, and
-    // credit the button with words it does not render.
+    // Pins that tags are taken out before the scanner looks for `{` - otherwise
+    // it hands `cn("h-4 w-4", danger && "text-destructive")` to the expression
+    // rule and credits the button with words it does not render.
     expect(
       icon(
         '<Trash2 className={cn("h-4 w-4", danger && "text-destructive")} />',

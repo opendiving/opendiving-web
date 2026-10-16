@@ -10,7 +10,7 @@ interface PageSpinnerProps {
    * header and footer. Using the full viewport height there pushes the footer off
    * the bottom of a page that was about to be shorter than one, so the layout
    * visibly settles when the data lands. See DECISIONS.md - the list and detail
-   * pages have always done this deliberately; they just each spelled it out.
+   * pages do this deliberately.
    */
   variant?: "screen" | "inset";
   className?: string;
@@ -18,10 +18,8 @@ interface PageSpinnerProps {
 
 // The app's loading placeholder while auth or route data resolves.
 //
-// Both heights used to be written by hand at seven call sites (and `app/page.tsx`
-// and `app/settings/page.tsx` had drifted into a third style entirely, a bordered
-// CSS ring rather than the `Loader2` everything else uses). The variant keeps the
-// deliberate difference between them without keeping seven copies of it.
+// The variant keeps the deliberate difference between the two heights in one
+// place rather than at every call site.
 export function PageSpinner({
   variant = "screen",
   className,

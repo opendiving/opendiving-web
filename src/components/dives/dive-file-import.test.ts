@@ -97,7 +97,7 @@ function recordingForm(mixtures: DiveMixtureInput[] = []) {
 
 describe("applyParsedDiveToForm", () => {
   // What an import actually meets, rather than the hand-picked `existing` the unit
-  // tests above pass in. Two real starting states now, and the difference is the
+  // tests above pass in. Two real starting states, and the difference is the
   // whole point: the create form starts empty (see `new-dive-page-content.tsx` - a form must
   // not write gas the diver never entered), while a form the diver has added a
   // cylinder to, or that the last-dive prefill filled in, holds one.
@@ -105,12 +105,11 @@ describe("applyParsedDiveToForm", () => {
   const emptyForm = () => formHolding([]);
 
   it("flags a cylinder size the file didn't record, against a seeded form", () => {
-    // The bug this pins: the note used to require that *no* source had the value,
-    // and the seed always has one. So on the ordinary one-cylinder import the note
-    // never appeared - on either form - and 11.1 L went in looking like a reading,
-    // which is the ~26 %-low RMV case. The size on screen here is the seeded
-    // cylinder's rather than a default the merge invented, which is the only way
-    // this note can fire now - and it is exactly the case worth firing on.
+    // Pins that the note fires even though the seed has a value: requiring that
+    // *no* source had one silences it on the ordinary one-cylinder import, and the
+    // seeded 11.1 L goes in looking like a reading - the ~26 %-low RMV case. A
+    // seeded cylinder's size is the only way this note fires, and it is exactly
+    // the case worth firing on.
     const notes = applyParsedDiveToForm(
       seededForm(),
       parsedDive([parsed({ oxygen: 32 })]),
@@ -143,10 +142,8 @@ describe("applyParsedDiveToForm", () => {
     // The create form's actual starting state. `existingMixtureFor` won't pair a
     // one-cylinder file against a zero-cylinder form, so nothing supplies the volume
     // and it stays empty - which is what the API stores and what the dive page shows.
-    // This used to be the loudest of the notes ("Those are defaults"), because
-    // `DEFAULT_MIXTURE` put an 11.1 L on screen that no dive ever recorded; there is
-    // nothing on screen to warn about now, and the empty box says it better than a
-    // sentence 2 200 px above it could.
+    // There is nothing on screen to warn about, and the empty box says it better
+    // than a sentence 2 200 px above it could.
     let applied: DiveMixtureInput[] = [];
     const notes = applyParsedDiveToForm(
       emptyForm(),

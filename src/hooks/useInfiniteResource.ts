@@ -363,7 +363,7 @@ export function useInfiniteResource<T>(
 
   // The deps this effect last ran for. A route kept mounted has its effects destroyed
   // on hide and re-created on show, so running on creation would reload a list the
-  // diver had already scrolled six pages into - `useEffectOnChange` states the rule
+  // diver had already scrolled several pages into - `useEffectOnChange` states the rule
   // this follows, and this hook applies it by hand because what to do on the way back
   // is not "nothing".
   const ranFor = useRef<readonly [boolean, () => void] | null>(null);
@@ -388,9 +388,9 @@ export function useInfiniteResource<T>(
 
     // Back to a route that was kept mounted, holding nothing. Either the first load
     // failed or the list really is empty, and both want the same thing. It matters
-    // because the retry a diver used to get by leaving and returning is gone: the
-    // page no longer remounts, and `LoadMoreTrigger` draws no "Try again" while
-    // `totalCount` is 0, so an empty list would otherwise stay empty until a reload.
+    // because leaving and returning does not remount the page, and `LoadMoreTrigger`
+    // draws no "Try again" while `totalCount` is 0, so this is the only retry a
+    // failed first load gets - an empty list would otherwise stay empty until a reload.
     //
     // Unless one is already running. An empty list is also what the first load looks
     // like before it commits, and this effect is re-created on StrictMode's second

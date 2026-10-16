@@ -16,8 +16,8 @@ import { CheckinDetailsProvider } from "@/contexts/CheckinDetailsContext";
 
 // Returned by identity rather than rebuilt per call: the real `AuthContext` holds
 // `user` in state and keeps one identity across renders, and this page's effect is
-// keyed on the uuid. See "The new-dive render test was in a loop with itself" in
-// DECISIONS.md.
+// keyed on the uuid. See "The new-dive render test's mocks are identity-stable,
+// so the prefill effect runs once" in DECISIONS.md.
 const stable = vi.hoisted(() => ({
   guard: {
     user: { uuid: "user-1", name: "Sam Reef" },

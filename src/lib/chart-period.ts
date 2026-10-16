@@ -2,13 +2,10 @@
 // series is on screen, what it's called, which slices are worth offering, and how
 // to step between them.
 //
-// Moved out of `lib/dive-gas.ts` and the gas card's view module, unchanged, once
-// `DiveActivityCard` grew the same three scopes - the same move `niceDomain`/
-// `axisTicks` made to `lib/chart-scale.ts` before it. Nothing here is about gas,
-// and the alternative was a second copy of a fortnight of calendar edge cases in
-// `dive-activity.ts`: the two cards sit one above the other and their period
-// controls are meant to behave identically, which is a promise one shared module
-// keeps and two similar ones only make.
+// Nothing here is about gas, and the alternative is a second copy of a fortnight
+// of calendar edge cases in `dive-activity.ts`: the two cards sit one above the
+// other and their period controls are meant to behave identically, which is a
+// promise one shared module keeps and two similar ones only make.
 //
 // Everything reads and builds timestamps in UTC (`Date.UTC`, `getUTC*`) because
 // every time fed to it is a wall-clock instant - a dive's own local time encoded

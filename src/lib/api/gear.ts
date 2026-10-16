@@ -350,8 +350,8 @@ export const gearAPI = {
 /**
  * Fetches every page of a user's gear sets: the dive form's set switcher is a
  * client-side-filtered dropdown, not a list view, and sets are few enough per user
- * that this stays cheap. The gear *item* picker used to do the same and no longer
- * does - it searches server-side (see `GearItemMultiSelect`).
+ * that this stays cheap. The gear *item* picker does not - it searches server-side
+ * (see `GearItemMultiSelect`).
  */
 export async function fetchAllGearSets(
   signal?: AbortSignal,

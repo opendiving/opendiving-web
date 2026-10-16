@@ -166,8 +166,8 @@ function downstreamHeaders(upstream: Response): Headers {
 /**
  * Streams one request through to the API and its response back.
  *
- * Nothing is buffered in either direction: the 10 MB dive-file and certification-card
- * uploads go up as a stream and the export archive comes down as one. That holds because
+ * Nothing is buffered in either direction: every upload, a logbook archive included,
+ * goes up as a stream and the export archive comes down as one. That holds because
  * `src/proxy.ts`'s matcher excludes `api/` - a request that reaches middleware has its
  * body cloned into memory first, capped at Next's 10 MB default, and silently truncated
  * past it.

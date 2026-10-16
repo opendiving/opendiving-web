@@ -185,8 +185,8 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // `DiveFileImport` - see `MixtureFieldArray`'s own doc comment for why this
   // can't just be created internally by `MixtureFields`.
   mixtureFieldArray: MixtureFieldArray;
-  // The dive's existing sites, when editing. The site picker no longer loads
-  // the user's whole catalogue, so it can't look a selected uuid's name up
+  // The dive's existing sites, when editing. The site picker doesn't load the
+  // user's whole catalogue, so it can't look a selected uuid's name up
   // locally - passing the ones already on the record saves it a request each.
   knownDiveSites?: DiveSiteSummary[];
   // Same idea for gear: `Dive.gear_items` already carries what a picked row

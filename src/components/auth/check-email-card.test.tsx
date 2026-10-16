@@ -155,9 +155,9 @@ describe("CheckEmailCard", () => {
     expect(typedCode()).toBe("481");
   });
 
-  // Five wrong attempts kill the code server-side, and there is no longer a
-  // disabled button standing between a half-typed code and the API - the sixth
-  // digit is what submits, so nothing may go out before it lands.
+  // Five wrong attempts kill the code server-side, and no disabled button stands
+  // between a half-typed code and the API - the sixth digit is what submits, so
+  // nothing may go out before it lands.
   it("sends nothing until all six digits are in", async () => {
     const user = renderCard();
 

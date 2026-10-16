@@ -11,7 +11,8 @@ import type { Trip } from "@/lib/api/trips";
 // trip would survive into the *next* dive's render, and the sidebar draws it as a
 // live `<Link>` - so a step across a trip boundary would offer a click through to
 // the trip of the dive you just left, with nothing dimmed to say the page was
-// still settling. See "The step remounted the page..." in DECISIONS.md.
+// still settling. See "`dives/(detail)/layout.tsx` owns the dive fetch, so a step
+// keeps the page mounted" in DECISIONS.md.
 
 const dive = vi.hoisted(() => ({
   current: null as Dive | null,

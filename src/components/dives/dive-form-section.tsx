@@ -33,7 +33,7 @@ type DiveFormSectionProps = {
       titleAdornment?: never;
     }
   | {
-      // Takes the chevron's place, and the section no longer collapses.
+      // Takes the chevron's place, and the section doesn't collapse.
       action: ReactNode;
       // Sits right after the title - an info popover, say.
       titleAdornment?: ReactNode;

@@ -41,7 +41,7 @@ export function TripCombobox({
   // Names for every trip this picker has seen - its own search results, whatever
   // it created, and a lookup for a `value` that arrived from the form. Without
   // it the input would sit empty on a dive that already has a trip, since the
-  // browser no longer holds the full list to look the name up in.
+  // browser doesn't hold the full list to look the name up in.
   const [names, setNames] = useState<Record<string, string>>({});
   // Fired-for uuids, so a failed lookup isn't retried on every render.
   const requestedRef = useRef<Set<string>>(new Set());

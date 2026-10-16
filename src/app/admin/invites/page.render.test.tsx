@@ -165,8 +165,8 @@ describe("the invite queue", () => {
 
   // The queue accumulates as the operator scrolls, and both batch routes reject
   // more than a hundred addresses outright rather than sending part of the
-  // batch. Selection used to be held under that ceiling for free, by being
-  // cleared on every page turn; loading on scroll is what removed the page turn.
+  // batch. Loading on scroll means no page turn clears the selection, so nothing
+  // but the select-all itself holds it under that ceiling.
   describe("the hundred-address batch cap", () => {
     const many = Array.from({ length: 130 }, (_, i) =>
       request({ email: `diver${i}@example.com` }),
