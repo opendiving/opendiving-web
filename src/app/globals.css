@@ -512,21 +512,6 @@
       @apply bg-background/90 shadow-[inset_0_1px_0_hsl(var(--border))] backdrop-blur;
     }
 
-    /* Firefox on iOS shows the page below the layout viewport's foot while its
-       toolbar is scrolled away, so the surface runs on past the row's foot -
-       out of sight everywhere else. Inherited, so it fades with the row's. */
-    [data-dive-form-actions]::after {
-      content: "";
-      position: absolute;
-      inset-inline: 0;
-      top: 100%;
-      height: 6rem;
-      pointer-events: none;
-      background-color: inherit;
-      -webkit-backdrop-filter: inherit;
-      backdrop-filter: inherit;
-    }
-
     /* The page's bottom scroll padding while that row is pinned: a field focused
        below it - the first refused one after a failed save - stops above the
        row rather than behind it. The row's height: `pt-3`, a default button's
