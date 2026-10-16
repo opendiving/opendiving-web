@@ -30,18 +30,6 @@ import {
 /** One cylinder as the form holds it, read and written by key rather than by shape. */
 type MixtureRow = Record<string, unknown>;
 
-/**
- * How long a write waits before it costs a request. Long enough that the hidden set
- * and the preset pick written together - a menu pick, Save preset - go out as one
- * `PATCH`, short enough that the save has landed by the time a diver could reach
- * another device.
- *
- * Exported for the test that drives this window on a fake clock: it has to step past
- * it exactly, and a number copied into the test file would go on passing against a
- * window this one no longer has.
- */
-export const SAVE_DEBOUNCE_MS = 400;
-
 /** The keys whose effective visibility governs what the cylinder list may hold. */
 const GAS_KEYS: readonly DiveFormFieldKey[] = [
   "mixtures",
@@ -71,7 +59,7 @@ export interface DiveFormVisibility {
   /**
    * Replaces the stored hidden set: the Configure dialog's switches on Apply or Save
    * preset, or a preset applied from the Fields menu. Applies to the form at once and
-   * persists debounced.
+   * persists at the end of the task, with the pick if one is written alongside.
    *
    * `turnedOff` names the keys the diver switched off, and only those leave the
    * revealed set. A revealed key is in the stored set already, so the set alone cannot
@@ -170,9 +158,9 @@ export interface UseDiveFormVisibilityOptions<
  *
  * **The stored set comes from `useAuth().user`**, so it is present at first render and
  * the first paint already omits the hidden fields rather than painting them and taking
- * them away. A toggle applies immediately and is persisted debounced through
- * `PATCH /user`, then folded into the auth context with `mergeUser` - never with
- * `refreshUser`, which is a round trip this caller does not need.
+ * them away. A toggle applies immediately and is persisted through `PATCH /user`,
+ * then folded into the auth context with `mergeUser` - never with `refreshUser`,
+ * which is a round trip this caller does not need.
  *
  * **"Untouched" is this layer's own record, never react-hook-form's dirty state.**
  * The layer remembers the last value it wrote for each key; a key still holding that
@@ -299,17 +287,12 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     UpdateProfileData,
     "dive_form_hidden_fields" | "dive_form_preset_uuid"
   > | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   const flush = useCallback(async () => {
     const next = pendingRef.current;
     if (!next) return;
     pendingRef.current = null;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
 
     if (isMountedRef.current) setIsSaving(true);
     try {
@@ -337,19 +320,12 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     }
   }, []);
 
-  const flushRef = useRef(flush);
-  useEffect(() => {
-    flushRef.current = flush;
-  }, [flush]);
-
   useEffect(() => {
     isMountedRef.current = true;
+    // A save made just before leaving still goes out: its microtask runs after the
+    // component has gone.
     return () => {
       isMountedRef.current = false;
-      // A diver who ticks a box and leaves immediately still saved it: the request
-      // outlives the component, and the merge into the context is a no-op by then.
-      if (timerRef.current) clearTimeout(timerRef.current);
-      void flushRef.current();
     };
   }, []);
 
@@ -455,8 +431,8 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     [hiddenSet, revealed],
   );
 
-  // Folds a change into the pending save and restarts the debounce, so a preset applied
-  // as a set and a pick goes out as one request.
+  // Folds a change into the pending save, flushed once the current task ends, so a set
+  // and the pick written with it - a menu pick, Save preset - go out as one request.
   const schedule = useCallback(
     (
       change: Pick<
@@ -464,14 +440,11 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
         "dive_form_hidden_fields" | "dive_form_preset_uuid"
       >,
     ) => {
+      const queued = pendingRef.current !== null;
       pendingRef.current = { ...pendingRef.current, ...change };
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(
-        () => void flushRef.current(),
-        SAVE_DEBOUNCE_MS,
-      );
+      if (!queued) queueMicrotask(() => void flush());
     },
-    [],
+    [flush],
   );
 
   const setHidden = useCallback(

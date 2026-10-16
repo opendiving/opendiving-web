@@ -33,7 +33,6 @@ import {
   DIVE_FORM_ALWAYS_ON_FIELDS,
   DIVE_FORM_FIELDS,
 } from "@/lib/dive-form-fields";
-import { SAVE_DEBOUNCE_MS } from "@/hooks/useDiveFormVisibility";
 import { clearEntryUnits } from "@/lib/entry-units";
 
 // Whole-page flows run close to both defaults on CI, where coverage instruments
@@ -1533,48 +1532,6 @@ describe("persisting a toggle", () => {
       ),
     );
   });
-
-  it("holds the save for the debounce window", async () => {
-    render(<NewDivePage />);
-    await screen.findByLabelText(/dive time/i);
-
-    await openFieldsPanel();
-
-    // The one test here whose subject *is* the clock, so it is the one that cannot be
-    // left to the runner's: on the wall clock a loaded machine can let the 400 ms
-    // window elapse before the "not yet" assertion runs. The switches reach the hook
-    // as one `setHidden` on Apply, so what is under test is the delay itself - nothing
-    // on the wire inside the window, one `PATCH` once it has passed.
-    //
-    // So the clicks are fired synchronously on a frozen clock: `fireEvent` rather than
-    // `userEvent` because a `setup()` user routes every action through Testing
-    // Library's `asyncWrapper`, which drains the microtask queue behind a
-    // `setTimeout(0)` it only advances when Jest is the runner - on Vitest's clock
-    // that never resolves and the first click hangs until the test times out.
-    vi.useFakeTimers();
-    try {
-      fireEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
-      fireEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
-      fireEvent.click(screen.getByRole("switch", { name: /^visibility$/i }));
-      // The switches are a draft until Apply.
-      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-
-      // The window has not elapsed, so nothing is on the wire yet - whatever the
-      // machine was doing.
-      expect(authAPI.updateProfile).not.toHaveBeenCalled();
-
-      await act(async () => {
-        vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
-      });
-    } finally {
-      vi.useRealTimers();
-    }
-
-    expect(authAPI.updateProfile).toHaveBeenCalledTimes(1);
-    expect(authAPI.updateProfile).toHaveBeenCalledWith({
-      dive_form_hidden_fields: ["visibility", "altitude", "notes"],
-    });
-  });
 });
 
 describe("a course handed in the URL", () => {
@@ -2677,6 +2634,7 @@ describe("the preset list", () => {
         dive_form_preset_uuid: RECREATIONAL.uuid,
       }),
     );
+    expect(authAPI.updateProfile).toHaveBeenCalledTimes(1);
     expect(
       screen.queryByRole("spinbutton", { name: /^altitude/i }),
     ).not.toBeInTheDocument();
