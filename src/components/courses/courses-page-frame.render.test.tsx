@@ -5,10 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { CoursesPageFrame } from "./courses-page-frame";
 import { NO_COURSE_FILTERS } from "./courses-filters";
 
-// The row is behind a button now, so what these pin is that it is reachable,
-// that shutting it takes the search and the filters with it rather than
-// leaving a folded row narrowing the list unannounced, and that a list with
-// nothing in it to narrow draws neither the button nor the count.
+// Two buttons fold the panel, and which one shows is a breakpoint jsdom does
+// not apply: under `sm` the magnifier folds the box and the filters together,
+// from `sm` up the box stands in the header and the funnel folds the filters
+// alone. Each shuts what it opened, emptying it rather than leaving a folded
+// row narrowing the list unannounced, and a list with nothing in it to narrow
+// draws neither button nor the count.
 
 const frame = (props: Partial<Parameters<typeof CoursesPageFrame>[0]> = {}) =>
   render(
@@ -21,25 +23,55 @@ const frame = (props: Partial<Parameters<typeof CoursesPageFrame>[0]> = {}) =>
     />,
   );
 
-// One button under two names: it opens the panel, and once open it is the
-// control that shuts it and empties what is in it.
+// Each button goes under two names: it opens the panel, and once open it is
+// the control that shuts it and empties what is in it.
+const funnel = () =>
+  screen.getByRole("button", { name: /^(Filter courses|Close filters)/ });
+
 const toggle = () =>
   screen.getByRole("button", {
     name: /^(Search and filter courses|Close search and filters)/,
   });
 
 describe("CoursesPageFrame", () => {
-  it("keeps the search and filters shut until the button is pressed", async () => {
+  it("keeps the search and filters shut until the magnifier is pressed", async () => {
     frame();
 
-    expect(screen.getByLabelText("Search courses by name")).not.toBeVisible();
+    expect(screen.getByLabelText("Agency")).not.toBeVisible();
     expect(toggle()).toHaveAttribute("aria-expanded", "false");
+    expect(toggle()).toHaveAttribute(
+      "aria-controls",
+      "course-search course-filters",
+    );
 
     await userEvent.click(toggle());
 
-    expect(screen.getByLabelText("Search courses by name")).toBeVisible();
     expect(screen.getByLabelText("Agency")).toBeVisible();
     expect(toggle()).toHaveAttribute("aria-expanded", "true");
+    expect(funnel()).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("opens the filters alone on the funnel, beside a box it leaves alone", async () => {
+    const onSearchChange = vi.fn();
+    const onFiltersChange = vi.fn();
+    frame({
+      search: "nitrox",
+      filters: { ...NO_COURSE_FILTERS, agency: "padi" },
+      onSearchChange,
+      onFiltersChange,
+    });
+
+    await userEvent.click(funnel());
+    expect(screen.getByLabelText("Agency")).toBeVisible();
+    expect(screen.getByLabelText("Search courses by name")).not.toHaveFocus();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close filters, clearing them" }),
+    );
+
+    expect(screen.getByLabelText("Agency")).not.toBeVisible();
+    expect(onFiltersChange).toHaveBeenLastCalledWith(NO_COURSE_FILTERS);
+    expect(onSearchChange).not.toHaveBeenCalled();
   });
 
   it("shuts again on a second press", async () => {
@@ -99,10 +131,13 @@ describe("CoursesPageFrame", () => {
   });
 
   it("says what it opens while it is shut", () => {
-    frame({ search: "nitrox" });
+    frame();
 
     expect(
       screen.getByRole("button", { name: "Search and filter courses" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Filter courses" }),
     ).toBeInTheDocument();
   });
 

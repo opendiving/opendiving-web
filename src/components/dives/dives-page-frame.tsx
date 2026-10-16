@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode, type Ref } from "react";
 import Link from "next/link";
-import { ChevronDown, CloudUpload, Funnel, Plus, X } from "lucide-react";
+import { CloudUpload, Plus } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -16,7 +16,7 @@ import {
   useIsEmptyList,
 } from "@/components/ui/list-card-header";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { ListFiltersButton } from "@/components/ui/list-filters-button";
 import {
   DivesFilters,
   diveFiltersChanged,
@@ -134,42 +134,17 @@ export function DivesPageFrame({
               total
               isNarrowed={isCountNarrowed}
             />
-            {/* The courses list's panel, and for its reason: shutting it takes the
-                filters with it, so a folded row never narrows the list unseen, and
-                the button's name says so while there is something to lose - the
-                sort included, which a shut panel would otherwise keep applying. */}
-            <IconTooltip
-              label={
-                !isPanelOpen
-                  ? "Filter and sort dives"
-                  : diveFiltersChanged(filters)
-                    ? "Close filters, clearing them"
-                    : "Close filters"
-              }
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                aria-expanded={isPanelOpen}
-                aria-controls="dive-filters"
-                onClick={() => {
-                  if (isPanelOpen) {
-                    onFiltersChange(NO_DIVE_FILTERS);
-                  } else {
-                    onFiltersOpened();
-                  }
-                  setPanelOpen((open) => !open);
-                }}
-              >
-                <Funnel className="h-4 w-4" />
-                {isPanelOpen ? (
-                  <X className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </IconTooltip>
+            <ListFiltersButton
+              controls="dive-filters"
+              isOpen={isPanelOpen}
+              onOpenChange={(open) => {
+                if (open) onFiltersOpened();
+                setPanelOpen(open);
+              }}
+              onClear={() => onFiltersChange(NO_DIVE_FILTERS)}
+              isChanged={diveFiltersChanged(filters)}
+              label="Filter and sort dives"
+            />
           </ListCardHeader>
           {/* Hidden rather than unmounted, so `aria-controls` points at
               something, and gone with the button that opens it for a list with

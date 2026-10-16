@@ -5,10 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { SitesPageFrame } from "./sites-page-frame";
 import { NO_SITE_FILTERS } from "./sites-filters";
 
-// The search sits behind the panel button with the tag and the order: it is
-// reachable, shutting the panel empties all three, a list searched down to
-// nothing is not an empty one, and a list that is empty draws neither the count
-// nor the button.
+// Under `sm` the search sits behind the magnifier with the tag and the order,
+// and shutting it empties all three; from `sm` up the box stands in the header
+// and the funnel folds the tag and the order alone. jsdom applies neither
+// breakpoint, so both buttons are here. A list searched down to nothing is not
+// an empty one, and a list that is empty draws neither the count nor a button.
 
 const frame = (props: Partial<Parameters<typeof SitesPageFrame>[0]> = {}) =>
   render(
@@ -27,8 +28,13 @@ const header = () =>
 
 const SEARCH = "Search dive sites by name or location";
 
-// One button under two names: it opens the panel, and once open it is the
-// control that shuts it and empties what is in it.
+// Each button goes under two names: it opens the panel, and once open it is
+// the control that shuts it and empties what is in it.
+const funnel = () =>
+  screen.getByRole("button", {
+    name: /^(Filter and sort dive sites|Close filters)/,
+  });
+
 const toggle = () =>
   screen.getByRole("button", {
     name: /^(Search, filter and sort dive sites|Close search and filters)/,
@@ -56,18 +62,19 @@ describe("SitesPageFrame", () => {
     expect(list.querySelectorAll("li[aria-hidden]")).toHaveLength(4);
   });
 
-  it("keeps the search shut behind the button, beside the count", async () => {
+  it("keeps the search and filters shut behind the button, beside the count", async () => {
     frame({ totalCount: 12, cards: [<li key="t" />] });
 
     expect(
       within(header()).getByText("12 total dive sites"),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(SEARCH)).not.toBeVisible();
+    expect(within(header()).getByLabelText(SEARCH)).toBeInTheDocument();
+    expect(screen.getByLabelText("Tag")).not.toBeVisible();
     expect(toggle()).toHaveAttribute("aria-expanded", "false");
 
     await userEvent.click(toggle());
 
-    expect(screen.getByLabelText(SEARCH)).toBeVisible();
+    expect(screen.getByLabelText("Tag")).toBeVisible();
     expect(toggle()).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -260,6 +267,30 @@ describe("SitesPageFrame filters", () => {
     expect(
       screen.getByRole("button", { name: "Close search and filters" }),
     ).toBeInTheDocument();
+  });
+
+  it("shuts the tag and the order behind the funnel, keeping the search", async () => {
+    const onSearchChange = vi.fn();
+    const onFiltersChange = vi.fn();
+    frame({
+      cards: [<li key="t" />],
+      search: "dahab",
+      filters: { tagUuid: "tag-wreck", sort: "dive_count" },
+      onSearchChange,
+      onFiltersChange,
+    });
+
+    await userEvent.click(funnel());
+    expect(screen.getByLabelText("Tag")).toBeVisible();
+    expect(screen.getByLabelText(SEARCH)).not.toHaveFocus();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close filters, clearing them" }),
+    );
+
+    expect(screen.getByLabelText("Tag")).not.toBeVisible();
+    expect(onFiltersChange).toHaveBeenLastCalledWith(NO_SITE_FILTERS);
+    expect(onSearchChange).not.toHaveBeenCalled();
   });
 
   it("says a list filtered by a tag matched nothing, and offers nothing to add", () => {

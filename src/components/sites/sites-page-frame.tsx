@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Plus, Search, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Plus } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -15,8 +15,7 @@ import {
 } from "@/components/ui/list-card-header";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
-import { IconTooltip } from "@/components/ui/tooltip";
-import { useEffectOnChange } from "@/hooks/useEffectOnChange";
+import { ListSearch } from "@/components/ui/list-search";
 import {
   NO_SITE_FILTERS,
   SitesFilters,
@@ -92,16 +91,6 @@ export function SitesPageFrame({
     count: cards.length,
     isNarrowed: isSearching || search.length > 0 || isFiltered,
   });
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  // The cursor goes in the box as the panel opens, for the course list's
-  // reasons: in an effect, since the box has no layout until the panel's
-  // `hidden` lifts, and only on a change, so a route revisited with the panel
-  // open does not pull up a phone's keyboard unasked.
-  useEffectOnChange(() => {
-    if (isPanelOpen) searchRef.current?.focus();
-  }, [isPanelOpen]);
-
   return (
     <div>
       <IndexHero
@@ -125,42 +114,25 @@ export function SitesPageFrame({
               total
               isNarrowed={isCountNarrowed}
             />
-            {/* The course list's panel, and for its reason: shutting it takes
-                the search, the tag and the order with it, so a folded row never
-                narrows or reorders the list unseen. */}
-            <IconTooltip
-              label={
-                !isPanelOpen
-                  ? "Search, filter and sort dive sites"
-                  : search.length > 0 || siteFiltersChanged(filters)
-                    ? "Close search and filters, clearing them"
-                    : "Close search and filters"
-              }
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                aria-expanded={isPanelOpen}
-                aria-controls="site-filters"
-                onClick={() => {
-                  if (isPanelOpen) {
-                    onSearchChange("");
-                    onFiltersChange(NO_SITE_FILTERS);
-                  } else {
-                    onFiltersOpened();
-                  }
-                  setPanelOpen((open) => !open);
-                }}
-              >
-                <Search className="h-4 w-4" />
-                {isPanelOpen ? (
-                  <X className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </IconTooltip>
+            <ListSearch
+              id="dive-site-search"
+              label="Search dive sites by name or location"
+              toggleLabel="Search, filter and sort dive sites"
+              placeholder="Search by name or location..."
+              value={search}
+              onChange={onSearchChange}
+              filters={{
+                controls: "site-filters",
+                isOpen: isPanelOpen,
+                onOpenChange: (open) => {
+                  if (open) onFiltersOpened();
+                  setPanelOpen(open);
+                },
+                onClear: () => onFiltersChange(NO_SITE_FILTERS),
+                isChanged: siteFiltersChanged(filters),
+                label: "Filter and sort dive sites",
+              }}
+            />
           </ListCardHeader>
           {/* Hidden rather than unmounted, so `aria-controls` points at
               something, and gone with the button that opens it for a list with
@@ -168,12 +140,9 @@ export function SitesPageFrame({
           {!isEmptyList && (
             <CardContent id="site-filters" hidden={!isPanelOpen}>
               <SitesFilters
-                search={search}
-                onSearchChange={onSearchChange}
                 filters={filters}
                 onFiltersChange={onFiltersChange}
                 tags={tags}
-                searchRef={searchRef}
               />
             </CardContent>
           )}

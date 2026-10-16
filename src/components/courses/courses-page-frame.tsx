@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
-import { ChevronDown, GraduationCap, Plus, Search, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { GraduationCap, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,7 @@ import {
   ListCardHeader,
   useIsEmptyList,
 } from "@/components/ui/list-card-header";
-import { useEffectOnChange } from "@/hooks/useEffectOnChange";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
   CoursesFilters,
@@ -102,18 +101,6 @@ export function CoursesPageFrame({
     count: rows.length,
     isNarrowed,
   });
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  // Typing is what the diver came for, and pressing a magnifier to then reach
-  // for the box is a click nobody wanted. In an effect rather than at the press,
-  // because the panel is `hidden` until this render commits and a box with no
-  // layout box cannot take focus - and `useEffectOnChange`, because coming back
-  // to a route left with the panel open re-creates the effect without anybody
-  // having pressed anything, and a phone answers that with its keyboard.
-  useEffectOnChange(() => {
-    if (isPanelOpen) searchRef.current?.focus();
-  }, [isPanelOpen]);
-
   return (
     <div>
       <IndexHero
@@ -137,46 +124,25 @@ export function CoursesPageFrame({
               total
               isNarrowed={isCountNarrowed}
             />
-            {/* Shutting the panel takes the search and the filters with it, so
-                the button says so once it is open - a collapsed row that
-                silently kept narrowing the list would be the one failure this
-                costs, and clearing is what rules it out rather than a dot. */}
-            <IconTooltip
-              label={
-                !isPanelOpen
-                  ? "Search and filter courses"
-                  : isNarrowed
-                    ? "Close search and filters, clearing them"
-                    : "Close search and filters"
-              }
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                aria-expanded={isPanelOpen}
-                aria-controls="course-filters"
-                onClick={() => {
-                  if (isPanelOpen) {
-                    onSearchChange("");
-                    onFiltersChange(NO_COURSE_FILTERS);
-                  } else {
-                    onFiltersOpened();
-                  }
-                  setPanelOpen((open) => !open);
-                }}
-              >
-                <Search className="h-4 w-4" />
-                {/* Which way the panel will move, which the magnifier alone
-                    cannot say: a chevron pointing down at the row it is about to
-                    open, an X because shutting it is also what empties it. */}
-                {isPanelOpen ? (
-                  <X className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </IconTooltip>
+            <ListSearch
+              id="course-search"
+              label="Search courses by name"
+              toggleLabel="Search and filter courses"
+              placeholder="Search by name..."
+              value={search}
+              onChange={onSearchChange}
+              filters={{
+                controls: "course-filters",
+                isOpen: isPanelOpen,
+                onOpenChange: (open) => {
+                  if (open) onFiltersOpened();
+                  setPanelOpen(open);
+                },
+                onClear: () => onFiltersChange(NO_COURSE_FILTERS),
+                isChanged: hasCourseFilters(filters),
+                label: "Filter courses",
+              }}
+            />
           </ListCardHeader>
           <CardContent>
             {/* Hidden rather than unmounted, so `aria-controls` points at
@@ -186,13 +152,10 @@ export function CoursesPageFrame({
             {!isEmptyList && (
               <div id="course-filters" hidden={!isPanelOpen}>
                 <CoursesFilters
-                  search={search}
-                  onSearchChange={onSearchChange}
                   filters={filters}
                   onFiltersChange={onFiltersChange}
                   agencies={agencies}
                   statuses={statuses}
-                  searchRef={searchRef}
                 />
               </div>
             )}

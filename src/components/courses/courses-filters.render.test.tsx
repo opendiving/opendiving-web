@@ -23,21 +23,16 @@ function Row({
 }: {
   initial?: CourseListFilters;
 } & Pick<CoursesFiltersProps, "agencies" | "statuses">) {
-  const [search, setSearch] = useState("");
   const [filters, setFilters] = useState(initial);
 
   return (
     <>
       <CoursesFilters
-        search={search}
-        onSearchChange={setSearch}
         filters={filters}
         onFiltersChange={setFilters}
         {...options}
       />
-      <output data-testid="asked">
-        {JSON.stringify({ search, ...filters })}
-      </output>
+      <output data-testid="asked">{JSON.stringify(filters)}</output>
     </>
   );
 }
@@ -47,9 +42,6 @@ const asked = () =>
     string,
     string
   >;
-
-const clearSearchButton = () =>
-  screen.queryByRole("button", { name: "Clear search" });
 
 const optionsOf = (label: string) =>
   [...screen.getByLabelText<HTMLSelectElement>(label).options].map(
@@ -62,7 +54,6 @@ describe("CoursesFilters", () => {
   it("opens on no filter at all, with every control reachable by its label", () => {
     render(<Row />);
 
-    expect(screen.getByLabelText("Search courses by name")).toHaveValue("");
     expect(screen.getByLabelText("From")).toHaveValue("");
     expect(screen.getByLabelText("To")).toHaveValue("");
     expect(screen.getByLabelText("Agency")).toHaveValue("");
@@ -120,17 +111,6 @@ describe("CoursesFilters", () => {
     });
   });
 
-  it("searches and filters together rather than one replacing the other", async () => {
-    render(<Row initial={{ ...NO_COURSE_FILTERS, agency: "padi" }} />);
-
-    await userEvent.type(
-      screen.getByLabelText("Search courses by name"),
-      "nitrox",
-    );
-
-    expect(asked()).toMatchObject({ search: "nitrox", agency: "padi" });
-  });
-
   // Clearing the lot in one go belongs to the button that shuts the panel
   // (`CoursesPageFrame`), so the row itself offers only per-control clears.
   it("carries no control that clears the row", () => {
@@ -170,38 +150,5 @@ describe("CoursesFilters", () => {
 
     expect(screen.getByLabelText("Agency")).toHaveValue("padi");
     expect(agencyOptions()).toEqual(["Any agency", "SDI", "PADI"]);
-  });
-
-  it("offers nothing to clear the search with until something is typed", async () => {
-    render(<Row />);
-
-    expect(clearSearchButton()).not.toBeInTheDocument();
-
-    await userEvent.type(
-      screen.getByLabelText("Search courses by name"),
-      "nitrox",
-    );
-
-    expect(clearSearchButton()).toBeInTheDocument();
-  });
-
-  // The cursor goes back in the box rather than onto a control that has just
-  // disappeared, since clearing a search is usually the start of another one.
-  it("clears the search term, leaves the filters, and keeps the cursor", async () => {
-    render(<Row initial={{ ...NO_COURSE_FILTERS, agency: "padi" }} />);
-    await userEvent.type(
-      screen.getByLabelText("Search courses by name"),
-      "nitrox",
-    );
-
-    await userEvent.click(clearSearchButton()!);
-
-    expect(asked()).toEqual({
-      search: "",
-      ...NO_COURSE_FILTERS,
-      agency: "padi",
-    });
-    expect(screen.getByLabelText("Search courses by name")).toHaveFocus();
-    expect(clearSearchButton()).not.toBeInTheDocument();
   });
 });
