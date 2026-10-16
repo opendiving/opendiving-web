@@ -1,7 +1,5 @@
 "use client";
 
-import { type RefObject } from "react";
-
 import {
   CERTIFICATION_AGENCIES,
   certificationAgencyLabel,
@@ -12,7 +10,6 @@ import { courseStatusLabel } from "@/lib/course";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { SearchInput } from "@/components/ui/search-input";
 
 /**
  * What narrows the course list, as the controls hold it. `""` means "not
@@ -44,9 +41,6 @@ export function hasCourseFilters(filters: CourseListFilters): boolean {
 }
 
 export interface CoursesFiltersProps {
-  /** What the search box holds, which is not yet what has been asked for. */
-  search: string;
-  onSearchChange: (value: string) => void;
   filters: CourseListFilters;
   onFiltersChange: (filters: CourseListFilters) => void;
   /**
@@ -57,8 +51,6 @@ export interface CoursesFiltersProps {
    */
   agencies?: readonly CertificationAgency[];
   statuses?: readonly CourseStatus[];
-  /** The search box itself, for a caller that puts the cursor in it. */
-  searchRef?: RefObject<HTMLInputElement | null>;
 }
 
 // Keeps whatever is picked on the list even once it is no longer in use - the
@@ -73,17 +65,14 @@ function withPicked<T extends string>(
   return options.includes(picked as T) ? options : [...options, picked as T];
 }
 
-// Search and the four filters beside it, above the course table. They narrow
-// the same query rather than competing: whatever is set here is AND-ed by the
-// API, so a name and a status answer the courses matching both.
+// The four filters above the course table. They narrow the same query as the
+// header's search rather than competing: the API AND-s them, so a name and a
+// status answer the courses matching both.
 export function CoursesFilters({
-  search,
-  onSearchChange,
   filters,
   onFiltersChange,
   agencies = CERTIFICATION_AGENCIES,
   statuses = COURSE_STATUSES,
-  searchRef,
 }: CoursesFiltersProps) {
   const set = <K extends keyof CourseListFilters>(
     key: K,
@@ -91,22 +80,8 @@ export function CoursesFilters({
   ) => onFiltersChange({ ...filters, [key]: value });
 
   return (
-    // One rule for the five controls, stepping down a breakpoint at a time:
-    // a row of five on a desktop, then the search on its own line above the
-    // four, then two pairs under it, then one per line on a phone. The search
-    // takes a double track on the widest row: a course name is longer than a
-    // date and there is room for it there.
-    <div className="mb-4 grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[2fr_repeat(4,1fr)]">
-      <SearchInput
-        id="course-search"
-        label="Search courses by name"
-        placeholder="Search by name..."
-        value={search}
-        onChange={onSearchChange}
-        inputRef={searchRef}
-        className="sm:col-span-2 lg:col-span-4 xl:col-span-1"
-      />
-
+    // A row of four on a desktop, two pairs below `lg`, one per line on a phone.
+    <div className="mb-4 grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <div className="space-y-2">
         <Label htmlFor="course-date-from">From</Label>
         <DatePicker
