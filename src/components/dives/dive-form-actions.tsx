@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Loader2, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FormApiError } from "@/components/ui/form-api-error";
+import { cn } from "@/lib/utils";
 
 export interface DiveFormActionsProps {
   cancelHref: string;
@@ -18,9 +21,15 @@ export interface DiveFormActionsProps {
   // what it is waiting for rather than claiming to be saving.
   isBusy?: boolean;
   busyLabel?: string;
+  // The form-level refusal, shown above the buttons wherever the row is - pinned
+  // to the foot of the screen or in its place at the end of the form.
+  error?: string | null;
 }
 
 // Shared "Cancel" / "Save" button row used by both the create and edit dive forms.
+// It sticks to the foot of the screen while the form runs on below it, and settles
+// at the form's end. Stuck, it covers whatever scrolls under it, so only then does it
+// take a background and a rule.
 export function DiveFormActions({
   cancelHref,
   mode,
@@ -29,30 +38,68 @@ export function DiveFormActions({
   submitLabel,
   isBusy = false,
   busyLabel,
+  error = null,
 }: DiveFormActionsProps) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+
+  // A root a pixel short at the foot: stuck, the row's bottom edge is the
+  // viewport's, so its last pixel falls outside and it is not wholly in view. In
+  // its place at the form's end it is, and scrolled off the top it is not either,
+  // which is what the side tells apart.
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const observer = new IntersectionObserver(
+      ([entry]) =>
+        setStuck(
+          entry.intersectionRatio < 1 &&
+            entry.boundingClientRect.bottom > (entry.rootBounds?.bottom ?? 0),
+        ),
+      { rootMargin: "0px 0px -1px 0px", threshold: 1 },
+    );
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, []);
+
   const SubmitIcon = mode === "create" ? Plus : Save;
   // A disabled submit button is also what stops implicit submission (Enter in a
   // text field), which is the other way a save could outrun a pending resolve.
   const waiting = isSubmitting || isBusy;
   const waitingLabel = isSubmitting ? submittingLabel : busyLabel;
   return (
-    <div className="flex justify-end gap-4 pt-4">
-      <Button type="button" variant="outline" asChild>
-        <Link href={cancelHref}>Cancel</Link>
-      </Button>
-      <Button type="submit" disabled={waiting}>
-        {waiting && waitingLabel ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            {waitingLabel}
-          </>
-        ) : (
-          <>
-            <SubmitIcon className="h-4 w-4 mr-2" />
-            {submitLabel}
-          </>
-        )}
-      </Button>
+    // `data-stuck` is what `globals.css` keys the page's bottom scroll padding on.
+    <div
+      ref={rowRef}
+      data-dive-form-actions=""
+      data-stuck={stuck ? "" : undefined}
+      className={cn(
+        "sticky bottom-0 z-20 space-y-2 py-3",
+        // A shadow rather than a border, as on a stuck section heading: the rule
+        // takes no height, so nothing moves as the row sticks.
+        stuck &&
+          "bg-background/90 shadow-[inset_0_1px_0_hsl(var(--border))] backdrop-blur",
+      )}
+    >
+      <FormApiError error={error} />
+      <div className="flex justify-end gap-4">
+        <Button type="button" variant="outline" asChild>
+          <Link href={cancelHref}>Cancel</Link>
+        </Button>
+        <Button type="submit" disabled={waiting}>
+          {waiting && waitingLabel ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              {waitingLabel}
+            </>
+          ) : (
+            <>
+              <SubmitIcon className="h-4 w-4 mr-2" />
+              {submitLabel}
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

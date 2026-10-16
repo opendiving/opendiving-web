@@ -428,6 +428,19 @@
     scroll-padding-top: var(--header-height);
   }
 
+  /* The bottom's counterpart, while the dive form's Cancel/Save row is pinned to
+     the foot of the screen: a field focused below it - the first refused one
+     after a failed save - stops above the row rather than behind it. The row's
+     height: `py-3` twice and a default button's `h-10`, 44px on touch. Unlike at
+     the top, overshooting costs nothing here. The refusal line the row can carry
+     is not counted: a resolver's refusal, the usual one, never shows there. */
+  html:has([data-dive-form-actions][data-stuck]) {
+    scroll-padding-bottom: 4rem;
+    @variant touch {
+      scroll-padding-bottom: 4.25rem;
+    }
+  }
+
   body {
     @apply bg-background text-foreground;
   }

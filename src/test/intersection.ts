@@ -110,3 +110,26 @@ export function scrollPast(within?: Element) {
     );
   }
 }
+
+/**
+ * Report every element currently under observation as held at the foot of the
+ * viewport by `position: sticky` - its last pixel past a root shrunk by one at
+ * the bottom, so not wholly in view, and below rather than above. Wrap it in
+ * `act()`, as `reveal`.
+ */
+export function pinToBottom() {
+  for (const { element, callback, observer } of [...registrations]) {
+    callback(
+      [
+        {
+          isIntersecting: true,
+          intersectionRatio: 0.98,
+          target: element,
+          boundingClientRect: { bottom: 800 } as DOMRectReadOnly,
+          rootBounds: { bottom: 799 } as DOMRectReadOnly,
+        } as IntersectionObserverEntry,
+      ],
+      observer,
+    );
+  }
+}
