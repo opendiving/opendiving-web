@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save } from "lucide-react";
 import {
   gearServiceRecordSchema,
   type GearServiceRecordInput,
@@ -42,6 +40,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
@@ -83,8 +82,10 @@ export function GearServiceRecordDialog({
   record,
   onSaved,
 }: GearServiceRecordDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useDialogApiError(open);
+  const [apiError, setApiError, handleOpenChange] = useDialogApiError(
+    open,
+    onOpenChange,
+  );
   const isEdit = !!record;
 
   const form = useForm<GearServiceRecordInput>({
@@ -117,16 +118,9 @@ export function GearServiceRecordDialog({
     });
   }, [open, record, schedule, reset]);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setApiError(null);
-    onOpenChange(next);
-  };
-
   const onSubmit = async (data: GearServiceRecordInput) => {
     setApiError(null);
     try {
-      setIsSubmitting(true);
-
       if (record) {
         await gearServiceAPI.updateRecord(record.uuid, {
           kind: data.kind,
@@ -160,8 +154,6 @@ export function GearServiceRecordDialog({
           `Failed to ${isEdit ? "update" : "log"} service. Please try again.`,
         ),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -288,24 +280,11 @@ export function GearServiceRecordDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEdit ? "Saving..." : "Logging..."}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save changes
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Log service
-                  </>
-                )}
-              </Button>
+              <DialogSubmitButton
+                isEdit={isEdit}
+                createLabel="Log service"
+                creatingLabel="Logging..."
+              />
             </DialogFooter>
           </form>
         </Form>

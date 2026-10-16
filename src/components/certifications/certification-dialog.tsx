@@ -2,11 +2,10 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
-import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import {
   certificationSchema,
   CertificationInput,
@@ -16,10 +15,8 @@ import {
   Certification,
   CertificationAgency,
   CertificationSide,
-  CERTIFICATION_AGENCIES,
   CERTIFICATION_SIDE_LABELS,
   DEFAULT_CERTIFICATION_AGENCY,
-  certificationAgencyLabel,
 } from "@/lib/api/certifications";
 import {
   applyCertificationCardEdits,
@@ -45,14 +42,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { CourseCombobox } from "@/components/courses/course-combobox";
-import { ContactCombobox } from "@/components/contacts/contact-combobox";
-import type { ContactRole } from "@/lib/api/contacts";
-import { PersonCombobox } from "@/components/people/person-combobox";
+import { TrainingFields } from "@/components/courses/training-fields";
 import { splitCourseInstructor } from "@/lib/people";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import { useToast } from "@/components/ui/use-toast";
 import { CertificationCardFiles } from "./certification-card-files";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
@@ -104,10 +99,6 @@ function courseFieldValues(course: Course): CourseFieldValues {
 // later would otherwise fire on a form nobody typed into.
 const AUTOFILL = { shouldDirty: false } as const;
 
-// What a contact created from a certification starts as: whoever ran the course
-// the card came out of.
-const SCHOOL: readonly ContactRole[] = ["school"];
-
 interface CertificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -138,8 +129,10 @@ export function CertificationDialog({
   onSaved,
 }: CertificationDialogProps) {
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useDialogApiError(open);
+  const [apiError, setApiError, handleOpenChange] = useDialogApiError(
+    open,
+    onOpenChange,
+  );
   // What saving will do to each side's stored image, collected but not sent - see
   // `CertificationCardFiles`.
   const [cardEdits, setCardEdits] = useState<CertificationCardEdits>({});
@@ -162,10 +155,6 @@ export function CertificationDialog({
     },
   });
 
-  // `agency_other` is only shown - and only accepted by the API - for "other".
-  // `useWatch` rather than `form.watch()`: the latter returns a fresh function
-  // every render that can't be memoized, which the react-hooks lint rules reject.
-  const agency = useWatch({ control: form.control, name: "agency" });
   // The pickers rank by last use on a dive at or before the card's date.
   const until =
     useWatch({ control: form.control, name: "certified_on" }) || undefined;
@@ -287,11 +276,6 @@ export function CertificationDialog({
     [isEdit, getValues, setValue],
   );
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setApiError(null);
-    onOpenChange(next);
-  };
-
   // The card images, once the details are safely stored. This is the step the API
   // shape forces: a card being created has no uuid until `createCertification`
   // resolves, and `PUT .../file/{side}` needs one.
@@ -336,8 +320,6 @@ export function CertificationDialog({
   const onSubmit = async (data: CertificationInput) => {
     setApiError(null);
     try {
-      setIsSubmitting(true);
-
       // "" is the form's "not set" state for every optional field. On update they
       // go as an explicit null so clearing one actually clears it rather than
       // being ignored as an omitted key; on create they are simply left off.
@@ -383,8 +365,6 @@ export function CertificationDialog({
           `Failed to ${isEdit ? "update" : "create"} certification. Please try again.`,
         ),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -463,166 +443,33 @@ export function CertificationDialog({
 
             {/* Who issued it and what they numbered it: the pair a desk quotes
                 together, and two short values that would each waste a row alone. */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="agency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Agency *</FormLabel>
-                    <FormControl>
-                      <NativeSelect {...field}>
-                        {CERTIFICATION_AGENCIES.map((value) => (
-                          <option key={value} value={value}>
-                            {certificationAgencyLabel(value)}
-                          </option>
-                        ))}
-                      </NativeSelect>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="certification_number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Certification number</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="As printed on the card"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Under the row rather than inside it: it belongs to the agency box
-                above and appears only for one of its values, so a third box
-                arriving in the middle of a filled row is a worse surprise than a
-                fourth line. */}
-            {agency === "other" && (
-              <FormField
-                control={form.control}
-                name="agency_other"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Agency name *</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. FFESSM"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="certified_on"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Certified on</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="expires_on"
-                render={({ field }) => (
-                  <FormItem>
-                    {/* Most recreational cards never expire; rescue, first-aid
-                        and technical ones do. */}
-                    <FormLabel>Expires on</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="contact_uuid"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dive center</FormLabel>
-                  <FormControl>
-                    <ContactCombobox
-                      value={field.value}
-                      onChange={field.onChange}
-                      until={until}
-                      initialRoles={SCHOOL}
-                      placeholder="Select a dive center..."
-                      addNewLabel="Add dive center..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <TrainingFields
+              agencyRequired
+              besideAgency={
+                <FormField
+                  control={form.control}
+                  name="certification_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Certification number</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="As printed on the card"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              }
+              dates={[
+                { name: "certified_on", label: "Certified on" },
+                { name: "expires_on", label: "Expires on" },
+              ]}
+              until={until}
             />
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="instructor_uuid"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Instructor</FormLabel>
-                    <FormControl>
-                      {/* A person, as on the course: picked, or typed and
-                          Enter for a name nobody has yet. */}
-                      <PersonCombobox
-                        value={field.value}
-                        onChange={field.onChange}
-                        until={until}
-                        placeholder="Select an instructor..."
-                        addNewLabel="Add instructor..."
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="instructor_number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Instructor number</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             {/* After every field typed off the card in the diver's hand: a
                 two-column block of pictures in the middle of a field stack breaks
@@ -633,7 +480,7 @@ export function CertificationDialog({
                 certification={certification}
                 edits={cardEdits}
                 onChange={setCardEdits}
-                disabled={isSubmitting}
+                disabled={form.formState.isSubmitting}
               />
             </div>
 
@@ -669,24 +516,10 @@ export function CertificationDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEdit ? "Saving..." : "Creating..."}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save changes
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create certification
-                  </>
-                )}
-              </Button>
+              <DialogSubmitButton
+                isEdit={isEdit}
+                createLabel="Create certification"
+              />
             </DialogFooter>
           </form>
         </Form>

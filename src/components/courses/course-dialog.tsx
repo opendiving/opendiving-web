@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save } from "lucide-react";
 import { courseSchema, CourseInput } from "@/lib/validations/course";
 import {
   coursesAPI,
@@ -14,12 +13,7 @@ import {
   COURSE_STATUSES,
   DEFAULT_COURSE_STATUS,
 } from "@/lib/api/courses";
-import {
-  CERTIFICATION_AGENCIES,
-  certificationAgencyLabel,
-} from "@/lib/api/certifications";
 import { courseStatusLabel } from "@/lib/course";
-import type { ContactRole } from "@/lib/api/contacts";
 import { joinCourseInstructor, splitCourseInstructor } from "@/lib/people";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
@@ -40,15 +34,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
+import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
-import { ContactCombobox } from "@/components/contacts/contact-combobox";
-import { PersonCombobox } from "@/components/people/person-combobox";
 import { PeopleMultiSelect } from "@/components/people/people-multi-select";
-
-// What a contact created from a course form starts as.
-const SCHOOL: readonly ContactRole[] = ["school"];
+import { TrainingFields } from "./training-fields";
 
 interface CourseDialogProps {
   open: boolean;
@@ -76,8 +66,10 @@ export function CourseDialog({
   course,
   onSaved,
 }: CourseDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useDialogApiError(open);
+  const [apiError, setApiError, handleOpenChange] = useDialogApiError(
+    open,
+    onOpenChange,
+  );
   const isEdit = !!course;
 
   const form = useForm<CourseInput>({
@@ -99,10 +91,6 @@ export function CourseDialog({
     },
   });
 
-  // `agency_other` is only shown - and only accepted by the API - for "other".
-  // `useWatch` rather than `form.watch()`, which returns a fresh function every
-  // render that can't be memoized (see DECISIONS.md).
-  const agency = useWatch({ control: form.control, name: "agency" });
   const instructorUuid = useWatch({
     control: form.control,
     name: "instructor_uuid",
@@ -135,11 +123,6 @@ export function CourseDialog({
     // prop change" case this rule can't distinguish from a cascading render.
   }, [open, course, reset]);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setApiError(null);
-    onOpenChange(next);
-  };
-
   // A person made the instructor leaves the list below, where they would
   // otherwise be named twice - once as the instructor and once as a student.
   const pickInstructor = useCallback(
@@ -161,8 +144,6 @@ export function CourseDialog({
   const onSubmit = async (data: CourseInput) => {
     setApiError(null);
     try {
-      setIsSubmitting(true);
-
       // "" is the form's "not set" state for every optional field. On update they
       // go as an explicit null so clearing one actually clears it rather than
       // being ignored as an omitted key; the API's `CourseUpdate` keeps exactly
@@ -213,8 +194,6 @@ export function CourseDialog({
           `Failed to ${isEdit ? "update" : "create"} course. Please try again.`,
         ),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -251,178 +230,36 @@ export function CourseDialog({
               )}
             />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="agency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Agency</FormLabel>
-                    <FormControl>
-                      <NativeSelect
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value || null)}
-                      >
-                        {/* First, because it is what the form opens on: a
-                            course run by a private instructor has no agency,
-                            and the state has to be pickable again after one has
-                            been chosen. */}
-                        <option value="">No agency</option>
-                        {CERTIFICATION_AGENCIES.map((value) => (
-                          <option key={value} value={value}>
-                            {certificationAgencyLabel(value)}
-                          </option>
-                        ))}
-                      </NativeSelect>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status *</FormLabel>
-                    <FormControl>
-                      <NativeSelect {...field}>
-                        {COURSE_STATUSES.map((value) => (
-                          <option key={value} value={value}>
-                            {courseStatusLabel(value)}
-                          </option>
-                        ))}
-                      </NativeSelect>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {agency === "other" && (
-              <FormField
-                control={form.control}
-                name="agency_other"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Agency name *</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. FFESSM"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="start_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start date</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="end_date"
-                render={({ field }) => (
-                  <FormItem>
-                    {/* Neither date is required: a course that is only
-                        booked has no dates yet. */}
-                    <FormLabel>End date</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="contact_uuid"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dive center</FormLabel>
-                  <FormControl>
-                    {/* A contact made from here starts as a school, which is
-                        what running a course makes it. Its dialog opens over
-                        this one, and over the certification dialog too when
-                        this course is being added from there. */}
-                    <ContactCombobox
-                      value={field.value}
-                      onChange={field.onChange}
-                      until={until}
-                      initialRoles={SCHOOL}
-                      placeholder="Select a dive center..."
-                      addNewLabel="Add dive center..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <TrainingFields
+              agencyRequired={false}
+              besideAgency={
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status *</FormLabel>
+                      <FormControl>
+                        <NativeSelect {...field}>
+                          {COURSE_STATUSES.map((value) => (
+                            <option key={value} value={value}>
+                              {courseStatusLabel(value)}
+                            </option>
+                          ))}
+                        </NativeSelect>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              }
+              dates={[
+                { name: "start_date", label: "Start date" },
+                { name: "end_date", label: "End date" },
+              ]}
+              until={until}
+              onInstructorChange={pickInstructor}
             />
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="instructor_uuid"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Instructor</FormLabel>
-                    <FormControl>
-                      {/* A person, picked or typed: a name nobody has yet
-                          becomes one on Enter, so naming a new instructor is
-                          still one step. */}
-                      <PersonCombobox
-                        value={field.value}
-                        onChange={pickInstructor}
-                        until={until}
-                        placeholder="Select an instructor..."
-                        addNewLabel="Add instructor..."
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="instructor_number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Instructor number</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             <FormField
               control={form.control}
@@ -476,24 +313,7 @@ export function CourseDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEdit ? "Saving..." : "Creating..."}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save changes
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create course
-                  </>
-                )}
-              </Button>
+              <DialogSubmitButton isEdit={isEdit} createLabel="Create course" />
             </DialogFooter>
           </form>
         </Form>

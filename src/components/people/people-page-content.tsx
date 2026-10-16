@@ -7,13 +7,14 @@ import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { peopleAPI, type Person } from "@/lib/api/people";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { PeoplePageFrame } from "@/components/people/people-page-frame";
 import { PersonDialog } from "@/components/people/person-dialog";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Edit, Trash2, Loader2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // How long to wait after the last keystroke before asking the server, matching
@@ -165,7 +166,7 @@ export function PeoplePageContent() {
                     disabled={deletingId === person.uuid}
                   >
                     {deletingId === person.uuid ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <ButtonSpinner />
                     ) : (
                       <Trash2 className="h-4 w-4" />
                     )}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Download, Loader2 } from "lucide-react";
+import { Download } from "lucide-react";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { useContact } from "@/hooks/useContact";
 import { usePerson } from "@/hooks/usePerson";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { CertificationCardImage } from "./certification-card-image";
 import { useEffect, useState } from "react";
@@ -223,7 +224,7 @@ export function CertificationViewDialog({
                     >
                       {downloadingSide === side ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <ButtonSpinner className="mr-2" />
                           Preparing...
                         </>
                       ) : (

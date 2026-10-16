@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Edit, Loader2, Tags, Trash2, X } from "lucide-react";
+import { Check, Edit, Tags, Trash2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useTags } from "@/hooks/useTags";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { tagsAPI, type Tag } from "@/lib/api/tags";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import {
   Card,
   CardContent,
@@ -162,7 +163,7 @@ export function TagsCard() {
                           disabled={isSaving || draftName.trim().length === 0}
                         >
                           {isSaving ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <ButtonSpinner />
                           ) : (
                             <Check className="h-4 w-4" />
                           )}
@@ -213,7 +214,7 @@ export function TagsCard() {
                           onClick={() => requestDelete(tag.uuid)}
                         >
                           {deletingId === tag.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <ButtonSpinner />
                           ) : (
                             <Trash2 className="h-4 w-4" />
                           )}

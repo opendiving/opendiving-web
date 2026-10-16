@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, Loader2 } from "lucide-react";
+import { KeyRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import {
   CARD_TITLE_SMALL,
   Card,
@@ -115,9 +116,7 @@ export function PasskeyNudgeCard() {
           onClick={registration.register}
           disabled={registration.isRegistering}
         >
-          {registration.isRegistering && (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          )}
+          {registration.isRegistering && <ButtonSpinner className="mr-2" />}
           Add a passkey
         </Button>
       </CardContent>

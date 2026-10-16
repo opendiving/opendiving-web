@@ -3,6 +3,7 @@ import { GearItem, gearItemLabel, gearTypeLabel } from "@/lib/api/gear";
 import { worstServiceStatus } from "@/lib/gear-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
@@ -25,7 +26,6 @@ import {
   ArchiveRestore,
   Backpack,
   Edit,
-  Loader2,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -241,7 +241,7 @@ export function GearItemsCard({
                           disabled={deletingId === item.uuid}
                         >
                           {deletingId === item.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <ButtonSpinner />
                           ) : (
                             <Trash2 className="h-4 w-4" />
                           )}

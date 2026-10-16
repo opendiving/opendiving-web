@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, LogOut, MonitorSmartphone } from "lucide-react";
+import { LogOut, MonitorSmartphone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import {
   CARD_TITLE_ACTION,
@@ -158,7 +159,7 @@ export function SessionsCard() {
               onClick={() => setConfirmingOthers(true)}
             >
               {isRevokingOthers ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <ButtonSpinner className="mr-2" />
               ) : (
                 <LogOut className="h-4 w-4 mr-2" />
               )}
@@ -228,7 +229,7 @@ export function SessionsCard() {
                     onClick={() => requestDelete(session.uuid)}
                   >
                     {deletingId === session.uuid ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <ButtonSpinner />
                     ) : (
                       <LogOut className="h-4 w-4" />
                     )}

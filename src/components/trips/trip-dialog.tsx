@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save } from "lucide-react";
 import {
   tripFormSchema,
   TripFormInput,
@@ -33,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import {
   TripPartsField,
   tripPartErrors,
@@ -63,8 +62,10 @@ export function TripDialog({
   trip,
   onSaved,
 }: TripDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useDialogApiError(open);
+  const [apiError, setApiError, handleOpenChange] = useDialogApiError(
+    open,
+    onOpenChange,
+  );
   const isEdit = !!trip;
 
   const form = useForm<TripFormInput>({
@@ -127,16 +128,9 @@ export function TripDialog({
     });
   }, [open, trip, reset]);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setApiError(null);
-    onOpenChange(next);
-  };
-
   const onSubmit = async (data: TripFormInput) => {
     setApiError(null);
     try {
-      setIsSubmitting(true);
-
       // Parts are always sent, never omitted: the form shows the whole list and
       // the API replaces it wholesale, so an unchanged list costs a re-insert
       // while a missing key would make "remove them all" impossible to express.
@@ -172,8 +166,6 @@ export function TripDialog({
           `Failed to ${isEdit ? "update" : "create"} trip. Please try again.`,
         ),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -308,24 +300,7 @@ export function TripDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEdit ? "Saving..." : "Creating..."}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save changes
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create trip
-                  </>
-                )}
-              </Button>
+              <DialogSubmitButton isEdit={isEdit} createLabel="Create trip" />
             </DialogFooter>
           </form>
         </Form>

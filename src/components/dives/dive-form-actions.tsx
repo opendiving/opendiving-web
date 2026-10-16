@@ -2,8 +2,9 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { Loader2, Plus, Save } from "lucide-react";
+import { Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useStuckAtEdge } from "@/hooks/useStuckAtEdge";
 import { useShortViewport } from "@/hooks/useVisualViewport";
@@ -71,7 +72,7 @@ export function DiveFormActions({
         <Button type="submit" disabled={waiting}>
           {waiting && waitingLabel ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <ButtonSpinner className="mr-2" />
               {waitingLabel}
             </>
           ) : (
