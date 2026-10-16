@@ -109,9 +109,10 @@ describe("DiveFormFieldsDialog", () => {
   });
 
   it("keeps the seeded name once the diver edits the fields under it", async () => {
-    // The point of the whole arrangement. The match is against the live hidden
-    // set, so a name recomputed each render would blank itself on the first
-    // switch - which is exactly the edit the diver means to save back.
+    // The point of the whole arrangement. The match is against the switches'
+    // draft, so a name recomputed each render would blank itself on the first
+    // switch - which is exactly the edit the diver means to save back. A new
+    // `visibility.hidden` moves it here: an untouched draft follows the live set.
     const { rerender } = render(
       <DiveFormFieldsDialog
         open
