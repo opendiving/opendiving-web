@@ -6988,6 +6988,6 @@ end are the same place, so each pin sits 2px past the edge for its observer to t
 cross rides in the header, first in the tab order, and open-focus steps over it to the first field.
 With the keyboard up the two rows would hold over a third of a ~300px box, so below 30rem of visible
 height `useShortViewport` marks the root and they rest in place. The mark comes off only once the
-visual viewport has held still for a few frames: the box animates back to full height over 200ms,
-and a footer pinned at once rides up above the closing keyboard. Hiding on focus is rejected for the
-dive form's reasons.
+visual viewport has held still for 250ms: the box animates back to full height over 200ms, and a
+footer pinned at once rides up above the closing keyboard. Hiding on focus is rejected for the dive
+form's reasons.
