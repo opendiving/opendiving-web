@@ -261,6 +261,7 @@ describe("DiveFormFieldsDialog", () => {
 
     expect(visibility.setHidden).toHaveBeenCalledWith(
       canonicalHiddenFields(["mixture.helium", "altitude"]),
+      ["altitude"],
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
@@ -378,7 +379,7 @@ describe("DiveFormFieldsDialog", () => {
     await user.click(save);
 
     expect(presets.createPreset).toHaveBeenCalledWith("Sidemount", edited);
-    expect(visibility.setHidden).toHaveBeenCalledWith(edited);
+    expect(visibility.setHidden).toHaveBeenCalledWith(edited, ["altitude"]);
     expect(visibility.selectPreset).toHaveBeenCalledWith("uuid-Sidemount");
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

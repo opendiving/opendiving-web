@@ -1814,6 +1814,53 @@ describe("the dive center", () => {
     await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
     expect(sent().contact_uuid).toBeUndefined();
   });
+
+  it("keeps a course's contact on screen when the diver hides a different field", async () => {
+    // Revealed sits in the stored set as much as Altitude will, so only the switch
+    // the diver moved can say which of the two is to go.
+    stable.auth.user.dive_form_hidden_fields = ["contact_uuid"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/dive time/i);
+    await pickCourse("Advanced Open Water");
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
+    await closeFieldsPanel();
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/^altitude/i)).not.toBeInTheDocument(),
+    );
+
+    expect(diveCenter()).toHaveValue(COURSE_SHOP.name);
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().contact_uuid).toBe(COURSE_SHOP.uuid);
+  });
+
+  it("keeps a course's contact on screen through a preset that hides it", async () => {
+    vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([
+      aPreset("Shore", ["contact_uuid", "altitude"]),
+    ]);
+    render(<NewDivePage />);
+    await screen.findByLabelText(/dive time/i);
+    await pickCourse("Advanced Open Water");
+    await waitFor(() => expect(diveCenter()).toHaveValue(COURSE_SHOP.name));
+
+    await openFieldsMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^shore$/i }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/^altitude/i)).not.toBeInTheDocument(),
+    );
+
+    expect(diveCenter()).toHaveValue(COURSE_SHOP.name);
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(sent().contact_uuid).toBe(COURSE_SHOP.uuid);
+  });
 });
 
 describe("the people", () => {

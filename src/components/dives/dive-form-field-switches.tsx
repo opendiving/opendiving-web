@@ -85,7 +85,7 @@ export function DiveFormFieldSwitches({
     const next = new Set(visibility.hidden);
     if (shouldShow) next.delete(key);
     else next.add(key);
-    visibility.setHidden([...next]);
+    visibility.setHidden([...next], shouldShow ? [] : [key]);
   };
 
   const gasOnScreen = visibility.isVisible("mixtures");
