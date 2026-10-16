@@ -44,7 +44,7 @@ export function ChartPeriodControls({ name, view }: ChartPeriodControlsProps) {
       {scope !== "all" && (
         <div
           className={cn(
-            "flex items-center gap-1 @max-2xl:order-last @max-2xl:basis-full @max-2xl:justify-center",
+            "flex items-center gap-1 @max-2xl:order-last @max-2xl:min-w-0 @max-2xl:basis-full @max-2xl:justify-center",
             CARD_TITLE_ACTION,
           )}
         >
@@ -68,8 +68,9 @@ export function ChartPeriodControls({ name, view }: ChartPeriodControlsProps) {
               usually matches no option, and a `<select>` whose value matches no
               option shows the first one instead. Fixed width so the chart
               doesn't shift sideways between "May 2026" and "September 2026",
-              and wider once it wraps onto a line of its own. */}
-          <div className="w-40 shrink-0 @max-2xl:w-56">
+              and wider once it wraps onto a line of its own - down to what
+              the arrows leave of that line on a 320px phone. */}
+          <div className="w-40 shrink-0 @max-2xl:w-56 @max-2xl:min-w-0 @max-2xl:shrink">
             <NativeSelect
               aria-label={`${name}: period`}
               className="h-9 pl-2 font-medium"

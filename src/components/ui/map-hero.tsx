@@ -299,7 +299,8 @@ export function MapHero({
 }
 
 // The icon, the name, its line and its figures. `info` follows the name and
-// `aside` ends its line; `children` closes the figures' row.
+// `aside` ends its line, or a line of its own under it where the two do not
+// fit; `children` closes the figures' row.
 function HeroDetails({
   className,
   icon: Icon,
@@ -336,7 +337,7 @@ function HeroDetails({
           {Icon && <Icon aria-hidden className={ICON} />}
           <div className="min-w-0 flex-1">
             {info || aside ? (
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-x-1 gap-y-3">
                 {heading}
                 {info}
                 {aside && <div className="ml-auto pl-2">{aside}</div>}
