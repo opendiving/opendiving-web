@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,10 +12,16 @@ import {
 } from "@/components/ui/dialog";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DiveFormFieldSwitches } from "@/components/dives/dive-form-field-switches";
+import {
+  DiveFormFieldSwitches,
+  type DiveFormFieldsView,
+} from "@/components/dives/dive-form-field-switches";
 import { DiveFormPresetList } from "@/components/dives/dive-form-preset-list";
 import { DiveFormPresetSaveAs } from "@/components/dives/dive-form-preset-save-as";
-import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
+import {
+  canonicalHiddenFields,
+  type DiveFormFieldKey,
+} from "@/lib/dive-form-fields";
 import {
   currentDiveFormPreset,
   type DiveFormPreset,
@@ -29,6 +35,15 @@ interface DiveFormFieldsDialogProps {
   visibility: DiveFormVisibility;
   /** Held by the Fields menu and handed down, so opening this refetches nothing. */
   presets: DiveFormPresets;
+}
+
+function sameFields(
+  first: readonly DiveFormFieldKey[],
+  second: readonly DiveFormFieldKey[],
+): boolean {
+  const a = canonicalHiddenFields(first);
+  const b = canonicalHiddenFields(second);
+  return a.length === b.length && a.every((key, index) => key === b[index]);
 }
 
 /**
@@ -63,11 +78,12 @@ function matchingPresetName(
  * to write the current form into, which is what the per-row "Update with current
  * fields" button was.
  *
- * **Close keeps the switches, Cancel puts them back.** A switch applies to the form
- * and persists to the account as it is flipped, so Close - like the X, Escape and the
- * overlay - only closes. Cancel restores the hidden set and the preset pick the dialog
- * opened on; preset writes made on the way (Save, the Presets tab) are already on the
- * server and stay.
+ * **The switches edit a draft.** Nothing reaches the form until the dialog closes
+ * through Close, the X, Escape or the overlay, or through Save - so Cancel has nothing
+ * to undo, and no hide has emptied a value it would have to bring back. The switches
+ * preview what applying the draft will do, revealed fields included: `setHidden` drops
+ * every key it hides from the revealed set. Preset writes on the Presets tab go to the
+ * server at once and are not part of the draft.
  *
  * **A dialog rather than a panel on the card.** Nothing in it is a form control of the
  * dive. Radix portals the content to `document.body`, so the DOM has no nested `<form>`;
@@ -82,9 +98,43 @@ export function DiveFormFieldsDialog({
   presets,
 }: DiveFormFieldsDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  // `null` until a switch is flipped, so an untouched dialog follows the live set.
+  const [draft, setDraft] = useState<readonly DiveFormFieldKey[] | null>(null);
+  // A draft equal to the stored set still changes the form when it hides a field that
+  // is on screen only because it holds a value - `setHidden` takes those back off.
+  const changed =
+    draft !== null &&
+    (!sameFields(draft, visibility.hidden) ||
+      draft.some((key) => visibility.isRevealed(key)));
+
+  const fields = useMemo<DiveFormFieldsView>(() => {
+    // Canonical, as `setHidden` stores it - a preset saved from the draft gets it as is.
+    const setHidden = (next: readonly DiveFormFieldKey[]) =>
+      setDraft(canonicalHiddenFields(next));
+    if (!changed) return { ...visibility, setHidden };
+    const hidden = new Set(draft);
+    const isRevealed = (key: DiveFormFieldKey) =>
+      visibility.isRevealed(key) && !hidden.has(key);
+    return {
+      hidden: draft,
+      isHidden: (key) => hidden.has(key),
+      isRevealed,
+      isVisible: (key) => !hidden.has(key) || isRevealed(key),
+      setHidden,
+    };
+  }, [changed, draft, visibility]);
+
+  const close = (apply: boolean) => {
+    if (apply && changed) visibility.setHidden(draft);
+    setDraft(null);
+    onOpenChange(false);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : close(true))}
+    >
       <DialogContent
         // Radix focuses the first tabbable descendant on open. Focus goes to the
         // container instead so that Enter on a freshly opened dialog does nothing
@@ -100,8 +150,10 @@ export function DiveFormFieldsDialog({
       >
         <DiveFormFieldsDialogBody
           visibility={visibility}
+          fields={fields}
           presets={presets}
-          onClose={() => onOpenChange(false)}
+          onClose={() => close(true)}
+          onCancel={() => close(false)}
         />
       </DialogContent>
     </Dialog>
@@ -110,41 +162,26 @@ export function DiveFormFieldsDialog({
 
 interface DiveFormFieldsDialogBodyProps {
   visibility: DiveFormVisibility;
+  /** The draft the switches edit - `visibility` itself is only written on close. */
+  fields: DiveFormFieldsView;
   presets: DiveFormPresets;
+  /** Applies the draft and closes. */
   onClose: () => void;
+  /** Drops the draft and closes. */
+  onCancel: () => void;
 }
 
-/**
- * Mounted with `DialogContent`, i.e. each time the dialog opens, which is what makes
- * the `useState` seed below a snapshot of what Cancel restores.
- */
+// Mounted with `DialogContent`, so the tab and the Save state start over on each open.
 function DiveFormFieldsDialogBody({
   visibility,
+  fields,
   presets,
   onClose,
+  onCancel,
 }: DiveFormFieldsDialogBodyProps) {
-  const [openedOn] = useState(() => ({
-    hidden: visibility.hidden,
-    presetUuid: visibility.selectedPresetUuid,
-  }));
   const [tab, setTab] = useState("fields");
   const [canSave, setCanSave] = useState(false);
   const saveFormId = useId();
-
-  const cancel = () => {
-    // Each only when it moved, so a Cancel that changes nothing sends no `PATCH`.
-    const current = new Set(visibility.hidden);
-    if (
-      current.size !== openedOn.hidden.length ||
-      openedOn.hidden.some((key) => !current.has(key))
-    ) {
-      visibility.setHidden(openedOn.hidden);
-    }
-    if (visibility.selectedPresetUuid !== openedOn.presetUuid) {
-      visibility.selectPreset(openedOn.presetUuid);
-    }
-    onClose();
-  };
 
   return (
     <>
@@ -163,7 +200,7 @@ function DiveFormFieldsDialogBody({
         </TabsList>
 
         <TabsContent value="fields" className="space-y-6 pt-4">
-          <DiveFormFieldSwitches visibility={visibility} />
+          <DiveFormFieldSwitches visibility={fields} />
           <DiveFormPresetSaveAs
             // `initialName` is read once, when this mounts - which is when the
             // dialog opens, `DialogPortal` rendering `null` while closed. That
@@ -181,31 +218,22 @@ function DiveFormFieldsDialogBody({
             presets={presets.presets ?? []}
             initialName={matchingPresetName(
               presets.presets,
-              visibility.hidden,
+              fields.hidden,
               visibility.selectedPresetUuid,
             )}
             disabled={presets.isWorking}
             formId={saveFormId}
             onSaveableChange={setCanSave}
-            // The fields on screen are now that preset's, so it becomes the pick.
+            // The draft is now that preset's, so it reaches the form and the
+            // preset becomes the pick.
             onSave={async (name, existing) => {
-              if (existing) {
-                if (
-                  await presets.updateHiddenFields(existing, visibility.hidden)
-                ) {
-                  visibility.selectPreset(existing.uuid);
-                  onClose();
-                }
-              } else {
-                const created = await presets.createPreset(
-                  name,
-                  visibility.hidden,
-                );
-                if (created) {
-                  visibility.selectPreset(created.uuid);
-                  onClose();
-                }
-              }
+              const saved = existing
+                ? (await presets.updateHiddenFields(existing, fields.hidden)) &&
+                  existing
+                : await presets.createPreset(name, fields.hidden);
+              if (!saved) return;
+              onClose();
+              visibility.selectPreset(saved.uuid);
             }}
           />
         </TabsContent>
@@ -219,7 +247,7 @@ function DiveFormFieldsDialogBody({
       <FormApiError error={visibility.saveError} />
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={cancel}>
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
         <Button type="button" variant="outline" onClick={onClose}>

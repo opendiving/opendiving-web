@@ -5,7 +5,10 @@ import { DiveFormFieldsDialog } from "./dive-form-fields-dialog";
 import type { DiveFormPreset } from "@/lib/api/dive-form-presets";
 import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
-import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
+import {
+  canonicalHiddenFields,
+  type DiveFormFieldKey,
+} from "@/lib/dive-form-fields";
 
 // What "Save as" opens on is the one thing this file is about: the dialog has to
 // answer "are these fields a preset I already have?" the same way the Fields
@@ -218,35 +221,7 @@ describe("DiveFormFieldsDialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("puts the fields it opened on back on Cancel", async () => {
-    const user = userEvent.setup();
-    const onOpenChange = vi.fn();
-    const { rerender } = render(
-      <DiveFormFieldsDialog
-        open
-        onOpenChange={onOpenChange}
-        visibility={visibilityStub(["mixture.helium"])}
-        presets={presetsStub([BASIC, TECHNICAL])}
-      />,
-    );
-    const edited = visibilityStub(["mixture.helium", "altitude"]);
-    rerender(
-      <DiveFormFieldsDialog
-        open
-        onOpenChange={onOpenChange}
-        visibility={edited}
-        presets={presetsStub([BASIC, TECHNICAL])}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-
-    expect(edited.setHidden).toHaveBeenCalledWith(["mixture.helium"]);
-    expect(edited.selectPreset).not.toHaveBeenCalled();
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
-  it("keeps the edited fields on Close", async () => {
+  it("drops the edited fields on Cancel without touching the form", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     const visibility = visibilityStub(["mixture.helium"]);
@@ -259,20 +234,65 @@ describe("DiveFormFieldsDialog", () => {
       />,
     );
 
-    // The X is named "Close" too, and renders after the content.
-    await user.click(screen.getAllByRole("button", { name: "Close" })[0]);
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    expect(screen.getByRole("switch", { name: "Altitude" })).not.toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(visibility.setHidden).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("saves from the footer and closes once the preset is written", async () => {
+  it("applies the edited fields to the form on Close", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
-    const visibility = visibilityStub(["mixture.helium", "altitude"]);
+    const visibility = visibilityStub(["mixture.helium"]);
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibility}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    expect(visibility.setHidden).not.toHaveBeenCalled();
+    // The X is named "Close" too, and renders after the content.
+    await user.click(screen.getAllByRole("button", { name: "Close" })[0]);
+
+    expect(visibility.setHidden).toHaveBeenCalledWith(
+      canonicalHiddenFields(["mixture.helium", "altitude"]),
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("applies nothing on Close when no switch moved", async () => {
+    const user = userEvent.setup();
+    const visibility = visibilityStub(["mixture.helium"]);
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={vi.fn()}
+        visibility={visibility}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    await user.click(screen.getAllByRole("button", { name: "Close" })[0]);
+
+    expect(visibility.setHidden).not.toHaveBeenCalled();
+  });
+
+  it("saves the edited fields from the footer and applies them", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const visibility = visibilityStub(["mixture.helium"]);
     const presets = presetsStub([BASIC, TECHNICAL]);
+    const edited = canonicalHiddenFields(["mixture.helium", "altitude"]);
     vi.mocked(presets.createPreset).mockResolvedValue(
-      preset("Sidemount", ["mixture.helium", "altitude"]),
+      preset("Sidemount", edited),
     );
     render(
       <DiveFormFieldsDialog
@@ -282,16 +302,16 @@ describe("DiveFormFieldsDialog", () => {
         presets={presets}
       />,
     );
+
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    await user.clear(saveAsBox());
     const save = screen.getByRole("button", { name: "Save" });
     expect(save).toBeDisabled();
-
     await user.type(saveAsBox(), "Sidemount");
     await user.click(save);
 
-    expect(presets.createPreset).toHaveBeenCalledWith("Sidemount", [
-      "mixture.helium",
-      "altitude",
-    ]);
+    expect(presets.createPreset).toHaveBeenCalledWith("Sidemount", edited);
+    expect(visibility.setHidden).toHaveBeenCalledWith(edited);
     expect(visibility.selectPreset).toHaveBeenCalledWith("uuid-Sidemount");
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

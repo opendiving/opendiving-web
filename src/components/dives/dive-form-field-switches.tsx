@@ -56,6 +56,12 @@ const LEADING_GROUP_FIELDS: Partial<
   Tanks: ["mixtures", "mixture.gear_item_uuid"],
 };
 
+/** What the switches read and write - the dialog hands them a draft of it. */
+export type DiveFormFieldsView = Pick<
+  DiveFormVisibility,
+  "hidden" | "isHidden" | "isRevealed" | "isVisible" | "setHidden"
+>;
+
 /**
  * Every input the dive form can render, grouped as the form groups them, one switch
  * each.
@@ -72,7 +78,7 @@ const LEADING_GROUP_FIELDS: Partial<
 export function DiveFormFieldSwitches({
   visibility,
 }: {
-  visibility: DiveFormVisibility;
+  visibility: DiveFormFieldsView;
 }) {
   const toggleField = (key: DiveFormFieldKey, shouldShow: boolean) => {
     const next = new Set(visibility.hidden);

@@ -1495,13 +1495,13 @@ describe("persisting a toggle", () => {
     // canonical if the client put it in order.
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
     await userEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
+    await closeFieldsPanel();
 
     await waitFor(() =>
       expect(authAPI.updateProfile).toHaveBeenCalledWith({
         dive_form_hidden_fields: ["altitude", "notes"],
       }),
     );
-    await closeFieldsPanel();
     expect(divesAPI.getDives).toHaveBeenCalledTimes(1);
     expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
     expect(waterType()).toHaveValue("brackish");
@@ -1559,6 +1559,10 @@ describe("persisting a toggle", () => {
       fireEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
       fireEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
       fireEvent.click(screen.getByRole("switch", { name: /^visibility$/i }));
+      // The switches are a draft until the dialog closes; closing applies them.
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
 
       // Half the claim, and the half the old shape never asserted: the window has not
       // elapsed, so nothing is on the wire yet - whatever the machine was doing.
@@ -2748,6 +2752,7 @@ describe("the preset list", () => {
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+    await closeFieldsPanel();
     await waitFor(() =>
       expect(authAPI.updateProfile).toHaveBeenCalledWith({
         dive_form_hidden_fields: [
@@ -2760,6 +2765,7 @@ describe("the preset list", () => {
       }),
     );
     // Flipped back, the set is the picked preset's again.
+    await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
     await closeFieldsPanel();
 
@@ -2833,7 +2839,8 @@ describe("the preset list", () => {
         dive_form_preset_uuid: "preset-warm",
       }),
     );
-    // And the new row is on the list without a refetch.
+    // And the new row is on the list without a refetch. Save closed the dialog.
+    await openFieldsPanel();
     await openPresetsTab();
     expect(await inFieldsPanel().findByText("Warm water")).toBeInTheDocument();
     expect(presets.fetchAllDiveFormPresets).toHaveBeenCalledTimes(1);
