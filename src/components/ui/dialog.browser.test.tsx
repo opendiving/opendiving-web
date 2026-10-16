@@ -69,7 +69,7 @@ describe("DialogHeader", () => {
       paddingTop(dialog),
       0,
     );
-    // Where the cross sat as a child of the dialog itself.
+    // `top-4` in from the dialog's padding edge, against the header's bled box.
     const restingClose = close.getBoundingClientRect();
     expect(restingClose.top).toBeCloseTo(paddingTop(dialog) + 16, 0);
 
