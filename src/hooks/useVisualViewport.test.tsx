@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import {
   useFocusTappedFieldInPlace,
@@ -189,7 +189,44 @@ describe("useShortViewport", () => {
   // 30rem, 480px at jsdom's 16px root, is the line.
   const SHORT = "data-visual-viewport-short";
   const root = document.documentElement;
-  const still = () => {};
+
+  // The wait is measured on frame timestamps, so the frames are driven by hand:
+  // each one advances a clock by `ms` and hands that to whatever is queued.
+  let queue = new Map<number, FrameRequestCallback>();
+  let now = 0;
+  beforeEach(() => {
+    let id = 0;
+    queue = new Map();
+    now = 0;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      id += 1;
+      queue.set(id, cb);
+      return id;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((handle) => {
+      queue.delete(handle);
+    });
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function frames(count: number, ms = 16, tick = () => {}) {
+    for (let i = 0; i < count; i += 1) {
+      tick();
+      now += ms;
+      const due = [...queue.values()];
+      queue = new Map();
+      act(() => due.forEach((cb) => cb(now)));
+    }
+  }
+
+  function keyboardCloses(viewport: FakeViewport) {
+    act(() => {
+      viewport.height = 812;
+      viewport.emit("resize");
+    });
+  }
 
   it("marks the root as soon as the keyboard is up", () => {
     const viewport = installViewport(812, 0);
@@ -206,26 +243,39 @@ describe("useShortViewport", () => {
     expect(root).not.toHaveAttribute(SHORT);
   });
 
-  it("takes the mark off only once the viewport has settled", async () => {
+  it("takes the mark off only once the viewport has held still past the dialog's transition", () => {
     // The dialog footer that came back above the keyboard and slid down with
     // the box: `DialogContent` is still growing for 200ms after the event.
     const viewport = installViewport(420, 0);
     const { unmount } = renderHook(() => useShortViewport());
     expect(root).toHaveAttribute(SHORT);
 
-    act(() => {
-      viewport.height = 812;
-      viewport.emit("resize");
-    });
-    await runFrames(still, 8);
+    keyboardCloses(viewport);
+    expect(root).toHaveAttribute(SHORT);
+    frames(12);
     expect(root).toHaveAttribute(SHORT);
 
-    await runFrames(still, 12);
+    frames(6);
     expect(root).not.toHaveAttribute(SHORT);
     unmount();
   });
 
-  it("waits out a viewport that is still moving", async () => {
+  it("waits as long on a 120Hz screen", () => {
+    // Twice the frames in the same time - a frame count that ends after the
+    // transition at 60Hz ends inside it here.
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+
+    keyboardCloses(viewport);
+    frames(24, 8);
+    expect(root).toHaveAttribute(SHORT);
+
+    frames(10, 8);
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("waits out a viewport that is still moving", () => {
     const viewport = installViewport(420, 0);
     const { unmount } = renderHook(() => useShortViewport());
 
@@ -235,43 +285,51 @@ describe("useShortViewport", () => {
       viewport.emit("resize");
     });
     // `offsetTop` easing back to 0 with no event of its own.
-    await runFrames(() => {
+    frames(20, 16, () => {
       viewport.offsetTop = Math.max(0, viewport.offsetTop - 15);
-    }, 20);
+    });
+    frames(12);
     expect(root).toHaveAttribute(SHORT);
 
-    await runFrames(still, 4);
+    frames(6);
     expect(root).not.toHaveAttribute(SHORT);
     unmount();
   });
 
-  it("starts the wait over when the keyboard comes back up during it", async () => {
+  it("gives up waiting on a viewport that never holds still", () => {
     const viewport = installViewport(420, 0);
     const { unmount } = renderHook(() => useShortViewport());
 
-    act(() => {
-      viewport.height = 812;
-      viewport.emit("resize");
+    keyboardCloses(viewport);
+    frames(70, 16, () => {
+      viewport.offsetTop = viewport.offsetTop === 0 ? 1 : 0;
     });
-    await runFrames(still, 10);
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("starts the wait over when the keyboard comes back up during it", () => {
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+
+    keyboardCloses(viewport);
+    frames(10);
     act(() => {
       viewport.height = 420;
       viewport.emit("resize");
     });
-    act(() => {
-      viewport.height = 812;
-      viewport.emit("resize");
-    });
+    expect(root).toHaveAttribute(SHORT);
+    keyboardCloses(viewport);
     // Past where the first wait would have ended, short of the second.
-    await runFrames(still, 10);
+    frames(10);
     expect(root).toHaveAttribute(SHORT);
 
-    await runFrames(still, 10);
+    frames(7);
     expect(root).not.toHaveAttribute(SHORT);
     unmount();
   });
 
-  it("keeps the mark while another caller is still mounted, and drops a pending wait with the last", async () => {
+  it("keeps the mark while another caller is still mounted, and drops a pending wait with the last", () => {
     const viewport = installViewport(420, 0);
     const first = renderHook(() => useShortViewport());
     const second = renderHook(() => useShortViewport());
@@ -279,18 +337,10 @@ describe("useShortViewport", () => {
     first.unmount();
     expect(root).toHaveAttribute(SHORT);
 
-    act(() => {
-      viewport.height = 812;
-      viewport.emit("resize");
-    });
+    keyboardCloses(viewport);
     second.unmount();
     expect(root).not.toHaveAttribute(SHORT);
-
-    // Nothing left running to touch the root after the last caller has gone.
-    root.setAttribute(SHORT, "");
-    await runFrames(still, 24);
-    expect(root).toHaveAttribute(SHORT);
-    root.removeAttribute(SHORT);
+    expect(queue.size).toBe(0);
   });
 });
 

@@ -1,6 +1,12 @@
 import { StrictMode, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Button } from "./button";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -363,13 +369,6 @@ describe("the short-viewport mark", () => {
   const root = document.documentElement;
   const SHORT = "data-visual-viewport-short";
 
-  /** Lets the viewport settle, which is when the mark comes off. */
-  async function settle() {
-    for (let i = 0; i < 24; i += 1) {
-      await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
-    }
-  }
-
   it("is on while the visible height is short, and follows it as it changes", async () => {
     const viewport = withVisualViewport(320);
     const { unmount } = render(
@@ -388,8 +387,7 @@ describe("the short-viewport mark", () => {
       viewport.dispatchEvent(new Event("resize"));
     });
     expect(root).toHaveAttribute(SHORT);
-    await settle();
-    expect(root).not.toHaveAttribute(SHORT);
+    await waitFor(() => expect(root).not.toHaveAttribute(SHORT));
 
     viewport.height = 479;
     act(() => {

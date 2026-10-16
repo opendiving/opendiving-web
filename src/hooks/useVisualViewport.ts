@@ -42,37 +42,6 @@ function syncViewportVars() {
 }
 
 /**
- * How many frames a settle loop will chase a box that is still moving before
- * giving up. Generous next to the 200ms transition it is waiting out -
- * this is a backstop against a box that never stops changing, not a timeout
- * anything is expected to reach.
- */
-const SETTLE_FRAME_CAP = 40;
-
-/**
- * How many consecutive frames of an unchanged height end the loop.
- *
- * More than one, because "same as last frame" on its own is true before the
- * transition has got going as well as after it has finished, and the two are
- * indistinguishable from inside a single frame. Measured in the browser, the
- * dialog was still at its old height for the first two frames after the event
- * and only began moving on the third - a loop that stopped at the first repeat
- * would have given up there, every time, having corrected nothing.
- */
-const STABLE_FRAMES = 4;
-
-/**
- * How many frames the loop runs before it will accept a stable height as final.
- *
- * The floor under `STABLE_FRAMES`, and it exists because that test alone is a
- * bet on the transition having *started*. `DialogContent` is on a 200ms
- * transition; sixteen frames is past the end of it at 60Hz and, at the refresh
- * rates where it is not, the box is still visibly moving, so the stability test
- * carries the rest.
- */
-const MIN_SETTLE_FRAMES = 16;
-
-/**
  * Set on the root while the visible height is under `SHORT_VIEWPORT_REM` - an
  * on-screen keyboard is up, or the screen is a phone on its side. The rows that
  * pin to an edge - a dialog's header and footer, the dive form's Cancel/Save -
@@ -82,6 +51,16 @@ const MIN_SETTLE_FRAMES = 16;
 const SHORT_ATTR = "data-visual-viewport-short";
 /** In rem, so a diver's larger text size reads as less room. */
 const SHORT_VIEWPORT_REM = 30;
+
+/**
+ * How long the viewport has to hold still before the mark comes off: past
+ * `DialogContent`'s 200ms transition, which starts at the last change. Measured
+ * on frame timestamps rather than counted in frames, because a 120Hz screen
+ * runs them twice as fast, and a count long enough at 60Hz falls short there.
+ */
+const SHORT_RELEASE_MS = 250;
+/** A backstop against a viewport that never holds still, as `SETTLE_FRAME_CAP`. */
+const SHORT_RELEASE_CAP_MS = 1000;
 
 // Refcounted like `subscribers` above, and kept apart from it: the dive form
 // wants the mark on a page with no dialog open, and nothing else.
@@ -105,21 +84,21 @@ function syncShortViewport() {
   }
   if (!root.hasAttribute(SHORT_ATTR)) return;
 
-  // On the viewport rather than the dialog, which this knows nothing of: every
-  // event starts the loop over, so `MIN_SETTLE_FRAMES` counts from the last
-  // change, which is where the dialog's transition starts too.
+  // Each event starts the wait over; the frames between check that the
+  // geometry is still where the event left it.
   let previous = "";
-  let stableFrames = 0;
-  let frames = 0;
-  const settle = () => {
+  let start = Number.NaN;
+  let stillSince = Number.NaN;
+  const settle = (time: number) => {
     if (isShort(viewport)) return;
     const geometry = `${viewport.height} ${viewport.offsetTop}`;
-    stableFrames = geometry === previous ? stableFrames + 1 : 0;
+    if (Number.isNaN(start)) start = time;
+    if (geometry !== previous) stillSince = time;
     previous = geometry;
-    frames += 1;
-    const settled =
-      frames >= MIN_SETTLE_FRAMES && stableFrames >= STABLE_FRAMES;
-    if (settled || frames > SETTLE_FRAME_CAP) {
+    if (
+      time - stillSince >= SHORT_RELEASE_MS ||
+      time - start >= SHORT_RELEASE_CAP_MS
+    ) {
       root.removeAttribute(SHORT_ATTR);
       return;
     }
@@ -138,9 +117,8 @@ function syncShortViewport() {
  * animates its `max-height` to the new height over 200ms. Pinned straight away,
  * the footer reappears above where the keyboard was and slides down with the
  * box. So the mark waits until `height` and `offsetTop` have held still for
- * longer than that, with the settle test `useKeepFocusedFieldVisible` uses.
- * Going short needs no wait - letting go of a row never draws it somewhere it
- * should not be.
+ * longer than that. Going short needs no wait - letting go of a row never draws
+ * it somewhere it should not be.
  *
  * No-ops where `visualViewport` is absent, like `useVisualViewport`.
  */
@@ -243,6 +221,38 @@ export function useVisualViewport() {
 
 /** What an on-screen keyboard is ever opened for. */
 const FIELD_SELECTOR = "input, textarea, select, [contenteditable]";
+
+/**
+ * How many frames the settle loop below will chase a box that is still moving
+ * before giving up. Generous next to the 200ms transition it is waiting out -
+ * this is a backstop against a box that never stops changing, not a timeout
+ * anything is expected to reach.
+ */
+const SETTLE_FRAME_CAP = 40;
+
+/**
+ * How many consecutive frames of an unchanged height end the loop.
+ *
+ * More than one, because "same as last frame" on its own is true before the
+ * transition has got going as well as after it has finished, and the two are
+ * indistinguishable from inside a single frame. Measured in the browser, the
+ * dialog was still at its old height for the first two frames after the event
+ * and only began moving on the third - a loop that stopped at the first repeat
+ * would have given up there, every time, having corrected nothing.
+ */
+const STABLE_FRAMES = 4;
+
+/**
+ * How many frames the loop runs before it will accept a stable height as final.
+ *
+ * The floor under `STABLE_FRAMES`, and it exists because that test alone is a
+ * bet on the transition having *started*. `DialogContent` is on a 200ms
+ * transition; sixteen frames is past the end of it at 60Hz and, at the refresh
+ * rates where it is not, the box is still visibly moving, so the stability test
+ * carries the rest. Every frame in here costs one `scrollIntoView` that does
+ * nothing unless something is actually out of view.
+ */
+const MIN_SETTLE_FRAMES = 16;
 
 /** The nearest ancestor that scrolls, which for a field in a dialog is the dialog. */
 export function scrollContainerOf(element: HTMLElement): HTMLElement | null {
