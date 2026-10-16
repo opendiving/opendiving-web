@@ -20,7 +20,7 @@ export const PERSON_ROLES = [
 
 export type PersonRole = (typeof PERSON_ROLES)[number];
 
-export const PERSON_ROLE_LABELS: Record<PersonRole, string> = {
+const PERSON_ROLE_LABELS: Record<PersonRole, string> = {
   buddy: "Buddy",
   guide: "Guide",
   instructor: "Instructor",

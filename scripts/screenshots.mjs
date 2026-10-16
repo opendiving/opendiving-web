@@ -19,19 +19,17 @@
 //
 // Chromium comes from CHROME_PATH, or from the usual Chrome install; playwright-core
 // only drives it, so `npm install` never downloads a browser.
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+import { API, chromePath, magicLink, root } from "./lib/local-stack.mjs";
+
 const OUT = path.join(root, "docs", "screenshots");
-const API_DIR = process.env.API_DIR ?? path.join(root, "..", "opendiving-api");
 // The product repo renders these same images on the page the project is judged on,
 // and has nothing that can retake them - the app they are of is here. So this script
 // writes both copies from one shutter press rather than leaving the front page to rot on
-// a screenshot of an older UI. Same `../sibling` shape as API_DIR, and skipped with a note
+// a screenshot of an older UI. Same `../sibling` shape as `API_DIR`, and skipped with a note
 // when that clone is absent: one clone has to remain enough to run this.
 const PRODUCT_DIR =
   process.env.PRODUCT_DIR ?? path.join(root, "..", "opendiving");
@@ -41,17 +39,6 @@ const PRODUCT_OUT = existsSync(PRODUCT_DIR)
 // Committing them there is a separate, manual step: this script has no business making
 // commits in a repository it does not live in.
 const WEB = process.env.WEB_URL ?? "http://localhost:3000";
-// Same variable the app builds its axios `baseURL` from, so it carries the `/api/v1`
-// prefix and the fetches below append only the route. Appending the prefix here as well
-// would double it up for anyone who has the variable exported.
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
-
-const CHROME_CANDIDATES = [
-  process.env.CHROME_PATH,
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/usr/bin/google-chrome",
-  "/usr/bin/chromium",
-];
 
 // One width for every shot. 1024px is Tailwind's `lg`, the width at which every detail
 // page's `grid-cols-1 lg:grid-cols-3` stops stacking - so the dive page's chart sits
@@ -139,15 +126,8 @@ if (unknown.length) {
 }
 const wanted = (name) => only.length === 0 || only.includes(name);
 
-const chromePath = CHROME_CANDIDATES.find(
-  (candidate) => candidate && existsSync(candidate),
-);
-if (!chromePath) {
-  console.error(
-    "No Chrome found. Set CHROME_PATH to a Chrome or Chromium binary.",
-  );
-  process.exit(1);
-}
+// Before signing in, so a missing browser does not spend a magic link.
+const executablePath = chromePath();
 
 // A note rather than a failure: most people running this have one clone, and the product
 // repo's copies are the maintainer's errand.
@@ -155,29 +135,6 @@ if (!PRODUCT_OUT) {
   console.log(
     `· no product repo at ${PRODUCT_DIR} - writing this repository's copies only (set PRODUCT_DIR to change that)`,
   );
-}
-
-// ------------------------------------------------------------------- sign in
-async function magicLink() {
-  const response = await fetch(`${API}/auth/email/request`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-  if (!response.ok)
-    throw new Error(`magic-link request failed: ${response.status}`);
-
-  const logs = execFileSync(
-    "docker",
-    ["compose", "logs", "api", "--tail", "40"],
-    {
-      cwd: API_DIR,
-    },
-  ).toString();
-  const token = [...logs.matchAll(/token=([A-Za-z0-9_.-]+)/g)].at(-1)?.[1];
-  if (!token)
-    throw new Error(`no magic-link token in the API log at ${API_DIR}`);
-  return token;
 }
 
 // --------------------------------------------------------------- what to shoot
@@ -542,9 +499,9 @@ async function visit(page, name, url) {
 }
 
 // ------------------------------------------------------------------- the run
-const link = await magicLink();
+const link = await magicLink(email);
 
-const browser = await chromium.launch({ executablePath: chromePath });
+const browser = await chromium.launch({ executablePath });
 const context = await browser.newContext({
   // Every `visit()` sets the frame for the page it is opening; this is only what the
   // sign-in page gets rendered at on the way through.

@@ -44,11 +44,10 @@ Thumbs.db
 
 # Testing
 coverage/
-.nyc_output/
-jest.config.js
-cypress/
-cypress.json
-.cypress/
+.vitest/
+test-results/
+playwright-report/
+.playwright-mcp/
 
 # Documentation
 README.md
@@ -57,11 +56,6 @@ docs/
 
 # CI/CD
 .github/
-.gitlab-ci.yml
-.travis.yml
-.circleci/
-.buildkite/
-.drone.yml
 
 # Docker files
 Dockerfile*
@@ -93,21 +87,11 @@ temp/
 # Optional eslint cache
 .eslintcache
 
-# Storybook
-.storybook/
-storybook-static/
-
 # Bundle analyzer
 .bundle-analyzer/
 
 # TypeScript incremental compilation
 *.tsbuildinfo
-
-# Vercel
-.vercel/
-
-# Sentry
-.sentryclirc
 
 # Local development
 .vscode-test/

@@ -62,12 +62,6 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
   // this cannot say it with `dynamic = "force-dynamic"`, which the flag rejects.
   await connection();
 
-  // An explicit controller rather than `AbortSignal.timeout`: this module is exercised
-  // under jsdom, whose `AbortSignal` is not Node's, and a missing static would throw
-  // before the fetch and be swallowed as "the API is down".
-  const controller = new AbortController();
-  const deadline = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
   try {
     const response = await fetch(`${resolveApiInternalUrl()}/api/v1/config`, {
       // Never a build-time or a cached read, for the reason `connection()` above gives:
@@ -75,7 +69,7 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
       // would bake in the failed answer for the life of the image.
       cache: "no-store",
       headers: { accept: "application/json" },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -99,7 +93,5 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
       error,
     );
     return NONE;
-  } finally {
-    clearTimeout(deadline);
   }
 }

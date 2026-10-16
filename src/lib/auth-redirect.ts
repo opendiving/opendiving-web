@@ -61,8 +61,8 @@ export const DEFAULT_POST_AUTH_REDIRECT = "/home";
 // The two destinations that are not a sign-in: a verified identity with no account
 // yet, and an account inside its deletion grace period. Both are screens that ask for
 // one more explicit decision before there is a session.
-export const ONBOARDING_PATH = "/onboarding";
-export const RESTORE_PATH = "/restore";
+const ONBOARDING_PATH = "/onboarding";
+const RESTORE_PATH = "/restore";
 
 // Where an applied `AuthOutcome` sends the visitor, in the one place that decides it.
 //

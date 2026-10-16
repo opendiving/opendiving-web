@@ -51,7 +51,7 @@ const TREND_WINDOWS: Record<ChartScope, number> = {
 // first, and the one most likely to be read as "my consumption never changes".
 const MAX_TREND_FRACTION = 3;
 
-export const MIN_TREND_WINDOW = 5;
+const MIN_TREND_WINDOW = 5;
 
 // The window to smooth with, for a scope and a series of `diveCount` dives.
 export function trendWindow(scope: ChartScope, diveCount: number): number {

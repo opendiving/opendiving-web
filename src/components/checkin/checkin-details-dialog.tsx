@@ -27,7 +27,6 @@ export interface CheckinDetailsDialogProps {
   withName?: boolean;
   /** The portrait, edited beside the fields and saved with them. */
   picture?: PictureKind;
-  savedMessage?: string;
 }
 
 /**
@@ -43,7 +42,6 @@ export function CheckinDetailsDialog({
   group,
   withName,
   picture,
-  savedMessage,
 }: CheckinDetailsDialogProps) {
   const panel = useRef<HTMLDivElement>(null);
   const { title, description } = CHECK_IN_GROUP_HEADINGS[group];
@@ -70,7 +68,6 @@ export function CheckinDetailsDialog({
           group={group}
           withName={withName}
           picture={picture}
-          savedMessage={savedMessage}
           onSaved={() => onOpenChange(false)}
         >
           <DialogFooter className="mt-4">
