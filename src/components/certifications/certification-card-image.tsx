@@ -18,9 +18,9 @@ import { cn } from "@/lib/utils";
 
 interface CertificationCardFrameProps {
   /**
-   * Draws the frame at the list view's thumbnail width instead of filling its
-   * column. It changes the *width* only: the shape is the same everywhere, which
-   * is the whole point of the frame existing.
+   * Draws the frame at a thumbnail's width instead of filling its column. It
+   * changes the *width* only: the shape is the same everywhere, which is the
+   * whole point of the frame existing.
    */
   compact?: boolean;
   /** Dashed, for a slot with nothing in it. */
@@ -57,8 +57,8 @@ export function CertificationCardFrame({
         // ordinary block child, which is every caller today.
         "relative flex items-center justify-center self-start overflow-hidden rounded-lg border bg-muted",
         // A picture fills the frame out of flow. As a flex item inside a table
-        // cell - the list's column - Safari draws it far larger than the frame,
-        // which then shows a close-up of its middle. `cover`, not `contain`: a
+        // cell Safari draws it far larger than the frame, which then shows a
+        // close-up of its middle. `cover`, not `contain`: a
         // card cropped on upload fills this exactly, and an uncropped one loses a
         // few percent of its edge rather than sitting in a letterbox, which makes
         // the same picture look a different size per page.
@@ -84,7 +84,7 @@ interface CertificationCardImageProps {
   file?: CertificationFileInfo;
   className?: string;
   // Renders the "no image" state as a compact placeholder instead of a full
-  // dashed panel, for the list view's small thumbnails.
+  // dashed panel, for a small thumbnail such as the check-in sheet's.
   compact?: boolean;
   // Redraws the picture at no more than this many pixels on its long edge - see
   // `shrinkPicture`. The stored file as it is when unset.
@@ -135,8 +135,8 @@ export function CertificationCardImage({
   if (!file) {
     // An empty slot is a normal state rather than a gap - most modern e-cards
     // are one-sided, so a card with nothing on the back is the common case. The
-    // label names the side and the visible text does not, because the compact
-    // list view renders this with no heading beside it to say which slot it is.
+    // label names the side and the visible text does not, because a compact
+    // frame is drawn with no heading beside it to say which slot it is.
     return (
       <CertificationCardFrame
         compact={compact}

@@ -14,20 +14,15 @@ import {
   useIsEmptyList,
 } from "@/components/ui/list-card-header";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { CERTIFICATION_CARD_GRID } from "@/components/certifications/certification-card";
 
 export interface CertificationsPageFrameProps {
   isLoading: boolean;
   totalCount: number;
   itemsPerPage: number;
-  rows?: ReactNode[];
+  /** One `CertificationCard` per certification - list items, for its list. */
+  cards?: ReactNode[];
   isLoadingMore?: boolean;
   loadFailed?: boolean;
   hasMore?: boolean;
@@ -38,14 +33,14 @@ export interface CertificationsPageFrameProps {
 
 const noop = () => {};
 
-// Everything /certifications draws before its rows exist, kept apart from the data render so
+// Everything /certifications draws before its cards exist, kept apart from the data render so
 // the page's first render is this frame. Every data-varying prop is optional,
 // and the defaults are that first render.
 export function CertificationsPageFrame({
   isLoading,
   totalCount,
   itemsPerPage,
-  rows = [],
+  cards = [],
   isLoadingMore = false,
   loadFailed = false,
   hasMore = false,
@@ -56,7 +51,7 @@ export function CertificationsPageFrame({
   // whole story.
   const isEmptyList = useIsEmptyList({
     isLoading,
-    count: rows.length,
+    count: cards.length,
     isNarrowed: false,
   });
 
@@ -83,7 +78,7 @@ export function CertificationsPageFrame({
             />
           </ListCardHeader>
           <CardContent>
-            {!isLoading && rows.length === 0 ? (
+            {!isLoading && cards.length === 0 ? (
               <EmptyState
                 icon={BadgeCheck}
                 title="No certifications yet"
@@ -96,38 +91,26 @@ export function CertificationsPageFrame({
                 }
               />
             ) : (
-              <Table
-                // Busy on the outside, hidden on each placeholder row within - the
-                // split `ListRowsSkeleton` documents, applied here because the rows
-                // themselves are `aria-hidden` and would otherwise leave a reader
-                // with a table that is silently empty rather than one that is
-                // loading.
-                aria-busy={rows.length === 0 || undefined}
+              <ul
+                className={CERTIFICATION_CARD_GRID}
+                // Busy on the outside, hidden on each placeholder within - the
+                // split `ListRowsSkeleton` documents, so a reader meets a list
+                // that is loading rather than one that is silently empty.
+                aria-busy={cards.length === 0 || undefined}
               >
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Card</TableHead>
-                    <TableHead>Certification</TableHead>
-                    <TableHead>Agency</TableHead>
-                    <TableHead>Number</TableHead>
-                    <TableHead>Certified</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.length === 0 && (
-                    <TableRowsSkeleton columns={6} rows={itemsPerPage} />
-                  )}
-                  {rows}
-                </TableBody>
-              </Table>
+                {cards.length === 0
+                  ? Array.from({ length: itemsPerPage }, (_, card) => (
+                      <BackdropCardSkeleton key={card} />
+                    ))
+                  : cards}
+              </ul>
             )}
 
             <LoadMoreTrigger
               hasMore={hasMore}
               isLoading={isLoadingMore}
               hasFailed={loadFailed}
-              loadedCount={rows.length}
+              loadedCount={cards.length}
               totalCount={totalCount}
               itemsPerPage={itemsPerPage}
               itemLabel="certifications"

@@ -72,26 +72,23 @@ beforeEach(() => {
   getCertifications.mockResolvedValue(page([certification()]));
 });
 
-// A screen reader's controls list is flat: ten rows of "Edit" name nothing, so each
-// row's controls carry the card they act on. See DECISIONS.md, "Ten rows of 'Edit'
-// name nothing".
-describe("certification row actions name their row", () => {
-  it("names each row's controls after the certification", async () => {
+// A screen reader's controls list is flat: ten menus of "Actions" name nothing, so
+// each card's menu carries the card it acts on. See DECISIONS.md, "Ten rows of
+// 'Edit' name nothing".
+describe("certification card menus name their card", () => {
+  it("names each card's menu after the certification", async () => {
     render(<CertificationsPage />);
     await screen.findByRole("button", { name: "Advanced Nitrox" });
 
     expect(
-      screen.getByRole("button", { name: "Edit PADI Advanced Nitrox" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Delete PADI Advanced Nitrox" }),
+      screen.getByRole("button", { name: "Actions for PADI Advanced Nitrox" }),
     ).toBeInTheDocument();
   });
 
   it("tells two cards of the same level apart by their agency", async () => {
     // Certifications carry no unique-name constraint, and holding the same level
-    // from two agencies is ordinary - so the name alone would leave both rows'
-    // controls reading identically.
+    // from two agencies is ordinary - so the name alone would leave both cards'
+    // menus reading identically.
     getCertifications.mockResolvedValue(
       page([certification(), certification({ uuid: "cert-2", agency: "tdi" })]),
     );
@@ -99,10 +96,11 @@ describe("certification row actions name their row", () => {
     render(<CertificationsPage />);
     await screen.findAllByRole("button", { name: "Advanced Nitrox" });
 
-    const editButtons = screen.getAllByRole("button", { name: /^Edit / });
-    expect(
-      editButtons.map((button) => button.getAttribute("aria-label")),
-    ).toEqual(["Edit PADI Advanced Nitrox", "Edit TDI Advanced Nitrox"]);
+    const menus = screen.getAllByRole("button", { name: /^Actions for / });
+    expect(menus.map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Actions for PADI Advanced Nitrox",
+      "Actions for TDI Advanced Nitrox",
+    ]);
   });
 });
 
