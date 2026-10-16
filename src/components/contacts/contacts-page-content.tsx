@@ -8,12 +8,13 @@ import { contactsAPI, contactRoleLabel, Contact } from "@/lib/api/contacts";
 import { formatWebsite } from "@/lib/contact";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { ContactsPageFrame } from "@/components/contacts/contacts-page-frame";
 import { ContactDialog } from "@/components/contacts/contact-dialog";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Edit, Trash2, Loader2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // How long to wait after the last keystroke before asking the server, matching
@@ -170,7 +171,7 @@ export function ContactsPageContent() {
                     disabled={deletingId === contact.uuid}
                   >
                     {deletingId === contact.uuid ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <ButtonSpinner />
                     ) : (
                       <Trash2 className="h-4 w-4" />
                     )}

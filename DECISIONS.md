@@ -1040,8 +1040,8 @@ No charting library: `src/proxy.ts` ships a nonce-based CSP that allows inline s
 a `<style>` element breaks only in production. `gas-use-chart.tsx` is plain `<svg>` themed off
 `currentColor`.
 
-`segmentByGap()` splits the series where consecutive dives are more than `TREND_GAP_DAYS` (60)
-apart, one polyline per run, so a summer without dives is a gap, not a flat line.
+`segmentByTimeGap()` splits the series where consecutive dives are more than `TREND_GAP_MS` (60
+days) apart, one polyline per run, so a summer without dives is a gap, not a flat line.
 
 Coral trend, teal dots: declared once in `globals.css`, never under `.dark`, so they hold contrast
 in both themes.
@@ -1149,8 +1149,8 @@ Keyboard scrubbing is out of scope. The `aria-label` uses `formatDurationHoursMi
 
 ## The profile's line breaks are derived from the series' own cadence
 
-`segmentByTimeGap` is `segmentByGap` on the profile's millisecond axis: never draw a line across
-data that is not there, or a ten-minute transmitter dropout reads as a smooth pressure fall.
+`segmentByTimeGap` (`lib/chart-path.ts`, shared with the gas chart): never draw a line across data
+that is not there, or a ten-minute transmitter dropout reads as a smooth pressure fall.
 `Dive_2025-03-08-1440.xml` has a 1 341-second hole in its pressure series.
 
 The threshold is derived (`gapThreshold`), not fixed: cadence ranges from 1 s (Suunto Ocean
@@ -1693,8 +1693,8 @@ trend is off.
 ## Remembered selections use `useSyncExternalStore`, and the handler uses the updater form
 
 `lib/chart-series-view.ts` is the storage half, generic over series keys. `localStorage`, as in
-`gas-use-view.ts` (which lends `subscribeToNothing`): the selection must survive the tab closing and
-work from the bare `/home` and `/dives/{uuid}` URLs.
+`chart-period-view.ts`: the selection must survive the tab closing and work from the bare `/home`
+and `/dives/{uuid}` URLs.
 
 The read is `useSyncExternalStore` with a server snapshot of `null`; the snapshot stays the raw
 string because `useSyncExternalStore` compares with `Object.is` and a freshly parsed array loops
@@ -4680,7 +4680,7 @@ exist. The ground is WP194 §3.6: UI-customization storage is exempt only where 
 explicitly requested the service to remember" the choice; this key was written automatically at
 every sign-in and survived sign-out. Disclosure is honest but does not make storage exempt.
 Unrequested writing alone does not disqualify it — the Home page view keys are written from a mount
-effect too (`components/dives/gas-use-card.tsx`) — but those hold up a view lost on reload; this one
+effect too (`hooks/useChartPeriodView.ts`) — but those hold up a view lost on reload; this one
 bought a cosmetic sentence that never preselected, hid or reordered a method. Keeping the key under
 the device-memory control was rejected: the affordance is not worth the hardest paragraph in the
 privacy page's legal reading. _"The sign-in form says which method this browser used last"_ records
@@ -4695,12 +4695,12 @@ interposes on `setItem` at its definition site along `window.localStorage`'s pro
 the receiver, and reads the flag per write. Per-writer guards fail: `theme` belongs to next-themes,
 which has no write site here and rewrites a key another tab removed.
 `components/device-memory-installer.tsx` installs at module scope and `app/layout.tsx` renders it,
-arming before `gas-use-card.tsx`'s mount-effect write; side-effect imports from the layout (a Server
-Component) or `theme-provider.tsx` are rejected, and `device-memory-installer.test.ts` tripwires the
-layout. Clearing goes by `opendiving:` prefix plus `theme`, which reaches orphaned keys; suppression
-goes by list, and `storage-keys.test.ts` check (4) aligns them. The flag is written before the
-removals, `setTheme` resets the initiating tab, `access_token` stays (population of one), and off
-clears nothing.
+arming before `useChartPeriodView.ts`'s mount-effect write; side-effect imports from the layout (a
+Server Component) or `theme-provider.tsx` are rejected, and `device-memory-installer.test.ts`
+tripwires the layout. Clearing goes by `opendiving:` prefix plus `theme`, which reaches orphaned
+keys; suppression goes by list, and `storage-keys.test.ts` check (4) aligns them. The flag is
+written before the removals, `setTheme` resets the initiating tab, `access_token` stays (population
+of one), and off clears nothing.
 
 ## `TANK_USAGE` is a fourth hand-kept vocabulary mirror, and the first with no parser behind it
 
@@ -5280,7 +5280,7 @@ where an in-flow empty `<p>` charges 16px. `form-api-error.browser.test.tsx` pin
 half.
 
 `role="alert"` rather than `role="status"`: this blocks what the diver was doing, matching
-`StatusMessage` minus its chrome. One component, not ten copies (eight dialogs on
+`StatusMessage` minus its chrome. One component, not a copy per form (the dialogs on
 `useDialogApiError` plus the two cards), because the markup drifts back to the conditional form. The
 `accessibility-check` job cannot catch this: axe is a static snapshot analyzer, the job scans one
 unauthenticated URL, and the step ends in `|| true`. The guard is a render test asserting the region

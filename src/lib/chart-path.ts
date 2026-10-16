@@ -173,3 +173,26 @@ export function barPath(
     "Z",
   ].join(" ");
 }
+
+// Split a chronological series into runs of points close enough together that a
+// line joining them means something, as arrays of indices into the original - so
+// a line is never drawn across a gap of more than `maxGapMs`.
+//
+// A line across a gap states something the data doesn't: a transmitter that
+// drops out for ten minutes mid-dive drawn as a straight line reads as "the
+// pressure fell smoothly" (224 of 441 samples on `Dive_2025-06-02-1155.xml`),
+// and a gas trend joining April to October as "my consumption was steady all
+// summer", when the truth both times is "nothing was recorded here".
+export function segmentByTimeGap(t: number[], maxGapMs: number): number[][] {
+  if (t.length === 0) return [];
+
+  const segments: number[][] = [[0]];
+  for (let index = 1; index < t.length; index++) {
+    if (t[index] - t[index - 1] > maxGapMs) {
+      segments.push([index]);
+    } else {
+      segments[segments.length - 1].push(index);
+    }
+  }
+  return segments;
+}

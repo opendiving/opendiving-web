@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button, ButtonProps } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -135,9 +135,7 @@ export function ConfirmDialog({
             onClick={() => onConfirm()}
             disabled={isLoading || confirmDisabled}
           >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : null}
+            {isLoading ? <ButtonSpinner className="mr-2" /> : null}
             {confirmText}
           </Button>
         </DialogFooter>

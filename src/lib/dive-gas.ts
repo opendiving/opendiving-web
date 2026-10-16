@@ -255,36 +255,16 @@ export function summarizeGasUse(
 }
 
 // How long a break in diving has to be before the trend line stops being drawn
-// across it. Two months is comfortably longer than the gap between dives on a
-// trip, or between trips in an active season, and comfortably shorter than an
-// off-season.
-export const TREND_GAP_DAYS = 60;
-
-// Split a chronological series into runs of points close enough together that a
-// line joining them means something, as arrays of indices into the original.
+// across it (see `segmentByTimeGap`). Two months is comfortably longer than the
+// gap between dives on a trip, or between trips in an active season, and
+// comfortably shorter than an off-season.
 //
-// Without this, a diver who logs a week in April and a week in October gets a
-// long flat segment spanning the six months between - which reads as "my
-// consumption was steady all summer" when the truth is "there is no data here".
 // The trailing mean itself deliberately still averages across the gap: your gas
 // consumption doesn't reset because you took a winter off. It's only the drawn
-// connector that's a lie.
-export function segmentByGap(times: number[], gapDays: number): number[][] {
-  if (times.length === 0) return [];
-
-  const gapMs = gapDays * 24 * 60 * 60 * 1000;
-  const segments: number[][] = [[0]];
-
-  for (let index = 1; index < times.length; index++) {
-    if (times[index] - times[index - 1] > gapMs) {
-      segments.push([index]);
-    } else {
-      segments[segments.length - 1].push(index);
-    }
-  }
-
-  return segments;
-}
+// connector that's a lie - a week in April and a week in October joined by a
+// long flat segment reads as "my consumption was steady all summer" when the
+// truth is "there is no data here".
+export const TREND_GAP_MS = 60 * 24 * 60 * 60 * 1000;
 
 // Total pressure drop across a set of cylinders, in bar, with a row that is missing
 // either pressure contributing nothing.

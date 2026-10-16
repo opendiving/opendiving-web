@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Edit, Loader2, Trash2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
@@ -20,6 +20,7 @@ import {
 } from "@/lib/certification";
 import { formatDateOnly } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { CertificationsPageFrame } from "@/components/certifications/certifications-page-frame";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -172,7 +173,7 @@ export function CertificationsPageContent() {
                       disabled={deletingId === certification.uuid}
                     >
                       {deletingId === certification.uuid ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <ButtonSpinner />
                       ) : (
                         <Trash2 className="h-4 w-4" />
                       )}

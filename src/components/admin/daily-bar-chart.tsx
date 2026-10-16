@@ -1,24 +1,29 @@
 "use client";
 
-import { useRef } from "react";
+import { ChartHoverCard } from "@/components/charts/chart-hover-card";
+import { ChartYAxis } from "@/components/charts/chart-y-axis";
 import { barPath } from "@/lib/chart-path";
 import { viewBoxPoint } from "@/lib/chart-readout";
-import { axisTicks, countDomain, labelCapacity } from "@/lib/chart-scale";
+import {
+  CHART_HEIGHT,
+  CHART_PADDING,
+  CHART_PLOT_HEIGHT,
+  CHART_WIDTH,
+  axisTicks,
+  countDomain,
+  labelCapacity,
+} from "@/lib/chart-scale";
 import { cn } from "@/lib/utils";
 import { useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
-import { useKeepInside } from "@/hooks/useKeepInside";
 import { dayLabel, type Series } from "@/components/admin/daily-stats";
 
 // Hand-rolled SVG for the reason every chart in this app is: a `<style>`-injecting
 // charting library breaks the nonce CSP in production. The geometry is the dive
-// activity chart's - the same viewBox, padding and count axis - with one slot per
-// day of a month and either a stack of segments or a pair of bars in each.
+// activity chart's - the shared `CHART_PADDING` frame and the count axis - with
+// one slot per day of a month and either a stack of segments or a pair of bars
+// in each.
 
-const WIDTH = 720;
-const HEIGHT = 240;
-const PADDING = { top: 12, right: 14, bottom: 28, left: 42 };
-const PLOT_HEIGHT = HEIGHT - PADDING.top - PADDING.bottom;
 const BAR_FILL = 0.7;
 const BAR_RADIUS = 2;
 // Room for a one- or two-digit day at `fontSize={11}`, as on the dive activity
@@ -46,7 +51,7 @@ export function DailyBarChart({
   description,
   emptyMessage,
 }: DailyBarChartProps) {
-  const [chartRef, width] = useChartWidth(WIDTH);
+  const [chartRef, width] = useChartWidth(CHART_WIDTH);
   // The day under the pointer or finger, by the slots the columns are cut into.
   const readout = useChartReadout<number>((event) => {
     const { x } = viewBoxPoint(
@@ -56,7 +61,8 @@ export function DailyBarChart({
       event.clientY,
     );
     const day = Math.floor(
-      ((x - PADDING.left) / (width - PADDING.left - PADDING.right)) *
+      ((x - CHART_PADDING.left) /
+        (width - CHART_PADDING.left - CHART_PADDING.right)) *
         days.length,
     );
     return Math.min(days.length - 1, Math.max(0, day));
@@ -81,12 +87,12 @@ export function DailyBarChart({
   // An empty month still gets its axes: a grid with nothing on it is the answer
   // "nobody came", and the frame stays the size it will be once somebody does.
   const domain = countDomain(ceiling);
-  const plotWidth = width - PADDING.left - PADDING.right;
+  const plotWidth = width - CHART_PADDING.left - CHART_PADDING.right;
   const slot = plotWidth / Math.max(1, days.length);
   const barWidth = slot * BAR_FILL;
-  const baseline = PADDING.top + PLOT_HEIGHT;
-  const slotStart = (index: number) => PADDING.left + index * slot;
-  const height = (count: number) => (count / domain.max) * PLOT_HEIGHT;
+  const baseline = CHART_PADDING.top + CHART_PLOT_HEIGHT;
+  const slotStart = (index: number) => CHART_PADDING.left + index * slot;
+  const height = (count: number) => (count / domain.max) * CHART_PLOT_HEIGHT;
 
   // Thinned from the first of the month, which is where the eye starts reading
   // a calendar.
@@ -148,45 +154,16 @@ export function DailyBarChart({
           context of the day's card. */}
       <div ref={chartRef} className="relative">
         <svg
-          viewBox={`0 0 ${width} ${HEIGHT}`}
+          viewBox={`0 0 ${width} ${CHART_HEIGHT}`}
           className="w-full h-auto"
           role="img"
           aria-label={description}
           {...readout.scrubProps}
         >
-          {axisTicks(domain).map((tick) => (
-            <g key={tick} aria-hidden className="text-border">
-              <line
-                x1={PADDING.left}
-                x2={width - PADDING.right}
-                y1={baseline - height(tick)}
-                y2={baseline - height(tick)}
-                stroke="currentColor"
-                strokeWidth={1}
-                strokeDasharray="2 4"
-              />
-              <text
-                x={PADDING.left - 8}
-                y={baseline - height(tick)}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize={11}
-                fill="currentColor"
-                className="text-muted-foreground"
-              >
-                {tick}
-              </text>
-            </g>
-          ))}
-
-          <line
-            x1={PADDING.left}
-            x2={width - PADDING.right}
-            y1={baseline}
-            y2={baseline}
-            stroke="currentColor"
-            strokeWidth={1}
-            className="text-border"
+          <ChartYAxis
+            ticks={axisTicks(domain)}
+            y={(tick) => baseline - height(tick)}
+            width={width}
           />
 
           {days.map((day, index) => (
@@ -205,9 +182,9 @@ export function DailyBarChart({
                   and an empty one has no bar at all. */}
               <rect
                 x={slotStart(index)}
-                y={PADDING.top}
+                y={CHART_PADDING.top}
                 width={slot}
-                height={PLOT_HEIGHT}
+                height={CHART_PLOT_HEIGHT}
                 fill="transparent"
                 onMouseEnter={() => readout.hover(index)}
                 onMouseLeave={() => readout.hover(null)}
@@ -221,7 +198,7 @@ export function DailyBarChart({
                 key={day}
                 aria-hidden
                 x={slotStart(index) + slot / 2}
-                y={HEIGHT - 8}
+                y={CHART_HEIGHT - 8}
                 textAnchor="middle"
                 fontSize={11}
                 fill="currentColor"
@@ -285,9 +262,7 @@ export function DailyBarChart({
   );
 }
 
-// The day's card, on the dive activity chart's terms: placed at the top of the
-// day's marks, flipped and nudged to stay inside the chart. HTML rather than an
-// SVG `<title>`, which only a mouse can ever open.
+// The day's card, at the top of the day's marks.
 function DailyBarTooltip({
   day,
   series,
@@ -303,28 +278,8 @@ function DailyBarTooltip({
   cy: number;
   chartWidth: number;
 }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  useKeepInside(cardRef);
-  const below = cy < HEIGHT * 0.35;
-  const translateY = below ? "12px" : "calc(-100% - 12px)";
-  const translateX =
-    cx < chartWidth * 0.18
-      ? "-12px"
-      : cx > chartWidth * 0.82
-        ? "calc(-100% + 12px)"
-        : "-50%";
-
   return (
-    <div
-      ref={cardRef}
-      className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
-      style={{
-        left: `${(cx / chartWidth) * 100}%`,
-        top: `${(cy / HEIGHT) * 100}%`,
-        transform: `translate(${translateX}, ${translateY})`,
-      }}
-      role="presentation"
-    >
+    <ChartHoverCard cx={cx} cy={cy} chartWidth={chartWidth}>
       <div className="text-xs text-tooltip-foreground/70">{dayLabel(day)}</div>
       {series.map((one) => (
         <div key={one.key} className="mt-0.5 flex items-center gap-1.5 text-sm">
@@ -338,6 +293,6 @@ function DailyBarTooltip({
           <span className="text-tooltip-foreground/70">{one.label}</span>
         </div>
       ))}
-    </div>
+    </ChartHoverCard>
   );
 }

@@ -25,7 +25,7 @@ import {
   stepCount,
   type Domain,
 } from "@/lib/chart-scale";
-import { buildAreaPath } from "@/lib/chart-path";
+import { buildAreaPath, segmentByTimeGap } from "@/lib/chart-path";
 import {
   type ChannelSeries,
   type ProfileAxisKey,
@@ -59,7 +59,6 @@ import {
   nearestEvent,
   profileScalePlacement,
   readoutTolerance,
-  segmentByTimeGap,
   temperatureDomain,
   toChannelSeries,
   toPressureSeries,
@@ -76,6 +75,7 @@ import {
   writeSeriesVisibility,
 } from "@/lib/chart-series-view";
 import { cn } from "@/lib/utils";
+import { CHART_HOVER_CARD } from "@/components/charts/chart-hover-card";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -385,7 +385,8 @@ export function DiveProfileChart({
   // Next rendered and be a hydration mismatch. The three arguments are exactly
   // that problem's shape - a server snapshot of `null` to hydrate against, a
   // client snapshot read straight from storage, and no subscription. The same
-  // call `GasUseCard` makes for its remembered period, for the same reasons.
+  // call `useChartPeriodView` makes for its remembered period, for the same
+  // reasons.
   const storedChannels = useSyncExternalStore(
     subscribeToNothing,
     readStoredChannels,
@@ -1726,13 +1727,10 @@ function ProfileTooltip({
   return (
     <div
       ref={cardRef}
-      // Never a hover target itself - it sits over the plot, and letting it take
-      // the pointer would make it flicker as it steals its own trigger's hover.
-      //
       // `w-max` so its width is its text's wherever it is placed: a box this
       // far right in its frame would otherwise shrink to the room left of it,
       // and the measurement above would answer for a narrower card.
-      className="pointer-events-none absolute z-10 w-max whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
+      className={cn(CHART_HOVER_CARD, "w-max")}
       style={{
         left: `${(cx / chartWidth) * 100}%`,
         top: `${(y / chartHeight) * 100}%`,

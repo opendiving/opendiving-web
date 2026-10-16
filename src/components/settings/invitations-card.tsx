@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, MailPlus, Send, Trash2 } from "lucide-react";
+import { MailPlus, Send, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -328,7 +328,7 @@ export function InvitationsCard() {
                     onClick={() => requestDelete(invitation.uuid)}
                   >
                     {deletingId === invitation.uuid ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <ButtonSpinner />
                     ) : (
                       <Trash2 className="h-4 w-4" />
                     )}

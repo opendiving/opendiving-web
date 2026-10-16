@@ -1,51 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo } from "react";
+import { Activity, Info, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import {
-  Activity,
-  ChevronLeft,
-  ChevronRight,
-  Info,
-  Minus,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
-import {
-  CARD_TITLE_ACTION,
   CARD_TITLE_ROW,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { IconTooltip } from "@/components/ui/tooltip";
-import { NativeSelect } from "@/components/ui/native-select";
+import { ChartPeriodControls } from "@/components/dives/chart-period-controls";
 import { ChartSkeleton } from "@/components/dives/chart-skeleton";
 import { ChartStat } from "@/components/dives/chart-stat";
 import { GasUseChart } from "@/components/dives/gas-use-chart";
 import { diveStatsAPI, DiveGasUsePoint } from "@/lib/api/dive-stats";
 import { type GasUseSummary, summarizeGasUse } from "@/lib/dive-gas";
-import {
-  CHART_SCOPES,
-  CHART_SCOPE_LABELS,
-  type ChartScope,
-  availablePeriods,
-  periodLabel,
-  periodRange,
-  resolveAnchor,
-  stepPeriod,
-} from "@/lib/chart-period";
-import {
-  parseGasUseView,
-  readStoredGasUseView,
-  writeGasUseView,
-} from "@/lib/gas-use-view";
-import { subscribeToNothing } from "@/lib/chart-series-view";
+import { GAS_USE_VIEW_KEY } from "@/lib/chart-period-view";
 import { diveWallClockTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
+import {
+  type ChartPeriodSource,
+  useChartPeriodView,
+} from "@/hooks/useChartPeriodView";
 import { useUnits } from "@/hooks/useUnits";
 import { displayNumber, unitLabel, type UnitSystem } from "@/lib/units";
+
+const GAS_USE_SOURCE: ChartPeriodSource<DiveGasUsePoint> = {
+  load: () => diveStatsAPI.getGasUseHistory(),
+  failure: "Failed to fetch gas use history:",
+  // The chart plots dives, so the anchor is one of their own times rather than
+  // an arbitrary date.
+  anchors: (points) =>
+    points.map((point) => diveWallClockTime(point.start_time)),
+  storageKey: GAS_USE_VIEW_KEY,
+  defaultScope: "year",
+};
 
 // The Home page's gas-consumption trend.
 //
@@ -57,88 +46,8 @@ import { displayNumber, unitLabel, type UnitSystem } from "@/lib/units";
 // points are the minimum.
 export function GasUseCard() {
   const units = useUnits();
-  const [points, setPoints] = useState<DiveGasUsePoint[] | null>(null);
-  // Both of these hold *this visit's* choice, and both are null until the diver
-  // makes one - which is what leaves room for the remembered view underneath.
-  // The anchor is a timestamp inside the visible period, and always one of the
-  // dives' own times rather than an arbitrary date: that's what makes switching
-  // scope land somewhere useful (the month *containing* the dive you were
-  // looking at) instead of on an empty period.
-  const [chosenScope, setChosenScope] = useState<ChartScope | null>(null);
-  const [anchor, setAnchor] = useState<number | null>(null);
-
-  // The view remembered from last time.
-  //
-  // Through `useSyncExternalStore` rather than a `useState` + effect pair, which
-  // is what this wants to be and can't: `localStorage` doesn't exist on the
-  // server, so a first client render that read it would disagree with the HTML
-  // Next rendered and be a hydration mismatch. The three arguments are exactly
-  // that problem's shape - a server snapshot of `null` to hydrate against, a
-  // client snapshot read straight from storage, and no subscription (see
-  // `subscribeToNothing`). React re-renders with the client value immediately
-  // after hydrating, under the spinner the card is already showing.
-  //
-  // The snapshot is the raw string because `useSyncExternalStore` compares
-  // snapshots by identity; parsing it here, once per distinct string, is what
-  // keeps that comparison meaningful.
-  const stored = useSyncExternalStore(
-    subscribeToNothing,
-    readStoredGasUseView,
-    () => null,
-  );
-  const remembered = useMemo(() => parseGasUseView(stored), [stored]);
-
-  const scope = chosenScope ?? remembered?.scope ?? "year";
-
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        setPoints(await diveStatsAPI.getGasUseHistory());
-      } catch (error) {
-        console.error("Failed to fetch gas use history:", error);
-        // An empty series renders the same prompt as "no qualifying dives",
-        // which is a better failure than a card stuck spinning forever.
-        setPoints([]);
-      }
-    };
-
-    fetchHistory();
-  }, []);
-
-  const times = useMemo(
-    () => (points ?? []).map((point) => diveWallClockTime(point.start_time)),
-    [points],
-  );
-
-  // The remembered period, checked against the dives that exist now - see
-  // `resolveAnchor`. Null until the series arrives, which is why the fallback
-  // below still has to be there.
-  const rememberedAnchor = useMemo(
-    () => resolveAnchor(remembered?.anchor ?? null, scope, times),
-    [remembered, scope, times],
-  );
-
-  // Three sources, most specific first: whatever the diver clicked in this
-  // visit, then whatever they were reading last visit, then the most recent
-  // dive - not the oldest, since the interesting question is how you're diving
-  // now and the older periods are one click back.
-  const activeAnchor =
-    anchor ?? rememberedAnchor ?? times[times.length - 1] ?? 0;
-
-  // Remembered for next time. Held back until the series is in: `times` is what
-  // `rememberedAnchor` resolves against, so writing before it arrives would
-  // persist a null over the very period we're about to restore. That guard also
-  // covers the failed-fetch path, which sets an empty series - a request that
-  // didn't come back should not erase where you were.
-  useEffect(() => {
-    if (times.length === 0) return;
-
-    // The *chosen* anchor, never `activeAnchor`. Falling back to the most
-    // recent dive is a default, not a preference, and persisting it would pin
-    // the card to today's newest dive forever - so a diver who never touched
-    // the period control would stop following their own new dives.
-    writeGasUseView({ scope, anchor: anchor ?? rememberedAnchor });
-  }, [times, scope, anchor, rememberedAnchor]);
+  const view = useChartPeriodView(GAS_USE_SOURCE);
+  const { points, times, scope, anchor } = view;
 
   // The figures above the chart. Same threshold as the chart's own: with one
   // dive there is no trend to describe, and an "Average" over a single dive
@@ -150,20 +59,10 @@ export function GasUseCard() {
             times,
             points.map((point) => point.gas_use.rmv),
             scope,
-            activeAnchor,
+            anchor,
           )
         : null,
-    [points, times, scope, activeAnchor],
-  );
-
-  const steppable = scope === "all" ? null : scope;
-  const previous = steppable
-    ? stepPeriod(activeAnchor, steppable, -1, times)
-    : null;
-  const next = steppable ? stepPeriod(activeAnchor, steppable, 1, times) : null;
-  const periods = useMemo(
-    () => (steppable ? availablePeriods(times, steppable) : []),
-    [times, steppable],
+    [points, times, scope, anchor],
   );
 
   return (
@@ -177,109 +76,7 @@ export function GasUseCard() {
             <Activity className="h-5 w-5" />
             Gas Consumption
           </CardTitle>
-
-          {scope !== "all" && (
-            <div
-              className={cn(
-                "flex items-center gap-1 @max-2xl:order-last @max-2xl:basis-full @max-2xl:justify-center",
-                CARD_TITLE_ACTION,
-              )}
-            >
-              <IconTooltip label="Gas consumption: previous period with dives">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9"
-                  disabled={previous === null}
-                  onClick={() => setAnchor(previous)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </IconTooltip>
-              {/* The label is also the jump-to control - stepping one period
-                    at a time is fine for "the trip before this one", but useless
-                    for reaching a specific year several seasons back.
-
-                    Its value is the *period's* start, never `activeAnchor`
-                    itself: the anchor is whichever dive you happened to land on,
-                    which usually matches no option, and a `<select>` whose value
-                    matches no option shows the first one instead. Fixed width
-                    so the chart doesn't shift sideways between "May 2026" and
-                    "September 2026", and wider once it wraps onto a line of its
-                    own. */}
-              <div className="w-40 shrink-0 @max-2xl:w-56">
-                <NativeSelect
-                  aria-label="Gas consumption: period"
-                  className="h-9 pl-2 font-medium"
-                  value={String(periodRange(activeAnchor, scope).start)}
-                  onChange={(event) => {
-                    const picked = periods.find(
-                      (period) => String(period.start) === event.target.value,
-                    );
-                    if (picked) setAnchor(picked.anchor);
-                  }}
-                >
-                  {periods.map((period) => (
-                    <option key={period.start} value={String(period.start)}>
-                      {periodLabel(period.start, scope, "long")}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </div>
-              <IconTooltip label="Gas consumption: next period with dives">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9"
-                  disabled={next === null}
-                  onClick={() => setAnchor(next)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </IconTooltip>
-            </div>
-          )}
-
-          {/* Every control in this row names its own card, because the two
-                cards draw the same row and `Card` is a plain `div` - so nothing
-                scopes them to each other. Read in place the heading above is all
-                the context you need, but a screen reader's controls list is flat
-                names and nothing else, and four arrows reading "Previous period
-                with dives" in it are four coin flips. The card name leads rather
-                than trails so the list groups by chart when it is scanned or
-                sorted. Same ambiguity `screenshots.mjs` hit from the automation
-                side, where the fix was to scope by the card's own heading, which
-                is exactly the context a controls list drops. (Named by role
-                rather than by level, there and here: this title has been an
-                `<h3>` and is now an `<h2>`, and the scoping never cared.) */}
-          {/* A segmented control built from plain buttons - the app has no
-                tabs/toggle-group primitive, and three buttons in a bordered row
-                is the whole of it. */}
-          <div
-            className={cn(
-              "flex h-9 items-stretch rounded-md border p-1 touch:h-11",
-              CARD_TITLE_ACTION,
-            )}
-            role="group"
-            aria-label="Gas consumption: time range"
-          >
-            {CHART_SCOPES.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setChosenScope(option)}
-                aria-pressed={scope === option}
-                className={cn(
-                  "relative rounded px-2.5 text-xs font-medium transition-colors touch:min-w-11 touch:tap-target",
-                  scope === option
-                    ? "bg-secondary text-secondary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {CHART_SCOPE_LABELS[option]}
-              </button>
-            ))}
-          </div>
+          <ChartPeriodControls name="Gas consumption" view={view} />
         </div>
       </CardHeader>
       <CardContent>
@@ -288,7 +85,7 @@ export function GasUseCard() {
         ) : (
           <>
             {summary && <GasUseSummaryRow summary={summary} units={units} />}
-            <GasUseChart points={points} scope={scope} anchor={activeAnchor} />
+            <GasUseChart points={points} scope={scope} anchor={anchor} />
           </>
         )}
         {/* "Surface-equivalent" is carrying the S of SAC here. The title

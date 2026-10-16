@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -264,7 +265,7 @@ function RenumberForm({
         >
           {isApplying ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <ButtonSpinner className="mr-2" />
               Renumbering…
             </>
           ) : (

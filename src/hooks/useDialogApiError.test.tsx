@@ -1,26 +1,26 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useDialogApiError } from "./useDialogApiError";
 
 describe("useDialogApiError", () => {
   it("starts empty", () => {
-    const { result } = renderHook(() => useDialogApiError(false));
+    const { result } = renderHook(() => useDialogApiError(false, vi.fn()));
     expect(result.current[0]).toBeNull();
   });
 
   it("holds a message set while the dialog is open", () => {
-    const { result } = renderHook(() => useDialogApiError(true));
+    const { result } = renderHook(() => useDialogApiError(true, vi.fn()));
 
     act(() => result.current[1]("Name already taken."));
 
     expect(result.current[0]).toBe("Name already taken.");
   });
 
-  // The behaviour every one of the seven dialogs needed: reopening after a failed
+  // The behaviour every create/edit dialog needs: reopening after a failed
   // save must not greet the diver with the previous attempt's error.
   it("clears the message when the dialog reopens", () => {
     const { result, rerender } = renderHook(
-      ({ open }) => useDialogApiError(open),
+      ({ open }) => useDialogApiError(open, vi.fn()),
       { initialProps: { open: true } },
     );
 
@@ -37,7 +37,7 @@ describe("useDialogApiError", () => {
 
   it("does not clear on an unrelated re-render while open", () => {
     const { result, rerender } = renderHook(
-      ({ open }) => useDialogApiError(open),
+      ({ open }) => useDialogApiError(open, vi.fn()),
       { initialProps: { open: true } },
     );
 
@@ -45,5 +45,16 @@ describe("useDialogApiError", () => {
     rerender({ open: true });
 
     expect(result.current[0]).toBe("Name already taken.");
+  });
+
+  it("clears the message when the diver dismisses the dialog, and passes the change on", () => {
+    const onOpenChange = vi.fn();
+    const { result } = renderHook(() => useDialogApiError(true, onOpenChange));
+
+    act(() => result.current[1]("Name already taken."));
+    act(() => result.current[2](false));
+
+    expect(result.current[0]).toBeNull();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

@@ -20,8 +20,11 @@ import {
   writeEntryUnits,
 } from "./entry-units";
 import { dismissPasskeyNudge, isPasskeyNudgeDismissed } from "./passkey-nudge";
-import { writeGasUseView } from "./gas-use-view";
-import { writeDiveActivityView } from "./dive-activity-view";
+import {
+  DIVE_ACTIVITY_VIEW_KEY,
+  GAS_USE_VIEW_KEY,
+  writePeriodView,
+} from "./chart-period-view";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // What jsdom cannot answer, stated once so no test here pretends otherwise: the
@@ -233,8 +236,8 @@ describe("the covered writers under the switch", () => {
   });
 
   it("stores neither Home card's remembered view", () => {
-    writeGasUseView({ scope: "year", anchor: null });
-    writeDiveActivityView({ scope: "year", anchor: null });
+    writePeriodView(GAS_USE_VIEW_KEY, { scope: "year", anchor: null });
+    writePeriodView(DIVE_ACTIVITY_VIEW_KEY, { scope: "year", anchor: null });
 
     expect(window.localStorage.getItem("opendiving:gas-use-view")).toBeNull();
     expect(

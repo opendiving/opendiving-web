@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save } from "lucide-react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { FormApiError } from "@/components/ui/form-api-error";
@@ -45,6 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 
 interface ContactDialogProps {
   open: boolean;
@@ -87,8 +86,10 @@ export function ContactDialog({
   initialName,
   initialRoles,
 }: ContactDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useDialogApiError(open);
+  const [apiError, setApiError, handleOpenChange] = useDialogApiError(
+    open,
+    onOpenChange,
+  );
   const isEdit = !!contact;
 
   const form = useForm<ContactInput>({
@@ -133,16 +134,9 @@ export function ContactDialog({
     // Same deliberate reset-on-open pattern as `course-dialog.tsx`.
   }, [open, contact, initialName, initialRolesKey, reset]);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setApiError(null);
-    onOpenChange(next);
-  };
-
   const onSubmit = async (data: ContactInput) => {
     setApiError(null);
     try {
-      setIsSubmitting(true);
-
       // "" is the form's "not set" for every optional field. It goes as an
       // explicit null, which on an update is what clears a stored value; `notes`
       // is the exception, being a string the API never takes as null.
@@ -183,8 +177,6 @@ export function ContactDialog({
           `Failed to ${isEdit ? "update" : "create"} contact. Please try again.`,
         ),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -376,24 +368,10 @@ export function ContactDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEdit ? "Saving..." : "Creating..."}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save changes
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create contact
-                  </>
-                )}
-              </Button>
+              <DialogSubmitButton
+                isEdit={isEdit}
+                createLabel="Create contact"
+              />
             </DialogFooter>
           </form>
         </Form>
