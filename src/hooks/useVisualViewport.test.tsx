@@ -244,8 +244,8 @@ describe("useShortViewport", () => {
   });
 
   it("takes the mark off only once the viewport has held still past the dialog's transition", () => {
-    // The dialog footer that came back above the keyboard and slid down with
-    // the box: `DialogContent` is still growing for 200ms after the event.
+    // A footer pinned straight away rides up with a box still growing back:
+    // `DialogContent` takes 200ms to reach the new height.
     const viewport = installViewport(420, 0);
     const { unmount } = renderHook(() => useShortViewport());
     expect(root).toHaveAttribute(SHORT);

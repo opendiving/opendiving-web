@@ -64,8 +64,7 @@ describe("DiveFormActions", () => {
 
     it("marks the root for as long as it is on the page", () => {
       // The mark is what lets go of the pin in `globals.css`, and the form has
-      // no dialog open to set it: with the keyboard up the row sat on the
-      // layout viewport's foot, mid-screen over the field being typed into.
+      // no dialog open to set it.
       Object.defineProperty(window, "visualViewport", {
         value: Object.assign(new EventTarget(), { height: 320, offsetTop: 0 }),
         configurable: true,
