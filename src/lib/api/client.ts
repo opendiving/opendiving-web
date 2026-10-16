@@ -268,6 +268,12 @@ const rawGet: (
 ) => Promise<AxiosResponse> = apiClient.get.bind(apiClient);
 
 apiClient.get = ((url: string, config?: AxiosRequestConfig) => {
+  // A request with a signal belongs to the caller that can abort it. Shared, an
+  // effect that re-runs is handed the request its cleanup has just aborted.
+  if (config?.signal) {
+    return rawGet(url, config);
+  }
+
   const key = getRequestKey(url, config);
   const pending = pendingGetRequests.get(key);
   if (pending) {
@@ -380,7 +386,9 @@ function abortError(): Error {
  * not be logged or toasted as an error.
  */
 export function isAbortError(error: unknown): boolean {
-  return (error as { name?: string })?.name === "AbortError";
+  return (
+    axios.isCancel(error) || (error as { name?: string })?.name === "AbortError"
+  );
 }
 
 /**

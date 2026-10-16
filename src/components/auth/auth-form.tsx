@@ -201,7 +201,7 @@ export function AuthForm({
           }}
           className="space-y-4"
         >
-          {error && <StatusMessage variant="error">{error}</StatusMessage>}
+          <StatusMessage variant="error">{error}</StatusMessage>
 
           <div className="space-y-2 text-left">
             <Label htmlFor="email">Email</Label>

@@ -168,7 +168,7 @@ export function InviteRequestForm({
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {error && <StatusMessage variant="error">{error}</StatusMessage>}
+            <StatusMessage variant="error">{error}</StatusMessage>
 
             <div className="space-y-2 text-left">
               <Label htmlFor="invite-request-email">Email</Label>

@@ -188,6 +188,33 @@ describe("the gear set dialog's PATCH body", () => {
   });
 });
 
+describe("the gear set dialog's refusal", () => {
+  it("is cleared when the dialog is closed", async () => {
+    updateGearSet.mockRejectedValueOnce({
+      response: { status: 409, data: { detail: "That name is taken" } },
+    });
+    const onOpenChange = vi.fn();
+    render(
+      <GearSetDialog
+        open
+        onOpenChange={onOpenChange}
+        gearSet={SIDEMOUNT}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    await save();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "That name is taken",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.getByRole("alert")).toBeEmptyDOMElement();
+  });
+});
+
 // The other two paths through the same dialog, where the list arrives from the
 // dive form through `initialItemUuids` rather than from the set being edited.
 describe("the gear set dialog's other save paths", () => {

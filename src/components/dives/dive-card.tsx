@@ -61,9 +61,9 @@ export function DiveCard({
   const withReturnTo = useWithReturnTo();
   const outline = dive.depth_outline;
   // Whole units, as the dive page's hero rounds them: the second decimal is not
-  // what anyone reads a dive's depth for.
+  // what anyone reads a dive's depth for. `!= null`, since 0 m is a reading.
   const depth = (meters?: number) =>
-    meters ? formatDepth(meters, units, { decimals: 0 }) : "-";
+    meters != null ? formatDepth(meters, units, { decimals: 0 }) : "-";
   const figures: BackdropCardFigure[] = [
     {
       label: "Dive time",
@@ -80,7 +80,7 @@ export function DiveCard({
       }),
     });
   }
-  if (figures.length < 3 && dive.avg_depth) {
+  if (figures.length < 3 && dive.avg_depth != null) {
     figures.push({ label: "Avg depth", value: depth(dive.avg_depth) });
   }
 

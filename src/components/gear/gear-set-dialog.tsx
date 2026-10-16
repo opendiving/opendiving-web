@@ -184,8 +184,13 @@ export function GearSetDialog({
     }
   };
 
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setApiError(null);
+    onOpenChange(next);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -319,7 +324,7 @@ export function GearSetDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
               >
                 Cancel
               </Button>
