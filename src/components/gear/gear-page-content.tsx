@@ -94,11 +94,11 @@ export function GearPageContent() {
   const isProbingArchived = activeListIsEmpty && probed === null;
 
   // The sets card sits below the gear list and reads as its continuation, so it
-  // waits until the diver is close to it before asking for anything. For most
-  // divers that is still on mount - ten gear items leaves the card on screen
-  // straight away - and for one with a few hundred it is what makes the two
-  // lists load in the order they are read, rather than the lower one fetching a
-  // page nobody has scrolled to yet.
+  // waits until the diver is close to it before asking for anything. On a wide
+  // screen that is still on mount - ten gear items, three to a row, leave the
+  // card on screen straight away - and on a phone, or for a diver with a few
+  // hundred, it is what makes the two lists load in the order they are read,
+  // rather than the lower one fetching a page nobody has scrolled to yet.
   const [setsCardRef, setsCardIsNear] = useNearViewport<HTMLDivElement>({
     once: true,
   });
