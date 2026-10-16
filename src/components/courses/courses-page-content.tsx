@@ -11,6 +11,7 @@ import { courseStatusBadgeVariant, courseStatusLabel } from "@/lib/course";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { CoursesPageFrame } from "@/components/courses/courses-page-frame";
 import {
@@ -22,7 +23,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CourseDialog } from "@/components/courses/course-dialog";
 import { useQuickCreate } from "@/components/layout/quick-create";
-import { Eye, Edit, Trash2, Loader2 } from "lucide-react";
+import { Eye, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -218,7 +219,7 @@ export function CoursesPageContent() {
                     disabled={deletingId === course.uuid}
                   >
                     {deletingId === course.uuid ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <ButtonSpinner />
                     ) : (
                       <Trash2 className="h-4 w-4" />
                     )}

@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save } from "lucide-react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { FormApiError } from "@/components/ui/form-api-error";
@@ -34,6 +32,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 
 interface PersonDialogProps {
   open: boolean;
@@ -60,8 +59,10 @@ export function PersonDialog({
   onSaved,
   initialName,
 }: PersonDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useDialogApiError(open);
+  const [apiError, setApiError, handleOpenChange] = useDialogApiError(
+    open,
+    onOpenChange,
+  );
   const isEdit = !!person;
 
   const form = useForm<PersonInput>({
@@ -90,16 +91,9 @@ export function PersonDialog({
     // Same deliberate reset-on-open pattern as `contact-dialog.tsx`.
   }, [open, person, initialName, reset]);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setApiError(null);
-    onOpenChange(next);
-  };
-
   const onSubmit = async (data: PersonInput) => {
     setApiError(null);
     try {
-      setIsSubmitting(true);
-
       // "" is the form's "not set" for every optional field. It goes as an
       // explicit null, which on an update is what clears a stored value - and,
       // for the username, what unlinks the person. `notes` is the exception,
@@ -141,8 +135,6 @@ export function PersonDialog({
           `Failed to ${isEdit ? "update" : "create"} person. Please try again.`,
         ),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -260,24 +252,7 @@ export function PersonDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEdit ? "Saving..." : "Creating..."}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save changes
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create person
-                  </>
-                )}
-              </Button>
+              <DialogSubmitButton isEdit={isEdit} createLabel="Create person" />
             </DialogFooter>
           </form>
         </Form>
