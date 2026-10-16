@@ -960,7 +960,8 @@ re-read whenever anything was sent, since only the API knows which sides landed.
 
 `CERTIFICATION_CARD_ASPECT` is 1013/638, measured off a current PADI e-card. Cards arrive in at
 least four shapes (old PADI 1005×660, RAID 802×519, TDI/SDI 330×207), so one ratio everywhere is
-what makes a row of them read as cards. `CertificationCardFrame` is the only box drawing one and
+what makes a row of them read as cards. `CertificationCardFrame` draws one, and so does
+`CertificationCard` through `BackdropCard`'s `shape`, so the list shows each front whole;
 `ImageCropDialog` crops uploads to that ratio, so stored bytes need no fitting; anything stored
 uncropped is `object-cover`, trimming at most 4% off the old PADI design, which carries nothing near
 its edges.
@@ -2585,12 +2586,12 @@ from the shadcn registry silently restores `p-4`/`px-4`, hence the comment in th
 
 Measured on nine tables at 375–1440 px with `padding-inline` injected, reading `table.scrollWidth`
 against `table.parentElement.clientWidth`. At 1024 px and above nothing overflows at any padding; at
-375 px everything scrolls regardless; 640–768 px is the argument: `px-2` clears every 640 px
-overflow but certifications, and at 768 px stops `Date & Time` and `Apr 16, 2026, 12:59` wrapping in
-the dive log. `px-3` clears under half. The one cost is the gutter between right-aligned `Dives` and
-`Service` in `gear-items-card.tsx`; if that pair reads as one number, add `pr-` there rather than
-widening every table. The five list pages still wrap `Table` in an inert `overflow-x-auto` div,
-which fools `closest('[class*="overflow-x-auto"]')`.
+375 px everything scrolls regardless; 640–768 px is the argument: `px-2` clears every table's 640 px
+overflow, and at 768 px stops `Date & Time` and `Apr 16, 2026, 12:59` wrapping in the dive log.
+`px-3` clears under half. The one cost is the gutter between right-aligned `Dives` and `Service` in
+`gear-items-card.tsx`; if that pair reads as one number, add `pr-` there rather than widening every
+table. The five list pages still wrap `Table` in an inert `overflow-x-auto` div, which fools
+`closest('[class*="overflow-x-auto"]')`.
 
 ## Dive site coordinates are two free-typed strings, validated as a pair
 
@@ -4520,18 +4521,18 @@ Home page under three route names and never renders the landing page or sign-in 
 
 ## Ten rows of "Edit" name nothing
 
-Row-action controls in all four tables (certifications, gear items, gear sets, courses) and the
-dive, trip and site cards' actions menus name their row: `Actions for dive #412`,
+Row-action controls in the three tables (gear items, gear sets, courses) and the dive, trip, site
+and certification cards' actions menus name their row: `Actions for dive #412`,
 `Actions for Palau 2025`, `Delete Pescador Island`. Uniqueness among the page's controls is the
 point: axe's `button-name` and `link-name` pass `aria-label="Edit"` ten times over, so only reading
 the controls list catches a bare label. Dive cards key off `dive.dive_number`, what the card leads
-with and what a diver says out loud. Certification rows carry agency and level through
+with and what a diver says out loud. Certification cards carry agency and level through
 `certificationLabel` in `lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no
-unique-name constraint by design, and level alone gives two `Edit Advanced Nitrox` buttons. Gear
-rows use `gearItemLabel`'s brand-then-name shape. A qualifier belongs in the name where the diver
-says it and the collision is structural; otherwise it is a second sentence.
-`app/certifications/page.render.test.tsx` and `app/gear/page.render.test.tsx` render two rows,
-because a constant name passes a one-row test.
+unique-name constraint by design, and level alone gives two `Actions for Advanced Nitrox` menus.
+Gear rows use `gearItemLabel`'s brand-then-name shape. A qualifier belongs in the name where the
+diver says it and the collision is structural; otherwise it is a second sentence.
+`app/certifications/page.render.test.tsx` and `app/gear/page.render.test.tsx` render two records,
+because a constant name passes a one-record test.
 
 ## The gear detail page's service card, where the row is not the unit
 

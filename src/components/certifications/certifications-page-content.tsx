@@ -1,35 +1,17 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Edit, Trash2 } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useSavedElsewhere } from "@/hooks/useSavedElsewhere";
-import {
-  certificationsAPI,
-  certificationAgencyLabel,
-  certificationFile,
-  certificationLabel,
-  Certification,
-} from "@/lib/api/certifications";
-import {
-  certificationExpiryBadgeVariant,
-  certificationExpiryLabel,
-  certificationExpiryStatus,
-} from "@/lib/certification";
-import { formatDateOnly } from "@/lib/date-time";
-import { Button } from "@/components/ui/button";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { certificationsAPI, Certification } from "@/lib/api/certifications";
 import { CertificationsPageFrame } from "@/components/certifications/certifications-page-frame";
-import { TableCell, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { CertificationCard } from "@/components/certifications/certification-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
 import { CertificationViewDialog } from "@/components/certifications/certification-view-dialog";
-import { CertificationCardImage } from "@/components/certifications/certification-card-image";
 
 export function CertificationsPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -79,7 +61,7 @@ export function CertificationsPageContent() {
       "Are you sure you want to delete this certification? The card images stored with it are permanently deleted too.",
     successMessage: "Certification deleted successfully.",
     errorMessage: "Failed to delete certification. Please try again.",
-    // The row goes locally rather than by re-reading the pages around it: a
+    // The card goes locally rather than by re-reading the pages around it: a
     // diver who has scrolled several pages in should not have the list
     // collapse back to the first one under them.
     onDeleted: removeItem,
@@ -100,90 +82,16 @@ export function CertificationsPageContent() {
         hasMore={hasMore}
         onLoadMore={loadMore}
         onNew={() => setEditing(undefined)}
-        rows={certifications.map((certification) => {
-          const expiry = certificationExpiryStatus(certification.expires_on);
-          const label = certificationLabel(certification);
-          return (
-            <TableRow key={certification.uuid}>
-              <TableCell>
-                {/* No extra request for cards with no image - the API
-                            embeds each row's file metadata. */}
-                <CertificationCardImage
-                  certificationUuid={certification.uuid}
-                  side="front"
-                  file={certificationFile(certification, "front")}
-                  compact
-                />
-              </TableCell>
-              <TableCell className="font-medium">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className="hover:underline text-left touch:min-h-11"
-                    onClick={() => setViewing(certification)}
-                  >
-                    {certification.name}
-                  </button>
-                  {expiry && (
-                    <Badge variant={certificationExpiryBadgeVariant(expiry)}>
-                      {certificationExpiryLabel(expiry)}
-                    </Badge>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                {certificationAgencyLabel(
-                  certification.agency,
-                  certification.agency_other,
-                )}
-              </TableCell>
-              <TableCell>
-                {certification.certification_number || (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell>
-                {certification.certified_on ? (
-                  formatDateOnly(certification.certified_on)
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell className="text-right">
-                {/* Named per row, not per action: ten identical "Edit"s
-                            tell a screen reader's controls list nothing about
-                            which card. The agency goes in the name because two
-                            cards may share a level - see DECISIONS.md, "Ten rows
-                            of 'Edit' name nothing". */}
-                <div className="flex justify-end gap-2">
-                  <IconTooltip label={`Edit ${label}`}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditing(certification)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </IconTooltip>
-                  <IconTooltip label={`Delete ${label}`}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => requestDelete(certification.uuid)}
-                      disabled={deletingId === certification.uuid}
-                    >
-                      {deletingId === certification.uuid ? (
-                        <ButtonSpinner />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </IconTooltip>
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
+        cards={certifications.map((certification) => (
+          <CertificationCard
+            key={certification.uuid}
+            certification={certification}
+            onView={() => setViewing(certification)}
+            onEdit={() => setEditing(certification)}
+            onDelete={() => requestDelete(certification.uuid)}
+            isDeleting={deletingId === certification.uuid}
+          />
+        ))}
       />
 
       {user && (
@@ -191,8 +99,8 @@ export function CertificationsPageContent() {
           open={editing !== null}
           onOpenChange={(open) => !open && setEditing(null)}
           certification={editing}
-          // The card images ride on that dialog's own save, so the row it hands
-          // back already carries whatever landed.
+          // The card images ride on that dialog's own save, so the certification
+          // it hands back already carries whatever landed.
           onSaved={applySaved}
         />
       )}
