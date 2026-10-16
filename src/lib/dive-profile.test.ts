@@ -24,7 +24,6 @@ import {
   nearestSampleIndex,
   readoutTolerance,
   sampleIndexAt,
-  segmentByTimeGap,
   temperatureDomain,
   toChannelSeries,
   toPressureSeries,
@@ -35,6 +34,7 @@ import {
   withoutSpuriousZeros,
   PROFILE_CHANNELS,
 } from "@/lib/dive-profile";
+import { segmentByTimeGap } from "@/lib/chart-path";
 import { niceDomain } from "@/lib/chart-scale";
 
 // Every time in this file is on the profile's own axis, milliseconds - so a
@@ -828,36 +828,6 @@ describe("describeEvent", () => {
     expect(describeEvent(event({ type: null, label: "  " }))).toBe(
       "Device event",
     );
-  });
-});
-
-describe("segmentByTimeGap", () => {
-  it("returns one run for an unbroken series", () => {
-    expect(segmentByTimeGap([0, 10_000, 20_000, 30_000], 30_000)).toEqual([
-      [0, 1, 2, 3],
-    ]);
-  });
-
-  it("breaks where the gap exceeds the threshold", () => {
-    // A transmitter that stopped reporting between 20 s and 620 s.
-    expect(
-      segmentByTimeGap([0, 10_000, 20_000, 620_000, 630_000], 30_000),
-    ).toEqual([
-      [0, 1, 2],
-      [3, 4],
-    ]);
-  });
-
-  it("does not break on a gap exactly at the threshold", () => {
-    expect(segmentByTimeGap([0, 30_000, 60_000], 30_000)).toEqual([[0, 1, 2]]);
-  });
-
-  it("handles an empty series", () => {
-    expect(segmentByTimeGap([], 30_000)).toEqual([]);
-  });
-
-  it("handles a single sample", () => {
-    expect(segmentByTimeGap([42_000], 30_000)).toEqual([[0]]);
   });
 });
 

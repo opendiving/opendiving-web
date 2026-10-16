@@ -2,7 +2,7 @@
 // series is on screen, what it's called, which slices are worth offering, and how
 // to step between them.
 //
-// Moved out of `lib/dive-gas.ts` and `lib/gas-use-view.ts`, unchanged, once
+// Moved out of `lib/dive-gas.ts` and the gas card's view module, unchanged, once
 // `DiveActivityCard` grew the same three scopes - the same move `niceDomain`/
 // `axisTicks` made to `lib/chart-scale.ts` before it. Nothing here is about gas,
 // and the alternative was a second copy of a fortnight of calendar edge cases in
@@ -29,6 +29,18 @@ export const CHART_SCOPE_LABELS: Record<ChartScope, string> = {
   year: "Year",
   month: "Month",
 };
+
+// A month's name, 1-12, from the platform rather than a hardcoded table, so it
+// reads the same way as every other date in the app (see `periodLabel`). The
+// year is arbitrary and never shown - this is naming a month, not a date - and
+// `timeZone: "UTC"` keeps the constructed date from sliding into the previous
+// month for viewers west of Greenwich.
+export function monthName(month: number, style: "short" | "long"): string {
+  return new Date(Date.UTC(2001, month - 1, 1)).toLocaleDateString("en-US", {
+    month: style,
+    timeZone: "UTC",
+  });
+}
 
 // The half-open `[start, end)` bounds of the calendar period containing `anchor`.
 export function periodRange(

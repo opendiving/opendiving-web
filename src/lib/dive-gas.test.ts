@@ -13,7 +13,6 @@ import {
   rollingMean,
   rollingStdDev,
   scopeRange,
-  segmentByGap,
   summarizeGasUse,
   tankGasUseRows,
   trendWindow,
@@ -1135,42 +1134,6 @@ describe("summarizeGasUse", () => {
     expect(
       summarizeGasUse(times, rmvs, "month", Date.UTC(2025, 6, 1)),
     ).toBeNull();
-  });
-});
-
-describe("segmentByGap", () => {
-  const DAY = 24 * 60 * 60 * 1000;
-
-  it("keeps a continuous run in one segment", () => {
-    const times = [0, DAY, 2 * DAY];
-
-    expect(segmentByGap(times, 60)).toEqual([[0, 1, 2]]);
-  });
-
-  it("splits where the break exceeds the threshold", () => {
-    // Two dives in April, two in October - the six months between them is not a
-    // gentle decline in consumption, it's an off-season.
-    const times = [0, DAY, 200 * DAY, 201 * DAY];
-
-    expect(segmentByGap(times, 60)).toEqual([
-      [0, 1],
-      [2, 3],
-    ]);
-  });
-
-  it("does not split on a gap exactly at the threshold", () => {
-    expect(segmentByGap([0, 60 * DAY], 60)).toEqual([[0, 1]]);
-    expect(segmentByGap([0, 61 * DAY], 60)).toEqual([[0], [1]]);
-  });
-
-  it("covers every index exactly once, in order", () => {
-    const times = [0, 100 * DAY, 101 * DAY, 500 * DAY];
-
-    expect(segmentByGap(times, 60).flat()).toEqual([0, 1, 2, 3]);
-  });
-
-  it("returns nothing for an empty series", () => {
-    expect(segmentByGap([], 60)).toEqual([]);
   });
 });
 

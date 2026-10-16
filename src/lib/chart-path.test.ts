@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   barPath,
   buildAreaPath,
+  segmentByTimeGap,
   smoothBandPath,
   smoothPath,
 } from "@/lib/chart-path";
@@ -153,5 +154,42 @@ describe("barPath", () => {
   it("draws nothing for a month with no diving", () => {
     // An absence, not a sliver: a zero-height bar would still show a 3-unit cap.
     expect(barPath(10, 100, 20, 0, 3)).toBe("");
+  });
+});
+
+describe("segmentByTimeGap", () => {
+  it("returns one run for an unbroken series", () => {
+    expect(segmentByTimeGap([0, 10_000, 20_000, 30_000], 30_000)).toEqual([
+      [0, 1, 2, 3],
+    ]);
+  });
+
+  it("breaks where the gap exceeds the threshold", () => {
+    // A transmitter that stopped reporting between 20 s and 620 s.
+    expect(
+      segmentByTimeGap([0, 10_000, 20_000, 620_000, 630_000], 30_000),
+    ).toEqual([
+      [0, 1, 2],
+      [3, 4],
+    ]);
+  });
+
+  it("does not break on a gap exactly at the threshold", () => {
+    expect(segmentByTimeGap([0, 30_000, 60_000], 30_000)).toEqual([[0, 1, 2]]);
+  });
+
+  it("handles an empty series", () => {
+    expect(segmentByTimeGap([], 30_000)).toEqual([]);
+  });
+
+  it("handles a single sample", () => {
+    expect(segmentByTimeGap([42_000], 30_000)).toEqual([[0]]);
+  });
+
+  it("covers every index exactly once, in order", () => {
+    const day = 24 * 60 * 60 * 1000;
+    const times = [0, 100 * day, 101 * day, 500 * day];
+
+    expect(segmentByTimeGap(times, 60 * day).flat()).toEqual([0, 1, 2, 3]);
   });
 });
