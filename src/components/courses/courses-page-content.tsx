@@ -170,8 +170,8 @@ export function CoursesPageContent() {
                 course.end_date ?? undefined,
               ) ?? <span className="text-muted-foreground">-</span>}
             </TableCell>
-            {/* A status column, so the chips get one width the way the
-                        gear table's Service column does - `min-w-24` is the same
+            {/* A status column, so the chips get one width the way
+                        `ServiceStatusBadge`'s do - `min-w-24` is the same
                         6rem, and clears "Not passed" at 88px, the widest of the
                         six labels. Only the layout is shared: these variants are
                         still the older `default`/`secondary`/`warning` scale, not

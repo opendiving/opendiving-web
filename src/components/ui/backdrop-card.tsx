@@ -11,6 +11,16 @@ import { ItemActionsMenu } from "@/components/ui/item-actions-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
+// A list's card's own colour, set a step off the page's so the card reads as
+// one: in dark the theme's card colour is that step, and in light this grey is
+// the same contrast against white - about 1.11:1 - where the card colour would
+// be none. Hover steps the other way from the page in each theme, for a card
+// that is a link.
+export const LIST_CARD_SURFACE =
+  "bg-[var(--backdrop-card)] [--backdrop-card:hsl(240_4%_95.5%)] dark:[--backdrop-card:hsl(var(--card))]";
+export const LIST_CARD_HOVER =
+  "hover:[--backdrop-card:hsl(240_4%_92.5%)] dark:hover:[--backdrop-card:hsl(var(--muted))]";
+
 // The record's link, stretched over the whole card rather than wrapping it: a
 // button inside an anchor is invalid, and so is a map's attribution link.
 export const BACKDROP_CARD_LINK =
@@ -140,15 +150,11 @@ export function BackdropCard({
         // `justify-end` for a card stretched taller than its content by a
         // grid row: the details stay at its foot, under the menu's corner.
         "relative isolate flex flex-col justify-end rounded-lg border transition-colors",
-        // The card's own colour, set a step off the page's so the card reads
-        // as one: in dark the theme's card colour is that step, and in light
-        // this grey is the same contrast against white - about 1.11:1 - where
-        // the card colour would be none. Hover steps the other way from the
-        // page in each theme. The backdrop's fade meets it, and the text's and
-        // the menu's glows are drawn in it.
-        "bg-[var(--backdrop-card)] [--backdrop-fade:var(--backdrop-card)]",
-        "[--backdrop-card:hsl(240_4%_95.5%)] hover:[--backdrop-card:hsl(240_4%_92.5%)]",
-        "dark:[--backdrop-card:hsl(var(--card))] dark:hover:[--backdrop-card:hsl(var(--muted))]",
+        // The backdrop's fade meets the card's colour, and the text's and the
+        // menu's glows are drawn in it.
+        LIST_CARD_SURFACE,
+        LIST_CARD_HOVER,
+        "[--backdrop-fade:var(--backdrop-card)]",
         // A fixed band of backdrop above the name, with the details over its
         // faded foot: however tall they grow, the backdrop shows as much of
         // itself, at every width. The details' own top padding is part of the
