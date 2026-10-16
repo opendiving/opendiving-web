@@ -28,6 +28,9 @@ function openLongDialog() {
           <DialogTitle>Edit certification</DialogTitle>
         </DialogHeader>
         <form>
+          {/* A field's footprint, and not focusable, so open-focus leaves it
+            be. */}
+          <div data-testid="field" style={{ height: "40px" }} />
           <div style={{ height: "2000px" }} />
           <DialogFooter>
             <Button type="submit">Save changes</Button>
@@ -88,6 +91,13 @@ describe("DialogHeader", () => {
     await expect
       .poll(() => parseFloat(getComputedStyle(dialog).scrollPaddingTop))
       .toBe(header.offsetHeight + 16);
+    // What `useKeepFocusedFieldVisible` does to a field above the fold: it
+    // comes back below the header, not behind it.
+    const field = screen.getByTestId("field");
+    field.scrollIntoView({ block: "nearest" });
+    expect(field.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      header.getBoundingClientRect().bottom,
+    );
 
     dialog.scrollTop = 0;
     await expect.poll(() => header.hasAttribute("data-stuck")).toBe(false);
@@ -95,15 +105,17 @@ describe("DialogHeader", () => {
   });
 
   it("lets go of the top while the visible height is short, and pins again with room", async () => {
-    await page.viewport(390, 400);
+    await page.viewport(390, 800);
     const { dialog, header, close } = openLongDialog();
-    await expect.poll(() => getComputedStyle(header).position).toBe("relative");
-
     dialog.scrollTop = 600;
-    await expect
-      .poll(() => header.getBoundingClientRect().bottom)
-      .toBeLessThan(paddingTop(dialog));
-    expect(header.hasAttribute("data-stuck")).toBe(false);
+    await expect.poll(() => header.hasAttribute("data-stuck")).toBe(true);
+
+    // The keyboard coming up over a dialog scrolled part-way.
+    await page.viewport(390, 400);
+    await expect.poll(() => getComputedStyle(header).position).toBe("relative");
+    expect(header.getBoundingClientRect().bottom).toBeLessThan(
+      paddingTop(dialog),
+    );
     expect(getComputedStyle(dialog).scrollPaddingTop).toBe("auto");
     // Still the header's, and gone with it.
     expect(close.getBoundingClientRect().bottom).toBeLessThan(
@@ -112,9 +124,11 @@ describe("DialogHeader", () => {
 
     await page.viewport(390, 800);
     await expect.poll(() => getComputedStyle(header).position).toBe("sticky");
-    await expect
-      .poll(() => header.getBoundingClientRect().top)
-      .toBeCloseTo(paddingTop(dialog) - 2, 0);
+    await expect.poll(() => header.hasAttribute("data-stuck")).toBe(true);
+    expect(header.getBoundingClientRect().top).toBeCloseTo(
+      paddingTop(dialog) - 2,
+      0,
+    );
   });
 });
 
