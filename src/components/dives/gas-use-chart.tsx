@@ -150,7 +150,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   const [chosen, setChosen] = useState<GasUseMark[] | null>(null);
 
   // Read through `useSyncExternalStore` for the reason spelled out on
-  // `GasUseCard`'s own remembered view: `localStorage` doesn't exist on the
+  // `useChartPeriodView`'s remembered period: `localStorage` doesn't exist on the
   // server, so a first client render that read it directly would disagree with
   // the HTML Next rendered and be a hydration mismatch.
   const storedMarks = useSyncExternalStore(

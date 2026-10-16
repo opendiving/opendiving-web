@@ -385,7 +385,8 @@ export function DiveProfileChart({
   // Next rendered and be a hydration mismatch. The three arguments are exactly
   // that problem's shape - a server snapshot of `null` to hydrate against, a
   // client snapshot read straight from storage, and no subscription. The same
-  // call `GasUseCard` makes for its remembered period, for the same reasons.
+  // call `useChartPeriodView` makes for its remembered period, for the same
+  // reasons.
   const storedChannels = useSyncExternalStore(
     subscribeToNothing,
     readStoredChannels,
