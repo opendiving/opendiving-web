@@ -3,7 +3,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Form } from "@/components/ui/form";
-import { FormApiError } from "@/components/ui/form-api-error";
 import {
   AutofilledLegend,
   AutofilledMarks,
@@ -239,10 +238,6 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
                 onGroupOpenChange={setGroupOpen}
               />
 
-              {/* Above the buttons, so a refusal is on screen next to the control
-              that produced it rather than off the top of a long form. */}
-              <FormApiError error={blockedSubmit} />
-
               <DiveFormActions
                 cancelHref={cancelHref}
                 mode={mode}
@@ -251,6 +246,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
                 submitLabel={submitLabel}
                 isBusy={isResolvingSpecies}
                 busyLabel="Adding species..."
+                error={blockedSubmit}
               />
             </form>
           </div>

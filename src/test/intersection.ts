@@ -80,7 +80,13 @@ export function clearIntersectionObservers() {
 export function reveal() {
   for (const { element, callback, observer } of [...registrations]) {
     callback(
-      [{ isIntersecting: true, target: element } as IntersectionObserverEntry],
+      [
+        {
+          isIntersecting: true,
+          intersectionRatio: 1,
+          target: element,
+        } as IntersectionObserverEntry,
+      ],
       observer,
     );
   }
@@ -101,9 +107,33 @@ export function scrollPast(within?: Element) {
       [
         {
           isIntersecting: false,
+          intersectionRatio: 0,
           target: element,
-          boundingClientRect: { top: -1 } as DOMRectReadOnly,
-          rootBounds: { top: 0 } as DOMRectReadOnly,
+          boundingClientRect: { top: -2, bottom: -1 } as DOMRectReadOnly,
+          rootBounds: { top: 0, bottom: 799 } as DOMRectReadOnly,
+        } as IntersectionObserverEntry,
+      ],
+      observer,
+    );
+  }
+}
+
+/**
+ * Report every element currently under observation as held at the foot of the
+ * viewport by `position: sticky` - its last pixel past a root shrunk by one at
+ * the bottom, so not wholly in view, and below rather than above. Wrap it in
+ * `act()`, as `reveal`.
+ */
+export function pinToBottom() {
+  for (const { element, callback, observer } of [...registrations]) {
+    callback(
+      [
+        {
+          isIntersecting: true,
+          intersectionRatio: 0.98,
+          target: element,
+          boundingClientRect: { bottom: 800 } as DOMRectReadOnly,
+          rootBounds: { bottom: 799 } as DOMRectReadOnly,
         } as IntersectionObserverEntry,
       ],
       observer,

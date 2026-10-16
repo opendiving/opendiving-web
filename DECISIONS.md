@@ -6967,3 +6967,14 @@ reserves `""`, shows an empty trigger for a value with no registered item, and n
 to put a name before its value. What an `<option>` cannot do is markup — a muted count or an icon
 becomes plain text, as in "Load a gear set". A list that needs typing or rich rows is a combobox
 (`CreatableCombobox`).
+
+## The dive form's Cancel/Save row sticks to the foot of the screen
+
+`DiveFormActions` is `sticky bottom-0`, the same element at the form's end, so tab order and Enter
+to submit are unchanged; it takes a background and a rule only while pinned. Rejected: floating
+round ✓/✕ buttons, which drop the labels and cover fields; the top of the screen, which the header
+and stuck section headings already hold; `interactive-widget=resizes-content`, which would stack the
+row on the keyboard and shrink a phone's view of the field being typed into; and hiding it on focus
+— Android's back button closes the keyboard without blurring, and a tap on Save blurs the field
+first, removing the row under the finger. So the keyboard covers the row while typing, as the
+platform default, and it is back when the keyboard closes.
