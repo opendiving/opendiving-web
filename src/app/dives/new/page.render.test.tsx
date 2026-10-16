@@ -2805,7 +2805,7 @@ describe("the preset list", () => {
     expect(
       screen.getByText(/"All" is built in and always shows every field/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^save$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^save preset$/i })).toBeDisabled();
   });
 
   it("saves the current fields under a new name", async () => {
@@ -2825,7 +2825,7 @@ describe("the preset list", () => {
     expect(
       screen.getByText(/creates a new preset called "Warm water"/i),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^save preset$/i }));
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.createPreset).toHaveBeenCalledWith({
@@ -2866,7 +2866,7 @@ describe("the preset list", () => {
     expect(
       screen.getByText(/replaces the fields saved in "Recreational"/i),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^save preset$/i }));
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.updatePreset).toHaveBeenCalledWith(

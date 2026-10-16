@@ -305,7 +305,7 @@ describe("DiveFormFieldsDialog", () => {
 
     await user.click(screen.getByRole("switch", { name: "Altitude" }));
     await user.clear(saveAsBox());
-    const save = screen.getByRole("button", { name: "Save" });
+    const save = screen.getByRole("button", { name: "Save preset" });
     expect(save).toBeDisabled();
     await user.type(saveAsBox(), "Sidemount");
     await user.click(save);
