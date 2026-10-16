@@ -437,6 +437,23 @@
     @apply transition-[background-color,box-shadow,backdrop-filter] duration-150 motion-reduce:transition-none;
   }
 
+  /* The padding under the dive form's buttons. Installed to a phone's home
+     screen, the page runs down into the screen's rounded corners, which a
+     browser's toolbar otherwise covers, so there the row ends a dialog
+     footer's `pb-6` above its foot - or the home indicator's inset, where
+     one is reported - and the pinned action button clears the curve. The
+     same at rest, so nothing moves as the row sticks. */
+  :root {
+    --dive-form-actions-pb: 0.75rem;
+    @media (display-mode: standalone) {
+      --dive-form-actions-pb: max(1.5rem, env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  [data-dive-form-actions] {
+    padding-bottom: var(--dive-form-actions-pb);
+  }
+
   /* The box each surface - and the header's cross - is placed against, pinned
      or not. */
   [data-dialog-header],
@@ -496,14 +513,14 @@
 
     /* The page's bottom scroll padding while that row is pinned: a field focused
        below it - the first refused one after a failed save - stops above the
-       row rather than behind it. The row's height: `py-3` twice and a default
-       button's `h-10`, 44px on touch. Unlike at the top, overshooting costs
-       nothing here. The refusal line the row can carry is not counted: a
-       resolver's refusal, the usual one, never shows there. */
+       row rather than behind it. The row's height: `pt-3`, a default button's
+       `h-10` (44px on touch) and the padding under it. Unlike at the top,
+       overshooting costs nothing here. The refusal line the row can carry is
+       not counted: a resolver's refusal, the usual one, never shows there. */
     &:has([data-dive-form-actions][data-stuck]) {
-      scroll-padding-bottom: 4rem;
+      scroll-padding-bottom: calc(3.25rem + var(--dive-form-actions-pb));
       @variant touch {
-        scroll-padding-bottom: 4.25rem;
+        scroll-padding-bottom: calc(3.5rem + var(--dive-form-actions-pb));
       }
     }
 

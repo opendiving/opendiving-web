@@ -61,7 +61,7 @@ export function DiveFormActions({
       ref={rowRef}
       data-dive-form-actions=""
       data-stuck={stuck ? "" : undefined}
-      className="z-20 space-y-2 py-3"
+      className="z-20 space-y-2 pt-3"
     >
       <FormApiError error={error} />
       <div className="flex justify-end gap-4">
