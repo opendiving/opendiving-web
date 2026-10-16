@@ -165,7 +165,9 @@ export function CertificationCard({
         <button
           type="button"
           onClick={onView}
-          className={cn(BACKDROP_CARD_LINK, "text-left")}
+          // The details' glow: a browser's own stylesheet sets a button's
+          // `text-shadow` to none, where a link inherits it.
+          className={cn(BACKDROP_CARD_LINK, "text-left [text-shadow:inherit]")}
         >
           {certification.name}
         </button>
