@@ -84,8 +84,10 @@ a file named `foo.browser.test.tsx` belongs to the second project instead and ru
 question, because a real browser is slower and the isolation is weaker. What qualifies is a property
 of the question rather than a subject area: jsdom has no WebGL2 context, and it performs no layout
 at all, so a question about a real renderer or about measured geometry belongs in that lane and
-everything else does not. The map renderer's tests, under `src/map-renderer/`, run in a third
-project, in plain Node, which is where the renderer runs.
+everything else does not. Tests of code that only runs on the server — the map renderer under
+`src/map-renderer/`, the middleware, route handlers and the modules behind them — run in a third
+project, in plain Node, which is where that code runs. That project names its files in
+`vitest.config.mts`'s `NODE_TESTS`, so a new server-only test is added there.
 
 **A geometry assertion there is vacuous without `import "@/app/globals.css"` in the test file.** The
 browser project renders no `app/layout.tsx`, so none of this app's Tailwind is loaded: without that
@@ -95,10 +97,11 @@ browser lane only answers one with the stylesheet loaded" in [DECISIONS.md](DECI
 writing a test in either project — it has the worked examples, and the negative control to run
 against your own.
 
-Coverage is measured over `src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/components/**` and
-`src/app/**`, with floors per directory in `vitest.config.mts`. CI does not collect it;
-`npm run test:coverage` prints the report and checks the floors. New helpers in `src/lib/` should
-come with tests; bug fixes should come with a test that fails without the fix.
+Coverage is measured over `src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/components/**`,
+`src/app/**`, `src/proxy.ts` and `src/map-renderer/**`, with floors per directory in
+`vitest.config.mts`. CI does not collect it; `npm run test:coverage` prints the report and checks
+the floors. New helpers in `src/lib/` should come with tests; bug fixes should come with a test that
+fails without the fix.
 
 ## Running the map renderer
 
@@ -189,16 +192,16 @@ is held at `opacity: 0` for 150 ms, so a DOM mutation is not a moment anything w
 not exist.
 
 It needs a _production_ build, because prefetching is only enabled in production, and that build
-wants a port of its own:
+wants a port of its own — `:3002`, beside the dev server on `:3000` and the map renderer on `:3001`:
 
 ```bash
 NEXT_PUBLIC_API_URL= npm run build
-API_INTERNAL_URL=http://localhost:8000 npx next start -p 3001
-WEB_URL=http://localhost:3001 npm run measure-navigations -- you@example.com
+API_INTERNAL_URL=http://localhost:8000 npx next start -p 3002
+WEB_URL=http://localhost:3002 npm run measure-navigations -- you@example.com
 ```
 
 Emptying `NEXT_PUBLIC_API_URL` is what puts that build on the same-origin route handler: the API's
-CORS allowlist names `:3000` only, so a split-origin build fails every request made from `:3001`.
+CORS allowlist names `:3000` only, so a split-origin build fails every request made from `:3002`.
 Next writes `next dev`'s output under `.next/dev/`, so none of this disturbs a dev server you have
 running. It signs itself in the way `npm run screenshots` does, off a magic link in the API
 container's log, so it needs the same local stack. The script's header carries the rest — which

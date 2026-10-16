@@ -89,8 +89,6 @@ export interface UserFieldsFormProps {
    * form provider, so `UserFieldsSubmitButton` works wherever it is put.
    */
   children: ReactNode;
-  /** Ran once the account has been re-read, which is what closes a dialog. */
-  onSaved?: () => void;
   /** What the toast says on success. */
   savedMessage?: string;
   /** One of the diver's pictures, edited above the fields and sent after them. */
@@ -111,7 +109,6 @@ export interface UserFieldsFormProps {
 export function UserFieldsForm({
   groups,
   children,
-  onSaved,
   savedMessage = "Your details are up to date.",
   picture,
 }: UserFieldsFormProps) {
@@ -193,7 +190,6 @@ export function UserFieldsForm({
       } else {
         toast({ title: "Saved", description: savedMessage });
       }
-      onSaved?.();
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to save. Please try again."));
     }
@@ -243,7 +239,7 @@ export function UserFieldsForm({
  * One field as every form over the diver's record writes it. `hideLabel` keeps the
  * label for a screen reader only, for a host whose legend already says it.
  */
-export function UserField({
+function UserField({
   name,
   control,
   hideLabel = false,

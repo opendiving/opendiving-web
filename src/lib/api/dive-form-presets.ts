@@ -105,11 +105,6 @@ export const diveFormPresetsAPI = {
     return response.data;
   },
 
-  async getPreset(presetUuid: string): Promise<DiveFormPreset> {
-    const response = await apiClient.get(`/dive-form-preset/${presetUuid}`);
-    return response.data;
-  },
-
   /** Rename a preset and/or replace its hidden set. Returns a message, not the row. */
   async updatePreset(
     presetUuid: string,

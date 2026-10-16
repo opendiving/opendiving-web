@@ -165,7 +165,7 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
  * Grouping is what keeps the full list browsable, which is the job the split was
  * wrongly doing.
  */
-export function volumeGroupsFor(units: UnitSystem): VolumeOptionGroup[] {
+function volumeGroupsFor(units: UnitSystem): VolumeOptionGroup[] {
   const families = VOLUME_GROUPS.filter((group) => group.system !== undefined);
   return [
     ...families.filter((group) => group.system === units),
@@ -189,10 +189,7 @@ export function volumeGroupsFor(units: UnitSystem): VolumeOptionGroup[] {
  * material is what pins a cu-ft name to a litre figure.
  * A preset with no cu-ft identity is the same string in both systems.
  */
-export function volumeOptionLabel(
-  option: VolumeOption,
-  units: UnitSystem,
-): string {
+function volumeOptionLabel(option: VolumeOption, units: UnitSystem): string {
   if (units === "metric" || !option.imperialName) return option.label;
   return `${option.imperialName} (${option.value} L)`;
 }

@@ -19,10 +19,20 @@ const alias = { "@": path.resolve(dirname, "./src") };
 // walk `node_modules` looking for tests.
 const BROWSER_TESTS = "src/**/*.browser.test.{ts,tsx}";
 
-// The map renderer runs in Node, not in a page, so its tests do too - in a
-// project of their own, because the unit project's setup file patches a
-// `window` that Node does not have.
-const RENDERER_TESTS = "src/map-renderer/**/*.test.ts";
+// Code that only ever runs on the server - the map renderer, the middleware,
+// route handlers and the modules behind them - is tested in Node, where `fetch`,
+// `AbortSignal` and `Response` are the ones it runs against in production rather
+// than jsdom's. A project of its own, because the unit project's setup file
+// patches a `window` that Node does not have.
+const NODE_TESTS = [
+  "src/map-renderer/**/*.test.ts",
+  "src/proxy.test.ts",
+  "src/app/robots.test.ts",
+  "src/app/healthz/route.test.ts",
+  "src/lib/api-proxy.test.ts",
+  "src/lib/api/config.server.test.ts",
+  "src/lib/runtime-config.test.ts",
+];
 
 export default defineConfig({
   resolve: { alias },
@@ -34,7 +44,7 @@ export default defineConfig({
           name: "unit",
           environment: "jsdom",
           include: ["src/**/*.test.{ts,tsx}"],
-          exclude: [...configDefaults.exclude, BROWSER_TESTS, RENDERER_TESTS],
+          exclude: [...configDefaults.exclude, BROWSER_TESTS, ...NODE_TESTS],
           // Scoped to this project, and that is the point rather than tidiness.
           // `vitest.setup.ts` is a jsdom patch kit - a no-op `ResizeObserver`, a
           // `matchMedia` that always answers false, pointer-capture no-ops.
@@ -50,8 +60,9 @@ export default defineConfig({
         test: {
           name: "node",
           environment: "node",
-          include: [RENDERER_TESTS],
+          include: NODE_TESTS,
           exclude: [...configDefaults.exclude, BROWSER_TESTS],
+          setupFiles: ["./vitest.setup.node.ts"],
         },
       },
       {
@@ -80,6 +91,8 @@ export default defineConfig({
         "src/contexts/**/*.{ts,tsx}",
         "src/components/**/*.{ts,tsx}",
         "src/app/**/*.{ts,tsx}",
+        "src/proxy.ts",
+        "src/map-renderer/**/*.ts",
       ],
       exclude: [
         // Vendored from shadcn/ui and deliberately kept close to upstream, so its

@@ -4,12 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import type { PaginatedResponse } from "@/lib/api/client";
 
-// Re-exported for the pages that import the type alongside this hook. The
-// declaration itself lives in `lib/api/client.ts` - it describes the API's wire
-// format, so having it here (a layer *above* `lib/api/`) is what pushed eight
-// `lib/api/*` modules into each declaring their own copy.
-export type { PaginatedResponse };
-
 /**
  * Rows a list asks for when it does not say. Exported because a page frame draws
  * the same number of placeholder rows the list is about to ask for, and a second

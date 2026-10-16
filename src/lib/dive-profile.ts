@@ -640,7 +640,7 @@ export function displayChannel(
  * A channel with no dimension passes through: the number a diver reads is the
  * same in either system.
  */
-export function toChannelDisplay(
+function toChannelDisplay(
   scaledValue: number,
   key: ProfileChannelKey,
   units: UnitSystem,
@@ -1001,7 +1001,7 @@ export function describeEvent(
 // times the median delta is comfortably above normal jitter and comfortably
 // below any dropout worth showing; the floor keeps a fast, regular series from
 // breaking on the jitter in its own stamps.
-export const GAP_FACTOR = 3;
+const GAP_FACTOR = 3;
 export const MIN_GAP_MS = 15 * MILLISECONDS_PER_SECOND;
 
 export function gapThreshold(t: number[]): number {
@@ -1222,7 +1222,7 @@ export function elapsedTicks(
 //
 // The card moves to the bottom when the topmost dot is high in the plot, so it
 // doesn't cover the readings it is describing.
-export const TOOLTIP_FLIP_FRACTION = 0.45;
+const TOOLTIP_FLIP_FRACTION = 0.45;
 
 export function tooltipVerticalAnchor(
   topmostY: number,

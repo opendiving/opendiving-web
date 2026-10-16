@@ -10,14 +10,12 @@ import {
   formatDiveTimeOnly,
   formatDurationForForm,
   formatDurationHoursMinutes,
-  formatTimeOnly,
   formatTripDateRange,
   formatUtcOffset,
   getBrowserUtcOffsetMinutes,
   diveWallClockTime,
   isDateOnlyStartTime,
   normalizeParsedStartTime,
-  parseFormDateTime,
   parseFormDuration,
   parseUtcOffsetMinutes,
   splitStartTime,
@@ -32,22 +30,6 @@ describe("formatDateTimeForForm", () => {
   it("zero-pads single-digit month/day/hour/minute/second", () => {
     const date = new Date(2024, 0, 2, 3, 4, 5); // Jan 2, 2024, 03:04:05
     expect(formatDateTimeForForm(date)).toBe("2024-01-02 03:04:05");
-  });
-});
-
-describe("parseFormDateTime", () => {
-  it("round-trips with formatDateTimeForForm", () => {
-    const original = new Date(2024, 5, 1, 9, 5, 3);
-    const formatted = formatDateTimeForForm(original);
-    const parsed = parseFormDateTime(formatted);
-    expect(parsed.getTime()).toBe(original.getTime());
-  });
-
-  it("replaces the space with a T before parsing", () => {
-    const parsed = parseFormDateTime("2024-06-01 09:05:03");
-    expect(parsed.getFullYear()).toBe(2024);
-    expect(parsed.getMonth()).toBe(5);
-    expect(parsed.getDate()).toBe(1);
   });
 });
 
@@ -87,16 +69,6 @@ describe("formatDateTime", () => {
         day: "numeric",
       }),
     ).toBe("June 1, 2024");
-  });
-});
-
-describe("formatTimeOnly", () => {
-  it("formats a full ISO datetime string's time-of-day component in 24h format", () => {
-    expect(formatTimeOnly("2024-06-01T09:05:00")).toBe("09:05");
-  });
-
-  it("formats an afternoon time in 24h format, not AM/PM", () => {
-    expect(formatTimeOnly("2024-06-01T15:30:00")).toBe("15:30");
   });
 });
 
