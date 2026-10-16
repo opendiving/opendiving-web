@@ -6,7 +6,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save, Weight } from "lucide-react";
+import { Save, Weight } from "lucide-react";
 import { gearSetSchema, GearSetInput } from "@/lib/validations/gear";
 import { gearAPI, GearSet, fetchAllGearSets } from "@/lib/api/gear";
 import { isAbortError } from "@/lib/api/client";
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import { Label } from "@/components/ui/label";
 import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
 import { UnitNumberInput } from "@/components/unit-number-input";
@@ -72,8 +73,10 @@ export function GearSetDialog({
   allowChoosingTarget = false,
   onSaved,
 }: GearSetDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useDialogApiError(open);
+  const [apiError, setApiError, handleOpenChange] = useDialogApiError(
+    open,
+    onOpenChange,
+  );
   // Entry units, shared with the dive form this dialog can open from: the two
   // weight boxes are the same dimension and the store keeps them in step. What
   // the gear list underneath renders stays on the account preference.
@@ -146,8 +149,6 @@ export function GearSetDialog({
     const saveToUuid = gearSet?.uuid ?? targetUuid;
 
     try {
-      setIsSubmitting(true);
-
       if (saveToUuid) {
         // The list goes on every save, including a bare rename. It used to be
         // omitted unless the picker was dirty, because the API hid soft-deleted
@@ -179,13 +180,11 @@ export function GearSetDialog({
       setApiError(
         getApiErrorMessage(error, "Failed to save gear set. Please try again."),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -319,28 +318,11 @@ export function GearSetDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEdit ? "Saving..." : "Creating..."}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save changes
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create set
-                  </>
-                )}
-              </Button>
+              <DialogSubmitButton isEdit={isEdit} createLabel="Create set" />
             </DialogFooter>
           </form>
         </Form>

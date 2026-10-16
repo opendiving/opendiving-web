@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { EyeOff, ImagePlus, Loader2, RefreshCw } from "lucide-react";
+import { EyeOff, ImagePlus, RefreshCw } from "lucide-react";
 import { SPECIES_PHOTO_FLOOR, type AdminSpecies } from "@/lib/api/admin";
 import { externalIdHref } from "@/lib/external-ids";
 import { formatDateTime } from "@/lib/date-time";
 import { speciesDisplayName, speciesNameWithRank } from "@/lib/species";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { SpeciesThumbnail } from "@/components/species/species-thumbnail";
 
 export type SpeciesPhotoAction = "hide" | "replace" | "refetch";
@@ -145,7 +146,7 @@ export function SpeciesCatalogCard({
             onClick={() => onAction(species, "refetch")}
           >
             {busy === "refetch" ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" aria-hidden />
+              <ButtonSpinner className="mr-1" />
             ) : (
               <RefreshCw className="h-4 w-4 mr-1" aria-hidden />
             )}

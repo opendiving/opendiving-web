@@ -5,7 +5,6 @@ import {
   Plus,
   Edit,
   Trash2,
-  Loader2,
   Wrench,
   Pause,
   Play,
@@ -25,6 +24,7 @@ import { isAbortError } from "@/lib/api/client";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { formatDateOnly } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -315,7 +315,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                             onClick={() => setDeletingSchedule(schedule)}
                           >
                             {isBusy ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <ButtonSpinner />
                             ) : (
                               <Trash2 className="h-4 w-4" />
                             )}
@@ -404,7 +404,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                             onClick={() => setDeletingRecord(record)}
                           >
                             {busyUuid === record.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <ButtonSpinner />
                             ) : (
                               <Trash2 className="h-4 w-4" />
                             )}

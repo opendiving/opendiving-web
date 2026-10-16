@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save } from "lucide-react";
 import {
   gearServiceScheduleSchema,
   type GearServiceScheduleInput,
@@ -40,6 +38,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
+import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 interface GearServiceScheduleDialogProps {
@@ -61,8 +60,10 @@ export function GearServiceScheduleDialog({
   schedule,
   onSaved,
 }: GearServiceScheduleDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useDialogApiError(open);
+  const [apiError, setApiError, handleOpenChange] = useDialogApiError(
+    open,
+    onOpenChange,
+  );
   const isEdit = !!schedule;
 
   const form = useForm<GearServiceScheduleInput>({
@@ -109,11 +110,6 @@ export function GearServiceScheduleDialog({
     }
   }, [open, schedule, gearItem.type, reset]);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setApiError(null);
-    onOpenChange(next);
-  };
-
   const onSubmit = async (data: GearServiceScheduleInput) => {
     setApiError(null);
     // `""` is the form's "not set" for every interval; the API spells that as an
@@ -127,8 +123,6 @@ export function GearServiceScheduleDialog({
       data.interval_hours === "" ? null : (data.interval_hours ?? null);
 
     try {
-      setIsSubmitting(true);
-
       if (schedule) {
         await gearServiceAPI.updateSchedule(schedule.uuid, {
           kind: data.kind,
@@ -159,8 +153,6 @@ export function GearServiceScheduleDialog({
           `Failed to ${isEdit ? "update" : "create"} service schedule. Please try again.`,
         ),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -342,24 +334,10 @@ export function GearServiceScheduleDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEdit ? "Saving..." : "Creating..."}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save changes
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create schedule
-                  </>
-                )}
-              </Button>
+              <DialogSubmitButton
+                isEdit={isEdit}
+                createLabel="Create schedule"
+              />
             </DialogFooter>
           </form>
         </Form>

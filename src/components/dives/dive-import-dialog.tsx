@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Loader2, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
 import { divesAPI, type Dive } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -17,6 +17,7 @@ import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { diveTitleText } from "@/components/dives/dive-title";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import {
   Dialog,
   DialogContent,
@@ -226,7 +227,7 @@ function DiveImportForm({
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <ButtonSpinner className="mr-2" />
               Saving...
             </>
           ) : (

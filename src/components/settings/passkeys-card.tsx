@@ -1,18 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import {
-  Check,
-  KeyRound,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Check, KeyRound, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import {
   CARD_TITLE_ACTION,
@@ -227,7 +220,7 @@ export function PasskeysCard() {
               disabled={registration.isRegistering}
             >
               {registration.isRegistering ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <ButtonSpinner className="mr-2" />
               ) : (
                 <Plus className="h-4 w-4 mr-2" />
               )}
@@ -296,7 +289,7 @@ export function PasskeysCard() {
                       onClick={() => void saveName()}
                     >
                       {isRenaming ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <ButtonSpinner />
                       ) : (
                         <Check className="h-4 w-4" />
                       )}
@@ -357,7 +350,7 @@ export function PasskeysCard() {
                       onClick={() => requestDelete(passkey.uuid)}
                     >
                       {deletingId === passkey.uuid ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <ButtonSpinner />
                       ) : (
                         <Trash2 className="h-4 w-4" />
                       )}

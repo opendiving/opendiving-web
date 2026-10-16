@@ -5,7 +5,6 @@ import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save } from "lucide-react";
 import {
   diveSiteFormSchema,
   DiveSiteFormInput,
@@ -52,6 +51,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
@@ -99,8 +99,11 @@ export function DiveSiteDialog({
   onSaved,
   onCloseAutoFocus,
 }: DiveSiteDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useDialogApiError(open);
+  const [isTakingHeldSite, setIsTakingHeldSite] = useState(false);
+  const [apiError, setApiError, handleOpenChange] = useDialogApiError(
+    open,
+    onOpenChange,
+  );
   const isEdit = !!diveSite;
 
   const form = useForm<DiveSiteFormInput>({
@@ -135,11 +138,6 @@ export function DiveSiteDialog({
     name: ["latitude", "longitude", "location"],
   });
   const [watchedLatitude, watchedLongitude, watchedLocation] = watched;
-
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setApiError(null);
-    onOpenChange(next);
-  };
 
   // Owned here rather than by the map, because both ways of placing a position
   // have to reach the same lookup and only one of them comes through the map.
@@ -236,7 +234,7 @@ export function DiveSiteDialog({
   const takeHeldSite = async (uuid: string) => {
     setApiError(null);
     try {
-      setIsSubmitting(true);
+      setIsTakingHeldSite(true);
       onSaved(await diveSitesAPI.getDiveSite(uuid));
       setSearchOpen(false);
       onOpenChange(false);
@@ -249,7 +247,7 @@ export function DiveSiteDialog({
         ),
       );
     } finally {
-      setIsSubmitting(false);
+      setIsTakingHeldSite(false);
     }
   };
 
@@ -272,8 +270,6 @@ export function DiveSiteDialog({
   const onSubmit = async (data: DiveSiteFormInput) => {
     setApiError(null);
     try {
-      setIsSubmitting(true);
-
       // The form holds coordinates as strings; the API wants numbers, or
       // `null` for a pair the diver cleared.
       const latitude = parseFormCoordinate(data.latitude);
@@ -317,8 +313,6 @@ export function DiveSiteDialog({
           `Failed to ${isEdit ? "update" : "create"} dive site. Please try again.`,
         ),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -524,24 +518,10 @@ export function DiveSiteDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEdit ? "Saving..." : "Creating..."}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save changes
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create dive site
-                  </>
-                )}
-              </Button>
+              <DialogSubmitButton
+                isEdit={isEdit}
+                createLabel="Create dive site"
+              />
             </DialogFooter>
           </form>
         </Form>
@@ -556,7 +536,7 @@ export function DiveSiteDialog({
           location={watchedLocation}
           offerHeldSites={!isEdit}
           onTakeHeldSite={takeHeldSite}
-          busy={isSubmitting}
+          busy={isTakingHeldSite}
           onUse={applySearchedLocation}
         />
       </DialogContent>

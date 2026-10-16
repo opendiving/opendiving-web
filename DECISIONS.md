@@ -5280,7 +5280,7 @@ where an in-flow empty `<p>` charges 16px. `form-api-error.browser.test.tsx` pin
 half.
 
 `role="alert"` rather than `role="status"`: this blocks what the diver was doing, matching
-`StatusMessage` minus its chrome. One component, not ten copies (eight dialogs on
+`StatusMessage` minus its chrome. One component, not a copy per form (the dialogs on
 `useDialogApiError` plus the two cards), because the markup drifts back to the conditional form. The
 `accessibility-check` job cannot catch this: axe is a static snapshot analyzer, the job scans one
 unauthenticated URL, and the step ends in `|| true`. The guard is a render test asserting the region
