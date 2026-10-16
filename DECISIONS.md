@@ -2799,7 +2799,7 @@ second tab stop inside a card's link.
 ## `DialogFooter` is one row at every width, and its gap is `gap-2` not `space-x-2`
 
 shadcn's footer is `flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2`, a column with no
-spacing below `sm:`, so on a phone Cancel and the action sit flush. Every dialog ends in Cancel plus
+spacing below `sm:`, so on a phone Cancel and the action sit flush. Most dialogs end in Cancel plus
 one action; the widest pair (`Cancel` beside `Create certification` with its `Plus` icon) needs
 about 326px against a content box of viewport minus 50px (`p-6` plus borders), so it fits on one row
 at 360 and wraps only at 320. The column spent a second row on something that never needed one.
@@ -5859,8 +5859,8 @@ sibling card mid-edit keeps what is typed. The suite pins the invariant: persist
 resets the form, re-runs the prefill or refetches the last dive; anything added to that dependency
 list must be a value, not an object.
 
-The write is debounced and flushed on unmount, so a set-and-pick write is one request and
-Apply-then-leave still saves. `SAVE_DEBOUNCE_MS` in the hook is the figure's only home.
+The write is flushed in a microtask, so a set-and-pick write is one request and Apply-then-leave
+still saves. No timer: nothing writes in bursts, so one would only delay the save.
 
 ## The Fields control is a menu with a dialog behind it, and neither is in the form
 
@@ -6645,24 +6645,14 @@ their arrival remounts it on the real answer — cheaper than an effect.
 Rejected by this repo's lint: a ref frozen in the render body (`react-hooks/refs`) and a `useEffect`
 seeding the child when the prop arrives (`react-hooks/set-state-in-effect`).
 
-## A debounce test fakes timers between async helpers, never across one
+## Fake timers go between async helpers, never across one
 
-`"holds the save for the debounce window"` in `src/app/dives/new/page.render.test.tsx` runs on a
-frozen clock: `vi.useFakeTimers()`, three flips and Apply,
-`expect(updateProfile).not.toHaveBeenCalled()`, then one `act` advancing exactly `SAVE_DEBOUNCE_MS`.
-On the wall clock a slow runner can let the `useDiveFormVisibility` window elapse before the "not
-yet" assertion runs. `SAVE_DEBOUNCE_MS` comes from the hook, not a copy.
-
-`userEvent` cannot drive that window: `userEvent.setup({ advanceTimers })` routes through Testing
+`userEvent` cannot drive a faked clock: `userEvent.setup({ advanceTimers })` routes through Testing
 Library's `asyncWrapper`, which advances its `setTimeout(…, 0)` only
 `if (jestFakeTimersAreEnabled())` — `typeof jest !== "undefined"`, false under Vitest
 (`node_modules/@testing-library/react/dist/pure.js`) — so the first click hangs. `fireEvent` uses
 the synchronous `eventWrapper` and is unaffected. `runOutCooldown` in
-`src/components/auth/auth-form.test.tsx` follows the same rule: fake only between async helpers,
-never across one.
-
-`"sends the canonical list, and does not reset the form"` needs no change: any call carrying the
-list satisfies its `waitFor`.
+`src/components/auth/auth-form.test.tsx` fakes only between async helpers, never across one.
 
 ## The labelling step retries, and "already exists" is not a failure
 
