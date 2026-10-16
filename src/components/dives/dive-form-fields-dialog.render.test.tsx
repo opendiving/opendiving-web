@@ -5,11 +5,15 @@ import { DiveFormFieldsDialog } from "./dive-form-fields-dialog";
 import type { DiveFormPreset } from "@/lib/api/dive-form-presets";
 import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
-import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
+import {
+  canonicalHiddenFields,
+  type DiveFormFieldKey,
+} from "@/lib/dive-form-fields";
 
-// What "Save as" opens on is the one thing this file is about: the dialog has to
-// answer "are these fields a preset I already have?" the same way the Fields
-// trigger does, and hold that answer still while the diver edits underneath it.
+// Two things: what "Save as" opens on - the dialog has to answer "are these fields
+// a preset I already have?" the same way the Fields trigger does, and hold that
+// answer still while the diver edits underneath it - and which ways out of the
+// dialog apply the switches' draft and which drop it.
 
 function preset(name: string, hidden: DiveFormFieldKey[]): DiveFormPreset {
   return {
@@ -42,14 +46,16 @@ function visibilityStub(hidden: DiveFormFieldKey[]): DiveFormVisibility {
     | "isRevealed"
     | "isVisible"
     | "setHidden"
-    | "saveError"
+    | "selectedPresetUuid"
+    | "selectPreset"
   > = {
     hidden,
     isHidden: (key) => hidden.includes(key),
     isRevealed: () => false,
     isVisible: (key) => !hidden.includes(key),
     setHidden: vi.fn(),
-    saveError: null,
+    selectedPresetUuid: null,
+    selectPreset: vi.fn(),
   };
   return stub as DiveFormVisibility;
 }
@@ -103,9 +109,10 @@ describe("DiveFormFieldsDialog", () => {
   });
 
   it("keeps the seeded name once the diver edits the fields under it", async () => {
-    // The point of the whole arrangement. The match is against the live hidden
-    // set, so a name recomputed each render would blank itself on the first
-    // switch - which is exactly the edit the diver means to save back.
+    // The point of the whole arrangement. The match is against the switches'
+    // draft, so a name recomputed each render would blank itself on the first
+    // switch - which is exactly the edit the diver means to save back. A new
+    // `visibility.hidden` moves it here: an untouched draft follows the live set.
     const { rerender } = render(
       <DiveFormFieldsDialog
         open
@@ -212,5 +219,167 @@ describe("DiveFormFieldsDialog", () => {
     expect(
       screen.getByText('Creates a new preset called "Sidemount".'),
     ).toBeInTheDocument();
+  });
+
+  it("drops the edited fields on Cancel without touching the form", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const visibility = visibilityStub(["mixture.helium"]);
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibility}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    expect(screen.getByRole("switch", { name: "Altitude" })).not.toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(visibility.setHidden).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("applies the edited fields to the form on Apply", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const visibility = visibilityStub(["mixture.helium"]);
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibility}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    expect(visibility.setHidden).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+
+    expect(visibility.setHidden).toHaveBeenCalledWith(
+      canonicalHiddenFields(["mixture.helium", "altitude"]),
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("applies nothing when no switch moved", async () => {
+    const user = userEvent.setup();
+    const visibility = visibilityStub(["mixture.helium"]);
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={vi.fn()}
+        visibility={visibility}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+
+    expect(visibility.setHidden).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "the X",
+      () => userEvent.click(screen.getByRole("button", { name: "Close" })),
+    ],
+    ["Escape", () => userEvent.keyboard("{Escape}")],
+  ])("drops the edited fields on %s", async (_, dismiss) => {
+    const onOpenChange = vi.fn();
+    const visibility = visibilityStub(["mixture.helium"]);
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibility}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("switch", { name: "Altitude" }));
+    await dismiss();
+
+    expect(visibility.setHidden).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("closes only the Save as list on Escape, keeping the dialog and the draft", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibilityStub(["mixture.helium"])}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    await user.click(saveAsBox());
+    expect(screen.getAllByRole("option")).not.toHaveLength(0);
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("switch", { name: "Altitude" })).not.toBeChecked();
+  });
+
+  it("closes on the first Escape when the name matches no preset", async () => {
+    // No rows, so no list on screen - nothing for the Escape to close first.
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibilityStub(["mixture.helium"])}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.clear(saveAsBox());
+    await user.type(saveAsBox(), "Sidemount");
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("saves the edited fields from the footer and applies them", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const visibility = visibilityStub(["mixture.helium"]);
+    const presets = presetsStub([BASIC, TECHNICAL]);
+    const edited = canonicalHiddenFields(["mixture.helium", "altitude"]);
+    vi.mocked(presets.createPreset).mockResolvedValue(
+      preset("Sidemount", edited),
+    );
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibility}
+        presets={presets}
+      />,
+    );
+
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    await user.clear(saveAsBox());
+    const save = screen.getByRole("button", { name: "Save preset" });
+    expect(save).toBeDisabled();
+    await user.type(saveAsBox(), "Sidemount");
+    await user.click(save);
+
+    expect(presets.createPreset).toHaveBeenCalledWith("Sidemount", edited);
+    expect(visibility.setHidden).toHaveBeenCalledWith(edited);
+    expect(visibility.selectPreset).toHaveBeenCalledWith("uuid-Sidemount");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

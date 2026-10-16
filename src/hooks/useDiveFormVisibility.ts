@@ -31,13 +31,14 @@ import {
 type MixtureRow = Record<string, unknown>;
 
 /**
- * How long a burst of switch flips is allowed to settle before it costs a request.
- * Long enough that flipping three switches in a row sends one `PATCH`, short enough
- * that the save has landed by the time a diver could reach another device.
+ * How long a write waits before it costs a request. Long enough that the hidden set
+ * and the preset pick written together - a menu pick, Save preset - go out as one
+ * `PATCH`, short enough that the save has landed by the time a diver could reach
+ * another device.
  *
- * Exported for the tests that drive this window on a fake clock: the one covering the
- * coalescing has to step past it exactly, and a number copied into the test file would
- * go on passing against a window this one no longer has.
+ * Exported for the test that drives this window on a fake clock: it has to step past
+ * it exactly, and a number copied into the test file would go on passing against a
+ * window this one no longer has.
  */
 export const SAVE_DEBOUNCE_MS = 400;
 
@@ -68,10 +69,10 @@ export interface DiveFormVisibility {
   /** Effective visibility: not hidden, or hidden and revealed. */
   isVisible: (key: DiveFormFieldKey) => boolean;
   /**
-   * Replaces the stored hidden set: a switch in the Configure dialog, or a preset
-   * applied from the Fields menu. Applies to the form at once, persists debounced, and
-   * drops every newly hidden key from the revealed set - those surfaces edit what the
-   * diver sees.
+   * Replaces the stored hidden set: the Configure dialog's switches on Apply or Save
+   * preset, or a preset applied from the Fields menu. Applies to the form at once,
+   * persists debounced, and drops every newly hidden key from the revealed set - those
+   * surfaces edit what the diver sees.
    */
   setHidden: (next: readonly DiveFormFieldKey[]) => void;
   /**
@@ -134,8 +135,6 @@ export interface DiveFormVisibility {
   noteAutofill: AutofillMarks["note"];
   /** True while a toggle is in flight. */
   isSaving: boolean;
-  /** The API's own wording when a toggle could not be saved, or null. */
-  saveError: string | null;
 }
 
 export interface UseDiveFormVisibilityOptions<
@@ -203,7 +202,6 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     () => new Set(),
   );
   const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const marks = useAutofillMarks(form);
   const { note } = marks;
 
@@ -306,10 +304,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
       timerRef.current = null;
     }
 
-    if (isMountedRef.current) {
-      setIsSaving(true);
-      setSaveError(null);
-    }
+    if (isMountedRef.current) setIsSaving(true);
     try {
       // `PATCH /user` is `extra="forbid"`, so only the field being changed is sent -
       // the same shape the settings cards use.
@@ -321,20 +316,15 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
         error,
         "Couldn't save which fields to show. This form still looks the way you set it.",
       );
-      // A toast, not only the `saveError` an open surface can render. Two of the three
-      // ways to reach this leave nothing on screen to render it into: applying a preset
-      // closes the Fields menu, and a switch flipped in Configure can be followed by
-      // closing the dialog before the debounce fires. The failure would then surface
-      // whenever Configure was next opened, reading as an error about whatever the diver
-      // was doing *then*. It is also the only report that fires per failure rather than
-      // per change of message: `setSaveError` with an identical string re-renders
-      // nothing, so a second failure with the same wording would say nothing at all.
+      // A toast, and no inline message: no way to reach this leaves a surface open to
+      // render one into - applying a preset closes the Fields menu, and Configure
+      // writes only as Apply or Save preset closes it. Held for its next open, the
+      // message would read as an error about whatever the diver was doing *then*.
       toastRef.current({
         variant: "destructive",
         title: "Fields not saved",
         description: message,
       });
-      if (isMountedRef.current) setSaveError(message);
     } finally {
       if (isMountedRef.current) setIsSaving(false);
     }
@@ -653,6 +643,5 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
     anyAutofilled: marks.anyMarked,
     noteAutofill: note,
     isSaving,
-    saveError,
   };
 }

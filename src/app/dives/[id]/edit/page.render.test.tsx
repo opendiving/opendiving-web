@@ -177,8 +177,9 @@ const openFieldsPanel = async () => {
 // Configure is a modal dialog, so the form behind it is `aria-hidden` while it is
 // open: anything asserting on a field has to shut it first. That is the interaction
 // itself, not a testing detail - a diver sees a hidden field go only once they are
-// back on the form.
-const closeFieldsPanel = () => userEvent.keyboard("{Escape}");
+// back on the form. Apply rather than Escape, which drops the switches' draft.
+const closeFieldsPanel = () =>
+  userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
 /**
  * The Configure dialog, for queries that would otherwise also match the menu's own

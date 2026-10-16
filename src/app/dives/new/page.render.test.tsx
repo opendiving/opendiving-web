@@ -1188,8 +1188,9 @@ const openFieldsPanel = async () => {
 // Configure is a modal dialog, so the form behind it is `aria-hidden` while it is
 // open: anything asserting on a field has to shut it first. That is the interaction
 // itself, not a testing detail - a diver sees a hidden field go only once they are
-// back on the form.
-const closeFieldsPanel = () => userEvent.keyboard("{Escape}");
+// back on the form. Apply rather than Escape, which drops the switches' draft.
+const closeFieldsPanel = () =>
+  userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
 /**
  * The Configure dialog, for queries that would otherwise also match the menu's own
@@ -1495,13 +1496,13 @@ describe("persisting a toggle", () => {
     // canonical if the client put it in order.
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
     await userEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
+    await closeFieldsPanel();
 
     await waitFor(() =>
       expect(authAPI.updateProfile).toHaveBeenCalledWith({
         dive_form_hidden_fields: ["altitude", "notes"],
       }),
     );
-    await closeFieldsPanel();
     expect(divesAPI.getDives).toHaveBeenCalledTimes(1);
     expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
     expect(waterType()).toHaveValue("brackish");
@@ -1509,9 +1510,9 @@ describe("persisting a toggle", () => {
   });
 
   it("says so out loud when the save fails", async () => {
-    // A toast rather than only the inline message, because two of the three ways to
-    // reach a failed save leave nothing on screen to render one into: applying a
-    // preset closes the menu, and the debounce can fire after Configure is shut.
+    // A toast, because no way to reach a failed save leaves anything on screen to
+    // render a message into: applying a preset closes the menu, and Apply and Save
+    // preset close Configure.
     vi.mocked(authAPI.updateProfile).mockRejectedValueOnce(
       new Error("network down"),
     );
@@ -1533,35 +1534,33 @@ describe("persisting a toggle", () => {
     );
   });
 
-  it("debounces a burst into one request", async () => {
+  it("holds the save for the debounce window", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/dive time/i);
 
     await openFieldsPanel();
 
     // The one test here whose subject *is* the clock, so it is the one that cannot be
-    // left to the runner's. Three awaited `userEvent` clicks take longer than the
-    // 400 ms window on a loaded machine: the save fires after the first switch and the
-    // burst costs three requests rather than one. The count alone does not catch that
-    // - `waitFor` returns the moment the first call lands, so the other two have not
-    // happened yet when it runs and only the arguments are left to fail on. That is
-    // what run 34767448613 saw, on a PR touching neither this file nor the hook.
+    // left to the runner's: on the wall clock a loaded machine can let the 400 ms
+    // window elapse before the "not yet" assertion runs. The switches reach the hook
+    // as one `setHidden` on Apply, so what is under test is the delay itself - nothing
+    // on the wire inside the window, one `PATCH` once it has passed.
     //
-    // So the burst is fired synchronously on a frozen clock: `fireEvent` rather than
+    // So the clicks are fired synchronously on a frozen clock: `fireEvent` rather than
     // `userEvent` because a `setup()` user routes every action through Testing
     // Library's `asyncWrapper`, which drains the microtask queue behind a
     // `setTimeout(0)` it only advances when Jest is the runner - on Vitest's clock
     // that never resolves and the first click hangs until the test times out.
-    // Nothing here is about the gesture anyway; what is under test is that three
-    // flips inside one window cost one `PATCH`.
     vi.useFakeTimers();
     try {
       fireEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
       fireEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
       fireEvent.click(screen.getByRole("switch", { name: /^visibility$/i }));
+      // The switches are a draft until Apply.
+      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-      // Half the claim, and the half the old shape never asserted: the window has not
-      // elapsed, so nothing is on the wire yet - whatever the machine was doing.
+      // The window has not elapsed, so nothing is on the wire yet - whatever the
+      // machine was doing.
       expect(authAPI.updateProfile).not.toHaveBeenCalled();
 
       await act(async () => {
@@ -2748,6 +2747,7 @@ describe("the preset list", () => {
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+    await closeFieldsPanel();
     await waitFor(() =>
       expect(authAPI.updateProfile).toHaveBeenCalledWith({
         dive_form_hidden_fields: [
@@ -2760,6 +2760,7 @@ describe("the preset list", () => {
       }),
     );
     // Flipped back, the set is the picked preset's again.
+    await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
     await closeFieldsPanel();
 
@@ -2799,7 +2800,9 @@ describe("the preset list", () => {
     expect(
       screen.getByText(/"All" is built in and always shows every field/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^save$/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /^save preset$/i }),
+    ).toBeDisabled();
   });
 
   it("saves the current fields under a new name", async () => {
@@ -2819,7 +2822,9 @@ describe("the preset list", () => {
     expect(
       screen.getByText(/creates a new preset called "Warm water"/i),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^save preset$/i }),
+    );
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.createPreset).toHaveBeenCalledWith({
@@ -2833,7 +2838,8 @@ describe("the preset list", () => {
         dive_form_preset_uuid: "preset-warm",
       }),
     );
-    // And the new row is on the list without a refetch.
+    // And the new row is on the list without a refetch. Save closed the dialog.
+    await openFieldsPanel();
     await openPresetsTab();
     expect(await inFieldsPanel().findByText("Warm water")).toBeInTheDocument();
     expect(presets.fetchAllDiveFormPresets).toHaveBeenCalledTimes(1);
@@ -2859,7 +2865,9 @@ describe("the preset list", () => {
     expect(
       screen.getByText(/replaces the fields saved in "Recreational"/i),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^save preset$/i }),
+    );
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.updatePreset).toHaveBeenCalledWith(
@@ -2873,7 +2881,7 @@ describe("the preset list", () => {
         dive_form_preset_uuid: RECREATIONAL.uuid,
       }),
     );
-    await closeFieldsPanel();
+    // Save preset has closed the dialog already.
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Fields: Recreational" }),
