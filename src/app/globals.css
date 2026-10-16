@@ -439,14 +439,15 @@
 
   /* The padding under the dive form's buttons. Installed to a phone's home
      screen, the page runs down into the screen's rounded corners, which a
-     browser's toolbar otherwise covers, so there the row ends a dialog
-     footer's `pb-6` above its foot - or the home indicator's inset, where
-     one is reported - and the pinned action button clears the curve. The
-     same at rest, so nothing moves as the row sticks. */
+     browser's toolbar otherwise covers, so there the pinned buttons sit as
+     high as a dialog's do - its 1rem inset plus its footer's `pb-6` - or
+     above the home indicator's inset, where one is reported, and the action
+     button clears the curve. The same at rest, so nothing moves as the row
+     sticks. */
   :root {
     --dive-form-actions-pb: 0.75rem;
     @media (display-mode: standalone) {
-      --dive-form-actions-pb: max(1.5rem, env(safe-area-inset-bottom, 0px));
+      --dive-form-actions-pb: max(2.5rem, env(safe-area-inset-bottom, 0px));
     }
   }
 
