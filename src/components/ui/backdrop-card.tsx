@@ -17,12 +17,13 @@ export const BACKDROP_CARD_LINK =
   "block font-medium text-foreground after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring";
 
 // A card's place while its list loads, at the card's measured height - its
-// backdrop band, a name, one line under it and a row of figures, 238px - so the
-// cards land without moving anything. A list item, like the card.
-export function BackdropCardSkeleton() {
+// backdrop band, a name, one line under it and a row of figures, 238px - or in
+// the shape its cards are drawn in, so the cards land without moving anything.
+// A list item, like the card.
+export function BackdropCardSkeleton({ shape }: { shape?: string }) {
   return (
     <li aria-hidden>
-      <Skeleton className="h-59.5 rounded-lg" />
+      <Skeleton className={cn("rounded-lg", shape ?? "h-59.5")} />
     </li>
   );
 }
@@ -84,6 +85,9 @@ type BackdropCardProps = BackdropCardActions & {
   // card's colour in both themes, hovered or not. A colour step rather than an
   // opacity: see "The unit toggle's off half" in DECISIONS.md.
   muted?: boolean;
+  // An `aspect-*` class drawing the whole card in its backdrop's own shape, in
+  // place of the band of backdrop above the details.
+  shape?: string;
   // The details, from a link styled `BACKDROP_CARD_LINK` down. Anything in them
   // that has to stay reachable past that link is lifted with `relative z-10`.
   children: ReactNode;
@@ -99,6 +103,7 @@ export function BackdropCard({
   actionsLabel,
   corner,
   muted = false,
+  shape,
   children,
 }: BackdropCardProps) {
   // How much of the backdrop lies under the details, from the name down, so a
@@ -147,8 +152,9 @@ export function BackdropCard({
         // A fixed band of backdrop above the name, with the details over its
         // faded foot: however tall they grow, the backdrop shows as much of
         // itself, at every width. The details' own top padding is part of the
-        // band, so what they measure starts at the name.
-        "pt-33",
+        // band, so what they measure starts at the name. A shape replaces the
+        // band, and only details taller than it stretch the card past it.
+        shape ?? "pt-33",
         muted && "border-dashed",
       )}
     >

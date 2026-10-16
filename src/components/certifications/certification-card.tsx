@@ -15,6 +15,7 @@ import {
   certificationExpiryLabel,
   certificationExpiryStatus,
   certificationFileVersion,
+  CERTIFICATION_CARD_ASPECT_CLASS,
 } from "@/lib/certification";
 import { formatDateOnly } from "@/lib/date-time";
 import { useAuthedBlobUrl } from "@/hooks/useAuthedBlobUrl";
@@ -30,10 +31,10 @@ import {
 } from "@/components/ui/backdrop-card";
 import { cn } from "@/lib/utils";
 
-// As many to a row as fit at a width that keeps a card about the shape of the
-// c-card behind it, rather than cropping that to a strip as /dives' two columns
-// would: three on a wide screen, one on a phone. 20rem holds the two figures'
-// columns. Spaced as /dives spaces its cards.
+// As many to a row as fit at 20rem or more: three on a wide screen, one on a
+// phone. A card is a c-card's shape at any width, so a wider one is only a
+// taller one; 20rem holds the two figures' columns and leaves the details room
+// under the menu. Spaced as /dives spaces its cards.
 export const CERTIFICATION_CARD_GRID =
   "grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-4 max-sm:gap-2.5";
 
@@ -109,9 +110,10 @@ interface CertificationCardProps {
 }
 
 // One certification as a card, on /certifications: the c-card's front as the
-// backdrop, its level over the foot of it with the agency under, and the
-// number a dive shop asks for and when it was earned as its figures. The level
-// opens the card in full, a certification having no page of its own.
+// backdrop, the card drawn in its shape so the front shows whole, its level
+// over the foot of it with the agency under, and the number a dive shop asks
+// for and when it was earned as its figures. The level opens the card in full,
+// a certification having no page of its own.
 export function CertificationCard({
   certification,
   onView,
@@ -148,6 +150,7 @@ export function CertificationCard({
           <DeleteMenuItem onSelect={onDelete} disabled={isDeleting} />
         </>
       }
+      shape={CERTIFICATION_CARD_ASPECT_CLASS}
       backdrop={(coveredBottom) => (
         <CertificationBackdrop
           certificationUuid={certification.uuid}

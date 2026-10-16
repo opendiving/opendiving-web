@@ -16,6 +16,7 @@ import {
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
 import { CERTIFICATION_CARD_GRID } from "@/components/certifications/certification-card";
+import { CERTIFICATION_CARD_ASPECT_CLASS } from "@/lib/certification";
 
 export interface CertificationsPageFrameProps {
   isLoading: boolean;
@@ -108,7 +109,10 @@ export function CertificationsPageFrame({
           >
             {cards.length === 0 &&
               Array.from({ length: itemsPerPage }, (_, index) => (
-                <BackdropCardSkeleton key={index} />
+                <BackdropCardSkeleton
+                  key={index}
+                  shape={CERTIFICATION_CARD_ASPECT_CLASS}
+                />
               ))}
             {cards}
           </ul>

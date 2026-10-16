@@ -960,7 +960,8 @@ re-read whenever anything was sent, since only the API knows which sides landed.
 
 `CERTIFICATION_CARD_ASPECT` is 1013/638, measured off a current PADI e-card. Cards arrive in at
 least four shapes (old PADI 1005×660, RAID 802×519, TDI/SDI 330×207), so one ratio everywhere is
-what makes a row of them read as cards. `CertificationCardFrame` is the only box drawing one and
+what makes a row of them read as cards. `CertificationCardFrame` draws one, and so does
+`CertificationCard` through `BackdropCard`'s `shape`, so the list shows each front whole;
 `ImageCropDialog` crops uploads to that ratio, so stored bytes need no fitting; anything stored
 uncropped is `object-cover`, trimming at most 4% off the old PADI design, which carries nothing near
 its edges.

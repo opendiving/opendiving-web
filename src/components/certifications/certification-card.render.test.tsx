@@ -98,6 +98,16 @@ describe("CertificationCard", () => {
     expect(onView).toHaveBeenCalledOnce();
   });
 
+  it("is drawn in the c-card's shape rather than over a band of backdrop", () => {
+    // jsdom answers no layout question, so this is as far as the shape can be
+    // checked here: the class that gives it, in place of the band's.
+    const { container } = card();
+    const item = container.querySelector("li");
+
+    expect(item).toHaveClass("aspect-[1013/638]");
+    expect(item).not.toHaveClass("pt-33");
+  });
+
   it("names its agency under the level, the diver's own for another one", () => {
     card({ agency: "other", agency_other: "Freediving Federation" });
 
