@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import {
   useFocusTappedFieldInPlace,
   useKeepFocusedFieldVisible,
+  useShortViewport,
   useVisualViewport,
 } from "./useVisualViewport";
 
@@ -65,6 +66,18 @@ const vars = () => ({
     "--visual-viewport-doc-top",
   ),
 });
+
+/** Runs `count` animation frames, calling `tick` before each. */
+async function runFrames(tick: () => void, count: number) {
+  for (let i = 0; i < count; i += 1) {
+    tick();
+    await act(async () => {
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => resolve(null)),
+      );
+    });
+  }
+}
 
 afterEach(() => {
   Object.defineProperty(window, "visualViewport", {
@@ -152,8 +165,9 @@ describe("useVisualViewport", () => {
     const first = renderHook(() => useVisualViewport());
     const second = renderHook(() => useVisualViewport());
 
-    expect(viewport.listeners.get("resize")?.size).toBe(2);
-    expect(viewport.listeners.get("scroll")?.size).toBe(2);
+    // Two each: the variables', and the short-viewport mark's.
+    expect(viewport.listeners.get("resize")?.size).toBe(4);
+    expect(viewport.listeners.get("scroll")?.size).toBe(4);
 
     first.unmount();
     second.unmount();
@@ -168,6 +182,115 @@ describe("useVisualViewport", () => {
 
     expect(vars()).toEqual({ height: "", top: "", docTop: "" });
     unmount();
+  });
+});
+
+describe("useShortViewport", () => {
+  // 30rem, 480px at jsdom's 16px root, is the line.
+  const SHORT = "data-visual-viewport-short";
+  const root = document.documentElement;
+  const still = () => {};
+
+  it("marks the root as soon as the keyboard is up", () => {
+    const viewport = installViewport(812, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+    expect(root).not.toHaveAttribute(SHORT);
+
+    act(() => {
+      viewport.height = 420;
+      viewport.emit("resize");
+    });
+    expect(root).toHaveAttribute(SHORT);
+
+    unmount();
+    expect(root).not.toHaveAttribute(SHORT);
+  });
+
+  it("takes the mark off only once the viewport has settled", async () => {
+    // The dialog footer that came back above the keyboard and slid down with
+    // the box: `DialogContent` is still growing for 200ms after the event.
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+    expect(root).toHaveAttribute(SHORT);
+
+    act(() => {
+      viewport.height = 812;
+      viewport.emit("resize");
+    });
+    await runFrames(still, 8);
+    expect(root).toHaveAttribute(SHORT);
+
+    await runFrames(still, 12);
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("waits out a viewport that is still moving", async () => {
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+
+    act(() => {
+      viewport.height = 812;
+      viewport.offsetTop = 300;
+      viewport.emit("resize");
+    });
+    // `offsetTop` easing back to 0 with no event of its own.
+    await runFrames(() => {
+      viewport.offsetTop = Math.max(0, viewport.offsetTop - 15);
+    }, 20);
+    expect(root).toHaveAttribute(SHORT);
+
+    await runFrames(still, 4);
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("starts the wait over when the keyboard comes back up during it", async () => {
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+
+    act(() => {
+      viewport.height = 812;
+      viewport.emit("resize");
+    });
+    await runFrames(still, 10);
+    act(() => {
+      viewport.height = 420;
+      viewport.emit("resize");
+    });
+    act(() => {
+      viewport.height = 812;
+      viewport.emit("resize");
+    });
+    // Past where the first wait would have ended, short of the second.
+    await runFrames(still, 10);
+    expect(root).toHaveAttribute(SHORT);
+
+    await runFrames(still, 10);
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("keeps the mark while another caller is still mounted, and drops a pending wait with the last", async () => {
+    const viewport = installViewport(420, 0);
+    const first = renderHook(() => useShortViewport());
+    const second = renderHook(() => useShortViewport());
+
+    first.unmount();
+    expect(root).toHaveAttribute(SHORT);
+
+    act(() => {
+      viewport.height = 812;
+      viewport.emit("resize");
+    });
+    second.unmount();
+    expect(root).not.toHaveAttribute(SHORT);
+
+    // Nothing left running to touch the root after the last caller has gone.
+    root.setAttribute(SHORT, "");
+    await runFrames(still, 24);
+    expect(root).toHaveAttribute(SHORT);
+    root.removeAttribute(SHORT);
   });
 });
 
@@ -206,18 +329,6 @@ describe("useKeepFocusedFieldVisible", () => {
       tick,
       cleanup: () => container.remove(),
     };
-  }
-
-  /** Runs `count` animation frames, calling `tick` before each. */
-  async function runFrames(tick: () => void, count: number) {
-    for (let i = 0; i < count; i += 1) {
-      tick();
-      await act(async () => {
-        await new Promise((resolve) =>
-          requestAnimationFrame(() => resolve(null)),
-        );
-      });
-    }
   }
 
   it("keeps re-revealing until the box it scrolls inside stops moving", async () => {

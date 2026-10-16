@@ -6,7 +6,7 @@ import { Loader2, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useStuckAtEdge } from "@/hooks/useStuckAtEdge";
-import { cn } from "@/lib/utils";
+import { useShortViewport } from "@/hooks/useVisualViewport";
 
 export interface DiveFormActionsProps {
   cancelHref: string;
@@ -28,9 +28,9 @@ export interface DiveFormActionsProps {
 }
 
 // Shared "Cancel" / "Save" button row used by both the create and edit dive forms.
-// It sticks to the foot of the screen while the form runs on below it, and settles
-// at the form's end. Stuck, it covers whatever scrolls under it, so only then does it
-// take a background and a rule.
+// `globals.css` sticks it to the foot of the screen while the form runs on below
+// it, and gives it a surface only while it is stuck there. It settles at the
+// form's end, and stays there while the keyboard is up.
 export function DiveFormActions({
   cancelHref,
   mode,
@@ -47,6 +47,7 @@ export function DiveFormActions({
     edge: "bottom",
     rootMargin: "0px 0px -1px 0px",
   });
+  useShortViewport();
 
   const SubmitIcon = mode === "create" ? Plus : Save;
   // A disabled submit button is also what stops implicit submission (Enter in a
@@ -54,18 +55,13 @@ export function DiveFormActions({
   const waiting = isSubmitting || isBusy;
   const waitingLabel = isSubmitting ? submittingLabel : busyLabel;
   return (
-    // `data-stuck` is what `globals.css` keys the page's bottom scroll padding on.
+    // `data-stuck` is what `globals.css` keys the surface and the page's bottom
+    // scroll padding on.
     <div
       ref={rowRef}
       data-dive-form-actions=""
       data-stuck={stuck ? "" : undefined}
-      className={cn(
-        "sticky bottom-0 z-20 space-y-2 py-3",
-        // A shadow rather than a border, as on a stuck section heading: the rule
-        // takes no height, so nothing moves as the row sticks.
-        stuck &&
-          "bg-background/90 shadow-[inset_0_1px_0_hsl(var(--border))] backdrop-blur",
-      )}
+      className="z-20 space-y-2 py-3"
     >
       <FormApiError error={error} />
       <div className="flex justify-end gap-4">

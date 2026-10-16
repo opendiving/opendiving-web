@@ -6970,14 +6970,15 @@ becomes plain text, as in "Load a gear set". A list that needs typing or rich ro
 
 ## The dive form's Cancel/Save row sticks to the foot of the screen
 
-`DiveFormActions` is `sticky bottom-0`, the same element at the form's end, so tab order and Enter
-to submit are unchanged; it takes a background and a rule only while pinned. Rejected: floating
-round ✓/✕ buttons, which drop the labels and cover fields; the top of the screen, which the header
-and stuck section headings already hold; `interactive-widget=resizes-content`, which would stack the
-row on the keyboard and shrink a phone's view of the field being typed into; and hiding it on focus
-— Android's back button closes the keyboard without blurring, and a tap on Save blurs the field
-first, removing the row under the finger. So the keyboard covers the row while typing, as the
-platform default, and it is back when the keyboard closes.
+`DiveFormActions` is sticky at the foot, the same element at the form's end, so tab order and Enter
+to submit are unchanged; it takes a background and a rule only while pinned. iOS keeps the layout
+viewport behind the keyboard, and panning with it up carries that viewport's foot, and the row, to
+mid-screen over the fields — so below 30rem of visible height it rests at the form's end, as a
+dialog's rows do. Rejected: floating round ✓/✕ buttons, which drop the labels and cover fields; the
+top of the screen, which the header and stuck section headings hold;
+`interactive-widget=resizes-content`, which would stack the row on the keyboard and shrink the view
+of the field being typed into; and hiding it on focus — Android's back button closes the keyboard
+without blurring, and a tap on Save blurs the field first, removing the row under the finger.
 
 ## A dialog's title row and footer stick to its edges, and let go on a short viewport
 
@@ -6985,8 +6986,8 @@ platform default, and it is back when the keyboard closes.
 padding to meet the rounded edge, and take a surface only while stuck. Pinned and at rest at that
 end are the same place, so each pin sits 2px past the edge for its observer to tell them apart. The
 cross rides in the header, first in the tab order, and open-focus steps over it to the first field.
-Unlike the dive form's row, a dialog follows the visual viewport, so with the keyboard up the two
-rows would hold over a third of a ~300px box above the keys. Below 30rem of visible height
-`useVisualViewport` marks the root and both rows return to their places. Hiding them on focus is
-rejected for the dive form's reasons: the keyboard closes without a blur, and a tap on a button
-blurs the field first.
+With the keyboard up the two rows would hold over a third of a ~300px box, so below 30rem of visible
+height `useShortViewport` marks the root and they rest in place. The mark comes off only once the
+visual viewport has held still for a few frames: the box animates back to full height over 200ms,
+and a footer pinned at once rides up above the closing keyboard. Hiding on focus is rejected for the
+dive form's reasons.

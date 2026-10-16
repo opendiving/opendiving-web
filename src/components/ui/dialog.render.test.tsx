@@ -363,7 +363,14 @@ describe("the short-viewport mark", () => {
   const root = document.documentElement;
   const SHORT = "data-visual-viewport-short";
 
-  it("is on while the visible height is short, and follows it as it changes", () => {
+  /** Lets the viewport settle, which is when the mark comes off. */
+  async function settle() {
+    for (let i = 0; i < 24; i += 1) {
+      await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    }
+  }
+
+  it("is on while the visible height is short, and follows it as it changes", async () => {
     const viewport = withVisualViewport(320);
     const { unmount } = render(
       <Dialog open>
@@ -374,11 +381,14 @@ describe("the short-viewport mark", () => {
     );
     expect(root).toHaveAttribute(SHORT);
 
-    // The keyboard closing.
+    // The keyboard closing: the footer waits for the box to finish growing
+    // back before it pins again.
     viewport.height = 700;
     act(() => {
       viewport.dispatchEvent(new Event("resize"));
     });
+    expect(root).toHaveAttribute(SHORT);
+    await settle();
     expect(root).not.toHaveAttribute(SHORT);
 
     viewport.height = 479;
