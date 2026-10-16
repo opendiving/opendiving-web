@@ -79,9 +79,9 @@ function matchingPresetName(
  * to write the current form into, which is what the per-row "Update with current
  * fields" button was.
  *
- * **The switches edit a draft.** Nothing reaches the form until the dialog closes
- * through Close, the X, Escape or the overlay, or through Save - so Cancel has nothing
- * to undo, and no hide has emptied a value it would have to bring back. The switches
+ * **The switches edit a draft.** Nothing reaches the form until Apply or Save preset;
+ * Cancel, the X and Escape drop it, as they do in every other dialog. So there is
+ * nothing to undo, and no hide has emptied a value it would have to bring back. The switches
  * preview what applying the draft will do, revealed fields included: `setHidden` drops
  * every key it hides from the revealed set. Preset writes on the Presets tab go to the
  * server at once and are not part of the draft.
@@ -134,7 +134,7 @@ export function DiveFormFieldsDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => (next ? onOpenChange(true) : close(true))}
+      onOpenChange={(next) => (next ? onOpenChange(true) : close(false))}
     >
       <DialogContent
         // Radix focuses the first tabbable descendant on open. Focus goes to the
@@ -147,13 +147,24 @@ export function DiveFormFieldsDialog({
           event.preventDefault();
           contentRef.current?.focus();
         }}
+        // Escape on an open dropdown - the Save as list - closes the list only,
+        // rather than the dialog and the draft with it.
+        onEscapeKeyDown={(event) => {
+          const target = event.target;
+          if (
+            target instanceof HTMLElement &&
+            target.getAttribute("aria-expanded") === "true"
+          ) {
+            event.preventDefault();
+          }
+        }}
         ref={contentRef}
       >
         <DiveFormFieldsDialogBody
           visibility={visibility}
           fields={fields}
           presets={presets}
-          onClose={() => close(true)}
+          onApply={() => close(true)}
           onCancel={() => close(false)}
         />
       </DialogContent>
@@ -167,7 +178,7 @@ interface DiveFormFieldsDialogBodyProps {
   fields: DiveFormFieldsView;
   presets: DiveFormPresets;
   /** Applies the draft and closes. */
-  onClose: () => void;
+  onApply: () => void;
   /** Drops the draft and closes. */
   onCancel: () => void;
 }
@@ -177,7 +188,7 @@ function DiveFormFieldsDialogBody({
   visibility,
   fields,
   presets,
-  onClose,
+  onApply,
   onCancel,
 }: DiveFormFieldsDialogBodyProps) {
   const [tab, setTab] = useState("fields");
@@ -189,8 +200,8 @@ function DiveFormFieldsDialogBody({
       <DialogHeader>
         <DialogTitle>Configure Fields</DialogTitle>
         <DialogDescription>
-          Choose what the dive form asks for. This is saved to your account and
-          applies to every dive you log.
+          Choose what the dive form asks for. Applied changes are saved to your
+          account and used for every dive you log.
         </DialogDescription>
       </DialogHeader>
 
@@ -233,7 +244,7 @@ function DiveFormFieldsDialogBody({
                   existing
                 : await presets.createPreset(name, fields.hidden);
               if (!saved) return;
-              onClose();
+              onApply();
               visibility.selectPreset(saved.uuid);
             }}
           />
@@ -251,8 +262,8 @@ function DiveFormFieldsDialogBody({
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Close
+        <Button type="button" variant="outline" onClick={onApply}>
+          Apply
         </Button>
         {tab === "fields" && (
           <Button type="submit" form={saveFormId} disabled={!canSave}>

@@ -242,7 +242,7 @@ describe("DiveFormFieldsDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("applies the edited fields to the form on Close", async () => {
+  it("applies the edited fields to the form on Apply", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     const visibility = visibilityStub(["mixture.helium"]);
@@ -257,8 +257,7 @@ describe("DiveFormFieldsDialog", () => {
 
     await user.click(screen.getByRole("switch", { name: "Altitude" }));
     expect(visibility.setHidden).not.toHaveBeenCalled();
-    // The X is named "Close" too, and renders after the content.
-    await user.click(screen.getAllByRole("button", { name: "Close" })[0]);
+    await user.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(visibility.setHidden).toHaveBeenCalledWith(
       canonicalHiddenFields(["mixture.helium", "altitude"]),
@@ -266,7 +265,7 @@ describe("DiveFormFieldsDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("applies nothing on Close when no switch moved", async () => {
+  it("applies nothing when no switch moved", async () => {
     const user = userEvent.setup();
     const visibility = visibilityStub(["mixture.helium"]);
     render(
@@ -280,9 +279,56 @@ describe("DiveFormFieldsDialog", () => {
 
     await user.click(screen.getByRole("switch", { name: "Altitude" }));
     await user.click(screen.getByRole("switch", { name: "Altitude" }));
-    await user.click(screen.getAllByRole("button", { name: "Close" })[0]);
+    await user.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(visibility.setHidden).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "the X",
+      () => userEvent.click(screen.getByRole("button", { name: "Close" })),
+    ],
+    ["Escape", () => userEvent.keyboard("{Escape}")],
+  ])("drops the edited fields on %s", async (_, dismiss) => {
+    const onOpenChange = vi.fn();
+    const visibility = visibilityStub(["mixture.helium"]);
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibility}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("switch", { name: "Altitude" }));
+    await dismiss();
+
+    expect(visibility.setHidden).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("closes only the Save as list on Escape, keeping the dialog and the draft", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibilityStub(["mixture.helium"])}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.click(screen.getByRole("switch", { name: "Altitude" }));
+    await user.click(saveAsBox());
+    expect(screen.getAllByRole("option")).not.toHaveLength(0);
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("switch", { name: "Altitude" })).not.toBeChecked();
   });
 
   it("saves the edited fields from the footer and applies them", async () => {

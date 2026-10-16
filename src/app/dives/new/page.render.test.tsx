@@ -1188,8 +1188,9 @@ const openFieldsPanel = async () => {
 // Configure is a modal dialog, so the form behind it is `aria-hidden` while it is
 // open: anything asserting on a field has to shut it first. That is the interaction
 // itself, not a testing detail - a diver sees a hidden field go only once they are
-// back on the form.
-const closeFieldsPanel = () => userEvent.keyboard("{Escape}");
+// back on the form. Apply rather than Escape, which drops the switches' draft.
+const closeFieldsPanel = () =>
+  userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
 /**
  * The Configure dialog, for queries that would otherwise also match the menu's own
@@ -1559,10 +1560,8 @@ describe("persisting a toggle", () => {
       fireEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
       fireEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
       fireEvent.click(screen.getByRole("switch", { name: /^visibility$/i }));
-      // The switches are a draft until the dialog closes; closing applies them.
-      fireEvent.keyDown(document.activeElement ?? document.body, {
-        key: "Escape",
-      });
+      // The switches are a draft until Apply.
+      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
       // Half the claim, and the half the old shape never asserted: the window has not
       // elapsed, so nothing is on the wire yet - whatever the machine was doing.
@@ -2805,7 +2804,9 @@ describe("the preset list", () => {
     expect(
       screen.getByText(/"All" is built in and always shows every field/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^save preset$/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /^save preset$/i }),
+    ).toBeDisabled();
   });
 
   it("saves the current fields under a new name", async () => {
@@ -2825,7 +2826,9 @@ describe("the preset list", () => {
     expect(
       screen.getByText(/creates a new preset called "Warm water"/i),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^save preset$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^save preset$/i }),
+    );
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.createPreset).toHaveBeenCalledWith({
@@ -2866,7 +2869,9 @@ describe("the preset list", () => {
     expect(
       screen.getByText(/replaces the fields saved in "Recreational"/i),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^save preset$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^save preset$/i }),
+    );
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.updatePreset).toHaveBeenCalledWith(
@@ -2880,7 +2885,7 @@ describe("the preset list", () => {
         dive_form_preset_uuid: RECREATIONAL.uuid,
       }),
     );
-    await closeFieldsPanel();
+    // Save preset has closed the dialog already.
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Fields: Recreational" }),
