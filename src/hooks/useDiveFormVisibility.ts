@@ -68,10 +68,10 @@ export interface DiveFormVisibility {
   /** Effective visibility: not hidden, or hidden and revealed. */
   isVisible: (key: DiveFormFieldKey) => boolean;
   /**
-   * Replaces the stored hidden set: a switch in the Configure dialog, or a preset
-   * applied from the Fields menu. Applies to the form at once, persists debounced, and
-   * drops every newly hidden key from the revealed set - those surfaces edit what the
-   * diver sees.
+   * Replaces the stored hidden set: the Configure dialog's switches on Apply or Save
+   * preset, or a preset applied from the Fields menu. Applies to the form at once,
+   * persists debounced, and drops every newly hidden key from the revealed set - those
+   * surfaces edit what the diver sees.
    */
   setHidden: (next: readonly DiveFormFieldKey[]) => void;
   /**
@@ -321,10 +321,10 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
         error,
         "Couldn't save which fields to show. This form still looks the way you set it.",
       );
-      // A toast, not only the `saveError` an open surface can render. Two of the three
-      // ways to reach this leave nothing on screen to render it into: applying a preset
-      // closes the Fields menu, and a switch flipped in Configure can be followed by
-      // closing the dialog before the debounce fires. The failure would then surface
+      // A toast, not only the `saveError` an open surface can render. No way to reach
+      // this leaves anything on screen to render it into: applying a preset closes the
+      // Fields menu, and Configure writes only as Apply or Save preset closes it. The
+      // failure would then surface
       // whenever Configure was next opened, reading as an error about whatever the diver
       // was doing *then*. It is also the only report that fires per failure rather than
       // per change of message: `setSaveError` with an identical string re-renders

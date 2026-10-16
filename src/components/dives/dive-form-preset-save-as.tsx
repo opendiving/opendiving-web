@@ -108,6 +108,9 @@ export function DiveFormPresetSaveAs({
     preset.name.toLowerCase().includes(query),
   );
   const saveable = !disabled && trimmed.length > 0 && !reserved;
+  // What `aria-expanded` reports, and so what the dialog's Escape handler reads: a
+  // list with no rows is not on screen, and must not take an Escape meant for it.
+  const listShown = isOpen && matches.length > 0;
 
   useEffect(() => {
     onSaveableChange(saveable);
@@ -128,7 +131,7 @@ export function DiveFormPresetSaveAs({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     // Escape with the list open closes the list only: the dialog's own Escape
     // handler, which runs first, lets an expanded combobox keep it.
-    if (event.key === "Escape" && isOpen) {
+    if (event.key === "Escape" && listShown) {
       close();
       return;
     }
@@ -174,7 +177,7 @@ export function DiveFormPresetSaveAs({
           id={inputId}
           ref={inputRef}
           role="combobox"
-          aria-expanded={isOpen}
+          aria-expanded={listShown}
           aria-controls={listId}
           // Without this the arrow keys move a highlight only a sighted diver can
           // follow: focus never leaves the input, so a screen reader is told which
@@ -182,7 +185,7 @@ export function DiveFormPresetSaveAs({
           // `VolumeCombobox` and `CreatableCombobox` - see "Dropdowns are navigable
           // with Up/Down and Enter" in DECISIONS.md.
           aria-activedescendant={
-            isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined
+            listShown && activeIndex >= 0 ? optionId(activeIndex) : undefined
           }
           aria-autocomplete="list"
           autoComplete="off"
@@ -219,7 +222,7 @@ export function DiveFormPresetSaveAs({
         >
           <ChevronDown className="h-4 w-4" />
         </button>
-        {isOpen && matches.length > 0 && (
+        {listShown && (
           // Opens *upward*. This row is the last thing in a dialog that scrolls
           // its own content, so a list dropping below the input is clipped by the
           // dialog's `overflow-y-auto` rather than floating over it - measured at

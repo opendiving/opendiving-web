@@ -5859,8 +5859,9 @@ sibling card mid-edit keeps what is typed. The suite pins the invariant: persist
 resets the form, re-runs the prefill or refetches the last dive; anything added to that dependency
 list must be a value, not an object.
 
-The write is debounced and flushed on unmount, so three switches are one request and a
-flip-then-leave still saves. `SAVE_DEBOUNCE_MS` in the hook is the figure's only home.
+The write is debounced and flushed on unmount, so the hidden set and the preset pick that Save
+preset or a menu pick writes together are one request, and an Apply-then-leave still saves.
+`SAVE_DEBOUNCE_MS` in the hook is the figure's only home.
 
 ## The Fields control is a menu with a dialog behind it, and neither is in the form
 
@@ -5868,16 +5869,19 @@ The control is a page action in the hero's top row, opposite the way back, dress
 is.
 
 The menu applies presets; Configure opens a dialog of switches and preset housekeeping. A failed
-`PATCH /user` toasts from `useDiveFormVisibility`'s `flush`. Escape belongs to the dialog: Radix
-listens on `document` in the capture phase.
+`PATCH /user` toasts from `useDiveFormVisibility`'s `flush`. Escape belongs to the dialog - Radix
+listens on `document` in the capture phase - except on an expanded combobox: `onEscapeKeyDown`
+leaves the Save as list's Escape to the list, since closing the dialog drops the switches' draft.
 
-"Save as" is one name plus Save: an unmatched name creates, a match replaces; not
-`CreatableCombobox`, which commits on blur. The trigger reads `Fields: <preset>`, "All" or "Custom",
-so `useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name prompt
-uses `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
+"Save as" is one name plus the footer's Save preset: an unmatched name creates, a match replaces;
+not `CreatableCombobox`, which commits on blur. The trigger reads `Fields: <preset>`, "All" or
+"Custom", so `useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name
+prompt uses `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first
+control.
 
-A switch shows the effective state and edits the stored one. A unit toggle rides on every visible
-box with a unit, so hiding one of a dimension's fields leaves the toggle on the others.
+A switch shows the effective state and edits a draft of the stored one; Apply and Save preset write
+it, Cancel, the X and Escape drop it. A unit toggle rides on every visible box with a unit, so
+hiding one of a dimension's fields leaves the toggle on the others.
 
 ## The Fields dialog is switches, and it is the sections that share the columns
 
@@ -6634,7 +6638,7 @@ Opening Configure seeds "Save as" with the saved preset the trigger names, under
 so saving edits back under that name is one tap; what it saves becomes the pick. "All" and a set
 matching nothing open empty.
 
-The mount freezes the seed. The match is computed against `visibility.hidden`, which changes on the
+The mount freezes the seed. The match is computed against the switches' draft, which changes on the
 first flip, so a name recomputed every render would blank itself on the very edit the diver means to
 save. `DiveFormPresetSaveAs` reads `initialName` into `useState` once; it mounts when the dialog
 opens because `DialogPortal` renders `null` while closed.
@@ -6647,13 +6651,11 @@ seeding the child when the prop arrives (`react-hooks/set-state-in-effect`).
 
 ## A debounce test fakes timers between async helpers, never across one
 
-`"debounces a burst into one request"` in `src/app/dives/new/page.render.test.tsx` runs on a frozen
-clock: `vi.useFakeTimers()`, three flips, `expect(updateProfile).not.toHaveBeenCalled()`, then one
-`act` advancing exactly `SAVE_DEBOUNCE_MS`. Awaited `userEvent.click`s run on the wall clock, so a
-slow runner lets the `useDiveFormVisibility` window elapse mid-burst;
-`waitFor(() => expect(updateProfile).toHaveBeenCalled())` returns on the first call, so
-`toHaveBeenCalledTimes(1)` passes on the broken run too. `SAVE_DEBOUNCE_MS` comes from the hook, not
-a copy.
+`"holds the save for the debounce window"` in `src/app/dives/new/page.render.test.tsx` runs on a
+frozen clock: `vi.useFakeTimers()`, three flips and Apply,
+`expect(updateProfile).not.toHaveBeenCalled()`, then one `act` advancing exactly `SAVE_DEBOUNCE_MS`.
+On the wall clock a slow runner can let the `useDiveFormVisibility` window elapse before the "not
+yet" assertion runs. `SAVE_DEBOUNCE_MS` comes from the hook, not a copy.
 
 `userEvent` cannot drive that window: `userEvent.setup({ advanceTimers })` routes through Testing
 Library's `asyncWrapper`, which advances its `setTimeout(…, 0)` only

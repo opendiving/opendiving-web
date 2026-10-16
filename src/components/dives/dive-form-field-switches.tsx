@@ -66,9 +66,10 @@ export type DiveFormFieldsView = Pick<
  * Every input the dive form can render, grouped as the form groups them, one switch
  * each.
  *
- * **A switch shows the _effective_ state and edits the _stored_ one.** Turning one on
- * stores the key visible; turning it off stores it hidden *and* drops it from the
- * revealed set, so a field an edit load put on screen can still be put away from here.
+ * **A switch shows the _effective_ state and edits a draft of the _stored_ one.**
+ * Turning one on marks the key visible; turning it off marks it hidden *and* drops it
+ * from the revealed set, so a field an edit load put on screen can still be put away
+ * from here.
  * A key visible only because it was revealed says so beside its label.
  *
  * **The always-shown rows read like every other row** - same label colour, no note -

@@ -331,6 +331,27 @@ describe("DiveFormFieldsDialog", () => {
     expect(screen.getByRole("switch", { name: "Altitude" })).not.toBeChecked();
   });
 
+  it("closes on the first Escape when the name matches no preset", async () => {
+    // No rows, so no list on screen - nothing for the Escape to close first.
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={onOpenChange}
+        visibility={visibilityStub(["mixture.helium"])}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.clear(saveAsBox());
+    await user.type(saveAsBox(), "Sidemount");
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it("saves the edited fields from the footer and applies them", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
