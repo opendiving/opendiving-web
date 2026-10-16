@@ -158,8 +158,9 @@ export interface UseDiveFormVisibilityOptions<
  *
  * **The stored set comes from `useAuth().user`**, so it is present at first render and
  * the first paint already omits the hidden fields rather than painting them and taking
- * them away. A toggle applies immediately and is persisted through `PATCH /user`, then folded into the auth context with `mergeUser` - never with
- * `refreshUser`, which is a round trip this caller does not need.
+ * them away. A toggle applies immediately and is persisted through `PATCH /user`,
+ * then folded into the auth context with `mergeUser` - never with `refreshUser`,
+ * which is a round trip this caller does not need.
  *
  * **"Untouched" is this layer's own record, never react-hook-form's dirty state.**
  * The layer remembers the last value it wrote for each key; a key still holding that

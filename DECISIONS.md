@@ -2796,7 +2796,7 @@ one reader who cannot count the pins.
 A keyboard still cannot reach the hint: the label is a `<span>`, and making it focusable would put a
 second tab stop inside a card's link.
 
-## `DialogFooter` is one row at every width, and its gap is `gap-2` not `space-x-2`
+## `DialogFooter` is one row while the buttons fit, and its gap is `gap-2` not `space-x-2`
 
 shadcn's footer is `flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2`, a column with no
 spacing below `sm:`, so on a phone Cancel and the action sit flush. Most dialogs end in Cancel plus
