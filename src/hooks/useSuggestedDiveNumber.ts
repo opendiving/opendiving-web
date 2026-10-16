@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { UseFormReturn } from "react-hook-form";
+import { UseFormReturn, useWatch } from "react-hook-form";
 import { divesAPI, DiveNumberSuggestion } from "@/lib/api/dives";
 import { DiveCreateInput } from "@/lib/validations/dive";
 
@@ -38,7 +38,7 @@ export function useSuggestedDiveNumber(
   const [suggestion, setSuggestion] = useState<DiveNumberSuggestion | null>(
     null,
   );
-  const startTime = form.watch("start_time");
+  const startTime = useWatch({ control: form.control, name: "start_time" });
   // Bumped per request so a slow response for an earlier date can't land on top
   // of the one the diver is actually looking at.
   const latestRequest = useRef(0);

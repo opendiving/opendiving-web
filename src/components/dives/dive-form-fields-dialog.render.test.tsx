@@ -182,6 +182,36 @@ describe("DiveFormFieldsDialog", () => {
     );
   });
 
+  it("walks the list with the arrow keys, stopping at its ends", async () => {
+    const user = userEvent.setup();
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={vi.fn()}
+        visibility={visibilityStub(["mixture.helium"])}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+    await user.click(saveAsBox());
+
+    const highlighted = () =>
+      screen
+        .getAllByRole("option")
+        .find((row) => row.getAttribute("aria-selected") === "true")
+        ?.textContent;
+
+    await user.keyboard("{ArrowUp}");
+    expect(highlighted()).toBe("Technical");
+    await user.keyboard("{ArrowDown}");
+    expect(highlighted()).toBe("Technical");
+    await user.keyboard("{ArrowUp}{ArrowUp}");
+    expect(highlighted()).toBe("Basic");
+
+    await user.keyboard("{Enter}");
+    expect(saveAsBox()).toHaveValue("Basic");
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  });
+
   it("filters the list once the diver types", async () => {
     const user = userEvent.setup();
     render(

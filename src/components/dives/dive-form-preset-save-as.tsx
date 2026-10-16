@@ -4,7 +4,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { menuQuery } from "@/components/ui/creatable-combobox";
+import {
+  clampActiveIndex,
+  menuQuery,
+  nextActiveIndex,
+} from "@/components/ui/creatable-combobox";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   ALL_FIELDS_PRESET_NAME,
@@ -111,6 +115,7 @@ export function DiveFormPresetSaveAs({
   // What `aria-expanded` reports, and so what the dialog's Escape handler reads: a
   // list with no rows is not on screen, and must not take an Escape meant for it.
   const listShown = isOpen && matches.length > 0;
+  const highlighted = clampActiveIndex(activeIndex, matches.length);
 
   useEffect(() => {
     onSaveableChange(saveable);
@@ -141,19 +146,20 @@ export function DiveFormPresetSaveAs({
         setIsOpen(true);
         return;
       }
-      if (matches.length === 0) return;
-      const delta = event.key === "ArrowDown" ? 1 : -1;
-      setActiveIndex((current) => {
-        if (current < 0) return delta === 1 ? 0 : matches.length - 1;
-        return Math.min(matches.length - 1, Math.max(0, current + delta));
-      });
+      setActiveIndex((current) =>
+        nextActiveIndex(
+          clampActiveIndex(current, matches.length),
+          event.key === "ArrowDown" ? 1 : -1,
+          matches.length,
+        ),
+      );
       return;
     }
     // Enter takes the highlighted row when there is one, and otherwise falls
     // through to the form's own submit - which is the Save button.
-    if (event.key === "Enter" && isOpen && activeIndex >= 0) {
+    if (event.key === "Enter" && isOpen && highlighted >= 0) {
       event.preventDefault();
-      pick(matches[activeIndex]);
+      pick(matches[highlighted]);
     }
   };
 
@@ -185,7 +191,7 @@ export function DiveFormPresetSaveAs({
           // `VolumeCombobox` and `CreatableCombobox` - see "Dropdowns are navigable
           // with Up/Down and Enter" in DECISIONS.md.
           aria-activedescendant={
-            listShown && activeIndex >= 0 ? optionId(activeIndex) : undefined
+            listShown && highlighted >= 0 ? optionId(highlighted) : undefined
           }
           aria-autocomplete="list"
           autoComplete="off"
@@ -243,13 +249,13 @@ export function DiveFormPresetSaveAs({
                 type="button"
                 id={optionId(index)}
                 role="option"
-                aria-selected={index === activeIndex}
+                aria-selected={index === highlighted}
                 onMouseDown={(event) => {
                   event.preventDefault();
                   pick(preset);
                 }}
                 className={`w-full rounded-sm px-2 py-1.5 touch:py-3 text-left text-sm ${
-                  index === activeIndex ? "bg-accent" : ""
+                  index === highlighted ? "bg-accent" : ""
                 }`}
               >
                 {preset.name}

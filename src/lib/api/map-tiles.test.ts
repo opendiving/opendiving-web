@@ -52,8 +52,9 @@ describe("mapTilesAPI.getMapTile", () => {
     expect(config.signal).toBe(controller.signal);
   });
 
-  // The client coalesces concurrent GETs of one URL into one request, so a
-  // map that aborted its own would hand the abort to the next map asking.
+  // The client coalesces concurrent GETs of one URL into one request unless
+  // they carry a signal; shared, a map that aborted its own would hand the
+  // abort to the next map asking.
   it("sends each ask, never sharing a request another may abort", async () => {
     const url = mapTileUrl("light", 9, 300, 215);
     const first = new AbortController();

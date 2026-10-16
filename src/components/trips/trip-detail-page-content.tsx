@@ -285,7 +285,8 @@ export function TripDetailPageContent() {
           <div className="space-y-6 max-sm:space-y-2.5">
             {(tripParts.length > 0 ||
               hasPeople ||
-              diveCenterNames.length > 0) && (
+              diveCenterNames.length > 0 ||
+              trip.notes) && (
               <Card>
                 <CardHeader>
                   <CardTitle as="h2" className="flex items-center gap-2">
@@ -363,6 +364,17 @@ export function TripDetailPageContent() {
                       </div>
                       <div className="text-sm">
                         {diveCenterNames.join(", ")}
+                      </div>
+                    </div>
+                  )}
+
+                  {trip.notes && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        Notes
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap">
+                        {trip.notes}
                       </div>
                     </div>
                   )}

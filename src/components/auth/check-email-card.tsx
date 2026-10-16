@@ -258,22 +258,16 @@ export function CheckEmailCard({
             Checking your code...
           </p>
         )}
-        {codeError && (
-          <StatusMessage variant="error">{codeError}</StatusMessage>
-        )}
+        <StatusMessage variant="error">{codeError}</StatusMessage>
       </form>
 
       <div className="mt-6 flex flex-col items-center gap-2 border-t pt-4 touch:gap-0">
-        {resendMessage && (
-          <StatusMessage variant="success" className="mb-2 w-full text-left">
-            {resendMessage}
-          </StatusMessage>
-        )}
-        {resendError && (
-          <StatusMessage variant="error" className="mb-2 w-full text-left">
-            {resendError}
-          </StatusMessage>
-        )}
+        <StatusMessage variant="success" className="mb-2 w-full text-left">
+          {resendMessage}
+        </StatusMessage>
+        <StatusMessage variant="error" className="mb-2 w-full text-left">
+          {resendError}
+        </StatusMessage>
         <button
           type="button"
           onClick={handleResend}

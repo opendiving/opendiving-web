@@ -134,7 +134,7 @@ export function CheckInPageContent() {
   useSavedElsewhere("certification", () => void refreshCertifications());
 
   if (isLoading) {
-    return <PageSpinner />;
+    return <PageSpinner variant="inset" />;
   }
 
   if (!isAuthenticated || !user) {
