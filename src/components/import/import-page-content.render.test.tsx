@@ -377,7 +377,9 @@ describe("what the client refuses before sending", () => {
       sized("b.zip", 300 * MB, "application/zip"),
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/in parts/);
+    expect(
+      screen.getAllByRole("alert").find((region) => region.textContent),
+    ).toHaveTextContent(/in parts/);
     expect(readButton()).toBeDisabled();
   });
 });
@@ -444,9 +446,14 @@ describe("reading", () => {
     });
     await userEvent.click(readButton());
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This import would take you past your storage limit.",
-    );
+    expect(
+      await screen.findByText(
+        "This import would take you past your storage limit.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("alert").find((region) => region.textContent),
+    ).toHaveTextContent("This import would take you past your storage limit.");
     expect(screen.queryByRole("table")).toBeNull();
     expect(mocks.toast).not.toHaveBeenCalled();
   });

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { useEffect, useState, type BaseSyntheticEvent } from "react";
+import { Check } from "lucide-react";
 import {
   adminAPI,
   type AdminSpecies,
@@ -10,7 +10,9 @@ import {
 import { getApiErrorMessage } from "@/lib/api/error";
 import { speciesDisplayName } from "@/lib/species";
 import { cn } from "@/lib/utils";
+import { dialogFormSubmit } from "@/lib/dialog-form";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SectionSpinner } from "@/components/ui/section-spinner";
 import { useToast } from "@/components/ui/use-toast";
 
 interface SpeciesPhotoPickerProps {
@@ -142,8 +145,8 @@ function PickerBody({
     };
   }, [uuid, toast]);
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
+  const submit = (event?: BaseSyntheticEvent) => {
+    event?.preventDefault();
     const file = pasted.trim();
     if (file) onPick(file);
   };
@@ -151,11 +154,9 @@ function PickerBody({
   return (
     <>
       {candidates.state === "loading" && (
-        <div className="flex justify-center py-8" aria-busy="true">
-          <Loader2
-            className="h-6 w-6 animate-spin text-muted-foreground"
-            aria-label="Loading candidates"
-          />
+        <div role="status">
+          <span className="sr-only">Loading candidates</span>
+          <SectionSpinner />
         </div>
       )}
       {candidates.state === "failed" && (
@@ -188,7 +189,7 @@ function PickerBody({
           </>
         ))}
 
-      <form onSubmit={submit} className="space-y-2">
+      <form onSubmit={dialogFormSubmit(submit)} className="space-y-2">
         <Label htmlFor="species-photo-file">Commons file title or URL</Label>
         <div className="flex gap-2">
           <Input
@@ -200,9 +201,7 @@ function PickerBody({
             className="min-w-0"
           />
           <Button type="submit" disabled={isPinning || !pasted.trim()}>
-            {isPinning && (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
-            )}
+            {isPinning && <ButtonSpinner className="mr-2" />}
             Use
           </Button>
         </div>
@@ -235,7 +234,7 @@ export function SpeciesPhotoPicker({
       open={species !== null}
       onOpenChange={(open) => !open && !isPinning && onClose()}
     >
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Replace the photo</DialogTitle>
           <DialogDescription>

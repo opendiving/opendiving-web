@@ -87,7 +87,7 @@ export function RestoreAccountCard() {
           date above decides.
         </p>
 
-        {error && <StatusMessage variant="error">{error}</StatusMessage>}
+        <StatusMessage variant="error">{error}</StatusMessage>
 
         <Button
           className="w-full"

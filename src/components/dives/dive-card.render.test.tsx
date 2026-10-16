@@ -238,6 +238,18 @@ describe("DiveCard", () => {
     ]);
   });
 
+  it("shows depths of zero rather than leaving them out", () => {
+    const item = card({
+      dive: dive({ max_depth: 0, avg_depth: 0, bottom_temperature: undefined }),
+    });
+
+    expect(figuresOf(item)).toEqual([
+      ["Dive time", "45min"],
+      ["Max depth", "0 m"],
+      ["Avg depth", "0 m"],
+    ]);
+  });
+
   it("shows a water temperature of zero rather than leaving it out", () => {
     const item = card({ dive: dive({ bottom_temperature: 0 }) });
 

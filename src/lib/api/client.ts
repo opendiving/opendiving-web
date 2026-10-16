@@ -268,6 +268,12 @@ const rawGet: (
 ) => Promise<AxiosResponse> = apiClient.get.bind(apiClient);
 
 apiClient.get = ((url: string, config?: AxiosRequestConfig) => {
+  // A request with a signal belongs to the caller that can abort it. Shared, an
+  // effect that re-runs is handed the request its cleanup has just aborted.
+  if (config?.signal) {
+    return rawGet(url, config);
+  }
+
   const key = getRequestKey(url, config);
   const pending = pendingGetRequests.get(key);
   if (pending) {
@@ -367,9 +373,9 @@ export interface FetchAllPagesOptions<T> {
   keyOf?: (item: T) => string;
 }
 
-// Raised when `signal` is already aborted. A `DOMException` named `AbortError` so
-// it matches what `fetch`/axios throw and `isAbortError` below can recognise it
-// whatever produced it.
+// Raised when `signal` is already aborted. A `DOMException` named `AbortError`, as
+// `fetch` throws; axios throws a `CanceledError` instead, which `isAbortError`
+// below recognises through `axios.isCancel`.
 function abortError(): Error {
   return new DOMException("Paged fetch aborted", "AbortError");
 }
@@ -380,7 +386,9 @@ function abortError(): Error {
  * not be logged or toasted as an error.
  */
 export function isAbortError(error: unknown): boolean {
-  return (error as { name?: string })?.name === "AbortError";
+  return (
+    axios.isCancel(error) || (error as { name?: string })?.name === "AbortError"
+  );
 }
 
 /**

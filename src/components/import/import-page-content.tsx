@@ -316,9 +316,7 @@ function ImportFlow() {
                 {`${formatFileSize(unzippedBytes)} of files that are not zips, of the ${formatFileSize(MAX_IMPORT_DOCUMENT_SIZE)} one import can read.`}
               </p>
             </div>
-            {selectionRefusal && (
-              <StatusMessage variant="error">{selectionRefusal}</StatusMessage>
-            )}
+            <StatusMessage variant="error">{selectionRefusal}</StatusMessage>
             {!plan && (
               <div className="space-y-2">
                 {stale && (
@@ -360,7 +358,7 @@ function ImportFlow() {
         )}
       </section>
 
-      {error && <StatusMessage variant="error">{error}</StatusMessage>}
+      <StatusMessage variant="error">{error}</StatusMessage>
 
       {plan && (
         <ImportReview

@@ -1,3 +1,4 @@
+import { Children } from "react";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,20 +26,27 @@ export function StatusMessage({
   className,
 }: StatusMessageProps) {
   const Icon = variant === "error" ? AlertCircle : CheckCircle;
+  const hasMessage = Children.toArray(children).some((child) => child !== "");
 
   return (
     <div
       // `role="alert"` so a screen reader announces the outcome without the diver
       // having to go looking for it - the whole reason this is inline rather than a
-      // toast is that it is the answer to something they just did.
+      // toast is that it is the answer to something they just did. Mounted before
+      // there is anything to say and `sr-only` until then, as `FormApiError` is: a
+      // live region that mounts together with its text is not announced.
       role="alert"
-      className={cn(
-        "flex items-start gap-2 rounded-md border p-3 text-sm text-foreground",
-        variant === "error"
-          ? "border-destructive/40 bg-destructive/10"
-          : "border-success/40 bg-success/10",
-        className,
-      )}
+      className={
+        hasMessage
+          ? cn(
+              "flex items-start gap-2 rounded-md border p-3 text-sm text-foreground",
+              variant === "error"
+                ? "border-destructive/40 bg-destructive/10"
+                : "border-success/40 bg-success/10",
+              className,
+            )
+          : "sr-only"
+      }
     >
       {/* The state is carried by the icon, the border and the tint - not by the
           body text, which stays `foreground`. `text-destructive` over
@@ -46,13 +54,17 @@ export function StatusMessage({
           the token (4.6:1 in light mode, where the old red was 3.3:1), but the
           message is a paragraph and `foreground` reads it at ~17:1. Colour is the
           glance; the words are the text. */}
-      <Icon
-        className={cn(
-          "mt-0.5 h-4 w-4 shrink-0",
-          variant === "error" ? "text-destructive" : "text-success",
-        )}
-      />
-      <span>{children}</span>
+      {hasMessage && (
+        <>
+          <Icon
+            className={cn(
+              "mt-0.5 h-4 w-4 shrink-0",
+              variant === "error" ? "text-destructive" : "text-success",
+            )}
+          />
+          <span>{children}</span>
+        </>
+      )}
     </div>
   );
 }

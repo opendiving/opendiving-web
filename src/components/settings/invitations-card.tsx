@@ -238,9 +238,7 @@ export function InvitationsCard() {
         {list.status === "ready" && <InviteLinkBlock />}
 
         <form onSubmit={handleSubmit(onSend)} className="space-y-4">
-          {sendError && (
-            <StatusMessage variant="error">{sendError}</StatusMessage>
-          )}
+          <StatusMessage variant="error">{sendError}</StatusMessage>
 
           <div className="space-y-2">
             <Label htmlFor="invitation-email">Email</Label>

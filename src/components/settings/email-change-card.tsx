@@ -82,16 +82,16 @@ export function EmailChangeCard({ currentEmail }: EmailChangeCardProps) {
               />
             </div>
 
-            {sentTo && (
-              <StatusMessage variant="success">
+            <StatusMessage variant="success">
+              {sentTo && (
                 <span>
                   We sent a confirmation link to <strong>{sentTo}</strong>. Open
                   it to finish changing your email - it expires in 30 minutes.
                 </span>
-              </StatusMessage>
-            )}
+              )}
+            </StatusMessage>
 
-            {error && <StatusMessage variant="error">{error}</StatusMessage>}
+            <StatusMessage variant="error">{error}</StatusMessage>
 
             <div className="space-y-2">
               <Label htmlFor="newEmail">New email</Label>

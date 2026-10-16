@@ -86,7 +86,7 @@ export function CertificationsPageContent() {
   });
 
   if (isAuthLoading || !isAuthenticated) {
-    return <PageSpinner />;
+    return <PageSpinner variant="inset" />;
   }
 
   return (

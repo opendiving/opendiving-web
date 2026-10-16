@@ -70,7 +70,7 @@ export function HomePageContent() {
   }, [user]);
 
   if (isLoading) {
-    return <PageSpinner />;
+    return <PageSpinner variant="inset" />;
   }
 
   if (!isAuthenticated || !user) {

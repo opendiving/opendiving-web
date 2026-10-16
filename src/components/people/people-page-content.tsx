@@ -21,10 +21,6 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // the other lists and the pickers.
 const SEARCH_DEBOUNCE_MS = 250;
 
-// The row's two controls at a finger's size on a phone, where a table row is
-// tapped; from `sm` up they take the other lists' size.
-const ROW_ACTION = "h-11 w-11 sm:h-9 sm:w-9";
-
 // A dash for a cell with nothing in it, as the contacts list draws one, so an
 // empty cell reads as "not recorded" rather than as a rendering fault.
 const NONE = <span className="text-muted-foreground">-</span>;
@@ -151,7 +147,6 @@ export function PeoplePageContent() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={ROW_ACTION}
                     onClick={() => setEditingPerson(person)}
                   >
                     <Edit className="h-4 w-4" />
@@ -161,7 +156,6 @@ export function PeoplePageContent() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={ROW_ACTION}
                     onClick={() => requestDelete(person.uuid)}
                     disabled={deletingId === person.uuid}
                   >
