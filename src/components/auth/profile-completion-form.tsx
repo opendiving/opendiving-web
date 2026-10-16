@@ -100,7 +100,7 @@ export function ProfileCompletionForm() {
         description="Just a couple more details and you're in."
       />
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {error && <StatusMessage variant="error">{error}</StatusMessage>}
+        <StatusMessage variant="error">{error}</StatusMessage>
 
         <PictureField
           picture="avatar"

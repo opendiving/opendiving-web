@@ -108,33 +108,35 @@ export function SupportForm({ fallbackEmail }: SupportFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {error && (
-          <StatusMessage variant="error">
-            {error}{" "}
-            {fallbackEmail ? (
-              <>
-                You can also email us directly at{" "}
-                <a href={`mailto:${fallbackEmail}`} className="underline">
-                  {fallbackEmail}
-                </a>
-                .
-              </>
-            ) : (
-              <>
-                If it keeps failing, you can{" "}
-                <a
-                  href={FALLBACK_ISSUES_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  open an issue
-                </a>{" "}
-                instead.
-              </>
-            )}
-          </StatusMessage>
-        )}
+        <StatusMessage variant="error">
+          {error && (
+            <>
+              {error}{" "}
+              {fallbackEmail ? (
+                <>
+                  You can also email us directly at{" "}
+                  <a href={`mailto:${fallbackEmail}`} className="underline">
+                    {fallbackEmail}
+                  </a>
+                  .
+                </>
+              ) : (
+                <>
+                  If it keeps failing, you can{" "}
+                  <a
+                    href={FALLBACK_ISSUES_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    open an issue
+                  </a>{" "}
+                  instead.
+                </>
+              )}
+            </>
+          )}
+        </StatusMessage>
 
         <div className="grid gap-4 md:grid-cols-2">
           <FormField

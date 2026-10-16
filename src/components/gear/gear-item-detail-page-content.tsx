@@ -99,7 +99,7 @@ export function GearItemDetailPageContent() {
   };
 
   if (isAuthLoading) {
-    return <PageSpinner />;
+    return <PageSpinner variant="inset" />;
   }
 
   if (!isAuthenticated) {

@@ -28,15 +28,9 @@ export const mapTilesAPI = {
    * API answers a tile it has not drawn yet by drawing it, so this can be held
    * open for the whole of a draw; `signal` is how a map that leaves the screen
    * lets that connection go.
-   *
-   * `request` rather than `get`, whose coalescing shares one pending request
-   * between every caller of a URL: a map scrolled away and straight back would
-   * be handed the request it had just aborted.
    */
   async getMapTile(url: string, signal: AbortSignal): Promise<Blob> {
-    const response = await apiClient.request<Blob>({
-      method: "get",
-      url,
+    const response = await apiClient.get<Blob>(url, {
       responseType: "blob",
       signal,
     });

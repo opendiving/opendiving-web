@@ -223,7 +223,7 @@ export function EditDivePageContent() {
   };
 
   if (isAuthLoading) {
-    return <PageSpinner />;
+    return <PageSpinner variant="inset" />;
   }
 
   if (!isAuthenticated) {

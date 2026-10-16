@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import axios from "axios";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import axios, { type InternalAxiosRequestConfig } from "axios";
 import {
   apiClient,
   fetchAllPages,
@@ -241,9 +241,49 @@ describe("lookupRequest", () => {
 describe("isAbortError", () => {
   it("recognises an abort and nothing else", () => {
     expect(isAbortError(new DOMException("x", "AbortError"))).toBe(true);
+    // What axios itself rejects with when a request's signal aborts.
+    expect(isAbortError(new axios.CanceledError())).toBe(true);
     expect(isAbortError(new Error("Network Error"))).toBe(false);
     expect(isAbortError(null)).toBe(false);
     expect(isAbortError(undefined)).toBe(false);
+  });
+});
+
+describe("apiClient.get coalescing", () => {
+  const originalAdapter = apiClient.defaults.adapter;
+  const adapter = vi.fn(async (config: InternalAxiosRequestConfig) => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (config.signal?.aborted) throw new axios.CanceledError();
+    return { data: {}, status: 200, statusText: "OK", headers: {}, config };
+  });
+
+  beforeEach(() => {
+    adapter.mockClear();
+    apiClient.defaults.adapter = adapter as never;
+  });
+  afterEach(() => {
+    apiClient.defaults.adapter = originalAdapter;
+  });
+
+  it("shares one request between identical unsignalled reads", async () => {
+    await Promise.all([apiClient.get("/same"), apiClient.get("/same")]);
+
+    expect(adapter).toHaveBeenCalledTimes(1);
+  });
+
+  // An effect's cleanup aborts its read and the re-run asks again at once:
+  // shared, the re-run would be handed the aborted request.
+  it("never shares a read that carries a signal", async () => {
+    const first = new AbortController();
+
+    const aborted = apiClient.get("/same", { signal: first.signal });
+    const rerun = apiClient.get("/same", {
+      signal: new AbortController().signal,
+    });
+    first.abort();
+
+    await expect(aborted).rejects.toSatisfy(isAbortError);
+    await expect(rerun).resolves.toMatchObject({ status: 200 });
   });
 });
 
