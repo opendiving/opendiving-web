@@ -5,7 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { useStuckAtBottom } from "@/hooks/useStuckAtBottom";
+import { useStuckAtEdge } from "@/hooks/useStuckAtEdge";
 import {
   scrollContainerOf,
   useFocusTappedFieldInPlace,
@@ -145,16 +145,18 @@ function RememberOpener({
   return null;
 }
 
-// Whether Radix's open-focus would land on a `<select>`: its first tabbable
-// element, found the way Radix finds it.
-function startsWithPicker(panel: HTMLElement) {
-  const first = Array.from(panel.querySelectorAll<HTMLElement>("*")).find(
+// What Radix's open-focus walks, in its order, less the cross: the cross heads
+// every dialog from inside its header, and is not where a diver starts.
+function openFocusCandidates(panel: HTMLElement) {
+  return Array.from(panel.querySelectorAll<HTMLElement>("*")).filter(
     (el) =>
       el.tabIndex >= 0 &&
+      !el.hidden &&
       !(el as HTMLButtonElement).disabled &&
-      !(el instanceof HTMLInputElement && el.type === "hidden"),
+      !(el instanceof HTMLInputElement && el.type === "hidden") &&
+      !(el instanceof HTMLAnchorElement) &&
+      !el.hasAttribute("data-dialog-close"),
   );
-  return first instanceof HTMLSelectElement;
 }
 
 const DialogContent = React.forwardRef<
@@ -204,13 +206,23 @@ const DialogContent = React.forwardRef<
         // cross, Cancel and Escape all still close, and each of those is
         // deliberate. Before the spread, so a dialog can opt back in.
         onPointerDownOutside={(event) => event.preventDefault()}
-        // On iOS a focused `<select>` opens its picker wheel, so a dialog that
-        // starts with one takes focus on the panel instead. Before the spread,
-        // so a dialog's own handler replaces this.
+        // Radix's own open-focus, as it would run without the cross ahead of
+        // the first field - except that on iOS a focused `<select>` opens its
+        // picker wheel, so a dialog that starts with one takes focus on the
+        // panel instead. Before the spread, so a dialog's own handler replaces
+        // this.
         onOpenAutoFocus={(event) => {
-          const panel = event.currentTarget as HTMLElement;
-          if (!startsWithPicker(panel)) return;
           event.preventDefault();
+          const panel = event.currentTarget as HTMLElement;
+          const candidates = openFocusCandidates(panel);
+          if (!(candidates[0] instanceof HTMLSelectElement)) {
+            for (const candidate of candidates) {
+              candidate.focus({ preventScroll: true });
+              if (document.activeElement !== candidate) continue;
+              if (candidate instanceof HTMLInputElement) candidate.select();
+              return;
+            }
+          }
           panel.focus();
         }}
         // A caller's own handler runs first and can still take over by
@@ -228,35 +240,89 @@ const DialogContent = React.forwardRef<
         <RememberOpener openerRef={openerRef} />
         <VisualViewportEffects />
         {children}
-        {/* `IconTooltip` supplies the `aria-label` the `sr-only` span used to,
-          so the cross keeps its name and gains the hover hint every other icon
-          button in the app has. */}
-        <IconTooltip label="Close">
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 touch:tap-target ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-4 w-4" />
-          </DialogPrimitive.Close>
-        </IconTooltip>
       </DialogPrimitive.Content>
     </DialogPortal>
   );
 });
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+/**
+ * Mirrors a row's height onto the dialog it scrolls in as `name`, for
+ * `globals.css` to reserve as scroll padding while the row is pinned - measured
+ * because a phone-width row can wrap.
+ */
+function useHeightOnScrollBox(
+  ref: React.RefObject<HTMLElement | null>,
+  name: string,
+) {
+  React.useEffect(() => {
+    const row = ref.current;
+    const box = row && scrollContainerOf(row);
+    if (!row || !box) return;
+    const observer = new ResizeObserver(() =>
+      box.style.setProperty(name, `${row.offsetHeight}px`),
+    );
+    observer.observe(row);
+    return () => {
+      observer.disconnect();
+      box.style.removeProperty(name);
+    };
+  }, [ref, name]);
+}
+
+/**
+ * The dialog's title row, and the cross that closes it. `globals.css` sticks it
+ * to the top of the dialog while there is room, and gives it a surface only
+ * while it is stuck there - `DialogFooter`'s counterpart.
+ */
 const DialogHeader = ({
   className,
+  children,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
-      className,
-    )}
-    {...props}
-  />
-);
+}: React.HTMLAttributes<HTMLDivElement>) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  // The root grows a pixel at the top, one short of the two the header is
+  // stuck past.
+  const stuck = useStuckAtEdge(ref, {
+    edge: "top",
+    rootMargin: "1px 0px 0px 0px",
+    inScrollBox: true,
+  });
+  useHeightOnScrollBox(ref, "--dialog-header-height");
+  return (
+    <div
+      ref={ref}
+      data-dialog-header=""
+      data-stuck={stuck ? "" : undefined}
+      className={cn(
+        // `gap-1.5` rather than `space-y-1.5`, which would give the last line
+        // of text a margin for the cross after it.
+        "flex flex-col gap-1.5 text-center sm:text-left",
+        // Bled into the content's side and top padding, so that pinned it meets
+        // the dialog's rounded edge, and at rest it sits where it did - and the
+        // cross with it, placed against this box rather than the dialog's.
+        "z-10 -mx-(--card-pad) -mt-6 px-(--card-pad) pt-6",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      {/* After the title in the reading order, and still first in the tab
+        order - `DialogContent` steps over it when it places focus on open.
+        `IconTooltip` supplies its `aria-label` and the hover hint every other
+        icon button in the app has. */}
+      <IconTooltip label="Close">
+        <DialogPrimitive.Close
+          data-dialog-close=""
+          className="absolute right-4 top-4 rounded-sm opacity-70 touch:tap-target ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+        >
+          <X className="h-4 w-4" />
+        </DialogPrimitive.Close>
+      </IconTooltip>
+    </div>
+  );
+};
 DialogHeader.displayName = "DialogHeader";
-
-const FOOTER_HEIGHT_VAR = "--dialog-footer-height";
 
 /**
  * The dialog's Cancel and action row, last in its form so tab order and Enter to
@@ -270,25 +336,12 @@ const DialogFooter = ({
   const ref = React.useRef<HTMLDivElement>(null);
   // The root grows a pixel at the foot, one short of the two the footer is
   // stuck past.
-  const stuck = useStuckAtBottom(ref, {
+  const stuck = useStuckAtEdge(ref, {
+    edge: "bottom",
     rootMargin: "0px 0px 1px 0px",
     inScrollBox: true,
   });
-  // The height `globals.css` reserves as the dialog's scroll padding while this
-  // is pinned, measured because a phone-width footer can wrap onto two rows.
-  React.useEffect(() => {
-    const footer = ref.current;
-    const box = footer && scrollContainerOf(footer);
-    if (!footer || !box) return;
-    const observer = new ResizeObserver(() =>
-      box.style.setProperty(FOOTER_HEIGHT_VAR, `${footer.offsetHeight}px`),
-    );
-    observer.observe(footer);
-    return () => {
-      observer.disconnect();
-      box.style.removeProperty(FOOTER_HEIGHT_VAR);
-    };
-  }, []);
+  useHeightOnScrollBox(ref, "--dialog-footer-height");
   return (
     <div
       ref={ref}

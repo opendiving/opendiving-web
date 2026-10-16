@@ -441,19 +441,43 @@
     }
   }
 
-  /* A dialog's footer sticks to the foot of the dialog while the content runs on
-     below it - unless the visible height is short, which with the keyboard up
-     it is: then the footer stays at the end of the form and the field being
-     typed into keeps the room. `useVisualViewport` sets the attribute.
+  /* The box the cross is placed against, pinned or not. */
+  [data-dialog-header] {
+    position: relative;
+  }
 
-     The offset is measured from inside the content's `p-6`, so it cancels that
-     padding to reach the edge, and goes two pixels past it: pinned, and at rest
-     in a dialog scrolled to its end - the same place, `DialogFooter` bleeding
-     into that padding - then differ by a hidden sliver its observer can see. */
+  /* A dialog's title row and footer stick to its top and foot while the content
+     scrolls between them - unless the visible height is short, which with the
+     keyboard up it is: then both stay where they rest and the field being typed
+     into keeps the room. `useVisualViewport` sets the attribute.
+
+     The offsets are measured from inside the content's `p-6`, so they cancel
+     that padding to reach the edge, and go two pixels past it: pinned, and at
+     rest at that end of the dialog - the same place, each row bleeding into the
+     padding - then differ by a hidden sliver the row's observer can see. */
   :root:not([data-visual-viewport-short]) {
+    [data-dialog-header] {
+      position: sticky;
+      top: calc(-1.5rem - 2px);
+    }
+
     [data-dialog-footer] {
       position: sticky;
       bottom: calc(-1.5rem - 2px);
+    }
+
+    /* As the footer's below, a gap's height under the title. */
+    [data-dialog-header][data-stuck]::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 -1rem;
+      z-index: -1;
+      @apply bg-background/90 shadow-[inset_0_-1px_0_hsl(var(--border))] backdrop-blur;
+    }
+
+    /* The header's height, which `DialogHeader` measures, and that gap. */
+    [role="dialog"]:has([data-dialog-header][data-stuck]) {
+      scroll-padding-top: calc(var(--dialog-header-height, 0px) + 1rem);
     }
 
     /* The surface reaches a gap's height above the buttons, so the rule does

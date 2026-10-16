@@ -19,8 +19,8 @@ const DOC_TOP_VAR = "--visual-viewport-doc-top";
 /**
  * Set on the root while the visible height is under `SHORT_VIEWPORT_REM` - an
  * on-screen keyboard is up, or the screen is a phone on its side. A dialog's
- * footer stops sticking while it is, so the field being typed into gets the
- * room. See `DialogFooter` in `ui/dialog.tsx`.
+ * header and footer stop sticking while it is, so the field being typed into
+ * gets the room. See `DialogHeader` and `DialogFooter` in `ui/dialog.tsx`.
  */
 const SHORT_ATTR = "data-visual-viewport-short";
 /** In rem, so a diver's larger text size reads as less room. */
@@ -57,7 +57,7 @@ function syncViewportVars() {
  * Mirrors `window.visualViewport` onto three CSS variables for as long as the
  * caller is mounted, so that a dialog can be sized and placed against the part
  * of the page a phone is actually showing - and marks the root while that part
- * is short, for `DialogFooter`.
+ * is short, for `DialogHeader` and `DialogFooter`.
  *
  * Two of them describe the visible area within the layout viewport, which is
  * what `DialogContent` needs; the third repeats its top edge in document

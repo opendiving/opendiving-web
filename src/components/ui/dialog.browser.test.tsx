@@ -3,22 +3,34 @@ import { render, screen } from "@testing-library/react";
 import { page } from "vitest/browser";
 
 import { Button } from "./button";
-import { Dialog, DialogContent, DialogFooter, DialogTitle } from "./dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./dialog";
 
 // The stylesheet holds the pin itself, and its release on a short viewport.
 import "@/app/globals.css";
 
-// Where the footer sits is a layout question, so this lane measures it: pinned
-// flush with the dialog's bottom edge while the content runs on, resting at the
-// end once scrolled there, and back at the end of the form - not pinned - while
-// the visible height is under 30rem, which is what the keyboard leaves.
+// Where the header and footer sit is a layout question, so this lane measures
+// it: each pinned flush with its edge of the dialog while the content runs on
+// past it, resting in its own place once scrolled to that end, and not pinned
+// at all while the visible height is under 30rem, which is what the keyboard
+// leaves.
 
 function openLongDialog() {
   render(
     <Dialog open>
       <DialogContent>
-        <DialogTitle>Edit certification</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>Edit certification</DialogTitle>
+        </DialogHeader>
         <form>
+          {/* A field's footprint, and not focusable, so open-focus leaves it
+            be. */}
+          <div data-testid="field" style={{ height: "40px" }} />
           <div style={{ height: "2000px" }} />
           <DialogFooter>
             <Button type="submit">Save changes</Button>
@@ -28,14 +40,97 @@ function openLongDialog() {
     </Dialog>,
   );
   const dialog = screen.getByRole("dialog");
+  const header = dialog.querySelector<HTMLElement>("[data-dialog-header]")!;
   const footer = dialog.querySelector<HTMLElement>("[data-dialog-footer]")!;
-  return { dialog, footer };
+  const close = screen.getByRole("button", { name: "Close" });
+  return { dialog, header, footer, close };
 }
+
+// The padding edge at the top, likewise.
+const paddingTop = (dialog: HTMLElement) =>
+  dialog.getBoundingClientRect().top + 1;
 
 // The dialog's padding edge, which its overflow clips to: the border box less
 // the 1px border.
 const paddingBottom = (dialog: HTMLElement) =>
   dialog.getBoundingClientRect().bottom - 1;
+
+describe("DialogHeader", () => {
+  it("rests at the dialog's top edge, and pins there with the cross while the content scrolls", async () => {
+    await page.viewport(390, 800);
+    const { dialog, header, close } = openLongDialog();
+    await expect.poll(() => getComputedStyle(header).position).toBe("sticky");
+    // The resting place is measured, so the zoom the dialog opens with is let
+    // finish first.
+    await Promise.all(dialog.getAnimations().map((a) => a.finished));
+
+    expect(header.hasAttribute("data-stuck")).toBe(false);
+    expect(header.getBoundingClientRect().top).toBeCloseTo(
+      paddingTop(dialog),
+      0,
+    );
+    // `top-4` in from the dialog's padding edge, against the header's bled box.
+    const restingClose = close.getBoundingClientRect();
+    expect(restingClose.top).toBeCloseTo(paddingTop(dialog) + 16, 0);
+
+    dialog.scrollTop = 600;
+    await expect.poll(() => header.hasAttribute("data-stuck")).toBe(true);
+
+    // Two pixels past the edge, by design - see `globals.css`.
+    expect(header.getBoundingClientRect().top).toBeCloseTo(
+      paddingTop(dialog) - 2,
+      0,
+    );
+    expect(close.getBoundingClientRect().top).toBeCloseTo(
+      restingClose.top - 2,
+      0,
+    );
+    expect(
+      document.elementFromPoint(restingClose.x + 4, restingClose.y + 4),
+    ).toSatisfy((hit: Element | null) => close.contains(hit));
+    await expect
+      .poll(() => parseFloat(getComputedStyle(dialog).scrollPaddingTop))
+      .toBe(header.offsetHeight + 16);
+    // What `useKeepFocusedFieldVisible` does to a field above the fold: it
+    // comes back below the header, not behind it.
+    const field = screen.getByTestId("field");
+    field.scrollIntoView({ block: "nearest" });
+    expect(field.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      header.getBoundingClientRect().bottom,
+    );
+
+    dialog.scrollTop = 0;
+    await expect.poll(() => header.hasAttribute("data-stuck")).toBe(false);
+    expect(getComputedStyle(dialog).scrollPaddingTop).toBe("auto");
+  });
+
+  it("lets go of the top while the visible height is short, and pins again with room", async () => {
+    await page.viewport(390, 800);
+    const { dialog, header, close } = openLongDialog();
+    dialog.scrollTop = 600;
+    await expect.poll(() => header.hasAttribute("data-stuck")).toBe(true);
+
+    // The keyboard coming up over a dialog scrolled part-way.
+    await page.viewport(390, 400);
+    await expect.poll(() => getComputedStyle(header).position).toBe("relative");
+    expect(header.getBoundingClientRect().bottom).toBeLessThan(
+      paddingTop(dialog),
+    );
+    expect(getComputedStyle(dialog).scrollPaddingTop).toBe("auto");
+    // Still the header's, and gone with it.
+    expect(close.getBoundingClientRect().bottom).toBeLessThan(
+      paddingTop(dialog),
+    );
+
+    await page.viewport(390, 800);
+    await expect.poll(() => getComputedStyle(header).position).toBe("sticky");
+    await expect.poll(() => header.hasAttribute("data-stuck")).toBe(true);
+    expect(header.getBoundingClientRect().top).toBeCloseTo(
+      paddingTop(dialog) - 2,
+      0,
+    );
+  });
+});
 
 describe("DialogFooter", () => {
   it("pins to the dialog's bottom edge while the content runs on, and rests at its end", async () => {

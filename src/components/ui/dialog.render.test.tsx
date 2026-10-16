@@ -4,7 +4,13 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Button } from "./button";
 import { ConfirmDialog } from "./confirm-dialog";
-import { Dialog, DialogContent, DialogFooter, DialogTitle } from "./dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +19,7 @@ import {
 } from "./dropdown-menu";
 import { Input } from "./input";
 import { NativeSelect } from "./native-select";
-import { pinToBottom, reveal, scrollPast } from "@/test/intersection";
+import { pinToBottom, pinToTop, reveal, scrollPast } from "@/test/intersection";
 
 // A press on the scrim must not be able to discard a half-filled form, which is
 // what the dismissal tests cover. The opt-back-in case is the control: it proves
@@ -97,7 +103,9 @@ describe("DialogContent open focus", () => {
     render(
       <Dialog open>
         <DialogContent>
-          <DialogTitle>Log service</DialogTitle>
+          <DialogHeader>
+            <DialogTitle>Log service</DialogTitle>
+          </DialogHeader>
           <NativeSelect aria-label="Service type">
             <option value="service">Service</option>
           </NativeSelect>
@@ -109,18 +117,41 @@ describe("DialogContent open focus", () => {
     expect(screen.getByRole("dialog")).toHaveFocus();
   });
 
-  it("leaves Radix's default for any other first field", async () => {
+  it("gives any other first field Radix's default, stepping over the cross", async () => {
     render(
       <Dialog open>
         <DialogContent>
-          <DialogTitle>Rename</DialogTitle>
-          <Input aria-label="Name" />
+          <DialogHeader>
+            <DialogTitle>Rename</DialogTitle>
+          </DialogHeader>
+          <Input aria-label="Name" defaultValue="Blue Hole" />
         </DialogContent>
       </Dialog>,
     );
     await settle();
 
-    expect(screen.getByRole("textbox", { name: "Name" })).toHaveFocus();
+    const name = screen.getByRole<HTMLInputElement>("textbox", {
+      name: "Name",
+    });
+    expect(name).toHaveFocus();
+    // Radix selects what a text field holds as it focuses it, and so does this.
+    expect(name.selectionStart).toBe(0);
+    expect(name.selectionEnd).toBe("Blue Hole".length);
+  });
+
+  it("falls back to the panel when the cross is all there is", async () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Certification</DialogTitle>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>,
+    );
+    await settle();
+
+    expect(screen.getByRole("dialog")).toHaveFocus();
   });
 });
 
@@ -252,6 +283,57 @@ describe("DialogFooter", () => {
     act(() => pinToBottom());
     act(() => scrollPast());
     expect(footer).not.toHaveAttribute("data-stuck");
+  });
+});
+
+// The header's counterpart, with `pinToTop` for the content scrolled on under it
+// and `reveal` for the header at rest at the top of a dialog scrolled there.
+describe("DialogHeader", () => {
+  function openWithHeader() {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit certification</DialogTitle>
+          </DialogHeader>
+          <Input aria-label="Name" />
+        </DialogContent>
+      </Dialog>,
+    );
+    return screen.getByRole("heading").closest("[data-dialog-header]")!;
+  }
+
+  it("marks itself stuck only while pinned to the top of the dialog", () => {
+    const header = openWithHeader();
+    expect(header).not.toHaveAttribute("data-stuck");
+
+    act(() => pinToTop());
+    expect(header).toHaveAttribute("data-stuck");
+
+    act(() => reveal());
+    expect(header).not.toHaveAttribute("data-stuck");
+
+    // Below the root is not stuck at its top.
+    act(() => pinToBottom());
+    expect(header).not.toHaveAttribute("data-stuck");
+  });
+
+  it("carries the cross, which closes the dialog", async () => {
+    const onOpenChange = vi.fn();
+    render(
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit certification</DialogTitle>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>,
+    );
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(close.closest("[data-dialog-header]")).not.toBeNull();
+
+    await userEvent.click(close);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
 

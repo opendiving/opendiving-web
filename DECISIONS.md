@@ -6979,12 +6979,14 @@ row on the keyboard and shrink a phone's view of the field being typed into; and
 first, removing the row under the finger. So the keyboard covers the row while typing, as the
 platform default, and it is back when the keyboard closes.
 
-## A dialog's footer sticks to the foot of the dialog, and lets go on a short viewport
+## A dialog's title row and footer stick to its edges, and let go on a short viewport
 
-`DialogFooter` is sticky inside `DialogContent`'s scroll box, bled into its padding to meet the
-rounded edge, and takes a surface only while stuck. Pinned and at rest at the end are the same
-place, so the pin sits 2px past the edge for its observer to tell them apart. Unlike the dive form's
-row, a dialog follows the visual viewport, so with the keyboard up a pinned footer would hold ~60px
-of a ~300px box above the keys. Below 30rem of visible height `useVisualViewport` marks the root and
-the footer returns to the end of the form. Hiding it on focus is rejected for the dive form's
-reasons: the keyboard closes without a blur, and a tap on a button blurs the field first.
+`DialogHeader` and `DialogFooter` are sticky inside `DialogContent`'s scroll box, bled into its
+padding to meet the rounded edge, and take a surface only while stuck. Pinned and at rest at that
+end are the same place, so each pin sits 2px past the edge for its observer to tell them apart. The
+cross rides in the header, first in the tab order, and open-focus steps over it to the first field.
+Unlike the dive form's row, a dialog follows the visual viewport, so with the keyboard up the two
+rows would hold over a third of a ~300px box above the keys. Below 30rem of visible height
+`useVisualViewport` marks the root and both rows return to their places. Hiding them on focus is
+rejected for the dive form's reasons: the keyboard closes without a blur, and a tap on a button
+blurs the field first.
