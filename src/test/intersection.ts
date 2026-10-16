@@ -140,3 +140,26 @@ export function pinToBottom() {
     );
   }
 }
+
+/**
+ * Report every element currently under observation as held at the top of its
+ * scroll box by `position: sticky` - its first pixel past a root grown by one at
+ * the top, so not wholly in view, and above rather than below. Wrap it in
+ * `act()`, as `reveal`.
+ */
+export function pinToTop() {
+  for (const { element, callback, observer } of [...registrations]) {
+    callback(
+      [
+        {
+          isIntersecting: true,
+          intersectionRatio: 0.98,
+          target: element,
+          boundingClientRect: { top: -2, bottom: 40 } as DOMRectReadOnly,
+          rootBounds: { top: -1, bottom: 800 } as DOMRectReadOnly,
+        } as IntersectionObserverEntry,
+      ],
+      observer,
+    );
+  }
+}

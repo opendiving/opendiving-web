@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Loader2, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormApiError } from "@/components/ui/form-api-error";
-import { useStuckAtBottom } from "@/hooks/useStuckAtBottom";
+import { useStuckAtEdge } from "@/hooks/useStuckAtEdge";
 import { cn } from "@/lib/utils";
 
 export interface DiveFormActionsProps {
@@ -43,7 +43,10 @@ export function DiveFormActions({
 }: DiveFormActionsProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   // Stuck, the row's bottom edge is the viewport's.
-  const stuck = useStuckAtBottom(rowRef, { rootMargin: "0px 0px -1px 0px" });
+  const stuck = useStuckAtEdge(rowRef, {
+    edge: "bottom",
+    rootMargin: "0px 0px -1px 0px",
+  });
 
   const SubmitIcon = mode === "create" ? Plus : Save;
   // A disabled submit button is also what stops implicit submission (Enter in a
