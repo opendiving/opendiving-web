@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { BackdropCardList } from "@/components/ui/backdrop-card";
 import { DiveCard } from "@/components/dives/dive-card";
 import {
   TripDiveAddButton,
@@ -64,7 +64,7 @@ function DiveList({
   addControl: (dive: Dive) => ReactNode;
 }) {
   return (
-    <ul className={cn("space-y-3 max-sm:space-y-2.5", className)}>
+    <BackdropCardList className={className}>
       {dives.map((dive) => (
         <DiveCard
           key={dive.uuid}
@@ -72,7 +72,7 @@ function DiveList({
           addToTrip={isCandidate(dive) ? addControl(dive) : undefined}
         />
       ))}
-    </ul>
+    </BackdropCardList>
   );
 }
 
@@ -270,13 +270,7 @@ export function TripDiveSections({
     );
   }
   if (dives === null) {
-    return allDivesCard(
-      <ul className="space-y-3 max-sm:space-y-2.5" aria-busy>
-        {Array.from({ length: SKELETON_COUNT }, (_, index) => (
-          <BackdropCardSkeleton key={index} />
-        ))}
-      </ul>,
-    );
+    return allDivesCard(<BackdropCardList placeholders={SKELETON_COUNT} />);
   }
   if (parts.length === 0 && dives.length === 0) {
     return (

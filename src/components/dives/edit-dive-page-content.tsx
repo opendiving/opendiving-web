@@ -22,7 +22,12 @@ import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveForm } from "@/components/dives/dive-form";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
 import { DiveIcon } from "@/components/logo";
-import { FORM_BODY, FORM_COLUMN, PlainHero } from "@/components/ui/map-hero";
+import {
+  FORM_BODY,
+  FORM_COLUMN,
+  PAGE_COLUMN,
+  PlainHero,
+} from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { FormPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
@@ -245,7 +250,7 @@ export function EditDivePageContent() {
 
   if (!dive) {
     return (
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className={PAGE_COLUMN}>
         <NotFoundState
           message="Dive not found."
           backHref="/dives"

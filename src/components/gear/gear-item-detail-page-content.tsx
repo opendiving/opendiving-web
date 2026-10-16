@@ -26,6 +26,7 @@ import {
   HERO_BODY,
   HERO_CONTROL,
   MapHeroPageSkeleton,
+  PAGE_COLUMN,
 } from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { NotFoundState } from "@/components/ui/not-found-state";
@@ -37,6 +38,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { countNoun } from "@/lib/format";
 
 export function GearItemDetailPageContent() {
   const router = useRouter();
@@ -119,7 +121,7 @@ export function GearItemDetailPageContent() {
 
   if (!gearItem) {
     return (
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className={PAGE_COLUMN}>
         <NotFoundState
           message="Gear not found."
           backHref={back.href}
@@ -234,9 +236,7 @@ export function GearItemDetailPageContent() {
         open={isArchiveConfirmOpen}
         onOpenChange={setIsArchiveConfirmOpen}
         title="Archive gear"
-        description={`"${gearItemLabel(gearItem)}" will stay on the ${gearItem.dive_count} dive${
-          gearItem.dive_count === 1 ? "" : "s"
-        } it's already logged on, but won't be offered when logging new ones.`}
+        description={`"${gearItemLabel(gearItem)}" will stay on the ${countNoun(gearItem.dive_count, "dive")} it's already logged on, but won't be offered when logging new ones.`}
         confirmText="Archive"
         variant="default"
         isLoading={isArchiving}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatFileSize } from "./format";
+import { countNoun, formatFileSize } from "./format";
 
 describe("formatFileSize", () => {
   it("rounds a small but non-empty file up to 1 KB", () => {
@@ -42,5 +42,13 @@ describe("formatFileSize", () => {
     expect(formatFileSize(0)).toBe("0 KB");
     expect(formatFileSize(-1)).toBe("0 KB");
     expect(formatFileSize(Number.NaN)).toBe("0 KB");
+  });
+});
+
+describe("countNoun", () => {
+  it("counts one in the singular and anything else in the plural", () => {
+    expect(countNoun(1, "dive")).toBe("1 dive");
+    expect(countNoun(0, "dive")).toBe("0 dives");
+    expect(countNoun(3, "address", "addresses")).toBe("3 addresses");
   });
 });

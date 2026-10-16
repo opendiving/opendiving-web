@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/lib/api-base";
 import { apiClient, PaginatedResponse } from "./client";
+import { getApiErrorStatus } from "./error";
 
 // The longest `q` the species routes accept. Mirrored rather than discovered,
 // for the same reason `MIN_PLACE_QUERY_LENGTH` is: a longer one is a 422, and a
@@ -367,8 +368,7 @@ export const speciesAPI = {
       );
       return response.data;
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response
-        ?.status;
+      const status = getApiErrorStatus(error);
       if (status === 404) return null;
       throw error;
     }

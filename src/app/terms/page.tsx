@@ -11,6 +11,7 @@ import {
   PROJECT_SOURCE_URL,
 } from "@/lib/operator";
 import { Card, CardContent } from "@/components/ui/card";
+import { PAGE_COLUMN } from "@/components/ui/map-hero";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -43,8 +44,8 @@ export default async function TermsPage() {
   const { projectOperated, joinLinks } = await readLegalPageConfig();
 
   return (
-    <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
-      <div>
+    <div className={PAGE_COLUMN}>
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Terms of Service
         </h1>

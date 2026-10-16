@@ -41,6 +41,10 @@ const COLUMN = "mx-auto w-full max-w-6xl px-2.5 sm:px-6 lg:px-8";
 export const HERO_BODY =
   "max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-6 max-sm:pt-2.5 pb-6";
 
+// The same column on a page with no hero over it - a record that was not found,
+// a page of prose - standing off the header on its own.
+export const PAGE_COLUMN = "max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6";
+
 // A form page's column, hero and body alike: centred at a field's readable width,
 // measured inside the gutters so the form keeps that width at every breakpoint.
 export const FORM_COLUMN = "w-auto max-w-2xl box-content";

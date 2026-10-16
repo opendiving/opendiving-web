@@ -2,7 +2,6 @@
 
 import { GearSet, gearItemLabel } from "@/lib/api/gear";
 import { Button } from "@/components/ui/button";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
@@ -23,11 +22,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Copy, Edit, Layers, Plus, Trash2 } from "lucide-react";
+import { Copy, Layers, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
 import { formatWeight } from "@/lib/units";
+import { RowActions } from "@/components/ui/row-actions";
 
 export interface GearSetsCardProps {
   sets: GearSet[];
@@ -146,45 +146,22 @@ export function GearSetsCard({
                   <TableCell className="text-muted-foreground whitespace-nowrap">
                     {set.weight != null ? formatWeight(set.weight, units) : "—"}
                   </TableCell>
-                  <TableCell className="text-right">
-                    {/* Named per row, not per action: ten identical "Edit"s tell
-                        a screen reader's controls list nothing about which set.
-                        See DECISIONS.md, "Ten rows of 'Edit' name nothing". */}
-                    <div className="flex justify-end gap-2">
-                      <IconTooltip label={`Edit ${set.name}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEdit(set)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </IconTooltip>
-                      <IconTooltip label={`Duplicate ${set.name}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onDuplicate(set)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </IconTooltip>
-                      <IconTooltip label={`Delete ${set.name}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onDelete(set.uuid)}
-                          disabled={deletingId === set.uuid}
-                        >
-                          {deletingId === set.uuid ? (
-                            <ButtonSpinner />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </IconTooltip>
-                    </div>
-                  </TableCell>
+                  <RowActions
+                    label={set.name}
+                    onEdit={() => onEdit(set)}
+                    onDelete={() => onDelete(set.uuid)}
+                    isDeleting={deletingId === set.uuid}
+                  >
+                    <IconTooltip label={`Duplicate ${set.name}`}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDuplicate(set)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </IconTooltip>
+                  </RowActions>
                 </TableRow>
               ))}
             </TableBody>

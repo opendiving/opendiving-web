@@ -18,3 +18,14 @@ export function formatFileSize(bytes: number): string {
   if (mb < 1024) return `${mb.toFixed(1)} MB`;
   return `${(mb / 1024).toFixed(1)} GB`;
 }
+
+// A count and its noun: "1 dive", "3 dives". The noun may carry the words that
+// agree with it - "other device was" / "other devices were" - and takes an `s`
+// unless the plural is given.
+export function countNoun(
+  count: number,
+  singular: string,
+  plural = `${singular}s`,
+): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}

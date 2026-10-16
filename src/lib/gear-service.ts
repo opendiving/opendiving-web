@@ -16,6 +16,7 @@ import type {
   GearServiceScheduleSummary,
   ServiceKind,
 } from "@/lib/api/gear-service";
+import { countNoun } from "@/lib/format";
 
 // How far ahead a due date starts reading as "due soon". 30 days is roughly the lead
 // time for getting a regulator booked in and back before the next trip.
@@ -212,7 +213,7 @@ function nextServiceDue(
 // "3 dives", "1 day", "12 hours of diving" - an hours figure always says it is
 // diving, so it never reads as clock hours.
 export function countOf(count: number, unit: DueUnit): string {
-  const counted = `${count} ${unit}${count === 1 ? "" : "s"}`;
+  const counted = countNoun(count, unit);
   return unit === "hour" ? `${counted} of diving` : counted;
 }
 

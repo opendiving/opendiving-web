@@ -13,6 +13,7 @@ import {
   canonicalHiddenFields,
   type DiveFormFieldKey,
 } from "@/lib/dive-form-fields";
+import { countNoun } from "@/lib/format";
 
 /**
  * The account's presets and the five things the Fields surfaces do to them, each
@@ -205,7 +206,7 @@ export function useDiveFormPresets(): DiveFormPresets {
           description:
             created.length === 0
               ? "You already have all three."
-              : `Added ${created.length === 1 ? "1 preset" : `${created.length} presets`}: ${created
+              : `Added ${countNoun(created.length, "preset")}: ${created
                   .map((preset) => preset.name)
                   .join(", ")}.`,
         });

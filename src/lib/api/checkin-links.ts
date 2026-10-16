@@ -2,6 +2,7 @@ import { API_BASE_URL } from "@/lib/api-base";
 import type { CheckInDiver, DivingFiguresWire } from "@/lib/checkin";
 import type { UnitSystem } from "@/lib/units";
 import { apiClient } from "./client";
+import { getApiErrorStatus } from "./error";
 
 /** `POST /user/checkin-link`'s answer: the one response that ever carries the token. */
 export interface CheckinLinkMinted {
@@ -73,8 +74,7 @@ export const checkinLinkAPI = {
       );
       return response.data;
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response
-        ?.status;
+      const status = getApiErrorStatus(error);
       if (status === 404) return null;
       throw error;
     }

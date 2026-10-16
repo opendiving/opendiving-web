@@ -30,31 +30,14 @@ import {
   HERO_BODY,
   HERO_CONTROL,
   MapHeroPageSkeleton,
+  PAGE_COLUMN,
   PlainHero,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { BadgeCheck, Edit, Plus, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
-
-// One labelled fact in the course's info card, rendered only when the course
-// records it - the same shape the dive sidebar's blocks use.
-function InfoRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="text-sm font-medium text-muted-foreground mb-1">
-        {label}
-      </div>
-      <div className="text-sm">{children}</div>
-    </div>
-  );
-}
+import { InfoRow } from "@/components/ui/info-row";
 
 export function CourseDetailPageContent() {
   const router = useRouter();
@@ -119,7 +102,7 @@ export function CourseDetailPageContent() {
 
   if (!course) {
     return (
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className={PAGE_COLUMN}>
         <NotFoundState
           message="Course not found."
           backHref={back.href}

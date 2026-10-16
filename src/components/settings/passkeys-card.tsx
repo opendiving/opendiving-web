@@ -22,7 +22,7 @@ import { SectionSpinner } from "@/components/ui/section-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { usePasskeyRegistration } from "@/hooks/usePasskeyRegistration";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { passkeysAPI, type Passkey } from "@/lib/api/passkeys";
 import { PASSKEY_NAME_MAX_LENGTH } from "@/lib/passkey-name";
 import { formatDateTime } from "@/lib/date-time";
@@ -97,8 +97,7 @@ export function PasskeysCard() {
         .then((passkeys) => setList({ status: "ready", passkeys }))
         .catch((error: unknown) => {
           console.error(LIST_FAILED, error);
-          const status = (error as { response?: { status?: number } })?.response
-            ?.status;
+          const status = getApiErrorStatus(error);
           setList(
             status === 404
               ? { status: "absent" }

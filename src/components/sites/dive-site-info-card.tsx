@@ -1,24 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { ExternalIdLink } from "@/components/sites/external-id-link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-// One labelled fact, rendered only where the site records it.
-function InfoRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <div className="text-sm font-medium text-muted-foreground mb-1">
-        {label}
-      </div>
-      <div className="text-sm">{children}</div>
-    </div>
-  );
-}
+import { InfoRow } from "@/components/ui/info-row";
 
 /**
  * What the site records about itself beyond the line in its page's hero, in the

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useCourseFilterOptions } from "@/hooks/useCourseFilterOptions";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
@@ -10,9 +11,6 @@ import { certificationAgencyLabel } from "@/lib/api/certifications";
 import { courseStatusBadgeVariant, courseStatusLabel } from "@/lib/course";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { IconTooltip } from "@/components/ui/tooltip";
 import { CoursesPageFrame } from "@/components/courses/courses-page-frame";
 import {
   hasCourseFilters,
@@ -23,23 +21,19 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CourseDialog } from "@/components/courses/course-dialog";
 import { useQuickCreate } from "@/components/layout/quick-create";
-import { Eye, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
-
-// How long to wait after the last keystroke before asking the server, matching
-// the pickers' own debounce: long enough that typing a course name is one
-// request rather than ten, short enough not to feel laggy.
-const SEARCH_DEBOUNCE_MS = 250;
+import { RowActions } from "@/components/ui/row-actions";
 
 export function CoursesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const openCreate = useQuickCreate();
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  // What the box holds, and what has actually been asked for. Splitting them is
-  // what keeps the debounce off the input's own responsiveness.
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  const {
+    input: searchInput,
+    setInput: setSearchInput,
+    term: search,
+  } = useDebouncedSearch();
   // No debounce twin: each of these commits a whole value at once, so what is
   // held and what has been asked for are the same thing.
   const [filters, setFilters] = useState<CourseListFilters>(NO_COURSE_FILTERS);
@@ -51,14 +45,6 @@ export function CoursesPageContent() {
     statuses,
     reload: reloadFilterOptions,
   } = useCourseFilterOptions(!!user && wantsFilterOptions);
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setSearch(searchInput.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [searchInput]);
 
   // Straight through, empties and all: `getCourses` drops an unset filter from
   // the query string itself, so there is no per-field conversion here to fall
@@ -189,44 +175,13 @@ export function CoursesPageContent() {
                 {courseStatusLabel(course.status)}
               </Badge>
             </TableCell>
-            <TableCell className="text-right">
-              {/* Named per row, not per action: ten identical "Edit"s
-                          tell a screen reader's controls list nothing about
-                          which course. See DECISIONS.md, "Ten rows of 'Edit'
-                          name nothing". */}
-              <div className="flex justify-end gap-2">
-                <IconTooltip label={`View ${course.name}`}>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/courses/${course.uuid}`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </IconTooltip>
-                <IconTooltip label={`Edit ${course.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingCourse(course)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-                <IconTooltip label={`Delete ${course.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => requestDelete(course.uuid)}
-                    disabled={deletingId === course.uuid}
-                  >
-                    {deletingId === course.uuid ? (
-                      <ButtonSpinner />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </IconTooltip>
-              </div>
-            </TableCell>
+            <RowActions
+              label={course.name}
+              viewHref={`/courses/${course.uuid}`}
+              onEdit={() => setEditingCourse(course)}
+              onDelete={() => requestDelete(course.uuid)}
+              isDeleting={deletingId === course.uuid}
+            />
           </TableRow>
         ))}
       />

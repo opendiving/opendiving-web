@@ -11,6 +11,7 @@ import {
   MAX_SELECTED,
 } from "@/components/admin/invite-queue-frame";
 import { summarizeInvitationOutcomes } from "@/components/admin/invitation-outcomes";
+import { countNoun } from "@/lib/format";
 
 type PendingAction = "invite" | "remove";
 
@@ -116,7 +117,7 @@ export function InviteQueue() {
         const { removed } = await adminAPI.removeInviteRequests(selected);
         toast({
           title: "Queue updated",
-          description: `${removed} ${removed === 1 ? "request" : "requests"} removed from the queue.`,
+          description: `${countNoun(removed, "request")} removed from the queue.`,
         });
       }
       setSelected([]);
@@ -145,7 +146,7 @@ export function InviteQueue() {
   };
 
   const count = selected.length;
-  const addresses = `${count} ${count === 1 ? "address" : "addresses"}`;
+  const addresses = countNoun(count, "address", "addresses");
 
   return (
     <>

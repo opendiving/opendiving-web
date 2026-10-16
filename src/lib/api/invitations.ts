@@ -1,4 +1,5 @@
 import { apiClient, type PaginatedResponse } from "./client";
+import { getApiErrorStatus } from "./error";
 
 /**
  * One invitation the caller sent, as `GET /user/invitations` lists it.
@@ -160,8 +161,7 @@ export const invitationsAPI = {
       const response = await apiClient.get<InviteLink>("/user/invite-link");
       return response.data;
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response
-        ?.status;
+      const status = getApiErrorStatus(error);
       if (status === 404) return null;
       throw error;
     }

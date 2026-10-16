@@ -1,10 +1,7 @@
 import { DiveNumberingSummary } from "@/lib/api/dives";
 import type { ImportDiveReport } from "@/lib/api/logbook-import";
 import { combineStartTime, diveStartInstant } from "@/lib/date-time";
-
-function plural(count: number, singular: string, pluralForm: string): string {
-  return count === 1 ? singular : pluralForm;
-}
+import { countNoun } from "@/lib/format";
 
 // A plain-English description of what a renumber would tidy in a log, for the
 // card above the dive list and the offer on an import's result. Null when
@@ -30,13 +27,11 @@ export function describeDiveNumbering(
 
   const notes: string[] = [];
   if (summary.missing_count > 0) {
-    notes.push(
-      `${summary.missing_count} ${plural(summary.missing_count, "number", "numbers")} unused`,
-    );
+    notes.push(`${countNoun(summary.missing_count, "number")} unused`);
   }
   if (summary.duplicate_count > 0) {
     notes.push(
-      `${summary.duplicate_count} ${plural(summary.duplicate_count, "dive shares", "dives share")} a number`,
+      `${countNoun(summary.duplicate_count, "dive shares", "dives share")} a number`,
     );
   }
   if (summary.out_of_date_order_count > 0) {

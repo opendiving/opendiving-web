@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { BackdropCardList } from "@/components/ui/backdrop-card";
 import { DiveCard } from "@/components/dives/dive-card";
 import { Plus } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
@@ -180,13 +180,8 @@ export function RecentDivesCard({
           // `RECENT_DIVES_COUNT` either way: on the Home page it is exactly
           // the preview's size, and on a detail page the real count isn't
           // knowable up front, where a few rows is a better guess than a
-          // screen of them. Busy on the list, hidden on each placeholder, as
-          // the trip lists are.
-          <ul className="space-y-3 max-sm:space-y-2.5" aria-busy>
-            {Array.from({ length: RECENT_DIVES_COUNT }, (_, index) => (
-              <BackdropCardSkeleton key={index} />
-            ))}
-          </ul>
+          // screen of them.
+          <BackdropCardList placeholders={RECENT_DIVES_COUNT} />
         ) : isEmpty ? (
           <EmptyState
             icon={DiveIcon}
@@ -202,11 +197,11 @@ export function RecentDivesCard({
             }
           />
         ) : (
-          <ul className="space-y-3 max-sm:space-y-2.5">
+          <BackdropCardList>
             {recentDives.map((dive) => (
               <DiveCard key={dive.uuid} dive={dive} />
             ))}
-          </ul>
+          </BackdropCardList>
         )}
 
         <LoadMoreTrigger

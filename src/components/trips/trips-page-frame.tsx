@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { BackdropCardList } from "@/components/ui/backdrop-card";
 
 export interface TripsPageFrameProps {
   isLoading: boolean;
@@ -136,19 +136,12 @@ export function TripsPageFrame({
           // One trip to a row below `lg`, two above: every card on screen holds
           // a map, and a browser keeps only so many of those per page - see
           // `BackdropCard`.
-          <ul
-            className="mt-6 grid max-sm:mt-2.5 gap-4 max-sm:gap-2.5 lg:grid-cols-2"
-            // Busy on the outside, hidden on each placeholder within - the split
-            // `ListRowsSkeleton` documents, so a reader meets a list that is
-            // loading rather than one that is silently empty.
-            aria-busy={cards.length === 0 || undefined}
+          <BackdropCardList
+            layout="mt-6 grid max-sm:mt-2.5 gap-4 max-sm:gap-2.5 lg:grid-cols-2"
+            placeholders={itemsPerPage}
           >
-            {cards.length === 0 &&
-              Array.from({ length: itemsPerPage }, (_, index) => (
-                <BackdropCardSkeleton key={index} />
-              ))}
             {cards}
-          </ul>
+          </BackdropCardList>
         )}
 
         <LoadMoreTrigger

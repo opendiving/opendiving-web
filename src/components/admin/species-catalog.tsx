@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import {
   adminAPI,
   type AdminSpecies,
   type AdminSpeciesFilter,
 } from "@/lib/api/admin";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { speciesDisplayName } from "@/lib/species";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,8 +20,7 @@ import {
   type SpeciesPhotoAction,
 } from "@/components/admin/species-catalog-card";
 import { SpeciesPhotoPicker } from "@/components/admin/species-photo-picker";
-
-const SEARCH_DEBOUNCE_MS = 250;
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 
 // The API's 503 for pin and re-fetch, worded for either cause it covers - a
 // register that did not answer and bytes that would not decode - and used even
@@ -29,7 +28,7 @@ const SEARCH_DEBOUNCE_MS = 250;
 const PHOTO_UNAVAILABLE = "The photo could not be fetched; nothing changed.";
 
 function photoErrorMessage(error: unknown, fallback: string): string {
-  if ((error as { response?: { status?: number } })?.response?.status === 503) {
+  if (getApiErrorStatus(error) === 503) {
     return PHOTO_UNAVAILABLE;
   }
   return getApiErrorMessage(error, fallback);
@@ -48,8 +47,11 @@ type Confirming = { species: AdminSpecies; action: "hide" | "refetch" };
  */
 export function SpeciesCatalog() {
   const { toast } = useToast();
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  const {
+    input: searchInput,
+    setInput: setSearchInput,
+    term: search,
+  } = useDebouncedSearch();
   const [filter, setFilter] = useState<AdminSpeciesFilter | null>(null);
   const [busy, setBusy] = useState<{
     uuid: string;
@@ -57,14 +59,6 @@ export function SpeciesCatalog() {
   } | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [replacing, setReplacing] = useState<AdminSpecies | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setSearch(searchInput.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [searchInput]);
 
   // A new term or chip is a new callback, which is what makes the hook drop the
   // pages it holds and start again from the first.

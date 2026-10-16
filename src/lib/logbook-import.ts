@@ -9,6 +9,7 @@ import {
   type ImportNoteCode,
   type ImportReport,
 } from "@/lib/api/logbook-import";
+import { countNoun } from "@/lib/format";
 
 // What each envelope collection is called on screen. The API sends the wire name
 // ("gear_service_schedules") and the diver reads the app's own word for the thing
@@ -152,9 +153,7 @@ export function noteIsWarning(code: ImportNoteCode | string): boolean {
  */
 export function truncatedNotesSentence(notesTruncated: number): string | null {
   if (notesTruncated <= 0) return null;
-  return notesTruncated === 1
-    ? "1 further note is not shown. The counts above are complete."
-    : `${notesTruncated} further notes are not shown. The counts above are complete.`;
+  return `${countNoun(notesTruncated, "further note is", "further notes are")} not shown. The counts above are complete.`;
 }
 
 /**
@@ -235,7 +234,7 @@ export function conversionKindTone(kind: string): ConversionKindTone {
  * says nothing extra.
  */
 export function conversionWhereSentence(group: ConversionNoteGroup): string {
-  const places = group.count === 1 ? "1 place" : `${group.count} places`;
+  const places = countNoun(group.count, "place");
   if (group.wheres.length === 0) return places;
   const more = group.count - group.wheres.length;
   const listed =
@@ -256,9 +255,7 @@ export function truncatedConversionSentence(
   groupsTruncated: number,
 ): string | null {
   if (groupsTruncated <= 0) return null;
-  return groupsTruncated === 1
-    ? "1 further finding is not shown. The record counts above are complete."
-    : `${groupsTruncated} further findings are not shown. The record counts above are complete.`;
+  return `${countNoun(groupsTruncated, "further finding is", "further findings are")} not shown. The record counts above are complete.`;
 }
 
 // Why a file that was read is not kept, in the diver's terms.
@@ -279,10 +276,6 @@ export function importMemberNotKeptSentence(reason: string): string {
   return sentences[reason] ?? "Not kept";
 }
 
-function counted(n: number, one: string, many: string): string {
-  return n === 1 ? one : `${n} ${many}`;
-}
-
 /**
  * What an import does to one dive, in the diver's words rather than the code.
  *
@@ -299,14 +292,14 @@ export function importDiveOutcomeSentence(row: ImportDiveReport): string {
     case "updated": {
       const gains = [
         row.files_added > 0
-          ? counted(row.files_added, "a file", "files")
+          ? row.files_added === 1
+            ? "a file"
+            : `${row.files_added} files`
           : null,
         row.recordings_added > 0
-          ? counted(
-              row.recordings_added,
-              "another computer's recording",
-              "other computers' recordings",
-            )
+          ? row.recordings_added === 1
+            ? "another computer's recording"
+            : `${row.recordings_added} other computers' recordings`
           : null,
       ].filter((gain): gain is string => gain !== null);
       return gains.length > 0
@@ -334,7 +327,7 @@ export function importButtonLabel(dives: readonly ImportDiveReport[]): string {
   const brought = dives.filter(
     (row) => row.outcome === "created" || row.outcome === "restored",
   ).length;
-  if (brought > 0) return `Import ${counted(brought, "1 dive", "dives")}`;
+  if (brought > 0) return `Import ${countNoun(brought, "dive")}`;
 
   const updated = dives.filter((row) => row.outcome === "updated");
   const files = updated.reduce((sum, row) => sum + row.files_added, 0);
@@ -343,8 +336,8 @@ export function importButtonLabel(dives: readonly ImportDiveReport[]): string {
     0,
   );
   const gains = [
-    files > 0 ? counted(files, "1 file", "files") : null,
-    recordings > 0 ? counted(recordings, "1 recording", "recordings") : null,
+    files > 0 ? countNoun(files, "file") : null,
+    recordings > 0 ? countNoun(recordings, "recording") : null,
   ].filter((gain): gain is string => gain !== null);
   return gains.length > 0 ? `Import ${gains.join(" and ")}` : "Import";
 }
