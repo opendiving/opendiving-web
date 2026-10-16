@@ -2,6 +2,7 @@
 
 import { GearSet, gearItemLabel } from "@/lib/api/gear";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
@@ -22,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Copy, Edit, Layers, Loader2, Plus, Trash2 } from "lucide-react";
+import { Copy, Edit, Layers, Plus, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
@@ -176,7 +177,7 @@ export function GearSetsCard({
                           disabled={deletingId === set.uuid}
                         >
                           {deletingId === set.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <ButtonSpinner />
                           ) : (
                             <Trash2 className="h-4 w-4" />
                           )}

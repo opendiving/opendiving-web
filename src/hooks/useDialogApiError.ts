@@ -4,21 +4,21 @@ import { useEffect, useState } from "react";
 
 /**
  * A create/edit dialog's "the API said no" message, cleared every time the dialog
- * opens.
+ * opens, and the `onOpenChange` to hand the dialog's `Dialog` and Cancel button.
  *
- * All seven of these dialogs (`TripDialog`, `DiveSiteDialog`, `GearItemDialog`,
- * `GearSetDialog`, `CertificationDialog`, `GearServiceScheduleDialog`,
- * `GearServiceRecordDialog`) kept their own `apiError` state and their own
- * `setApiError(null)` inside the effect that resets the form - each carrying its own
- * copy of the `react-hooks/set-state-in-effect` disable below. Owning the state here
- * leaves those effects doing nothing but `reset(...)`, which the rule has no quarrel
- * with, so the disable exists once instead of seven times.
+ * Owning the state here leaves each dialog's reset-on-open effect doing nothing but
+ * `reset(...)`, which `react-hooks/set-state-in-effect` has no quarrel with, so the
+ * disable below exists once instead of once per dialog.
  *
- * Clearing on open rather than on close is what matters: a dialog reopened after a
- * failed save must not greet the diver with the previous attempt's error. Dialogs
- * that also want it gone the moment they close still call the setter themselves.
+ * Clearing on open is what matters: a dialog reopened after a failed save must not
+ * greet the diver with the previous attempt's error. The returned `onOpenChange`
+ * also clears it when the diver dismisses the dialog; a dialog closed by its parent
+ * after a save keeps the message until it is gone from the screen.
  */
-export function useDialogApiError(open: boolean) {
+export function useDialogApiError(
+  open: boolean,
+  onOpenChange: (open: boolean) => void,
+) {
   const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,5 +30,10 @@ export function useDialogApiError(open: boolean) {
     setApiError(null);
   }, [open]);
 
-  return [apiError, setApiError] as const;
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setApiError(null);
+    onOpenChange(next);
+  };
+
+  return [apiError, setApiError, handleOpenChange] as const;
 }

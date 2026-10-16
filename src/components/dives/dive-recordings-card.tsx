@@ -2,10 +2,11 @@
 
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { Download, Loader2, Paperclip, Star, Trash2 } from "lucide-react";
+import { Download, Paperclip, Star, Trash2 } from "lucide-react";
 import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
@@ -271,7 +272,7 @@ export function DiveRecordingsCard({
                             disabled={downloadingUuid === file.uuid}
                           >
                             {downloadingUuid === file.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <ButtonSpinner />
                             ) : (
                               <Download className="h-4 w-4" />
                             )}
@@ -292,7 +293,7 @@ export function DiveRecordingsCard({
                       disabled={busyUuid === recording.uuid}
                     >
                       {busyUuid === recording.uuid ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <ButtonSpinner className="mr-2" />
                       ) : (
                         <Star className="h-4 w-4 mr-2" />
                       )}

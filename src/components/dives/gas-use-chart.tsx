@@ -1,29 +1,32 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { ChartHoverCard } from "@/components/charts/chart-hover-card";
+import { ChartYAxis } from "@/components/charts/chart-y-axis";
 import type { DiveGasUsePoint } from "@/lib/api/dive-stats";
 import {
   type GasUseMark,
   GAS_USE_MARKS,
-  TREND_GAP_DAYS,
+  TREND_GAP_MS,
   bandRanges,
   rollingMean,
   rollingStdDev,
   scopeRange,
-  segmentByGap,
   trendWindow,
 } from "@/lib/dive-gas";
-import type { ChartScope } from "@/lib/chart-period";
-import { axisTicks, labelCapacity, niceDomain } from "@/lib/chart-scale";
-import { smoothBandPath, smoothPath } from "@/lib/chart-path";
+import { type ChartScope, monthName } from "@/lib/chart-period";
+import {
+  CHART_HEIGHT,
+  CHART_PADDING,
+  CHART_PLOT_HEIGHT,
+  CHART_WIDTH,
+  axisTicks,
+  labelCapacity,
+  niceDomain,
+} from "@/lib/chart-scale";
+import { segmentByTimeGap, smoothBandPath, smoothPath } from "@/lib/chart-path";
 import {
   type PlotMark,
   nearestByX,
@@ -42,7 +45,6 @@ import { diveWallClockTime, formatDiveDateTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
 import { useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
-import { useKeepInside } from "@/hooks/useKeepInside";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import {
@@ -73,15 +75,6 @@ import {
 // contrast in both themes, whereas `--primary` is near-black in light mode and a
 // mid grey in dark - which left the trend line barely visible on a dark card.
 
-// The viewBox coordinate space. Not pixels: the SVG scales to its container, so
-// these are only ever ratios to each other. This is the design width; a phone
-// draws into a narrower one (see `useChartWidth`).
-const WIDTH = 720;
-const HEIGHT = 240;
-const PADDING = { top: 12, right: 14, bottom: 28, left: 42 };
-
-const PLOT_HEIGHT = HEIGHT - PADDING.top - PADDING.bottom;
-
 // How far from a dot a tap still means it, in CSS px - about half a fingertip.
 const TAP_REACH = 24;
 
@@ -94,20 +87,9 @@ const TAP_REACH = 24;
 const YEAR_LABEL_SPACING = 55;
 const MONTH_LABEL_SPACING = 26;
 
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+const MONTH_LABELS = Array.from({ length: 12 }, (_, month) =>
+  monthName(month + 1, "short"),
+);
 
 export interface GasUseChartProps {
   // The *whole* series, oldest first, as the API returns it - not just the
@@ -129,7 +111,7 @@ const readStoredMarks = () => readStoredSeries(GAS_USE_SERIES_KEY);
 export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   const units = useUnits();
   const withReturnTo = useWithReturnTo();
-  const [chartRef, width] = useChartWidth(WIDTH);
+  const [chartRef, width] = useChartWidth(CHART_WIDTH);
   // Index into `points` of the dive under the cursor, keyboard focus or finger.
   // One piece of state for the whole chart, not a tooltip component per dot: at
   // a few hundred dives, per-dot tooltip instances are a lot of machinery for
@@ -160,7 +142,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
     return nearestWithin(marks, at, TAP_REACH * at.scale)?.value ?? null;
   });
   const hovered = readout.value;
-  const plotWidth = width - PADDING.left - PADDING.right;
+  const plotWidth = width - CHART_PADDING.left - CHART_PADDING.right;
 
   // Which marks the diver picked in *this* visit, and null until they pick -
   // which is what leaves room for the remembered selection underneath. Exactly
@@ -168,7 +150,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   const [chosen, setChosen] = useState<GasUseMark[] | null>(null);
 
   // Read through `useSyncExternalStore` for the reason spelled out on
-  // `GasUseCard`'s own remembered view: `localStorage` doesn't exist on the
+  // `useChartPeriodView`'s remembered period: `localStorage` doesn't exist on the
   // server, so a first client render that read it directly would disagree with
   // the HTML Next rendered and be a hydration mismatch.
   const storedMarks = useSyncExternalStore(
@@ -261,11 +243,11 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // you only dived in April should show one cluster on the left, not April
   // stretched across the full width as though it were the whole year.
   const x = (time: number) =>
-    PADDING.left +
+    CHART_PADDING.left +
     ((time - range.start) / (range.end - range.start || 1)) * plotWidth;
   const y = (rmv: number) =>
-    PADDING.top +
-    (1 - (rmv - domain.min) / (domain.max - domain.min)) * PLOT_HEIGHT;
+    CHART_PADDING.top +
+    (1 - (rmv - domain.min) / (domain.max - domain.min)) * CHART_PLOT_HEIGHT;
 
   const visible = points
     .map((point, index) => ({ point, index }))
@@ -296,11 +278,11 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   const showSpread = showTrend && spreadInScope;
 
   // One curve per stretch of diving, not one across the window - see
-  // `segmentByGap`. A stretch containing a single dive yields a bare `M`, which
+  // `segmentByTimeGap`. A stretch containing a single dive yields a bare `M`, which
   // draws nothing, and no band at all; that dive's dot still renders below.
-  const trendSegments = segmentByGap(
+  const trendSegments = segmentByTimeGap(
     visible.map(({ index }) => times[index]),
-    TREND_GAP_DAYS,
+    TREND_GAP_MS,
   ).map((positions) => {
     const at = positions.map((position) => visible[position].index);
     const points = at.map((index) => ({
@@ -368,7 +350,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
               and by browsing. The dive profile chart keeps `img`, correctly:
               it is a picture, with nothing interactive inside it. */}
         <svg
-          viewBox={`0 0 ${width} ${HEIGHT}`}
+          viewBox={`0 0 ${width} ${CHART_HEIGHT}`}
           className="w-full h-auto"
           role="group"
           aria-label={describeSeries(visible.length, meanRmv, units)}
@@ -382,69 +364,26 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             <rect
               key={band.start}
               x={x(band.start)}
-              y={PADDING.top}
+              y={CHART_PADDING.top}
               width={x(band.end) - x(band.start)}
-              height={PLOT_HEIGHT}
+              height={CHART_PLOT_HEIGHT}
               fill="currentColor"
               className="text-muted"
             />
           ))}
 
-          {/* Gridlines and the y scale. `currentColor` throughout, so
-                light/dark mode is inherited from the surrounding text colors
-                rather than hardcoded per theme. Dashed, and only these: with a
-                month band, a spread band, a reference line and a trend all
-                sharing the plot, solid rules across it competed with the data
-                instead of supporting it. */}
-          {axisTicks(domain).map((tick) => (
-            // `aria-hidden`, here and on the x labels below: the axis is a
-            // reading aid for the eye, and a screen reader walking the group
-            // should reach the dives, not twelve unlabelled numbers and the
-            // months they sit under first. The summary on the group and each
-            // dot's own label carry everything these say.
-            <g key={tick} aria-hidden className="text-border">
-              <line
-                x1={PADDING.left}
-                x2={width - PADDING.right}
-                y1={y(tick)}
-                y2={y(tick)}
-                stroke="currentColor"
-                strokeWidth={1}
-                strokeDasharray="2 4"
-              />
-              <text
-                x={PADDING.left - 8}
-                y={y(tick)}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize={11}
-                fill="currentColor"
-                className="text-muted-foreground"
-              >
-                {tick}
-              </text>
-            </g>
-          ))}
-
-          {/* The one solid rule, closing the plot along the bottom. It sits
-                on the lowest gridline, which is the axis - dashed, it read as
-                another gridline and the plot had no floor. */}
-          <line
-            x1={PADDING.left}
-            x2={width - PADDING.right}
-            y1={PADDING.top + PLOT_HEIGHT}
-            y2={PADDING.top + PLOT_HEIGHT}
-            stroke="currentColor"
-            strokeWidth={1}
-            className="text-border"
-          />
+          {/* Dashed gridlines, and only these: with a month band, a spread
+                band, a reference line and a trend all sharing the plot, solid
+                rules across it competed with the data instead of supporting
+                it. */}
+          <ChartYAxis ticks={axisTicks(domain)} y={y} width={width} />
 
           {xTicks.map(({ label, time }) => (
             <text
               key={label}
               aria-hidden
               x={x(time)}
-              y={HEIGHT - 8}
+              y={CHART_HEIGHT - 8}
               textAnchor="middle"
               fontSize={11}
               fill="currentColor"
@@ -459,8 +398,8 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
                 than as part of the scale. */}
           {marks.includes("average") && (
             <line
-              x1={PADDING.left}
-              x2={width - PADDING.right}
+              x1={CHART_PADDING.left}
+              x2={width - CHART_PADDING.right}
               y1={y(allTimeMean)}
               y2={y(allTimeMean)}
               stroke="currentColor"
@@ -711,15 +650,7 @@ function describeSeries(
   )} ${unitWord("rmv", units)}.`;
 }
 
-// The hover card itself: HTML rather than SVG `<text>`, so it gets the app's
-// popover tokens, a border, a shadow and crisp text at any chart width - none of
-// which are worth hand-drawing in SVG.
-//
-// Positioned in percentages of the chart box, which works because the SVG scales
-// uniformly inside a wrapper of exactly its size, so viewBox units map straight
-// onto percentages without measuring anything in the DOM. The `style` prop is an
-// inline style *attribute*, which the CSP allows (`style-src-attr
-// 'unsafe-inline'`); an injected `<style>` element would not be.
+// The hover card, at the hovered dot.
 function GasUseTooltip({
   point,
   cx,
@@ -737,39 +668,8 @@ function GasUseTooltip({
   // dot to click it with, so the card carries the link.
   openHref?: string;
 }) {
-  // Flipped and nudged so the card lands inside the chart box rather than over
-  // the card's header or, on a phone, past the screen's edge. `useKeepInside`
-  // pulls back in whatever a phone-width chart still leaves hanging over.
-  const cardRef = useRef<HTMLDivElement>(null);
-  useKeepInside(cardRef);
-  const below = cy < HEIGHT * 0.35;
-  const translateY = below ? "12px" : "calc(-100% - 12px)";
-  const translateX =
-    cx < chartWidth * 0.18
-      ? "-12px"
-      : cx > chartWidth * 0.82
-        ? "calc(-100% + 12px)"
-        : "-50%";
-
   return (
-    <div
-      ref={cardRef}
-      // Never a hover target itself - it sits over the dots, and letting it take
-      // the pointer would make it flicker as it steals its own trigger's hover.
-      // `bg-tooltip`, not `bg-popover`: popover is the *same* color as the card
-      // it would be floating on in both themes, leaving a 1px border to do all
-      // the separating. Over a chart, where the card overlaps its own data
-      // points, that isn't enough. The border is a light hairline rather than
-      // `--border` for the same reason - on a near-black chip the theme's border
-      // color disappears in light mode and merges with it in dark.
-      className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
-      style={{
-        left: `${(cx / chartWidth) * 100}%`,
-        top: `${(cy / HEIGHT) * 100}%`,
-        transform: `translate(${translateX}, ${translateY})`,
-      }}
-      role="presentation"
-    >
+    <ChartHoverCard cx={cx} cy={cy} chartWidth={chartWidth}>
       <div className="text-sm font-semibold">
         {displayNumber(point.gas_use.rmv, "rmv", units)}{" "}
         <span className="font-normal">{unitLabel("rmv", units)}</span>
@@ -795,7 +695,7 @@ function GasUseTooltip({
           <ChevronRight aria-hidden className="h-4 w-4" />
         </Link>
       )}
-    </div>
+    </ChartHoverCard>
   );
 }
 

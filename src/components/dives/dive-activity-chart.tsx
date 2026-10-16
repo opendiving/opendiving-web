@@ -1,15 +1,23 @@
 "use client";
 
-import { useRef } from "react";
+import { ChartHoverCard } from "@/components/charts/chart-hover-card";
+import { ChartYAxis } from "@/components/charts/chart-y-axis";
 import { barPath } from "@/lib/chart-path";
 import { viewBoxPoint } from "@/lib/chart-readout";
-import { axisTicks, countDomain, labelCapacity } from "@/lib/chart-scale";
+import {
+  CHART_HEIGHT,
+  CHART_PADDING,
+  CHART_PLOT_HEIGHT,
+  CHART_WIDTH,
+  axisTicks,
+  countDomain,
+  labelCapacity,
+} from "@/lib/chart-scale";
 import type { ChartScope } from "@/lib/chart-period";
 import type { ActivityBar } from "@/lib/dive-activity";
 import { cn } from "@/lib/utils";
 import { useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
-import { useKeepInside } from "@/hooks/useKeepInside";
 
 // Hand-rolled SVG, for the reasons `gas-use-chart.tsx` sets out at length: the
 // app ships a strict nonce-based CSP that a `<style>`-injecting charting library
@@ -21,15 +29,6 @@ import { useKeepInside } from "@/hooks/useKeepInside";
 // once and never redeclared under `.dark` (see `globals.css`), so it holds its
 // contrast in both themes - which `--primary`, near-black in light mode and mid
 // grey in dark, does not.
-
-// The viewBox coordinate space, matched to the gas chart's so the two cards'
-// plots line up down the Home page rather than being a few units out - and, like
-// it, the design width, narrowed on a phone by `useChartWidth`.
-const WIDTH = 720;
-const HEIGHT = 240;
-const PADDING = { top: 12, right: 14, bottom: 28, left: 42 };
-
-const PLOT_HEIGHT = HEIGHT - PADDING.top - PADDING.bottom;
 
 // How much of its slot a bar fills. The rest is the gap, and the gap is what
 // makes twelve bars read as twelve months rather than as one block.
@@ -88,7 +87,7 @@ export function DiveActivityChart({
   // can ever be open, and shared state means the lit bar and the card it
   // describes cannot disagree. A finger picks the column under it, by the same
   // slots the hover targets below are cut into.
-  const [chartRef, width] = useChartWidth(WIDTH);
+  const [chartRef, width] = useChartWidth(CHART_WIDTH);
   const readout = useChartReadout<number>((event) => {
     const { x } = viewBoxPoint(
       event.currentTarget.getBoundingClientRect(),
@@ -97,7 +96,8 @@ export function DiveActivityChart({
       event.clientY,
     );
     const column = Math.floor(
-      ((x - PADDING.left) / (width - PADDING.left - PADDING.right)) *
+      ((x - CHART_PADDING.left) /
+        (width - CHART_PADDING.left - CHART_PADDING.right)) *
         bars.length,
     );
     return Math.min(bars.length - 1, Math.max(0, column));
@@ -129,13 +129,13 @@ export function DiveActivityChart({
 
   const domain = countDomain(ceiling);
 
-  const slot = (width - PADDING.left - PADDING.right) / bars.length;
+  const slot = (width - CHART_PADDING.left - CHART_PADDING.right) / bars.length;
   const barWidth = Math.min(slot * BAR_FILL, MAX_BAR_WIDTH);
-  const baseline = PADDING.top + PLOT_HEIGHT;
+  const baseline = CHART_PADDING.top + CHART_PLOT_HEIGHT;
 
-  const slotStart = (index: number) => PADDING.left + index * slot;
+  const slotStart = (index: number) => CHART_PADDING.left + index * slot;
   const center = (index: number) => slotStart(index) + slot / 2;
-  const height = (dives: number) => (dives / domain.max) * PLOT_HEIGHT;
+  const height = (dives: number) => (dives / domain.max) * CHART_PLOT_HEIGHT;
 
   // Thinned from the right, so the most recent year always keeps its label -
   // it's the one the eye goes to, and dropping it to keep 1998's would be the
@@ -143,7 +143,7 @@ export function DiveActivityChart({
   const labelStride = Math.ceil(
     bars.length /
       labelCapacity(
-        width - PADDING.left - PADDING.right,
+        width - CHART_PADDING.left - CHART_PADDING.right,
         X_LABEL_SPACING[scope],
       ),
   );
@@ -157,7 +157,7 @@ export function DiveActivityChart({
           `useChartWidth` narrows the viewBox to fit a phone instead. */}
       <div ref={chartRef} className="relative">
         <svg
-          viewBox={`0 0 ${width} ${HEIGHT}`}
+          viewBox={`0 0 ${width} ${CHART_HEIGHT}`}
           className="w-full h-auto"
           // `img`, not the gas chart's `group`: there is nothing focusable
           // inside this one. The bars aren't links - a month is not a page -
@@ -167,45 +167,10 @@ export function DiveActivityChart({
           aria-label={describeBars(bars, scope, total)}
           {...readout.scrubProps}
         >
-          {/* Gridlines and the y scale, `aria-hidden` because `role="img"`
-                does not reliably keep bare `<text>` out of the accessibility
-                tree - the same note the profile chart carries. Dashed, so they
-                support the bars rather than compete with them. */}
-          {axisTicks(domain).map((tick) => (
-            <g key={tick} aria-hidden className="text-border">
-              <line
-                x1={PADDING.left}
-                x2={width - PADDING.right}
-                y1={baseline - height(tick)}
-                y2={baseline - height(tick)}
-                stroke="currentColor"
-                strokeWidth={1}
-                strokeDasharray="2 4"
-              />
-              <text
-                x={PADDING.left - 8}
-                y={baseline - height(tick)}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize={11}
-                fill="currentColor"
-                className="text-muted-foreground"
-              >
-                {tick}
-              </text>
-            </g>
-          ))}
-
-          {/* The axis itself - solid, so the bars have a floor to stand on
-                rather than another dashed rule to be confused with. */}
-          <line
-            x1={PADDING.left}
-            x2={width - PADDING.right}
-            y1={baseline}
-            y2={baseline}
-            stroke="currentColor"
-            strokeWidth={1}
-            className="text-border"
+          <ChartYAxis
+            ticks={axisTicks(domain)}
+            y={(tick) => baseline - height(tick)}
+            width={width}
           />
 
           {bars.map((bar, index) => (
@@ -217,9 +182,9 @@ export function DiveActivityChart({
                     rather than `fill="none"`, which takes no pointer events. */}
               <rect
                 x={slotStart(index)}
-                y={PADDING.top}
+                y={CHART_PADDING.top}
                 width={slot}
-                height={PLOT_HEIGHT}
+                height={CHART_PLOT_HEIGHT}
                 fill="transparent"
                 onMouseEnter={() => readout.hover(index)}
                 onMouseLeave={() => readout.hover(null)}
@@ -252,7 +217,7 @@ export function DiveActivityChart({
                 key={bar.key}
                 aria-hidden
                 x={center(index)}
-                y={HEIGHT - 8}
+                y={CHART_HEIGHT - 8}
                 textAnchor="middle"
                 fontSize={11}
                 fill="currentColor"
@@ -331,10 +296,8 @@ function describeBars(
   return `Dives per ${per}, ${total} in total. Busiest ${per}: ${busiest.name}, ${dives}.`;
 }
 
-// The hover card. HTML rather than SVG `<text>` so it gets the app's popover
-// tokens, a border and a shadow - see `GasUseTooltip`, whose positioning this
-// shares: percentages of the chart box, which works because the SVG scales
-// uniformly inside a wrapper of exactly its size.
+// The hover card, at the top of the hovered bar. A full-height bar's top is at
+// the very top of the plot, so this flips below more often than the gas chart's.
 function DiveActivityTooltip({
   bar,
   cx,
@@ -346,33 +309,8 @@ function DiveActivityTooltip({
   cy: number;
   chartWidth: number;
 }) {
-  // Flipped and nudged so the card lands inside the chart box, as the gas
-  // chart's does. A full-height bar's top is at the very top of the plot, so this
-  // flips more often than that one.
-  const cardRef = useRef<HTMLDivElement>(null);
-  useKeepInside(cardRef);
-  const below = cy < HEIGHT * 0.35;
-  const translateY = below ? "12px" : "calc(-100% - 12px)";
-  const translateX =
-    cx < chartWidth * 0.18
-      ? "-12px"
-      : cx > chartWidth * 0.82
-        ? "calc(-100% + 12px)"
-        : "-50%";
-
   return (
-    <div
-      ref={cardRef}
-      // Never a hover target itself - it sits over the column that opened it,
-      // and letting it take the pointer would make it flicker.
-      className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
-      style={{
-        left: `${(cx / chartWidth) * 100}%`,
-        top: `${(cy / HEIGHT) * 100}%`,
-        transform: `translate(${translateX}, ${translateY})`,
-      }}
-      role="presentation"
-    >
+    <ChartHoverCard cx={cx} cy={cy} chartWidth={chartWidth}>
       <div className="text-sm font-semibold">
         {bar.dives}{" "}
         <span className="font-normal">
@@ -382,6 +320,6 @@ function DiveActivityTooltip({
       <div className="mt-0.5 text-xs text-tooltip-foreground/70">
         {bar.name}
       </div>
-    </div>
+    </ChartHoverCard>
   );
 }

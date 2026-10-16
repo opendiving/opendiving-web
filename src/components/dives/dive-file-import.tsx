@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FieldPathValue, Path, UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -46,7 +47,7 @@ import {
 } from "@/lib/dive-recordings";
 import { DiveFormSection } from "@/components/dives/dive-form-section";
 import { withReturnTo } from "@/lib/return-to";
-import { Info, Loader2, Upload } from "lucide-react";
+import { Info, Upload } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -617,7 +618,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       >
         {isParsingFile ? (
           <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <ButtonSpinner className="mr-2" />
             Parsing...
           </>
         ) : (

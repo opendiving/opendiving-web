@@ -3,6 +3,18 @@
 // second chart needed it - a depth axis has nothing to do with gas use, and
 // importing a gas module to scale meters reads as an accident.
 
+// The viewBox frame Home's two trend charts and the admin's daily bars share, so
+// their plots line up down a page rather than being a few units out. Not pixels:
+// the SVG scales to its container, so these are only ever ratios to each other.
+// This is the design width; a phone draws into a narrower one (see
+// `useChartWidth`). The profile chart has its own, with a second axis on the
+// right.
+export const CHART_WIDTH = 720;
+export const CHART_HEIGHT = 240;
+export const CHART_PADDING = { top: 12, right: 14, bottom: 28, left: 42 };
+export const CHART_PLOT_HEIGHT =
+  CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+
 export interface Domain {
   min: number;
   max: number;

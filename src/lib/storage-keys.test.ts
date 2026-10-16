@@ -60,7 +60,7 @@ import {
 //     already had to think about.
 //   - a *second* key added inside a module already on the list below, if it is named
 //     without the `opendiving:` prefix. Check (1) catches it whenever the prefix is
-//     used, which is the house style in all eight of these files.
+//     used, which is the house style in all seven of these files.
 //   - a storage write spelled in some way `STORAGE_WRITE` does not list. It targets the
 //     three forms this app actually uses or could slip into - `setItem`, the index form,
 //     `document.cookie` - and it is a text match over source, not a semantic one, so it
@@ -81,13 +81,12 @@ import {
 // ask what §10 now has to say; that prompt is the entire point of the list.
 const STORAGE_WRITERS = [
   "lib/auth-redirect.ts",
+  "lib/chart-period-view.ts",
   "lib/chart-series-view.ts",
   // Writes the objection flag, and calls through to the original `setItem` for
   // everything it does not suppress - so it is a writer twice over.
   "lib/device-memory.ts",
-  "lib/dive-activity-view.ts",
   "lib/entry-units.ts",
-  "lib/gas-use-view.ts",
   "lib/google-oauth.ts",
   "lib/passkey-nudge.ts",
 ];
@@ -102,7 +101,7 @@ const PRIVACY_PAGE = path.join(SRC, "app", "privacy", "page.tsx");
 // that cannot fail, quietly diluting the ones that can.
 const KEY_LITERAL = /(['"`])(opendiving:[^'"`]+)\1/g;
 
-// A write to browser storage from client code. `setItem` is how all eight writers do
+// A write to browser storage from client code. `setItem` is how all seven writers do
 // it; the index and cookie forms are here because they are real writes that spell no
 // `setItem` at all, and neither appears in production code today - they are matched so
 // that reaching for one is not a way around the list.
@@ -123,7 +122,7 @@ const STORAGE_WRITE =
 //
 // `sessionStorage` is deliberately absent from this pattern even though §10.4 names it
 // too. Four production modules mention it in comments - `lib/auth-redirect.ts` and
-// `lib/gas-use-view.ts` explaining why they chose `localStorage` over it,
+// `lib/chart-period-view.ts` explaining why they chose `localStorage` over it,
 // `lib/api/client.ts` explaining why the access token is in neither, and
 // `lib/device-memory.ts` explaining why its interposition guards on the receiver - so
 // matching raw text would fail on all four for saying nothing at all. Its *writes* are

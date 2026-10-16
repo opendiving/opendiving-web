@@ -1,6 +1,6 @@
 // Which of a chart's series the diver last chose to see, kept across visits.
 //
-// The counterpart to `gas-use-view.ts`, and deliberately a separate entry: that
+// The counterpart to `chart-period-view.ts`, and deliberately a separate entry: that
 // one remembers *where* on the timeline you were looking, this one remembers
 // *what* you had plotted. Same storage for the same reasons - `localStorage`,
 // because a remembered view has to survive the tab closing; not the URL, because
@@ -125,8 +125,8 @@ export function toggleSeries<Key extends string>(
 // stable - an inline arrow would make React tear down and re-subscribe on every
 // render.
 //
-// Lives here rather than in `gas-use-view.ts`, where it started, because three
-// remembered-view readers now want it and none of them is about gas.
+// Lives here rather than in `chart-period-view.ts` because the remembered-view
+// readers that want it are not all about periods.
 export function subscribeToNothing(): () => void {
   return () => {};
 }

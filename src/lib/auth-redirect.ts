@@ -27,7 +27,7 @@
 // What's stored is still only a path the visitor's own browser was already
 // pointed at, and it's still read exactly once, but `localStorage` outlives the
 // tab - so it carries its own expiry rather than relying on the tab closing.
-// `lib/gas-use-view.ts` and the two other remembered-view modules store their
+// `lib/chart-period-view.ts` and the other remembered-view modules store their
 // preferences the same way, for a related reason.
 
 import type { AuthStatus } from "@/lib/api/auth";
