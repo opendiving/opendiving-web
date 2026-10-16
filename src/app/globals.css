@@ -441,6 +441,37 @@
     }
   }
 
+  /* A dialog's footer sticks to the foot of the dialog while the content runs on
+     below it - unless the visible height is short, which with the keyboard up
+     it is: then the footer stays at the end of the form and the field being
+     typed into keeps the room. `useVisualViewport` sets the attribute.
+
+     The offset is measured from inside the content's `p-6`, so it cancels that
+     padding to reach the edge, and goes two pixels past it: pinned, and at rest
+     in a dialog scrolled to its end - the same place, `DialogFooter` bleeding
+     into that padding - then differ by a hidden sliver its observer can see. */
+  :root:not([data-visual-viewport-short]) {
+    [data-dialog-footer] {
+      position: sticky;
+      bottom: calc(-1.5rem - 2px);
+    }
+
+    /* The surface reaches a gap's height above the buttons, so the rule does
+       not sit on them, without the footer itself growing at rest. */
+    [data-dialog-footer][data-stuck]::before {
+      content: "";
+      position: absolute;
+      inset: -1rem 0 0;
+      z-index: -1;
+      @apply bg-background/90 shadow-[inset_0_1px_0_hsl(var(--border))] backdrop-blur;
+    }
+
+    /* The footer's height, which `DialogFooter` measures, and that gap. */
+    [role="dialog"]:has([data-dialog-footer][data-stuck]) {
+      scroll-padding-bottom: calc(var(--dialog-footer-height, 0px) + 1rem);
+    }
+  }
+
   body {
     @apply bg-background text-foreground;
   }

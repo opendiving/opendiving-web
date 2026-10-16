@@ -6978,3 +6978,13 @@ row on the keyboard and shrink a phone's view of the field being typed into; and
 — Android's back button closes the keyboard without blurring, and a tap on Save blurs the field
 first, removing the row under the finger. So the keyboard covers the row while typing, as the
 platform default, and it is back when the keyboard closes.
+
+## A dialog's footer sticks to the foot of the dialog, and lets go on a short viewport
+
+`DialogFooter` is sticky inside `DialogContent`'s scroll box, bled into its padding to meet the
+rounded edge, and takes a surface only while stuck. Pinned and at rest at the end are the same
+place, so the pin sits 2px past the edge for its observer to tell them apart. Unlike the dive form's
+row, a dialog follows the visual viewport, so with the keyboard up a pinned footer would hold ~60px
+of a ~300px box above the keys. Below 30rem of visible height `useVisualViewport` marks the root and
+the footer returns to the end of the form. Hiding it on focus is rejected for the dive form's
+reasons: the keyboard closes without a blur, and a tap on a button blurs the field first.

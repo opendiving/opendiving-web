@@ -5,7 +5,9 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { useStuckAtBottom } from "@/hooks/useStuckAtBottom";
 import {
+  scrollContainerOf,
   useFocusTappedFieldInPlace,
   useKeepFocusedFieldVisible,
   useVisualViewport,
@@ -254,25 +256,62 @@ const DialogHeader = ({
 );
 DialogHeader.displayName = "DialogHeader";
 
+const FOOTER_HEIGHT_VAR = "--dialog-footer-height";
+
+/**
+ * The dialog's Cancel and action row, last in its form so tab order and Enter to
+ * submit are the form's own. `globals.css` sticks it to the foot of the dialog
+ * while there is room, and gives it a surface only while it is stuck there.
+ */
 const DialogFooter = ({
   className,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      // One row whenever the buttons fit, not `flex-col-reverse` below `sm:`:
-      // most dialogs here end in Cancel plus one action, which fits a phone
-      // row, and stacking spent two rows on it. `gap-2` rather than `space-x-2`
-      // so the spacing survives a wrap - `space-x` only separates siblings on
-      // a line. A footer does wrap at 320px when it holds three buttons or a
-      // long action label, and `flex-wrap-reverse` then puts the action on top,
-      // the way the old mobile column did.
-      "flex flex-wrap-reverse items-center justify-end gap-2",
-      className,
-    )}
-    {...props}
-  />
-);
+}: React.HTMLAttributes<HTMLDivElement>) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  // The root grows a pixel at the foot, one short of the two the footer is
+  // stuck past.
+  const stuck = useStuckAtBottom(ref, {
+    rootMargin: "0px 0px 1px 0px",
+    inScrollBox: true,
+  });
+  // The height `globals.css` reserves as the dialog's scroll padding while this
+  // is pinned, measured because a phone-width footer can wrap onto two rows.
+  React.useEffect(() => {
+    const footer = ref.current;
+    const box = footer && scrollContainerOf(footer);
+    if (!footer || !box) return;
+    const observer = new ResizeObserver(() =>
+      box.style.setProperty(FOOTER_HEIGHT_VAR, `${footer.offsetHeight}px`),
+    );
+    observer.observe(footer);
+    return () => {
+      observer.disconnect();
+      box.style.removeProperty(FOOTER_HEIGHT_VAR);
+    };
+  }, []);
+  return (
+    <div
+      ref={ref}
+      data-dialog-footer=""
+      data-stuck={stuck ? "" : undefined}
+      className={cn(
+        // One row whenever the buttons fit, not `flex-col-reverse` below `sm:`:
+        // most dialogs here end in Cancel plus one action, which fits a phone
+        // row, and stacking spent two rows on it. `gap-2` rather than `space-x-2`
+        // so the spacing survives a wrap - `space-x` only separates siblings on
+        // a line. A footer does wrap at 320px when it holds three buttons or a
+        // long action label, and `flex-wrap-reverse` then puts the action on top,
+        // the way the old mobile column did.
+        "flex flex-wrap-reverse items-center justify-end gap-2",
+        // Bled into the content's side and bottom padding, so that pinned it
+        // meets the dialog's rounded edge, and at rest it sits where it did.
+        "z-10 -mx-(--card-pad) -mb-6 px-(--card-pad) pb-6",
+        className,
+      )}
+      {...props}
+    />
+  );
+};
 DialogFooter.displayName = "DialogFooter";
 
 const DialogTitle = React.forwardRef<

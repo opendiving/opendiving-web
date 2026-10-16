@@ -16,6 +16,15 @@ const TOP_VAR = "--visual-viewport-top";
  * absolute positioning actually uses. See `ui/dialog.tsx`.
  */
 const DOC_TOP_VAR = "--visual-viewport-doc-top";
+/**
+ * Set on the root while the visible height is under `SHORT_VIEWPORT_REM` - an
+ * on-screen keyboard is up, or the screen is a phone on its side. A dialog's
+ * footer stops sticking while it is, so the field being typed into gets the
+ * room. See `DialogFooter` in `ui/dialog.tsx`.
+ */
+const SHORT_ATTR = "data-visual-viewport-short";
+/** In rem, so a diver's larger text size reads as less room. */
+const SHORT_VIEWPORT_REM = 30;
 
 // Refcounted, because two dialogs can be open at once - a confirm raised from
 // inside a form dialog is the ordinary case here. Without it the first one to
@@ -40,12 +49,15 @@ function syncViewportVars() {
     DOC_TOP_VAR,
     `${window.scrollY + viewport.offsetTop}px`,
   );
+  const rem = parseFloat(getComputedStyle(root).fontSize);
+  root.toggleAttribute(SHORT_ATTR, viewport.height < SHORT_VIEWPORT_REM * rem);
 }
 
 /**
  * Mirrors `window.visualViewport` onto three CSS variables for as long as the
  * caller is mounted, so that a dialog can be sized and placed against the part
- * of the page a phone is actually showing.
+ * of the page a phone is actually showing - and marks the root while that part
+ * is short, for `DialogFooter`.
  *
  * Two of them describe the visible area within the layout viewport, which is
  * what `DialogContent` needs; the third repeats its top edge in document
@@ -106,6 +118,7 @@ export function useVisualViewport() {
       root.style.removeProperty(HEIGHT_VAR);
       root.style.removeProperty(TOP_VAR);
       root.style.removeProperty(DOC_TOP_VAR);
+      root.removeAttribute(SHORT_ATTR);
     };
   }, []);
 }
@@ -146,7 +159,7 @@ const STABLE_FRAMES = 4;
 const MIN_SETTLE_FRAMES = 16;
 
 /** The nearest ancestor that scrolls, which for a field in a dialog is the dialog. */
-function scrollContainerOf(element: HTMLElement): HTMLElement | null {
+export function scrollContainerOf(element: HTMLElement): HTMLElement | null {
   for (let node = element.parentElement; node; node = node.parentElement) {
     const { overflowY } = getComputedStyle(node);
     if (overflowY === "auto" || overflowY === "scroll") return node;

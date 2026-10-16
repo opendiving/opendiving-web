@@ -1,10 +1,10 @@
 import { StrictMode, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Button } from "./button";
 import { ConfirmDialog } from "./confirm-dialog";
-import { Dialog, DialogContent, DialogTitle } from "./dialog";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "./dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
 } from "./dropdown-menu";
 import { Input } from "./input";
 import { NativeSelect } from "./native-select";
+import { pinToBottom, reveal, scrollPast } from "@/test/intersection";
 
 // A press on the scrim must not be able to discard a half-filled form, which is
 // what the dismissal tests cover. The opt-back-in case is the control: it proves
@@ -211,5 +212,112 @@ describe("DialogContent focus return", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(more).toHaveFocus();
+  });
+});
+
+// Whether the footer is held at the foot of the dialog is the observer's answer,
+// so `pinToBottom` stands in for the form running on below the dialog's edge and
+// `reveal` for the footer resting at its end. The sticking itself, and its
+// release on a short viewport, are CSS - `dialog.browser.test.tsx` measures them.
+describe("DialogFooter", () => {
+  function openWithFooter() {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Edit certification</DialogTitle>
+          <form>
+            <Input aria-label="Name" />
+            <DialogFooter>
+              <Button type="submit">Save changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>,
+    );
+    return screen
+      .getByRole("button", { name: "Save changes" })
+      .closest("[data-dialog-footer]")!;
+  }
+
+  it("marks itself stuck only while pinned to the foot of the dialog", () => {
+    const footer = openWithFooter();
+    expect(footer).not.toHaveAttribute("data-stuck");
+
+    act(() => pinToBottom());
+    expect(footer).toHaveAttribute("data-stuck");
+
+    act(() => reveal());
+    expect(footer).not.toHaveAttribute("data-stuck");
+
+    act(() => pinToBottom());
+    act(() => scrollPast());
+    expect(footer).not.toHaveAttribute("data-stuck");
+  });
+});
+
+// jsdom has no `visualViewport`, so each test hands it one with the height the
+// keyboard would leave - 30rem, 480px at jsdom's 16px root, being the line.
+describe("the short-viewport mark", () => {
+  const original = window.visualViewport;
+  afterEach(() => {
+    Object.defineProperty(window, "visualViewport", {
+      value: original,
+      configurable: true,
+    });
+  });
+
+  function withVisualViewport(height: number) {
+    const viewport = Object.assign(new EventTarget(), {
+      height,
+      offsetTop: 0,
+    });
+    Object.defineProperty(window, "visualViewport", {
+      value: viewport,
+      configurable: true,
+    });
+    return viewport;
+  }
+
+  const root = document.documentElement;
+  const SHORT = "data-visual-viewport-short";
+
+  it("is on while the visible height is short, and follows it as it changes", () => {
+    const viewport = withVisualViewport(320);
+    const { unmount } = render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Edit certification</DialogTitle>
+        </DialogContent>
+      </Dialog>,
+    );
+    expect(root).toHaveAttribute(SHORT);
+
+    // The keyboard closing.
+    viewport.height = 700;
+    act(() => {
+      viewport.dispatchEvent(new Event("resize"));
+    });
+    expect(root).not.toHaveAttribute(SHORT);
+
+    viewport.height = 479;
+    act(() => {
+      viewport.dispatchEvent(new Event("resize"));
+    });
+    expect(root).toHaveAttribute(SHORT);
+
+    unmount();
+    expect(root).not.toHaveAttribute(SHORT);
+  });
+
+  it("is off on a screen with room", () => {
+    withVisualViewport(780);
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Edit certification</DialogTitle>
+        </DialogContent>
+      </Dialog>,
+    );
+    expect(root).not.toHaveAttribute(SHORT);
   });
 });
