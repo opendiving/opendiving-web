@@ -56,8 +56,8 @@ export const MAX_PICTURE_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB
 // pick rather than after Save, when the form's fields have already saved. The first
 // judges what the file declares; the second what the API actually decodes, which for
 // a PNG is every pixel and for a JPEG is Pillow's reduced `draft` towards 512 px.
-export const MAX_PICTURE_PIXELS = 50_000_000;
-export const MAX_ORIGINAL_DECODE_PIXELS = 4032 * 3024;
+const MAX_PICTURE_PIXELS = 50_000_000;
+const MAX_ORIGINAL_DECODE_PIXELS = 4032 * 3024;
 const JPEG_DRAFT_TARGET = 512;
 
 export type PictureType = "image/jpeg" | "image/png";

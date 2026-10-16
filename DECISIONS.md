@@ -78,12 +78,11 @@ embedded offset:
 - `splitStartTime()`/`combineStartTime()` convert between the string and a `"YYYY-MM-DD HH:mm:ss"`
   string plus offset minutes or `null`.
 
-`formatDateTime()`/`formatTimeOnly()` show browser-local time: for `created_at`, never `start_time`.
-The form has one `start_time` field; `DiveStartTimeField`
-(`components/dives/dive-start-time-field.tsx`) alone calls `splitStartTime()`/`combineStartTime()`,
-around `DateTimePicker` + `UtcOffsetSelect`. New dives use `nowStartTime()`
-(`getBrowserUtcOffsetMinutes()`); `normalizeParsedStartTime()` keeps an imported file's offset and
-falls back to the browser's for naive ones.
+`formatDateTime()` shows browser-local time: for `created_at`, never `start_time`. The form has one
+`start_time` field; `DiveStartTimeField` (`components/dives/dive-start-time-field.tsx`) alone calls
+`splitStartTime()`/`combineStartTime()`, around `DateTimePicker` + `UtcOffsetSelect`. New dives use
+`nowStartTime()` (`getBrowserUtcOffsetMinutes()`); `normalizeParsedStartTime()` keeps an imported
+file's offset and falls back to the browser's for naive ones.
 
 ## Date fields are typed into, and settle only when the field is left
 
@@ -222,10 +221,10 @@ changes, when the destination's data lands — and needs `npm run build` rather 
 Prefetching is a production-only behaviour, so a dev measurement describes a navigation the app
 never performs.
 
-The build serves itself on `:3001` and talks to the API same-origin:
-`NEXT_PUBLIC_API_URL= npm run build`, then
-`API_INTERNAL_URL=http://localhost:8000 npx next start -p 3001`. _Rejected:_ the default
-split-origin build, whose baked API base sends every request from `:3001` at an origin the API's
+The build serves itself on `:3002`, clear of the map renderer's `:3001`, and talks to the API
+same-origin: `NEXT_PUBLIC_API_URL= npm run build`, then
+`API_INTERNAL_URL=http://localhost:8000 npx next start -p 3002`. _Rejected:_ the default
+split-origin build, whose baked API base sends every request from `:3002` at an origin the API's
 CORS allowlist does not name; and copying a `.env` into a worktree, which bakes that base back in.
 
 The commands, the columns and the method for timing the same hop against the flagship are in the

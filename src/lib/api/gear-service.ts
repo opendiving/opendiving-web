@@ -248,13 +248,6 @@ export const gearServiceAPI = {
     return response.data;
   },
 
-  async getSchedule(scheduleUuid: string): Promise<GearServiceSchedule> {
-    const response = await apiClient.get(
-      `/gear-service-schedule/${scheduleUuid}`,
-    );
-    return response.data;
-  },
-
   async updateSchedule(
     scheduleUuid: string,
     updateData: GearServiceScheduleUpdate,

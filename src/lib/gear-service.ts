@@ -142,18 +142,6 @@ export function serviceStatusBadgeVariant(
   return "teal";
 }
 
-// How many dives an item has done since a baseline snapshot, floored at zero.
-//
-// The floor matters: `dive_count` is a lifetime counter, so deleting dives drives it
-// back down and a raw subtraction can go negative. Mirrors `dives_since` in the API's
-// `services/gear_service.py`.
-export function divesSince(
-  diveCount: number,
-  baselineDiveCount: number,
-): number {
-  return Math.max(0, diveCount - baselineDiveCount);
-}
-
 type DueUnit = "day" | "dive" | "hour";
 
 // When a schedule is next due, by whichever arm is the urgent one: a regulator that

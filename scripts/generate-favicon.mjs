@@ -60,7 +60,9 @@ function markColour(markSvg) {
 
 async function writeFavicon(svg) {
   const pngs = await Promise.all(
-    sizes.map((size) => sharp(svg, { density: 384 }).resize(size, size).png().toBuffer()),
+    sizes.map((size) =>
+      sharp(svg, { density: 384 }).resize(size, size).png().toBuffer(),
+    ),
   );
 
   // ICONDIR header: reserved(2)=0, type(2)=1 (icon), count(2)
@@ -92,7 +94,9 @@ async function writeFavicon(svg) {
 
   const ico = Buffer.concat([header, ...dirEntries, ...imageBuffers]);
   writeFileSync(icoPath, ico);
-  console.log(`Wrote ${icoPath} (${ico.length} bytes, sizes: ${sizes.join(", ")})`);
+  console.log(
+    `Wrote ${icoPath} (${ico.length} bytes, sizes: ${sizes.join(", ")})`,
+  );
 }
 
 async function writeTiles(svg) {
@@ -102,7 +106,9 @@ async function writeTiles(svg) {
       .flatten({ background: markColour(markSvg) })
       .png({ compressionLevel: 9 })
       .toFile(file);
-    console.log(`Wrote ${file} (${info.size} bytes, ${info.width}x${info.height})`);
+    console.log(
+      `Wrote ${file} (${info.size} bytes, ${info.width}x${info.height})`,
+    );
   }
 }
 

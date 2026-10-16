@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 // Fills two, three and four grid columns evenly.
 export const SPECIES_CATALOG_PER_PAGE = 24;
 
-export const SPECIES_FILTERS: { value: AdminSpeciesFilter; label: string }[] = [
+const SPECIES_FILTERS: { value: AdminSpeciesFilter; label: string }[] = [
   { value: "with_photo", label: "With photo" },
   { value: "without_photo", label: "Without photo" },
   { value: "hidden", label: "Hidden" },

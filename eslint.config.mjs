@@ -1,8 +1,8 @@
-import { createRequire } from "node:module"
-import nextCoreWebVitals from "eslint-config-next/core-web-vitals"
-import tsParser from "@typescript-eslint/parser"
+import { createRequire } from "node:module";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+import tsParser from "@typescript-eslint/parser";
 
-const require = createRequire(import.meta.url)
+const require = createRequire(import.meta.url);
 
 /** @type {import('eslint').Linter.Config[]} */
 const config = [
@@ -14,7 +14,17 @@ const config = [
     // pattern above, so linting the repo meant linting minified bundles - a few
     // hundred errors about someone else's generated code, in a script that is
     // supposed to fail only for ours.
-    ignores: [".next/**", "out/**", "node_modules/**", "coverage/**", ".claude/**"],
+    ignores: [
+      ".next/**",
+      "out/**",
+      "node_modules/**",
+      "coverage/**",
+      ".claude/**",
+      "public/maplibre/**",
+      "test-results/**",
+      "playwright-report/**",
+      ".vitest/**",
+    ],
   },
   {
     // First half of what `eslint-config-next` needs to run under ESLint 10.
@@ -41,12 +51,14 @@ const config = [
     // `scripts/*.mjs` - so it costs nothing today, and would announce itself
     // loudly rather than silently if that changed.
     files: ["**/*.{js,mjs,cjs,jsx,mts,cts}"],
-    languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
   },
   {
     rules: {
       "react/no-unescaped-entities": "off",
-      "@next/next/no-page-custom-font": "off",
       // Guardrail against XSS: `dangerouslySetInnerHTML` bypasses React's
       // default output escaping, so introducing it (e.g. to render
       // markdown/rich text) needs a deliberate `eslint-disable` plus a
@@ -54,6 +66,6 @@ const config = [
       "react/no-danger": "error",
     },
   },
-]
+];
 
-export default config
+export default config;
