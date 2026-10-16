@@ -19,12 +19,12 @@ const STEPS = Array.from(
 );
 
 /** One step's name, which is what a screen reader reads for it. */
-export function ratingStepLabel(step: number): string {
+function ratingStepLabel(step: number): string {
   return countNoun(step, "star");
 }
 
 /** A stored rating as a sentence, for the places that show one. */
-export function ratingSummary(rating: number): string {
+function ratingSummary(rating: number): string {
   return `${rating} of ${RATING_MAX} stars`;
 }
 

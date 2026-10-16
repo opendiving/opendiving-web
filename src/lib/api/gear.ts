@@ -247,22 +247,13 @@ export const gearAPI = {
 
   // Get a user's gear (paginated). Archived items are excluded unless
   // `includeArchived` is true.
-  // `search` narrows to items whose name *or* brand contains it, case-insensitively -
-  // the API caps `items_per_page` at 100, so this is a page of matches, never the
-  // whole set.
   async getGearItems(
     page: number = 1,
     items_per_page: number = 10,
     includeArchived: boolean = false,
-    search?: string,
   ): Promise<PaginatedGearItemsResponse> {
     const response = await apiClient.get(`/gear-items`, {
-      params: {
-        page,
-        items_per_page,
-        include_archived: includeArchived,
-        ...(search ? { search } : {}),
-      },
+      params: { page, items_per_page, include_archived: includeArchived },
     });
     return response.data;
   },
@@ -270,7 +261,7 @@ export const gearAPI = {
   /**
    * A page of the diver's gear as a picker lists it, the item last on a dive at or
    * before `until` first, then items on no such dive, newest first. Archived gear
-   * is never listed. `search` matches what `getGearItems` matches.
+   * is never listed. `search` matches an item's name *or* brand, case-insensitively.
    */
   async lookupGearItems(
     page: number,

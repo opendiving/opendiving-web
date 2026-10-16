@@ -264,7 +264,7 @@ export function mergeMixture(
  * attached, and a second computer's own numbering can repeat one the first file
  * gave another row.
  */
-export function fillMixture(
+function fillMixture(
   mixture: ParsedDiveMixture,
   existing: DiveMixtureInput,
 ): DiveMixtureInput {

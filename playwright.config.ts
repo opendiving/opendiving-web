@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // A port of its own, so the suite never adopts a dev server on :3000 or the
-// measurement build on :3001 — neither of which was built with the testing API.
+// measurement build on :3002 — neither of which was built with the testing API.
 const PORT = Number(process.env.E2E_PORT ?? 3200);
 const baseURL = `http://127.0.0.1:${PORT}`;
 

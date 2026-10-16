@@ -27,9 +27,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import sharp from "sharp";
 
-const root = path.dirname(fileURLToPath(import.meta.url));
-const src = path.join(root, "..", "assets", "artwork", "reef-svgsilh-1298776.svg");
-const dest = path.join(root, "..", "public", "reef-mask.png");
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const src = path.join(root, "assets", "artwork", "reef-svgsilh-1298776.svg");
+const dest = path.join(root, "public", "reef-mask.png");
 
 const alpha = await sharp(src, { density: 150 })
   .resize({ width: 512 })

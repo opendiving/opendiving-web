@@ -9,11 +9,6 @@ export function formatDateTimeForForm(date: Date): string {
   )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-// Parses the "YYYY-MM-DD HH:mm:ss" form representation back into a native Date.
-export function parseFormDateTime(value: string): Date {
-  return new Date(value.replace(" ", "T"));
-}
-
 // --- UTC-offset-aware dive `start_time` helpers ---
 //
 // The API's `start_time` is *usually* an offset-aware ISO 8601 string, e.g.
@@ -415,19 +410,6 @@ export function formatDateTime(
       hour: "2-digit",
       minute: "2-digit",
     }),
-  });
-}
-
-// Time-of-day counterpart to `formatDateTime()` above - same caveat applies:
-// this shows the viewer's own local time, so don't use it for a dive's
-// `start_time` (use `formatDiveTimeOnly()` instead).
-export function formatTimeOnly(
-  dateString: string,
-  options?: Intl.DateTimeFormatOptions,
-): string {
-  return new Date(dateString).toLocaleTimeString("en-US", {
-    hour12: false,
-    ...(options ?? { hour: "2-digit", minute: "2-digit" }),
   });
 }
 

@@ -7,7 +7,6 @@ import {
   countOf,
   daysBetweenIsoDates,
   defaultSchedulesForGearType,
-  divesSince,
   formatServiceDue,
   formatServiceDueQualifier,
   hoursOfDiving,
@@ -218,18 +217,6 @@ describe("serviceStatusLabel / serviceStatusBadgeVariant", () => {
     expect(serviceStatusBadgeVariant("overdue")).toBe("destructive");
     expect(serviceStatusBadgeVariant("due_soon")).toBe("coral");
     expect(serviceStatusBadgeVariant("ok")).toBe("teal");
-  });
-});
-
-describe("divesSince", () => {
-  it("counts dives past the baseline", () => {
-    expect(divesSince(150, 40)).toBe(110);
-    expect(divesSince(40, 40)).toBe(0);
-  });
-
-  it("clamps at zero when dives have been deleted", () => {
-    // `dive_count` is a lifetime counter and can move backwards.
-    expect(divesSince(35, 40)).toBe(0);
   });
 });
 

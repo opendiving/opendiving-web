@@ -17,9 +17,6 @@ const nextConfig = {
   // fetch whatever it allows, and a host with no `port`/`pathname` constraint
   // matches every port and path on that host, turning the optimizer into an
   // SSRF probe of whatever else is listening next to the app.
-  typescript: {
-    ignoreBuildErrors: false,
-  },
   experimental: {
     // Next's instant-navigation testing API, which `e2e/` drives through
     // `@next/playwright`'s `instant()`. It is a *build-time* define - the

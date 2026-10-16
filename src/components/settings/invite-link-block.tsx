@@ -23,7 +23,7 @@ type LinkState =
 const LOAD_FAILED = "Couldn't load your invite link.";
 
 /** The address a member's invite link opens, on whichever origin this copy runs. */
-export function inviteLinkUrl(token: string): string {
+function inviteLinkUrl(token: string): string {
   return `${window.location.origin}/join?via=${token}`;
 }
 

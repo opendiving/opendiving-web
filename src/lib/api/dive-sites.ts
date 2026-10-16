@@ -121,11 +121,7 @@ export interface DiveSiteUpdate extends DiveSiteMembersWrite {
  * default; most dived first; most recently dived first. The two summary orders put
  * every site no live dive names last, and break ties by name.
  */
-export const DIVE_SITE_LIST_SORTS = [
-  "name",
-  "dive_count",
-  "last_dived_on",
-] as const;
+const DIVE_SITE_LIST_SORTS = ["name", "dive_count", "last_dived_on"] as const;
 export type DiveSiteListSort = (typeof DIVE_SITE_LIST_SORTS)[number];
 
 /** What narrows the sites list, and its order. */
