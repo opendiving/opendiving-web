@@ -19,6 +19,7 @@
 import type { DiveActivityPoint } from "@/lib/api/dive-stats";
 import {
   type ChartScope,
+  monthName,
   periodLabel,
   periodRange,
   stepPeriod,
@@ -46,18 +47,6 @@ export interface ActivityBar {
 // year.
 function dayStart(point: DiveActivityPoint): number {
   return Date.UTC(point.year, point.month - 1, point.day);
-}
-
-// A month's name, from the platform rather than a hardcoded table, so it reads
-// the same way as every other date in the app (see `periodLabel`). The year is
-// arbitrary and never shown - this is naming a month, not a date - and
-// `timeZone: "UTC"` keeps the constructed date from sliding into the previous
-// month for viewers west of Greenwich.
-function monthName(month: number, style: "short" | "long"): string {
-  return new Date(Date.UTC(2001, month - 1, 1)).toLocaleDateString("en-US", {
-    month: style,
-    timeZone: "UTC",
-  });
 }
 
 // How many days a month has, without a leap-year table: day 0 of the *next*

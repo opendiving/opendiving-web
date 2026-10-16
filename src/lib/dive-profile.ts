@@ -991,30 +991,6 @@ export function describeEvent(
   }
 }
 
-// Split a series into runs of consecutive samples, as arrays of indices, so a
-// polyline is never drawn across a gap.
-//
-// The same lie `segmentByGap` exists to prevent on the gas chart, expressed on
-// the profile's millisecond axis instead of in days: a transmitter that drops out
-// for ten minutes
-// mid-dive would otherwise be drawn as a straight line from the last reading to
-// the first one after it - which reads as "the pressure fell smoothly" when the
-// truth is "nothing was recorded here". Real: 224 of 441 samples on
-// `Dive_2025-06-02-1155.xml`.
-export function segmentByTimeGap(t: number[], maxGapMs: number): number[][] {
-  if (t.length === 0) return [];
-
-  const segments: number[][] = [[0]];
-  for (let index = 1; index < t.length; index++) {
-    if (t[index] - t[index - 1] > maxGapMs) {
-      segments.push([index]);
-    } else {
-      segments[segments.length - 1].push(index);
-    }
-  }
-  return segments;
-}
-
 // How far apart two samples have to be before the line between them is a lie,
 // derived from the series' own cadence rather than fixed.
 //

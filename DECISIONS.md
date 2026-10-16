@@ -1693,8 +1693,8 @@ trend is off.
 ## Remembered selections use `useSyncExternalStore`, and the handler uses the updater form
 
 `lib/chart-series-view.ts` is the storage half, generic over series keys. `localStorage`, as in
-`gas-use-view.ts` (which lends `subscribeToNothing`): the selection must survive the tab closing and
-work from the bare `/home` and `/dives/{uuid}` URLs.
+`chart-period-view.ts`: the selection must survive the tab closing and work from the bare `/home`
+and `/dives/{uuid}` URLs.
 
 The read is `useSyncExternalStore` with a server snapshot of `null`; the snapshot stays the raw
 string because `useSyncExternalStore` compares with `Object.is` and a freshly parsed array loops

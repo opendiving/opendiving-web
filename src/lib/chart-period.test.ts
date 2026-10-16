@@ -7,7 +7,7 @@ import {
   stepPeriod,
 } from "@/lib/chart-period";
 
-// Moved here, unchanged, from `dive-gas.test.ts` and `gas-use-view.test.ts` when
+// Moved here, unchanged, from `dive-gas.test.ts` and the gas card's view tests when
 // the functions themselves moved - the activity card windows its series the same
 // way, and these rules are now what keeps the two cards' period controls
 // behaving identically. The times below read as dives because that is what they
