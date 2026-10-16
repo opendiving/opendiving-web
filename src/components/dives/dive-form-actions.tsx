@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import { Loader2, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormApiError } from "@/components/ui/form-api-error";
+import { useStuckAtBottom } from "@/hooks/useStuckAtBottom";
 import { cn } from "@/lib/utils";
 
 export interface DiveFormActionsProps {
@@ -41,26 +42,8 @@ export function DiveFormActions({
   error = null,
 }: DiveFormActionsProps) {
   const rowRef = useRef<HTMLDivElement>(null);
-  const [stuck, setStuck] = useState(false);
-
-  // A root a pixel short at the foot: stuck, the row's bottom edge is the
-  // viewport's, so its last pixel falls outside and it is not wholly in view. In
-  // its place at the form's end it is, and scrolled off the top it is not either,
-  // which is what the side tells apart.
-  useEffect(() => {
-    const row = rowRef.current;
-    if (!row) return;
-    const observer = new IntersectionObserver(
-      ([entry]) =>
-        setStuck(
-          entry.intersectionRatio < 1 &&
-            entry.boundingClientRect.bottom > (entry.rootBounds?.bottom ?? 0),
-        ),
-      { rootMargin: "0px 0px -1px 0px", threshold: 1 },
-    );
-    observer.observe(row);
-    return () => observer.disconnect();
-  }, []);
+  // Stuck, the row's bottom edge is the viewport's.
+  const stuck = useStuckAtBottom(rowRef, { rootMargin: "0px 0px -1px 0px" });
 
   const SubmitIcon = mode === "create" ? Plus : Save;
   // A disabled submit button is also what stops implicit submission (Enter in a
