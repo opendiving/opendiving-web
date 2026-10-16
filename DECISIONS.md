@@ -5859,9 +5859,8 @@ sibling card mid-edit keeps what is typed. The suite pins the invariant: persist
 resets the form, re-runs the prefill or refetches the last dive; anything added to that dependency
 list must be a value, not an object.
 
-The write is debounced and flushed on unmount, so the hidden set and the preset pick that Save
-preset or a menu pick writes together are one request, and an Apply-then-leave still saves.
-`SAVE_DEBOUNCE_MS` in the hook is the figure's only home.
+The write is debounced and flushed on unmount, so a set-and-pick write is one request and
+Apply-then-leave still saves. `SAVE_DEBOUNCE_MS` in the hook is the figure's only home.
 
 ## The Fields control is a menu with a dialog behind it, and neither is in the form
 
@@ -5869,19 +5868,16 @@ The control is a page action in the hero's top row, opposite the way back, dress
 is.
 
 The menu applies presets; Configure opens a dialog of switches and preset housekeeping. A failed
-`PATCH /user` toasts from `useDiveFormVisibility`'s `flush`. Escape belongs to the dialog - Radix
-listens on `document` in the capture phase - except on an expanded combobox: `onEscapeKeyDown`
-leaves the Save as list's Escape to the list, since closing the dialog drops the switches' draft.
+`PATCH /user` toasts from `useDiveFormVisibility`'s `flush`. Radix takes Escape on `document` in the
+capture phase; an expanded combobox vetoes it.
 
-"Save as" is one name plus the footer's Save preset: an unmatched name creates, a match replaces;
-not `CreatableCombobox`, which commits on blur. The trigger reads `Fields: <preset>`, "All" or
-"Custom", so `useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name
-prompt uses `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first
-control.
+"Save as" is one name plus Save preset: an unmatched name creates, a match replaces; not
+`CreatableCombobox`, which commits on blur. The trigger reads `Fields: <preset>`, "All" or "Custom",
+so `useDiveFormPresets` fetches on mount. Neither surface is inside the `<form>`; the name prompt
+uses `dialogFormSubmit`. `onOpenAutoFocus` focuses the content container, not the first control.
 
-A switch shows the effective state and edits a draft of the stored one; Apply and Save preset write
-it, Cancel, the X and Escape drop it. A unit toggle rides on every visible box with a unit, so
-hiding one of a dimension's fields leaves the toggle on the others.
+A switch shows the effective state and edits a draft of the stored one. A unit toggle rides on every
+visible box with a unit, so hiding one of a dimension's fields leaves the toggle on the others.
 
 ## The Fields dialog is switches, and it is the sections that share the columns
 

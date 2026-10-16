@@ -21,6 +21,7 @@ import { DiveFormPresetList } from "@/components/dives/dive-form-preset-list";
 import { DiveFormPresetSaveAs } from "@/components/dives/dive-form-preset-save-as";
 import {
   canonicalHiddenFields,
+  hiddenFieldsEqual,
   type DiveFormFieldKey,
 } from "@/lib/dive-form-fields";
 import {
@@ -36,15 +37,6 @@ interface DiveFormFieldsDialogProps {
   visibility: DiveFormVisibility;
   /** Held by the Fields menu and handed down, so opening this refetches nothing. */
   presets: DiveFormPresets;
-}
-
-function sameFields(
-  first: readonly DiveFormFieldKey[],
-  second: readonly DiveFormFieldKey[],
-): boolean {
-  const a = canonicalHiddenFields(first);
-  const b = canonicalHiddenFields(second);
-  return a.length === b.length && a.every((key, index) => key === b[index]);
 }
 
 /**
@@ -105,7 +97,7 @@ export function DiveFormFieldsDialog({
   // is on screen only because it holds a value - `setHidden` takes those back off.
   const changed =
     draft !== null &&
-    (!sameFields(draft, visibility.hidden) ||
+    (!hiddenFieldsEqual(draft, visibility.hidden) ||
       draft.some((key) => visibility.isRevealed(key)));
 
   const fields = useMemo<DiveFormFieldsView>(() => {
@@ -256,7 +248,6 @@ function DiveFormFieldsDialogBody({
       </Tabs>
 
       <FormApiError error={presets.error} />
-      <FormApiError error={visibility.saveError} />
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>

@@ -10,9 +10,10 @@ import {
   type DiveFormFieldKey,
 } from "@/lib/dive-form-fields";
 
-// What "Save as" opens on is the one thing this file is about: the dialog has to
-// answer "are these fields a preset I already have?" the same way the Fields
-// trigger does, and hold that answer still while the diver edits underneath it.
+// Two things: what "Save as" opens on - the dialog has to answer "are these fields
+// a preset I already have?" the same way the Fields trigger does, and hold that
+// answer still while the diver edits underneath it - and which ways out of the
+// dialog apply the switches' draft and which drop it.
 
 function preset(name: string, hidden: DiveFormFieldKey[]): DiveFormPreset {
   return {
@@ -47,7 +48,6 @@ function visibilityStub(hidden: DiveFormFieldKey[]): DiveFormVisibility {
     | "setHidden"
     | "selectedPresetUuid"
     | "selectPreset"
-    | "saveError"
   > = {
     hidden,
     isHidden: (key) => hidden.includes(key),
@@ -56,7 +56,6 @@ function visibilityStub(hidden: DiveFormFieldKey[]): DiveFormVisibility {
     setHidden: vi.fn(),
     selectedPresetUuid: null,
     selectPreset: vi.fn(),
-    saveError: null,
   };
   return stub as DiveFormVisibility;
 }

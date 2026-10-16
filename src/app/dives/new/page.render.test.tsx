@@ -1510,9 +1510,9 @@ describe("persisting a toggle", () => {
   });
 
   it("says so out loud when the save fails", async () => {
-    // A toast rather than only the inline message, because no way to reach a failed
-    // save leaves anything on screen to render one into: applying a preset closes the
-    // menu, and Apply and Save preset close Configure.
+    // A toast, because no way to reach a failed save leaves anything on screen to
+    // render a message into: applying a preset closes the menu, and Apply and Save
+    // preset close Configure.
     vi.mocked(authAPI.updateProfile).mockRejectedValueOnce(
       new Error("network down"),
     );
