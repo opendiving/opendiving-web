@@ -30,12 +30,17 @@ import {
 } from "@/components/ui/backdrop-card";
 import { cn } from "@/lib/utils";
 
-// As many to a row as fit at a width that keeps a card wider than it is tall,
-// so the c-card behind it is cropped at its sides rather than to a strip: three
-// on a wide screen, one on a phone. 20rem also holds the two figures with the
-// widest of numbers the last of them.
+// As many to a row as fit at a width that keeps a card about the shape of the
+// c-card behind it, rather than cropping that to a strip as /dives' two columns
+// would: three on a wide screen, one on a phone. 20rem holds the two figures'
+// columns. Spaced as /dives spaces its cards.
 export const CERTIFICATION_CARD_GRID =
-  "grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-3 max-sm:gap-2.5";
+  "grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-4 max-sm:gap-2.5";
+
+// Wider than a dive's figures, since a number runs to a dozen characters -
+// `DE24-222-137` - and the date after it to `Dec 28, 2025`. Anything wider still
+// widens its column rather than running into the next one.
+const FIGURE_COLUMNS = "auto-cols-[minmax(7.5rem,auto)]";
 
 // The card's front behind its details, faded into the card's colour as a
 // species' photo is. The map's water and an icon where there is no picture to
@@ -104,8 +109,8 @@ interface CertificationCardProps {
 }
 
 // One certification as a card, on /certifications: the c-card's front as the
-// backdrop, its level over the foot of it with the agency under, and when it
-// was earned and the number a dive shop asks for as its figures. The level
+// backdrop, its level over the foot of it with the agency under, and the
+// number a dive shop asks for and when it was earned as its figures. The level
 // opens the card in full, a certification having no page of its own.
 export function CertificationCard({
   certification,
@@ -116,22 +121,16 @@ export function CertificationCard({
 }: CertificationCardProps) {
   const expiry = certificationExpiryStatus(certification.expires_on);
   const figures: BackdropCardFigure[] = [];
-  if (certification.certified_on) {
-    figures.push({
-      label: "Certified",
-      // The month, not the day: a full date is wider than a figure's column,
-      // and only the last figure may run past its own. The view has the day.
-      value: formatDateOnly(certification.certified_on, {
-        year: "numeric",
-        month: "short",
-      }),
-    });
-  }
   if (certification.certification_number) {
-    // Last, since a number can be as wide as two columns.
     figures.push({
       label: "Number",
       value: certification.certification_number,
+    });
+  }
+  if (certification.certified_on) {
+    figures.push({
+      label: "Certified",
+      value: formatDateOnly(certification.certified_on),
     });
   }
 
@@ -183,7 +182,9 @@ export function CertificationCard({
           certification.agency_other,
         )}
       </div>
-      {figures.length > 0 && <BackdropCardFigures figures={figures} />}
+      {figures.length > 0 && (
+        <BackdropCardFigures figures={figures} className={FIGURE_COLUMNS} />
+      )}
     </BackdropCard>
   );
 }

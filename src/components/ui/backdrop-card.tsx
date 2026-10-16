@@ -220,11 +220,19 @@ export interface BackdropCardFigure {
 // skeleton. A value never breaks, so "1h 11min" is one figure.
 export function BackdropCardFigures({
   figures,
+  className,
 }: {
   figures: BackdropCardFigure[];
+  // Columns of the card's own, for figures wider than these.
+  className?: string;
 }) {
   return (
-    <dl className="mt-3 grid w-fit grid-flow-col auto-cols-[5rem] gap-3 max-[370px]:auto-cols-auto">
+    <dl
+      className={cn(
+        "mt-3 grid w-fit grid-flow-col auto-cols-[5rem] gap-3 max-[370px]:auto-cols-auto",
+        className,
+      )}
+    >
       {figures.map(({ label, value }) => (
         <div key={label}>
           <dt className="text-xs">{label}</dt>

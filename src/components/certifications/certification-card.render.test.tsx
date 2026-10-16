@@ -104,13 +104,13 @@ describe("CertificationCard", () => {
     expect(screen.getByText("Freediving Federation")).toBeInTheDocument();
   });
 
-  it("carries when it was earned to the month, then its number", () => {
+  it("carries its number, then the day it was earned", () => {
     card({ certified_on: "2025-03-12", certification_number: "2309AB1234" });
 
-    expect(figure("Certified")).toHaveTextContent(/^Mar 2025$/);
     expect(figure("Number")).toHaveTextContent("2309AB1234");
+    expect(figure("Certified")).toHaveTextContent("Mar 12, 2025");
     expect(screen.getAllByRole("term").map((term) => term.textContent)).toEqual(
-      ["Certified", "Number"],
+      ["Number", "Certified"],
     );
   });
 

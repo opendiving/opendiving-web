@@ -77,8 +77,12 @@ export function CertificationsPageFrame({
               label="certification"
             />
           </ListCardHeader>
-          <CardContent>
-            {!isLoading && cards.length === 0 ? (
+          {/* The card is the list's header - its count - and what it says when
+              there is nothing to list. The certifications themselves are cards
+              of their own, so they sit below it rather than in it, as /dives
+              draws its dives. */}
+          {!isLoading && cards.length === 0 && (
+            <CardContent>
               <EmptyState
                 icon={BadgeCheck}
                 title="No certifications yet"
@@ -90,34 +94,36 @@ export function CertificationsPageFrame({
                   </Button>
                 }
               />
-            ) : (
-              <ul
-                className={CERTIFICATION_CARD_GRID}
-                // Busy on the outside, hidden on each placeholder within - the
-                // split `ListRowsSkeleton` documents, so a reader meets a list
-                // that is loading rather than one that is silently empty.
-                aria-busy={cards.length === 0 || undefined}
-              >
-                {cards.length === 0
-                  ? Array.from({ length: itemsPerPage }, (_, card) => (
-                      <BackdropCardSkeleton key={card} />
-                    ))
-                  : cards}
-              </ul>
-            )}
-
-            <LoadMoreTrigger
-              hasMore={hasMore}
-              isLoading={isLoadingMore}
-              hasFailed={loadFailed}
-              loadedCount={cards.length}
-              totalCount={totalCount}
-              itemsPerPage={itemsPerPage}
-              itemLabel="certifications"
-              onLoadMore={onLoadMore}
-            />
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
+
+        {(isLoading || cards.length > 0) && (
+          <ul
+            className={CERTIFICATION_CARD_GRID}
+            // Busy on the outside, hidden on each placeholder within - the split
+            // `ListRowsSkeleton` documents, so a reader meets a list that is
+            // loading rather than one that is silently empty.
+            aria-busy={cards.length === 0 || undefined}
+          >
+            {cards.length === 0 &&
+              Array.from({ length: itemsPerPage }, (_, index) => (
+                <BackdropCardSkeleton key={index} />
+              ))}
+            {cards}
+          </ul>
+        )}
+
+        <LoadMoreTrigger
+          hasMore={hasMore}
+          isLoading={isLoadingMore}
+          hasFailed={loadFailed}
+          loadedCount={cards.length}
+          totalCount={totalCount}
+          itemsPerPage={itemsPerPage}
+          itemLabel="certifications"
+          onLoadMore={onLoadMore}
+        />
       </div>
     </div>
   );
