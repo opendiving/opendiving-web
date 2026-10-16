@@ -80,7 +80,13 @@ export function clearIntersectionObservers() {
 export function reveal() {
   for (const { element, callback, observer } of [...registrations]) {
     callback(
-      [{ isIntersecting: true, target: element } as IntersectionObserverEntry],
+      [
+        {
+          isIntersecting: true,
+          intersectionRatio: 1,
+          target: element,
+        } as IntersectionObserverEntry,
+      ],
       observer,
     );
   }
@@ -101,9 +107,10 @@ export function scrollPast(within?: Element) {
       [
         {
           isIntersecting: false,
+          intersectionRatio: 0,
           target: element,
-          boundingClientRect: { top: -1 } as DOMRectReadOnly,
-          rootBounds: { top: 0 } as DOMRectReadOnly,
+          boundingClientRect: { top: -2, bottom: -1 } as DOMRectReadOnly,
+          rootBounds: { top: 0, bottom: 799 } as DOMRectReadOnly,
         } as IntersectionObserverEntry,
       ],
       observer,
