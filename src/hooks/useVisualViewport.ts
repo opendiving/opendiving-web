@@ -16,16 +16,6 @@ const TOP_VAR = "--visual-viewport-top";
  * absolute positioning actually uses. See `ui/dialog.tsx`.
  */
 const DOC_TOP_VAR = "--visual-viewport-doc-top";
-/**
- * Set on the root while the visible height is under `SHORT_VIEWPORT_REM` - an
- * on-screen keyboard is up, or the screen is a phone on its side. A dialog's
- * header and footer stop sticking while it is, so the field being typed into
- * gets the room. See `DialogHeader` and `DialogFooter` in `ui/dialog.tsx`.
- */
-const SHORT_ATTR = "data-visual-viewport-short";
-/** In rem, so a diver's larger text size reads as less room. */
-const SHORT_VIEWPORT_REM = 30;
-
 // Refcounted, because two dialogs can be open at once - a confirm raised from
 // inside a form dialog is the ordinary case here. Without it the first one to
 // unmount would strip the variables while the second was still positioned by
@@ -49,15 +39,121 @@ function syncViewportVars() {
     DOC_TOP_VAR,
     `${window.scrollY + viewport.offsetTop}px`,
   );
-  const rem = parseFloat(getComputedStyle(root).fontSize);
-  root.toggleAttribute(SHORT_ATTR, viewport.height < SHORT_VIEWPORT_REM * rem);
+}
+
+/**
+ * Set on the root while the visible height is under `SHORT_VIEWPORT_REM` - an
+ * on-screen keyboard is up, or the screen is a phone on its side. The rows that
+ * pin to an edge - a dialog's header and footer, the dive form's Cancel/Save -
+ * let go while it is, so the field being typed into gets the room. See
+ * `globals.css`.
+ */
+const SHORT_ATTR = "data-visual-viewport-short";
+/** In rem, so a diver's larger text size reads as less room. */
+const SHORT_VIEWPORT_REM = 30;
+
+/**
+ * How long the viewport has to hold still before the mark comes off: past
+ * `DialogContent`'s 200ms transition, which starts at the last change. Measured
+ * on frame timestamps rather than counted in frames, because a 120Hz screen
+ * runs them twice as fast, and a count long enough at 60Hz falls short there.
+ */
+const SHORT_RELEASE_MS = 250;
+/** A backstop against a viewport that never holds still, as `SETTLE_FRAME_CAP`. */
+const SHORT_RELEASE_CAP_MS = 1000;
+
+// Refcounted like `subscribers` above, and kept apart from it: the dive form
+// wants the mark on a page with no dialog open, and nothing else.
+let shortSubscribers = 0;
+let releaseFrame = 0;
+
+function isShort(viewport: VisualViewport) {
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  return viewport.height < SHORT_VIEWPORT_REM * rem;
+}
+
+function syncShortViewport() {
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+
+  const root = document.documentElement;
+  cancelAnimationFrame(releaseFrame);
+  if (isShort(viewport)) {
+    root.setAttribute(SHORT_ATTR, "");
+    return;
+  }
+  if (!root.hasAttribute(SHORT_ATTR)) return;
+
+  // Each event starts the wait over; the frames between check that the
+  // geometry is still where the event left it.
+  let previous = "";
+  let start = Number.NaN;
+  let stillSince = Number.NaN;
+  const settle = (time: number) => {
+    if (isShort(viewport)) return;
+    const geometry = `${viewport.height} ${viewport.offsetTop}`;
+    if (Number.isNaN(start)) start = time;
+    if (geometry !== previous) stillSince = time;
+    previous = geometry;
+    if (
+      time - stillSince >= SHORT_RELEASE_MS ||
+      time - start >= SHORT_RELEASE_CAP_MS
+    ) {
+      root.removeAttribute(SHORT_ATTR);
+      return;
+    }
+    releaseFrame = requestAnimationFrame(settle);
+  };
+  releaseFrame = requestAnimationFrame(settle);
+}
+
+/**
+ * Marks the root while the visible height is short, for as long as the caller
+ * is mounted - at once as the keyboard opens, and only once the viewport has
+ * settled as it closes.
+ *
+ * **The mark comes off late on purpose.** A dialog's footer pins to the foot of
+ * a box that is still catching up when the keyboard has gone: `DialogContent`
+ * animates its `max-height` to the new height over 200ms. Pinned straight away,
+ * the footer reappears above where the keyboard was and slides down with the
+ * box. So the mark waits until `height` and `offsetTop` have held still for
+ * longer than that. Going short needs no wait - letting go of a row never draws
+ * it somewhere it should not be.
+ *
+ * No-ops where `visualViewport` is absent, like `useVisualViewport`.
+ */
+export function useShortViewport() {
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    // Its own closure per caller, as in `useVisualViewport`.
+    const sync = () => syncShortViewport();
+
+    shortSubscribers += 1;
+    syncShortViewport();
+    // `scroll` too: Safari panning to a field moves `offsetTop`, and a dialog
+    // placed against it animates for as long as a resize would make it.
+    viewport.addEventListener("resize", sync);
+    viewport.addEventListener("scroll", sync);
+
+    return () => {
+      viewport.removeEventListener("resize", sync);
+      viewport.removeEventListener("scroll", sync);
+      shortSubscribers -= 1;
+      if (shortSubscribers > 0) return;
+
+      cancelAnimationFrame(releaseFrame);
+      document.documentElement.removeAttribute(SHORT_ATTR);
+    };
+  }, []);
 }
 
 /**
  * Mirrors `window.visualViewport` onto three CSS variables for as long as the
  * caller is mounted, so that a dialog can be sized and placed against the part
  * of the page a phone is actually showing - and marks the root while that part
- * is short, for `DialogHeader` and `DialogFooter`.
+ * is short, through `useShortViewport`.
  *
  * Two of them describe the visible area within the layout viewport, which is
  * what `DialogContent` needs; the third repeats its top edge in document
@@ -89,6 +185,7 @@ function syncViewportVars() {
  * fallback there rather than being defined here.
  */
 export function useVisualViewport() {
+  useShortViewport();
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
@@ -118,7 +215,6 @@ export function useVisualViewport() {
       root.style.removeProperty(HEIGHT_VAR);
       root.style.removeProperty(TOP_VAR);
       root.style.removeProperty(DOC_TOP_VAR);
-      root.removeAttribute(SHORT_ATTR);
     };
   }, []);
 }

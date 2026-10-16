@@ -1,6 +1,12 @@
 import { StrictMode, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Button } from "./button";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -363,7 +369,7 @@ describe("the short-viewport mark", () => {
   const root = document.documentElement;
   const SHORT = "data-visual-viewport-short";
 
-  it("is on while the visible height is short, and follows it as it changes", () => {
+  it("is on while the visible height is short, and follows it as it changes", async () => {
     const viewport = withVisualViewport(320);
     const { unmount } = render(
       <Dialog open>
@@ -374,12 +380,14 @@ describe("the short-viewport mark", () => {
     );
     expect(root).toHaveAttribute(SHORT);
 
-    // The keyboard closing.
+    // The keyboard closing: the footer waits for the box to finish growing
+    // back before it pins again.
     viewport.height = 700;
     act(() => {
       viewport.dispatchEvent(new Event("resize"));
     });
-    expect(root).not.toHaveAttribute(SHORT);
+    expect(root).toHaveAttribute(SHORT);
+    await waitFor(() => expect(root).not.toHaveAttribute(SHORT));
 
     viewport.height = 479;
     act(() => {

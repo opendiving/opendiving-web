@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import {
   useFocusTappedFieldInPlace,
   useKeepFocusedFieldVisible,
+  useShortViewport,
   useVisualViewport,
 } from "./useVisualViewport";
 
@@ -65,6 +66,18 @@ const vars = () => ({
     "--visual-viewport-doc-top",
   ),
 });
+
+/** Runs `count` animation frames, calling `tick` before each. */
+async function runFrames(tick: () => void, count: number) {
+  for (let i = 0; i < count; i += 1) {
+    tick();
+    await act(async () => {
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => resolve(null)),
+      );
+    });
+  }
+}
 
 afterEach(() => {
   Object.defineProperty(window, "visualViewport", {
@@ -152,8 +165,9 @@ describe("useVisualViewport", () => {
     const first = renderHook(() => useVisualViewport());
     const second = renderHook(() => useVisualViewport());
 
-    expect(viewport.listeners.get("resize")?.size).toBe(2);
-    expect(viewport.listeners.get("scroll")?.size).toBe(2);
+    // Two each: the variables', and the short-viewport mark's.
+    expect(viewport.listeners.get("resize")?.size).toBe(4);
+    expect(viewport.listeners.get("scroll")?.size).toBe(4);
 
     first.unmount();
     second.unmount();
@@ -168,6 +182,165 @@ describe("useVisualViewport", () => {
 
     expect(vars()).toEqual({ height: "", top: "", docTop: "" });
     unmount();
+  });
+});
+
+describe("useShortViewport", () => {
+  // 30rem, 480px at jsdom's 16px root, is the line.
+  const SHORT = "data-visual-viewport-short";
+  const root = document.documentElement;
+
+  // The wait is measured on frame timestamps, so the frames are driven by hand:
+  // each one advances a clock by `ms` and hands that to whatever is queued.
+  let queue = new Map<number, FrameRequestCallback>();
+  let now = 0;
+  beforeEach(() => {
+    let id = 0;
+    queue = new Map();
+    now = 0;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      id += 1;
+      queue.set(id, cb);
+      return id;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((handle) => {
+      queue.delete(handle);
+    });
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function frames(count: number, ms = 16, tick = () => {}) {
+    for (let i = 0; i < count; i += 1) {
+      tick();
+      now += ms;
+      const due = [...queue.values()];
+      queue = new Map();
+      act(() => due.forEach((cb) => cb(now)));
+    }
+  }
+
+  function keyboardCloses(viewport: FakeViewport) {
+    act(() => {
+      viewport.height = 812;
+      viewport.emit("resize");
+    });
+  }
+
+  it("marks the root as soon as the keyboard is up", () => {
+    const viewport = installViewport(812, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+    expect(root).not.toHaveAttribute(SHORT);
+
+    act(() => {
+      viewport.height = 420;
+      viewport.emit("resize");
+    });
+    expect(root).toHaveAttribute(SHORT);
+
+    unmount();
+    expect(root).not.toHaveAttribute(SHORT);
+  });
+
+  it("takes the mark off only once the viewport has held still past the dialog's transition", () => {
+    // A footer pinned straight away rides up with a box still growing back:
+    // `DialogContent` takes 200ms to reach the new height.
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+    expect(root).toHaveAttribute(SHORT);
+
+    keyboardCloses(viewport);
+    expect(root).toHaveAttribute(SHORT);
+    frames(12);
+    expect(root).toHaveAttribute(SHORT);
+
+    frames(6);
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("waits as long on a 120Hz screen", () => {
+    // Twice the frames in the same time - a frame count that ends after the
+    // transition at 60Hz ends inside it here.
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+
+    keyboardCloses(viewport);
+    frames(24, 8);
+    expect(root).toHaveAttribute(SHORT);
+
+    frames(10, 8);
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("waits out a viewport that is still moving", () => {
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+
+    act(() => {
+      viewport.height = 812;
+      viewport.offsetTop = 300;
+      viewport.emit("resize");
+    });
+    // `offsetTop` easing back to 0 with no event of its own.
+    frames(20, 16, () => {
+      viewport.offsetTop = Math.max(0, viewport.offsetTop - 15);
+    });
+    frames(12);
+    expect(root).toHaveAttribute(SHORT);
+
+    frames(6);
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("gives up waiting on a viewport that never holds still", () => {
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+
+    keyboardCloses(viewport);
+    frames(70, 16, () => {
+      viewport.offsetTop = viewport.offsetTop === 0 ? 1 : 0;
+    });
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("starts the wait over when the keyboard comes back up during it", () => {
+    const viewport = installViewport(420, 0);
+    const { unmount } = renderHook(() => useShortViewport());
+
+    keyboardCloses(viewport);
+    frames(10);
+    act(() => {
+      viewport.height = 420;
+      viewport.emit("resize");
+    });
+    expect(root).toHaveAttribute(SHORT);
+    keyboardCloses(viewport);
+    // Past where the first wait would have ended, short of the second.
+    frames(10);
+    expect(root).toHaveAttribute(SHORT);
+
+    frames(7);
+    expect(root).not.toHaveAttribute(SHORT);
+    unmount();
+  });
+
+  it("keeps the mark while another caller is still mounted, and drops a pending wait with the last", () => {
+    const viewport = installViewport(420, 0);
+    const first = renderHook(() => useShortViewport());
+    const second = renderHook(() => useShortViewport());
+
+    first.unmount();
+    expect(root).toHaveAttribute(SHORT);
+
+    keyboardCloses(viewport);
+    second.unmount();
+    expect(root).not.toHaveAttribute(SHORT);
+    expect(queue.size).toBe(0);
   });
 });
 
@@ -206,18 +379,6 @@ describe("useKeepFocusedFieldVisible", () => {
       tick,
       cleanup: () => container.remove(),
     };
-  }
-
-  /** Runs `count` animation frames, calling `tick` before each. */
-  async function runFrames(tick: () => void, count: number) {
-    for (let i = 0; i < count; i += 1) {
-      tick();
-      await act(async () => {
-        await new Promise((resolve) =>
-          requestAnimationFrame(() => resolve(null)),
-        );
-      });
-    }
   }
 
   it("keeps re-revealing until the box it scrolls inside stops moving", async () => {

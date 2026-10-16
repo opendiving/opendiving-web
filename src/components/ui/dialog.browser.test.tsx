@@ -160,7 +160,7 @@ describe("DialogFooter", () => {
   it("lets go of the foot while the visible height is short, and pins again with room", async () => {
     await page.viewport(390, 400);
     const { dialog, footer } = openLongDialog();
-    await expect.poll(() => getComputedStyle(footer).position).toBe("static");
+    await expect.poll(() => getComputedStyle(footer).position).toBe("relative");
     expect(getComputedStyle(dialog).scrollPaddingBottom).toBe("auto");
     expect(footer.getBoundingClientRect().top).toBeGreaterThan(
       paddingBottom(dialog),
