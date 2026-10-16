@@ -90,6 +90,20 @@ const centre = (element: Element) => {
 };
 
 describe("the mobile menu on a phone", () => {
+  // Shut, it waits a full width past the window's right edge. That widens
+  // nothing only while it is `fixed` to the window: a transform or filter on the
+  // header would make the header its containing block, and the page would
+  // scroll sideways onto it.
+  it("leaves the page no wider than the window while it is shut", async () => {
+    await page.viewport(320, 800);
+    render(<Header />);
+
+    expect(
+      document.getElementById("mobile-menu")!.getBoundingClientRect().left,
+    ).toBeGreaterThanOrEqual(window.innerWidth);
+    expect(document.documentElement.scrollWidth).toBe(window.innerWidth);
+  });
+
   it("takes two thirds of the width, under the header", async () => {
     const { menu } = await renderOverPage();
     const box = menu().getBoundingClientRect();
