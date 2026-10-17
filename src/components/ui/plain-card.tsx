@@ -11,18 +11,39 @@ import {
 } from "@/components/ui/backdrop-card";
 import { cn } from "@/lib/utils";
 
-// As many to a row as fit at 20rem or more: three on a wide screen, one on a
-// phone. Spaced as /dives spaces its cards.
-export const PLAIN_CARD_GRID =
-  "grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-4 max-sm:gap-2.5";
-
 // A card's place while its list loads, at the height of one with a single line
 // under its name and one row of figures, 118px. A list item, like the card.
-export function PlainCardSkeleton() {
+function PlainCardSkeleton() {
   return (
     <li aria-hidden>
       <Skeleton className="h-29.5 rounded-lg" />
     </li>
+  );
+}
+
+// A list of plain cards, as many to a row as fit at 20rem or more - three on a
+// wide screen, one on a phone - and spaced as /dives spaces its cards. Until it
+// holds a card it draws `placeholders` skeletons, busy and hidden as
+// `BackdropCardList`'s are.
+export function PlainCardList({
+  placeholders = 0,
+  children = [],
+}: {
+  placeholders?: number;
+  children?: ReactNode[];
+}) {
+  const isLoading = children.length === 0 && placeholders > 0;
+  return (
+    <ul
+      className="grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-4 max-sm:gap-2.5"
+      aria-busy={isLoading || undefined}
+    >
+      {isLoading
+        ? Array.from({ length: placeholders }, (_, index) => (
+            <PlainCardSkeleton key={index} />
+          ))
+        : children}
+    </ul>
   );
 }
 

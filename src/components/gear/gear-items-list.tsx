@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { PLAIN_CARD_GRID, PlainCardSkeleton } from "@/components/ui/plain-card";
+import { PlainCardList } from "@/components/ui/plain-card";
 import { GearItemCard } from "@/components/gear/gear-item-card";
 import { Backpack, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -129,17 +129,7 @@ export function GearItemsList({
       </Card>
 
       {!isEmpty && (
-        <ul
-          className={PLAIN_CARD_GRID}
-          // Busy on the outside, hidden on each placeholder within - the split
-          // `ListRowsSkeleton` documents, so a reader meets a list that is
-          // loading rather than one that is silently empty.
-          aria-busy={items.length === 0 || undefined}
-        >
-          {items.length === 0 &&
-            Array.from({ length: itemsPerPage }, (_, index) => (
-              <PlainCardSkeleton key={index} />
-            ))}
+        <PlainCardList placeholders={itemsPerPage}>
           {items.map((item) => (
             <GearItemCard
               key={item.uuid}
@@ -151,7 +141,7 @@ export function GearItemsList({
               isDeleting={deletingId === item.uuid}
             />
           ))}
-        </ul>
+        </PlainCardList>
       )}
 
       <LoadMoreTrigger

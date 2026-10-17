@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { PLAIN_CARD_GRID, PlainCardSkeleton } from "@/components/ui/plain-card";
+import { PlainCardList } from "@/components/ui/plain-card";
 import { GearSetCard } from "@/components/gear/gear-set-card";
 import { Layers, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -107,17 +107,7 @@ export function GearSetsList({
       </Card>
 
       {!isEmpty && (
-        <ul
-          className={PLAIN_CARD_GRID}
-          // Busy on the outside, hidden on each placeholder within - the split
-          // `ListRowsSkeleton` documents, so a reader meets a list that is
-          // loading rather than one that is silently empty.
-          aria-busy={sets.length === 0 || undefined}
-        >
-          {sets.length === 0 &&
-            Array.from({ length: itemsPerPage }, (_, index) => (
-              <PlainCardSkeleton key={index} />
-            ))}
+        <PlainCardList placeholders={itemsPerPage}>
           {sets.map((set) => (
             <GearSetCard
               key={set.uuid}
@@ -128,7 +118,7 @@ export function GearSetsList({
               isDeleting={deletingId === set.uuid}
             />
           ))}
-        </ul>
+        </PlainCardList>
       )}
 
       <LoadMoreTrigger
