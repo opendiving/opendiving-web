@@ -13,6 +13,21 @@ import {
   truncatedConversionSentence,
   truncatedNotesSentence,
 } from "@/lib/logbook-import";
+import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+// Denser than the table's own rows, as the dive rows above it are.
+const HEAD = "h-auto py-1";
+const CELL = "py-1.5";
 
 // The row colour per finding kind, and the badge beside it. Only `dropped` is a
 // loss and only `dropped` is amber; the rest explain rather than warn, and an
@@ -58,78 +73,80 @@ export function ImportReportView({
       {rows.length > 0 && (
         <div>
           <h3 className="text-sm font-medium">Records</h3>
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-sm">
-              <caption className="sr-only">
-                Records by type, and what the import does with each
-              </caption>
-              <thead>
-                <tr className="text-muted-foreground">
-                  <th scope="col" className="text-left font-medium py-1 pr-4">
-                    Type
-                  </th>
-                  <th scope="col" className="text-right font-medium py-1 px-2">
-                    New
-                  </th>
-                  <th scope="col" className="text-right font-medium py-1 px-2">
-                    Already here
-                  </th>
-                  {/* Its own column, never folded into "New" or "Skipped": the API
-                      keeps the four counts disjoint precisely so a diver restoring
-                      a backup can see how much of it actually came back. */}
-                  <th scope="col" className="text-right font-medium py-1 px-2">
-                    Restored
-                  </th>
-                  <th scope="col" className="text-right font-medium py-1 pl-2">
-                    Skipped
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.map((row) => (
-                  <tr key={row.collection}>
-                    <th
-                      scope="row"
-                      className="text-left font-normal py-1.5 pr-4"
-                    >
-                      {collectionLabel(row.collection)}
-                    </th>
-                    <td className="text-right tabular-nums py-1.5 px-2">
-                      {row.created}
-                    </td>
-                    <td className="text-right tabular-nums py-1.5 px-2">
-                      {row.linked}
-                    </td>
-                    <td className="text-right tabular-nums py-1.5 px-2">
-                      {row.restored}
-                    </td>
-                    <td className="text-right tabular-nums py-1.5 pl-2">
-                      {row.skipped}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="border-t-2 border-border font-medium">
-                <tr>
-                  <th scope="row" className="text-left py-1.5 pr-4">
-                    Total
-                  </th>
-                  <td className="text-right tabular-nums py-1.5 px-2">
-                    {totals.created}
-                  </td>
-                  <td className="text-right tabular-nums py-1.5 px-2">
-                    {totals.linked}
-                  </td>
-                  <td className="text-right tabular-nums py-1.5 px-2">
-                    {totals.restored}
-                  </td>
-                  <td className="text-right tabular-nums py-1.5 pl-2">
-                    {totals.skipped}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <Table className="mt-2">
+            <TableCaption className="sr-only">
+              Records by type, and what the import does with each
+            </TableCaption>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className={cn(HEAD, "pl-0")}>Type</TableHead>
+                <TableHead className={cn(HEAD, "text-right")}>New</TableHead>
+                <TableHead className={cn(HEAD, "text-right")}>
+                  Already here
+                </TableHead>
+                {/* Its own column, never folded into "New" or "Skipped": the API
+                    keeps the four counts disjoint precisely so a diver restoring
+                    a backup can see how much of it actually came back. */}
+                <TableHead className={cn(HEAD, "text-right")}>
+                  Restored
+                </TableHead>
+                <TableHead className={cn(HEAD, "pr-0 text-right")}>
+                  Skipped
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.collection}>
+                  <TableHead
+                    scope="row"
+                    className={cn(
+                      CELL,
+                      "h-auto pl-0 font-normal text-foreground",
+                    )}
+                  >
+                    {collectionLabel(row.collection)}
+                  </TableHead>
+                  <TableCell className={cn(CELL, "text-right tabular-nums")}>
+                    {row.created}
+                  </TableCell>
+                  <TableCell className={cn(CELL, "text-right tabular-nums")}>
+                    {row.linked}
+                  </TableCell>
+                  <TableCell className={cn(CELL, "text-right tabular-nums")}>
+                    {row.restored}
+                  </TableCell>
+                  <TableCell
+                    className={cn(CELL, "pr-0 text-right tabular-nums")}
+                  >
+                    {row.skipped}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter className="border-t-2 bg-transparent">
+              <TableRow className="hover:bg-transparent">
+                <TableHead
+                  scope="row"
+                  className={cn(CELL, "h-auto pl-0 text-foreground")}
+                >
+                  Total
+                </TableHead>
+                <TableCell className={cn(CELL, "text-right tabular-nums")}>
+                  {totals.created}
+                </TableCell>
+                <TableCell className={cn(CELL, "text-right tabular-nums")}>
+                  {totals.linked}
+                </TableCell>
+                <TableCell className={cn(CELL, "text-right tabular-nums")}>
+                  {totals.restored}
+                </TableCell>
+                <TableCell className={cn(CELL, "pr-0 text-right tabular-nums")}>
+                  {totals.skipped}
+                </TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
         </div>
       )}
 

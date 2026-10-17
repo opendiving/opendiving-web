@@ -10,8 +10,8 @@ export type TankGas = "air" | "nitrox" | "oxygen" | "trimix";
 // oxygen cylinder is green all over and a nitrox one carries a green band. Helium is
 // brown there and under EN 1089-3 alike, so a trimix cylinder is brown at the shoulder
 // and green at the base. Strokes stay `currentColor`; the fills come first so every line sits on top of them.
-const OXYGEN = "fill-green-500";
-const HELIUM = "fill-amber-700 dark:fill-amber-600";
+const OXYGEN = "fill-gas-oxygen";
+const HELIUM = "fill-gas-helium";
 
 // One cylinder's outline, the shoulder above its top band line, its band - the part
 // between the y=11 and y=17 lines - and the base below the band.

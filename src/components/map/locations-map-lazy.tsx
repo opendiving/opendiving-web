@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * The read-only map, fetched when there is something to draw.
@@ -16,7 +17,5 @@ import dynamic from "next/dynamic";
  */
 export const LocationsMap = dynamic(() => import("./locations-map"), {
   ssr: false,
-  loading: () => (
-    <div className="h-40 w-full animate-pulse rounded-md border bg-muted sm:h-48" />
-  ),
+  loading: () => <Skeleton className="h-40 w-full border sm:h-48" />,
 });
