@@ -134,7 +134,7 @@ describe("PersonDialog", () => {
     expect(onSaved).not.toHaveBeenCalled();
   });
 
-  it("keeps a duplicate name, a flat refusal, in the dialog's own line", async () => {
+  it("shows a taken name, a flat refusal, on the name field", async () => {
     createPerson.mockRejectedValue({
       response: {
         status: 422,
@@ -143,12 +143,17 @@ describe("PersonDialog", () => {
     });
     open();
 
-    await userEvent.type(screen.getByLabelText("Name *"), "Alex M.");
+    const name = screen.getByLabelText("Name *");
+    await userEvent.type(name, "Alex M.");
     await save();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
+    const shown = await screen.findByText(
       "A person with this name already exists",
     );
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(name.getAttribute("aria-describedby")).toContain(shown.id);
+    expect(name).toHaveFocus();
+    expect(screen.getByRole("alert")).not.toHaveTextContent("already exists");
     expect(username()).not.toHaveAttribute("aria-invalid", "true");
   });
 

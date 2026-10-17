@@ -227,6 +227,19 @@ describe("diveCreateSchema numeric fields", () => {
     expect(result.success).toBe(false);
   });
 
+  it.each(["dive_number", "visibility"])(
+    "holds %s to the integer column the API stores it in",
+    (field) => {
+      const accepts = (value: number) => ({
+        create: diveCreateSchema.safeParse({ ...validDive, [field]: value })
+          .success,
+        update: diveUpdateSchema.safeParse({ [field]: value }).success,
+      });
+      expect(accepts(2_147_483_647)).toEqual({ create: true, update: true });
+      expect(accepts(2_147_483_648)).toEqual({ create: false, update: false });
+    },
+  );
+
   it("rejects a non-integer visibility", () => {
     const result = diveCreateSchema.safeParse({
       ...validDive,

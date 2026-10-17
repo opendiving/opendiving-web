@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getApiDuplicateError,
   getApiErrorMessage,
   getApiErrorStatus,
   getApiFieldError,
@@ -121,5 +122,49 @@ describe("getApiErrorStatus", () => {
   it("is undefined for an error with no response", () => {
     expect(getApiErrorStatus(new Error("Network Error"))).toBeUndefined();
     expect(getApiErrorStatus(null)).toBeUndefined();
+  });
+});
+
+describe("getApiDuplicateError", () => {
+  const refusal = (status: number, detail: unknown) => ({
+    response: { status, data: { detail } },
+  });
+
+  it("reads the flat 422 a taken name gets", () => {
+    expect(
+      getApiDuplicateError(
+        refusal(422, "A trip with this name already exists"),
+      ),
+    ).toBe("A trip with this name already exists");
+    expect(
+      getApiDuplicateError(
+        refusal(
+          422,
+          "This gear item already has a schedule for that kind of service",
+        ),
+      ),
+    ).toBe("This gear item already has a schedule for that kind of service");
+  });
+
+  it("leaves every other refusal to the dialog", () => {
+    expect(
+      getApiDuplicateError(refusal(422, "That contact no longer exists")),
+    ).toBeNull();
+    expect(
+      getApiDuplicateError(
+        refusal(422, [
+          {
+            loc: ["body", "name"],
+            msg: "String should have at least 1 character",
+          },
+        ]),
+      ),
+    ).toBeNull();
+    expect(
+      getApiDuplicateError(
+        refusal(409, "A trip with this name already exists"),
+      ),
+    ).toBeNull();
+    expect(getApiDuplicateError(new Error("Network Error"))).toBeNull();
   });
 });

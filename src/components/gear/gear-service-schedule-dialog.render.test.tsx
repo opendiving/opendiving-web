@@ -120,4 +120,46 @@ describe("GearServiceScheduleDialog", () => {
       interval_hours: null,
     });
   });
+
+  it("trims the label it sends", async () => {
+    renderDialog();
+
+    await userEvent.type(screen.getByLabelText("Label"), "  First stage  ");
+    await userEvent.type(screen.getByLabelText("Every (months)"), "12");
+    await userEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    await waitFor(() => expect(createSchedule).toHaveBeenCalled());
+    expect(createSchedule.mock.calls[0][0].label).toBe("First stage");
+  });
+
+  it("refuses a month interval past the API's ceiling before sending it", async () => {
+    renderDialog();
+
+    await userEvent.type(screen.getByLabelText("Every (months)"), "1201");
+    await userEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    expect(
+      await screen.findByText("Interval in months cannot exceed 1,200"),
+    ).toBeInTheDocument();
+    expect(createSchedule).not.toHaveBeenCalled();
+  });
+
+  it("shows a kind the item already has a rule for on the kind", async () => {
+    const taken =
+      "This gear item already has a schedule for that kind of service";
+    createSchedule.mockRejectedValue({
+      response: { status: 422, data: { detail: taken } },
+    });
+    renderDialog();
+
+    await userEvent.type(screen.getByLabelText("Every (months)"), "12");
+    await userEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    const shown = await screen.findByText(taken);
+    const kind = screen.getByLabelText("Service type *");
+    expect(kind).toHaveAttribute("aria-invalid", "true");
+    expect(kind.getAttribute("aria-describedby")).toContain(shown.id);
+    expect(kind).toHaveFocus();
+    expect(screen.getByRole("alert")).not.toHaveTextContent(taken);
+  });
 });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { optionalDateField } from "./fields";
+import { POSTGRES_INTEGER_MAX, optionalDateField } from "./fields";
 
 import type { DivingFigures } from "@/lib/checkin";
 import { todayIsoDate } from "@/lib/date-time";
@@ -8,7 +8,7 @@ import { todayIsoDate } from "@/lib/date-time";
  * The count's ceiling on `POST /user/checkin-link`: a check-in link keeps the figures
  * it is made with, in a Postgres `integer` column.
  */
-export const SHARED_DIVE_COUNT_MAX = 2 ** 31 - 1;
+export const SHARED_DIVE_COUNT_MAX = POSTGRES_INTEGER_MAX;
 
 /**
  * The diving figures as the correction dialog holds them.

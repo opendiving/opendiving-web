@@ -11,7 +11,11 @@ import {
   type PersonInput,
 } from "@/lib/validations/person";
 import { peopleAPI, type Person } from "@/lib/api/people";
-import { getApiErrorMessage, getApiFieldError } from "@/lib/api/error";
+import {
+  getApiDuplicateError,
+  getApiErrorMessage,
+  getApiFieldError,
+} from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   Dialog,
@@ -120,13 +124,20 @@ export function PersonDialog({
       onOpenChange(false);
     } catch (error) {
       // The API refuses a username on the field itself - no such account, your
-      // own, one another of your people already links - so it is shown there,
-      // beside what the diver typed. Everything else, the flat 422 a duplicate
-      // name gets and the 429 past the linking limit among it, is the dialog's.
+      // own, one another of your people already links - and a name already
+      // taken with a flat 422, so each is shown on its field, beside what the
+      // diver typed. Everything else, the 429 past the linking limit among it,
+      // is the dialog's.
       const usernameError = getApiFieldError(error, "username");
       if (usernameError) {
         setError("username", { message: usernameError });
         setFocus("username");
+        return;
+      }
+      const duplicate = getApiDuplicateError(error);
+      if (duplicate) {
+        setError("name", { message: duplicate });
+        setFocus("name");
         return;
       }
       setApiError(
