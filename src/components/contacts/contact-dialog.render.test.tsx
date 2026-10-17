@@ -113,6 +113,22 @@ describe("ContactDialog", () => {
     );
   });
 
+  it("refuses a name of spaces alone, and sends a name without its padding", async () => {
+    open();
+
+    await userEvent.type(screen.getByLabelText("Name *"), "   ");
+    await create();
+
+    expect(await screen.findByText("Name is required")).toBeVisible();
+    expect(createContact).not.toHaveBeenCalled();
+
+    await userEvent.type(screen.getByLabelText("Name *"), "Sea Dragon  ");
+    await create();
+
+    await waitFor(() => expect(createContact).toHaveBeenCalled());
+    expect(createContact.mock.calls[0][0].name).toBe("Sea Dragon");
+  });
+
   it("refuses an address without its country, and focuses the box", async () => {
     open();
 

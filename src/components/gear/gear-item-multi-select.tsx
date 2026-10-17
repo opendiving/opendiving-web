@@ -60,6 +60,13 @@ export function GearItemMultiSelect({
   // the whole summary rather than just a name.
   const [known, setKnown] = useState<Record<string, GearItemSummary>>({});
   const [showNewDialog, setShowNewDialog] = useState(false);
+  // What the field held when "New gear item..." was pressed, frozen for the
+  // dialog as `ContactCombobox` freezes its own.
+  const [newName, setNewName] = useState("");
+  const textRef = useRef("");
+  const trackText = useCallback((text: string) => {
+    textRef.current = text;
+  }, []);
   // Fired-for uuids, so a failed lookup isn't retried on every render.
   const requestedRef = useRef<Set<string>>(new Set());
 
@@ -250,19 +257,24 @@ export function GearItemMultiSelect({
         excludeIds={value}
         value={undefined}
         onChange={addItem}
+        onTextChange={trackText}
         disabled={disabled}
         placeholder={value.length ? "Add more gear..." : "Add gear..."}
         noItemsLabel="No gear yet."
         noMatchesLabel="No gear matches."
         addNewLabel="New gear item..."
         keepOpenOnSelect
-        onAddNew={() => setShowNewDialog(true)}
+        onAddNew={() => {
+          setNewName(textRef.current.trim());
+          setShowNewDialog(true);
+        }}
       />
 
       <GearItemDialog
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onSaved={handleCreated}
+        initialName={newName}
       />
     </div>
   );

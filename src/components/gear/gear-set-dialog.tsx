@@ -155,7 +155,7 @@ export function GearSetDialog({
         // also makes emptying it expressible, as `TripDialog` does for
         // locations.
         await gearAPI.updateGearSet(saveToUuid, {
-          name: data.name,
+          name: data.name.trim(),
           weight,
           gear_item_uuids: items,
         });
@@ -165,7 +165,7 @@ export function GearSetDialog({
       } else {
         onSaved(
           await gearAPI.createGearSet({
-            name: data.name,
+            name: data.name.trim(),
             weight,
             gear_item_uuids: items,
           }),
