@@ -94,10 +94,7 @@ const FIGURE = "min-w-22 md:min-w-26";
 const TOP_ROW = "absolute inset-x-0 top-2.5 z-10";
 
 // A control on the band's top row: ghost over the map, as a card's menu is,
-// and glowing as the details' text does - the icons through a filter, since
-// `text-shadow` stops at an SVG. Two close layers, as the text's:
-// `drop-shadow`s chain, each blurring the last one's 8-bit output, and more of
-// them drew the halo in rings.
+// and glowing as the details' text does.
 export const HERO_CONTROL =
   "hover:bg-background/80 glow-text [&_svg]:glow-icon";
 
@@ -126,8 +123,7 @@ const OVERLINE = "mb-1 pl-13 md:pl-18";
 // The kind's icon before the title and the line under it, its drawing reaching
 // from the title's capitals to the line's first baseline at both sizes: the box
 // sits a few pixels down the title's line and is a little taller than the
-// drawing, which a 24-unit icon keeps inside 2-22. It glows as their text does
-// - through a filter, since `text-shadow` stops at an SVG.
+// drawing, which a 24-unit icon keeps inside 2-22. It glows as their text does.
 const ICON =
   "mt-1.5 size-10 shrink-0 stroke-[1.5] md:mt-1 md:size-14 glow-icon";
 
@@ -269,9 +265,7 @@ export function MapHero({
         </div>
       </div>
       {/* Above the map by a flex item's z-index, as a card's details are.
-          Every line is lifted off what the map still shows beneath it by a glow
-          in the page's colour: two soft layers close together, since more of
-          them - or wider ones - draw each layer's edge as a visible ring. */}
+          Every line glows in the page's colour. */}
       <div ref={detailsRef} className="z-[1] glow-text">
         <HeroDetails
           className={COLUMN}

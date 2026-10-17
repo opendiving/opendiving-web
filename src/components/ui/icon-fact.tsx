@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // An icon on a backdrop's text line, the text's height, glowing as the text
-// does - through a filter, since `text-shadow` stops at an SVG.
+// does.
 export const LINE_ICON = "inline-block size-[1em] align-[-0.125em] glow-icon";
 
 // A fact marked by an icon, which a screen reader hears as its label. Without
