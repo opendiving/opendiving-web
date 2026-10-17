@@ -65,7 +65,7 @@ function withPicked<T extends string>(
   return options.includes(picked as T) ? options : [...options, picked as T];
 }
 
-// The four filters above the course table. They narrow the same query as the
+// The four filters above the course list. They narrow the same query as the
 // header's search rather than competing: the API AND-s them, so a name and a
 // status answer the courses matching both.
 export function CoursesFilters({

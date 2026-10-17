@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import {
@@ -22,14 +23,7 @@ import {
 } from "@/components/courses/courses-filters";
 import type { CertificationAgency } from "@/lib/api/certifications";
 import type { CourseStatus } from "@/lib/api/courses";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+import { PlainCardList } from "@/components/ui/plain-card";
 
 export interface CoursesPageFrameProps {
   isLoading: boolean;
@@ -37,7 +31,8 @@ export interface CoursesPageFrameProps {
   /** Whether the query that answered `totalCount` narrowed the list. */
   isCountNarrowed?: boolean;
   itemsPerPage: number;
-  rows?: ReactNode[];
+  /** One `CourseCard` per course - list items, for the list this frame draws. */
+  cards?: ReactNode[];
   /** What the search box holds. Empty on arrival. */
   search?: string;
   onSearchChange?: (value: string) => void;
@@ -65,7 +60,7 @@ export interface CoursesPageFrameProps {
 
 const noop = () => {};
 
-// Everything /courses draws before its rows exist, kept apart from the data render so
+// Everything /courses draws before its cards exist, kept apart from the data render so
 // the page's first render is this frame. Every data-varying prop is optional,
 // and the defaults are that first render.
 export function CoursesPageFrame({
@@ -73,7 +68,7 @@ export function CoursesPageFrame({
   totalCount,
   isCountNarrowed = false,
   itemsPerPage,
-  rows = [],
+  cards = [],
   search = "",
   onSearchChange = noop,
   filters = NO_COURSE_FILTERS,
@@ -94,11 +89,11 @@ export function CoursesPageFrame({
   const isNarrowed =
     isSearching || search.length > 0 || hasCourseFilters(filters);
   // Nothing to count, and nothing the panel could usefully narrow. Sticky across
-  // the commit in which a cleared term or filter has been dropped but the rows
+  // the commit in which a cleared term or filter has been dropped but the cards
   // it selected are still on screen - see `useIsEmptyList`.
   const isEmptyList = useIsEmptyList({
     isLoading,
-    count: rows.length,
+    count: cards.length,
     isNarrowed,
   });
   return (
@@ -114,7 +109,7 @@ export function CoursesPageFrame({
         }
       />
 
-      <div className={HERO_BODY}>
+      <div className={cn(HERO_BODY, "space-y-6 max-sm:space-y-2.5")}>
         <Card>
           <ListCardHeader title="Course List" isEmpty={isEmptyList}>
             <CountBadge
@@ -144,30 +139,33 @@ export function CoursesPageFrame({
               }}
             />
           </ListCardHeader>
-          <CardContent>
-            {/* Hidden rather than unmounted, so `aria-controls` points at
-                something - nothing in here has to survive a shut, which is what
-                empties it. But it goes entirely with the button that opens it,
-                since an empty list leaves nothing to open it with. */}
-            {!isEmptyList && (
-              <div id="course-filters" hidden={!isPanelOpen}>
-                <CoursesFilters
-                  filters={filters}
-                  onFiltersChange={onFiltersChange}
-                  agencies={agencies}
-                  statuses={statuses}
-                />
-              </div>
-            )}
-
-            {!isLoading && rows.length === 0 ? (
-              // A narrowed list with nothing in it is a different statement from
-              // an empty logbook, so it keeps its one line: no icon, no heading,
-              // and pointedly no "add your first course", which would be
-              // answering a question nobody asked. Which sentence depends on what
-              // is narrowing it: a diver who only typed a name is told about the
-              // name.
-              isSearching || hasCourseFilters(filters) ? (
+          {/* Hidden rather than unmounted, so `aria-controls` points at
+              something - nothing in here has to survive a shut, which is what
+              empties it. But it goes entirely with the button that opens it,
+              since an empty list leaves nothing to open it with. */}
+          {!isEmptyList && (
+            <CardContent id="course-filters" hidden={!isPanelOpen}>
+              <CoursesFilters
+                filters={filters}
+                onFiltersChange={onFiltersChange}
+                agencies={agencies}
+                statuses={statuses}
+              />
+            </CardContent>
+          )}
+          {/* The card is the list's header - its count, its search and its
+              filters - and what it says when there is nothing to list. The
+              courses themselves are cards of their own, so they sit below it
+              rather than in it, as /dives draws its dives. */}
+          {!isLoading && cards.length === 0 && (
+            <CardContent>
+              {/* A narrowed list with nothing in it is a different statement
+                  from an empty logbook, so it keeps its one line: no icon, no
+                  heading, and pointedly no "add your first course", which
+                  would be answering a question nobody asked. Which sentence
+                  depends on what is narrowing it: a diver who only typed a
+                  name is told about the name. */}
+              {isSearching || hasCourseFilters(filters) ? (
                 <div className="text-center py-12 text-muted-foreground">
                   {hasCourseFilters(filters)
                     ? "No courses match those filters."
@@ -185,46 +183,27 @@ export function CoursesPageFrame({
                     </Button>
                   }
                 />
-              )
-            ) : (
-              <Table
-                // Busy on the outside, hidden on each placeholder row within - the
-                // split `ListRowsSkeleton` documents, applied here because the rows
-                // themselves are `aria-hidden` and would otherwise leave a reader
-                // with a table that is silently empty rather than one that is
-                // loading.
-                aria-busy={rows.length === 0 || undefined}
-              >
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Agency</TableHead>
-                    <TableHead>Dates</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.length === 0 && (
-                    <TableRowsSkeleton columns={5} rows={itemsPerPage} />
-                  )}
-                  {rows}
-                </TableBody>
-              </Table>
-            )}
-
-            <LoadMoreTrigger
-              hasMore={hasMore}
-              isLoading={isLoadingMore}
-              hasFailed={loadFailed}
-              loadedCount={rows.length}
-              totalCount={totalCount}
-              itemsPerPage={itemsPerPage}
-              itemLabel="courses"
-              onLoadMore={onLoadMore}
-            />
-          </CardContent>
+              )}
+            </CardContent>
+          )}
         </Card>
+
+        {(isLoading || cards.length > 0) && (
+          <PlainCardList placeholders={itemsPerPage} figureless>
+            {cards}
+          </PlainCardList>
+        )}
+
+        <LoadMoreTrigger
+          hasMore={hasMore}
+          isLoading={isLoadingMore}
+          hasFailed={loadFailed}
+          loadedCount={cards.length}
+          totalCount={totalCount}
+          itemsPerPage={itemsPerPage}
+          itemLabel="courses"
+          onLoadMore={onLoadMore}
+        />
       </div>
     </div>
   );

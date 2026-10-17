@@ -12,11 +12,14 @@ import {
 import { cn } from "@/lib/utils";
 
 // A card's place while its list loads, at the height of one with a single line
-// under its name and one row of figures, 118px. A list item, like the card.
-function PlainCardSkeleton() {
+// under its name and one row of figures, 118px, or with no figures, 66px. A list
+// item, like the card.
+function PlainCardSkeleton({ figureless }: { figureless: boolean }) {
   return (
     <li aria-hidden>
-      <Skeleton className="h-29.5 rounded-lg" />
+      <Skeleton
+        className={cn("rounded-lg", figureless ? "h-16.5" : "h-29.5")}
+      />
     </li>
   );
 }
@@ -27,9 +30,12 @@ function PlainCardSkeleton() {
 // `BackdropCardList`'s are.
 export function PlainCardList({
   placeholders = 0,
+  figureless = false,
   children = [],
 }: {
   placeholders?: number;
+  // Whether its cards carry no figures, which sizes the placeholders.
+  figureless?: boolean;
   children?: ReactNode[];
 }) {
   const isLoading = children.length === 0 && placeholders > 0;
@@ -40,7 +46,7 @@ export function PlainCardList({
     >
       {isLoading
         ? Array.from({ length: placeholders }, (_, index) => (
-            <PlainCardSkeleton key={index} />
+            <PlainCardSkeleton key={index} figureless={figureless} />
           ))
         : children}
     </ul>

@@ -18,7 +18,7 @@ const frame = (props: Partial<Parameters<typeof CoursesPageFrame>[0]> = {}) =>
       isLoading={false}
       totalCount={0}
       itemsPerPage={10}
-      rows={[<tr key="t" />]}
+      cards={[<li key="t" />]}
       {...props}
     />,
   );
@@ -122,7 +122,7 @@ describe("CoursesPageFrame", () => {
         isLoading={false}
         totalCount={0}
         itemsPerPage={10}
-        rows={[<tr key="t" />]}
+        cards={[<li key="t" />]}
       />,
     );
     expect(
@@ -169,7 +169,7 @@ describe("CoursesPageFrame", () => {
   });
 
   it("drops the count and the button for a list that is simply empty", () => {
-    frame({ rows: [] });
+    frame({ cards: [] });
 
     expect(screen.queryByText("0 total courses")).not.toBeInTheDocument();
     expect(
@@ -184,7 +184,7 @@ describe("CoursesPageFrame", () => {
 
   it("keeps them for filters that matched nothing", () => {
     frame({
-      rows: [],
+      cards: [],
       filters: { ...NO_COURSE_FILTERS, agency: "padi" },
       isCountNarrowed: true,
     });
@@ -195,7 +195,7 @@ describe("CoursesPageFrame", () => {
 
   it("keeps them for a search that matched nothing", () => {
     frame({
-      rows: [],
+      cards: [],
       search: "nitrox",
       isSearching: true,
       isCountNarrowed: true,
@@ -206,11 +206,11 @@ describe("CoursesPageFrame", () => {
   });
 
   // Emptying the box is the way out of a search that matched nothing, and for
-  // one commit it leaves the term gone and the search's own (empty) rows still
+  // one commit it leaves the term gone and the search's own (empty) cards still
   // on screen. Dropping the panel there would take the diver's cursor with it.
-  it("keeps them through the commit where a cleared term outruns its rows", () => {
+  it("keeps them through the commit where a cleared term outruns its cards", () => {
     const { rerender } = frame({
-      rows: [],
+      cards: [],
       search: "nitrox",
       isSearching: true,
     });
@@ -220,7 +220,7 @@ describe("CoursesPageFrame", () => {
         isLoading={false}
         totalCount={0}
         itemsPerPage={10}
-        rows={[]}
+        cards={[]}
         search=""
         isSearching={false}
       />,

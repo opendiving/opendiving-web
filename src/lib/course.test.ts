@@ -54,6 +54,11 @@ describe("courseStatusBadgeVariant", () => {
     expect(courseStatusBadgeVariant("not_passed")).toBe("destructive");
   });
 
+  it("leaves a course under way neutral, never a fill a list card's grey hides", () => {
+    expect(courseStatusBadgeVariant("in_progress")).toBe("outline");
+    expect(courseStatusBadgeVariant("planned")).toBe("outline");
+  });
+
   it("falls back to a neutral variant for an unknown status", () => {
     expect(courseStatusBadgeVariant("deferred")).toBe("outline");
     expect(courseStatusBadgeVariant(null)).toBe("outline");

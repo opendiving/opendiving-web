@@ -36,7 +36,7 @@ import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
  * the edit at all.
  *
  * The buttons are icons in an `IconTooltip` naming the preset, which is the shape
- * the courses table already uses for its per-row actions.
+ * `RowActions` already gives a table row's actions.
  */
 export function DiveFormPresetList({ presets }: { presets: DiveFormPresets }) {
   const [editing, setEditing] = useState<DiveFormPreset | null>(null);
