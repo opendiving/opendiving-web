@@ -233,10 +233,11 @@ script's header.
 ## Layout width convention
 
 Every page inside the shared chrome puts its content in one `max-w-6xl` column - `HERO_BODY` in
-`ui/map-hero.tsx`, whose gutter the header and footer share. The landing page (`/`), built from
-full-bleed alternating sections, is the exemption, and so are the dive "new"/"edit" forms, whose
-hero and body share one centred `max-w-2xl` column (`FORM_COLUMN`). This is a content-width choice
-only; `Header`/`Footer` come from `AppShell` (next section).
+`ui/map-hero.tsx` under a hero, `PAGE_COLUMN` where there is none - whose gutter the header and
+footer share. The landing page (`/`), built from full-bleed alternating sections, is the exemption,
+and so are the dive "new"/"edit" forms, whose hero and body share one centred `max-w-2xl` column
+(`FORM_COLUMN`). This is a content-width choice only; `Header`/`Footer` come from `AppShell` (next
+section).
 
 ## `Header`/`Footer` live once in `AppShell`, not per-page
 
@@ -557,7 +558,8 @@ the top-level auth-loading gate. The list and detail pages render below `AppShel
 footer, so their spinners use `min-h-[60vh]` inline. `SectionSpinner`
 (`components/ui/section-spinner.tsx`) is a loading section inside a rendered shell; `NotFoundState`
 (`components/ui/not-found-state.tsx`, `message`/`backHref`/`backLabel`) the not-found state. Both
-omit the outer container `div`: the page wraps them in its own column.
+omit the outer container `div`: the page wraps them in its own column, `PAGE_COLUMN` on a detail
+page.
 
 ## Mixture numbers display at the API's 2-decimal precision
 

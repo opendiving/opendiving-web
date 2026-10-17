@@ -26,6 +26,7 @@ import {
   HERO_BODY,
   HERO_CONTROL,
   MapHeroPageSkeleton,
+  PAGE_COLUMN,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, FileText, Plus } from "lucide-react";
@@ -83,7 +84,7 @@ export function DiveSiteDetailPageContent() {
 
   if (!diveSite) {
     return (
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className={PAGE_COLUMN}>
         <NotFoundState
           message="Dive site not found."
           backHref={back.href}

@@ -1,3 +1,5 @@
+import { countNoun } from "@/lib/format";
+
 // Native constraint validation cancels a submit *before* any React handler runs.
 // `handleSubmit`'s valid callback never fires, its invalid callback never fires,
 // and react-hook-form is not told anything happened - so a `<form>` that leaves
@@ -80,7 +82,7 @@ export function describeBlockedSubmit(form: HTMLFormElement): string | null {
   const others =
     rest.length === 0
       ? ""
-      : ` ${rest.length} other field${rest.length === 1 ? " was" : "s were"} also refused.`;
+      : ` ${countNoun(rest.length, "other field was", "other fields were")} also refused.`;
 
   return `Your browser would not submit this form. ${
     name === null ? reason : `${name}: ${reason}`

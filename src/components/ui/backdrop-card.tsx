@@ -20,11 +20,41 @@ export const BACKDROP_CARD_LINK =
 // backdrop band, a name, one line under it and a row of figures, 238px - or in
 // the shape its cards are drawn in, so the cards land without moving anything.
 // A list item, like the card.
-export function BackdropCardSkeleton({ shape }: { shape?: string }) {
+function BackdropCardSkeleton({ shape }: { shape?: string }) {
   return (
     <li aria-hidden>
       <Skeleton className={cn("rounded-lg", shape ?? "h-59.5")} />
     </li>
+  );
+}
+
+// A list of backdrop cards, laid out by `layout` and stacked unless given one.
+// Until it holds a card it draws `placeholders` skeletons in that same layout,
+// busy on the outside and hidden on each placeholder within - the split
+// `ListRowsSkeleton` documents, so a reader meets a list that is loading rather
+// than one that is silently empty.
+export function BackdropCardList({
+  layout = "space-y-3 max-sm:space-y-2.5",
+  className,
+  placeholders = 0,
+  shape,
+  children = [],
+}: {
+  layout?: string;
+  className?: string;
+  placeholders?: number;
+  shape?: string;
+  children?: ReactNode[];
+}) {
+  const isLoading = children.length === 0 && placeholders > 0;
+  return (
+    <ul className={cn(layout, className)} aria-busy={isLoading || undefined}>
+      {isLoading
+        ? Array.from({ length: placeholders }, (_, index) => (
+            <BackdropCardSkeleton key={index} shape={shape} />
+          ))
+        : children}
+    </ul>
   );
 }
 

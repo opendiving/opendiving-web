@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { speciesAPI, SpeciesLifeListEntry } from "@/lib/api/species";
 import { speciesSeenOn } from "@/lib/species";
@@ -11,10 +12,6 @@ import {
   SpeciesPageFrame,
 } from "@/components/species/species-page-frame";
 import { SpeciesCard } from "@/components/species/species-card";
-
-// Matches the courses list and the pickers: long enough that typing a name is
-// one request rather than ten, short enough not to feel laggy.
-const SEARCH_DEBOUNCE_MS = 250;
 
 /**
  * The life list: every species this diver has ever logged.
@@ -30,18 +27,11 @@ const SEARCH_DEBOUNCE_MS = 250;
  */
 export function SpeciesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  // What the box holds, and what has actually been asked for. Splitting them is
-  // what keeps the debounce off the input's own responsiveness.
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setSearch(searchInput.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [searchInput]);
+  const {
+    input: searchInput,
+    setInput: setSearchInput,
+    term: search,
+  } = useDebouncedSearch();
 
   const fetchSpecies = useCallback(
     (page: number, perPage: number) =>

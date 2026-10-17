@@ -25,9 +25,10 @@ import {
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
 import { cn } from "@/lib/utils";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth, type UnitSystem } from "@/lib/units";
+import { countNoun } from "@/lib/format";
 
 // What the card knows about the profile right now. `null` is "in flight", derived
 // rather than stored - the same shape `useAuthedBlobUrl` uses, so nothing has to be
@@ -76,9 +77,7 @@ function describeProfileContents(
   ];
 
   if (info.event_count && info.event_count > 0) {
-    parts.push(
-      `${info.event_count} ${info.event_count === 1 ? "marker" : "markers"}`,
-    );
+    parts.push(countNoun(info.event_count, "marker"));
   }
   // Stated here as well as drawn, because a deco obligation is the one thing in
   // this card worth knowing without reading a chart.
@@ -167,11 +166,7 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
         //
         // The API's own wording where it has one - "This dive has no profile" -
         // now that the response interceptor unwraps blob-wrapped error bodies.
-        const status =
-          (error as { response?: { status?: number } })?.response?.status ===
-          404
-            ? "missing"
-            : "failed";
+        const status = getApiErrorStatus(error) === 404 ? "missing" : "failed";
         setResult({
           status,
           message: getApiErrorMessage(

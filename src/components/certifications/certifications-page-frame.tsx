@@ -14,7 +14,7 @@ import {
   useIsEmptyList,
 } from "@/components/ui/list-card-header";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { BackdropCardList } from "@/components/ui/backdrop-card";
 import { CERTIFICATION_CARD_GRID } from "@/components/certifications/certification-card";
 import { CERTIFICATION_CARD_ASPECT_CLASS } from "@/lib/certification";
 
@@ -100,22 +100,13 @@ export function CertificationsPageFrame({
         </Card>
 
         {(isLoading || cards.length > 0) && (
-          <ul
-            className={CERTIFICATION_CARD_GRID}
-            // Busy on the outside, hidden on each placeholder within - the split
-            // `ListRowsSkeleton` documents, so a reader meets a list that is
-            // loading rather than one that is silently empty.
-            aria-busy={cards.length === 0 || undefined}
+          <BackdropCardList
+            layout={CERTIFICATION_CARD_GRID}
+            placeholders={itemsPerPage}
+            shape={CERTIFICATION_CARD_ASPECT_CLASS}
           >
-            {cards.length === 0 &&
-              Array.from({ length: itemsPerPage }, (_, index) => (
-                <BackdropCardSkeleton
-                  key={index}
-                  shape={CERTIFICATION_CARD_ASPECT_CLASS}
-                />
-              ))}
             {cards}
-          </ul>
+          </BackdropCardList>
         )}
 
         <LoadMoreTrigger

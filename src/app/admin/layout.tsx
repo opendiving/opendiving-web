@@ -3,6 +3,7 @@
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { PageSpinner } from "@/components/ui/page-spinner";
+import { PAGE_COLUMN } from "@/components/ui/map-hero";
 
 /**
  * The gate on the whole admin section.
@@ -40,7 +41,7 @@ export default function AdminLayout({
 
   if (!user?.is_superuser) {
     return (
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className={PAGE_COLUMN}>
         <NotFoundState
           message="Page not found."
           backHref="/home"

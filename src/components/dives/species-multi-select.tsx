@@ -46,6 +46,7 @@ import {
   withQuantity,
 } from "@/components/dives/sighting-quantity-field";
 import { cn } from "@/lib/utils";
+import { countNoun } from "@/lib/format";
 
 // Menu-row id for a species that isn't in the catalog yet, and so has no uuid to
 // be identified by. Picking one of these is what triggers a resolve; the prefix
@@ -158,7 +159,7 @@ function hintFor(result: SpeciesSuggestion): string | undefined {
   if (context) parts.push(context);
   const dives = result.dive_count_at_sites;
   if (dives > 0) {
-    parts.push(`${dives} ${dives === 1 ? "dive" : "dives"} here`);
+    parts.push(`${countNoun(dives, "dive")} here`);
   } else if (result.last_seen) {
     parts.push(`last seen ${speciesSeenOn(result.last_seen)}`);
   }

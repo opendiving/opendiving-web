@@ -20,10 +20,11 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { sessionsAPI, type UserSession } from "@/lib/api/sessions";
 import { formatDateTime } from "@/lib/date-time";
 import { deviceNameForUserAgent } from "@/lib/passkey-name";
+import { countNoun } from "@/lib/format";
 
 // What the list request came back with. `absent` is the instance whose API
 // predates server-side sessions and 404s: that is not an error to report on a
@@ -70,8 +71,7 @@ export function SessionsCard() {
         .then((sessions) => setList({ status: "ready", sessions }))
         .catch((error: unknown) => {
           console.error(LIST_FAILED, error);
-          const status = (error as { response?: { status?: number } })?.response
-            ?.status;
+          const status = getApiErrorStatus(error);
           setList(
             status === 404
               ? { status: "absent" }
@@ -119,10 +119,7 @@ export function SessionsCard() {
         title: "Success",
         // The count comes from the response and can come from nowhere else: the
         // confirmation fires before the request, so the dialog never knew it.
-        description:
-          revoked === 1
-            ? "1 other device was signed out."
-            : `${revoked} other devices were signed out.`,
+        description: `${countNoun(revoked, "other device was", "other devices were")} signed out.`,
       });
       await refresh();
     } catch (error) {

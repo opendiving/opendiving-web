@@ -8,7 +8,7 @@ import {
   importSourceLabel,
   type ImportMemberReport,
 } from "@/lib/api/logbook-import";
-import { formatFileSize } from "@/lib/format";
+import { countNoun, formatFileSize } from "@/lib/format";
 import { importMemberNotKeptSentence } from "@/lib/logbook-import";
 
 /** A file in the selection, and why the client leaves it out, if it does. */
@@ -32,7 +32,7 @@ function memberStatus(member: ImportMemberReport): {
   if (member.format === "zip") {
     const opened = member.opened ?? 0;
     return {
-      text: `${format} · opened into ${opened === 1 ? "1 file" : `${opened} files`}`,
+      text: `${format} · opened into ${countNoun(opened, "file")}`,
       refused: false,
     };
   }

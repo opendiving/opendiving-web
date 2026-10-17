@@ -39,21 +39,21 @@ const COMPONENTS = path.resolve(
   "../components",
 );
 
-// Derived rather than listed: a one-list frame is one that draws a `CountBadge`, so a
-// new one fails here rather than going unchecked. The gear cards are not frames and hold
-// two lists between them, which is why their titles stay on screen while there is
-// anything under them (`app/gear/page.render.test.tsx`).
+// Derived rather than listed: a one-list frame is one that draws a `CountBadge`, itself
+// or through `TableListFrame`, so a new one fails here rather than going unchecked.
+// `TableListFrame` is checked through the pages that draw it. The gear cards are not
+// frames and hold two lists between them, which is why their titles stay on screen
+// while there is anything under them (`app/gear/page.render.test.tsx`).
 const countingFrames = () =>
   readdirSync(COMPONENTS, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && entry.name !== "ui")
     .flatMap((entry) =>
       readdirSync(path.join(COMPONENTS, entry.name))
         .filter((file) => file.endsWith("-frame.tsx"))
         .filter((file) =>
-          readFileSync(
-            path.join(COMPONENTS, entry.name, file),
-            "utf8",
-          ).includes("CountBadge"),
+          /\b(CountBadge|TableListFrame)\b/.test(
+            readFileSync(path.join(COMPONENTS, entry.name, file), "utf8"),
+          ),
         )
         .map((file) => file.replace(/\.tsx$/, "")),
     );

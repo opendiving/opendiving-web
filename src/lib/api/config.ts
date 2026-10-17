@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { getApiErrorStatus } from "./error";
 
 /**
  * Who may create an account on this instance.
@@ -111,8 +112,7 @@ export const configAPI = {
       );
       return response.data;
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response
-        ?.status;
+      const status = getApiErrorStatus(error);
       if (status === 404) return null;
       throw error;
     }
@@ -137,8 +137,7 @@ export const configAPI = {
       );
       return { token, inviterName: response.data.inviter_name };
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response
-        ?.status;
+      const status = getApiErrorStatus(error);
       if (status === 404) return null;
       throw error;
     }

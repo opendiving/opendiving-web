@@ -23,7 +23,7 @@ import { SectionSpinner } from "@/components/ui/section-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
 import { useToast } from "@/components/ui/use-toast";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { invitationsAPI, type Invitation } from "@/lib/api/invitations";
 import { InviteLinkBlock } from "@/components/settings/invite-link-block";
 import { formatDateTime } from "@/lib/date-time";
@@ -107,8 +107,7 @@ export function InvitationsCard() {
         )
         .catch((error: unknown) => {
           console.error(LIST_FAILED, error);
-          const status = (error as { response?: { status?: number } })?.response
-            ?.status;
+          const status = getApiErrorStatus(error);
           setList(
             status === 404
               ? { status: "absent" }

@@ -3,7 +3,6 @@ import { GearItem, gearItemLabel, gearTypeLabel } from "@/lib/api/gear";
 import { worstServiceStatus } from "@/lib/gear-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
@@ -21,15 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Archive,
-  ArchiveRestore,
-  Backpack,
-  Edit,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Archive, ArchiveRestore, Backpack, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { RowActions } from "@/components/ui/row-actions";
 
 export interface GearItemsCardProps {
   items: GearItem[];
@@ -200,55 +193,31 @@ export function GearItemsCard({
                       )}
                     />
                   </TableCell>
-                  <TableCell className="text-right">
-                    {/* Named per row, not per action: ten identical "Edit"s tell
-                        a screen reader's controls list nothing about which piece
-                        of gear. See DECISIONS.md, "Ten rows of 'Edit' name
-                        nothing". */}
-                    <div className="flex justify-end gap-2">
-                      <IconTooltip label={`Edit ${gearItemLabel(item)}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEdit(item)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </IconTooltip>
-                      <IconTooltip
-                        label={`${
-                          item.is_archived ? "Unarchive" : "Archive"
-                        } ${gearItemLabel(item)}`}
+                  <RowActions
+                    label={gearItemLabel(item)}
+                    onEdit={() => onEdit(item)}
+                    onDelete={() => onDelete(item.uuid)}
+                    isDeleting={deletingId === item.uuid}
+                  >
+                    <IconTooltip
+                      label={`${
+                        item.is_archived ? "Unarchive" : "Archive"
+                      } ${gearItemLabel(item)}`}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={isArchiving}
+                        onClick={() => onArchiveToggle(item)}
                       >
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={isArchiving}
-                          onClick={() => onArchiveToggle(item)}
-                        >
-                          {item.is_archived ? (
-                            <ArchiveRestore className="h-4 w-4" />
-                          ) : (
-                            <Archive className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </IconTooltip>
-                      <IconTooltip label={`Delete ${gearItemLabel(item)}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onDelete(item.uuid)}
-                          disabled={deletingId === item.uuid}
-                        >
-                          {deletingId === item.uuid ? (
-                            <ButtonSpinner />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </IconTooltip>
-                    </div>
-                  </TableCell>
+                        {item.is_archived ? (
+                          <ArchiveRestore className="h-4 w-4" />
+                        ) : (
+                          <Archive className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </IconTooltip>
+                  </RowActions>
                 </TableRow>
               ))}
             </TableBody>

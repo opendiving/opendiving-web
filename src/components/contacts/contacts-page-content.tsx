@@ -1,25 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { contactsAPI, contactRoleLabel, Contact } from "@/lib/api/contacts";
 import { formatWebsite } from "@/lib/contact";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { RowActions } from "@/components/ui/row-actions";
 import { ContactsPageFrame } from "@/components/contacts/contacts-page-frame";
 import { ContactDialog } from "@/components/contacts/contact-dialog";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Edit, Trash2 } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
-
-// How long to wait after the last keystroke before asking the server, matching
-// the other lists and the pickers.
-const SEARCH_DEBOUNCE_MS = 250;
 
 // A dash for a cell with nothing in it, as the courses list draws one, so an empty
 // cell reads as "not recorded" rather than as a rendering fault.
@@ -32,17 +26,11 @@ export function ContactsPageContent() {
     Contact | null | undefined
   >(null);
 
-  // What the box holds, and what has actually been asked for.
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setSearch(searchInput.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [searchInput]);
+  const {
+    input: searchInput,
+    setInput: setSearchInput,
+    term: search,
+  } = useDebouncedSearch();
 
   // One term against both columns the API searches, the name and the city - the
   // same query the pickers run.
@@ -149,36 +137,14 @@ export function ContactsPageContent() {
                 NONE
               )}
             </TableCell>
-            <TableCell className="text-right">
-              {/* Named per row, not per action - see DECISIONS.md, "Ten rows of
-                  'Edit' name nothing". No view action: a contact is read and
-                  changed in the one dialog, and has no page of its own. */}
-              <div className="flex justify-end gap-2">
-                <IconTooltip label={`Edit ${contact.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingContact(contact)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-                <IconTooltip label={`Delete ${contact.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => requestDelete(contact.uuid)}
-                    disabled={deletingId === contact.uuid}
-                  >
-                    {deletingId === contact.uuid ? (
-                      <ButtonSpinner />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </IconTooltip>
-              </div>
-            </TableCell>
+            {/* No view action: a contact is read and changed in the one
+                dialog, and has no page of its own. */}
+            <RowActions
+              label={contact.name}
+              onEdit={() => setEditingContact(contact)}
+              onDelete={() => requestDelete(contact.uuid)}
+              isDeleting={deletingId === contact.uuid}
+            />
           </TableRow>
         ))}
       />

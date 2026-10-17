@@ -9,6 +9,15 @@ interface ValidationErrorDetail {
 }
 
 /**
+ * The HTTP status of an error thrown by the API client (axios), or `undefined`
+ * when the request never got an answer - or when the error did not come from
+ * a request at all.
+ */
+export function getApiErrorStatus(error: unknown): number | undefined {
+  return (error as { response?: { status?: number } })?.response?.status;
+}
+
+/**
  * Extracts a human-readable error message from an error thrown by the API
  * client (axios). FastAPI's `detail` field is a plain string for most
  * errors, but an array of validation error objects for 422 responses.

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
@@ -16,27 +17,15 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // Cebu 2026" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Trip deleted successfully.";
 
-// How long to wait after the last keystroke before asking the server, matching
-// the courses list and the pickers: long enough that typing a trip name is one
-// request rather than ten, short enough not to feel laggy.
-const SEARCH_DEBOUNCE_MS = 250;
-
 export function TripsPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const openCreate = useQuickCreate();
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  // What the box holds, and what has actually been asked for. Splitting them is
-  // what keeps the debounce off the input's own responsiveness.
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setSearch(searchInput.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [searchInput]);
+  const {
+    input: searchInput,
+    setInput: setSearchInput,
+    term: search,
+  } = useDebouncedSearch();
 
   // One term against both columns: the API matches it on the trip's name and on
   // the names of the places it went, so "Egypt" answers a trip called

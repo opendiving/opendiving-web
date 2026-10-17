@@ -25,7 +25,7 @@ import {
   type DiveListFilters,
 } from "@/components/dives/dives-filters";
 import type { Tag } from "@/lib/api/tags";
-import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { BackdropCardList } from "@/components/ui/backdrop-card";
 
 export interface DivesPageFrameProps {
   isLoading: boolean;
@@ -194,19 +194,12 @@ export function DivesPageFrame({
           // One dive to a row below `lg`, two above, as /trips: a card may hold
           // a map, and a browser keeps only so many of those per page - see
           // `BackdropCard`.
-          <ul
-            className="grid gap-4 max-sm:gap-2.5 lg:grid-cols-2"
-            // Busy on the outside, hidden on each placeholder within - the split
-            // `ListRowsSkeleton` documents, so a reader meets a list that is
-            // loading rather than one that is silently empty.
-            aria-busy={cards.length === 0 || undefined}
+          <BackdropCardList
+            layout="grid gap-4 max-sm:gap-2.5 lg:grid-cols-2"
+            placeholders={itemsPerPage}
           >
-            {cards.length === 0 &&
-              Array.from({ length: itemsPerPage }, (_, index) => (
-                <BackdropCardSkeleton key={index} />
-              ))}
             {cards}
-          </ul>
+          </BackdropCardList>
         )}
 
         <LoadMoreTrigger
