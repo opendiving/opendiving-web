@@ -26,7 +26,8 @@ import { isoDaysFromNow } from "@/test/local-day";
 // has arrived.
 
 // Hoisted and returned by identity, as the real `AuthContext` holds it in state. See
-// "The new-dive render test was in a loop with itself" in DECISIONS.md.
+// "The new-dive render test's mocks are identity-stable, so the prefill effect
+// runs once" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
   user: {
     uuid: "user-1",

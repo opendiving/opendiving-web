@@ -19,13 +19,13 @@ import {
 // guards against is a pair of Tailwind classes: unloaded, they compute to
 // `filter: none` whether present or not and the guard cannot fail.
 //
-// **It governs the geometry too now, which it did not use to.** The `beforeAll`
-// stylesheet below still fixes the *surface* at 512x256 and still wins there,
-// deliberately - but it no longer says anything about the map's own box, and
-// `MapCanvas` fills that box with `absolute inset-0 grid`, which is Tailwind and
-// arrives here only through this line. Removing the import therefore fails two
-// tests outright rather than quietly disarming one: the container measures 512x0
-// and both "sizes its map to the surface" and the crosshair's real click go red.
+// **It governs the geometry too.** The `beforeAll` stylesheet below fixes the
+// *surface* at 512x256 and wins there, deliberately - but it says nothing about
+// the map's own box, and `MapCanvas` fills that box with `absolute inset-0 grid`,
+// which is Tailwind and arrives here only through this line. Removing the import
+// therefore fails two tests outright rather than quietly disarming one: the
+// container measures 512x0 and both "sizes its map to the surface" and the
+// crosshair's real click go red.
 // See "jsdom answers no layout question, and the browser lane only answers one
 // with the stylesheet loaded" in DECISIONS.md.
 import "@/app/globals.css";
@@ -58,7 +58,7 @@ const OFFLINE: BasemapConfig = {
 };
 
 // **The geometry every pointer test below is written against, and it overrides
-// the app's own on purpose.** Tailwind now reaches this file - see the
+// the app's own on purpose.** Tailwind reaches this file - see the
 // `globals.css` import above - so the picker's `relative h-40 w-full` would
 // otherwise size the surface from the window, and every client coordinate here
 // would move with the runner's viewport. A fixed 512x256 is what makes
@@ -66,19 +66,13 @@ const OFFLINE: BasemapConfig = {
 // deliberately wins: it is unlayered, and Tailwind's output sits inside
 // `@layer utilities`.
 //
-// **A second rule used to sit under it, and it was standing in for a defect.**
-// It forced `position: absolute; inset: 0` onto the map's container, because
-// `MapCanvas` put those on the element it handed MapLibre and MapLibre's own
-// unlayered `.maplibregl-map { position: relative }` outranked them - so the
-// container collapsed to zero height, MapLibre's per-axis fallback drew a
-// 512x300 canvas clipped outside the box its ancestors occupy, and a real
-// Playwright click hit-tested onto `<body>` and never landed. The harness was
-// quietly supplying the layout the app could not. `map-canvas.tsx` now keeps the
-// app's layout on an element MapLibre never touches, so the rule is gone and
-// every coordinate below is measured against the component's real geometry. If
-// that fix regresses, this file goes red rather than staying comfortable: see
-// "sizes its map to the surface, with no help from this stylesheet" at the
-// bottom.
+// **No rule here touches the map's container.** Forcing `position: absolute;
+// inset: 0` onto it would supply the layout the app has to supply itself:
+// MapLibre's own unlayered `.maplibregl-map { position: relative }` outranks
+// Tailwind, so `map-canvas.tsx` keeps the app's layout on an element MapLibre
+// never touches. Every coordinate below is measured against the component's real
+// geometry, and a regression there turns this file red: see "sizes its map to
+// the surface, with no help from this stylesheet" at the bottom.
 const FRAME = { width: 512, height: 256 };
 
 beforeAll(() => {
@@ -246,9 +240,8 @@ describe("MapPicker", () => {
     expect(String(position.longitude)).toMatch(/^-?\d+(\.\d{1,5})?$/);
   });
 
-  // The invariant `MAX_LATITUDE` used to protect from inside the projection, now
-  // that MapLibre owns the projection and bounds neither value: an emitted pair
-  // has to survive the round trip through the form's own strings, or a placement
+  // MapLibre owns the projection and bounds neither value, so an emitted pair has
+  // to survive the round trip through the form's own strings, or a placement
   // comes back as no position at all.
   it("emits only positions the form's own parser accepts", async () => {
     const { onPick } = renderPicker();
@@ -743,14 +736,11 @@ describe("MapPicker", () => {
     }
   });
 
-  // **What the `beforeAll` stylesheet used to hide.** Every other test in this
-  // file presses at coordinates inside `FRAME` and would fail if the map were
-  // not under them - but for as long as the harness forced the container to
-  // `position: absolute; inset: 0` itself, they were pressing on geometry the
-  // test supplied rather than on the component's. That rule is gone, so this
-  // asserts directly what the rest of the file now depends on: the map fills the
-  // surface the picker gives it, and the crosshair's centre is over the canvas
-  // rather than over whatever `overflow: hidden` left showing through.
+  // **What the `beforeAll` stylesheet leaves to the component.** Every other test
+  // in this file presses at coordinates inside `FRAME` and would fail if the map
+  // were not under them, so this asserts directly what they depend on: the map
+  // fills the surface the picker gives it, and the crosshair's centre is over the
+  // canvas rather than over whatever `overflow: hidden` left showing through.
   it("sizes its map to the surface, with no help from this stylesheet", async () => {
     // No pin: a marker sits exactly on the centre this hit-tests, and it would
     // answer for the canvas underneath it.

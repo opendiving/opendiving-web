@@ -175,8 +175,8 @@ export function MapCanvas({
         // The credit is rendered by the app, as `[label](url)` text, and
         // MapLibre's own control would be a second one on screen. It also
         // renders HTML, which `react/no-danger` makes a deliberate decision here
-        // rather than a default - see DECISIONS.md, "Attribution is parsed into
-        // parts, not injected as HTML".
+        // rather than a default - see DECISIONS.md, "The geocoder's attribution is
+        // a wire format, not display copy".
         attributionControl: false,
         // Nothing sets `refreshExpiredTiles`, and that is load-bearing rather
         // than an omission. At its default of `true` MapLibre fetches raster

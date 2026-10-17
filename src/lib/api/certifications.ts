@@ -346,7 +346,7 @@ export const certificationsAPI = {
     side: CertificationSide,
     file: Blob,
     // Named separately rather than read off a `File`, because the common case is
-    // no longer one: an image picked here is cropped to the standard card shape
+    // not one: an image picked here is cropped to the standard card shape
     // first, and what comes back off the canvas is a bare `Blob` whose extension
     // depends on which encoding the browser managed.
     filename: string,

@@ -20,16 +20,13 @@ interface UseResourceOptions<T> {
 }
 
 /**
- * Fetch-one-resource-by-route-param, for the `[id]` detail pages.
+ * Fetch-one-resource-by-route-param, for the `[id]` detail pages and the edit
+ * pages: read `params.id`, fetch, toast-and-redirect on failure, clear the loading
+ * flag. One copy, so every page gets the same guard against settling after
+ * unmount - without it, navigating away from a slow dive page fires a toast and a
+ * redirect on whatever page the diver has landed on.
  *
- * The detail pages and the dive edit page each hand-rolled the same block: read
- * `params.id`, cast it to a string, fetch, toast-and-redirect on failure, clear a
- * loading flag in `finally`. They had drifted in the usual small ways - some
- * guarded against settling after unmount and some didn't, so navigating away from
- * a slow dive page still fired a toast and a redirect on whatever page the diver
- * had landed on.
- *
- * `params.id as string` lives here now too. The cast is unavoidable (Next types the
+ * `params.id as string` lives here too. The cast is unavoidable (Next types the
  * param as `string | string[]`, and only a catch-all route can produce the array),
  * but it is worth making once rather than in every page that reads an `[id]`.
  */

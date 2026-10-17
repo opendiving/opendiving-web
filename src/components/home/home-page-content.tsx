@@ -15,7 +15,7 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 export function HomePageContent() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
   const [stats, setStats] = useState<UserDiveStats | null>(null);
-  // A failed stats fetch used to only `console.error`, leaving all three tiles on
+  // A failed stats fetch is shown, not only logged: a log alone leaves every tile on
   // "—" forever - indistinguishable from a request that never finished. There is no
   // legitimate empty case to confuse it with: the API returns zeroed stats for a
   // diver with no dives rather than a 404, so anything that lands here is genuinely

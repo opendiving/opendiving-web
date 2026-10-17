@@ -66,18 +66,17 @@ const RESTORE_PATH = "/restore";
 
 // Where an applied `AuthOutcome` sends the visitor, in the one place that decides it.
 //
-// Four entry points reach this - the magic link, the six-digit code, Google and a
-// passkey - and every one of them used to branch on a boolean that had only ever had
-// two possible values. A third status arriving at four separate ternaries is four
-// chances to route somebody holding no onboarding token into the onboarding form, so
-// the mapping lives here and the call sites pass a status.
+// Every entry point reaches this - the magic link, the six-digit code, Google and a
+// passkey. A status branched on at each of them is a chance per caller to route
+// somebody holding no onboarding token into the onboarding form, so the mapping lives
+// here and the call sites pass a status.
 //
 // `next` is only honoured for a sign-in, and is sanitized here rather than at each
-// call site: two of them read it out of `localStorage` - the magic link from the key
-// in this file, Google from its own per-attempt record - and the rest take it from a
-// prop, and none should have to remember. The other two statuses drop it, exactly
-// as they always have - a brand-new account has nothing to return to, and neither has
-// an account that isn't back yet. Both screens end at the default.
+// call site: the magic link reads it out of `localStorage` under the key in this
+// file, Google from its own per-attempt record, and the rest take it from a prop -
+// and none should have to remember. The other statuses drop it - a brand-new account
+// has nothing to return to, and neither has an account that isn't back yet. Both
+// screens end at the default.
 export function destinationForOutcome(
   status: AuthStatus,
   next?: string | null,

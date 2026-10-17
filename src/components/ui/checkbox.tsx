@@ -7,8 +7,8 @@ export interface CheckboxProps extends Omit<
   "type"
 > {}
 
-// The app's selection control: the invite queue's row and select-all boxes, and a
-// contact's roles. Every boolean that is a *setting* is a `Switch` - see "Selection
+// The app's selection control: a row, a select-all box, a pick among several
+// values. Every boolean that is a *setting* is a `Switch` - see "Selection
 // is a checkbox, and a setting is a switch" in DECISIONS.md for where the line
 // falls.
 //

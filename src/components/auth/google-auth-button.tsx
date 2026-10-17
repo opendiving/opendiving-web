@@ -30,15 +30,11 @@ interface GoogleAuthButtonProps {
 // and until it happens Google has not been given the visitor's IP address, their
 // user agent, or an opportunity to set anything in their browser.
 //
-// This used to inject `https://accounts.google.com/gsi/client` at mount and stack
-// Google's own rendered button on top of a custom visual at `opacity: 0`, so that
-// clicks landed on the real button while nobody ever saw its pixels. All of that
-// is gone: the overlay, the `ResizeObserver` that sized it, the `?hl=en` that
-// forced the script's baked-in button language, and the accepted assumption about
-// Google's internals that the whole arrangement rested on. With no injected
-// button there is nothing to hide behind, so this is one real control carrying
-// its own accessible name - one tab stop, operable by Enter and Space like any
-// other button, none of which needed arranging.
+// Not Google's own rendered button stacked over a custom visual at `opacity: 0`:
+// that needs `https://accounts.google.com/gsi/client` injected at mount, and
+// rests on assumptions about Google's internals. This is one real control
+// carrying its own accessible name - one tab stop, operable by Enter and Space
+// like any other button.
 //
 // The "Or" divider above this lives in `AuthForm`: with more than one alternative
 // method it has to be drawn once above whichever of them an instance has, and

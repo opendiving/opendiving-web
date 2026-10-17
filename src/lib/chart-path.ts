@@ -1,9 +1,7 @@
 // Path geometry shared by the app's hand-rolled SVG charts
-// (`gas-use-chart.tsx`, `dive-profile-chart.tsx`). `Point` and `buildAreaPath`
-// moved here, unchanged, from `lib/dive-profile.ts` once a second chart needed
-// them - the same move `niceDomain`/`axisTicks` made into `lib/chart-scale.ts`,
-// and for the same reason: a gas chart importing a dive-profile module to draw
-// a filled shape reads as an accident.
+// (`gas-use-chart.tsx`, `dive-profile-chart.tsx`), in a module of its own because
+// a gas chart importing a dive-profile module to draw a filled shape reads as an
+// accident.
 
 export interface Point {
   x: number;

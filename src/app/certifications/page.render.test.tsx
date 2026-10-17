@@ -11,9 +11,9 @@ import {
 // keeps one identity across renders, and this page's fetch callback lists `user` in
 // its dependencies. A mock handing back a fresh `user` per render gives
 // `useInfiniteResource` a new `fetchFn` every time, and its fetch-on-mount effect
-// re-runs on every render the fetch itself causes. See "The new-dive render test was
-// in a loop with itself" in DECISIONS.md, and "reads the certification list once"
-// below.
+// re-runs on every render the fetch itself causes. See "The new-dive render test's
+// mocks are identity-stable, so the prefill effect runs once" in DECISIONS.md, and
+// "reads the certification list once" below.
 //
 // `vi.hoisted` because a `vi.mock` factory is hoisted above every other statement in
 // the file and so cannot close over an ordinary `const`.

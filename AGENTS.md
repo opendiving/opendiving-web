@@ -32,13 +32,13 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
 - **Everything else configurable is read at runtime**, not through `NEXT_PUBLIC_*`. `SITE_URL`,
   `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID` and the basemap variables — `MAP_STYLE_URL`,
   `MAP_STYLE_URL_DARK`, `MAP_ATTRIBUTION` and the `MAP_TILE_*` raster escape hatch — are read on
-  the server by `lib/runtime-config.ts` and reach client components through
-  `contexts/ConfigContext.tsx`'s `useConfig()`. `WEB_HSTS` and `WEB_NOINDEX` come from the same
-  module but stay server-side — `src/proxy.ts` and `app/robots.ts` are their only consumers, so
-  they sit on `RuntimeConfig` and not on `PublicConfig`. Add a new setting there, never as a new
-  `NEXT_PUBLIC_` variable: those are inlined by the compiler and would be frozen into the published
-  image. The prefixed spellings survive as fallbacks, read through a computed key so they are not
-  inlined either. `.env.example` documents each one.
+  the server by `lib/runtime-config.ts`. Only what a client component needs — the Google client
+  ID and the basemap — sits on `PublicConfig` and reaches the browser through
+  `contexts/ConfigContext.tsx`'s `useConfig()`; `SITE_URL`, `CONTACT_EMAIL`, `WEB_HSTS` and
+  `WEB_NOINDEX` stay on `RuntimeConfig` and are read only on the server. Add a new setting to that
+  module, never as a new `NEXT_PUBLIC_` variable: those are inlined by the compiler and would be
+  frozen into the published image. The prefixed spellings survive as fallbacks, read through a
+  computed key so they are not inlined either. `.env.example` documents each one.
 
 - **Never switch commit signing off on the git command line.** Where signing is on in the git
   configuration you are running under, overriding it inline buys nothing — it is the move an agent

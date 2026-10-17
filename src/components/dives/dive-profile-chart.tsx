@@ -254,7 +254,7 @@ interface PlottedChannel {
   segments: number[][];
   // The threshold those runs were cut at, kept so the crosshair can refuse to
   // quote a reading from a stretch the line refuses to cross - see
-  // `sampleIndexAt`.
+  // `drawnSampleIndexAt`.
   gapMs: number;
   // Which sample indices actually reached the picture.
   //
@@ -354,7 +354,7 @@ export function DiveProfileChart({
   // can't be an index here: the channels are independently sampled and don't
   // share a time axis, so "the sample under the cursor" is a different index per
   // channel. The cursor's x maps to an axis instant once, and each channel
-  // resolves its own nearest sample from that (`sampleIndexAt`), or none at all
+  // resolves its own nearest sample from that (`drawnSampleIndexAt`), or none at all
   // where it recorded nothing near enough to be quoted.
   // Milliseconds on the profile's axis, like every time below.
   //
@@ -916,7 +916,7 @@ export function DiveProfileChart({
   // One binary search per channel, not one shared index lookup: the channels are
   // independently sampled, so each has its own nearest sample to the cursor's
   // instant. Every reported value is a real reading, never an interpolation -
-  // and `sampleIndexAt` is what keeps that true across a stretch a channel
+  // and `drawnSampleIndexAt` is what keeps that true across a stretch a channel
   // didn't record, where the nearest reading is not a reading *here* at all.
   // There the channel keeps its row with no sample in it, as its line keeps its
   // place on the plot with nothing drawn.
@@ -1362,10 +1362,9 @@ export function DiveProfileChart({
           />
         )}
 
-      {/* Switching the last channel off used to return a bare sentence in
-          place of the whole chart, which collapsed the card to two lines. The
-          plot stays: same box, same elapsed-time axis, with the sentence over
-          the middle of it.
+      {/* With every channel off the plot stays - same box, same elapsed-time
+          axis, with the sentence over the middle of it - rather than a bare
+          sentence in its place, which collapses the card to two lines.
 
           Not shown while the markers are up, even with every curve hidden: the
           plot has content then, and "pick one to plot it" printed across a row

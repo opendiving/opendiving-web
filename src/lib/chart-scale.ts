@@ -1,7 +1,6 @@
 // Axis scaling shared by the app's hand-rolled SVG charts (`gas-use-chart.tsx`,
-// `dive-profile-chart.tsx`). Moved out of `lib/dive-gas.ts`, unchanged, once a
-// second chart needed it - a depth axis has nothing to do with gas use, and
-// importing a gas module to scale meters reads as an accident.
+// `dive-profile-chart.tsx`). Its own module because a depth axis has nothing to do
+// with gas use, and importing a gas module to scale meters reads as an accident.
 
 // The viewBox frame Home's two trend charts and the admin's daily bars share, so
 // their plots line up down a page rather than being a few units out. Not pixels:

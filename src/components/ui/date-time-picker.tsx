@@ -271,10 +271,10 @@ function CalendarDateTimePicker({
     const max = part === "hours" ? 23 : 59;
     const parsed = Number.parseInt(rawValue, 10);
 
-    // Clearing the field used to run through `Number.parseInt("") || 0` and snap
-    // straight back to "00" - so a diver correcting 08:15 to 18:15 could never
-    // empty the box to retype it. Unparseable input leaves the field as typed and
-    // commits nothing, matching how the dive form's number inputs treat NaN.
+    // Unparseable input leaves the field as typed and commits nothing, matching
+    // how the dive form's number inputs treat NaN. Not `Number.parseInt("") || 0`:
+    // that snaps a cleared box straight back to "00", so a diver correcting 08:15
+    // to 18:15 could never empty it to retype it.
     if (Number.isNaN(parsed)) {
       if (part === "hours") setHours("");
       if (part === "minutes") setMinutes("");
@@ -289,11 +289,11 @@ function CalendarDateTimePicker({
     if (part === "minutes") setMinutes(formatted);
     if (part === "seconds") setSeconds(formatted);
 
-    // Only ever commit against a date the diver actually picked. This used to fall
-    // back to `new Date()`, so typing a time into an empty picker silently stamped
-    // *today* onto the value - on a dive being back-filled from a paper logbook,
-    // today's date is the one date it certainly isn't. With no date chosen the time
-    // is held in local state until `handleSelectDate` commits the pair.
+    // Only ever commit against a date the diver actually picked, never a fallback
+    // `new Date()`: that silently stamps *today* onto a time typed into an empty
+    // picker - and on a dive being back-filled from a paper logbook, today's date
+    // is the one date it certainly isn't. With no date chosen the time is held in
+    // local state until `handleSelectDate` commits the pair.
     if (!selectedDate) return;
 
     commit(

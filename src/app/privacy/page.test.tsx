@@ -10,13 +10,10 @@ import { PROJECT_OPERATOR } from "@/lib/operator";
 // All three are spelled as words, which is how a sweep for numerals misses every one
 // of them.
 //
-// The split below used to be between the keys you could switch off and the ones you
-// could not, and the second number was a constant because it was a fact about the
-// code rather than about the list. It is now the split the device-memory switch
-// makes, and the "cannot" side is empty: §10.3 offers a control that reaches every
-// covered key, so the count that moved with each release is gone rather than lowered.
-// The last test in this block is what holds that - a sentence claiming no control
-// exists is the specific thing this section may no longer say.
+// The split below is the one the device-memory switch makes, and its "cannot" side
+// is empty: §10.3 offers a control that reaches every covered key. The last test in
+// this block is what holds that - a sentence claiming no control exists is the
+// specific thing this section must not say.
 //
 // This is also where the section's conditional half is pinned. §4.11 and the Google
 // storage key exist only where an instance has Google sign-in configured, so every
@@ -134,10 +131,9 @@ describe.each([
     ).toBeInTheDocument();
   });
 
-  // The half no count can pin. §10.3 spent a release admitting the control it
-  // describes did not exist; each of these sentences was true then and is false
-  // now, and re-introducing any of them is the way this section goes back to
-  // being wrong about its own software.
+  // The half no count can pin: each of these sentences denies a control §10.3
+  // describes, and re-introducing any of them is the way this section goes wrong
+  // about its own software.
   it.each([
     [/offers no control/i],
     [/does not yet give you one/i],
@@ -282,7 +278,7 @@ describe.each([
     expect(text).toMatch(/when that account was\s+created/);
     expect(text).toMatch(/a file you import can\s+link a person/);
     expect(text).toMatch(/every\s+person linked to it is simply unlinked/);
-    // And the dive-buddy denial is gone from the paragraph that used to make it.
+    // And the paragraph does not deny that dive buddies exist.
     expect(screen.queryByText(/There are no dive buddies/)).toBeNull();
   });
 
@@ -362,12 +358,11 @@ describe.each([
     ).toBeInTheDocument();
   });
 
-  // The *trigger* half of §4.6, which had no pin at all and went stale the moment
-  // logbook import shipped: the section used to tie every one of those outside
-  // requests to the species picker, and import reaches all three services with no
-  // picker involved. The test above asserts only *which* services are named, so
-  // nothing failed when *when* became wrong - the exact shape of staleness this
-  // page keeps producing, and the reason these are separate assertions.
+  // The *trigger* half of §4.6: the section must not tie every one of those
+  // outside requests to the species picker, since import reaches all three
+  // services with no picker involved. The test above asserts only *which*
+  // services are named, so it cannot see *when* go wrong - the reason these are
+  // separate assertions.
   it("§4.6 names importing as a second trigger for the species lookups", async () => {
     await renderPage({ google });
 
@@ -879,10 +874,9 @@ describe("the Google half of the page", () => {
     expect(screen.queryByText(/4\.10 Signing In with Google/)).toBeNull();
   });
 
-  // §10.4 used to name Google as one of "two outside parties [that] act on their
-  // own account". After the redirect change Google sets nothing in the visitor's
-  // browser on this site, so it is one party - and the sentence saying so has to
-  // hold in both configurations rather than only the one that dropped the clause.
+  // §10.4 names one outside party acting on its own account, not two: Google sets
+  // nothing in the visitor's browser on this site, and the sentence saying so has
+  // to hold in both configurations.
   it.each([
     ["configured", true],
     ["unconfigured", false],

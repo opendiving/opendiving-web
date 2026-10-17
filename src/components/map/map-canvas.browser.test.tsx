@@ -111,30 +111,29 @@ function renderLoaded() {
 }
 
 // In `afterEach` rather than at the end of the test that installs it. The WebGL2
-// test below stubs `getContext` on the prototype, and restoring it inline meant
-// that when that test *failed* the stub survived into the next one - which then
-// rendered the unsupported fallback and failed for a reason that had nothing to
-// do with it. One misleading failure per real one is a bad exchange rate.
+// test below stubs `getContext` on the prototype, and restored inline, a *failing*
+// run of that test leaves the stub in place for the next one - which then renders
+// the unsupported fallback and fails for a reason that has nothing to do with it.
+// One misleading failure per real one is a bad exchange rate.
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 describe("MapCanvas", () => {
-  // **The map has to fill the frame its caller gives it, and on `main` it filled
-  // nothing.** MapLibre stamps `.maplibregl-map { position: relative;
-  // overflow: hidden }` on the element it is handed, from an unlayered
-  // stylesheet - and unlayered beats `@layer utilities`, where Tailwind's output
-  // lives, at any specificity. The `absolute inset-0` this component used to put
-  // on that same element therefore never applied: the container kept its width,
-  // collapsed to zero height, and clipped its own absolutely positioned canvas
-  // out of sight with the library's `overflow: hidden`. The zoom controls and
-  // the attribution still drew, because those are MapLibre's own control DOM, so
-  // it read as a styled empty box rather than as a crash and shipped.
+  // **The map has to fill the frame its caller gives it.** MapLibre stamps
+  // `.maplibregl-map { position: relative; overflow: hidden }` on the element it
+  // is handed, from an unlayered stylesheet - and unlayered beats
+  // `@layer utilities`, where Tailwind's output lives, at any specificity. An
+  // `absolute inset-0` on that same element therefore never applies: the
+  // container keeps its width, collapses to zero height, and clips its own
+  // absolutely positioned canvas out of sight with the library's
+  // `overflow: hidden`. The zoom controls and the attribution still draw,
+  // because those are MapLibre's own control DOM, so it reads as a styled empty
+  // box rather than as a crash.
   //
-  // Nothing in this suite could see it. jsdom does no layout, and this project
-  // loaded no stylesheet of the app's until the import at the top of this file.
-  // So the assertions below are the point of the fix rather than a check on it:
-  // revert `map-canvas.tsx` to one element and every one of them fails.
+  // jsdom does no layout, so only this project, with the app's stylesheet
+  // imported at the top of this file, can see it: collapse `map-canvas.tsx` to
+  // one element and every assertion below fails.
   it("fills the frame its caller gives it, rather than collapsing", async () => {
     renderCanvas(() => {});
     await waitFor(() =>
@@ -161,11 +160,11 @@ describe("MapCanvas", () => {
       .getBoundingClientRect();
     expect(canvas.height).toBeCloseTo(FRAME.height, 0);
 
-    // And the assertion the other three cannot make: that the map is actually
+    // And the assertion the others cannot make: that the map is actually
     // *there*, at the point a diver would click. Clipped away by
     // `overflow: hidden` the canvas keeps a plausible box of its own while
-    // hit-testing falls through to whatever is behind it, which is how a real
-    // click on the picker used to land on `<body>`.
+    // hit-testing falls through to whatever is behind it, so a real click on
+    // the picker lands on `<body>`.
     const hit = document.elementFromPoint(
       frame.left + frame.width / 2,
       frame.top + frame.height / 2,

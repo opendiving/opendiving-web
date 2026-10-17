@@ -505,13 +505,9 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               control={control}
               name={`mixtures.${index}.volume` as Path<TFieldValues>}
               render={({ field }) => (
-                // Half width, paired with the ppO₂ limit beside it. Volume spent
-                // two earlier layouts at `md:col-span-2`, first because the field
-                // it used to sit beside (the cylinder's name) was removed and
-                // widening it was what kept every remaining pair on a row of its
-                // own, then because a full-width combobox was pleasant to type
-                // into. Eight boxes divide into four rows either way; what the
-                // span cost was the last row, where Usage sat alone.
+                // Half width, paired with the ppO₂ limit beside it, not
+                // `md:col-span-2`: eight boxes divide into four rows either way,
+                // and a full-width Volume leaves Usage alone on the last row.
                 //
                 // Volume | ppO₂, O₂ | He, start | end, Role | Usage: four full
                 // rows under the Cylinder row, and each pair is two facts about
@@ -610,12 +606,12 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                         DECISIONS.md, "`step` is a claim about the column".
                         `min`/`max` stay: 0-100 is a fact about a percentage.
 
-                        An emptied box is `""`, never `NaN` and no longer
-                        `undefined` - the same sentinel the two pressures below
-                        use, and now for the same reason: an unrecorded mix is a
-                        state a cylinder can be in, so clearing this box has to
-                        submit "not recorded" rather than draw a "required"
-                        message. `undefined` is the one spelling that cannot work,
+                        An emptied box is `""`, never `NaN` or `undefined` -
+                        the same sentinel the two pressures below use, and for
+                        the same reason: an unrecorded mix is a state a cylinder
+                        can be in, so clearing this box has to submit "not
+                        recorded" rather than draw a "required" message.
+                        `undefined` is the one spelling that cannot work,
                         because react-hook-form re-displays a field's default the
                         moment its value resolves to it. */}
                     <DecimalInput

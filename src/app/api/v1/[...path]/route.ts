@@ -1,6 +1,6 @@
 import { proxyToApi } from "@/lib/api-proxy";
 
-// The same-origin API proxy. All seven methods land on one handler; the logic lives in
+// The same-origin API proxy. Every method lands on one handler; the logic lives in
 // `lib/api-proxy.ts` because a route file may export only handlers and segment config.
 //
 // Nothing marks it dynamic: every handler reads the incoming request, which is

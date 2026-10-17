@@ -9,19 +9,6 @@ import { API_BASE_URL } from "@/lib/api-base";
  */
 export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
 
-// The full base every request is appended to, `/api/v1` prefix included - the API
-// mounts nothing at the bare origin, so a value without it 404s on every call.
-//
-// Unset, this is the *relative* `/api/v1`, served by this app's own proxy route and
-// resolved by the browser against whatever origin loaded the page. `NEXT_PUBLIC_API_URL`
-// overrides it at build time for a split-origin deployment, and local dev sets it in
-// `.env` so the browser keeps talking to `localhost:8000` directly.
-//
-// Declared in `lib/api-base.ts` rather than here because axios is no longer its only
-// consumer: a species photo is an unauthenticated `<img src>` that never goes through
-// this client and still has to resolve to the same base. Two copies of the `||` would be
-// two places for the split-origin build to break.
-
 // The access token is intentionally kept in memory only, never in
 // localStorage/sessionStorage: those are readable by any JS running on the
 // page (XSS payloads, compromised third-party scripts, browser extensions,
@@ -288,18 +275,15 @@ apiClient.get = ((url: string, config?: AxiosRequestConfig) => {
 }) as typeof apiClient.get;
 
 // The envelope every list endpoint returns (fastcrud's `PaginatedListResponse`).
-// It lives here, in the lowest layer, because `lib/api/*` is what produces it -
-// it used to be declared in `hooks/usePaginatedResource.ts`, a layer *above*
-// `lib/api/`, which is why eight modules each redeclared their own copy rather
-// than import upwards.
+// It lives here, in the lowest layer, because `lib/api/*` is what produces it and
+// nothing in `lib/api/` imports upwards from `hooks/`.
 //
-// All five fields are declared, matching the eight per-resource copies this
-// replaces. Nothing in the app reads `page`/`items_per_page` - `total_count` and
-// `has_more` are what `useInfiniteResource` reads, and between them drive every
-// load-on-scroll trigger in the app - but they are always on the wire, so
-// omitting them (as the `hooks/` copy did) made the envelope look like it had
-// three fields. Note the API clamps both, so the `items_per_page` echoed back can
-// be smaller than the one requested.
+// All five fields are declared. Nothing in the app reads `page`/`items_per_page` -
+// `total_count` and `has_more` are what `useInfiniteResource` reads, and between
+// them drive every load-on-scroll trigger in the app - but they are always on the
+// wire, and omitting them would make the envelope look like it had three fields.
+// Note the API clamps both, so the `items_per_page` echoed back can be smaller than
+// the one requested.
 export interface PaginatedResponse<T> {
   data: T[];
   total_count: number;
@@ -394,11 +378,11 @@ export function isAbortError(error: unknown): boolean {
 /**
  * Walks every page of a list endpoint and returns the items as one array.
  *
- * This replaces four hand-rolled `while (hasMore)` loops. They were not the
- * infinite-loop hazard they looked like - the API clamps `items_per_page` to 100
- * and computes `has_more` as `page * items_per_page < total_count`, so `page`
- * outruns any realistic insert rate - but they were unbounded, uncancellable, and
- * silent about it.
+ * Bounded, cancellable between pages, and loud when it truncates. A bare
+ * `while (hasMore)` is not an infinite-loop hazard - the API clamps
+ * `items_per_page` to 100 and computes `has_more` as
+ * `page * items_per_page < total_count`, so `page` outruns any realistic insert
+ * rate - but it is unbounded, uncancellable, and silent about it.
  *
  * The real hazard is subtler and is why `keyOf` exists: list pages are cached for
  * 60 seconds under a per-`page` key, so a loop can stitch together *different

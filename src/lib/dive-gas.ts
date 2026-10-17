@@ -15,17 +15,6 @@ import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { gasName, hasStagedCylinder, isParallelSet } from "@/lib/dive-mixtures";
 import { primaryRecording } from "@/lib/dive-recordings";
 
-// `niceDomain` and `axisTicks` used to live here. They moved, unchanged, to
-// `lib/chart-scale.ts` once the dive profile chart needed them too - a depth
-// axis has nothing to do with gas use, and importing a gas module to scale
-// meters reads as an accident. Their tests moved with them, to
-// `chart-scale.test.ts`.
-//
-// The scope type and the period machinery it names - `periodRange`,
-// `periodLabel`, `availablePeriods`, `stepPeriod` - made the same move, to
-// `lib/chart-period.ts`, once the activity card grew the same three scopes.
-// Windowing a series to a calendar period is not a fact about gas either.
-
 // How many dives the trend line averages over, per scope.
 //
 // A single dive's RMV swings on current, cold, workload and task loading, so
@@ -301,13 +290,11 @@ function totalPressureDrop(mixtures: readonly DiveMixture[]): number {
 // Deliberate mirror of the guard clauses in the API's `compute_gas_use()`,
 // `compute_multi_tank_gas_use()` *and* `compute_parallel_gas_use()` - if any of
 // the three functions' conditions change, this list has to change with it (one
-// `grep gas_use` finds the set). It tracked two until the parallel flag existed,
-// and the third arrived with a guard none of the others had: `avg_depth` is now
-// an input to a *multi-cylinder* derivation, which it never was before.
+// `grep gas_use` finds the set). The parallel one carries a guard the others do not:
+// `avg_depth` is an input to its *multi-cylinder* derivation.
 //
-// The most recent change hit all three at once, which is the first time that has
-// happened: `volume` became nullable, so a cylinder can record a gas and no vessel,
-// and each function refuses one at its own point in its own order. Each branch below
+// `volume` is nullable, so a cylinder can record a gas and no vessel, and each
+// function refuses one at its own point in its own order. Each branch below
 // therefore carries a size sentence in the position its function checks it - after
 // the pressures for one cylinder, before them for a flagged pair, and instead of the
 // attribution sentence where the attributed cylinders are the unsized ones.
@@ -458,7 +445,7 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
       return "If these cylinders were breathed alternately at the same depth - a sidemount pair or independent doubles - marking each of them Parallel adds their gas up into one figure. A cylinder breathed at its own depth is not that, and should be left alone.";
     }
 
-    // Several cylinders now *can* yield figures, from
+    // Several cylinders *can* yield figures, from
     // `compute_multi_tank_gas_use`. It gives up for five distinct reasons, and
     // this is the browser's reading of which one applies. In the API's own
     // order:
@@ -563,7 +550,7 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
     // depth per cylinder from the profile, so `dive.avg_depth` is not one of its
     // inputs and asking for it would send a diver to fill in a field that
     // changes nothing. That reasoning is about *this* path and does not
-    // generalize any more - the flagged-parallel block at the top of this branch
+    // generalize - the flagged-parallel block at the top of this branch
     // asks for an average depth on a multi-cylinder dive, because the additive
     // derivation genuinely divides by it. Which derivation is in play is what
     // decides whether the field is worth asking for.
@@ -655,18 +642,16 @@ export interface TankGasUseRow {
  * The join is `DiveMixture.gas_number` ↔ `DiveTankGasUse.gas_number`, and it
  * applies the same rule the API does rather than trusting that the API applied
  * it. `compute_multi_tank_gas_use` refuses a whole dive whose mixtures share a
- * gas number, so a duplicate used to arrive here with `gas_use: null` and this
- * function was never reached. It no longer is the only producer of a
- * multi-cylinder `gas_use`: a flagged parallel set is summed without consulting
- * `gas_number` at all, so a duplicate on one of those dives reaches this function
- * with a real `gas_use` behind it - and lands in the arm below, harmlessly, since
- * `tanks` is empty and every row comes back unattributed anyway. The guard is
- * still belt-and-braces, and deliberately so. It is the cheap half of a pair whose expensive half is a
- * table showing one cylinder's litres twice under a total that counted them
- * once, and the two sides can drift: the form carries `gas_number` untouched
- * today, and the day it doesn't, or the day a response cached before that guard
- * existed is served, this is what stands between a duplicate and a table that
- * visibly doesn't add up.
+ * gas number, so such a duplicate arrives with `gas_use: null`. A flagged
+ * parallel set is summed without consulting `gas_number` at all, so a duplicate
+ * on one of those dives reaches this function with a real `gas_use` behind it -
+ * and lands in the arm below, harmlessly, since `tanks` is empty and every row
+ * comes back unattributed anyway. The guard is belt-and-braces, and deliberately
+ * so. It is the cheap half of a pair whose expensive half is a table showing one
+ * cylinder's litres twice under a total that counted them once, and the two
+ * sides can drift: the day the form stops carrying `gas_number` untouched, or a
+ * cached response predates the API's guard, this is what stands between a
+ * duplicate and a table that visibly doesn't add up.
  *
  * So a gas number naming more than one cylinder names none of them: both rows
  * come back unattributed. **The rule is applied to both sides of the join**, not

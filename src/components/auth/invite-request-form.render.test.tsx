@@ -174,11 +174,11 @@ describe("InviteRequestForm", () => {
   // Two audiences have a way in - a member with an account and a stranger holding
   // an invitation - and the line names both before it sends them to `/signin`,
   // in either voice: who may sign in does not depend on who runs the instance.
-  // It used to name a third, the operator "setting this instance up", and no
-  // longer does: that audience exists for one moment, before the first account
-  // is created, and the install and troubleshooting docs already send the
-  // operator to Sign in for it. A clause on every stranger's screen for a
-  // one-time reader was the wrong place to say it.
+  // It does not name a third, the operator "setting this instance up": that
+  // audience exists for one moment, before the first account is created, and the
+  // install and troubleshooting docs already send the operator to Sign in for
+  // it. A clause on every stranger's screen for a one-time reader is the wrong
+  // place to say it.
   it.each(BOTH)(
     "points members and invitees at /signin in the %s voice",
     (voice) => {

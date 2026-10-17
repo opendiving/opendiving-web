@@ -1022,9 +1022,9 @@ describe("buildDiveUpdate", () => {
     expect(buildDiveUpdate({})).toEqual({});
   });
 
-  // The regression this helper exists for: clearing the trip picker used to
-  // produce `undefined`, which was dropped from the PATCH, so the dive kept its
-  // trip while the UI and the success toast both claimed otherwise.
+  // What this helper exists for: a cleared trip picker must send `null`, since
+  // an `undefined` is dropped from the PATCH and the dive keeps its trip while
+  // the UI and the success toast both claim otherwise.
   it("sends an explicit null when the trip is cleared", () => {
     const update = buildDiveUpdate({ trip_uuid: null });
 
@@ -1282,10 +1282,8 @@ describe("diveToFormValues", () => {
   });
 
   it("seeds no cylinders for a dive that has none", () => {
-    // The regression this guards: seeding a `DEFAULT_MIXTURE` here used to be
-    // harmless because the untouched row was filtered out of the PATCH. With
-    // the whole form submitted, it would write an 11.1 L air cylinder to a dive
-    // whose only edit was to the notes.
+    // Seeding a `DEFAULT_MIXTURE` here would, with the whole form submitted,
+    // write an 11.1 L air cylinder to a dive whose only edit was to the notes.
     expect(diveToFormValues(DIVE).mixtures).toEqual([]);
   });
 

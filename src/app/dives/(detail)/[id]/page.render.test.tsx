@@ -8,13 +8,12 @@ import {
 } from "@/components/dives/dive-detail-context";
 import type { Dive } from "@/lib/api/dives";
 
-// What this page is, once the header and the fetch moved up into the layout: the
-// card grid, plus the one piece of state the split exists to make reachable. The
-// dim under `isLoading` is dead code without it - the page used to be re-mounted
-// by the step it is supposed to fade through, so it never rendered with a dive
-// *and* a load in flight. A render is the only place that combination can be
-// staged; the step that produces it in a browser is `dives/(detail)/layout.tsx`'s
-// business and is verified there, by hand.
+// What this page is, with the header and the fetch in the layout: the card grid,
+// plus the one piece of state that split exists to make reachable. The dim under
+// `isLoading` needs the page to survive the step it fades through, so that it
+// renders with a dive *and* a load in flight. A render is the only place that
+// combination can be staged; the step that produces it in a browser is
+// `dives/(detail)/layout.tsx`'s business and is verified there, by hand.
 
 vi.mock("@/components/dives/dive-detail-main", () => ({
   DiveDetailMain: ({ dive }: { dive: Dive }) => (

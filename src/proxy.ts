@@ -23,27 +23,20 @@ import { runtimeConfig } from "@/lib/runtime-config";
 // scope while everything below is not.
 const API_ORIGIN_SOURCE = apiCspSource(process.env.NEXT_PUBLIC_API_URL) ?? "";
 
-// The basemap's hosts, the one host source this app's configuration still decides on.
+// The basemap's hosts, the one host source this app's configuration decides on.
 // Derived on first request rather than at module load - reading the environment while
 // the module is being evaluated risks doing it at build time, and the whole point of
 // `lib/runtime-config.ts` is that a published image reads it in the container it runs
-// in. Derived *once* rather than per request for the reason it always was: the
-// environment cannot change while the process lives, and `basemapOrigins`' warning for a
-// malformed value would otherwise repeat on every request, burying the one diagnostic
-// it exists to give.
+// in. Derived *once* rather than per request because the environment cannot change
+// while the process lives, and `basemapOrigins`' warning for a malformed value would
+// otherwise repeat on every request, burying the one diagnostic it exists to give.
 //
-// `accounts.google.com` used to sit beside this on the same terms, in `style-src`,
-// `connect-src` and `frame-src`, because Google's sign-in script injected a stylesheet
-// and an iframe and called home from the page. No Google code runs here any more - the
-// button is a top-level navigation to Google (`lib/google-oauth.ts`) - and a top-level
-// navigation is governed by none of the fetch directives, so nothing replaced it. The
-// policy now names Google in no configuration at all, which also means the CSP no longer
-// discloses whether an instance has Google sign-in turned on.
+// The policy names Google in no configuration at all: "Continue with Google" is a
+// top-level navigation (`lib/google-oauth.ts`), which none of the fetch directives
+// govern, so the CSP does not disclose whether an instance has Google sign-in on.
 //
-// It reaches `connect-src` and nothing else. There was a second derivation beside this
-// one until the site picker moved to MapLibre, feeding the raster tile hosts it drew as
-// `<img>` elements into `img-src`; that directive names no third party at all now, and
-// the basemap is not what would put one back.
+// It reaches `connect-src` and nothing else. MapLibre fetches every tile, in both of
+// its modes, so `img-src` names no third party.
 //
 // Every `<img>` in this app points at this instance - its own origin, or `apiOrigin`
 // where the API is split off onto another one, which `img-src` already lists. Species
@@ -71,10 +64,9 @@ function cspBasemapSources(): string {
 // build, and applied to every response of every deployment identically - which for a
 // published image means the build machine decides it for someone else's domain.
 //
-// What it now respects. It is only sent for a request that already arrived over HTTPS: a
-// LAN instance on plain HTTP would otherwise hand out a pin it cannot honour, and a
-// browser that recorded one stops being able to reach it at all. And it no longer carries
-// `preload` - entering a domain into the browsers' preload list commits every host under
+// It is only sent for a request that already arrived over HTTPS: a LAN instance on plain
+// HTTP would otherwise hand out a pin it cannot honour, and a browser that recorded one
+// stops being able to reach it at all. And it carries no `preload` - entering a domain into the browsers' preload list commits every host under
 // it to HTTPS for years and is deliberately hard to undo, which is a decision for whoever
 // owns the domain rather than for the app running on it. `WEB_HSTS=off` drops the header
 // entirely.
@@ -105,9 +97,8 @@ function cspList(directive: string, ...sources: string[]): string {
 
 export function proxy(request: NextRequest) {
   // 16 random bytes, because CSP Level 3 asks a nonce for "at least 128 bits of
-  // entropy". A v4 UUID carries 122 - not a weakness at that size, and nothing was
-  // ever guessing it, but the spec-exact form is no longer code and is shorter on
-  // the wire besides. `crypto.getRandomValues` and `Buffer` are both available in
+  // entropy". A v4 UUID carries 122 - not a weakness at that size, but the
+  // spec-exact form is no more code and is shorter on the wire besides. `crypto.getRandomValues` and `Buffer` are both available in
   // either runtime, so this does not depend on which one Proxy runs in (Node, as of
   // Next 16, which forbids the `runtime` export here outright).
   const nonce = Buffer.from(
@@ -154,9 +145,7 @@ export function proxy(request: NextRequest) {
     // relaxation - `style-src-elem`/`style-src` (actual `<style>` blocks,
     // where CSS-exfiltration attacks are more feasible) remain nonce-only
     // in production.
-    // No host source here any more: the only one this directive ever carried was
-    // `accounts.google.com`, for the stylesheet Google's sign-in script injected
-    // into `<head>`. Nothing of Google's is loaded on this site now.
+    // No host source: nothing third-party is loaded as a stylesheet.
     isDev
       ? "style-src 'self' 'unsafe-inline'"
       : `style-src 'self' 'nonce-${nonce}'`,
@@ -178,10 +167,8 @@ export function proxy(request: NextRequest) {
     // `'self'` covers them, and a real origin in a split-origin build, where nothing
     // else would.
     //
-    // No third-party host at all, still. The map tile hosts were the only ones
-    // this directive ever carried, and the last `<img>` grid pointed at them went
-    // when the site picker moved to MapLibre - which fetches every tile, in both
-    // of its modes, under `connect-src` instead.
+    // No third-party host at all: MapLibre fetches every map tile, in both of
+    // its modes, under `connect-src`.
     cspList("img-src", "'self'", "data:", "blob:", apiOrigin),
     "font-src 'self' data:",
     // **Load-bearing, not declarative.** `worker-src` has no `child-src` above

@@ -443,9 +443,9 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             visible.map(({ point, index }) => (
               // A plain SVG `<a>`, not `next/link`: this is inside the SVG
               // namespace, and an anchor here still gets focus, middle-click and
-              // open-in-new-tab for free. `aria-label` carries what the `<title>`
-              // element used to - the tooltip below is a visual affordance and says
-              // nothing to a screen reader.
+              // open-in-new-tab for free. `aria-label` describes the dive - the
+              // tooltip below is a visual affordance and says nothing to a screen
+              // reader.
               <a
                 key={point.dive_uuid}
                 href={withReturnTo(`/dives/${point.dive_uuid}`)}
@@ -748,8 +748,8 @@ function isPerTankPoint(point: DiveGasUsePoint): boolean {
   return (point.gas_use.tanks?.length ?? 0) > 0;
 }
 
-// The accessible name of a dot's link - what the `<title>` element used to say,
-// now that the visual tooltip is `aria-hidden` decoration.
+// The accessible name of a dot's link, since the visual tooltip is `aria-hidden`
+// decoration.
 function describePoint(point: DiveGasUsePoint, units: UnitSystem): string {
   const date = formatDiveDateTime(point.start_time, {
     year: "numeric",
@@ -808,7 +808,7 @@ function buildXTicks(
   // Whole series: one label per calendar year it spans, centred in the part of
   // that year the chart actually plots. Centring is what lets the first and last
   // labels survive - a career starts partway through its first year, so a label
-  // pinned to that January 1st falls outside the range and used to be dropped.
+  // pinned to that January 1st falls outside the range and is dropped.
   const firstYear = new Date(range.start).getUTCFullYear();
   const lastYear = new Date(range.end).getUTCFullYear();
   const years = Array.from(
