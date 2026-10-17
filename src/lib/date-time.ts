@@ -196,10 +196,16 @@ export function splitStartTime(isoString: string): {
     return { localDateTime: isoString, offsetMinutes: null };
   }
   const { shifted, offsetMinutes } = shiftByEmbeddedOffset(isoString);
-  const localDateTime = `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(
-    shifted.getUTCDate(),
-  )} ${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}:${pad(shifted.getUTCSeconds())}`;
-  return { localDateTime, offsetMinutes };
+  return { localDateTime: formatUtcWallClock(shifted), offsetMinutes };
+}
+
+// `formatDateTimeForForm()` read through the UTC getters, for a `Date` whose UTC
+// fields hold a wall clock - what `shiftByEmbeddedOffset()` and
+// `parseAsWallClockUtc()` return.
+function formatUtcWallClock(date: Date): string {
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(
+    date.getUTCDate(),
+  )} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
 }
 
 // Inverse of `splitStartTime()`: combines a "YYYY-MM-DD HH:mm:ss" wall-clock
@@ -234,13 +240,13 @@ export function combineStartTime(
 //   west of Greenwich (see DECISIONS.md, "Bare `YYYY-MM-DD` dates must not go
 //   through `new Date(dateString)`").
 // - Naive/local, e.g. "2025-06-03T12:15:33.8" - its literal date/time digits
-//   are kept (parsing a naive string with `Date` and reading back local getters
-//   is a no-op transformation: there is no timezone to convert from) and
-//   combined with the browser's current offset, the best available default.
-//   It's on the diver to correct it if their computer's clock was set to a
-//   different zone than wherever they are now.
+//   are kept and combined with the browser's current offset, the best available
+//   default. It's on the diver to correct it if their computer's clock was set
+//   to a different zone than wherever they are now. The digits are read through
+//   `parseAsWallClockUtc()`, never local getters: a local parse moves a clock
+//   that falls in the browser's spring-forward gap by an hour.
 //
-// Returns `undefined` for anything `Date` can't parse at all.
+// Returns `undefined` for anything else.
 export function normalizeParsedStartTime(
   rawStartTime: string,
 ): string | undefined {
@@ -255,10 +261,11 @@ export function normalizeParsedStartTime(
     );
   }
 
-  const date = new Date(rawStartTime);
-  if (Number.isNaN(date.getTime())) return undefined;
+  if (!NAIVE_DATE_TIME_REGEX.test(rawStartTime)) return undefined;
+  const wallClock = parseAsWallClockUtc(rawStartTime);
+  if (Number.isNaN(wallClock.getTime())) return undefined;
   return combineStartTime(
-    formatDateTimeForForm(date),
+    formatUtcWallClock(wallClock),
     getBrowserUtcOffsetMinutes(),
   );
 }

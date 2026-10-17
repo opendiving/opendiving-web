@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { coursesAPI, Course } from "@/lib/api/courses";
-import { useContact } from "@/hooks/useContact";
-import { usePerson } from "@/hooks/usePerson";
+import { contactsAPI } from "@/lib/api/contacts";
+import { peopleAPI } from "@/lib/api/people";
+import { useRecordByUuid } from "@/hooks/useRecordByUuid";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import {
   certificationsAPI,
@@ -103,7 +104,7 @@ function CourseRow({ courseUuid }: { courseUuid: string }) {
 // certification carries the contact's uuid and nothing else, so the row appears
 // once the name has arrived, and a failed lookup leaves it out.
 function ContactRow({ contactUuid }: { contactUuid: string }) {
-  const contact = useContact(contactUuid);
+  const contact = useRecordByUuid(contactsAPI.getContact, contactUuid);
   if (!contact) return null;
 
   return (
@@ -117,7 +118,7 @@ function ContactRow({ contactUuid }: { contactUuid: string }) {
 // Who signed the card, on the same terms: a person, by uuid, named once the
 // record has arrived and linked to their page.
 function InstructorRow({ personUuid }: { personUuid: string }) {
-  const person = usePerson(personUuid);
+  const person = useRecordByUuid(peopleAPI.getPerson, personUuid);
   const withReturnTo = useWithReturnTo();
   if (!person) return null;
 

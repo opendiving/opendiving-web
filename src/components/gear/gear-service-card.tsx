@@ -42,6 +42,7 @@ import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
 import { GearServiceScheduleDialog } from "@/components/gear/gear-service-schedule-dialog";
 import { GearServiceRecordDialog } from "@/components/gear/gear-service-record-dialog";
 import { useContactsByUuid } from "@/hooks/useContactsByUuid";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useSavedElsewhere } from "@/hooks/useSavedElsewhere";
 
 interface GearServiceCardProps {
@@ -71,7 +72,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
   const contactName = (record: GearServiceRecord) =>
     record.contact_uuid ? contacts[record.contact_uuid]?.name : undefined;
   const [isLoading, setIsLoading] = useState(true);
-  const [busyUuid, setBusyUuid] = useState<string | null>(null);
+  const [togglingUuid, setTogglingUuid] = useState<string | null>(null);
 
   // `null` = closed, `undefined` = creating, an object = editing.
   const [editingSchedule, setEditingSchedule] = useState<
@@ -83,10 +84,6 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
   const [editingRecord, setEditingRecord] = useState<GearServiceRecord | null>(
     null,
   );
-  const [deletingSchedule, setDeletingSchedule] =
-    useState<GearServiceSchedule | null>(null);
-  const [deletingRecord, setDeletingRecord] =
-    useState<GearServiceRecord | null>(null);
 
   // `signal` is passed only by the mount effect below. The post-write refetches
   // call this with no signal: they are triggered by a save the diver is watching
@@ -144,37 +141,37 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
     if (gearItemUuid === gearItem.uuid) refresh();
   });
 
-  const withBusy = async (
-    uuid: string,
-    action: () => Promise<unknown>,
-    failure: string,
-  ) => {
+  const scheduleDelete = useDeleteResource(gearServiceAPI.deleteSchedule, {
+    successMessage: "Service schedule deleted successfully.",
+    errorMessage: "Failed to delete schedule. Please try again.",
+    onDeleted: refresh,
+  });
+  const recordDelete = useDeleteResource(gearServiceAPI.deleteRecord, {
+    successMessage: "Service record deleted successfully.",
+    errorMessage: "Failed to delete service record. Please try again.",
+    onDeleted: refresh,
+  });
+
+  const toggleActive = async (schedule: GearServiceSchedule) => {
     try {
-      setBusyUuid(uuid);
-      await action();
+      setTogglingUuid(schedule.uuid);
+      await gearServiceAPI.updateSchedule(schedule.uuid, {
+        is_active: !schedule.is_active,
+      });
       refresh();
     } catch (error) {
       toast({
         title: "Error",
-        description: getApiErrorMessage(error, failure),
+        description: getApiErrorMessage(
+          error,
+          "Failed to update schedule. Please try again.",
+        ),
         variant: "destructive",
       });
     } finally {
-      setBusyUuid(null);
-      setDeletingSchedule(null);
-      setDeletingRecord(null);
+      setTogglingUuid(null);
     }
   };
-
-  const toggleActive = (schedule: GearServiceSchedule) =>
-    withBusy(
-      schedule.uuid,
-      () =>
-        gearServiceAPI.updateSchedule(schedule.uuid, {
-          is_active: !schedule.is_active,
-        }),
-      "Failed to update schedule. Please try again.",
-    );
 
   return (
     <Card>
@@ -214,7 +211,9 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                     gearItem.dive_count,
                     gearItem.dive_time,
                   );
-                  const isBusy = busyUuid === schedule.uuid;
+                  const isToggling = togglingUuid === schedule.uuid;
+                  const isDeleting =
+                    scheduleDelete.deletingId === schedule.uuid;
                   return (
                     <div
                       key={schedule.uuid}
@@ -284,7 +283,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            disabled={isBusy}
+                            disabled={isToggling || isDeleting}
                             onClick={() => toggleActive(schedule)}
                           >
                             {schedule.is_active ? (
@@ -311,10 +310,12 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            disabled={isBusy}
-                            onClick={() => setDeletingSchedule(schedule)}
+                            disabled={isToggling || isDeleting}
+                            onClick={() =>
+                              scheduleDelete.requestDelete(schedule.uuid)
+                            }
                           >
-                            {isBusy ? (
+                            {isDeleting ? (
                               <ButtonSpinner />
                             ) : (
                               <Trash2 className="h-4 w-4" />
@@ -400,10 +401,12 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            disabled={busyUuid === record.uuid}
-                            onClick={() => setDeletingRecord(record)}
+                            disabled={recordDelete.deletingId === record.uuid}
+                            onClick={() =>
+                              recordDelete.requestDelete(record.uuid)
+                            }
                           >
-                            {busyUuid === record.uuid ? (
+                            {recordDelete.deletingId === record.uuid ? (
                               <ButtonSpinner />
                             ) : (
                               <Trash2 className="h-4 w-4" />
@@ -445,37 +448,23 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
       />
 
       <ConfirmDialog
-        open={deletingSchedule !== null}
-        onOpenChange={(open) => !open && setDeletingSchedule(null)}
+        open={scheduleDelete.pendingId !== null}
+        onOpenChange={(open) => !open && scheduleDelete.cancelDelete()}
         title="Delete service schedule"
         description="This stops the reminder. The services you've already logged stay in the history."
         confirmText="Delete"
-        isLoading={busyUuid === deletingSchedule?.uuid}
-        onConfirm={() => {
-          if (!deletingSchedule) return;
-          void withBusy(
-            deletingSchedule.uuid,
-            () => gearServiceAPI.deleteSchedule(deletingSchedule.uuid),
-            "Failed to delete schedule. Please try again.",
-          );
-        }}
+        isLoading={scheduleDelete.deletingId === scheduleDelete.pendingId}
+        onConfirm={() => scheduleDelete.confirmDelete()}
       />
 
       <ConfirmDialog
-        open={deletingRecord !== null}
-        onOpenChange={(open) => !open && setDeletingRecord(null)}
+        open={recordDelete.pendingId !== null}
+        onOpenChange={(open) => !open && recordDelete.cancelDelete()}
         title="Delete service record"
         description="The schedule falls back to the service before this one, or to its in-service date if this was the only one."
         confirmText="Delete"
-        isLoading={busyUuid === deletingRecord?.uuid}
-        onConfirm={() => {
-          if (!deletingRecord) return;
-          void withBusy(
-            deletingRecord.uuid,
-            () => gearServiceAPI.deleteRecord(deletingRecord.uuid),
-            "Failed to delete service record. Please try again.",
-          );
-        }}
+        isLoading={recordDelete.deletingId === recordDelete.pendingId}
+        onConfirm={() => recordDelete.confirmDelete()}
       />
     </Card>
   );

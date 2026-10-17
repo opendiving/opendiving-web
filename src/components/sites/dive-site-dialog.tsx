@@ -284,7 +284,7 @@ export function DiveSiteDialog({
 
       if (diveSite) {
         const update = {
-          name: data.name,
+          name: data.name.trim(),
           location,
           latitude,
           longitude,
@@ -295,7 +295,7 @@ export function DiveSiteDialog({
         onSaved(await readBack(diveSite, update));
       } else {
         const created = await diveSitesAPI.createDiveSite({
-          name: data.name,
+          name: data.name.trim(),
           location,
           latitude,
           longitude,

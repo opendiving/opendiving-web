@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { maxLength } from "./fields";
 
 // Coordinates here are plain numbers, not the regex-validated strings the dive
 // site form uses for the site's own pin (DECISIONS.md): nobody types a
@@ -25,13 +26,10 @@ export const MAX_LOCATION_NAME_LENGTH = 255;
  * because the geocoder had nothing for it, has a name and nothing else.
  */
 export const locationSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Location name is required")
-    .max(
-      MAX_LOCATION_NAME_LENGTH,
-      `Location name cannot exceed ${MAX_LOCATION_NAME_LENGTH} characters`,
-    ),
+  name: maxLength("Location name", MAX_LOCATION_NAME_LENGTH).min(
+    1,
+    "Location name is required",
+  ),
   latitude: nullableNumber(90),
   longitude: nullableNumber(180),
   bbox_south: nullableNumber(90),

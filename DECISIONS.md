@@ -176,8 +176,8 @@ Pickers of trips, sites, contacts, people, courses and gear search `/<plural>/lo
 edited record's date as its form holds it, or none. Remote rows are never re-filtered or re-sorted.
 
 A label comes from a `known*` prop, a lookup row, or a per-uuid read fired once with no `cancelled`
-flag: under StrictMode the request in flight is the discarded mount's. A host needing the whole
-record reads it on pick.
+flag (`useLookupLabels`): under StrictMode the request in flight is the discarded mount's. A host
+needing the whole record reads it on pick.
 
 The dive form lists its trip's and course's people, and the course's contact, first and unlabelled:
 a heading would teach the combobox unselectable rows. A pin the lookup matched by username or city
@@ -3211,9 +3211,9 @@ become renames. The absent-key path `get_gear_items_for_set` documents is exerci
 
 ## The create form proposes no cylinder, and the last one is removable
 
-`new-dive-page-content.tsx` seeds no mixture in `defaultValues` or in `prefillFromLastDive`'s
-fallback, the remove button in `mixture-fields.tsx` has no `index > 0` gate, and `onSubmit` sends
-`normalizeMixtures(data.mixtures ?? [])`, so an untouched gas card reaches `POST /dive` as
+`emptyDiveFormValues` seeds no mixture, for `defaultValues` and `prefillFromLastDive`'s fallback
+alike, the remove button in `mixture-fields.tsx` has no `index > 0` gate, and `buildDiveCreate`
+sends `normalizeMixtures(data.mixtures ?? [])`, so an untouched gas card reaches `POST /dive` as
 `mixtures: []` — which `DiveCreate.mixtures` (`default_factory=list`) and `dive-mixtures-card.tsx`
 expect.
 
@@ -3238,8 +3238,8 @@ default' React Hook Form quirk" and "The API sends `null` and the form schema wa
 default. `undefined` means untouched and is dropped from a PATCH; `null` means cleared and is sent.
 
 `buildDiveUpdate` converts `""` to an explicit `null`: an edit may already hold a value, and
-dropping the key would keep it while the toast says otherwise. The create page omits it instead, as
-with `trip_uuid`. Neither sends `""`, which `WaterType` (`StrEnum`) and `DiveCreate`
+dropping the key would keep it while the toast says otherwise. `buildDiveCreate` omits it instead,
+as with `trip_uuid`. Neither sends `""`, which `WaterType` (`StrEnum`) and `DiveCreate`
 (`extra="forbid"`) reject with a 422.
 
 Altitude is `min="-450" max="6500"`, mirroring `ck_dive_altitude_range`, not Visibility's `min="0"`
@@ -6497,10 +6497,10 @@ the first file's note mid-batch.
 
 ## The edit forms delete a stored file on save, beside the attaches
 
-`dives/[id]/edit` and the Recordings card's edit dialog hold `removedFileUuids` beside
-`pendingFiles`: a marked row stays struck through saying `Deleted when you save`, and the Trash icon
-becomes an Undo. Deleting on confirm would make Cancel a lie. On submit deletions run first, then
-attaches, one toast per failure and none stopping the next.
+`dives/[id]/edit` and the Recordings card's edit dialog hold struck-off stored files beside the
+picked ones, in `usePendingDiveFiles`: a marked row stays struck through saying
+`Deleted when you save`, and the Trash icon becomes an Undo. Deleting on confirm would make Cancel a
+lie. On submit deletions run first, then attaches, one toast per failure and none stopping the next.
 
 The forms wrap `deleteFileConfirmation` in `lib/dive-recordings.ts` as `removeFileConfirmation`: the
 first mark keeps the three-outcome text, the dive on screen being the one the save finds; later

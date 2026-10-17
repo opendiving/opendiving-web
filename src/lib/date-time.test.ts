@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   combineStartTime,
   formatDateOnly,
@@ -135,6 +135,30 @@ describe("normalizeParsedStartTime", () => {
     expect(normalizeParsedStartTime("2024-05-12")).toBe(
       `2024-05-12T00:00:00${browserOffset}`,
     );
+  });
+
+  // 02:30 on 2025-03-09 does not exist in New York: the clocks jump from 02:00 to
+  // 03:00. A local parse lands it on 03:30, an hour off the clock the computer
+  // recorded. The zone and the clock are both pinned, so the offset is known.
+  describe("in a zone whose spring-forward gap holds the clock", () => {
+    const originalTz = process.env.TZ;
+
+    beforeEach(() => {
+      process.env.TZ = "America/New_York";
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2025-06-01T12:00:00Z"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      process.env.TZ = originalTz;
+    });
+
+    it("keeps a naive 02:30 at 02:30", () => {
+      expect(normalizeParsedStartTime("2025-03-09T02:30:00")).toBe(
+        "2025-03-09T02:30:00-04:00",
+      );
+    });
   });
 
   it("returns undefined for something that isn't a datetime at all", () => {

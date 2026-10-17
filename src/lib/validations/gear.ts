@@ -1,14 +1,13 @@
 import { z } from "zod";
+import { maxLength } from "./fields";
 import { notesField } from "./notes";
+import { requiredName } from "./name";
 import { CYLINDER_MATERIALS, GEAR_TYPES } from "@/lib/api/gear";
 import { MAX_PRESSURE_BAR, PRESSURE_CEILING_CLAUSE } from "./dive";
 
 export const gearItemSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Gear name is required")
-    .max(255, "Gear name cannot exceed 255 characters"),
-  brand: z.string().max(255, "Brand cannot exceed 255 characters").optional(),
+  name: requiredName("Gear name", 255),
+  brand: maxLength("Brand", 255).optional(),
   // Optional: gear logged before types existed has none, and forcing a diver to
   // categorize a one-off piece of kit before saving it would be friction for no
   // gain. `""` is what the select holds for "no type" while editing.
@@ -32,10 +31,7 @@ export const gearItemSchema = z.object({
 });
 
 export const gearSetSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Set name is required")
-    .max(255, "Set name cannot exceed 255 characters"),
+  name: requiredName("Set name", 255),
   // Optional default ballast in kg, carried into the dive form when the set is
   // loaded. `min(0)` matches `dive.weight` - zero is a real configuration, and a
   // set that simply doesn't record a weight leaves the dive's own value alone.

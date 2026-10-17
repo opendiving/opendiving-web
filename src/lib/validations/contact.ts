@@ -1,11 +1,11 @@
 import { z } from "zod";
+import { maxLength, optionalEmailField, phoneField } from "./fields";
 import { notesField } from "./notes";
+import { requiredName } from "./name";
 import type { ContactAddress } from "@/lib/api/contacts";
 
 // The API's bounds for a contact (`schemas/contact.py`), which are DiveJSON's.
 const NAME_MAX = 255;
-const PHONE_MAX = 32;
-const EMAIL_MAX = 255;
 const WEBSITE_MAX = 512;
 const ADDRESS_LINE_MAX = 255;
 const POSTCODE_MAX = 32;
@@ -45,19 +45,11 @@ function isWebsite(value: string | undefined): boolean {
 // be edited one box at a time; `contactAddressFromForm` is what turns it back into
 // the API's shape.
 const addressSchema = z.object({
-  street: z
-    .string()
-    .max(ADDRESS_LINE_MAX, "Address cannot exceed 255 characters"),
-  city: z.string().max(ADDRESS_LINE_MAX, "City cannot exceed 255 characters"),
-  postcode: z
-    .string()
-    .max(POSTCODE_MAX, "Postcode cannot exceed 32 characters"),
-  region: z
-    .string()
-    .max(ADDRESS_LINE_MAX, "Region cannot exceed 255 characters"),
-  country: z
-    .string()
-    .max(ADDRESS_LINE_MAX, "Country cannot exceed 255 characters"),
+  street: maxLength("Address", ADDRESS_LINE_MAX),
+  city: maxLength("City", ADDRESS_LINE_MAX),
+  postcode: maxLength("Postcode", POSTCODE_MAX),
+  region: maxLength("Region", ADDRESS_LINE_MAX),
+  country: maxLength("Country", ADDRESS_LINE_MAX),
 });
 
 export type ContactAddressInput = z.input<typeof addressSchema>;
@@ -82,21 +74,12 @@ function hasAddress(address: ContactAddressInput): boolean {
 // `z.input<>` and the form's own types the same (CONTRIBUTING.md).
 export const contactSchema = z
   .object({
-    name: z
-      .string()
-      .min(1, "Name is required")
-      .max(NAME_MAX, "Name cannot exceed 255 characters"),
+    name: requiredName("Name", NAME_MAX),
     // Strings rather than the vocabulary's enum, so an edit keeps a role this
     // build has no checkbox for - see `ContactCreate.roles`.
     roles: z.array(z.string()),
-    phone: z.string().max(PHONE_MAX, "Phone cannot exceed 32 characters"),
-    email: z.union([
-      z.literal(""),
-      z
-        .string()
-        .email("Please enter a valid email address")
-        .max(EMAIL_MAX, "Email cannot exceed 255 characters"),
-    ]),
+    phone: phoneField(),
+    email: optionalEmailField(),
     website: z.string(),
     address: addressSchema,
     notes: notesField(),
