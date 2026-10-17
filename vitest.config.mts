@@ -28,6 +28,7 @@ const NODE_TESTS = [
   "src/map-renderer/**/*.test.ts",
   "src/proxy.test.ts",
   "src/app/robots.test.ts",
+  "src/app/layout.test.ts",
   "src/app/healthz/route.test.ts",
   "src/lib/api-proxy.test.ts",
   "src/lib/api/config.server.test.ts",

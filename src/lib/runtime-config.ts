@@ -45,9 +45,9 @@ export interface PublicConfig {
 /** `PublicConfig` plus the parts only the server renders with. */
 export interface RuntimeConfig extends PublicConfig {
   /**
-   * This instance's own origin. In the web server only `metadataBase` and the OpenGraph
-   * URL use it, so there a wrong value costs link previews; the map renderer also names the
-   * instance by it to the basemap and resolves a relative style URL against it.
+   * This instance's own origin. In the web server only `metadataBase` uses it, so there a
+   * wrong value costs the canonical URLs that resolve against it; the map renderer also names
+   * the instance by it to the basemap and resolves a relative style URL against it.
    */
   siteUrl: string;
   /**
@@ -125,7 +125,7 @@ function flag(
  *
  * `metadataBase` is a `new URL(...)`, which throws on a malformed value - and it is
  * built in the root layout, so a typo'd `SITE_URL` would take every page down over
- * OpenGraph tags. Failing back to the default and saying so is the same trade
+ * page metadata. Failing back to the default and saying so is the same trade
  * `lib/api-base.ts` and `lib/basemap.ts` make for the CSP.
  */
 function resolveSiteUrl(value: string | undefined): string {
@@ -134,7 +134,7 @@ function resolveSiteUrl(value: string | undefined): string {
     const { protocol } = new URL(value);
     // As in `apiCspSource`: `new URL` only throws when there is no parseable scheme at
     // all, so "htp://example.com" would sail through and reach crawlers as an
-    // unfetchable `og:url`.
+    // unfetchable canonical URL.
     if (protocol !== "http:" && protocol !== "https:")
       throw new Error(protocol);
     return value;

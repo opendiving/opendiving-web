@@ -235,7 +235,7 @@ export function Header() {
         }`}
         onClick={() => setIsMobileMenuOpen(false)}
       />
-      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4 touch:py-3">
           {/* Logo and Navigation. The gap is the nav's, so it goes with the nav
               below `md` - at 320px that room is what the four controls need.

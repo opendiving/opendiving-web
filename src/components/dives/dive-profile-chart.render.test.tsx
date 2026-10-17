@@ -430,9 +430,9 @@ describe("DiveProfileChart with an event type this build doesn't know", () => {
   // `ProfileEventType` is closed on the API side *today*, and the two repos deploy
   // independently - so an API that grows a sixth type reaches browsers still running
   // this bundle, where `event.type` is a string TypeScript merely believes is one of
-  // five. Before `glyphFor`, indexing the glyph table with it returned `undefined` and
-  // destructuring that threw inside render. With no `error.tsx` anywhere under
-  // `src/app`, that took out the whole dive detail route rather than one tick.
+  // five. Indexing the glyph table with it yields `undefined`, and destructuring that
+  // throws inside render, which trades the whole dive page for `app/error.tsx` rather
+  // than losing one tick - so `glyphFor` falls back instead.
   const rogue = (label?: string) =>
     ({
       time: 120_000,
