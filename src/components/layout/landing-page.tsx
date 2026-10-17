@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
 
 import {
   Card,
@@ -17,6 +16,7 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { InviteRequestForm } from "@/components/auth/invite-request-form";
 import type { InviteLinkDoor, JoinChannel } from "@/lib/api/config";
 import { Fish, Anchor, ArrowRight, HardDriveDownload } from "lucide-react";
+import { PageSpinner } from "@/components/ui/page-spinner";
 
 // Every claim on this page has to be true of the software as it stands, because
 // the page is served by whoever is running the instance and they are the ones it
@@ -67,11 +67,7 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
   const { config, isLoading: isConfigLoading } = useInstanceConfig();
 
   if (isLoading || isAuthenticated || isConfigLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner className="bg-background" />;
   }
 
   return (

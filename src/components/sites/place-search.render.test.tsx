@@ -6,13 +6,11 @@ import type { GeocodeResult } from "@/lib/api/geocoding";
 import type { DiveSiteSuggestion } from "@/lib/api/dive-site-catalog";
 import type { UnitSystem } from "@/lib/units";
 
-vi.mock("@/lib/api/geocoding", () => ({
+// The real constants - the debounce and the query bounds the field hands the
+// combobox - with only the transport replaced.
+vi.mock("@/lib/api/geocoding", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/geocoding")>()),
   geocodingAPI: { searchPlaces: vi.fn().mockResolvedValue([]) },
-  // The real values, since the field hands them to the combobox as the bounds
-  // outside which "nothing found" would be a claim about a search that never
-  // ran.
-  MIN_PLACE_QUERY_LENGTH: 2,
-  MAX_PLACE_QUERY_LENGTH: 200,
 }));
 
 // Only the call is stubbed: `diveSitePlaceContext` is the rule for what a row

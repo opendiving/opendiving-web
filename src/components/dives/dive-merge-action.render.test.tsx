@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveMergeAction } from "./dive-merge-action";
 import type { Dive, DiveMergeResult, Recording } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 
 vi.mock("@/lib/api/dives", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/dives")>()),
@@ -31,22 +32,15 @@ function recording(overrides: Partial<Recording> = {}): Recording {
   return { uuid: "r1", ordinal: 0, files: [], ...overrides };
 }
 
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
+const dive = (overrides: Partial<Dive> = {}) =>
+  baseDive({
     uuid: "part-2",
     dive_number: 2,
     start_time: "2026-09-08T15:21:53",
     submerged_time: 2921,
-    dive_sites: [],
-    gear_items: [],
-    notes: "",
-    user_uuid: "u1",
-    created_at: "2026-09-08T13:21:53Z",
-    mixtures: [],
     recordings: [recording()],
     ...overrides,
-  };
-}
+  });
 
 const previous = {
   uuid: "part-1",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MailPlus, Send, Trash2 } from "lucide-react";
@@ -23,7 +23,8 @@ import { SectionSpinner } from "@/components/ui/section-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
 import { useToast } from "@/components/ui/use-toast";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
-import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
+import { useOptionalList } from "@/hooks/useOptionalList";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { invitationsAPI, type Invitation } from "@/lib/api/invitations";
 import { InviteLinkBlock } from "@/components/settings/invite-link-block";
 import { formatDateTime } from "@/lib/date-time";
@@ -32,23 +33,13 @@ import {
   type EmailAuthFormData,
 } from "@/lib/validations/auth";
 
-// What the list request came back with. `absent` is an instance in `open` mode,
-// where anyone may register and there is nothing to invite anyone to: the API
-// answers 404 and the whole card goes, which is how this card learns the mode
-// without ever being told it. Same union, and the same reasoning, as
-// `SessionsCard` and `PasskeysCard`.
-type ListState =
-  | { status: "loading" }
-  | {
-      status: "ready";
-      invitations: Invitation[];
-      hasMore: boolean;
-      page: number;
-    }
-  | { status: "absent" }
-  | { status: "failed"; message: string };
-
 const LIST_FAILED = "Couldn't load the invitations you have sent.";
+const loadInvitations = () =>
+  invitationsAPI.getInvitations().then((response) => ({
+    invitations: response.data,
+    hasMore: response.has_more,
+    page: response.page,
+  }));
 
 // Dates only, like the passkey rows: the hour an invitation was sent says nothing
 // its sender needs.
@@ -74,7 +65,6 @@ const DAY = { year: "numeric", month: "short", day: "numeric" } as const;
  */
 export function InvitationsCard() {
   const { toast } = useToast();
-  const [list, setList] = useState<ListState>({ status: "loading" });
   const [sendError, setSendError] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -89,40 +79,14 @@ export function InvitationsCard() {
     resolver: zodResolver(emailAuthSchema),
   });
 
-  // A promise chain rather than `async`/`await`, because it is called from the
-  // effect below and `react-hooks/set-state-in-effect` rejects a
-  // synchronous-looking setState there - the same shape `SessionsCard.refresh`
-  // has, for the same rule.
-  const refresh = useCallback(
-    () =>
-      invitationsAPI
-        .getInvitations()
-        .then((response) =>
-          setList({
-            status: "ready",
-            invitations: response.data,
-            hasMore: response.has_more,
-            page: response.page,
-          }),
-        )
-        .catch((error: unknown) => {
-          console.error(LIST_FAILED, error);
-          const status = getApiErrorStatus(error);
-          setList(
-            status === 404
-              ? { status: "absent" }
-              : {
-                  status: "failed",
-                  message: getApiErrorMessage(error, LIST_FAILED),
-                },
-          );
-        }),
-    [],
-  );
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  // An instance in `open` mode, where anyone may register and there is nothing
+  // to invite anyone to, answers 404 and the whole card goes - which is how this
+  // card learns the mode without ever being told it.
+  const {
+    list,
+    refresh,
+    update: updateInvitations,
+  } = useOptionalList(loadInvitations, LIST_FAILED);
 
   const { deletingId, pendingId, requestDelete, cancelDelete, confirmDelete } =
     useDeleteResource((uuid: string) => invitationsAPI.revokeInvitation(uuid), {
@@ -136,7 +100,7 @@ export function InvitationsCard() {
       onDeleted: refresh,
     });
 
-  const invitations = list.status === "ready" ? list.invitations : [];
+  const invitations = list.status === "ready" ? list.data.invitations : [];
   const pendingInvitation = invitations.find((one) => one.uuid === pendingId);
 
   const onSend = async (data: EmailAuthFormData) => {
@@ -146,11 +110,10 @@ export function InvitationsCard() {
       // Prepended from the response rather than re-read: the route answers with
       // the row it created, the list is newest-first, and a second GET here
       // would be a request whose answer this one already contains.
-      setList((current) =>
-        current.status === "ready"
-          ? { ...current, invitations: [created, ...current.invitations] }
-          : current,
-      );
+      updateInvitations((current) => ({
+        ...current,
+        invitations: [created, ...current.invitations],
+      }));
       reset();
       toast({
         title: "Success",
@@ -171,9 +134,8 @@ export function InvitationsCard() {
     if (list.status !== "ready") return;
     try {
       setIsLoadingMore(true);
-      const response = await invitationsAPI.getInvitations(list.page + 1);
-      setList((current) => {
-        if (current.status !== "ready") return current;
+      const response = await invitationsAPI.getInvitations(list.data.page + 1);
+      updateInvitations((current) => {
         // Deduped by uuid, and this is load-bearing rather than belt-and-braces.
         // The route pages by offset over a newest-first ordering, so any row
         // added since the first page was read shifts every later row down one -
@@ -338,7 +300,7 @@ export function InvitationsCard() {
           ),
         )}
 
-        {list.status === "ready" && list.hasMore && (
+        {list.status === "ready" && list.data.hasMore && (
           <Button
             variant="outline"
             size="sm"

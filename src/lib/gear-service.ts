@@ -16,6 +16,7 @@ import type {
   GearServiceScheduleSummary,
   ServiceKind,
 } from "@/lib/api/gear-service";
+import { daysBetweenIsoDates, todayIsoDate } from "@/lib/date-time";
 import { countNoun } from "@/lib/format";
 
 // How far ahead a due date starts reading as "due soon". 30 days is roughly the lead
@@ -37,33 +38,6 @@ export function hoursOfDiving(seconds: number): number {
 }
 
 export type ServiceStatus = "ok" | "due_soon" | "overdue";
-
-// Today as "YYYY-MM-DD" in the *viewer's* timezone. Built from local getters rather
-// than `toISOString()`, which would render UTC and so show tomorrow's (or yesterday's)
-// date for anyone far enough east or west.
-export function todayIsoDate(now: Date = new Date()): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-// Whole days from `from` to `to`, both bare "YYYY-MM-DD" strings. Negative once `to` is
-// in the past.
-//
-// Both dates are constructed from their split parts, never `new Date(dateString)`: a
-// bare date string parses as UTC midnight, which lands on the previous day in every
-// negative-UTC-offset timezone and would make a due date read as one day closer than it
-// is. Same reasoning as `formatDateOnly()` in `lib/date-time.ts`.
-//
-// Using local midnight for both ends also makes this immune to DST: the two Dates shift
-// by the same offset, and rounding the millisecond difference absorbs the one 23- or
-// 25-hour day in between.
-export function daysBetweenIsoDates(from: string, to: string): number {
-  const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
-  const [toYear, toMonth, toDay] = to.split("-").map(Number);
-  const start = new Date(fromYear, fromMonth - 1, fromDay);
-  const end = new Date(toYear, toMonth - 1, toDay);
-  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
-}
 
 // How urgent one schedule is, given the item's live dive count and dive time (seconds).
 //

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import type { Dive } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 import type { TripPart } from "@/lib/api/trips";
 import userEvent from "@testing-library/user-event";
 import { TripDiveSections } from "./trip-dive-sections";
@@ -34,7 +35,7 @@ const dive = (
   uuid: string,
   start_time: string,
   trip_uuid: string | null = "trip-1",
-) => ({ uuid, start_time, trip_uuid, dive_number: 400 }) as Dive;
+) => baseDive({ uuid, start_time, trip_uuid, dive_number: 400 });
 
 const PARTS: TripPart[] = [
   {

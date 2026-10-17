@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   RepeatableRow,
@@ -48,6 +47,7 @@ import {
 } from "@/components/dives/sighting-quantity-field";
 import { cn } from "@/lib/utils";
 import { countNoun } from "@/lib/format";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 // Menu-row id for a species that isn't in the catalog yet, and so has no uuid to
 // be identified by. Picking one of these is what triggers a resolve; the prefix
@@ -559,7 +559,7 @@ export function SpeciesMultiSelect({
               key={pendingSpeciesId(entry.aphiaId)}
               className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground"
             >
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+              <ButtonSpinner className="shrink-0" />
               <span className="flex-1 truncate">{entry.label}</span>
               <span className="sr-only">Adding</span>
             </li>

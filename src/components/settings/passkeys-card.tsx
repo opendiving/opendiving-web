@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { Check, KeyRound, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,8 @@ import { SectionSpinner } from "@/components/ui/section-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { usePasskeyRegistration } from "@/hooks/usePasskeyRegistration";
-import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
+import { useOptionalList } from "@/hooks/useOptionalList";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { passkeysAPI, type Passkey } from "@/lib/api/passkeys";
 import { PASSKEY_NAME_MAX_LENGTH } from "@/lib/passkey-name";
 import { formatDateTime } from "@/lib/date-time";
@@ -32,21 +33,13 @@ import {
   restorePasskeyNudge,
 } from "@/lib/passkey-nudge";
 
-// What the list request came back with. `absent` is the instance whose API
-// predates passkeys and 404s: that is not an error to report on a settings page,
-// it is a feature this copy of OpenDiving does not have, so the whole card goes.
-type ListState =
-  | { status: "loading" }
-  | { status: "ready"; passkeys: Passkey[] }
-  | { status: "absent" }
-  | { status: "failed"; message: string };
-
 interface EditedName {
   uuid: string;
   name: string;
 }
 
 const LIST_FAILED = "Couldn't load your passkeys.";
+const loadPasskeys = () => passkeysAPI.getPasskeys();
 
 // Dates only - the hour a passkey was added says nothing a diver deciding
 // whether to revoke it needs.
@@ -68,7 +61,6 @@ const DAY = { year: "numeric", month: "short", day: "numeric" } as const;
  */
 export function PasskeysCard() {
   const { toast } = useToast();
-  const [list, setList] = useState<ListState>({ status: "loading" });
   const [edited, setEdited] = useState<EditedName | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
 
@@ -86,33 +78,12 @@ export function PasskeysCard() {
   );
   const [nudgeRestored, setNudgeRestored] = useState(false);
 
-  // Written as a promise chain rather than `async`/`await` because it is called
-  // from the effect below, and `react-hooks/set-state-in-effect` rejects a
-  // synchronous-looking setState there - a `.then` callback is exactly the
-  // "subscribe to an external system" shape the rule is asking for.
-  const refresh = useCallback(
-    () =>
-      passkeysAPI
-        .getPasskeys()
-        .then((passkeys) => setList({ status: "ready", passkeys }))
-        .catch((error: unknown) => {
-          console.error(LIST_FAILED, error);
-          const status = getApiErrorStatus(error);
-          setList(
-            status === 404
-              ? { status: "absent" }
-              : {
-                  status: "failed",
-                  message: getApiErrorMessage(error, LIST_FAILED),
-                },
-          );
-        }),
-    [],
-  );
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  // An API predating passkeys 404s, and the whole card goes.
+  const {
+    list,
+    refresh,
+    update: updatePasskeys,
+  } = useOptionalList(loadPasskeys, LIST_FAILED);
 
   const registration = usePasskeyRegistration({
     onRegistered: useCallback(
@@ -143,7 +114,7 @@ export function PasskeysCard() {
       onDeleted: refresh,
     });
 
-  const passkeys = list.status === "ready" ? list.passkeys : [];
+  const passkeys = list.status === "ready" ? list.data : [];
   const pendingName = passkeys.find((one) => one.uuid === pendingId)?.name;
 
   // Whether undoing the dismissal would actually bring the Home page offer
@@ -170,15 +141,10 @@ export function PasskeysCard() {
       await passkeysAPI.renamePasskey(edited.uuid, name);
       // Patched in place rather than re-read: the rename is the only thing that
       // changed, and a refetch would blank the list for a beat to learn nothing.
-      setList((current) =>
-        current.status === "ready"
-          ? {
-              status: "ready",
-              passkeys: current.passkeys.map((one) =>
-                one.uuid === edited.uuid ? { ...one, name } : one,
-              ),
-            }
-          : current,
+      updatePasskeys((passkeys) =>
+        passkeys.map((one) =>
+          one.uuid === edited.uuid ? { ...one, name } : one,
+        ),
       );
       setEdited(null);
     } catch (error) {

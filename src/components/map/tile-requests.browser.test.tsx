@@ -5,6 +5,7 @@ import { page } from "vitest/browser";
 import { resolveBasemap } from "@/lib/basemap";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import type { Dive } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 import { DiveCard } from "@/components/dives/dive-card";
 import { MAX_TILE_REQUESTS } from "./tile-requests";
 
@@ -75,13 +76,12 @@ beforeEach(() => {
 // Each dive ten degrees of longitude from the last, so no two cards share a
 // tile and every request can be told by whose it is.
 const dive = (index: number): Dive =>
-  ({
+  baseDive({
     uuid: `dive-${index}`,
     dive_number: index,
     start_time: "2026-04-18T09:30:00+02:00",
     submerged_time: 3120,
     max_depth: 31.4,
-    mixtures: [],
     dive_sites: [
       {
         uuid: `site-${index}`,
@@ -90,7 +90,7 @@ const dive = (index: number): Dive =>
         longitude: -100 + 10 * index,
       },
     ],
-  }) as unknown as Dive;
+  });
 
 // Whose tile a request is, from its column at the zoom a lone site opens at.
 const cardOf = (url: string) => {

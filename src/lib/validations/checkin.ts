@@ -2,7 +2,7 @@ import { z } from "zod";
 import { optionalDateField } from "./fields";
 
 import type { DivingFigures } from "@/lib/checkin";
-import { todayIsoDate } from "@/lib/gear-service";
+import { todayIsoDate } from "@/lib/date-time";
 
 /**
  * The count's ceiling on `POST /user/checkin-link`: a check-in link keeps the figures

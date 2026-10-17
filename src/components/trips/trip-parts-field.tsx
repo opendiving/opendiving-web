@@ -25,6 +25,7 @@ import {
   GeocodeResult,
   MAX_PLACE_QUERY_LENGTH,
   MIN_PLACE_QUERY_LENGTH,
+  PLACE_SEARCH_DEBOUNCE_MS,
 } from "@/lib/api/geocoding";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import {
@@ -42,13 +43,6 @@ import { geocodeResultToLocation } from "@/lib/locations";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Attribution } from "@/components/attribution";
 import { cn } from "@/lib/utils";
-
-// Slower than the combobox's own 250 ms on purpose. Every keystroke that gets
-// past this reaches the geocoder through the API's proxy, which enforces one
-// request a second to each provider across the whole instance and answers `[]`
-// rather than queueing once that is exceeded - so a fast debounce doesn't just
-// waste requests, it turns them into empty menus.
-const PLACE_SEARCH_DEBOUNCE_MS = 450;
 
 /**
  * A stable id for a place, since these have none of their own.

@@ -4,6 +4,7 @@ import * as React from "react";
 import { CalendarIcon } from "lucide-react";
 
 import { parseDateInput, parseDateTimeInput } from "@/lib/date-input";
+import { pad } from "@/lib/date-time";
 import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -17,10 +18,6 @@ import {
 import type { FormControlSlotProps } from "@/components/ui/form";
 
 const DATE_TIME_REGEX = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/;
-
-function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
 
 function formatDateTime(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(

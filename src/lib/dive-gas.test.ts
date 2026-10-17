@@ -21,6 +21,7 @@ import {
 // `chart-period.ts` with their tests; `periodRange` stays imported here because
 // `scopeRange` and `bandRanges` are specified against it.
 import { type ChartScope, periodRange } from "@/lib/chart-period";
+import { dive as baseDive } from "@/test/dive-fixtures";
 
 function mixture(overrides: Partial<DiveMixture> = {}): DiveMixture {
   return {
@@ -34,22 +35,8 @@ function mixture(overrides: Partial<DiveMixture> = {}): DiveMixture {
   };
 }
 
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
-    uuid: "d1",
-    dive_number: 1,
-    start_time: "2026-04-04T10:04:47+02:00",
-    submerged_time: 2700,
-    avg_depth: 18,
-    dive_sites: [],
-    gear_items: [],
-    notes: "",
-    user_uuid: "u1",
-    created_at: "2026-04-04T08:04:47Z",
-    mixtures: [mixture()],
-    ...overrides,
-  };
-}
+const dive = (overrides: Partial<Dive> = {}) =>
+  baseDive({ avg_depth: 18, mixtures: [mixture()], ...overrides });
 
 // Enough of a recording to say "this dive was imported and a profile came out of
 // it", which is the only thing `gasUseUnavailableReason` asks of it. Without one

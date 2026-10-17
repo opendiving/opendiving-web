@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -204,7 +203,7 @@ function RenumberForm({
             </span>
           ) : !isPreviewCurrent ? (
             <span className="flex items-center text-muted-foreground">
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <ButtonSpinner className="mr-2" />
               Working out what would change…
             </span>
           ) : preview.result === null ? (

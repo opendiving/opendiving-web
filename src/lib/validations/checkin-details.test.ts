@@ -8,7 +8,7 @@ import {
   EMPTY_CHECKIN_FORM_VALUES,
   type CheckinDetailsFormValues,
 } from "./checkin-details";
-import { todayIsoDate } from "@/lib/gear-service";
+import { todayIsoDate } from "@/lib/date-time";
 import { isoDaysFromNow } from "@/test/local-day";
 
 const values = (

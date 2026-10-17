@@ -13,7 +13,7 @@ import type { UserDiveStats } from "@/lib/api/dive-stats";
 import type { Location } from "@/lib/api/location";
 import { DEFAULT_BASEMAP_ATTRIBUTION } from "@/lib/basemap";
 import { formatDaysAgo, formatDurationHoursMinutes } from "@/lib/date-time";
-import { daysBetweenIsoDates, todayIsoDate } from "@/lib/gear-service";
+import { daysBetweenIsoDates, todayIsoDate } from "@/lib/date-time";
 import { formatDepth, type UnitSystem } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
