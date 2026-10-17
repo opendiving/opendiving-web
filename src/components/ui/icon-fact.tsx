@@ -4,8 +4,7 @@ import { cn } from "@/lib/utils";
 
 // An icon on a backdrop's text line, the text's height, glowing as the text
 // does - through a filter, since `text-shadow` stops at an SVG.
-export const LINE_ICON =
-  "inline-block size-[1em] align-[-0.125em] [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+export const LINE_ICON = "inline-block size-[1em] align-[-0.125em] glow-icon";
 
 // A fact marked by an icon, which a screen reader hears as its label. Without
 // children the icon is the whole fact.

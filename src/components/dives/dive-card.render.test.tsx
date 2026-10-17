@@ -94,7 +94,7 @@ const card = (props: Partial<Parameters<typeof DiveCard>[0]> = {}) => {
 };
 
 const water = (item: HTMLElement) =>
-  item.querySelector(".bg-\\[var\\(--map-water\\)\\] svg");
+  item.querySelector(".bg-map-water svg");
 
 describe("DiveCard", () => {
   // Named from the dive's own sites and fixes: its tiles carry nothing of it.

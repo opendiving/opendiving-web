@@ -99,7 +99,7 @@ const TOP_ROW = "absolute inset-x-0 top-2.5 z-10";
 // `drop-shadow`s chain, each blurring the last one's 8-bit output, and more of
 // them drew the halo in rings.
 export const HERO_CONTROL =
-  "hover:bg-background/80 [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)] [&_svg]:[filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+  "hover:bg-background/80 glow-text [&_svg]:glow-icon";
 
 // What a hero knows before its record has loaded, so its skeleton draws them
 // for real: the way back, and the record's kind.
@@ -129,7 +129,7 @@ const OVERLINE = "mb-1 pl-13 md:pl-18";
 // drawing, which a 24-unit icon keeps inside 2-22. It glows as their text does
 // - through a filter, since `text-shadow` stops at an SVG.
 const ICON =
-  "mt-1.5 size-10 shrink-0 stroke-[1.5] md:mt-1 md:size-14 [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+  "mt-1.5 size-10 shrink-0 stroke-[1.5] md:mt-1 md:size-14 glow-icon";
 
 // Known before the record is, so the skeleton's is the real one. Padded as the
 // actions opposite it are: over the map it is a button among buttons.
@@ -272,10 +272,7 @@ export function MapHero({
           Every line is lifted off what the map still shows beneath it by a glow
           in the page's colour: two soft layers close together, since more of
           them - or wider ones - draw each layer's edge as a visible ring. */}
-      <div
-        ref={detailsRef}
-        className="z-[1] [text-shadow:0_0_2px_var(--backdrop-fade),0_0_5px_var(--backdrop-fade)]"
-      >
+      <div ref={detailsRef} className="z-[1] glow-text">
         <HeroDetails
           className={COLUMN}
           icon={Icon}

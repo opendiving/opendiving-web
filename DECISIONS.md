@@ -1576,8 +1576,8 @@ the outline and ghost variants.
 ## Theme tokens, and the three colours that needed a second variant
 
 Colours come from theme tokens, not raw Tailwind palette classes. Two raw uses stay on purpose: the
-dialog overlay's `bg-black/80` (a scrim is black in both themes) and the chart tooltips'
-`border-white/10` hairline over a dark surface.
+scrims' `bg-black/80`, the dialog overlay's and the mobile menu's (a scrim is black in both themes)
+and the chart tooltips' `border-white/10` hairline over a dark surface.
 
 A colour tuned to sit behind white text cannot also read as text. `--coral` and `--teal` carry no
 second variant; the destructive pair does: `--destructive-solid` fills buttons, badges and toasts,

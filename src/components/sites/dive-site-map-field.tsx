@@ -7,6 +7,7 @@ import {
   parseFormPosition,
 } from "@/lib/validations/dive-site";
 import { Attribution } from "@/components/attribution";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Still `next/dynamic` although the map is always shown: MapLibre is around
 // 250 KB gzipped, and it lives in its own chunk, fetched when this dialog opens
@@ -21,9 +22,7 @@ const MapPicker = dynamic(
   () => import("./map-picker").then((module) => module.MapPicker),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-40 w-full animate-pulse rounded-md border bg-muted sm:h-48" />
-    ),
+    loading: () => <Skeleton className="h-40 w-full border sm:h-48" />,
   },
 );
 
