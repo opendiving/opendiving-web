@@ -16,7 +16,7 @@ import {
   gearTypeLabel,
   type CylinderMaterial,
 } from "@/lib/api/gear";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiDuplicateError, getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   Dialog,
@@ -128,7 +128,7 @@ export function GearItemDialog({
   // Reload the form whenever the dialog is opened, so it shows the item being
   // edited (or a clean slate prefilled with the picker's typed text) rather than
   // whatever the previous invocation left behind.
-  const { reset } = form;
+  const { reset, setError, setFocus } = form;
   useEffectOnChange(() => {
     if (!open) return;
     reset({
@@ -155,7 +155,7 @@ export function GearItemDialog({
       if (gearItem) {
         await gearAPI.updateGearItem(gearItem.uuid, {
           name: data.name.trim(),
-          brand: data.brand || null,
+          brand: data.brand?.trim() || null,
           type,
           notes: data.notes || "",
           rented: data.rented ?? false,
@@ -164,7 +164,7 @@ export function GearItemDialog({
         onSaved({
           ...gearItem,
           name: data.name.trim(),
-          brand: data.brand || null,
+          brand: data.brand?.trim() || null,
           type,
           notes: data.notes || "",
           rented: data.rented ?? false,
@@ -173,7 +173,7 @@ export function GearItemDialog({
       } else {
         const created = await gearAPI.createGearItem({
           name: data.name.trim(),
-          brand: data.brand || undefined,
+          brand: data.brand?.trim() || undefined,
           type: type ?? undefined,
           notes: data.notes || undefined,
           rented: data.rented ?? false,
@@ -184,6 +184,13 @@ export function GearItemDialog({
 
       onOpenChange(false);
     } catch (error) {
+      // A name already taken is shown on the name, beside what the diver typed.
+      const duplicate = getApiDuplicateError(error);
+      if (duplicate) {
+        setError("name", { message: duplicate });
+        setFocus("name");
+        return;
+      }
       setApiError(
         getApiErrorMessage(
           error,

@@ -193,3 +193,39 @@ describe("vesselFactsToSave", () => {
     expect(vesselFactsToSave(typed, "regulator", undefined)).toEqual({});
   });
 });
+
+describe("GearItemDialog's names", () => {
+  it("sends the brand trimmed, and a blank one as none", async () => {
+    renderDialog({ gearItem: item() });
+    const brand = screen.getByLabelText("Brand");
+    await userEvent.type(brand, "  Luxfer  ");
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => expect(updateGearItem).toHaveBeenCalled());
+    expect(updateGearItem.mock.calls[0][1].brand).toBe("Luxfer");
+
+    updateGearItem.mockClear();
+    await userEvent.clear(brand);
+    await userEvent.type(brand, "   ");
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+    await waitFor(() => expect(updateGearItem).toHaveBeenCalled());
+    expect(updateGearItem.mock.calls[0][1].brand).toBeNull();
+  });
+
+  it("shows a brand and name already taken on the name field", async () => {
+    const taken = "A gear item with this brand and name already exists";
+    createGearItem.mockRejectedValue({
+      response: { status: 422, data: { detail: taken } },
+    });
+    renderDialog({});
+
+    const name = screen.getByLabelText(/^Name/);
+    await userEvent.type(name, "AL80");
+    await userEvent.click(screen.getByRole("button", { name: /create gear/i }));
+
+    const shown = await screen.findByText(taken);
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(name.getAttribute("aria-describedby")).toContain(shown.id);
+    expect(name).toHaveFocus();
+  });
+});

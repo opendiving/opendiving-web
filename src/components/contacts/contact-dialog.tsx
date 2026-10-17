@@ -21,7 +21,7 @@ import {
   type ContactRole,
 } from "@/lib/api/contacts";
 import { formatContactAddress } from "@/lib/contact";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiDuplicateError, getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import { cn } from "@/lib/utils";
 import {
@@ -115,7 +115,7 @@ export function ContactDialog({
 
   // Reload the form whenever the dialog opens, so it shows the contact being
   // edited rather than whatever the previous invocation left behind.
-  const { reset } = form;
+  const { reset, setError, setFocus } = form;
   useEffectOnChange(() => {
     if (!open) return;
     reset({
@@ -171,6 +171,13 @@ export function ContactDialog({
 
       onOpenChange(false);
     } catch (error) {
+      // A name already taken is shown on the name, beside what the diver typed.
+      const duplicate = getApiDuplicateError(error);
+      if (duplicate) {
+        setError("name", { message: duplicate });
+        setFocus("name");
+        return;
+      }
       setApiError(
         getApiErrorMessage(
           error,

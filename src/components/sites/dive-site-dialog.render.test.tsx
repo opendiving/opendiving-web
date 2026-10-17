@@ -517,6 +517,26 @@ describe("DiveSiteDialog API refusal", () => {
     expect(screen.getByRole("alert")).toBe(region);
   });
 
+  it("shows a name already taken at the locality on the name field", async () => {
+    const taken = "A dive site with this name already exists at this location";
+    createDiveSite.mockRejectedValue({
+      response: { status: 422, data: { detail: taken } },
+    });
+    renderDialog();
+
+    const name = screen.getByLabelText("Name *");
+    await userEvent.type(name, "Diving Spot");
+    await userEvent.click(
+      screen.getByRole("button", { name: /Create dive site/ }),
+    );
+
+    const shown = await screen.findByText(taken);
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(describedBy(name)).toContain(shown.textContent);
+    expect(name).toHaveFocus();
+    expect(screen.getByRole("alert")).toBeEmptyDOMElement();
+  });
+
   it("leaves the dialog open and editable so the diver can fix the name", async () => {
     createDiveSite.mockRejectedValue({
       response: {
@@ -649,6 +669,19 @@ describe("DiveSiteDialog location writes", () => {
     await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
     expect(updateDiveSite.mock.calls[0][1].location).toEqual({
       name: "Moalboal, Philippines",
+    });
+  });
+
+  it("sends a typed name trimmed, as the API stores it", async () => {
+    renderEdit();
+    const location = screen.getByLabelText("Location");
+    await userEvent.clear(location);
+    await userEvent.type(location, "  Moalboal  ");
+    await save();
+
+    await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
+    expect(updateDiveSite.mock.calls[0][1].location).toEqual({
+      name: "Moalboal",
     });
   });
 });

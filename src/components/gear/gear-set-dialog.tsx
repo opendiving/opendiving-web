@@ -10,7 +10,7 @@ import { Save, Weight } from "lucide-react";
 import { gearSetSchema, GearSetInput } from "@/lib/validations/gear";
 import { gearAPI, GearSet, fetchAllGearSets } from "@/lib/api/gear";
 import { isAbortError } from "@/lib/api/client";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiDuplicateError, getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   Dialog,
@@ -94,7 +94,7 @@ export function GearSetDialog({
     resolver: zodResolver(gearSetSchema),
     defaultValues: { name: "", weight: undefined, gear_item_uuids: [] },
   });
-  const { reset, setValue } = form;
+  const { reset, setValue, setError, setFocus } = form;
 
   // Reset to the dialog's inputs every time it opens, so a previous invocation's
   // half-filled state never leaks into the next one.
@@ -174,6 +174,13 @@ export function GearSetDialog({
 
       onOpenChange(false);
     } catch (error) {
+      // A name already taken is shown on the name, beside what the diver typed.
+      const duplicate = getApiDuplicateError(error);
+      if (duplicate) {
+        setError("name", { message: duplicate });
+        setFocus("name");
+        return;
+      }
       setApiError(
         getApiErrorMessage(error, "Failed to save gear set. Please try again."),
       );
