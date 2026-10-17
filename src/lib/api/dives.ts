@@ -999,7 +999,7 @@ export interface DiveFileInfo {
   // The format the API's reader recognised the file as - a converter format id
   // such as "suunto_json", or `divejson_import` for an archive-restored file
   // this build cannot read. Render it with `importSourceLabel`, the logbook
-  // import's label, which falls back to the raw id.
+  // import's label, which de-snakes an id it has no label for.
   parser_key: string;
   updated_at?: string | null;
 }

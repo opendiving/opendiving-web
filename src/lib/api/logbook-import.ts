@@ -88,7 +88,7 @@ const IMPORT_CONTAINER_LABELS: Record<
  * The fallback is the whole point rather than defensiveness: the API's format
  * list is derived from its pinned converter on every call, that pin moves by
  * dependency bump alone, and a `Record` lookup would render `undefined` in the
- * import report the day a new reader ships. Showing a bare `shearwater_db` is
+ * import report the day a new reader ships. A de-snaked "Shearwater db" is
  * worse than a label and far better than a blank.
  *
  * **It has already happened once, which is the argument for keeping it.** The

@@ -1015,9 +1015,8 @@ The same `Dive` interface backs `GET /dives` and `GET /dive/{uuid}`, and the API
 only on the detail one — the list is its hottest query and nothing in the table renders an
 attachment. Hence `recordings?:` rather than a required member; do not "fix" the missing value by
 adding it to the list server-side. A file's `parser_key` renders through `importSourceLabel`, which
-falls back to the raw id for a format this build has not heard of, rather than to a blank or
-"Unknown": the API can grow a reader ahead of the frontend, and a slug in the cell beats an empty
-one that reads as a bug.
+de-snakes the id of a format this build has not heard of rather than showing a blank or "Unknown":
+the API can grow a reader ahead of the frontend, and an empty cell reads as a bug.
 
 ## Air consumption is the API's number; the browser only explains its absence
 
@@ -3962,9 +3961,9 @@ of an account they still have. Same asymmetry as `signOut` after a failed `POST 
 exists inside its deletion grace period, and nothing was written and no session issued.
 `AuthOutcome` is a union discriminated on `status`, so each token is reachable only under its own
 status: an else branch reading `onboarding_token` after testing for `authenticated` alone is a type
-error, where a non-null assertion stashed an `undefined` token for `/auth/complete`. The magic-link
-page, the six-digit code card, the Google button and `usePasskeySignIn` all take their destination
-from that status too, instead of a `signedIn ? next : "/onboarding"` ternary each.
+error. The magic-link page, the six-digit code card, the Google button and `usePasskeySignIn` all
+take their destination from that status too, instead of a `signedIn ? next : "/onboarding"` ternary
+each.
 
 ## One function decides where an outcome lands
 
@@ -4767,7 +4766,8 @@ depth.
 ## A tank card's line carries its usage, and its icon reads a twin set off the volume
 
 The usage flag is the last fact on the card's line, as the label the diver picked ("Parallel",
-"Staged"), falling back to the wire value as the role badge does; its meaning stays in the form.
+"Staged"), de-snaked through `labelOrFallback` where it has none, as the role badge is; its meaning
+stays in the form.
 
 The card draws the twin-set icon for a cylinder whose litres match a twin-set preset
 (`isTwinSetVolume` in `volume-combobox.tsx`): `DiveMixture` records no twin flag, and no single in

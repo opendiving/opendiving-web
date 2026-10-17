@@ -44,7 +44,7 @@ function sightingFigures(sighting: Sighting): BackdropCardFigure[] {
     return [{ label: "Count", value: sighting.count }];
   }
   if (sighting.abundance != null) {
-    // A band this build has no range for yet reads as its slug alone.
+    // A band this build has no range for yet reads as its de-snaked label alone.
     const range = ABUNDANCES.includes(sighting.abundance)
       ? ABUNDANCE_RANGES[sighting.abundance]
       : undefined;

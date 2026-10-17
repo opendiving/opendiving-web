@@ -323,7 +323,7 @@ describe.each([
 });
 
 describe("DiveDetailSidebar environment, read from a newer API", () => {
-  // A member the API grew before this build shipped a label renders as itself
+  // A member the API grew before this build shipped a label renders de-snaked
   // rather than as a blank row.
   it("shows a value this build has no label for de-snaked", () => {
     renderSidebar(dive({ current: "tidal_surge" as Dive["current"] }));
