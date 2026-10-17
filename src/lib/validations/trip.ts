@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalDateField } from "./fields";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 import { locationSchema } from "./location";
@@ -22,8 +23,8 @@ export const MAX_TRIP_PARTS = 20;
 const tripPartSchema = z
   .object({
     location: locationSchema.nullish(),
-    start_date: z.string().optional(),
-    end_date: z.string().optional(),
+    start_date: optionalDateField().optional(),
+    end_date: optionalDateField().optional(),
     // Where the diver slept during the part - a contact, picked like a course.
     accommodation_uuid: z.string().nullable().optional(),
   })

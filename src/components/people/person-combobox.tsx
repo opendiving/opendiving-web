@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import type { FormControlSlotProps } from "@/components/ui/form";
-import { peopleAPI, type Person } from "@/lib/api/people";
+import type { Person } from "@/lib/api/people";
+import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { PersonDialog } from "@/components/people/person-dialog";
 import {
   personItem,
@@ -45,28 +46,16 @@ export function PersonCombobox({
   const trackText = useCallback((text: string) => {
     textRef.current = text;
   }, []);
-  // Fired-for uuids, so a failed lookup isn't retried on every render.
-  const requestedRef = useRef<Set<string>>(new Set());
-
-  // The name for a `value` that arrived from the form. No cancellation flag,
-  // for the reason `TripCombobox` gives: the request fires once per uuid, and
-  // writing to a uuid-keyed map is idempotent.
-  useEffect(() => {
-    if (!value || people[value] || requestedRef.current.has(value)) return;
-    requestedRef.current.add(value);
-
-    peopleAPI
-      .getPerson(value)
-      .then(remember)
-      .catch((error) => console.error("Failed to fetch person:", error));
-  }, [value, people, remember]);
+  // The name for a `value` that arrived from the form, read only when no search
+  // has answered it - as `PeopleMultiSelect` reads its rows.
+  const resolved = usePeopleByUuid(value && !people[value] ? [value] : []);
 
   const handleCreated = (created: Person) => {
     remember(created);
     onChange(created.uuid);
   };
 
-  const selected = value ? people[value] : undefined;
+  const selected = value ? (people[value] ?? resolved[value]) : undefined;
 
   return (
     <>

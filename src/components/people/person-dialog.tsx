@@ -101,7 +101,7 @@ export function PersonDialog({
       const shared = {
         name: data.name.trim(),
         username: normalizeLinkedUsername(data.username),
-        email: data.email || null,
+        email: data.email.trim() || null,
         phone: data.phone.trim() || null,
         notes: data.notes,
       };

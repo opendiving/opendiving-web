@@ -144,7 +144,7 @@ export function ContactDialog({
         name: data.name.trim(),
         roles: data.roles,
         phone: data.phone.trim() || null,
-        email: data.email || null,
+        email: data.email.trim() || null,
         website: normalizeWebsite(data.website),
         address: contactAddressFromForm(data.address),
         notes: data.notes,

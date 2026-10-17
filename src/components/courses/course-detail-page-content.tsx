@@ -7,7 +7,8 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
-import { useContact } from "@/hooks/useContact";
+import { useRecordByUuid } from "@/hooks/useRecordByUuid";
+import { contactsAPI } from "@/lib/api/contacts";
 import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { splitCourseInstructor } from "@/lib/people";
 import { coursesAPI, Course } from "@/lib/api/courses";
@@ -71,7 +72,7 @@ export function CourseDetailPageContent() {
   });
   const isDeleting = del.deletingId !== null;
 
-  const contact = useContact(course?.contact_uuid);
+  const contact = useRecordByUuid(contactsAPI.getContact, course?.contact_uuid);
   // The instructor on a row of their own, as the dialog holds them, and everyone
   // else on the course under it.
   const { instructorUuid, others } = splitCourseInstructor(course?.people);

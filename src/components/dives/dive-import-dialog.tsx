@@ -13,9 +13,9 @@ import {
   type DiveUpdateInput,
 } from "@/lib/validations/dive";
 import { DiveFileImport } from "@/components/dives/dive-file-import";
-import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { diveTitleText } from "@/components/dives/dive-title";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
+import { usePendingDiveFiles } from "@/components/dives/use-pending-dive-files";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import {
@@ -90,6 +90,8 @@ function DiveImportForm({
   onSaved: () => void;
 }) {
   const { toast } = useToast();
+  const recordings = dive.recordings ?? [];
+  const files = usePendingDiveFiles(recordings);
   // The whole dive, which a picked file fills the blanks of. None of those fields
   // is on screen here, so only the ones a file wrote are validated and sent: a
   // stored value this dialog does not show can neither block the save nor ride
@@ -99,17 +101,8 @@ function DiveImportForm({
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
   const [written, setWritten] = useState<ReadonlySet<string>>(new Set());
-  const [pendingFiles, setPendingFiles] = useState<PendingDiveFile[]>([]);
-  const [removedFileUuids, setRemovedFileUuids] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-
-  const recordings = dive.recordings ?? [];
-  const fileName = (fileUuid: string) =>
-    recordings
-      .flatMap((recording) => recording.files)
-      .find((file) => file.uuid === fileUuid)?.original_filename ?? "a file";
-  const hasChanges = pendingFiles.length > 0 || removedFileUuids.length > 0;
 
   const save = async () => {
     setApiError(null);
@@ -146,36 +139,7 @@ function DiveImportForm({
       return;
     }
 
-    // Removals before additions, and each failure its own toast that does not
-    // stop the next - for the Edit page's reasons.
-    for (const fileUuid of removedFileUuids) {
-      try {
-        await divesAPI.deleteDiveFile(dive.uuid, fileUuid);
-      } catch (error) {
-        toast({
-          title: `${fileName(fileUuid)} wasn't deleted`,
-          description: getApiErrorMessage(
-            error,
-            "Try removing the file again.",
-          ),
-          variant: "destructive",
-        });
-      }
-    }
-    for (const item of pendingFiles) {
-      try {
-        await divesAPI.attachRecordingFile(dive.uuid, item.file, item.token);
-      } catch (error) {
-        toast({
-          title: `${item.file.name} wasn't attached`,
-          description: getApiErrorMessage(
-            error,
-            "Try importing the file again.",
-          ),
-          variant: "destructive",
-        });
-      }
-    }
+    await files.save(dive.uuid);
 
     setIsSubmitting(false);
     toast({ title: "Success", description: "Dive updated successfully!" });
@@ -188,22 +152,7 @@ function DiveImportForm({
         bare
         form={form}
         replaceMixtures={mixtureFieldArray.replace}
-        onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
-        pending={pendingFiles}
-        onRemovePending={(id) =>
-          setPendingFiles((files) => files.filter((item) => item.id !== id))
-        }
-        removedStored={removedFileUuids}
-        onRemoveStored={(fileUuid) =>
-          setRemovedFileUuids((uuids) =>
-            uuids.includes(fileUuid) ? uuids : [...uuids, fileUuid],
-          )
-        }
-        onRestoreStored={(fileUuid) =>
-          setRemovedFileUuids((uuids) =>
-            uuids.filter((uuid) => uuid !== fileUuid),
-          )
-        }
+        {...files.fileList}
         recordings={recordings}
         diveUuid={dive.uuid}
         returnTo={`/dives/${dive.uuid}`}
@@ -223,7 +172,7 @@ function DiveImportForm({
         <Button
           type="button"
           onClick={save}
-          disabled={isSubmitting || !hasChanges}
+          disabled={isSubmitting || !files.hasChanges}
         >
           {isSubmitting ? (
             <>

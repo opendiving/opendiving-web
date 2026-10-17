@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { AlertTriangle, GripVertical, X } from "lucide-react";
 import {
@@ -8,14 +8,11 @@ import {
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
 import type { FormControlSlotProps } from "@/components/ui/form";
-import {
-  diveSitesAPI,
-  DiveSite,
-  type DiveSiteLookupItem,
-} from "@/lib/api/dive-sites";
+import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { DiveSiteSummary } from "@/lib/api/dives";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
+import { useLookupLabels } from "@/hooks/useLookupLabels";
 import { useUnits } from "@/hooks/useUnits";
 import { diveSiteMismatches } from "@/lib/dive-site-mismatches";
 import { cn } from "@/lib/utils";
@@ -23,6 +20,9 @@ import { cn } from "@/lib/utils";
 // How many sites the dropdown asks for at a time. Enough to scroll through
 // before typing, far short of the API's 100 cap.
 const SITES_PER_SEARCH = 25;
+
+const lookupDiveSites = (uuids: string[]) =>
+  diveSitesAPI.lookupDiveSitesByUuid(uuids);
 
 export interface DiveSiteMultiSelectProps extends FormControlSlotProps {
   // Ordered list of selected dive site uuids - the first entry is the primary
@@ -60,62 +60,27 @@ export function DiveSiteMultiSelect({
   // label has nothing to say about.
   ...slotProps
 }: DiveSiteMultiSelectProps) {
-  const [labels, setLabels] = useState<Record<string, DiveSiteSummary>>({});
-  // Lookup rows, for the water type and altitude a dive's embedded summary does
-  // not carry. Needed only once there is a second site to compare the first with.
-  const [records, setRecords] = useState<Record<string, DiveSiteLookupItem>>(
-    {},
+  // Lookup rows, which label the selection and carry the water type and altitude
+  // a dive's embedded summary does not. A site `knownSites` already names is read
+  // only once there is a second site to compare the first with; any other -
+  // pre-selected by uuid alone (`/dives/new?dive_site_uuid=...`) - is read so a
+  // selection never renders nameless. One lookup narrowed to those uuids.
+  const { records, remember: rememberRecord } = useLookupLabels(
+    lookupDiveSites,
+    value.filter(
+      (uuid) =>
+        value.length > 1 || !knownSites?.some((site) => site.uuid === uuid),
+    ),
   );
   const units = useUnits();
   const [showNewDialog, setShowNewDialog] = useState(false);
   // Set by a save in the new-site dialog, so its close doesn't hand focus back
   // to the input - which would reopen the menu `blurOnSelect` just shut.
   const savedFromDialogRef = useRef(false);
-  // Every uuid a lookup by uuid has already been fired for, successful or not.
-  const requestedRef = useRef<Set<string>>(new Set());
-
-  // Read through the `knownSites` prop rather than copying it into `labels` via
-  // an effect: the copy wouldn't have landed yet on the render that first sees a
-  // selection, so the lookup below would fire for sites the caller had already
-  // handed over.
+  // Read through the `knownSites` prop rather than copied into `records`: the copy
+  // wouldn't have landed yet on the render that first sees a selection.
   const labelFor = (uuid: string): DiveSiteSummary | undefined =>
-    labels[uuid] ?? knownSites?.find((site) => site.uuid === uuid);
-
-  const rememberRecord = useCallback((site: DiveSiteLookupItem) => {
-    setLabels((prev) => ({ ...prev, [site.uuid]: site }));
-    setRecords((prev) => ({ ...prev, [site.uuid]: site }));
-  }, []);
-
-  // Resolve any selected site whose name isn't already known - which is how a
-  // site pre-selected by uuid alone (`/dives/new?dive_site_uuid=...`) gets a
-  // name, and the safety net that keeps a selection from ever rendering
-  // nameless - and, from the second site on, every site's lookup row. One
-  // lookup narrowed to those uuids, not a list scan.
-  useEffect(() => {
-    const unresolved = value.filter(
-      (uuid) =>
-        ((!labels[uuid] && !knownSites?.some((site) => site.uuid === uuid)) ||
-          (value.length > 1 && !records[uuid])) &&
-        !requestedRef.current.has(uuid),
-    );
-    if (unresolved.length === 0) return;
-
-    // Marked before the request, not after: a failed lookup must not be retried
-    // on every subsequent render, and this effect re-runs whenever `labels`
-    // changes - i.e. after each sibling lookup that did succeed.
-    //
-    // That same guard is why there's no cancellation flag here: it makes each
-    // uuid fetch exactly once, so under StrictMode's mount/unmount/remount the
-    // only in-flight lookup belongs to the discarded first mount, and ignoring
-    // its result would drop the name for good. Writing to a uuid-keyed map is
-    // idempotent, so a late arrival is always safe to apply.
-    unresolved.forEach((uuid) => requestedRef.current.add(uuid));
-
-    diveSitesAPI
-      .lookupDiveSitesByUuid(unresolved)
-      .then((sites) => sites.forEach(rememberRecord))
-      .catch((error) => console.error("Failed to fetch dive sites:", error));
-  }, [value, labels, records, knownSites, rememberRecord]);
+    records[uuid] ?? knownSites?.find((site) => site.uuid === uuid);
 
   // Nothing until every site is read: the first site recording a water type may
   // be one still on its way.
@@ -133,7 +98,7 @@ export function DiveSiteMultiSelect({
       });
       // Every site the dropdown shows is remembered, so picking one never needs
       // the record fetched straight back just to label its row.
-      response.data.forEach(rememberRecord);
+      rememberRecord(...response.data);
       return {
         items: response.data.map((site) => ({
           id: site.uuid,
