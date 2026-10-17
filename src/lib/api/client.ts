@@ -73,6 +73,25 @@ export function clearAccessToken(): void {
 // racing requests could otherwise invalidate each other.
 let pendingRefresh: Promise<string> | null = null;
 
+/** `POST /auth/refresh`'s body. The rotated refresh token rides its cookie instead. */
+export interface RefreshResponse {
+  access_token: string;
+  token_type: string;
+}
+
+// The cookie is shared by every tab, and single-use: two tabs presenting it at once
+// leave the one the API answers second holding a 401, signed out of a session the
+// other tab has just rotated - most often when a browser restores several tabs at
+// startup. Held under one lock per origin, the second tab presents the cookie the
+// first was handed. Without Web Locks the refresh simply runs unqueued.
+// No `opendiving:` prefix: that marks a browser-storage key, and a lock stores nothing.
+const REFRESH_LOCK = "auth-refresh";
+
+function oneTabAtATime<T>(work: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+  return locks ? locks.request(REFRESH_LOCK, work) : work();
+}
+
 /**
  * Exchanges the httpOnly refresh cookie for a new access token, storing it
  * in memory. Used both on page load and by the response interceptor below
@@ -86,10 +105,12 @@ export async function refreshAccessToken(): Promise<string> {
 
   pendingRefresh = (async () => {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/refresh`,
-        {},
-        { withCredentials: true },
+      const response = await oneTabAtATime(() =>
+        axios.post<RefreshResponse>(
+          `${API_BASE_URL}/auth/refresh`,
+          {},
+          { withCredentials: true },
+        ),
       );
       const { access_token } = response.data;
       setAccessToken(access_token);

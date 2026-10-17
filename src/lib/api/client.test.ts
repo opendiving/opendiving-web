@@ -5,6 +5,8 @@ import {
   fetchAllPages,
   isAbortError,
   lookupRequest,
+  refreshAccessToken,
+  setAccessToken,
   unwrapBlobErrorBody,
   type PaginatedResponse,
 } from "./client";
@@ -356,5 +358,61 @@ describe("apiClient 401 handling", () => {
 
     await expect(apiClient.post("/dives", {})).rejects.toBeDefined();
     expect(refresh).toHaveBeenCalled();
+  });
+});
+
+describe("refreshAccessToken across tabs", () => {
+  const answer = vi.fn(async (config: InternalAxiosRequestConfig) => ({
+    data: { access_token: "fresh", token_type: "bearer" },
+    status: 200,
+    statusText: "OK",
+    headers: {},
+    config,
+  }));
+
+  const withLocks = (request: LockManager["request"] | undefined) =>
+    Object.defineProperty(navigator, "locks", {
+      value: request && { request },
+      configurable: true,
+    });
+
+  beforeEach(() => {
+    answer.mockClear();
+    axios.defaults.adapter = answer;
+  });
+
+  afterEach(() => {
+    withLocks(undefined);
+    setAccessToken(null);
+  });
+
+  // Another tab holding the lock is mid-rotation: presenting the cookie now would
+  // present the one it is about to spend, and this tab would be the 401.
+  it("presents the cookie only once this tab holds the refresh lock", async () => {
+    let grant!: () => void;
+    const granted = new Promise<void>((resolve) => (grant = resolve));
+    const request = vi.fn(
+      async (_name: string, work: () => Promise<unknown>) => {
+        await granted;
+        return work();
+      },
+    );
+    withLocks(request as unknown as LockManager["request"]);
+
+    const token = refreshAccessToken();
+    await Promise.resolve();
+    expect(request).toHaveBeenCalledWith("auth-refresh", expect.any(Function));
+    expect(answer).not.toHaveBeenCalled();
+
+    grant();
+    await expect(token).resolves.toBe("fresh");
+    expect(answer).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes unqueued where the browser has no Web Locks", async () => {
+    withLocks(undefined);
+
+    await expect(refreshAccessToken()).resolves.toBe("fresh");
+    expect(answer).toHaveBeenCalledTimes(1);
   });
 });
