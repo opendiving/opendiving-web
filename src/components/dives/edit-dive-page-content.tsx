@@ -48,9 +48,9 @@ export function EditDivePageContent() {
   // Stored files the diver has struck off the list, deleted after the edit is
   // saved for the reason the attaches above wait for it: a form describes what
   // the dive should hold when the diver is done with it, and Cancel has to mean
-  // the dive is exactly as they found it. This used to fire the moment the
-  // dialog was confirmed, which made "Cancel" a lie about the one part of the
-  // form that is not undoable.
+  // the dive is exactly as they found it - deleting on the dialog's confirm
+  // would make "Cancel" a lie about the one part of the form that is not
+  // undoable.
   const [removedFileUuids, setRemovedFileUuids] = useState<string[]>([]);
 
   const form = useForm<DiveUpdateInput>({

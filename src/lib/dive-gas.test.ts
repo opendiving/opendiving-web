@@ -136,12 +136,9 @@ describe("gasUseUnavailableReason", () => {
 
   it("names multi-tank as a limitation, not a missing field", () => {
     // A cylinder with no pressures, which is what keeps this on the multi-tank
-    // sentences. The fixture used to be a plain pair - `mixture()` defaults every
-    // row to 200/50 - and that shape is now the nudge's, since it is exactly what
-    // a flaggable sidemount pair looks like. The assertions below were written
-    // when the no-profile branch was the only answer this function had for it;
-    // they were never a specification of where the nudge sits, and the sibling
-    // case is the test immediately after this one.
+    // sentences. Not a plain pair - `mixture()` defaults every row to 200/50 -
+    // because that shape is the nudge's, being exactly what a flaggable sidemount
+    // pair looks like; that case is the test immediately after this one.
     const reason = gasUseUnavailableReason(
       dive({
         mixtures: [
@@ -160,7 +157,7 @@ describe("gasUseUnavailableReason", () => {
 
   it("nudges an unflagged pair that has every pressure toward the parallel flag", () => {
     // The other half of the split above, and the whole point of the nudge's
-    // position: this dive is hand-logged with no profile, so it used to be told
+    // position: this dive is hand-logged with no profile, so it must not be told
     // to import a dive-computer file it never made. Everything the additive
     // branch needs is on the row already except the diver's answer.
     const reason = gasUseUnavailableReason(

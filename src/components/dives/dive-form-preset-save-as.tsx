@@ -55,9 +55,9 @@ interface DiveFormPresetSaveAsProps {
  * dropdown, submitted by the dialog's footer Save button, which either writes a new
  * preset or replaces an existing one's fields.
  *
- * **One control for what used to be two.** A "Save current fields as a preset" button
- * and an "Update with current fields" button per row are the same act under two names,
- * and the second scaled with the list. Typing a name that matches nothing creates;
+ * **One control, not two.** A "Save current fields as a preset" button and an
+ * "Update with current fields" button per row are the same act under two names, and
+ * the second scales with the list. Typing a name that matches nothing creates;
  * typing or picking one that matches replaces - which is why the line under the field
  * says which of the two the button is about to do, rather than leaving an overwrite to
  * be discovered.
@@ -68,7 +68,7 @@ interface DiveFormPresetSaveAsProps {
  * line under the field then reads "Replaces…", which is the same sentence it would
  * have shown had the name been typed, and Save is the same button doing the same
  * thing - nothing here is special-cased for having been seeded. A set matching no
- * preset opens empty, as it always did.
+ * preset opens empty.
  *
  * **A seeded name is not a filter.** The dropdown opens on the whole list while the
  * text is one this component wrote - the seed, or a picked row - and narrows only

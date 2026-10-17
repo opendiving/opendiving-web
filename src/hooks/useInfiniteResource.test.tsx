@@ -815,8 +815,8 @@ describe("useInfiniteResource", () => {
       await waitFor(() => expect(latest!.items).toHaveLength(10));
     });
 
-    // The retry a diver used to get by leaving and coming back. The route no longer
-    // remounts, and an empty list draws no "Try again", so the return has to be it.
+    // Leaving and coming back does not remount the route, and an empty list draws
+    // no "Try again", so the return has to be the retry.
     it("retries a first load that failed", async () => {
       const { fetchFn } = ledger(30, 10);
       fetchFn.mockRejectedValueOnce(new Error("the API is down"));

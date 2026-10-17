@@ -82,8 +82,7 @@ describe("metric display", () => {
     expect(formatDepth(30.0, "metric")).toBe("30 m");
   });
 
-  // Degrees attach, everything else takes a space. This is also the spacing
-  // unification: the app used to render `{v}m` in some places and `{v} m` in others.
+  // Degrees attach, everything else takes a space.
   it("attaches degrees and spaces everything else", () => {
     expect(formatTemperature(23.89, "metric")).toBe("23.89°C");
     expect(formatVisibility(15, "metric")).toBe("15 m");

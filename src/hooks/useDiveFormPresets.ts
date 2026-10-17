@@ -54,9 +54,9 @@ export interface DiveFormPresets {
  *
  * **Fetched on mount, not on first open.** The menu's own trigger is labelled with the
  * preset the stored hidden set matches - or "Custom" when none does - so the list is
- * needed to paint the button, before any diver has asked for it. That reverses the
- * lazier rule the inline Fields panel had, and knowingly: a label that says "Fields"
- * until first opened and "Recreational" afterwards is worse than one small request.
+ * needed to paint the button, before any diver has asked for it: a label that says
+ * "Fields" until first opened and "Recreational" afterwards is worse than one small
+ * request.
  *
  * Every mutation updates the list in place rather than refetching. The API's `PATCH`
  * answers with a message rather than the row, so a refetch would be the only way to

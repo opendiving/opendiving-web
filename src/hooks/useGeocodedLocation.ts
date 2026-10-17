@@ -121,10 +121,8 @@ export function useGeocodedLocation({
     liveRef.current = { latitude, longitude, location };
   });
 
-  // This state used to live in `DiveSiteMapField`, which unmounts with the
-  // dialog's content and so was clean on every open. The dialog itself is
-  // always mounted, so the reset has to be said out loud or a credit outlives
-  // the site it was earned on.
+  // The dialog itself is always mounted, so the reset has to be said out loud or
+  // a credit outlives the site it was earned on.
   useEffect(() => {
     if (!open) return;
     // Anything still in the air was asked about the site the dialog showed last

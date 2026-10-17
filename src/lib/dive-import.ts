@@ -44,11 +44,10 @@ export type MixtureValueSource = "file" | "form" | "blank" | "vessel";
  * if the form silently turns that back into a number, that care is thrown away at
  * the last step and the diver cannot tell a reading from a placeholder.
  *
- * The form no longer turns it into a number *of its own* - `mergeMixture` leaves a
- * gap the file and the form both fail to fill as a blank box, and the API stores
- * NULL for it. What survives is the case this note was always sharper about: a value
- * carried over from the cylinder already on the form, which is a real number on
- * screen that this file never recorded.
+ * The form does not turn it into a number *of its own* - `mergeMixture` leaves a gap
+ * the file and the form both fail to fill as a blank box, and the API stores NULL
+ * for it. What is left to report is a value carried over from the cylinder already
+ * on the form, which is a real number on screen that this file never recorded.
  */
 export interface MixtureImportNotes {
   /**
@@ -64,16 +63,13 @@ export interface MixtureImportNotes {
    * the form seed it": it is which branch of the merge ran, which `mergeMixture`
    * knows exactly.
    *
-   * Keyed off the file alone, and not off "no source had a value". Both forms once
-   * seeded a complete `DEFAULT_MIXTURE` cylinder before any import, so a rule that
-   * also consulted the carried-over cylinder was always empty and the warning was
-   * unreachable. Neither seeds one now - the create form starts empty, and the edit
-   * form holds whatever the dive records - but the rule stays keyed off the file,
-   * because a form the prefill filled in, an earlier import wrote to, or a dive with
-   * cylinders usually has all three values, and those are the imports the warning
-   * exists for. *Usually* rather than *still*, since the columns became nullable: a
-   * dive imported from a file that recorded no cylinder size holds a blank, and
-   * `pick` reads that as the gap it is rather than as something to carry over.
+   * Keyed off the file alone, and not off "no source had a value": a form the
+   * prefill filled in, an earlier import wrote to, or a dive with cylinders usually
+   * has all three values, so a rule that also consulted the carried-over cylinder
+   * would stay silent on exactly the imports the warning exists for. *Usually*,
+   * because the columns are nullable: a dive imported from a file that recorded no
+   * cylinder size holds a blank, and `pick` reads that as the gap it is rather than
+   * as something to carry over.
    */
   guessed: Partial<Record<CarriedMixtureField, MixtureValueSource>>;
   /**
@@ -125,20 +121,18 @@ export interface MergedMixture {
  * The second one matters because the two Suunto Ocean exports are complementary - its
  * FIT carries the gas mixes and no transmitter data, its JSON the pressures and no gas
  * mix - so importing both for one dive is the documented way to log a multi-gas dive
- * (see the API's DECISIONS.md). Without it the second import silently erased whatever
- * the first one contributed, and a dive that had a `gas_use` before quietly stopped
- * having one after.
+ * (see the API's DECISIONS.md). Without it the second import would silently erase
+ * whatever the first one contributed, and a dive that had a `gas_use` before would
+ * quietly lose it.
  *
- * **There is no third tier any more, and its absence is the point.** `DEFAULT_MIXTURE`
- * used to fill the rest, which meant every FIT import claimed an 11.1 L cylinder of air
- * - one cylinder, an average depth and both pressures being exactly what
- * `compute_gas_use` needs, so a diver on a 15 L was handed an RMV about 26 % low and
- * told nothing but a sentence 2 200 px up the page. The column is nullable now, so
- * blank survives the save: absence is data, and a file that recorded no vessel says so
- * all the way to the dive page. A cylinder added by hand still starts from
- * `DEFAULT_MIXTURE`, where the numbers are in front of the diver and can be changed -
- * that convenience was never the problem, and typing 21 and 0 for every air dive would
- * be.
+ * **There is no third tier, and its absence is the point.** Filling the rest from
+ * `DEFAULT_MIXTURE` would have every FIT import claim an 11.1 L cylinder of air - one
+ * cylinder, an average depth and both pressures being exactly what `compute_gas_use`
+ * needs, so a diver on a 15 L is handed an RMV about 26 % low. The column is nullable,
+ * so blank survives the save: absence is data, and a file that recorded no vessel says
+ * so all the way to the dive page. A cylinder added by hand starts from
+ * `DEFAULT_MIXTURE`, where the numbers are in front of the diver and can be changed,
+ * rather than having them type 21 and 0 for every air dive.
  */
 export function mergeMixture(
   mixture: ParsedDiveMixture,

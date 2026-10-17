@@ -34,11 +34,10 @@ import { countNoun } from "@/lib/format";
 // rather than stored - the same shape `useAuthedBlobUrl` uses, so nothing has to be
 // set synchronously in an effect body just to mark the fetch as started.
 //
-// A single settled value rather than the `profile` + `hasFailed` pair this used to
-// keep. Two independent states could disagree: `hasFailed` was never reset when the
-// dive or the profile version changed, so one failure was permanent for the life of
-// the page, and `profile` was never cleared, so a re-imported dive rendered the
-// *previous* version's chart under the new sample count.
+// A single settled value rather than a `profile` + `hasFailed` pair, because two
+// independent states can disagree: a failure flag not reset when the dive or the
+// profile version changes is permanent for the life of the page, and a `profile` not
+// cleared renders the *previous* version's chart under a re-import's sample count.
 type ProfileResult =
   | { status: "ready"; profile: DiveProfile }
   // The API says this dive has no profile. Nothing to retry - re-asking returns the

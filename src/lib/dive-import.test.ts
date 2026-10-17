@@ -122,11 +122,10 @@ describe("mergeMixture", () => {
   it("leaves gas and volume the export never recorded blank", () => {
     // The 2026 Suunto Ocean JSON export records transmitter pressures but no gas
     // fraction and no tank size anywhere, and a FIT file cannot express cylinder size
-    // at all. The API sends `null` rather than inventing air, and the form no longer
-    // converts that back into a number: every one of these boxes stays empty, saves as
-    // NULL, and shows on the dive page as an absence. `DEFAULT_MIXTURE` is still what a
-    // cylinder added *by hand* starts from - it is the import path that stopped
-    // guessing.
+    // at all. The API sends `null` rather than inventing air, and the form does not
+    // convert that back into a number: every one of these boxes stays empty, saves as
+    // NULL, and shows on the dive page as an absence. `DEFAULT_MIXTURE` is what a
+    // cylinder added *by hand* starts from - only the import path does not guess.
     const mixture = mergeMixture(
       parsed({ start_pressure: 205.11, end_pressure: 91.55 }),
     ).value;

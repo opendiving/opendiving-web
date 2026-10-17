@@ -12,9 +12,7 @@
 // The calendar arithmetic behind those scopes - which period is on screen, what
 // it's called, which ones are worth offering, how to step between them - lives in
 // `lib/chart-period.ts` and is shared with the gas card rather than reimplemented
-// here. This module used to carry its own, on plain year integers, because a bar
-// is a calendar bucket and there were no dives to anchor to; day buckets removed
-// that difference, since a day *is* an instant the chart can anchor on.
+// here.
 
 import type { DiveActivityPoint } from "@/lib/api/dive-stats";
 import {

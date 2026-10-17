@@ -201,7 +201,7 @@ describe("DiveGasConsumptionCard layouts", () => {
   it("explains the absence instead of hiding when nothing could be derived", () => {
     // Both cylinders carry pressures here, which is the flaggable shape, so the
     // sentence is the parallel nudge rather than the hand-logged one. That is the
-    // point of where the nudge sits: this dive has no profile, so it used to be
+    // point of where the nudge sits: this dive has no profile, so it must not be
     // told to import a file it never made.
     render(<DiveGasConsumptionCard dive={twoTankDive({ gas_use: null })} />);
 
@@ -243,10 +243,10 @@ describe("DiveGasConsumptionCard layouts", () => {
     // anything, while `rmv` and `gas_used` were divided by the dive's own average
     // depth and the sentence naming it is simply true.
     //
-    // A null SAC used to stand in for "derived per cylinder" and gated this
-    // sentence. It no longer can. What guarantees the claim is position: this arm
-    // renders only where `tanks` came back empty, which is exactly the set of
-    // derivations taken against `dive.avg_depth`.
+    // A null SAC can't gate this sentence: it doesn't mean "derived per cylinder".
+    // What guarantees the claim is position: this arm renders only where `tanks`
+    // came back empty, which is exactly the set of derivations taken against
+    // `dive.avg_depth`.
     render(
       <DiveGasConsumptionCard
         dive={dive({
@@ -269,9 +269,9 @@ describe("DiveGasConsumptionCard layouts", () => {
   });
 
   it("keeps the average-depth footnote off the per-tank layout entirely", () => {
-    // The claim the gate used to protect, now protected by position: an
-    // attributed dive renders the table arm, which does not contain this
-    // sentence at all. Pinned so a future refactor cannot quietly move it there.
+    // The same claim, protected by position: an attributed dive renders the
+    // table arm, which does not contain this sentence at all. Pinned so a future
+    // refactor cannot quietly move it there.
     render(<DiveGasConsumptionCard dive={twoTankDive()} />);
 
     expect(screen.queryByText(/from an average depth of/)).toBeNull();

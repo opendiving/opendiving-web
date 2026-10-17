@@ -8,7 +8,8 @@ import type { User } from "@/lib/api/auth";
 // PATCHes its own key and nothing else, and a field the API did not send reads as on.
 
 // Hoisted and returned by identity, as in `units-card.render.test.tsx` - see "The
-// new-dive render test was in a loop with itself" in DECISIONS.md.
+// new-dive render test's mocks are identity-stable, so the prefill effect runs
+// once" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
   user: {} as Partial<User>,
   refreshUser: vi.fn(),

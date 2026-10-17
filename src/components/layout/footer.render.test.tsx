@@ -3,10 +3,9 @@ import { render, screen } from "@testing-library/react";
 import { Footer } from "./footer";
 
 // The footer renders below every page in the app, so its own markup cannot know what
-// heading level would be correct where it lands. It used to guess `<h4>`, and on every
-// page whose last heading was an `<h2>` that guess was the `heading-order` violation
-// axe reports. The columns are group labels rather than sections of the document, so
-// they carry no heading level at all now - which is what these tests pin.
+// heading level would be correct where it lands: any guess is axe's `heading-order`
+// violation on some page. The columns are group labels rather than sections of the
+// document, so they carry no heading level at all - which is what these tests pin.
 
 describe("Footer", () => {
   it("contributes no headings to the page it renders under", () => {

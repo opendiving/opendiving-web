@@ -301,11 +301,10 @@ export function SpeciesMultiSelect({
 
   // A picker that unmounts reports itself no longer pending, and there is no other
   // way for it to: the effect above only fires while this component is alive, so a
-  // resolve in flight when the picker leaves the page left the card's
+  // resolve in flight when the picker leaves the page would leave the card's
   // `isResolvingSpecies` stuck at true and the Save button reading "Adding
   // species..." until a reload. Reachable from the Fields dialog - hide Species, or
-  // apply a preset that does - which is what turned a leak nobody could trigger into
-  // a wedged form.
+  // apply a preset that does.
   useEffect(() => {
     return () => onPendingChangeRef.current?.(false);
   }, []);

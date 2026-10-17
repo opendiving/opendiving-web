@@ -50,7 +50,7 @@ async function navigatedTo(): Promise<URL> {
 describe("before the button is pressed", () => {
   // The invariant the whole redirect design exists for. A live check in a real
   // browser is what proves "zero requests to any Google origin"; what jsdom can
-  // hold is the mechanism that used to make those requests - a script element
+  // hold is the mechanism that would make those requests - a script element
   // injected at mount - and its absence is what this asserts.
   it("loads nothing of Google's into the document", () => {
     renderButton({ clientId: CLIENT_ID });
@@ -69,8 +69,8 @@ describe("before the button is pressed", () => {
     expect(window.localStorage.length).toBe(0);
   });
 
-  // Unchanged from the old design: an instance that has not configured Google
-  // shows no button rather than one that can never succeed.
+  // An instance that has not configured Google shows no button rather than one
+  // that can never succeed.
   it("renders nothing at all without a client ID", () => {
     renderButton();
 
@@ -79,10 +79,9 @@ describe("before the button is pressed", () => {
 });
 
 describe("the control itself", () => {
-  // It used to be a decorative `aria-hidden` visual with Google's own rendered
-  // button stacked on top at `opacity: 0`, which is where the split accessible
-  // name came from. With nothing to hide behind it is one ordinary button, and
-  // "exactly one" is the half worth pinning.
+  // One ordinary button, not a decorative `aria-hidden` visual with another
+  // button stacked on top at `opacity: 0`, which splits the accessible name.
+  // "Exactly one" is the half worth pinning.
   it("is exactly one element carrying the name, and one tab stop", async () => {
     const { user } = renderButton({ clientId: CLIENT_ID });
 
@@ -93,9 +92,8 @@ describe("the control itself", () => {
     expect(control()).toHaveFocus();
   });
 
-  // A native `<button>` gets both for free; the point of asserting it is that the
-  // arrangement this replaced did not, and a future one that reaches for a `div`
-  // would not either.
+  // A native `<button>` gets both for free; the point of asserting it is that an
+  // overlay arrangement, or one that reaches for a `div`, would not.
   it.each([["{Enter}"], [" "]])("is operable by %s", async (key) => {
     const { user } = renderButton({ clientId: CLIENT_ID });
 

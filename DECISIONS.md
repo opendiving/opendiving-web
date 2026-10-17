@@ -253,7 +253,7 @@ top-level destination is an entry there, with its tier.
 A route that needs no chrome goes into `NO_CHROME_ROUTES` in `app-shell.tsx` — there is no per-page
 opt-out — and renders `layout/standalone-shell.tsx` rather than a hand-rolled centered card:
 `AppShell` holds the app's `<main>`, and that component holds the chrome-free half's. See "The
-chrome-free routes had no `<main>`" at the end of this file.
+chrome-free routes share `standalone-shell.tsx`, which carries their one `<main>`".
 
 ## The header sorts its destinations by use
 
@@ -290,8 +290,8 @@ hooks and two components; any new deletable-resource list reuses them:
 
 Wire `useInfiniteResource`'s `removeItem` as `useDeleteResource`'s `onDeleted` so the row vanishes
 without the list collapsing to page one; `reload` is for a delete that changes other rows. Why
-`removeItem` rather than a refetch, and why the cursor moves with it, is the section at the end of
-this file.
+`removeItem` rather than a refetch, and why the cursor moves with it, is under "The lists load on
+scroll, and a delete leaves the one you are reading in place".
 
 ## Access token lives in memory only, never in `localStorage`
 
@@ -413,7 +413,7 @@ _Rejected:_ counting mounts, which cannot tell a return from a genuine change.
 
 ## Unified auth flow: one passwordless `AuthForm`, no password-based `/signin`/`/signup` pair
 
-There is one auth form, `components/auth/AuthForm.tsx` (email, "Continue", "Continue with Google"),
+There is one auth form, `components/auth/auth-form.tsx` (email, "Continue", "Continue with Google"),
 for the passwordless flow; Settings has no "Change Password" card. Its host page depends on
 `REGISTRATION_MODE` and on join and invite links; see "The landing hero holds one of two forms, and
 the API is what says which" and "`/signin` is a dedicated sign-in page, and carries where the
@@ -428,8 +428,9 @@ visitor was headed".
   `verifyEmailLink`/`signInWithGoogle` on `status: "onboarding_required"`, never persisted, so a
   direct load bounces to `/`.
 - `AuthContext` exposes `onboarding`/`completeProfile`/`clearOnboarding` and
-  `requestEmailLink`/`verifyEmailLink`/`signInWithGoogle`; the last two return `boolean` (`true`
-  signed in, `false` onboarding) so callers pick `/home` or `/onboarding`.
+  `requestEmailLink`/`verifyEmailLink`/`signInWithGoogle`; the last two resolve with the applied
+  `AuthOutcome`, and callers pick the destination from its `status` (see "The entry points resolve
+  with the whole outcome, not a status").
 
 ## `google-icon.tsx`'s "G" mark is extracted directly from Google's own pre-approved asset download - not hand-reconstructed
 
@@ -448,7 +449,7 @@ Figma's fallback `<path>` beside the `<foreignObject>` paints solid black over t
 ## Changing your account email is a request/confirm flow, not a plain field edit
 
 `USER_FIELDS` in `lib/validations/user-fields.ts` has no `email`, matching the API's `UserUpdate`.
-Email lives in `components/settings/EmailChangeCard.tsx`: enter a new address, submit via
+Email lives in `components/settings/email-change-card.tsx`: enter a new address, submit via
 `authAPI.requestEmailChange(newEmail)`, get the same generic "check your new email" message even for
 a taken address, and the change applies only once the emailed link is confirmed.
 `POST /user/email-change/request` always acts on the caller's own account, so there is no address to
@@ -475,8 +476,8 @@ token (`AuthenticationRequest.used_at` vs `invalidated_at`), which still lets au
 That leniency remains, as defence in depth for double clicks.
 
 `/settings/confirm-email` auto-redirects to `/settings/account` 3 s after `"success"` (`setTimeout`,
-cleaned up on unmount) beside a "Back to settings" link; `/auth/verify` needs none, since
-`router.replace("/home")`/`"/onboarding"` follows `verifyEmailLink` directly.
+cleaned up on unmount) beside a "Back to settings" link; `/auth/verify` needs none, since a
+`router.replace` to the outcome's destination follows `verifyEmailLink` directly.
 
 ## Magic-link pages: The button itself shouldn't show for a link that's already been used
 
@@ -567,11 +568,11 @@ The API rounds parsed `oxygen`/`helium`/`start_pressure`/`end_pressure` to two d
 (`20.99%` as `21.0%`).
 
 Volume is `VolumeCombobox` (`volume-combobox.tsx`), built like `CreatableCombobox`: a plain
-`<input type="number">` plus a hand-rendered absolute-positioned dropdown of `<button>`s, not a
-`<select>`, because a parsed volume usually matches no preset. The input shows the bare number
-(`11.1`, never `11.1 L (AL80)`); a preset's label appears only in the dropdown, which always lists
-every preset with no filter-as-you-type — few enough that filtering only hinders comparing them.
-There is no custom clear button: select-all and delete already clear a native number input.
+`<input type="text" inputMode="decimal">` plus a hand-rendered absolute-positioned dropdown of
+`<button>`s, not a `<select>`, because a parsed volume usually matches no preset. The input shows
+the bare number (`11.1`, never `11.1 L (AL80)`); a preset's label appears only in the dropdown,
+which always lists every preset with no filter-as-you-type — few enough that filtering only hinders
+comparing them. There is no custom clear button: select-all and delete already clear the input.
 
 ## Gear sets are loaded into the dive form, never linked from the dive
 
@@ -739,8 +740,8 @@ so mouse and keyboard agree. The input carries `role="combobox"` with
 `aria-expanded`/`aria-controls`/`aria-activedescendant`, rows carry `role="option"`/`aria-selected`,
 and the highlighted row scrolls into view (`block: "nearest"`) in the 15rem-tall menu.
 
-`VolumeCombobox`'s `type="number"` input gives up native Up/Down stepping by `step` (0.01) for list
-navigation; reconsider that one dropdown if stepping is ever wanted.
+`VolumeCombobox` takes Up/Down for list navigation, so they never nudge the volume: browsing the
+presets beats stepping a volume by a hundredth of a litre.
 
 ## Weight sits with the gear, not with the environment readings
 
@@ -796,8 +797,8 @@ as a muted dash.
 `serviceKindLabel`, the `gearServiceAPI` object) mirroring the API's Pydantic schemas, like
 `lib/api/gear.ts`. `lib/gear-service.ts` is pure functions — no axios, no React — so the rules that
 matter (status thresholds, date arithmetic, due-text phrasing, type presets) are unit-testable;
-`gear-service.test.ts` holds the status truth table. `vitest.config.mts` collects coverage for
-`src/lib/**` only, so anything worth testing lives in `lib/`.
+`gear-service.test.ts` holds the status truth table. The rules live in `lib/`, as plain functions a
+unit test reaches without rendering anything.
 
 `lib/api/gear.ts` imports `GearServiceScheduleSummary` from `lib/api/gear-service.ts` as
 `import type`; the API side points the other way (`schemas/gear_service.py` imports nothing from
@@ -1003,14 +1004,13 @@ a replace; without it `max-age=300` keeps serving the previous file's bytes.
 
 ## Deleting the imported file refreshes without the page-level spinner
 
-The dive detail page has two fetchers: the initial `useEffect` one, which toggles `isLoadingDive`
-and redirects on failure, and a separate `refreshDive` `useCallback` passed to `DiveRecordingsCard`
-as `onChanged`, which does neither. Reusing the first would blank the page into a spinner to swap
-one card and redirect to `/dives` if the refetch failed after a delete that had already succeeded.
-It also trips `react-hooks/set-state-in-effect`: a `useCallback` that calls `setState` synchronously
-cannot be called from an effect body.
+`dives/(detail)/layout.tsx` hands `useResource`'s `refetch` down as `refreshDive`, which
+`DiveRecordingsCard` calls as `onChanged`. It leaves `isLoading` alone and never redirects: a fresh
+load would blank the page into its skeleton to swap one card, and redirect to `/dives` if the
+re-read failed after a delete that had already succeeded. The detail page has no `onLoaded`, so the
+re-seed `refetch` runs costs nothing there.
 
-## `Dive.source_file` is optional because the list response never carries it
+## `Dive.recordings` is optional because the list response never carries it
 
 The same `Dive` interface backs `GET /dives` and `GET /dive/{uuid}`, and the API sends `recordings`
 only on the detail one — the list is its hottest query and nothing in the table renders an
@@ -1176,7 +1176,7 @@ and keyed on the profile's `updated_at` as a `v` cache-buster, because they are 
 detail response carries only the summary. A failure shows a muted line in the card rather than a
 toast: nothing the diver did caused it and nothing they can do fixes it.
 
-## `Dive.profile` is optional for the same reason as `source_file`
+## A recording's profile is optional for the same reason as `recordings`
 
 The profile summary rides on `recordings[].profile`; there is no `Dive.profile` member.
 
@@ -1192,11 +1192,10 @@ a pair.
 `supportAPI.sendRequest` posts to `POST /support`; the API forwards it to its `CONTACT_FORM_EMAIL`,
 and nothing here decides the recipient.
 
-`NEXT_PUBLIC_CONTACT_EMAIL` is display only — the `mailto:` fallback in the error state — optional,
-with no default: `contact@opendiving.app` would hand a self-hosted instance's visitors an address
-that cannot see their server. Unset, `SupportForm` points at `FALLBACK_ISSUES_URL` in
-`lib/support.ts`, since a broken form is this repo's bug. Set it only where the operator reads the
-mailbox.
+`CONTACT_EMAIL` is display only — the `mailto:` fallback in the error state — optional, with no
+default: `contact@opendiving.app` would hand a self-hosted instance's visitors an address that
+cannot see their server. Unset, `SupportForm` points at `FALLBACK_ISSUES_URL` in `lib/support.ts`,
+since a broken form is this repo's bug. Set it only where the operator reads the mailbox.
 
 `SUPPORT_CATEGORIES` in `lib/api/support.ts` mirrors `SupportCategory` in the API's
 `schemas/support.py`; the backend 422s anything else, so adding a category changes both sides.
@@ -1312,8 +1311,8 @@ There is no Gravatar line: `/settings` shows the avatar itself, with the control
 (see "Avatars are this instance's own, and there is no Gravatar fallback").
 
 The username hint under the profile form states the rule the field enforces
-(`FIELD_SCHEMAS.username`: lowercase letters and numbers, unique), not "used in your profile URL and
-for mentions": there is no profile URL and mentions are not a feature.
+(`USER_FIELD_SCHEMAS.username`: lowercase letters and numbers, unique), not "used in your profile
+URL and for mentions": there is no profile URL and mentions are not a feature.
 
 ## Dive numbering: the suggestion follows the date, and only the diver renumbers
 
@@ -1402,8 +1401,8 @@ twice — `keyOf` dedups it. The gap half, an item pushed to the next page by a 
 fixed client-side; hence single-shot endpoints.
 
 Truncation is `console.warn`ed, not thrown: a short list that looks complete is unexplainable later.
-The abort signal stops the loop between pages, not the request in flight (`lib/api/*` takes no axios
-config); `isAbortError` tells unmount from failure.
+The abort signal stops the loop between pages, not the request in flight (`fetchAllPages` never
+hands it to `fetchPage`); `isAbortError` tells unmount from failure.
 
 Neither notifications list pages: `useNotifications` reads `/gear-service-due` and
 `/certifications-expiring` (no `within_days`; see the API's `DECISIONS.md`), and both lists honour
@@ -1418,7 +1417,7 @@ Axios applies the request's `responseType` to error responses too, so a failed
 `HTTPException`, so the JSON body is always there).
 
 `unwrapBlobErrorBody` runs in the response interceptor, the one place every rejection passes
-through, which keeps the ~26 call sites synchronous. A body that is not JSON is left as the Blob and
+through, which keeps every call site synchronous. A body that is not JSON is left as the Blob and
 the caller's fallback is used; throwing inside the interceptor would replace the real error with a
 parse error.
 
@@ -1457,25 +1456,26 @@ button, because re-asking returns the same 404; a 401, 5xx or network failure ge
 The Home page stats fetch shows an error with a retry rather than leaving its figures on "—": the
 API returns zeroed stats for a diver with no dives, so anything landing there is exceptional.
 
-`usePaginatedResource` guards races with a request-id ref: only the newest request may settle, so a
-slower earlier page cannot overwrite newer rows or `currentPage`, and superseded requests leave the
-spinner alone.
+`useInfiniteResource` guards races with a request-id ref: only the newest request may settle, so a
+slower earlier page cannot overwrite newer rows or the next-page cursor, and superseded requests
+leave the spinner alone.
 
 ## Assorted rules: `useDragSort`, `use-toast`, downloads, `DateTimePicker`, `AuthContext`
 
 - `useDragSort` removes its window listeners on unmount: `handleMove`/`handleEnd` are closures
   inside `startDrag`, so `endDrag` calls a remover stored in a ref.
-- `use-toast` is vendored from shadcn/ui with two upstream bugs fixed: the subscribe effect depends
-  on `[]`, not `[state]`, and `TOAST_REMOVE_DELAY` is 1000ms, not `1000000`, which with
-  `TOAST_LIMIT = 1` pinned every toast ever shown in `memoryState`.
+- `use-toast` is vendored from shadcn/ui with two upstream bugs fixed: the store is read through
+  `useSyncExternalStore` rather than an effect subscription (see "The toast store is a real external
+  store, and a lesson in measuring against a dev server"), and `TOAST_REMOVE_DELAY` is 1000ms, not
+  `1000000`, which with `TOAST_LIMIT = 1` pinned every toast ever shown in `memoryState`.
 - Downloads go through `lib/download.ts`, which appends the anchor (Firefox ignores a detached one)
   and defers revoking the object URL, since Firefox and Safari read the blob asynchronously after
   `link.click()`.
 - `DateTimePicker` holds a typed time until a date is chosen rather than committing against
   `new Date()`, never right for a back-filled dive; a cleared field stays empty instead of
   `Number.parseInt(raw, 10) || 0` snapping it to "00".
-- `AuthContext` memoizes its value and seven methods; a fresh `signOut` or `refreshUser` identity
-  every render re-ran every effect depending on them.
+- `AuthContext` memoizes its value and every method on it; a fresh `signOut` or `refreshUser`
+  identity every render re-ran every effect depending on them.
 
 ## `useResource` for the detail pages, and one delete flow for everything
 
@@ -1496,10 +1496,9 @@ instead of a generic "Please try again."
 ## `PaginatedResponse` lives in `lib/api/client.ts`, and dialogs share their error state
 
 `PaginatedResponse<T>` lives in `lib/api/client.ts`, beside the client that produces it, and the
-eight `lib/api/` modules are type aliases over it; nothing in `lib/api/` imports upward from
-`hooks/`, which is why a copy in `hooks/usePaginatedResource.ts` bred eight identical local
-declarations. `hooks/useInfiniteResource.ts` re-exports it for pages importing the type alongside
-the hook.
+paginated `lib/api/` modules are type aliases over it; nothing in `lib/api/` imports upward from
+`hooks/`, so a copy beside the hook would leave each module declaring its own.
+`hooks/useInfiniteResource.ts` re-exports it for pages importing the type alongside the hook.
 
 `useDialogApiError` owns the `apiError` state of the create/edit dialogs, so the effect that resets
 a form does nothing but `reset(...)`, which `react-hooks/set-state-in-effect` has no quarrel with.
@@ -1548,8 +1547,8 @@ four are re-checked by hand after any change to `globals.css`.
 
 The root layout sets `metadataBase` (or Next emits relative `og:image` URLs no crawler can fetch), a
 `title.template` of `"%s – OpenDiving"`, OpenGraph and Twitter cards, and the README's pitch.
-`NEXT_PUBLIC_SITE_URL` lets a self-hosted instance name its own origin; the localhost fallback is
-harmless, since only public pages unfurl.
+`SITE_URL` lets a self-hosted instance name its own origin; the localhost fallback is harmless,
+since only public pages unfurl.
 
 Every `page.tsx` is a Server Component exporting its name as `metadata.title` and rendering a client
 body from `components/`, the only way a client page gets a title. A page inside a section names
@@ -1586,9 +1585,10 @@ second variant; the destructive pair does: `--destructive-solid` fills buttons, 
 since white on `--destructive` is 3.6:1, while `--destructive` stays light enough to read as text on
 the dark background.
 
-`--success` replaces hand-picked `green-600`/`green-400` pairs. `--warning` has one use, the terms
-page's safety notice, deliberately not a `bg-muted` callout. `--muted-foreground` is 40%, not
-shadcn's 46.9%, so it passes on `--muted` as well as `--background`.
+`--success` replaces hand-picked `green-600`/`green-400` pairs. `--warning` is shared ("`--warning`
+is a shared token, not the safety notice's private one"); the terms page's safety notice is one
+user, deliberately not a `bg-muted` callout. `--muted-foreground` is 40%, not shadcn's 46.9%, so it
+passes on `--muted` as well as `--background`.
 
 In-copy links are underlined, not coloured: `text-primary` is 3.67:1 as link text in dark mode, and
 colour alone trips axe's `link-in-text-block`. The one exception is the owner's: a map's credit chip
@@ -1628,8 +1628,8 @@ jsdom lacks (`matchMedia`, `ResizeObserver`, `scrollIntoView`), or a dialog thro
 assertion.
 
 Hook tests each pin a bug: `useDeleteResource` shows the API's own message on a refused delete,
-`usePaginatedResource` ignores a late superseded response, `useResource` stays silent once
-unmounted, `AuthContext` clears the user on session-expired even when sign-out fails.
+`useInfiniteResource` ignores a late superseded response, `useResource` stays silent once unmounted,
+`AuthContext` clears the user on session-expired even when sign-out fails.
 
 Mock `useRouter` with a hoisted object: `useResource`'s fetch effect depends on the router
 reference, so a fresh object per call loops forever. `vi.mock` factories are hoisted above every
@@ -1834,9 +1834,8 @@ identical to "Rented", a fact about an item rather than a status.
 
 `--warning` is dark and slightly brown in light mode (`32 92% 27%`) because it carries white text
 and a mid-amber only reaches 3.9:1 under white; in dark mode it is `38 95% 62%` with near-black
-text. Its consumers: `courseStatusBadgeVariant` (`incomplete`, `provisional`), `text-warning` in
-`dive-exposure-card`, `dive-mixtures-card` and `mixture-fields`, and `terms/page.tsx`
-(`border-warning/40`, `bg-warning/10`, `text-warning`). `lib/gear-service.ts` does not touch it.
+text. Both halves hold as text on a card and as a fill under its foreground, because the token is
+used both ways. `lib/gear-service.ts` does not touch it.
 
 ## Dark `--secondary` is 22%, because every secondary chip renders on a card
 
@@ -1861,8 +1860,8 @@ disappearing before it reads as a button.
 hue, not weight: an outline beside two fills reads as an absence, and "In service" is a verdict.
 
 The palette has two accents (`--coral` 16, `--teal` 180) and a chart grey (`--pressure`);
-`--warning`'s amber on a status chip was a third hue for one badge. Coral and `destructive` are six
-degrees apart, so they separate by lightness.
+`--warning`'s amber on a status chip would be a third hue for one badge. Coral and `destructive` are
+six degrees apart, so they separate by lightness.
 
 `--coral-foreground` and `--teal-foreground` are both white so the three chips share one label
 colour. Coral pays 2.50:1 on the label, under AA; the fix if wanted is near-black on
@@ -2008,18 +2007,18 @@ pressures and an average depth.
 
 ## `npm run format` covers the docs at the repo root, not just `src/`
 
-The format scripts take `"**/*.md"` beside `src/**/*.{ts,tsx,js,jsx,json,css,scss,md}`, because no
-markdown lives under `src/` and the repo's markdown (`DECISIONS.md`, `README.md`, `CONTRIBUTING.md`,
-`CLAUDE.md`, `CODE_OF_CONDUCT.md`) is at the root. Recursive rather than root-only so a later
-`docs/` is covered. Prettier skips `node_modules/` on its own and `.prettierignore` handles `.next/`
-and `coverage/`. The `*.md` override in `.prettierrc.json` (`printWidth: 100`,
-`proseWrap: "always"`) matches opendiving-api's mdformat width, so the two `DECISIONS.md` files look
-alike.
+The format scripts take `"**/*.md"` beside the code globs (`src/**`, `e2e/**`,
+`playwright.config.ts`), because no markdown lives under `src/` and the repo's markdown
+(`DECISIONS.md`, `README.md`, `CONTRIBUTING.md`, `CLAUDE.md`, `CODE_OF_CONDUCT.md`) is at the root.
+Recursive rather than root-only so a later `docs/` is covered. Prettier skips `node_modules/` on its
+own and `.prettierignore` handles `.next/` and `coverage/`. The `*.md` override in
+`.prettierrc.json` (`printWidth: 100`, `proseWrap: "always"`) matches opendiving-api's mdformat
+width, so the two `DECISIONS.md` files look alike.
 
 `code-quality.yml` runs `npm run format:check` rather than repeating the globs; see "The Prettier
-check fails the build now" for its failure mode. Prettier also rewrites `*emphasis*` to `_emphasis_`
-and `*` bullets to `-`; `git blame` on a reflowed line points at the reflow, so blame its parent or
-use `git log -L`.
+check fails the build, and the other advisory steps stay advisory" for its failure mode. Prettier
+also rewrites `*emphasis*` to `_emphasis_` and `*` bullets to `-`; `git blame` on a reflowed line
+points at the reflow, so blame its parent or use `git log -L`.
 
 ## Breathing-gas maths lives in `lib/dive-mixtures.ts`, client-side, and is only ever a label
 
@@ -2135,11 +2134,11 @@ measured, a computed limit rather than a reading.
 
 ## Adding a channel needs a remembered-selection key bump; removing one does not
 
-`DIVE_PROFILE_SERIES_KEY` carries a `-v2` suffix. `parseSeriesVisibility` filters a stored selection
-down to the keys the build plots, right for a key that has gone and wrong for one that has arrived:
-a selection naming `depth`, `temperature`, `pressure` restores cleanly with the ceiling off and a
-legend entry implying the diver chose that. The rule: adding a key to a `parseSeriesVisibility` list
-needs a key bump; removing one does not.
+`DIVE_PROFILE_SERIES_KEY` carries a version suffix (`-vN`). `parseSeriesVisibility` filters a stored
+selection down to the keys the build plots, right for a key that has gone and wrong for one that has
+arrived: a selection naming `depth`, `temperature`, `pressure` restores cleanly with the ceiling off
+and a legend entry implying the diver chose that. The rule: adding a key to a
+`parseSeriesVisibility` list needs a key bump; removing one does not.
 
 The ceiling is a toggle rather than drawn with depth unlisted, because _"Both charts' legends are
 the control for what they plot"_ forbids a legend entry that is not a control.
@@ -2417,8 +2416,8 @@ average depth after the maximum only while the rest leave fewer than four.
 `po2_limit` is a `<select>`, not `<input type="number">`: the schema's 0.4–2 band catches a unit
 error (Suunto JSON writes 140000 Pa for 1.4 bar), the values a diver picks are seven, and free entry
 bought typos and a 422 on `ck_dive_mixture_po2_limit_range` the diver cannot act on. As with `role`,
-`""` is "unset" and must reach react-hook-form as the live cleared value — see "The API sends
-`null`, the form schema only understood `""`".
+`""` is "unset" and must reach react-hook-form as the live cleared value — see "The API sends `null`
+and the form schema wants `""`, so `toDiveMixtureInput` converts at the boundary".
 
 The options are strings: `String(1.0)` is `"1"`, so an option labelled `"1.0"` would never match its
 stored value; selection compares `Number(option) === value`, one direction only. A limit not on the
@@ -2436,10 +2435,10 @@ left, right edge empty; mirroring it invites reading two scales. Invariant: the 
 labelled whenever anything is plotted, the right exactly when a second scale is on.
 
 `DiveProfileChart vertical axes` sweeps every non-empty selection, computing the expected right edge
-with `distinctScales`; see "The deco readouts got a panel" for what "the plot" means now. Switching
-the last channel off keeps the plot: same box, time axis and markers, the sentence over the middle
-with `pointer-events-none`, neither edge labelled. A `??` chain that runs out is a case, not an
-absence.
+with `distinctScales`; see "The deco readouts have a panel, because the depth plot has two edges and
+they need four" for what "the plot" means. Switching the last channel off keeps the plot: same box,
+time axis and markers, the sentence over the middle with `pointer-events-none`, neither edge
+labelled. A `??` chain that runs out is a case, not an absence.
 
 ## The depth fill is built per segment, from the same `segments` as its line
 
@@ -2462,9 +2461,9 @@ its keys, and `ChannelToggles` is named `LegendToggles`. It lives in the legend 
 charts' legends are the control for what they plot"). The swatch is an uncoloured circle: diamond
 and triangle mean specific types, and colour means "joins to something else on the chart", true only
 of a gas switch. Hiding hides everywhere: glyphs, crosshair readout and accessible summary read one
-`eventsShown`, and tests pin that a hidden marker is neither announced nor quoted. Adding the key
-bumped `-v2` to `-v3`; otherwise stored selections restore with markers off. The empty-plot message
-is held back while markers are up.
+`eventsShown`, and tests pin that a hidden marker is neither announced nor quoted. The markers key
+is in that list, so adding it took a suffix bump, or stored selections would restore with markers
+off. The empty-plot message is held back while markers are up.
 
 ## A remembered selection is held over every key, not over the keys one dive has
 
@@ -2545,9 +2544,9 @@ Neighbours come from `GET /dive/{uuid}/neighbors`, keyed by `start_time`, never 
 has gaps.
 
 A route-group layout above `dives/[id]` owns the fetch, so a step keeps the outgoing dive mounted:
-`SectionSpinner` shows only when `isLoadingDive && !dive`, and a step dims the cards to `opacity-50`
-under `aria-busy`. Neighbours are stored under the uuid they were fetched for, and fetched for the
-displayed `diveUuid`, not `params.id`, so arrows and date agree.
+`MapHeroPageSkeleton` shows only when `isLoadingDive && !dive`, and a step dims the cards to
+`opacity-50` under `aria-busy`. Neighbours are stored under the uuid they were fetched for, and
+fetched for the displayed `diveUuid`, not `params.id`, so arrows and date agree.
 
 Each arrow is one `<a>` swapping its `href`, not `next/link`: alternating element types replaces the
 node and drops keyboard focus. Unavailable is `aria-disabled` plus `pointer-events-none` with
@@ -2591,7 +2590,7 @@ against `table.parentElement.clientWidth`. At 1024 px and above nothing overflow
 overflow, and at 768 px stops `Date & Time` and `Apr 16, 2026, 12:59` wrapping in the dive log.
 `px-3` clears under half. The one cost is the gutter between right-aligned `Dives` and `Service` in
 `gear-items-card.tsx`; if that pair reads as one number, add `pr-` there rather than widening every
-table. The five list pages still wrap `Table` in an inert `overflow-x-auto` div, which fools
+table. An `overflow-x-auto` div around a `Table` is inert, and fools
 `closest('[class*="overflow-x-auto"]')`.
 
 ## Dive site coordinates are two free-typed strings, validated as a pair
@@ -2632,7 +2631,7 @@ empty), `200` with `null` could-not-ask (leave alone); branch on `response.statu
 
 Gesture rules are MapLibre configuration ("The picker's contract is its own, and MapLibre is
 configured to meet it"). The basemap host sees divers' IPs and tile areas (`/privacy` §4.4); the CSP
-follows `NEXT_PUBLIC_MAP_TILE_URL` to a self-hosted server.
+follows the basemap configuration (`lib/basemap.ts`) to a self-hosted server.
 
 ## A trip part's place is self-describing, so nothing has to be resolved
 
@@ -3110,11 +3109,11 @@ row is being deleted, so opening the dialog for a second trip during the first's
 disabled, spinner and all. The dialog is closed for its own delete anyway, since `confirmDelete`
 clears `pendingId` before it starts.
 
-`deletingId` in `useDeleteResource` stays a single value across all seven call sites: a second
-delete overwrites it, so the first row's spinner stops and its trash button returns while its
-request is still out. The cost is cosmetic and bounded — firing the same delete twice yields two
-success toasts, both routes being idempotent. The fix, a `Set<string>` with an `isDeleting(id)`
-helper across every caller, is wider than the symptom justifies.
+`deletingId` in `useDeleteResource` stays a single value across every call site: a second delete
+overwrites it, so the first row's spinner stops and its trash button returns while its request is
+still out. The cost is cosmetic and bounded — firing the same delete twice yields two success
+toasts, both routes being idempotent. The fix, a `Set<string>` with an `isDeleting(id)` helper
+across every caller, is wider than the symptom justifies.
 
 ## Delete with move: The picker, and what it deliberately does not do
 
@@ -3233,10 +3232,10 @@ untouched, `[]` after add-then-remove, the cylinder when one is entered.
 
 `water_type` and every other dive-level `<select>` (`DiveVocabularyField`) carry the
 `""`/`null`/`undefined` tri-state the cylinder `role` field has — see "The 'cleared field resets to
-default' React Hook Form quirk" and "The API sends `null`, the form schema only understood `""`".
-`""` is the live cleared state and what `diveToFormValues` seeds from `null` — never `undefined`, or
-react-hook-form re-displays the default. `undefined` means untouched and is dropped from a PATCH;
-`null` means cleared and is sent.
+default' React Hook Form quirk" and "The API sends `null` and the form schema wants `""`, so
+`toDiveMixtureInput` converts at the boundary". `""` is the live cleared state and what
+`diveToFormValues` seeds from `null` — never `undefined`, or react-hook-form re-displays the
+default. `undefined` means untouched and is dropped from a PATCH; `null` means cleared and is sent.
 
 `buildDiveUpdate` converts `""` to an explicit `null`: an edit may already hold a value, and
 dropping the key would keep it while the toast says otherwise. The create page omits it instead, as
@@ -3369,12 +3368,12 @@ The open menu (`absolute z-50`, `max-h-60`) covers the picker's credit until a p
 is no licence problem: the OSMF guidelines oblige the application, not each result. A sticky footer
 inside `CreatableCombobox` is rejected — `scrollIntoView({ block: "nearest" })` would park the last
 option under an overlay it cannot see, an anchor would sit inside `role="listbox"`, a link would
-race the closing blur, and six other consumers gain a prop for one.
+race the closing blur, and every other consumer gains a prop for one.
 
 The credit must not materialise: it would shove the map and Notes down the dialog mid-edit. Its line
 is held open with `min-h-4`, costing a blank 16px when a saved trip opens without a search. It
 matches the tile credit's size and has no `Place search:` label, which only made it wrap. The two
-credits stay separate: tiles come from `NEXT_PUBLIC_MAP_TILE_URL`/`_ATTRIBUTION`, place names from
+credits stay separate: the basemap comes from `MAP_STYLE_URL`/`MAP_ATTRIBUTION`, place names from
 the API's geocoders, and a self-hoster configures the two apart.
 
 ## Three roads to a position, so the geocoding lives in a hook above the map
@@ -3601,7 +3600,8 @@ above shares `bg-background`; on `#self-hosting` it would expose the band, so a 
 offset only when the one above shares its background. `volume-combobox.tsx` and
 `creatable-combobox.tsx` scroll their own `overflow-y-auto` listbox
 (`scrollIntoView({ block: "nearest" })`), which `html` cannot reach and `*` would break.
-`header.tsx`'s `calc(100dvh-4.5rem)` menu cap stays separate.
+`header.tsx`'s mobile menu is its own `overflow-y-auto` panel below `top-(--header-height)`, and
+scrolls itself.
 
 ## `ci.yml` and `code-quality.yml` run on a read-only token, with nothing left in `.git/config`
 
@@ -3969,13 +3969,13 @@ outcome carries none. The magic-link page, the six-digit code card, the Google b
 
 ## One function decides where an outcome lands
 
-`destinationForOutcome` in `lib/auth-redirect.ts` maps a status to a path, and the four call sites
-pass the status they were given. The `switch` is exhaustive on `AuthStatus`, so a fourth status is a
-type error in one file rather than a silent mis-route in four. It sanitizes `next` itself with
-`sanitizeRedirectPath` — three callers take it from a `?next=` prop and the fourth from
-`localStorage`, and making each remember is how one forgets. `next` is honoured only for
-`authenticated`: onboarding has nothing to return to, and a restore drops it because the account is
-not back yet when the destination is chosen.
+`destinationForOutcome` in `lib/auth-redirect.ts` maps a status to a path, and every entry point
+passes the status it was given. The `switch` is exhaustive on `AuthStatus`, so a new status is a
+type error in one file rather than a silent mis-route at each caller. It sanitizes `next` itself
+with `sanitizeRedirectPath` — callers take it from a `?next=` prop or out of `localStorage`, and
+making each remember is how one forgets. `next` is honoured only for `authenticated`: onboarding has
+nothing to return to, and a restore drops it because the account is not back yet when the
+destination is chosen.
 
 ## The entry points resolve with the whole outcome, not a status
 
@@ -4168,16 +4168,16 @@ but a required check must have passed on the head SHA, so without it a second co
 check stale and the PR hanging. `label` re-runs harmlessly and is skipped on forks; only
 `semantic-title` belongs in a required-checks list.
 
-`.github/renovate.json5` and the Renovate section state that `ci.yml` and `code-quality.yml` hold
-six occurrences of `24.x` unreachable by the `github-actions` manager: three step names and three
-`node-version:` inputs.
+`.github/renovate.json5` and the Renovate section state that the `24.x` in `ci.yml` and
+`code-quality.yml` — step names and `node-version:` inputs — is unreachable by the `github-actions`
+manager.
 
 ## The Prettier check fails the build, and the other advisory steps stay advisory
 
 `code-quality.yml`'s Prettier step carries no `continue-on-error`: it gates with ESLint,
 `tsc --strict` and `npm run build`, because the tool that reports formatting also fixes it —
 `npm run format` is the entire remedy. The advisory steps stay so on their merits: depcheck reports
-`postcss` and `@tailwindcss/postcss` unused because `postcss.config.mjs` names rather than imports
+`postcss` and `@tailwindcss/postcss` unused because `postcss.config.js` names rather than imports
 them; the bundle-analyzer call is a no-op library import; axe has untriaged findings; a
 `madge --circular` cycle is a design problem, not a keystroke to undo. It runs first, so a
 formatting failure hides the checks below it — accepted over `if: always()` plumbing.
@@ -4464,13 +4464,12 @@ GDPR Art. 6, possibly Art. 9; aggregate statistics need no content licence at al
 
 ## `--warning` is a shared token, not the safety notice's private one
 
-`--warning` has several users: `dive-exposure-card.tsx` colours an alert exposure figure with
-`text-warning`, `dive-mixtures-card.tsx` and `mixture-fields.tsx` use it on mixture warnings,
-`ui/badge.tsx` has a `warning` variant on `bg-warning`, and `lib/course.ts` returns that variant for
-`incomplete` and `provisional` courses. `lib/gear-service.ts`'s `due_soon` uses `--coral` instead
-("overdue" is `destructive`). The terms page's safety notice is therefore not load-bearing for the
-token; it stays on its own merits, because a dive log disclaiming safety advice should not look like
-a footnote, and reads "software for logging dives".
+`--warning` is the app's caution colour: `text-warning` on an alert exposure figure and on the dive
+form's and dive page's inline warnings, and `ui/badge.tsx`'s `warning` variant on `bg-warning`,
+which `lib/course.ts` returns for `incomplete` and `provisional` courses. `lib/gear-service.ts`'s
+`due_soon` uses `--coral` instead ("overdue" is `destructive`). The terms page's safety notice is
+therefore not load-bearing for the token; it stays on its own merits, because a dive log disclaiming
+safety advice should not look like a footnote, and reads "software for logging dives".
 
 ## The footer's column labels are not headings, because the footer is shared chrome
 
@@ -4491,12 +4490,11 @@ from the copied `.env` (CORS) and rewrite the magic link's port.
 
 ## The chrome-free routes share `standalone-shell.tsx`, which carries their one `<main>`
 
-`AppShell` alone renders a `<main>`, and the `NO_CHROME_ROUTES` (`/signin`, `/onboarding`,
-`/restore`, `/auth/verify`, `/settings/confirm-email`, `/goodbye`) never reach it.
-`components/layout/standalone-shell.tsx` is their one wrapper, with the `<main>` inside and
-`className` merged onto it, so a seventh screen cannot omit the element. The `<main>` wraps the
-wordmark too, because `region` wants every scrap of content in a landmark and one link is not worth
-a `<nav>`; `standalone-shell.test.tsx` pins document text equal to landmark text.
+`AppShell` alone renders a `<main>`, and the routes in `NO_CHROME_ROUTES` (`app-shell.tsx`) never
+reach it. `components/layout/standalone-shell.tsx` is their one wrapper, with the `<main>` inside
+and `className` merged onto it, so a new chrome-free screen cannot omit the element. The `<main>`
+wraps the wordmark too, because `region` wants every scrap of content in a landmark and one link is
+not worth a `<nav>`; `standalone-shell.test.tsx` pins document text equal to landmark text.
 
 Loading frames (`PageSpinner`, or `null` until the in-memory session resolves) carry no landmark
 deliberately: `PageSpinner` also renders inside `AppShell` as `variant="inset"`, where its own
@@ -4565,14 +4563,14 @@ Render tests assert both buttons of two rows; `GearItemMultiSelect` has one.
 
 `VolumeCombobox` is an `<input type="text" inputMode="decimal">`, not `type="number"`: a number
 input's implicit role is `spinbutton`, and ARIA allows `combobox` only on text, search, tel, url and
-email (axe `aria-allowed-role`). `CreatableCombobox` is already on `type="text"`. The committed
-value is a `number`, so every keystroke round-trips through `parseDecimal` and `String`, and a text
-input then eats a mid-decimal keystroke: "11." parses to `11` and the "." vanishes. A `draft` string
-sits between keystrokes and value: the input renders `draft` while typing, the committed number
-otherwise, and the draft drops on blur, Escape, Enter and preset pick. `step`/`min` are gone; the
-real constraint is `z.number().positive()` in the dive schema. jsdom does not sanitize input values,
-so the render tests pin only the logic; typing a decimal is a Chrome check — clear the field first,
-or a prefilled volume reads back as "22.211.1", which is not this bug.
+email (axe `aria-allowed-role`). `CreatableCombobox` is `type="text"` too. The committed value is a
+`number`, so every keystroke round-trips through `parseDecimal` and `String`, and a text input then
+eats a mid-decimal keystroke: "11." parses to `11` and the "." vanishes. A `draft` string sits
+between keystrokes and value: the input renders `draft` while typing, the committed number
+otherwise, and the draft drops on blur, Escape, Enter and preset pick. There is no `step` or `min`;
+the real constraint is `z.number().positive()` in the dive schema. jsdom does not sanitize input
+values, so the render tests pin only the logic; typing a decimal is a Chrome check — clear the field
+first, or a prefilled volume reads back as "22.211.1", which is not this bug.
 
 ## The unit toggle's off half is `text-muted-foreground`, not `text-muted-foreground/60`
 
@@ -4849,17 +4847,16 @@ behind when the course changes.
 
 ## The skills are repo content; what wires up the hook is not
 
-`.claude/skills/` is committed (`!.claude/skills/` is the ignore file's one exception) because both
-skills describe working on this repo alone: the local magic-link flow and `scripts/screenshots.mjs`.
-Their names, `opendiving-web-login` and `opendiving-web-home-screenshot`, carry the repo because
-skills load by bare name across sibling repos.
+`.claude/skills/` is committed (`!.claude/skills/` is the ignore file's one exception) because every
+skill there describes working on this repo alone, such as the local magic-link flow or
+`scripts/screenshots.mjs`. Their names carry the repo (`opendiving-web-*`) because skills load by
+bare name across sibling repos.
 
 `.claude/settings.json` is not committed; the `PreToolUse` entry for
 `.claude/hooks/no-unsigned-commits.py` lives in the untracked `settings.local.json`, and the script
 stays tracked on the same argument. Cost: `web-N-*` worktrees come from plain `git worktree add`,
 which copies nothing untracked, so that guard does not fire there; `.githooks/pre-push`, inherited
-through `core.hooksPath`, still refuses the push. This overrides the ruling under "Signing stopped
-being a demand on contributors".
+through `core.hooksPath`, still refuses the push.
 
 Do not untrack the script too: the next `git pull` deletes an ignored-but-tracked path silently, and
 a missing hook command exits non-blocking, so the guard would go quiet in the primary checkout as
@@ -5452,8 +5449,8 @@ byte, same sha256; check that after any change; an approximating script is how t
 One coral, one teal, each its CSS named colour: `--coral` is `16 100% 65.7%` (`#FF7F50`, matching
 `icon.svg`) and `--teal` is `180 100% 25%` (`#008080`). `--coral-solid`, `--coral-text` and
 `--teal-solid` do not exist; `bg-coral-solid` does not compile. Tailwind's `coral` and `teal` keys
-carry only `DEFAULT` and `foreground` (`tailwind.config.mts`; see _Correction: the service scale is
-three brand fills now_).
+carry only `DEFAULT` and `foreground` (`tailwind.config.mts`; see "The service scale is three brand
+fills, and `--warning`'s amber would be a fourth accent").
 
 The cost is contrast: coral text on white and white on a coral fill are 2.5:1 at the hero accent
 word (`landing-page.tsx`), header nav active/hover (`header.tsx`), the Home hero's Species seen link
@@ -5522,8 +5519,8 @@ list. Rejected: a `PublicConfig` field fed from a web-side `REGISTRATION_MODE`.
 The fetch shares the auth bootstrap's gate, so the hero never swaps forms. A failed fetch resolves
 `mode: null` and sign-in renders, which works anywhere and is what the API-less axe scan in
 `code-quality.yml` sees. The mode is not stored in the browser: every key is registered in
-`lib/storage-keys.ts` and named on `/privacy` §10, and a `public, max-age=60` response earns none,
-so a flip shows within a minute.
+`lib/device-memory.ts` and named on `/privacy` §10 (`lib/storage-keys.test.ts` holds both), and a
+`public, max-age=60` response earns none, so a flip shows within a minute.
 
 ## `/join` is the landing page with a join link's form, and its canonical is `/`
 
@@ -5585,8 +5582,8 @@ the label:
 git grep -nI -P '(\.cost\b|(?<![\w-])cost\s*[?:]|"cost"|(?<![\w-])Cost(?![\w-]))' -- src README.md
 ```
 
-The two expected hits are prose in `dive-detail-main.tsx` and `lib/dive-profile.ts`; anything else
-is a course-cost site. `gear-service-record-dialog.tsx`'s
+The expected hits are prose in `dive-detail-main.tsx` and `lib/dive-profile.ts`; anything else is a
+course-cost site. `gear-service-record-dialog.tsx`'s
 `placeholder="Parts replaced, cost, test pressure..."` is a service record's free text and stays.
 `README.md`'s courses bullet must not name cost.
 
@@ -6373,10 +6370,10 @@ depth-plot line never measured, and every panel curve is the device's own arithm
 DiveJSON §6.6 makes `type` OPTIONAL: an unrecognised event is an absent type beside a required
 `label`. The API stores it as `OTHER` and sends null, so `DiveProfileEvent.type` is
 `DiveProfileEventType | null | undefined` and the union has thirteen values and no `other`.
-`describeEvent` keeps its `default` and `glyphFor` keeps taking a string, per "A closed vocabulary
-from another deployable is an open one at the boundary"; that branch catches a null type, a type
-this bundle predates and an older API build's literal `"other"`, all returning the device's own
-wording.
+`describeEvent` keeps its `default` and `glyphFor` keeps taking a string, because a closed
+vocabulary from another deployable is an open one at the boundary: that branch catches a null type,
+a type this bundle predates and an older API build's literal `"other"`, all returning the device's
+own wording.
 
 Three glyph shapes: the gas plan is the diamond, a stop the triangle, the computer talking the
 circle. A violated stop keeps the triangle rather than the ceiling's red, since red means only the
@@ -6511,7 +6508,7 @@ first mark keeps the three-outcome text, the dive on screen being the one the sa
 marks state only what is certain — the file goes on save, a recording may be left file-less, an
 emptied recording goes with its profile and samples, and what the dive shows can change. No local
 model of the save-time cascade (`renumber_ordinals` promotion, profile re-derivation) gets every
-field right. `deleteStoredFile` does no re-read; nothing mid-edit changes the server's dive.
+field right. Marking a file re-reads nothing; nothing mid-edit changes the server's dive.
 
 ## A field under 16px zooms an iPhone in, and it stays zoomed
 

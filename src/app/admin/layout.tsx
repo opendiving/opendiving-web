@@ -6,13 +6,12 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 import { PAGE_COLUMN } from "@/components/ui/map-hero";
 
 /**
- * The gate on the whole admin section, and the second layout below the root
- * (after `dives/(detail)/`).
+ * The gate on the whole admin section.
  *
  * Three states, in the order every protected page in this app takes them: a
  * spinner while the auth bootstrap is still deciding, nothing at all while
  * `useAuthGuard` bounces a signed-out visitor to `/signin?next=...`, and - the
- * one thing new here - the app's ordinary not-found state for a signed-in diver
+ * one admin-only state - the app's ordinary not-found state for a signed-in diver
  * who is not a superuser. Not a "forbidden" page: a diver who guesses the URL
  * learns nothing about whether the section exists, which is the same answer a
  * dive or course uuid that is not theirs already gets.

@@ -270,30 +270,22 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                 value={formatGasVolume(gasUse.gas_used, units)}
               />
             </CardFigures>
-            {/* **Not** gated on the SAC, though it was until the additive
-                parallel path existed. This sentence *names the denominator*, so
-                on a figure derived per cylinder it would assert the dive's
-                average depth produced a rate that was never divided by it -
-                the exact claim this card's own branch deleted from the Home page
-                chart. A null SAC was the marker for that derivation and so stood
-                in for the test.
-
-                It no longer is. An unequal-volume parallel set has a null SAC and
-                a whole-dive RMV that genuinely *was* divided by `dive.avg_depth`,
-                so the SAC clause would now hide a true sentence. What guarantees
-                the sentence's claim is position, not the SAC: this whole arm
+            {/* **Not** gated on the SAC. This sentence *names the denominator*,
+                so on a figure derived per cylinder it would assert the dive's
+                average depth produced a rate that was never divided by it. A
+                null SAC doesn't mark that derivation: an unequal-volume parallel
+                set has a null SAC and a whole-dive RMV that genuinely *was*
+                divided by `dive.avg_depth`, so a SAC gate would hide a true
+                sentence. What guarantees the claim is position: this whole arm
                 renders only when `tanks` came back empty, which is precisely the
-                set of derivations taken against the dive's own average depth. A
-                re-gate on empty `tanks` was considered and is a condition that
-                cannot be false where the sentence lives, so the clause is simply
-                gone.
+                set of derivations taken against the dive's own average depth -
+                so a gate on empty `tanks` could never be false here either.
 
-                `avg_depth` is still checked, and that half is unrelated: it is
-                what the raw `{dive.avg_depth}m` this replaced got away with not
-                doing, rendering "an average depth of m" for a null where a
-                formatter would print "NaN m". The API declines to derive anything
-                without an average depth on either whole-dive path, so it is a belt
-                on the sentence's own premise rather than a case anyone has seen. */}
+                `avg_depth` is checked for an unrelated reason: a null would
+                render "an average depth of m". The API declines to derive
+                anything without an average depth on either whole-dive path, so
+                it is a belt on the sentence's own premise rather than a case
+                anyone has seen. */}
             {dive.avg_depth != null && (
               <p className="text-xs text-muted-foreground mt-4">
                 What you&apos;d have breathed doing the same dive at the
@@ -348,11 +340,10 @@ function TotalRow({
 
   return (
     // No `font-medium` here - `TableFooter` already carries it, along with the
-    // separator this row used to lack.
+    // separator.
     <TableRow className="whitespace-nowrap">
-      {/* "Total", not the "All tanks" this said while the column was headed
-          `Tank` - under a `#` the old phrasing was answering a question the
-          header no longer asks, and this is the word a `tfoot` conventionally
+      {/* "Total", not "All tanks" - under a `#` header that answers a
+          question nobody asked, and this is the word a `tfoot` conventionally
           carries. */}
       <TableCell>Total</TableCell>
       {/* The total is across gases, so the Gas column has nothing to say for it. */}

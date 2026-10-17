@@ -99,10 +99,9 @@ const NAIVE_DATE_TIME_REGEX =
 // Parses a date-time that carries no UTC offset, pinning it to UTC so that the
 // *UTC* getters read its digits back unchanged.
 //
-// This one line is the whole offset-unknown display fix, and it is a correction
-// rather than a feature. `new Date("2026-04-17T11:49:23")` is *specified* to
-// parse as the browser's local time, so a dive logged at 11:49 with no recorded
-// offset used to be shifted by the viewer's own offset on the way through
+// `new Date("2026-04-17T11:49:23")` is *specified* to parse as the browser's
+// local time, so without the "Z" a dive logged at 11:49 with no recorded offset
+// would be shifted by the viewer's own offset on the way through
 // `shiftByEmbeddedOffset` - displaying as 08:49 in UTC+03:00 and as 14:49 in
 // UTC-03:00, neither of which anything recorded. Appending "Z" removes the
 // browser from the calculation entirely.
@@ -111,8 +110,7 @@ const NAIVE_DATE_TIME_REGEX =
 // form as UTC, and "2026-04-17Z" is not a date-time at all. The instant that
 // gives is the start of the day, which is where a date-only dive sorts; it
 // places the dive on a timeline and is never read back as a time of day. Anything
-// else is handed to `Date` unchanged, so an unparseable value still comes back
-// NaN exactly as it did before.
+// else is handed to `Date` unchanged, so an unparseable value comes back NaN.
 function parseAsWallClockUtc(isoString: string): Date {
   return NAIVE_DATE_TIME_REGEX.test(isoString)
     ? new Date(`${isoString.replace(" ", "T")}Z`)
@@ -183,9 +181,9 @@ export function isDateOnlyStartTime(
 //
 // `offsetMinutes` is `null` when the string carries no offset. That is the
 // dive's unknown-offset state travelling out to `UtcOffsetSelect`'s "Not
-// recorded" option, and `combineStartTime()` takes it straight back. It used to
-// come back as `0` here, which is how an imported dive's first save wrote both
-// the wrong hour and a "+00:00" nobody chose.
+// recorded" option, and `combineStartTime()` takes it straight back. A `0` here
+// would have an imported dive's first save write both the wrong hour and a
+// "+00:00" nobody chose.
 //
 // A bare date comes back as the date alone, `localDateTime` "YYYY-MM-DD" with no
 // time after it, so the first ten characters are still the day and nothing
@@ -350,11 +348,9 @@ export function formatDiveTimeOnly(
 // rather than half of it being inherited.
 //
 // A `start_time` carrying no offset prints the date and the clock and **stops** -
-// no "(UTC...)" parenthetical at all. This used to say `+00:00`, on the reasoning
-// that the API always sent an offset so the case was degenerate; import made it a
-// real state, and a wall clock with no zone beside it is exactly what it means.
-// Saying "UTC" would be a claim about where the dive happened, which is the one
-// thing nothing here knows.
+// no "(UTC...)" parenthetical at all, because a wall clock with no zone beside it
+// is exactly what it means. Saying "UTC" would be a claim about where the dive
+// happened, which is the one thing nothing here knows.
 //
 // A bare-date `start_time` stops earlier still, after the date: "Tuesday, June
 // 18, 2002" and no "at" at all.

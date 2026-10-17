@@ -2,12 +2,11 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { StandaloneShell } from "./standalone-shell";
 
-// `AppShell` is the app's only other source of a `<main>`, and the six routes that
-// opt out of it used to hand-roll this centered card instead - which left every one
-// of them a document with no main landmark and no landmark around any of its
-// content. That is what axe reported on `/signin` (`landmark-one-main` and
-// `region`), and the element below is the whole reason this component exists rather
-// than a seventh copy of the wrapper.
+// `AppShell` is the app's only other source of a `<main>`, so a route that opts out
+// of it and hand-rolls this centered card is a document with no main landmark and no
+// landmark around any of its content - axe's `landmark-one-main` and `region`. The
+// element below is the whole reason this component exists rather than a copy of the
+// wrapper per route.
 
 describe("StandaloneShell", () => {
   it("puts the page's content inside a main landmark", () => {

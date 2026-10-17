@@ -38,7 +38,7 @@ describe("Strict-Transport-Security", () => {
     );
   });
 
-  // The whole reason it moved out of `next.config.js`: a build-time header is sent to a
+  // Why it is set here and not in `next.config.js`: a build-time header is sent to a
   // LAN instance too, and a browser that records the pin can no longer reach it.
   it("is not sent over plain HTTP", async () => {
     const proxy = await loadProxy();
@@ -74,7 +74,7 @@ describe("Strict-Transport-Security", () => {
     expect(response.headers.get("Strict-Transport-Security")).not.toBeNull();
   });
 
-  it("no longer offers `preload`", async () => {
+  it("does not offer `preload`", async () => {
     const proxy = await loadProxy();
 
     const response = proxy(
@@ -138,17 +138,11 @@ describe("Content-Security-Policy", () => {
     );
   });
 
-  // The policy used to name `accounts.google.com` in `style-src`, `connect-src`
-  // and `frame-src` wherever a client ID was set, because Google's sign-in script
-  // injected a stylesheet and an iframe and called home from the page. No Google
-  // code runs here now - the button is a top-level navigation, which no fetch
-  // directive governs - so the origin is gone from every directive in *both*
-  // configurations.
-  //
-  // Both halves are asserted deliberately. The configured one is the behaviour
-  // change; the unconfigured one is the regression guard, since a re-added source
-  // would be conditional again and a single unconfigured check would pass while
-  // the policy named Google for every instance that actually uses it.
+  // No Google code runs here - the button is a top-level navigation, which no
+  // fetch directive governs - so no directive names Google in *either*
+  // configuration. Both halves are asserted deliberately: a re-added source would
+  // be conditional on a client ID, and a single unconfigured check would pass
+  // while the policy named Google for every instance that actually uses it.
   it.each([
     ["configured", { GOOGLE_CLIENT_ID: "abc.apps.googleusercontent.com" }],
     ["unconfigured", {}],
@@ -226,12 +220,8 @@ describe("Content-Security-Policy", () => {
     ).toBe("connect-src 'self' https://tiles.example");
   });
 
-  // **`img-src` names no third party at all**, and the two assertions this
-  // replaces said the opposite on purpose. They pinned the tile hosts' retention
-  // for as long as the site picker drew raster `<img>` tiles, so that dropping
-  // them would be a decision rather than an accident; the picker draws through
-  // MapLibre now, which fetches every tile under `connect-src` in both of its
-  // modes.
+  // **`img-src` names no third party at all**: MapLibre fetches every tile under
+  // `connect-src` in both of its modes.
   //
   // What every `<img>` in this app points at is *this instance* - the page's own
   // origin, or `apiOrigin` where the API is split onto another one. That is not

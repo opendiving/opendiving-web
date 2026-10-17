@@ -139,11 +139,9 @@ export function InviteQueueFrame({
               onToggleAll={onToggleAll}
             />
 
-            {/* No selection reset here, unlike the Previous/Next footer this
-                replaced: that cleared the ticks because a page turn carried the
-                selected addresses off screen, and sending invitations the operator
-                can no longer see is the thing it was guarding against. Loading
-                more only appends, so everything ticked stays visible. */}
+            {/* No selection reset here: loading more only appends, so everything
+                ticked stays visible and no invitation goes to an address the
+                operator can no longer see. */}
             <LoadMoreTrigger
               hasMore={hasMore}
               isLoading={isLoadingMore}

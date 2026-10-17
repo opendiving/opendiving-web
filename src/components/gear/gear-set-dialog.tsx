@@ -150,13 +150,10 @@ export function GearSetDialog({
 
     try {
       if (saveToUuid) {
-        // The list goes on every save, including a bare rename. It used to be
-        // omitted unless the picker was dirty, because the API hid soft-deleted
-        // gear items from a set read and echoing that shortened list back
-        // destroyed the hidden membership rows. Gear items are hard-deleted now,
-        // so a set read carries every member it has and the picker shows the
-        // whole set - which also makes emptying it expressible, the property
-        // `TripDialog` has always had for locations.
+        // The list goes on every save, including a bare rename: a set read
+        // carries every member it has, so the picker shows the whole set - which
+        // also makes emptying it expressible, as `TripDialog` does for
+        // locations.
         await gearAPI.updateGearSet(saveToUuid, {
           name: data.name,
           weight,

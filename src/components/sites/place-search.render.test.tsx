@@ -713,7 +713,7 @@ describe("PlaceSearch credits", () => {
   });
 });
 
-// The two ways a place used to be placed without anyone choosing it. Both are
+// Two ways a place would be placed without anyone choosing it. Both are
 // `CreatableCombobox`'s ordinary single-select behaviour, which is right where
 // the input *is* the value and wrong here, where a pick writes the two
 // coordinate fields, the Location beside them and - for a catalog row - the Name.

@@ -52,10 +52,9 @@ export interface RecentDivesCardProps {
   // Show every dive in scope, a page at a time as the reader scrolls, rather
   // than Home's fixed preview of the latest few.
   //
-  // The detail pages used to ask for this with `limit={100}`, meaning "all of
-  // them" - and the API clamps `items_per_page` to 100, so a diver past that
-  // number was shown a list that looked complete and was not. There is no
-  // number to get wrong now.
+  // A flag rather than a large `limit`: the API clamps `items_per_page` to 100,
+  // so a diver past that number would be shown a list that looks complete and
+  // is not.
   //
   // A complete list that holds nothing also drops its header down to its hidden
   // heading, as the list pages' cards do: the empty state already says what the

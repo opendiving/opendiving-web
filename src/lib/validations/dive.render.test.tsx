@@ -139,11 +139,9 @@ const save = async () => userEvent.click(screen.getByText("Save"));
 
 describe("the edit form's round trip", () => {
   it("sends no cylinders for a dive that has none", async () => {
-    // The regression sending the whole form could have introduced. The page
-    // used to seed
-    // `[{ ...DEFAULT_MIXTURE }]` when the dive had no mixtures, and now that
-    // every field is submitted, that row would be written to the dive by a save
-    // whose only edit was to the notes - an 11.1 L cylinder of air the diver
+    // Pins that a dive with no mixtures is not seeded `[{ ...DEFAULT_MIXTURE }]`:
+    // every field is submitted, so that row would be written to the dive by a
+    // save whose only edit was to the notes - an 11.1 L cylinder of air the diver
     // never entered, on a dive whose gas maths then derives from it.
     const onSave = vi.fn();
     render(<Harness dive={DIVE} onSave={onSave} />);

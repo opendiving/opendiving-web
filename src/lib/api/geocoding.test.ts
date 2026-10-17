@@ -29,8 +29,7 @@ beforeEach(() => {
 
 // What these pin is the three-way split the API spends a second status code on:
 // "here is a name", "there is no name here", and "we never got to ask". The last
-// two are what decide whether it is safe to empty a field a diver typed into, and
-// they used to be the same value over the wire.
+// two are what decide whether it is safe to empty a field a diver typed into.
 describe("geocodingAPI.reverseGeocode", () => {
   it("passes the position as query parameters", async () => {
     get.mockResolvedValue({ status: 200, data: RESULT });

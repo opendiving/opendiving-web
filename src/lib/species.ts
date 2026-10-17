@@ -70,10 +70,9 @@ export function speciesSecondaryName(
  * How much of a search page carries it is not a property of the data and gets no
  * number here: search answers with whatever arrived inside its fan-out budget,
  * so a slow minute at WoRMS leaves more of the page Wikidata-only, and two
- * consecutive searches for the same word legitimately disagree. This used to say
- * "most of a typical page, not a rare edge case"; it is a tail case now that the
- * API reads a rank off the Wikidata entity too, which is what finally gave the
- * picker's rank caption something to print on a bare upstream row.
+ * consecutive searches for the same word legitimately disagree. It is a tail
+ * case, because the API reads a rank off the Wikidata entity too, which is what
+ * gives the picker's rank caption something to print on a bare upstream row.
  *
  * The string is not stable either, and for a reason that has nothing to do with
  * the sentinel: the two registers can hold different real ranks for the same

@@ -195,21 +195,19 @@ describe("splitStartTime/combineStartTime", () => {
     spy.mockRestore();
   });
 
-  // This used to assert `0` - "defaults to a UTC offset for a naive string with
-  // none" - and that default is the bug rather than the behaviour. An imported
-  // dive whose zone was never recorded arrives naive, and collapsing it to UTC
-  // both moved the clock and invented a zone the first save then wrote down.
+  // Not `0`: an imported dive whose zone was never recorded arrives naive, and
+  // collapsing it to UTC moves the clock and invents a zone the first save then
+  // writes down.
   it("reports a null offset for a string carrying none, rather than UTC", () => {
     const { offsetMinutes } = splitStartTime("2024-05-01T09:00:00");
     expect(offsetMinutes).toBeNull();
   });
 
   it("keeps a naive string's wall clock exactly as written", () => {
-    // Load-bearing only outside UTC, and deliberately written anyway: the old
-    // code read a naive value through `new Date()`, which ECMAScript parses as
-    // *local*, so these digits came back shifted by whatever offset the reader
-    // happened to be sitting in - and came back correct, by luck, in UTC. The
-    // round-trip below is the assertion that fails in every zone.
+    // Load-bearing only outside UTC: reading a naive value through `new Date()`
+    // parses it as *local*, shifting these digits by whatever offset the reader
+    // is sitting in - and leaving them correct, by luck, in UTC. The round-trip
+    // below is the assertion that fails in every zone.
     const { localDateTime } = splitStartTime("2026-04-17T11:49:23");
     expect(localDateTime).toBe("2026-04-17 11:49:23");
   });

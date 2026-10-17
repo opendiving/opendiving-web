@@ -16,8 +16,9 @@ import type { DiveNeighbors } from "@/lib/api/dives";
 // The prop change below is a `rerender`, and a real step is a route change: the two
 // were conflated here for a while, and the difference is why this file passed for
 // months while a diver following the arrows lost focus on every single one. Whether
-// this component survives a step at all is the route tree's business - see "The step
-// remounted the page..." in DECISIONS.md. What is left here is what it does once it
+// this component survives a step at all is the route tree's business - see
+// "`dives/(detail)/layout.tsx` owns the dive fetch, so a step keeps the page
+// mounted" in DECISIONS.md. What is left here is what it does once it
 // has survived one.
 
 vi.mock("@/lib/api/dives", async (importOriginal) => ({

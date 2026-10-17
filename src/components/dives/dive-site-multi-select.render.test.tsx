@@ -4,12 +4,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveSiteMultiSelect } from "./dive-site-multi-select";
 
-// This field shares `CreatableCombobox` with the trip location picker, and the
-// rules about what counts as choosing an item were tightened there - for every
-// append-only field, not just that one. Pinned here because the change is
-// invisible from the trips tests: typing an exact name used to append the site
-// on the keystroke, and blurring used to commit an exact match, and both are
-// gone. What is left, and what these assert, is a click or Enter.
+// This field shares `CreatableCombobox` with the trip location picker, whose
+// rules about what counts as choosing an item hold for every append-only field.
+// Pinned here because they are invisible from the trips tests: typing an exact
+// name doesn't append the site on the keystroke, and blurring doesn't commit an
+// exact match. Only a click or Enter chooses, which is what these assert.
 
 vi.mock("@/lib/api/dive-sites", () => ({
   diveSitesAPI: { lookupDiveSites: vi.fn(), lookupDiveSitesByUuid: vi.fn() },

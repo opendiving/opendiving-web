@@ -107,11 +107,9 @@ const editSidemount = () =>
 
 // `PATCH /gear-set` routes any `gear_item_uuids` it is given through
 // `replace_gear_items_for_set`, which deletes every membership row and reinserts
-// the submitted list. The dialog sends the key on all three of its flows: the
-// picker is seeded from a read that hides nothing, so the list it holds is the
-// set's whole membership and replacing it with itself is a no-op. The filter
-// that used to omit it existed because soft-deleted items were hidden from that
-// read, which made the seeded list an echo one or more entries short.
+// the submitted list. The dialog sends the key on every flow: the picker is
+// seeded from a read that hides nothing, so the list it holds is the set's whole
+// membership and replacing it with itself is a no-op.
 describe("the gear set dialog's PATCH body", () => {
   it("sends the set's members even when the diver changed nothing", async () => {
     editSidemount();
@@ -156,8 +154,8 @@ describe("the gear set dialog's PATCH body", () => {
 
   it("empties the set when the diver removes every item", async () => {
     // `[]` is a wholesale replace with nothing, which is how a set is emptied -
-    // and there is no longer any state in which an empty picker means "the API
-    // hid the rest", so it can be taken at its word.
+    // and the set read hides nothing, so an empty picker can be taken at its
+    // word.
     editSidemount();
 
     await removeItem("Scubapro MK25 EVO");

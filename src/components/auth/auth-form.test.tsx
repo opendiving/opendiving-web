@@ -53,8 +53,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
 // Pressing the Google button leaves the page entirely - it navigates to Google's
-// authorization endpoint - and none of that is what these tests are about. The
-// mock stays for that reason now rather than for the script it used to load.
+// authorization endpoint - and none of that is what these tests are about.
 vi.mock("./google-auth-button", () => ({ GoogleAuthButton: () => null }));
 
 // The real hook runs against these, so what these tests exercise is this form's
@@ -425,19 +424,18 @@ describe("AuthForm passkeys", () => {
   });
 });
 
-// This form used to open with a line naming the method this browser signed in
-// with last, read out of a key written on every sign-in. Both are gone, and the
-// two halves of that are worth pinning separately: a returning visitor is told
-// nothing, and the form does not go looking. The second is the half a rendered
-// assertion cannot see - a build that still read the key but rendered nothing
-// would pass the first test while storing and reading exactly as before.
+// This form names no method this browser signed in with before, and keeps no
+// key to read one from. The two halves are worth pinning separately: a returning
+// visitor is told nothing, and the form does not go looking. The second is the
+// half a rendered assertion cannot see - a build that read the key but rendered
+// nothing would pass the first test.
 describe("AuthForm and the browser's sign-in history", () => {
   it("says nothing about how this browser signed in before", async () => {
     render(<AuthForm redirectTo={null} />);
 
     await screen.findByLabelText("Email");
     expect(screen.queryByText(/last time you signed in/i)).toBeNull();
-    // Still every method, in the order they were always in.
+    // Every method, in its usual order.
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
   });
 

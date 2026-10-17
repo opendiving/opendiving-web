@@ -1031,9 +1031,9 @@ describe("DiveProfileChart vertical axes", () => {
 });
 
 describe("DiveProfileChart with every channel switched off", () => {
-  // Switching the last one off used to replace the whole chart with a sentence,
-  // which collapsed the card to two lines and pulled the legend - the only way
-  // back - up the page after the cursor that had just clicked it.
+  // Pins that the plot stays: replacing it with a sentence collapses the card to
+  // two lines and pulls the legend - the only way back - up the page away from
+  // the cursor that has just clicked it.
   function hideEverything() {
     const view = render(<DiveProfileChart profile={everyChannel()} />);
     for (const name of Object.values(CHANNEL_BUTTONS)) {
@@ -1301,10 +1301,9 @@ describe("DiveProfileChart naming cylinders", () => {
 });
 
 describe("DiveProfileChart marker toggle", () => {
-  // Markers used to be drawn unconditionally, on the argument that annotations are
-  // cheap enough to always show. They aren't, on a dive that carries a dozen: a row
-  // of ticks along the baseline is a picket fence in front of the curves it
-  // annotates, and the diver had no way to put it down.
+  // Markers are switchable rather than always drawn: on a dive that carries a
+  // dozen, a row of ticks along the baseline is a picket fence in front of the
+  // curves it annotates.
   const withMarkers = longProfile({
     events: [
       { time: 600_000, type: "gas_switch", gas_number: 2 },
@@ -1462,9 +1461,9 @@ describe("DiveProfileChart selection across dives", () => {
   });
 
   it("does not let a no-deco dive switch the ceiling off for the next deco dive", () => {
-    // The same mechanism, one key over, and it predates the marker switch - a
-    // no-deco dive offers no ceiling toggle, so any click on one used to write a
-    // selection with `ceiling` stripped.
+    // The same mechanism, one key over - a no-deco dive offers no ceiling
+    // toggle, so a click on one must not write a selection with `ceiling`
+    // stripped.
     render(<DiveProfileChart profile={noMarkers} />);
     fireEvent.click(screen.getByRole("button", { name: /^Temperature/ }));
     cleanup();
@@ -1787,9 +1786,9 @@ describe("DiveProfileChart deco readouts", () => {
 describe("DiveProfileChart with a marker carrying no type", () => {
   // DiveJSON §6.6 makes `type` optional and spells "the device recorded
   // something and nothing in the vocabulary says what" as an absent type beside
-  // a required label. The API used to send `other` for exactly this and now
-  // sends a null, so a marker with no type is the ordinary case rather than a
-  // broken payload - and it has to draw, and read, on its own wording.
+  // a required label. The API sends a null for exactly this, so a marker with
+  // no type is the ordinary case rather than a broken payload - and it has to
+  // draw, and read, on its own wording.
   const withTypeless = longProfile({
     events: [{ time: 1_500_000, type: null, label: "Violated Deep Stop" }],
   });
