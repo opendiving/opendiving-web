@@ -100,9 +100,9 @@ test.describe("instant navigations", () => {
       await expect(
         page.getByRole("heading", { level: 2, name: /Gear Sets/ }),
       ).toBeVisible();
-      // Both cards stand their table in and mark it busy rather than drawing a
-      // spinner, and neither has a row yet.
-      await expect(page.locator("main table[aria-busy='true']")).toHaveCount(2);
+      // Both cards stand their list of placeholder cards in and mark it busy
+      // rather than drawing a spinner, and neither has a card yet.
+      await expect(page.locator("main ul[aria-busy='true']")).toHaveCount(2);
       await expect(page.getByText(GEAR_ITEM.name)).toHaveCount(0);
       await expect(page.getByText(GEAR_SET.name)).toHaveCount(0);
     });
