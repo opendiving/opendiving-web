@@ -37,8 +37,8 @@ export interface GearItemsListProps {
 }
 
 /**
- * The gear list: a card for its header, with the Show archived switch and the count,
- * and a card per item below it, as /dives draws its dives.
+ * The gear list: the Show archived switch and the count in its header, and a card per
+ * item inside it, as the life list holds its species.
  *
  * The empty state differs by filter — "no gear at all" and "no *active* gear" need
  * different advice, since the second is fixed by ticking Show archived rather than by
@@ -68,92 +68,88 @@ export function GearItemsList({
   const hasNoGear = isEmpty && !hasArchived;
 
   return (
-    <div className="space-y-6 max-sm:space-y-2.5">
-      <Card>
-        <CardHeader className={cn(hasNoGear && "p-0")}>
-          {hasNoGear ? (
-            <CardTitle as="h2" className="sr-only">
+    <Card>
+      <CardHeader className={cn(hasNoGear && "p-0")}>
+        {hasNoGear ? (
+          <CardTitle as="h2" className="sr-only">
+            Your Gear
+          </CardTitle>
+        ) : (
+          <CardTitle
+            as="h2"
+            className="flex flex-wrap items-center justify-between gap-3"
+          >
+            <span className="flex items-center gap-2">
+              <Backpack className="h-5 w-5" />
               Your Gear
-            </CardTitle>
-          ) : (
-            <CardTitle
-              as="h2"
-              className="flex flex-wrap items-center justify-between gap-3"
-            >
-              <span className="flex items-center gap-2">
-                <Backpack className="h-5 w-5" />
-                Your Gear
-              </span>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="show-archived"
-                    checked={showArchived}
-                    onCheckedChange={onShowArchivedChange}
-                  />
-                  <Label
-                    htmlFor="show-archived"
-                    className="cursor-pointer text-sm font-normal text-muted-foreground"
-                  >
-                    Show archived
-                  </Label>
-                </div>
-                <CountBadge
-                  count={totalCount}
-                  isLoading={isLoading}
-                  label="item"
+            </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="show-archived"
+                  checked={showArchived}
+                  onCheckedChange={onShowArchivedChange}
                 />
+                <Label
+                  htmlFor="show-archived"
+                  className="cursor-pointer text-sm font-normal text-muted-foreground"
+                >
+                  Show archived
+                </Label>
               </div>
-            </CardTitle>
-          )}
-        </CardHeader>
-        {isEmpty && (
-          <CardContent>
-            <EmptyState
-              icon={Backpack}
-              title={hasNoGear ? "No gear yet" : "No active gear"}
-              description={
-                hasNoGear
-                  ? "Add your first piece of kit to start tracking what you dive with!"
-                  : "Add a piece of kit, or turn on “Show archived” to see gear you've retired."
-              }
-              action={
-                <Button onClick={onCreate}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add your first gear
-                </Button>
-              }
-            />
-          </CardContent>
+              <CountBadge
+                count={totalCount}
+                isLoading={isLoading}
+                label="item"
+              />
+            </div>
+          </CardTitle>
         )}
-      </Card>
+      </CardHeader>
+      <CardContent>
+        {isEmpty ? (
+          <EmptyState
+            icon={Backpack}
+            title={hasNoGear ? "No gear yet" : "No active gear"}
+            description={
+              hasNoGear
+                ? "Add your first piece of kit to start tracking what you dive with!"
+                : "Add a piece of kit, or turn on “Show archived” to see gear you've retired."
+            }
+            action={
+              <Button onClick={onCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add your first gear
+              </Button>
+            }
+          />
+        ) : (
+          <PlainCardList placeholders={itemsPerPage}>
+            {items.map((item) => (
+              <GearItemCard
+                key={item.uuid}
+                item={item}
+                onEdit={() => onEdit(item)}
+                onArchiveToggle={() => onArchiveToggle(item)}
+                isArchiving={isArchiving}
+                onDelete={() => onDelete(item.uuid)}
+                isDeleting={deletingId === item.uuid}
+              />
+            ))}
+          </PlainCardList>
+        )}
 
-      {!isEmpty && (
-        <PlainCardList placeholders={itemsPerPage}>
-          {items.map((item) => (
-            <GearItemCard
-              key={item.uuid}
-              item={item}
-              onEdit={() => onEdit(item)}
-              onArchiveToggle={() => onArchiveToggle(item)}
-              isArchiving={isArchiving}
-              onDelete={() => onDelete(item.uuid)}
-              isDeleting={deletingId === item.uuid}
-            />
-          ))}
-        </PlainCardList>
-      )}
-
-      <LoadMoreTrigger
-        hasMore={hasMore}
-        isLoading={isLoadingMore}
-        hasFailed={hasFailed}
-        loadedCount={items.length}
-        totalCount={totalCount}
-        itemsPerPage={itemsPerPage}
-        itemLabel="gear items"
-        onLoadMore={onLoadMore}
-      />
-    </div>
+        <LoadMoreTrigger
+          hasMore={hasMore}
+          isLoading={isLoadingMore}
+          hasFailed={hasFailed}
+          loadedCount={items.length}
+          totalCount={totalCount}
+          itemsPerPage={itemsPerPage}
+          itemLabel="gear items"
+          onLoadMore={onLoadMore}
+        />
+      </CardContent>
+    </Card>
   );
 }

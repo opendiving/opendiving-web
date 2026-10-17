@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, ArchiveRestore, Backpack, Edit } from "lucide-react";
+import { Archive, ArchiveRestore, Edit } from "lucide-react";
 import { GearItem, gearItemLabel, gearTypeLabel } from "@/lib/api/gear";
 import { worstServiceStatus } from "@/lib/gear-service";
 import { vesselFactParts } from "@/lib/gear-vessel";
@@ -51,7 +51,6 @@ export function GearItemCard({
 
   return (
     <PlainCard
-      icon={Backpack}
       title={item.name}
       href={`/gear/${item.uuid}`}
       badges={

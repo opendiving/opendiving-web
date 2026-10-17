@@ -38,7 +38,7 @@ export interface GearSetsListProps {
 
 /**
  * The gear sets list: named bundles of kit a diver can load into a dive in one click,
- * a card for its header and a card per set below it, as the gear list draws its items.
+ * a card per set inside it, as the gear list holds its items.
  *
  * No sets at all drops the header down to its hidden heading, as `ListCardHeader`
  * does for a one-list page: the empty state below already says what the card is for,
@@ -62,75 +62,71 @@ export function GearSetsList({
   const isEmpty = !isLoading && sets.length === 0;
 
   return (
-    <div className="space-y-6 max-sm:space-y-2.5">
-      <Card>
-        <CardHeader className={cn(isEmpty && "p-0")}>
-          {isEmpty ? (
-            <CardTitle as="h2" className="sr-only">
+    <Card>
+      <CardHeader className={cn(isEmpty && "p-0")}>
+        {isEmpty ? (
+          <CardTitle as="h2" className="sr-only">
+            Gear Sets
+          </CardTitle>
+        ) : (
+          <CardTitle as="h2" className={CARD_TITLE_ROW}>
+            <span className="flex items-center gap-2">
+              <Layers className="h-5 w-5" />
               Gear Sets
-            </CardTitle>
-          ) : (
-            <CardTitle as="h2" className={CARD_TITLE_ROW}>
-              <span className="flex items-center gap-2">
-                <Layers className="h-5 w-5" />
-                Gear Sets
-              </span>
-              <div className={`flex items-center gap-3 ${CARD_TITLE_ACTION}`}>
-                <CountBadge
-                  count={totalCount}
-                  isLoading={isLoading}
-                  label="set"
-                />
-                <Button variant="outline" size="sm" onClick={onCreate}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New set
-                </Button>
-              </div>
-            </CardTitle>
-          )}
-        </CardHeader>
-        {isEmpty && (
-          <CardContent>
-            <EmptyState
-              icon={Layers}
-              title="No gear sets yet"
-              description="Group the kit you use together — sidemount, tech, warm water — and load it into a dive in one click."
-              action={
-                <Button onClick={onCreate}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add your first set
-                </Button>
-              }
-            />
-          </CardContent>
+            </span>
+            <div className={`flex items-center gap-3 ${CARD_TITLE_ACTION}`}>
+              <CountBadge
+                count={totalCount}
+                isLoading={isLoading}
+                label="set"
+              />
+              <Button variant="outline" size="sm" onClick={onCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                New set
+              </Button>
+            </div>
+          </CardTitle>
         )}
-      </Card>
+      </CardHeader>
+      <CardContent>
+        {isEmpty ? (
+          <EmptyState
+            icon={Layers}
+            title="No gear sets yet"
+            description="Group the kit you use together — sidemount, tech, warm water — and load it into a dive in one click."
+            action={
+              <Button onClick={onCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add your first set
+              </Button>
+            }
+          />
+        ) : (
+          <PlainCardList placeholders={itemsPerPage}>
+            {sets.map((set) => (
+              <GearSetCard
+                key={set.uuid}
+                set={set}
+                onEdit={() => onEdit(set)}
+                onDuplicate={() => onDuplicate(set)}
+                onDelete={() => onDelete(set.uuid)}
+                isDeleting={deletingId === set.uuid}
+              />
+            ))}
+          </PlainCardList>
+        )}
 
-      {!isEmpty && (
-        <PlainCardList placeholders={itemsPerPage}>
-          {sets.map((set) => (
-            <GearSetCard
-              key={set.uuid}
-              set={set}
-              onEdit={() => onEdit(set)}
-              onDuplicate={() => onDuplicate(set)}
-              onDelete={() => onDelete(set.uuid)}
-              isDeleting={deletingId === set.uuid}
-            />
-          ))}
-        </PlainCardList>
-      )}
-
-      <LoadMoreTrigger
-        hasMore={hasMore}
-        isLoading={isLoadingMore}
-        hasFailed={hasFailed}
-        loadedCount={sets.length}
-        totalCount={totalCount}
-        itemsPerPage={itemsPerPage}
-        itemLabel="gear sets"
-        onLoadMore={onLoadMore}
-      />
-    </div>
+        <LoadMoreTrigger
+          hasMore={hasMore}
+          isLoading={isLoadingMore}
+          hasFailed={hasFailed}
+          loadedCount={sets.length}
+          totalCount={totalCount}
+          itemsPerPage={itemsPerPage}
+          itemLabel="gear sets"
+          onLoadMore={onLoadMore}
+        />
+      </CardContent>
+    </Card>
   );
 }

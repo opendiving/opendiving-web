@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Edit, Layers } from "lucide-react";
+import { Copy, Edit } from "lucide-react";
 import { GearSet, gearItemLabel } from "@/lib/api/gear";
 import { formatWeight } from "@/lib/units";
 import { useUnits } from "@/hooks/useUnits";
@@ -32,7 +32,6 @@ export function GearSetCard({
 
   return (
     <PlainCard
-      icon={Layers}
       title={set.name}
       // Said rather than left blank: an empty set is one a diver made and is
       // about to fill, not a broken card.

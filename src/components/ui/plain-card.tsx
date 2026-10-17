@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ItemActionsMenu } from "@/components/ui/item-actions-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,7 +48,6 @@ export function PlainCardList({
 }
 
 interface PlainCardProps {
-  icon: ComponentType<{ className?: string }>;
   title: ReactNode;
   // The record's own page. The title links there, stretched over the card.
   href?: string;
@@ -59,17 +58,16 @@ interface PlainCardProps {
   // Named after the card, as every list's row actions are.
   actionsLabel: string;
   actions: ReactNode;
-  // The figures, under the icon and the lines beside it.
+  // The figures, under the name and its line.
   children?: ReactNode;
 }
 
 // A record with nothing to draw behind it, in a list of cards: gear, which has
-// no place and no picture, as its page's hero has no band. Drawn as the Tanks
-// card draws a cylinder - its icon beside its name and the line under it, its
-// figures below - in a list card's colour, with its actions in the corner as a
-// backdrop card has them. A list item, so a caller renders it in a list.
+// no place and no picture, as its page's hero has no band. Drawn as a backdrop
+// card's details are - its name, the line under it and its figures - in a list
+// card's colour, with its actions in the corner. A list item, so a caller
+// renders it in a list.
 export function PlainCard({
-  icon: Icon,
   title,
   href,
   badges,
@@ -93,23 +91,18 @@ export function PlainCard({
         </ItemActionsMenu>
       </div>
       {/* Clear of the menu in the corner. */}
-      <div className="flex items-start gap-3 pr-8">
-        <span aria-hidden className="shrink-0">
-          <Icon className="size-10 stroke-[1.5]" />
-        </span>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            {href ? (
-              <Link href={href} className={cn(BACKDROP_CARD_LINK, "min-w-0")}>
-                {title}
-              </Link>
-            ) : (
-              <div className="min-w-0 font-medium">{title}</div>
-            )}
-            {badges}
-          </div>
-          {line && <div className="text-xs">{line}</div>}
+      <div className="pr-8">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {href ? (
+            <Link href={href} className={cn(BACKDROP_CARD_LINK, "min-w-0")}>
+              {title}
+            </Link>
+          ) : (
+            <div className="min-w-0 font-medium">{title}</div>
+          )}
+          {badges}
         </div>
+        {line && <div className="text-xs">{line}</div>}
       </div>
       {children && <div className="mt-3">{children}</div>}
     </li>
