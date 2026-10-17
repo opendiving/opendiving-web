@@ -91,12 +91,10 @@ describe("DeleteWithReassignDialog", () => {
 
   it("opens without the picker grabbing focus", async () => {
     // Radix focuses the first tabbable descendant on open, and this dialog's
-    // only child is a combobox that opens its menu on focus - so every delete
-    // confirmation used to open with a list of options painted over the footer
-    // (absolutely positioned, so it covers the buttons rather than moving
-    // them). A click aimed at Delete landed on a trip instead, quietly filling
-    // in a destination nobody chose. It also searched on every confirmation,
-    // including the plain deletes that never needed to.
+    // only child is a combobox that opens its menu on focus. That menu is
+    // absolutely positioned over the footer, so a click aimed at Delete would
+    // land on a trip instead, quietly filling in a destination nobody chose -
+    // and every confirmation would search, including plain deletes.
     render(<Dialog />);
 
     await waitFor(() =>

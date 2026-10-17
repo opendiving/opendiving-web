@@ -183,7 +183,7 @@ export const adminAPI = {
    * Paginated because the queue is unbounded over time - an instance whose
    * landing page has been up for a while can have more rows than a screen.
    */
-  async listInviteRequests(
+  async getInviteRequests(
     page: number = 1,
     items_per_page: number = 10,
   ): Promise<PaginatedResponse<AdminInviteRequest>> {
@@ -249,7 +249,7 @@ export const adminAPI = {
    * species goes by; `filter` is one chip. Both are left off the request when
    * unset, since the API reads an empty `filter` as a 422.
    */
-  async listSpecies(
+  async getSpecies(
     page: number = 1,
     items_per_page: number = 10,
     { search, filter }: { search?: string; filter?: AdminSpeciesFilter } = {},
@@ -269,7 +269,7 @@ export const adminAPI = {
   },
 
   /** The Commons files the operator may pin for one species, previews inline. */
-  async speciesPhotoCandidates(
+  async getSpeciesPhotoCandidates(
     uuid: string,
   ): Promise<AdminSpeciesPhotoCandidates> {
     const response = await apiClient.get<AdminSpeciesPhotoCandidates>(

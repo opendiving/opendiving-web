@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeMenuItems, ThemeToggle } from "@/components/theme-toggle";
@@ -228,14 +229,14 @@ export function Header() {
       <div
         aria-hidden
         data-mobile-menu-backdrop
-        className={`fixed inset-x-0 bottom-0 top-(--header-height) bg-black/60 transition-[opacity,visibility] duration-300 motion-reduce:transition-none md:hidden ${
+        className={`fixed inset-x-0 bottom-0 top-(--header-height) bg-black/80 transition-[opacity,visibility] duration-300 motion-reduce:transition-none md:hidden ${
           isMobileMenuOpen
             ? "visible opacity-100"
             : "pointer-events-none invisible opacity-0"
         }`}
         onClick={() => setIsMobileMenuOpen(false)}
       />
-      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4 touch:py-3">
           {/* Logo and Navigation. The gap is the nav's, so it goes with the nav
               below `md` - at 320px that room is what the four controls need.
@@ -408,7 +409,7 @@ export function Header() {
                 the standalone control stands in. */}
             {!isLoading && !isAuthenticated && <ThemeToggle />}
             {isLoading ? (
-              <div className="animate-pulse bg-muted rounded-md h-9 w-20"></div>
+              <Skeleton className="h-9 w-20" />
             ) : isAuthenticated && user ? (
               <>
                 <NotificationsMenu />

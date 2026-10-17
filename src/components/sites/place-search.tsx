@@ -13,6 +13,7 @@ import {
   GeocodeResult,
   MAX_PLACE_QUERY_LENGTH,
   MIN_PLACE_QUERY_LENGTH,
+  PLACE_SEARCH_DEBOUNCE_MS,
 } from "@/lib/api/geocoding";
 import {
   diveSiteCatalogAPI,
@@ -29,18 +30,6 @@ import {
   MAX_LOCATION_NAME_LENGTH,
   type LocationFormValue,
 } from "@/lib/validations/location";
-
-// Slower than the combobox's own 250 ms, exactly as the trip picker is and for
-// the same reason: every keystroke that gets past this reaches the geocoder
-// through the API's proxy, which enforces one request a second to each provider
-// across the whole instance and answers `[]` rather than queueing once that is
-// exceeded - so a fast debounce doesn't just waste requests, it turns them into
-// empty menus.
-//
-// The catalog half would prefer the 250 ms default - it is a scan over a file
-// already in memory - but one box means one debounce, and it is not made worse
-// by waiting: this field already waited 450 ms for everything.
-const PLACE_SEARCH_DEBOUNCE_MS = 450;
 
 // What a menu row would place, tagged by where it came from. The two sources
 // fill different numbers of fields - only a catalog row names the site itself -
@@ -280,6 +269,8 @@ export function PlaceSearch({
       <CreatableCombobox
         id={searchId}
         onSearch={search}
+        // The geocoder's debounce for the catalog half too, which alone would
+        // take the 250 ms default: one box means one debounce.
         searchDebounceMs={PLACE_SEARCH_DEBOUNCE_MS}
         value={selectedItem?.id}
         selectedItem={selectedItem}

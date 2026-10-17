@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveDetailSidebar } from "./dive-detail-sidebar";
 import type { Dive, DiveSiteSummary } from "@/lib/api/dives";
+import { dive } from "@/test/dive-fixtures";
 import type { Course } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
@@ -31,24 +32,6 @@ afterEach(() => {
 // a second pair a short surface swim away from it.
 const EXIT = { exit_latitude: 28.4375, exit_longitude: 34.4584 };
 const ENTRY = { entry_latitude: 28.4392, entry_longitude: 34.4571 };
-
-// Every required field spelled out rather than `as Dive`: a field added to the
-// interface should break this fixture, since the card reads straight off it.
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
-    uuid: "test",
-    dive_number: 1,
-    start_time: "2021-04-04T10:04:47+02:00",
-    submerged_time: 2700,
-    created_at: "2021-04-05T08:00:00+02:00",
-    user_uuid: "user",
-    notes: "",
-    dive_sites: [],
-    gear_items: [],
-    mixtures: [],
-    ...overrides,
-  };
-}
 
 function site(overrides: Partial<DiveSiteSummary> = {}): DiveSiteSummary {
   return {
@@ -323,12 +306,12 @@ describe.each([
 });
 
 describe("DiveDetailSidebar environment, read from a newer API", () => {
-  // A member the API grew before this build shipped a label renders as itself
+  // A member the API grew before this build shipped a label renders de-snaked
   // rather than as a blank row.
-  it("shows a value this build has no label for as the wire value", () => {
-    renderSidebar(dive({ current: "surge" as Dive["current"] }));
+  it("shows a value this build has no label for de-snaked", () => {
+    renderSidebar(dive({ current: "tidal_surge" as Dive["current"] }));
 
-    expect(screen.getByText("surge")).toBeInTheDocument();
+    expect(screen.getByText("Tidal surge")).toBeInTheDocument();
   });
 });
 

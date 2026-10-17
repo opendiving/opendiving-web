@@ -1,5 +1,32 @@
-function pad(value: number): string {
+/** A number as at least two digits, as a date or a clock writes it: 7 -> "07". */
+export function pad(value: number): string {
   return String(value).padStart(2, "0");
+}
+
+// Today as "YYYY-MM-DD" in the *viewer's* timezone. Built from local getters rather
+// than `toISOString()`, which would render UTC and so show tomorrow's (or yesterday's)
+// date for anyone far enough east or west.
+export function todayIsoDate(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+// Whole days from `from` to `to`, both bare "YYYY-MM-DD" strings. Negative once `to` is
+// in the past.
+//
+// Both dates are constructed from their split parts, never `new Date(dateString)`: a
+// bare date string parses as UTC midnight, which lands on the previous day in every
+// negative-UTC-offset timezone and would make a due date read as one day closer than it
+// is. Same reasoning as `formatDateOnly()`.
+//
+// Using local midnight for both ends also makes this immune to DST: the two Dates shift
+// by the same offset, and rounding the millisecond difference absorbs the one 23- or
+// 25-hour day in between.
+export function daysBetweenIsoDates(from: string, to: string): number {
+  const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
+  const [toYear, toMonth, toDay] = to.split("-").map(Number);
+  const start = new Date(fromYear, fromMonth - 1, fromDay);
+  const end = new Date(toYear, toMonth - 1, toDay);
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
 }
 
 // Formats a Date as "YYYY-MM-DD HH:mm:ss", the format used throughout the dive forms.
@@ -7,11 +34,6 @@ export function formatDateTimeForForm(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
     date.getHours(),
   )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
-
-// Parses the "YYYY-MM-DD HH:mm:ss" form representation back into a native Date.
-export function parseFormDateTime(value: string): Date {
-  return new Date(value.replace(" ", "T"));
 }
 
 // --- UTC-offset-aware dive `start_time` helpers ---
@@ -104,10 +126,9 @@ const NAIVE_DATE_TIME_REGEX =
 // Parses a date-time that carries no UTC offset, pinning it to UTC so that the
 // *UTC* getters read its digits back unchanged.
 //
-// This one line is the whole offset-unknown display fix, and it is a correction
-// rather than a feature. `new Date("2026-04-17T11:49:23")` is *specified* to
-// parse as the browser's local time, so a dive logged at 11:49 with no recorded
-// offset used to be shifted by the viewer's own offset on the way through
+// `new Date("2026-04-17T11:49:23")` is *specified* to parse as the browser's
+// local time, so without the "Z" a dive logged at 11:49 with no recorded offset
+// would be shifted by the viewer's own offset on the way through
 // `shiftByEmbeddedOffset` - displaying as 08:49 in UTC+03:00 and as 14:49 in
 // UTC-03:00, neither of which anything recorded. Appending "Z" removes the
 // browser from the calculation entirely.
@@ -116,8 +137,7 @@ const NAIVE_DATE_TIME_REGEX =
 // form as UTC, and "2026-04-17Z" is not a date-time at all. The instant that
 // gives is the start of the day, which is where a date-only dive sorts; it
 // places the dive on a timeline and is never read back as a time of day. Anything
-// else is handed to `Date` unchanged, so an unparseable value still comes back
-// NaN exactly as it did before.
+// else is handed to `Date` unchanged, so an unparseable value comes back NaN.
 function parseAsWallClockUtc(isoString: string): Date {
   return NAIVE_DATE_TIME_REGEX.test(isoString)
     ? new Date(`${isoString.replace(" ", "T")}Z`)
@@ -188,9 +208,9 @@ export function isDateOnlyStartTime(
 //
 // `offsetMinutes` is `null` when the string carries no offset. That is the
 // dive's unknown-offset state travelling out to `UtcOffsetSelect`'s "Not
-// recorded" option, and `combineStartTime()` takes it straight back. It used to
-// come back as `0` here, which is how an imported dive's first save wrote both
-// the wrong hour and a "+00:00" nobody chose.
+// recorded" option, and `combineStartTime()` takes it straight back. A `0` here
+// would have an imported dive's first save write both the wrong hour and a
+// "+00:00" nobody chose.
 //
 // A bare date comes back as the date alone, `localDateTime` "YYYY-MM-DD" with no
 // time after it, so the first ten characters are still the day and nothing
@@ -203,10 +223,16 @@ export function splitStartTime(isoString: string): {
     return { localDateTime: isoString, offsetMinutes: null };
   }
   const { shifted, offsetMinutes } = shiftByEmbeddedOffset(isoString);
-  const localDateTime = `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(
-    shifted.getUTCDate(),
-  )} ${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}:${pad(shifted.getUTCSeconds())}`;
-  return { localDateTime, offsetMinutes };
+  return { localDateTime: formatUtcWallClock(shifted), offsetMinutes };
+}
+
+// `formatDateTimeForForm()` read through the UTC getters, for a `Date` whose UTC
+// fields hold a wall clock - what `shiftByEmbeddedOffset()` and
+// `parseAsWallClockUtc()` return.
+function formatUtcWallClock(date: Date): string {
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(
+    date.getUTCDate(),
+  )} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
 }
 
 // Inverse of `splitStartTime()`: combines a "YYYY-MM-DD HH:mm:ss" wall-clock
@@ -241,13 +267,13 @@ export function combineStartTime(
 //   west of Greenwich (see DECISIONS.md, "Bare `YYYY-MM-DD` dates must not go
 //   through `new Date(dateString)`").
 // - Naive/local, e.g. "2025-06-03T12:15:33.8" - its literal date/time digits
-//   are kept (parsing a naive string with `Date` and reading back local getters
-//   is a no-op transformation: there is no timezone to convert from) and
-//   combined with the browser's current offset, the best available default.
-//   It's on the diver to correct it if their computer's clock was set to a
-//   different zone than wherever they are now.
+//   are kept and combined with the browser's current offset, the best available
+//   default. It's on the diver to correct it if their computer's clock was set
+//   to a different zone than wherever they are now. The digits are read through
+//   `parseAsWallClockUtc()`, never local getters: a local parse moves a clock
+//   that falls in the browser's spring-forward gap by an hour.
 //
-// Returns `undefined` for anything `Date` can't parse at all.
+// Returns `undefined` for anything else.
 export function normalizeParsedStartTime(
   rawStartTime: string,
 ): string | undefined {
@@ -262,10 +288,11 @@ export function normalizeParsedStartTime(
     );
   }
 
-  const date = new Date(rawStartTime);
-  if (Number.isNaN(date.getTime())) return undefined;
+  if (!NAIVE_DATE_TIME_REGEX.test(rawStartTime)) return undefined;
+  const wallClock = parseAsWallClockUtc(rawStartTime);
+  if (Number.isNaN(wallClock.getTime())) return undefined;
   return combineStartTime(
-    formatDateTimeForForm(date),
+    formatUtcWallClock(wallClock),
     getBrowserUtcOffsetMinutes(),
   );
 }
@@ -355,11 +382,9 @@ export function formatDiveTimeOnly(
 // rather than half of it being inherited.
 //
 // A `start_time` carrying no offset prints the date and the clock and **stops** -
-// no "(UTC...)" parenthetical at all. This used to say `+00:00`, on the reasoning
-// that the API always sent an offset so the case was degenerate; import made it a
-// real state, and a wall clock with no zone beside it is exactly what it means.
-// Saying "UTC" would be a claim about where the dive happened, which is the one
-// thing nothing here knows.
+// no "(UTC...)" parenthetical at all, because a wall clock with no zone beside it
+// is exactly what it means. Saying "UTC" would be a claim about where the dive
+// happened, which is the one thing nothing here knows.
 //
 // A bare-date `start_time` stops earlier still, after the date: "Tuesday, June
 // 18, 2002" and no "at" at all.
@@ -415,19 +440,6 @@ export function formatDateTime(
       hour: "2-digit",
       minute: "2-digit",
     }),
-  });
-}
-
-// Time-of-day counterpart to `formatDateTime()` above - same caveat applies:
-// this shows the viewer's own local time, so don't use it for a dive's
-// `start_time` (use `formatDiveTimeOnly()` instead).
-export function formatTimeOnly(
-  dateString: string,
-  options?: Intl.DateTimeFormatOptions,
-): string {
-  return new Date(dateString).toLocaleTimeString("en-US", {
-    hour12: false,
-    ...(options ?? { hour: "2-digit", minute: "2-digit" }),
   });
 }
 

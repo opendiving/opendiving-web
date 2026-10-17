@@ -14,7 +14,8 @@ import type { UnitSystem } from "@/lib/units";
 // one identity across renders, and a mock that rebuilds it per render is what put the
 // new-dive page's test in an unbounded loop with its own `form.reset`. Varying a
 // field means writing to `auth.user`, which leaves the identity alone. See "The
-// new-dive render test was in a loop with itself" in DECISIONS.md.
+// new-dive render test's mocks are identity-stable, so the prefill effect runs
+// once" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
   user: { uuid: "user-1", units: "metric" as UnitSystem },
   refreshUser: vi.fn(),
@@ -34,7 +35,7 @@ const updateProfile = vi.mocked(authAPI.updateProfile);
 beforeEach(() => {
   auth.user.units = "metric";
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
-  updateProfile.mockReset().mockResolvedValue(undefined);
+  updateProfile.mockReset().mockResolvedValue({ message: "ok" });
 });
 
 const picker = () => screen.getByLabelText("Measurement system");

@@ -1,25 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { peopleAPI, type Person } from "@/lib/api/people";
-import { Button } from "@/components/ui/button";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { countNoun } from "@/lib/format";
+import { RowActions } from "@/components/ui/row-actions";
 import { PeoplePageFrame } from "@/components/people/people-page-frame";
 import { PersonDialog } from "@/components/people/person-dialog";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Edit, Trash2 } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
-
-// How long to wait after the last keystroke before asking the server, matching
-// the other lists and the pickers.
-const SEARCH_DEBOUNCE_MS = 250;
 
 // A dash for a cell with nothing in it, as the contacts list draws one, so an
 // empty cell reads as "not recorded" rather than as a rendering fault.
@@ -30,23 +25,17 @@ export function PeoplePageContent() {
   const openCreate = useQuickCreate();
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
 
-  // What the box holds, and what has actually been asked for.
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setSearch(searchInput.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [searchInput]);
+  const {
+    input: searchInput,
+    setInput: setSearchInput,
+    term: search,
+  } = useDebouncedSearch();
 
   // One term against both columns the API searches, the name and the linked
   // username - the same query the pickers run.
   const fetchPeople = useCallback(
     (page: number, perPage: number) =>
-      peopleAPI.getPeople(page, perPage, search || undefined),
+      peopleAPI.getPeople(page, perPage, { search }),
     [search],
   );
 
@@ -132,42 +121,17 @@ export function PeoplePageContent() {
               <Link
                 href={`/people/${person.uuid}`}
                 className="relative hover:underline touch:tap-target"
-                aria-label={`${person.dive_count} ${
-                  person.dive_count === 1 ? "dive" : "dives"
-                } with ${person.name}`}
+                aria-label={`${countNoun(person.dive_count, "dive")} with ${person.name}`}
               >
                 {person.dive_count}
               </Link>
             </TableCell>
-            <TableCell className="text-right">
-              {/* Named per row, not per action - see DECISIONS.md, "Ten rows of
-                  'Edit' name nothing". */}
-              <div className="flex justify-end gap-2">
-                <IconTooltip label={`Edit ${person.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingPerson(person)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-                <IconTooltip label={`Delete ${person.name}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => requestDelete(person.uuid)}
-                    disabled={deletingId === person.uuid}
-                  >
-                    {deletingId === person.uuid ? (
-                      <ButtonSpinner />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </IconTooltip>
-              </div>
-            </TableCell>
+            <RowActions
+              label={person.name}
+              onEdit={() => setEditingPerson(person)}
+              onDelete={() => requestDelete(person.uuid)}
+              isDeleting={deletingId === person.uuid}
+            />
           </TableRow>
         ))}
       />

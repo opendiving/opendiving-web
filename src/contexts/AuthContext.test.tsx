@@ -208,10 +208,10 @@ describe("AuthProvider outcomes", () => {
     expect(result.current.restore).toBeNull();
   });
 
-  // The third outcome, and the one that used to be mistaken for the second: it
-  // carries no `onboarding_token`, so the old two-branch `applyOutcome` stashed an
-  // onboarding session with an undefined token and carried it to `/auth/complete`.
-  // Asserting `onboarding` stays null is what pins that.
+  // The third outcome, and the one easily mistaken for the second: it carries no
+  // `onboarding_token`, so a two-branch `applyOutcome` would stash an onboarding
+  // session with an undefined token and carry it to `/auth/complete`. Asserting
+  // `onboarding` stays null is what pins that.
   it("stashes a restore session for an account pending deletion", async () => {
     refreshAccessToken.mockRejectedValue(new Error("401"));
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -482,13 +482,10 @@ describe("AuthProvider sign-out and the entry units", () => {
   });
 });
 
-// Each of these entry points used to record which one it was, for a hint the
-// sign-in form showed a returning visitor. That affordance was dropped, so what
-// is pinned here now is the absence: proving an identity is not an occasion to
-// write anything to this browser, whichever of the four ways in was taken. The
-// assertion is on the store rather than on a spy, because a spy can only watch a
-// module somebody remembered to mock, and the point is that no such module is
-// meant to exist.
+// What is pinned here is an absence: proving an identity is not an occasion to
+// write anything to this browser, whichever way in was taken. The assertion is on
+// the store rather than on a spy, because a spy can only watch a module somebody
+// remembered to mock, and the point is that no such module is meant to exist.
 describe("AuthProvider and how the diver signed in", () => {
   beforeEach(() => {
     useStorage(memoryStorage());

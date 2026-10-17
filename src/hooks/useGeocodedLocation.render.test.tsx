@@ -215,9 +215,9 @@ describe("useGeocodedLocation", () => {
   });
 
   it("starts clean when the dialog is reopened", async () => {
-    // This state used to unmount with the dialog's content. It lives above it
-    // now, so a credit earned on the last site it showed would otherwise be
-    // waiting for the next one that happened to share its coordinates.
+    // This state lives above the dialog's content, so a credit earned on the last
+    // site it showed would otherwise be waiting for the next one that happened to
+    // share its coordinates.
     render(<Harness />);
     placePin().click();
     await screen.findByText(/OpenStreetMap contributors, ODbL/);

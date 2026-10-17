@@ -1,16 +1,21 @@
 import { API_BASE_URL } from "@/lib/api-base";
 import { apiClient, PaginatedResponse } from "./client";
+import { getApiErrorStatus } from "./error";
 
-// The longest `q` the species routes accept. Mirrored rather than discovered,
-// for the same reason `MIN_PLACE_QUERY_LENGTH` is: a longer one is a 422, and a
-// 422 is an exception - which the picker's error story ("an empty list is
-// survivable, a thrown error is not") has no answer for.
+/**
+ * The longest `q` the species routes accept. Mirrored rather than discovered,
+ * for the same reason `MIN_PLACE_QUERY_LENGTH` is: a longer one is a 422, and a
+ * 422 is an exception - which the picker's error story ("an empty list is
+ * survivable, a thrown error is not") has no answer for.
+ */
 export const MAX_SPECIES_QUERY_LENGTH = 255;
 
-// A query shorter than this never reaches the registers. The diver's own species
-// answer from the first letter, but under this the menu still says "type a
-// species name" when none of them match, rather than "no species found" about a
-// catalog nobody searched.
+/**
+ * A query shorter than this never reaches the registers. The diver's own species
+ * answer from the first letter, but under this the menu still says "type a
+ * species name" when none of them match, rather than "no species found" about a
+ * catalog nobody searched.
+ */
 export const MIN_SPECIES_QUERY_LENGTH = 2;
 
 // How many uuids `GET /user/species/suggest` takes in each repeated parameter;
@@ -228,6 +233,14 @@ export function speciesPhotoUrl(
   return `${API_BASE_URL}/species/${encodeURIComponent(uuid)}/photo?v=${encodeURIComponent(version)}`;
 }
 
+/** What narrows the life list. */
+export interface LifeListFilters {
+  /** Any name the species goes by, matched as the catalog search matches. */
+  search?: string;
+  /** Only the species sighted on dives naming this site, at any position. */
+  diveSiteUuid?: string;
+}
+
 /**
  * The global species catalog, and the live WoRMS + Wikidata search in front of
  * it - all proxied by the API, so no third-party host needs a `connect-src`
@@ -309,11 +322,13 @@ export const speciesAPI = {
     return response.data;
   },
 
-  // Fetch one catalog row by uuid. The picker's safety net for labelling a
-  // selection it has nothing else to go on - a dive being edited hands its
-  // species over directly, so this is a per-uuid fallback, not the usual path.
-  // Also what the species page reads, since it renders the classification and
-  // the photo credit that only this schema carries.
+  /**
+   * Fetch one catalog row by uuid. The picker's safety net for labelling a
+   * selection it has nothing else to go on - a dive being edited hands its
+   * species over directly, so this is a per-uuid fallback, not the usual path.
+   * Also what the species page reads, since it renders the classification and
+   * the photo credit that only this schema carries.
+   */
   async getSpecies(uuid: string): Promise<Species> {
     const response = await apiClient.get<Species>(`/species/${uuid}`);
     return response.data;
@@ -339,7 +354,7 @@ export const speciesAPI = {
   async getLifeList(
     page: number = 1,
     items_per_page: number = 10,
-    { search, diveSiteUuid }: { search?: string; diveSiteUuid?: string } = {},
+    { search, diveSiteUuid }: LifeListFilters = {},
   ): Promise<PaginatedResponse<SpeciesLifeListEntry>> {
     const response = await apiClient.get<
       PaginatedResponse<SpeciesLifeListEntry>
@@ -367,8 +382,7 @@ export const speciesAPI = {
       );
       return response.data;
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response
-        ?.status;
+      const status = getApiErrorStatus(error);
       if (status === 404) return null;
       throw error;
     }

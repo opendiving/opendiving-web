@@ -11,11 +11,11 @@ import {
 import {
   DIVE_TYPE_ABBREVIATIONS,
   DIVE_TYPE_LABELS,
-  vocabularyLabel,
   WATER_TYPE_ABBREVIATIONS,
   WATER_TYPE_LABELS,
   type Dive,
 } from "@/lib/api/dives";
+import { labelOrFallback } from "@/lib/api/labels";
 
 // One chip, bordered in its text's colour, with what it stands for in full as
 // its hover hint and in a screen reader's words. Without the text's glow, as a
@@ -88,13 +88,13 @@ export function diveChips(dive: Dive): ReactNode {
         {water && (
           <Chip
             text={water}
-            label={vocabularyLabel(WATER_TYPE_LABELS, dive.water_type!)}
+            label={labelOrFallback(WATER_TYPE_LABELS, dive.water_type!)}
           />
         )}
         {type && (
           <Chip
             text={type}
-            label={vocabularyLabel(DIVE_TYPE_LABELS, dive.type!)}
+            label={labelOrFallback(DIVE_TYPE_LABELS, dive.type!)}
           />
         )}
         {tags.map((tag) => (

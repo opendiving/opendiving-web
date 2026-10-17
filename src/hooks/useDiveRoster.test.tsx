@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { useDiveRoster } from "./use-dive-roster";
+import { useDiveRoster } from "./useDiveRoster";
 import type { CourseLookupItem } from "@/lib/api/courses";
 import type { TripLookupItem } from "@/lib/api/trips";
 

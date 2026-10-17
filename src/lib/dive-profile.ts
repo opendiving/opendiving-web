@@ -640,7 +640,7 @@ export function displayChannel(
  * A channel with no dimension passes through: the number a diver reads is the
  * same in either system.
  */
-export function toChannelDisplay(
+function toChannelDisplay(
   scaledValue: number,
   key: ProfileChannelKey,
   units: UnitSystem,
@@ -858,7 +858,7 @@ export function cylinderName(
 // and for a sharper version of the same reason: a ceiling is a bound *on* the
 // depth curve, so on an axis of its own a 3 m ceiling could be drawn below a
 // 40 m depth. Anchored at the surface by feeding `niceDomain` the `0` that makes
-// `Math.floor(0 / step) * step` land on it, the same way depth alone used to.
+// `Math.floor(0 / step) * step` land on it.
 //
 // Both channels' values go in whether or not they're currently plotted, so the
 // axis doesn't shift under the curves when the ceiling is toggled. On real data
@@ -1001,7 +1001,7 @@ export function describeEvent(
 // times the median delta is comfortably above normal jitter and comfortably
 // below any dropout worth showing; the floor keeps a fast, regular series from
 // breaking on the jitter in its own stamps.
-export const GAP_FACTOR = 3;
+const GAP_FACTOR = 3;
 export const MIN_GAP_MS = 15 * MILLISECONDS_PER_SECOND;
 
 export function gapThreshold(t: number[]): number {
@@ -1122,13 +1122,13 @@ export function sampleIndexAt(
 // The nearest sample that is close enough to quote **and** made it onto the
 // chart, or -1.
 //
-// Not `sampleIndexAt` followed by a membership test, which is what this replaced
-// and which fails in one specific way: the nearest sample overall may be one the
-// chart dropped, and rejecting it outright then reports nothing even though a
-// drawn sample sits just behind it, well inside the tolerance. On samples at
-// 1000, 1010, 1020 and 1060 s with a 30 s tolerance and the last dropped as an
-// isolated run, hovering at 1045 s resolved to 1060, failed the membership test,
-// and went silent - with 1020 only 25 s away and visibly drawn.
+// Not `sampleIndexAt` followed by a membership test, which fails in one specific
+// way: the nearest sample overall may be one the chart dropped, and rejecting it
+// outright then reports nothing even though a drawn sample sits just behind it,
+// well inside the tolerance. On samples at 1000, 1010, 1020 and 1060 s with a
+// 30 s tolerance and the last dropped as an isolated run, hovering at 1045 s
+// resolves to 1060, fails the membership test, and goes silent - with 1020 only
+// 25 s away and visibly drawn.
 //
 // So the search walks outward from the nearest sample and takes the first drawn
 // one, stopping as soon as both frontiers are past the tolerance. That makes the
@@ -1222,7 +1222,7 @@ export function elapsedTicks(
 //
 // The card moves to the bottom when the topmost dot is high in the plot, so it
 // doesn't cover the readings it is describing.
-export const TOOLTIP_FLIP_FRACTION = 0.45;
+const TOOLTIP_FLIP_FRACTION = 0.45;
 
 export function tooltipVerticalAnchor(
   topmostY: number,
@@ -1260,11 +1260,6 @@ export function tooltipSide(
   return null;
 }
 
-// `Point` and `buildAreaPath` used to live here. They moved, unchanged, to
-// `lib/chart-path.ts` once the gas chart needed them too - same reasoning as the
-// `chart-scale.ts` move noted at the top of `lib/dive-gas.ts`. Their tests moved
-// with them, to `chart-path.test.ts`.
-
 // A reading formatted for a tooltip or an axis label, at the channel's own
 // resolution.
 export function formatChannelValue(
@@ -1274,8 +1269,6 @@ export function formatChannelValue(
   // `value` is already in the channel's own units - the series were converted when
   // they were built, so there is nothing to convert here and converting again would
   // double it. The separator comes from the same table the label does, which is
-  // what makes a temperature read "21.6°C" here exactly as it does in the sidebar;
-  // it used to be a hardcoded space, and was the one place in the app that spaced
-  // a degree symbol.
+  // what makes a temperature read "21.6°C" here exactly as it does in the sidebar.
   return `${value.toFixed(channel.decimals)}${channelSeparator(channel.key)}${channel.unit}`;
 }

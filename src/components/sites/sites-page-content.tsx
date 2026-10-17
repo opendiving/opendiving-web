@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useTags } from "@/hooks/useTags";
@@ -21,32 +22,20 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // Blue Hole" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Dive site deleted successfully.";
 
-// How long to wait after the last keystroke before asking the server, matching
-// the courses list and the pickers: long enough that typing a site name is one
-// request rather than ten, short enough not to feel laggy.
-const SEARCH_DEBOUNCE_MS = 250;
-
 export function SitesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const openCreate = useQuickCreate();
   const [editingSite, setEditingSite] = useState<DiveSite | null>(null);
 
-  // What the box holds, and what has actually been asked for. Splitting them is
-  // what keeps the debounce off the input's own responsiveness.
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  const {
+    input: searchInput,
+    setInput: setSearchInput,
+    term: search,
+  } = useDebouncedSearch();
   const [filters, setFilters] = useState<DiveSiteListFilters>(NO_SITE_FILTERS);
   // The tags are read the first time the filter panel opens, not on arrival.
   const [wantsTags, setWantsTags] = useState(false);
   const { tags } = useTags(!!user && wantsTags);
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setSearch(searchInput.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [searchInput]);
 
   // One term against the name, the other names and the location, which is the
   // same query the dive form's site picker runs, narrowed by the tag and put in

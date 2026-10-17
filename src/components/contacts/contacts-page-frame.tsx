@@ -1,164 +1,37 @@
 "use client";
 
-import { type ReactNode } from "react";
-import { BookUser, Plus } from "lucide-react";
-import { EmptyState } from "@/components/ui/empty-state";
-
-import { Button } from "@/components/ui/button";
-import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
-import { Card, CardContent } from "@/components/ui/card";
-import { CountBadge } from "@/components/ui/count-badge";
+import { BookUser } from "lucide-react";
 import {
-  ListCardHeader,
-  useIsEmptyList,
-} from "@/components/ui/list-card-header";
-import { ListSearch } from "@/components/ui/list-search";
-import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+  TableListFrame,
+  type TableListFrameCopy,
+  type TableListFrameData,
+} from "@/components/ui/table-list-frame";
 
-export interface ContactsPageFrameProps {
-  isLoading: boolean;
-  totalCount: number;
-  /** Whether the query that answered `totalCount` narrowed the list. */
-  isCountNarrowed?: boolean;
-  itemsPerPage: number;
-  rows?: ReactNode[];
-  /** What the search box holds. Empty on arrival. */
-  search?: string;
-  onSearchChange?: (value: string) => void;
-  /** Whether a search *term* is in effect, which is not what the box holds. */
-  isSearching?: boolean;
-  isLoadingMore?: boolean;
-  loadFailed?: boolean;
-  hasMore?: boolean;
-  onLoadMore?: () => void;
-  /** Opens the new-contact dialog. */
-  onNew?: () => void;
-}
+const COPY: TableListFrameCopy = {
+  title: "Contacts",
+  description:
+    "The dive centers, schools, shops and places you stayed, kept once",
+  newLabel: "New contact",
+  listTitle: "Contact List",
+  noun: "contact",
+  search: {
+    id: "contact-search",
+    label: "Search contacts by name or city",
+    toggleLabel: "Search contacts",
+    placeholder: "Search by name or city...",
+  },
+  noMatch: "No contacts match that name or city.",
+  empty: {
+    icon: BookUser,
+    title: "No contacts yet",
+    description:
+      "Add the dive centers, shops and places you stay at once, and pick them from your dives, courses and trips.",
+    action: "Add your first contact",
+  },
+  columns: ["Name", "Roles", "City", "Phone", "Website"],
+};
 
-const noop = () => {};
-
-// The table's columns, which the placeholder rows count too.
-const COLUMNS = 6;
-
-// Everything /contacts draws before its rows exist, kept apart from the data render
-// so the page's first render is this frame - the shape `SitesPageFrame` has. Every
-// data-varying prop is optional, and the defaults are that first render.
-export function ContactsPageFrame({
-  isLoading,
-  totalCount,
-  isCountNarrowed = false,
-  itemsPerPage,
-  rows = [],
-  search = "",
-  onSearchChange = noop,
-  isSearching = false,
-  isLoadingMore = false,
-  loadFailed = false,
-  hasMore = false,
-  onLoadMore = noop,
-  onNew = noop,
-}: ContactsPageFrameProps) {
-  const isEmptyList = useIsEmptyList({
-    isLoading,
-    count: rows.length,
-    isNarrowed: isSearching || search.length > 0,
-  });
-
-  return (
-    <div>
-      <IndexHero
-        title="Contacts"
-        description="The dive centers, schools, shops and places you stayed, kept once"
-        actions={
-          <Button size="sm" onClick={onNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            New contact
-          </Button>
-        }
-      />
-
-      <div className={HERO_BODY}>
-        <Card>
-          <ListCardHeader title="Contact List" isEmpty={isEmptyList}>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="contact"
-              total
-              isNarrowed={isCountNarrowed}
-            />
-            <ListSearch
-              id="contact-search"
-              label="Search contacts by name or city"
-              toggleLabel="Search contacts"
-              placeholder="Search by name or city..."
-              value={search}
-              onChange={onSearchChange}
-            />
-          </ListCardHeader>
-          <CardContent>
-            {!isLoading && rows.length === 0 ? (
-              // A searched list with nothing in it keeps to one line and offers
-              // nothing, as the other lists' do.
-              isSearching ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  No contacts match that name or city.
-                </div>
-              ) : (
-                <EmptyState
-                  icon={BookUser}
-                  title="No contacts yet"
-                  description="Add the dive centers, shops and places you stay at once, and pick them from your dives, courses and trips."
-                  action={
-                    <Button onClick={onNew}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add your first contact
-                    </Button>
-                  }
-                />
-              )
-            ) : (
-              <Table aria-busy={rows.length === 0 || undefined}>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Roles</TableHead>
-                    <TableHead>City</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Website</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.length === 0 && (
-                    <TableRowsSkeleton columns={COLUMNS} rows={itemsPerPage} />
-                  )}
-                  {rows}
-                </TableBody>
-              </Table>
-            )}
-
-            <LoadMoreTrigger
-              hasMore={hasMore}
-              isLoading={isLoadingMore}
-              hasFailed={loadFailed}
-              loadedCount={rows.length}
-              totalCount={totalCount}
-              itemsPerPage={itemsPerPage}
-              itemLabel="contacts"
-              onLoadMore={onLoadMore}
-            />
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+// Everything /contacts draws before its rows exist.
+export function ContactsPageFrame(props: TableListFrameData) {
+  return <TableListFrame copy={COPY} {...props} />;
 }

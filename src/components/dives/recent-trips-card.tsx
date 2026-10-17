@@ -18,7 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripCard } from "@/components/trips/trip-card";
-import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { BackdropCardList } from "@/components/ui/backdrop-card";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { Luggage, Plus } from "lucide-react";
 
@@ -84,12 +84,7 @@ export function RecentTripsCard() {
       </CardHeader>
       <CardContent>
         {isLoadingTrips ? (
-          // Busy on the list, hidden on each placeholder, as `/trips` does.
-          <ul className="space-y-3 max-sm:space-y-2.5" aria-busy>
-            {Array.from({ length: RECENT_TRIPS_COUNT }, (_, index) => (
-              <BackdropCardSkeleton key={index} />
-            ))}
-          </ul>
+          <BackdropCardList placeholders={RECENT_TRIPS_COUNT} />
         ) : recentTrips.length === 0 ? (
           <EmptyState
             icon={Luggage}
@@ -103,7 +98,7 @@ export function RecentTripsCard() {
             }
           />
         ) : (
-          <ul className="space-y-3 max-sm:space-y-2.5">
+          <BackdropCardList>
             {recentTrips.map((trip) => (
               <TripCard
                 key={trip.uuid}
@@ -113,7 +108,7 @@ export function RecentTripsCard() {
                 isDeleting={deletingId === trip.uuid}
               />
             ))}
-          </ul>
+          </BackdropCardList>
         )}
       </CardContent>
 

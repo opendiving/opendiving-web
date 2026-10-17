@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("./client", () => ({
+vi.mock("./client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./client")>()),
   apiClient: { delete: vi.fn() },
 }));
 
@@ -15,9 +16,9 @@ beforeEach(() => {
 });
 
 // `move_dives_to` does the reassignment and the delete in one transaction, which
-// is the whole reason the browser no longer walks the dives itself. What is left
-// on this side is the query parameter, which is easy to get subtly wrong: an
-// empty-string one would 422 rather than reading as "move nothing".
+// is why the browser does not walk the dives itself. What is left on this side
+// is the query parameter, which is easy to get subtly wrong: an empty-string one
+// would 422 rather than reading as "move nothing".
 describe("deleting a trip", () => {
   it("sends no move_dives_to when nothing is being moved", async () => {
     await tripsAPI.deleteTrip("trip-1");

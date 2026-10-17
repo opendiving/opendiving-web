@@ -6,7 +6,7 @@ import type {
 } from "@simplewebauthn/browser";
 
 import { captureSession, type AuthOutcome } from "./auth";
-import { apiClient } from "./client";
+import { apiClient, type MessageResponse } from "./client";
 
 /**
  * One armed sign-in ceremony: the challenge the API minted, plus the id it filed
@@ -154,8 +154,12 @@ export const passkeysAPI = {
    * owns - everything else on it is the authenticator's to report or was fixed at
    * registration - so this is the only update there is.
    */
-  async renamePasskey(uuid: string, name: string): Promise<void> {
-    await apiClient.patch(`/user/passkey/${uuid}`, { name });
+  async renamePasskey(uuid: string, name: string): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
+      `/user/passkey/${uuid}`,
+      { name },
+    );
+    return response.data;
   },
 
   /**
@@ -163,7 +167,10 @@ export const passkeysAPI = {
    * is nothing to un-delete and no archived state to fall back to. Removing the
    * last one is allowed - the magic link is always there.
    */
-  async deletePasskey(uuid: string): Promise<void> {
-    await apiClient.delete(`/user/passkey/${uuid}`);
+  async deletePasskey(uuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/user/passkey/${uuid}`,
+    );
+    return response.data;
   },
 };

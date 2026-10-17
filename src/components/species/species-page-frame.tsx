@@ -15,7 +15,7 @@ import {
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { SPECIES_CARD_GRID } from "@/components/species/species-card";
-import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { BackdropCardList } from "@/components/ui/backdrop-card";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export interface SpeciesPageFrameProps {
@@ -135,19 +135,12 @@ export function SpeciesPageFrame({
               // `itemsPerPage` rather than a fixed number: the page size is known
               // before the first response, so the grid can be drawn at the size it
               // is about to be.
-              <ul
-                className={SPECIES_CARD_GRID}
-                // Busy on the outside, hidden on each placeholder within - the
-                // split `ListRowsSkeleton` documents. Announcing two dozen empty
-                // boxes tells a screen reader nothing.
-                aria-busy={cards.length === 0 || undefined}
+              <BackdropCardList
+                layout={SPECIES_CARD_GRID}
+                placeholders={itemsPerPage}
               >
-                {cards.length === 0
-                  ? Array.from({ length: itemsPerPage }, (_, card) => (
-                      <BackdropCardSkeleton key={card} />
-                    ))
-                  : cards}
-              </ul>
+                {cards}
+              </BackdropCardList>
             )}
 
             <LoadMoreTrigger

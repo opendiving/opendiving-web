@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { BackdropCardSkeleton } from "@/components/ui/backdrop-card";
+import { BackdropCardList } from "@/components/ui/backdrop-card";
 import { DiveCard } from "@/components/dives/dive-card";
 import { Plus } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
@@ -52,10 +52,9 @@ export interface RecentDivesCardProps {
   // Show every dive in scope, a page at a time as the reader scrolls, rather
   // than Home's fixed preview of the latest few.
   //
-  // The detail pages used to ask for this with `limit={100}`, meaning "all of
-  // them" - and the API clamps `items_per_page` to 100, so a diver past that
-  // number was shown a list that looked complete and was not. There is no
-  // number to get wrong now.
+  // A flag rather than a large `limit`: the API clamps `items_per_page` to 100,
+  // so a diver past that number would be shown a list that looks complete and
+  // is not.
   //
   // A complete list that holds nothing also drops its header down to its hidden
   // heading, as the list pages' cards do: the empty state already says what the
@@ -180,13 +179,8 @@ export function RecentDivesCard({
           // `RECENT_DIVES_COUNT` either way: on the Home page it is exactly
           // the preview's size, and on a detail page the real count isn't
           // knowable up front, where a few rows is a better guess than a
-          // screen of them. Busy on the list, hidden on each placeholder, as
-          // the trip lists are.
-          <ul className="space-y-3 max-sm:space-y-2.5" aria-busy>
-            {Array.from({ length: RECENT_DIVES_COUNT }, (_, index) => (
-              <BackdropCardSkeleton key={index} />
-            ))}
-          </ul>
+          // screen of them.
+          <BackdropCardList placeholders={RECENT_DIVES_COUNT} />
         ) : isEmpty ? (
           <EmptyState
             icon={DiveIcon}
@@ -202,11 +196,11 @@ export function RecentDivesCard({
             }
           />
         ) : (
-          <ul className="space-y-3 max-sm:space-y-2.5">
+          <BackdropCardList>
             {recentDives.map((dive) => (
               <DiveCard key={dive.uuid} dive={dive} />
             ))}
-          </ul>
+          </BackdropCardList>
         )}
 
         <LoadMoreTrigger

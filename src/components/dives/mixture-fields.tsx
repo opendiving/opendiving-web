@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import {
   Control,
   FieldValues,
@@ -41,10 +41,8 @@ import {
   tankVolume,
 } from "@/lib/tank-vessel";
 import { MixtureTankIcon } from "@/components/dives/mixture-tank-icon";
-import { UnitNumberInput } from "@/components/unit-number-input";
-import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
+import { DiveUnitNumberField } from "@/components/dives/dive-unit-number-field";
 import { useEntryUnits } from "@/hooks/useEntryUnits";
-import { unitLabel } from "@/lib/units";
 import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
 
 export { DEFAULT_MIXTURE };
@@ -439,19 +437,10 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
   until,
 }: MixtureFieldsProps<TFieldValues>) {
   const { fields, append, remove } = fieldArray;
-  const { entryUnits, toggleEntryUnits } = useEntryUnits();
-  const pressureUnits = entryUnits("pressure");
-  // On every pressure box of every tank, one setting between them - see the depth
-  // and temperature label rows in `DiveFormFields`.
-  const pressureLabelRow = (label: ReactNode) => (
-    <EntryUnitLabelRow
-      dimension="pressure"
-      entryUnits={pressureUnits}
-      onToggle={() => toggleEntryUnits("pressure")}
-    >
-      {label}
-    </EntryUnitLabelRow>
-  );
+  // Narrowing to `MixtureFieldsValues` is sound for the reason it is in
+  // `useMixtureFieldArray`: it is exactly the shape `TFieldValues` is constrained
+  // to extend.
+  const mixturesControl = control as unknown as Control<MixtureFieldsValues>;
 
   return (
     <div className="space-y-4">
@@ -464,10 +453,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           key={field.id}
           title={
             <span className="flex items-center gap-2">
-              <MixtureTitleIcon
-                control={control as unknown as Control<MixtureFieldsValues>}
-                index={index}
-              />
+              <MixtureTitleIcon control={mixturesControl} index={index} />
               Tank {index + 1}
             </span>
           }
@@ -487,9 +473,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                     <FormLabel>Cylinder</FormLabel>
                     <FormControl>
                       <MixtureCylinderPicker
-                        control={
-                          control as unknown as Control<MixtureFieldsValues>
-                        }
+                        control={mixturesControl}
                         index={index}
                         count={fields.length}
                         until={until}
@@ -505,13 +489,9 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               control={control}
               name={`mixtures.${index}.volume` as Path<TFieldValues>}
               render={({ field }) => (
-                // Half width, paired with the ppO₂ limit beside it. Volume spent
-                // two earlier layouts at `md:col-span-2`, first because the field
-                // it used to sit beside (the cylinder's name) was removed and
-                // widening it was what kept every remaining pair on a row of its
-                // own, then because a full-width combobox was pleasant to type
-                // into. Eight boxes divide into four rows either way; what the
-                // span cost was the last row, where Usage sat alone.
+                // Half width, paired with the ppO₂ limit beside it, not
+                // `md:col-span-2`: eight boxes divide into four rows either way,
+                // and a full-width Volume leaves Usage alone on the last row.
                 //
                 // Volume | ppO₂, O₂ | He, start | end, Role | Usage: four full
                 // rows under the Cylinder row, and each pair is two facts about
@@ -522,9 +502,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormLabel>Volume (L)</FormLabel>
                   <FormControl>
                     <MixtureVolumeInput
-                      control={
-                        control as unknown as Control<MixtureFieldsValues>
-                      }
+                      control={mixturesControl}
                       index={index}
                       value={field.value}
                       onChange={field.onChange}
@@ -610,12 +588,12 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                         DECISIONS.md, "`step` is a claim about the column".
                         `min`/`max` stay: 0-100 is a fact about a percentage.
 
-                        An emptied box is `""`, never `NaN` and no longer
-                        `undefined` - the same sentinel the two pressures below
-                        use, and now for the same reason: an unrecorded mix is a
-                        state a cylinder can be in, so clearing this box has to
-                        submit "not recorded" rather than draw a "required"
-                        message. `undefined` is the one spelling that cannot work,
+                        An emptied box is `""`, never `NaN` or `undefined` -
+                        the same sentinel the two pressures below use, and for
+                        the same reason: an unrecorded mix is a state a cylinder
+                        can be in, so clearing this box has to submit "not
+                        recorded" rather than draw a "required" message.
+                        `undefined` is the one spelling that cannot work,
                         because react-hook-form re-displays a field's default the
                         moment its value resolves to it. */}
                     <DecimalInput
@@ -667,62 +645,28 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             )}
 
             {isVisible("mixture.start_pressure") && (
-              <FormField
+              // `emptyValue=""`, unlike every other number box in the dive form:
+              // these two pressures are the fields DECISIONS.md names as spelling
+              // cleared that way, and the submit path converts the sentinel at the
+              // edge.
+              <DiveUnitNumberField
                 control={control}
                 name={`mixtures.${index}.start_pressure` as Path<TFieldValues>}
-                render={({ field }) => (
-                  <FormItem>
-                    {pressureLabelRow(
-                      <FormLabel>
-                        Start pressure ({unitLabel("pressure", pressureUnits)})
-                      </FormLabel>,
-                    )}
-                    <FormControl>
-                      {/* `emptyValue=""`, unlike every other number box in the
-                        dive form: these two pressures are the fields
-                        DECISIONS.md names as spelling cleared that way, and the
-                        submit path converts the sentinel at the edge. */}
-                      <UnitNumberInput
-                        dimension="pressure"
-                        units={pressureUnits}
-                        min={0}
-                        emptyValue=""
-                        {...field}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                label="Start pressure"
+                dimension="pressure"
+                min={0}
+                emptyValue=""
               />
             )}
 
             {isVisible("mixture.end_pressure") && (
-              <FormField
+              <DiveUnitNumberField
                 control={control}
                 name={`mixtures.${index}.end_pressure` as Path<TFieldValues>}
-                render={({ field }) => (
-                  <FormItem>
-                    {pressureLabelRow(
-                      <FormLabel>
-                        End pressure ({unitLabel("pressure", pressureUnits)})
-                      </FormLabel>,
-                    )}
-                    <FormControl>
-                      <UnitNumberInput
-                        dimension="pressure"
-                        units={pressureUnits}
-                        min={0}
-                        emptyValue=""
-                        {...field}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                label="End pressure"
+                dimension="pressure"
+                min={0}
+                emptyValue=""
               />
             )}
 
@@ -796,11 +740,8 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             )}
           </div>
 
-          {/* Narrowing to `MixtureFieldsValues` is sound for the same reason it is in
-              `useMixtureFieldArray` above: it is exactly the shape `TFieldValues` is
-              constrained to extend. */}
           <MixtureGasHint
-            control={control as unknown as Control<MixtureFieldsValues>}
+            control={mixturesControl}
             index={index}
             isOnlyMixture={fields.length === 1}
           />
@@ -839,9 +780,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           Add tank
         </AddRowButton>
 
-        <MixtureSetWarning
-          control={control as unknown as Control<MixtureFieldsValues>}
-        />
+        <MixtureSetWarning control={mixturesControl} />
       </div>
     </div>
   );

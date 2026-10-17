@@ -81,7 +81,7 @@ vi.mock("@/lib/api/gear-service", async (importOriginal) => {
 // does.
 vi.mock("@/lib/api/checkin-details", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  checkinDetailsAPI: { get: vi.fn(), update: vi.fn() },
+  checkinDetailsAPI: { getCheckinDetails: vi.fn(), update: vi.fn() },
 }));
 
 vi.mock("@/lib/api/certifications", async (importOriginal) => ({
@@ -162,7 +162,9 @@ const render = (ui: React.ReactElement) =>
 // Renders the bell, opens the panel, and waits for both reads to land in it.
 const openPanel = async () => {
   render(<NotificationsMenu />);
-  await vi.waitFor(() => expect(checkinDetailsAPI.get).toHaveBeenCalled());
+  await vi.waitFor(() =>
+    expect(checkinDetailsAPI.getCheckinDetails).toHaveBeenCalled(),
+  );
   await userEvent.click(screen.getByRole("button", { name: /^Notifications/ }));
   const panel = await screen.findByRole("dialog", { name: "Notifications" });
   await vi.waitFor(() =>
@@ -181,7 +183,7 @@ beforeEach(() => {
     emergency_contacts: [],
     insurance_policies: [],
   };
-  vi.mocked(checkinDetailsAPI.get).mockImplementation(async () =>
+  vi.mocked(checkinDetailsAPI.getCheckinDetails).mockImplementation(async () =>
     structuredClone(server),
   );
   vi.mocked(checkinDetailsAPI.update).mockImplementation(
@@ -275,7 +277,9 @@ describe("the bell's count", () => {
 describe("a failed read", () => {
   it("says the policies could not be checked rather than that nothing is due, and tries again on the next page", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.mocked(checkinDetailsAPI.get).mockRejectedValue(new Error("offline"));
+    vi.mocked(checkinDetailsAPI.getCheckinDetails).mockRejectedValue(
+      new Error("offline"),
+    );
 
     const { rerender } = render(<NotificationsMenu />);
     await userEvent.click(
@@ -288,10 +292,10 @@ describe("a failed read", () => {
     ).toBeInTheDocument();
     expect(panel).not.toHaveTextContent("Nothing needs your attention");
     // Not again at once: the failure itself is no reason to ask a second time.
-    expect(checkinDetailsAPI.get).toHaveBeenCalledTimes(1);
+    expect(checkinDetailsAPI.getCheckinDetails).toHaveBeenCalledTimes(1);
 
-    vi.mocked(checkinDetailsAPI.get).mockImplementation(async () =>
-      structuredClone(server),
+    vi.mocked(checkinDetailsAPI.getCheckinDetails).mockImplementation(
+      async () => structuredClone(server),
     );
     server.insurance_policies = [policy("DAN Europe", soon())];
     stable.pathname = "/gear";
@@ -300,7 +304,7 @@ describe("a failed read", () => {
     expect(
       await screen.findByRole("button", { name: "Notifications (1)" }),
     ).toBeInTheDocument();
-    expect(checkinDetailsAPI.get).toHaveBeenCalledTimes(2);
+    expect(checkinDetailsAPI.getCheckinDetails).toHaveBeenCalledTimes(2);
   });
 
   it("says so rather than claiming nothing is due", async () => {
@@ -613,6 +617,6 @@ describe("the renewals rows", () => {
         { provider: "DAN Europe", number: "P-42", expires_on: expiresOn },
       ],
     });
-    expect(checkinDetailsAPI.get).toHaveBeenCalledTimes(1);
+    expect(checkinDetailsAPI.getCheckinDetails).toHaveBeenCalledTimes(1);
   });
 });

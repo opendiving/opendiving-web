@@ -11,6 +11,7 @@ import {
 } from "@/lib/entry-units";
 import type { EntryDimension, UnitSystem } from "@/lib/units";
 
+/** What `useEntryUnits` returns. */
 export interface EntryUnits {
   /** The system this dimension's boxes display and parse in, right now. */
   entryUnits: (dimension: EntryDimension) => UnitSystem;

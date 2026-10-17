@@ -9,10 +9,8 @@ import {
 } from "./device-memory";
 
 // The rule: a browser-storage key that production code writes owes §10 of the privacy
-// page a row in the same change. Prose said so first and prose is what failed -
-// `opendiving:entry-units` shipped a ninth key while §10 still described eight, and
-// nobody read the standing rule in DECISIONS.md on the way past. This is that rule with
-// teeth, in four checks that are deliberately dumb:
+// page a row in the same change. A rule in DECISIONS.md is one nobody reads on the way
+// past, so this is that rule with teeth, in four checks that are deliberately dumb:
 //
 //   1. every `opendiving:`-prefixed string literal in production code under `src/`
 //      appears verbatim in `app/privacy/page.tsx`;
@@ -60,7 +58,7 @@ import {
 //     already had to think about.
 //   - a *second* key added inside a module already on the list below, if it is named
 //     without the `opendiving:` prefix. Check (1) catches it whenever the prefix is
-//     used, which is the house style in all seven of these files.
+//     used, which is the house style in every one of these files.
 //   - a storage write spelled in some way `STORAGE_WRITE` does not list. It targets the
 //     three forms this app actually uses or could slip into - `setItem`, the index form,
 //     `document.cookie` - and it is a text match over source, not a semantic one, so it
@@ -101,13 +99,13 @@ const PRIVACY_PAGE = path.join(SRC, "app", "privacy", "page.tsx");
 // that cannot fail, quietly diluting the ones that can.
 const KEY_LITERAL = /(['"`])(opendiving:[^'"`]+)\1/g;
 
-// A write to browser storage from client code. `setItem` is how all seven writers do
+// A write to browser storage from client code. `setItem` is how every writer does
 // it; the index and cookie forms are here because they are real writes that spell no
 // `setItem` at all, and neither appears in production code today - they are matched so
 // that reaching for one is not a way around the list.
 //
 // Both of those alternatives insist on an actual assignment, which is fiddlier than it
-// looks and was wrong on the first attempt: a bare `localStorage\[` also matches a
+// looks: a bare `localStorage\[` also matches a
 // *read* (`const x = localStorage[key]`), and a bare `=` after `document.cookie` also
 // matches `document.cookie === x`, a comparison. Either would report a module that only
 // reads as a writer. Hence the `\]\s*=` and the `(?!=)`.

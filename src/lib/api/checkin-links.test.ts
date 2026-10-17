@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { API_BASE_URL } from "@/lib/api-base";
 import {
-  checkinLinkAPI,
+  checkinLinksAPI,
   checkinLinkUrl,
   fetchSharedCheckIn,
   sharedCardFrontUrl,
@@ -38,7 +38,7 @@ describe("the diver's own link", () => {
     });
     const figures = { total_dives: 310, max_depth: 40, last_dive_on: null };
 
-    await expect(checkinLinkAPI.mint(figures)).resolves.toEqual({
+    await expect(checkinLinksAPI.mint(figures)).resolves.toEqual({
       token: "tok",
       expires_at: "2026-09-27T10:00:00Z",
     });
@@ -47,15 +47,15 @@ describe("the diver's own link", () => {
 
   it("reads no live link out of a 404, and lets anything else through", async () => {
     get.mockRejectedValueOnce({ response: { status: 404 } });
-    await expect(checkinLinkAPI.live()).resolves.toBeNull();
+    await expect(checkinLinksAPI.getLiveLink()).resolves.toBeNull();
 
     get.mockRejectedValueOnce({ response: { status: 500 } });
-    await expect(checkinLinkAPI.live()).rejects.toMatchObject({
+    await expect(checkinLinksAPI.getLiveLink()).rejects.toMatchObject({
       response: { status: 500 },
     });
 
     get.mockResolvedValueOnce({ data: { expires_at: "2026-09-27T10:00:00Z" } });
-    await expect(checkinLinkAPI.live()).resolves.toEqual({
+    await expect(checkinLinksAPI.getLiveLink()).resolves.toEqual({
       expires_at: "2026-09-27T10:00:00Z",
     });
   });
@@ -63,7 +63,7 @@ describe("the diver's own link", () => {
   it("revokes on the collection route", async () => {
     remove.mockResolvedValue({ data: { message: "Check-in link revoked" } });
 
-    await checkinLinkAPI.revoke();
+    await checkinLinksAPI.revoke();
     expect(remove).toHaveBeenCalledWith("/user/checkin-link");
   });
 });

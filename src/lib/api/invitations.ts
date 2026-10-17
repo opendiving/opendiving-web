@@ -1,4 +1,5 @@
 import { apiClient, type PaginatedResponse } from "./client";
+import { getApiErrorStatus } from "./error";
 
 /**
  * One invitation the caller sent, as `GET /user/invitations` lists it.
@@ -96,7 +97,7 @@ export const invitationsAPI = {
    * of OpenDiving has no invitations feature" and removes itself, the same shape
    * `sessionsAPI` and `passkeysAPI` have.
    */
-  async listInvitations(
+  async getInvitations(
     page: number = 1,
     items_per_page: number = 20,
   ): Promise<PaginatedResponse<Invitation>> {
@@ -155,13 +156,12 @@ export const invitationsAPI = {
    * instance answers 404 too: the card asks only once its list has loaded, by
    * which point an `open` instance has already removed it.
    */
-  async inviteLink(): Promise<InviteLink | null> {
+  async getInviteLink(): Promise<InviteLink | null> {
     try {
       const response = await apiClient.get<InviteLink>("/user/invite-link");
       return response.data;
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response
-        ?.status;
+      const status = getApiErrorStatus(error);
       if (status === 404) return null;
       throw error;
     }

@@ -17,9 +17,9 @@ import { cn } from "@/lib/utils";
 // be none. Hover steps the other way from the page in each theme, for a card
 // that is a link.
 export const LIST_CARD_SURFACE =
-  "bg-[var(--backdrop-card)] [--backdrop-card:hsl(240_4%_95.5%)] dark:[--backdrop-card:hsl(var(--card))]";
+  "bg-[var(--backdrop-card)] [--backdrop-card:hsl(var(--backdrop-surface))]";
 export const LIST_CARD_HOVER =
-  "hover:[--backdrop-card:hsl(240_4%_92.5%)] dark:hover:[--backdrop-card:hsl(var(--muted))]";
+  "hover:[--backdrop-card:hsl(var(--backdrop-surface-hover))]";
 
 // The record's link, stretched over the whole card rather than wrapping it: a
 // button inside an anchor is invalid, and so is a map's attribution link.
@@ -30,11 +30,41 @@ export const BACKDROP_CARD_LINK =
 // backdrop band, a name, one line under it and a row of figures, 238px - or in
 // the shape its cards are drawn in, so the cards land without moving anything.
 // A list item, like the card.
-export function BackdropCardSkeleton({ shape }: { shape?: string }) {
+function BackdropCardSkeleton({ shape }: { shape?: string }) {
   return (
     <li aria-hidden>
       <Skeleton className={cn("rounded-lg", shape ?? "h-59.5")} />
     </li>
+  );
+}
+
+// A list of backdrop cards, laid out by `layout` and stacked unless given one.
+// Until it holds a card it draws `placeholders` skeletons in that same layout,
+// busy on the outside and hidden on each placeholder within - the split
+// `ListRowsSkeleton` documents, so a reader meets a list that is loading rather
+// than one that is silently empty.
+export function BackdropCardList({
+  layout = "space-y-3 max-sm:space-y-2.5",
+  className,
+  placeholders = 0,
+  shape,
+  children = [],
+}: {
+  layout?: string;
+  className?: string;
+  placeholders?: number;
+  shape?: string;
+  children?: ReactNode[];
+}) {
+  const isLoading = children.length === 0 && placeholders > 0;
+  return (
+    <ul className={cn(layout, className)} aria-busy={isLoading || undefined}>
+      {isLoading
+        ? Array.from({ length: placeholders }, (_, index) => (
+            <BackdropCardSkeleton key={index} shape={shape} />
+          ))
+        : children}
+    </ul>
   );
 }
 
@@ -56,7 +86,7 @@ export function UnplacedBackdrop({
   return (
     <div
       aria-hidden
-      className="absolute inset-0 rounded-[inherit] bg-[var(--map-water)]"
+      className="absolute inset-0 rounded-[inherit] bg-map-water"
     >
       {/* The map's own fade, in the same colour space as its. */}
       <div
@@ -70,7 +100,7 @@ export function UnplacedBackdrop({
         className="absolute inset-x-0 flex items-center justify-center"
         style={{ top: coveredTop, bottom: coveredBottom }}
       >
-        <Icon className="h-10 w-10 text-[var(--map-water-foreground)] opacity-60 saturate-50" />
+        <Icon className="h-10 w-10 text-map-water-foreground opacity-60 saturate-50" />
       </div>
     </div>
   );
@@ -178,10 +208,7 @@ export function BackdropCard({
       )}
       {/* As far in from the corner as a map's credit is, its hover takes the
           credit's chip rather than a colour the map would swallow, and its
-          icon glows as the details' text does - through a filter, since
-          `text-shadow` stops at an SVG. Two close layers, as the text's:
-          `drop-shadow`s chain, each blurring the last one's 8-bit output, and
-          more of them drew the halo in visible rings. */}
+          icon glows as the details' text does. */}
       {corner ? (
         <div className="absolute right-1 top-1 z-10">{corner}</div>
       ) : (
@@ -192,7 +219,7 @@ export function BackdropCard({
               label={actionsLabel}
               variant="ghost"
               size="sm"
-              className="hover:bg-background/80 [&_svg]:[filter:drop-shadow(0_0_2px_var(--backdrop-card))_drop-shadow(0_0_5px_var(--backdrop-card))]"
+              className="hover:bg-background/80 [&_svg]:glow-icon"
             >
               {actions}
             </ItemActionsMenu>
@@ -202,14 +229,12 @@ export function BackdropCard({
       {/* Above the backdrop by a flex item's z-index rather than by
           `relative`, which would make this the box the link's overlay
           stretches over and leave the backdrop outside it. Under the menu and
-          the credit, which are lifted higher. Every line is lifted off
-          whatever the backdrop still shows beneath it by a glow in the card's
-          own colour: two soft layers close together, since more of them - or
-          wider ones - drew each layer's edge as a visible ring. */}
+          the credit, which are lifted higher. Every line glows in the card's
+          own colour. */}
       <div
         ref={detailsRef}
         className={cn(
-          "z-[1] px-3 pb-3 [text-shadow:0_0_2px_var(--backdrop-card),0_0_5px_var(--backdrop-card)]",
+          "z-[1] px-3 pb-3 glow-text",
           muted && "text-muted-foreground [&_a]:text-muted-foreground",
         )}
       >

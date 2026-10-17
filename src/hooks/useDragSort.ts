@@ -21,7 +21,7 @@ export function moveItem<T>(items: T[], from: number, to: number): T[] {
   return next;
 }
 
-// The vertical extent of one row, as much of a `DOMRect` as the maths needs.
+/** The vertical extent of one row, as much of a `DOMRect` as the maths needs. */
 export interface RowBounds {
   top: number;
   bottom: number;
@@ -68,10 +68,13 @@ export function resolveSwapTarget(
   return target;
 }
 
+/** What `useDragSort` takes. */
 export interface UseDragSortOptions {
   itemCount: number;
-  // Called when the dragged row passes a neighbour, so the list reorders live
-  // rather than only on drop.
+  /**
+   * Called when the dragged row passes a neighbour, so the list reorders live
+   * rather than only on drop.
+   */
   onReorder: (from: number, to: number) => void;
   disabled?: boolean;
 }
@@ -143,9 +146,8 @@ export function useDragSort({
 
   // Detaches the window listeners belonging to the gesture currently in flight.
   // They are closures created inside `startDrag`, so nothing outside it can name
-  // them - which is why `endDrag` used to leave them attached despite the unmount
-  // effect below claiming otherwise. Holding the remover here is what makes that
-  // claim true.
+  // them. Holding the remover here is what lets `endDrag` and the unmount effect
+  // below detach them.
   const detachRef = useRef<(() => void) | null>(null);
 
   const endDrag = useCallback(() => {

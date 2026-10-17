@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Copy, Link2, RotateCcw, Share2, Trash2 } from "lucide-react";
+import { Link2, RotateCcw, Share2, Trash2 } from "lucide-react";
 
 import { QrCode } from "@/components/checkin/qr-code";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Input } from "@/components/ui/input";
+import { LinkAddressField } from "@/components/ui/link-address-field";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,7 +23,7 @@ type LinkState =
 const LOAD_FAILED = "Couldn't load your invite link.";
 
 /** The address a member's invite link opens, on whichever origin this copy runs. */
-export function inviteLinkUrl(token: string): string {
+function inviteLinkUrl(token: string): string {
   return `${window.location.origin}/join?via=${token}`;
 }
 
@@ -62,7 +62,7 @@ export function InviteLinkBlock() {
   const load = useCallback(
     () =>
       invitationsAPI
-        .inviteLink()
+        .getInviteLink()
         .then((found) =>
           setLink(
             found ? { status: "live", token: found.token } : { status: "none" },
@@ -172,29 +172,6 @@ export function InviteLinkBlock() {
 
   const url = inviteLinkUrl(link.token);
 
-  // Nothing is awaited before the write: the clipboard needs the click's user
-  // gesture still live, and an `await` ahead of it could spend it.
-  const copy = () => {
-    let written: Promise<void>;
-    try {
-      written = navigator.clipboard.writeText(url);
-    } catch (error) {
-      written = Promise.reject(error);
-    }
-    written.then(
-      () => toast({ title: "Link copied" }),
-      (error: unknown) => {
-        // No clipboard on a page served over plain HTTP, which a LAN instance is.
-        console.error("Couldn't copy the invite link:", error);
-        toast({
-          title: "Couldn't copy",
-          description: "Select the address and copy it from there.",
-          variant: "destructive",
-        });
-      },
-    );
-  };
-
   // The invitation email's own subject, the same on every copy, so this block
   // reads nothing from `/config`.
   const share = () => {
@@ -234,18 +211,11 @@ export function InviteLinkBlock() {
           as your invitation. You will see the name on their account, never
           their address. It keeps working until you reset or remove it.
         </p>
-        <div className="flex gap-2">
-          <Input
-            readOnly
-            value={url}
-            aria-label="Invite link address"
-            onFocus={(event) => event.currentTarget.select()}
-          />
-          <Button type="button" variant="outline" onClick={copy}>
-            <Copy className="h-4 w-4 mr-2" />
-            Copy
-          </Button>
-        </div>
+        <LinkAddressField
+          url={url}
+          label="Invite link address"
+          what="invite link"
+        />
         <div className="flex flex-wrap gap-2">
           {shareable && (
             <Button type="button" variant="outline" onClick={share}>

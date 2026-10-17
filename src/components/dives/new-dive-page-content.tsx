@@ -14,24 +14,24 @@ import { tripsAPI, type TripLookupItem } from "@/lib/api/trips";
 import { mergePeople } from "@/lib/people";
 import type { PersonReference } from "@/lib/api/people";
 import {
-  boatNameOrNull,
+  buildDiveCreate,
   diveCreateSchema,
   DiveCreateInput,
-  normalizeMixtures,
+  emptyDiveFormValues,
 } from "@/lib/validations/dive";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
+import { usePendingDiveFiles } from "@/components/dives/use-pending-dive-files";
 import { carriedVessel } from "@/lib/tank-vessel";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { useDiveSitePrefill } from "@/hooks/useDiveSitePrefill";
 import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
 import { DiveForm } from "@/components/dives/dive-form";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
-import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { DiveIcon } from "@/components/logo";
 import { FORM_BODY, FORM_COLUMN, PlainHero } from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useToast } from "@/components/ui/use-toast";
-import { nowStartTime, parseFormDuration } from "@/lib/date-time";
+import { nowStartTime } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 // Each "Log a dive" starts a new form from the last dive and whatever the URL
@@ -53,12 +53,10 @@ function NewDiveForm() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // The imported files are held here until the dive exists - `/dive/parse`
-  // stores nothing, and there is no dive to attach them to until `onSubmit`
-  // succeeds. A list rather than one file: a dive logged off two computers has
-  // two recordings, and the same computer's JSON beside its FIT is two files of
-  // one recording. The API decides which is which when each is attached.
-  const [pendingFiles, setPendingFiles] = useState<PendingDiveFile[]>([]);
+  // A list rather than one file: a dive logged off two computers has two
+  // recordings, and the same computer's JSON beside its FIT is two files of one
+  // recording. The API decides which is which when each is attached.
+  const files = usePendingDiveFiles();
   // Whether the last-dive prefill below has landed, given up or failed - the
   // moment the primary site's values may be written over it.
   const [prefillSettled, setPrefillSettled] = useState(false);
@@ -79,47 +77,13 @@ function NewDiveForm() {
   const form = useForm<DiveCreateInput>({
     resolver: zodResolver(diveCreateSchema),
     defaultValues: {
+      ...emptyDiveFormValues(),
       dive_number: 1,
       start_time: nowStartTime(),
-      submerged_time: "",
-      max_depth: undefined,
-      avg_depth: undefined,
-      bottom_temperature: undefined,
-      visibility: undefined,
-      // `""`, not `undefined`: it is the select's "Not recorded" option, and the
-      // default the field falls back to whenever its value resolves to
-      // `undefined` - so it has to be the empty state rather than a gap.
-      water_type: "",
-      altitude: undefined,
-      // The selects' "Not recorded" and an empty box, for the same reason.
-      type: "",
-      rating: null,
-      air_temperature: undefined,
-      current: "",
-      waves: "",
-      weather: "",
-      entry_type: "",
-      boat_name: "",
-      weight: undefined,
       trip_uuid: initialTripId,
       course_uuid: initialCourseId,
-      contact_uuid: null,
-      people: [],
       dive_site_uuids:
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
-      gear_item_uuids: [],
-      sightings: [],
-      tags: [],
-      notes: "",
-      // Empty, not a seeded cylinder. A form must not write gas the diver never
-      // entered: `DEFAULT_MIXTURE`'s 11.1 L of air is a plausible enough cylinder
-      // (it is the "11.1 L (AL80)" preset in `volume-combobox.tsx`) that a diver who
-      // never opened the gas card could not tell it from something they logged - and
-      // `diveModWarning` would then raise a depth-safety warning derived from it. The
-      // prefill below still carries the last dive's cylinders over, which is where
-      // the convenience actually lives; "Add tank" still starts from
-      // `DEFAULT_MIXTURE`.
-      mixtures: [],
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
@@ -315,7 +279,7 @@ function NewDiveForm() {
           // Whatever the last dive recorded, and nothing when it recorded nothing -
           // a diver who logs gas gets it carried over, a diver who doesn't keeps an
           // empty card rather than acquiring a cylinder on dive two. See
-          // `defaultValues` above.
+          // `emptyDiveFormValues`.
           mixtures:
             lastDive.mixtures?.map((m) => {
               // The same tank the same vessel, where the vessel can still be
@@ -360,6 +324,14 @@ function NewDiveForm() {
         if (urlPeople.length > 0) autofill("people", people);
         const seeded = prefill<DiveCreateInput>(
           {
+            // Every field, since a field left out of a `reset` comes back
+            // `undefined`. What `carried` does not name starts empty: the day's
+            // readings - temperature, visibility, air, current, waves, weather -
+            // and the diver's word on this dive and no other - rating, tags,
+            // notes. Sightings too, unlike the gear: gear is habitual, sightings
+            // are observations, and copying yesterday's turtle into today's dive
+            // would fabricate a record of seeing it.
+            ...emptyDiveFormValues(),
             // Kept, not recomputed: `useSuggestedDiveNumber` owns this field and
             // may already have filled it in by the time this prefill lands. The
             // two run concurrently, and whichever finishes second must not undo
@@ -368,31 +340,8 @@ function NewDiveForm() {
             // for a back-dated dive.
             dive_number: form.getValues("dive_number"),
             start_time: nowStartTime(),
-            submerged_time: "",
-            max_depth: undefined,
-            avg_depth: undefined,
-            bottom_temperature: undefined,
-            visibility: undefined,
-            // The day's, like the temperature and visibility above: a new dive
-            // gets its own air, current, waves and weather, and its own rating
-            // and tags, which are the diver's word on this dive and no other.
-            air_temperature: undefined,
-            current: "",
-            waves: "",
-            weather: "",
-            rating: null,
-            tags: [],
-            // Deliberately *not* carried over, unlike the gear above: gear is
-            // habitual, sightings are observations. Copying yesterday's turtle
-            // into today's dive would fabricate a record of seeing it. Listed
-            // rather than omitted because this `reset` enumerates every field, and
-            // a field left out of it comes back `undefined`.
-            sightings: [],
-            notes: "",
-            // Spread so this object still enumerates every field, for the reason
-            // directly above. `prefill` rewrites each of these keys against the
-            // visibility rules, so the spread is the shape and the second argument
-            // is the meaning.
+            // `prefill` rewrites each of these keys against the visibility rules,
+            // so the spread is the shape and the second argument is the meaning.
             ...carried,
           },
           carried,
@@ -433,69 +382,13 @@ function NewDiveForm() {
     try {
       setIsSubmitting(true);
 
-      // Convert form data to API format
-      const diveData = {
-        ...data,
-        submerged_time: parseFormDuration(data.submerged_time),
-        notes: data.notes || "",
-        // The picker clears to `null` so the *edit* form can tell "detach this
-        // dive from its trip" apart from "field untouched" (see
-        // `DiveUpdate.trip_uuid`). On create there is nothing to detach from,
-        // so the two collapse back into one and the field is simply omitted.
-        trip_uuid: data.trip_uuid ?? undefined,
-        // Same collapse, same reason - see `trip_uuid` directly above.
-        course_uuid: data.course_uuid ?? undefined,
-        contact_uuid: data.contact_uuid ?? undefined,
-        // The select's "Not recorded" option is `""`, which the API's enum would
-        // reject. On the edit form it converts to an explicit `null` ("the diver
-        // cleared this"); on create there is nothing to clear, so - exactly like
-        // `trip_uuid` above - the field is simply omitted.
-        water_type: data.water_type === "" ? undefined : data.water_type,
-        // The same for the other selects and the boat name's box.
-        type: data.type === "" ? undefined : data.type,
-        current: data.current === "" ? undefined : data.current,
-        waves: data.waves === "" ? undefined : data.waves,
-        weather: data.weather === "" ? undefined : data.weather,
-        entry_type: data.entry_type === "" ? undefined : data.entry_type,
-        boat_name: boatNameOrNull(data.boat_name ?? "") ?? undefined,
-        mixtures: normalizeMixtures(data.mixtures ?? []),
-      };
+      const created = await divesAPI.createDive(buildDiveCreate(data));
 
-      const created = await divesAPI.createDive(diveData);
-
-      // In pick order, and one at a time rather than in parallel: the API
-      // decides per file whether it joins a recording already on this dive or
-      // starts a new one, and two attaches racing would make "the recording
-      // this dive already has" depend on which request the server saw first.
-      for (const item of pendingFiles) {
-        try {
-          await divesAPI.attachRecordingFile(
-            created.uuid,
-            item.file,
-            item.token,
-          );
-        } catch (error) {
-          // Deliberately non-fatal. The dive exists and is correct; keeping the
-          // source file is a nicety for future parsing work, not something the
-          // diver asked for. Rolling the dive back - or blocking the redirect -
-          // to save it would be a far worse outcome than losing it, and it can
-          // still be attached later from the edit page.
-          //
-          // The real failures surface here with the API's own wording: a 409
-          // ("already attached to another dive", i.e. the same export logged
-          // twice), a 422 (the import expired) and a 413 naming the storage
-          // limit this file would cross. All are worth reading.
-          console.error("Failed to attach the dive file:", error);
-          toast({
-            title: `Dive logged, but ${item.file.name} wasn't attached`,
-            description: getApiErrorMessage(
-              error,
-              "You can attach it from the dive's edit page.",
-            ),
-            variant: "destructive",
-          });
-        }
-      }
+      // The files wait for the dive, since `/dive/parse` stores nothing.
+      await files.save(created.uuid, {
+        saved: "Dive logged, but ",
+        attachFallback: "You can attach it from the dive's edit page.",
+      });
 
       toast({
         title: "Success",
@@ -548,11 +441,7 @@ function NewDiveForm() {
           cancelHref={returnTo.href}
           submittingLabel="Logging dive..."
           submitLabel="Log dive"
-          onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
-          pendingFiles={pendingFiles}
-          onRemovePendingFile={(id) =>
-            setPendingFiles((files) => files.filter((item) => item.id !== id))
-          }
+          fileList={files.fileList}
           diveNumberNotice={diveNumberNotice}
         />
       </div>

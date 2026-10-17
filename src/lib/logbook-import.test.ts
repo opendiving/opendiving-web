@@ -22,9 +22,9 @@ import {
 import type {
   ConversionNoteGroup,
   ImportCollectionReport,
-  ImportDiveReport,
   ImportReport,
 } from "@/lib/api/logbook-import";
+import { importDiveReport as dive } from "@/test/dive-fixtures";
 
 function row(
   collection: string,
@@ -347,22 +347,6 @@ describe("truncatedConversionSentence", () => {
     );
   });
 });
-
-function dive(overrides: Partial<ImportDiveReport> = {}): ImportDiveReport {
-  return {
-    uuid: "11111111-1111-4111-8111-111111111111",
-    outcome: "created",
-    files_added: 0,
-    recordings_added: 0,
-    reason: null,
-    start_time: "2026-09-07T11:04:58+03:00",
-    submerged_time: 4063,
-    max_depth: 21.8,
-    device: null,
-    members: [0],
-    ...overrides,
-  };
-}
 
 describe("reviewCollectionRows", () => {
   const counts = [

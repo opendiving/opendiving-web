@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { isAbortError } from "@/lib/api/client";
 import { fetchAllTags, type Tag } from "@/lib/api/tags";
 
+/** What `useTags` returns. */
 export interface TagsState {
   /** The diver's tags by name, or `null` until the first read lands. */
   tags: Tag[] | null;

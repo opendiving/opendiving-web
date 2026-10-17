@@ -7,8 +7,8 @@ export interface CheckboxProps extends Omit<
   "type"
 > {}
 
-// The app's selection control: the invite queue's row and select-all boxes, and a
-// contact's roles. Every boolean that is a *setting* is a `Switch` - see "Selection
+// The app's selection control: a row, a select-all box, a pick among several
+// values. Every boolean that is a *setting* is a `Switch` - see "Selection
 // is a checkbox, and a setting is a switch" in DECISIONS.md for where the line
 // falls.
 //
@@ -25,7 +25,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       <input
         type="checkbox"
         className={cn(
-          "h-4 w-4 shrink-0 rounded border-input accent-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "h-4 w-4 shrink-0 rounded border-input accent-teal ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
           className,
         )}
         ref={ref}

@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  Dive,
-  DiveFileInfo,
-  DiveProfileInfo,
-  Recording,
-} from "@/lib/api/dives";
+import type { DiveFileInfo, DiveProfileInfo, Recording } from "@/lib/api/dives";
 import {
   canMergeDive,
   deleteFileConfirmation,
@@ -20,6 +15,7 @@ import {
   sameDevice,
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
+import { dive } from "@/test/dive-fixtures";
 
 function file(overrides: Partial<DiveFileInfo> = {}): DiveFileInfo {
   return {
@@ -46,22 +42,6 @@ function profileInfo(
     depth_sample_count: 314,
     provenance: "file",
     channels: ["depth"],
-    ...overrides,
-  };
-}
-
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
-    uuid: "d1",
-    dive_number: 1,
-    start_time: "2026-09-08T15:18:10",
-    submerged_time: 3163,
-    dive_sites: [],
-    gear_items: [],
-    notes: "",
-    user_uuid: "u1",
-    created_at: "2026-09-08T13:18:10Z",
-    mixtures: [],
     ...overrides,
   };
 }

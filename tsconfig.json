@@ -34,7 +34,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "tailwind.config.mts"
+    "tailwind.config.mts",
+    "vitest.config.mts"
   ],
   "exclude": [
     "node_modules"

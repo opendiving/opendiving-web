@@ -372,7 +372,7 @@ export function MapBackdrop({
           className={cn(
             // The water past the world's top or bottom edge, where there is no
             // tile to draw.
-            "absolute inset-y-0 overflow-hidden bg-[var(--map-water)]",
+            "absolute inset-y-0 overflow-hidden bg-map-water",
             shown.fade &&
               "animate-in fade-in duration-300 motion-reduce:animate-none",
           )}

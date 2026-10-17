@@ -6,6 +6,7 @@ import type { Trip } from "@/lib/api/trips";
 import type { Dive } from "@/lib/api/dives";
 import type { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
+import { dive as baseDive } from "@/test/dive-fixtures";
 
 // What only a render reaches on this page is where the contacts and the people
 // land: each part's accommodation under its place, the "Dive centers" line the trip
@@ -140,7 +141,7 @@ const TRIP: Trip = {
 };
 
 const dive = (uuid: string, trip_uuid: string | null = "trip-1") =>
-  ({ uuid, trip_uuid }) as Dive;
+  baseDive({ uuid, trip_uuid });
 
 const page = (data: Dive[]) => ({
   data,

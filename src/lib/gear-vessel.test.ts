@@ -35,9 +35,9 @@ describe("vesselFactParts", () => {
     ).toEqual([]);
   });
 
-  it("shows a material this build has no label for as stored", () => {
+  it("shows a material this build has no label for de-snaked", () => {
     expect(vesselFactParts({ material: "titanium" }, "metric")).toEqual([
-      "titanium",
+      "Titanium",
     ]);
   });
 });

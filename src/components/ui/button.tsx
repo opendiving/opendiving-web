@@ -17,7 +17,7 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        link: "underline underline-offset-4",
       },
       // A floor rather than a height on touch, so a caller's `h-7` or `h-auto`
       // still shrinks the button for a mouse and cannot shrink it for a finger.

@@ -11,6 +11,7 @@ import {
   MAX_SELECTED,
 } from "@/components/admin/invite-queue-frame";
 import { summarizeInvitationOutcomes } from "@/components/admin/invitation-outcomes";
+import { countNoun } from "@/lib/format";
 
 type PendingAction = "invite" | "remove";
 
@@ -26,10 +27,9 @@ type PendingAction = "invite" | "remove";
  * by what it holds instead.
  *
  * Selection lives here and is cleared after either action, so an address is
- * never carried into a batch the operator has stopped looking at. It used to be
- * cleared on a page turn too, which is what kept it inside the API's cap without
- * this page having to repeat the number; the queue loads on scroll now and
- * accumulates, so `MAX_SELECTED` states the cap outright.
+ * never carried into a batch the operator has stopped looking at. The queue
+ * loads on scroll and accumulates, so `MAX_SELECTED` states the API's cap
+ * outright.
  */
 
 export function InviteQueue() {
@@ -46,7 +46,7 @@ export function InviteQueue() {
   // loop" in DECISIONS.md for what a per-render callback would cost here.
   const fetchRequests = useCallback(
     (page: number, perPage: number) =>
-      adminAPI.listInviteRequests(page, perPage),
+      adminAPI.getInviteRequests(page, perPage),
     [],
   );
 
@@ -116,7 +116,7 @@ export function InviteQueue() {
         const { removed } = await adminAPI.removeInviteRequests(selected);
         toast({
           title: "Queue updated",
-          description: `${removed} ${removed === 1 ? "request" : "requests"} removed from the queue.`,
+          description: `${countNoun(removed, "request")} removed from the queue.`,
         });
       }
       setSelected([]);
@@ -145,7 +145,7 @@ export function InviteQueue() {
   };
 
   const count = selected.length;
-  const addresses = `${count} ${count === 1 ? "address" : "addresses"}`;
+  const addresses = countNoun(count, "address", "addresses");
 
   return (
     <>

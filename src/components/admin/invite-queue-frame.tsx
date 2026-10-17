@@ -14,6 +14,7 @@ import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { InviteRequestsTable } from "@/components/admin/invite-requests-table";
 import { DEFAULT_ITEMS_PER_PAGE } from "@/hooks/useInfiniteResource";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
+import { countNoun } from "@/lib/format";
 
 /**
  * Mirrors `MAX_ADDRESSES_PER_BATCH` in the API's invitation schema, which both
@@ -64,7 +65,7 @@ export function InviteQueueFrame({
   onLoadMore = noop,
 }: InviteQueueFrameProps) {
   const count = selected.length;
-  const addresses = `${count} ${count === 1 ? "address" : "addresses"}`;
+  const addresses = countNoun(count, "address", "addresses");
   // Nobody is waiting. Nothing narrows this queue, so an empty one is the whole
   // story - and the two actions act on a selection of rows that do not exist.
   const isEmptyList = useIsEmptyList({
@@ -138,11 +139,9 @@ export function InviteQueueFrame({
               onToggleAll={onToggleAll}
             />
 
-            {/* No selection reset here, unlike the Previous/Next footer this
-                replaced: that cleared the ticks because a page turn carried the
-                selected addresses off screen, and sending invitations the operator
-                can no longer see is the thing it was guarding against. Loading
-                more only appends, so everything ticked stays visible. */}
+            {/* No selection reset here: loading more only appends, so everything
+                ticked stays visible and no invitation goes to an address the
+                operator can no longer see. */}
             <LoadMoreTrigger
               hasMore={hasMore}
               isLoading={isLoadingMore}

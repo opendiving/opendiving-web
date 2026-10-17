@@ -24,6 +24,7 @@ import {
   HERO_BODY,
   HERO_CONTROL,
   MapHeroPageSkeleton,
+  PAGE_COLUMN,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -43,13 +44,14 @@ import { PageSpinner } from "@/components/ui/page-spinner";
  * the only position in the tree that survives a step of the prev/next pager.** The
  * App Router keys a dynamic segment on its param value, so everything under
  * `dives/[id]` - the page included - is torn down and rebuilt when the uuid
- * changes. Two things the page was written to do therefore never happened: it
- * kept the outgoing dive on screen under `opacity-50` while the next one loaded
- * (it re-mounted with no dive and drew the page's skeleton instead), and the
- * pager's single `<a>` held the keyboard focus across the step (its node went
- * with the page, dropping focus to `<body>`). `dives/(detail)/` is outside the
- * dynamic segment, so this component is re-rendered rather than re-mounted, and
- * both work as written. See "The step remounted the page..." in DECISIONS.md.
+ * changes. Two things the page does depend on surviving it: it keeps the
+ * outgoing dive on screen under `opacity-50` while the next one loads (a
+ * re-mount has no dive and draws the page's skeleton instead), and the pager's
+ * single `<a>` holds the keyboard focus across the step (a re-mount takes its
+ * node with the page, dropping focus to `<body>`). `dives/(detail)/` is outside
+ * the dynamic segment, so this component is re-rendered rather than re-mounted.
+ * See "`dives/(detail)/layout.tsx` owns the dive fetch, so a step keeps the page
+ * mounted" in DECISIONS.md.
  *
  * The group is what keeps `/dives`, `/dives/new` and `/dives/[id]/edit` out of
  * it: it holds only this page, and adds nothing to any URL.
@@ -225,7 +227,7 @@ export default function DiveDetailLayout({
 
   if (!dive) {
     return (
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className={PAGE_COLUMN}>
         <NotFoundState
           message="Dive not found."
           backHref={back.href}

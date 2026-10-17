@@ -16,6 +16,8 @@ import type {
   GearServiceScheduleSummary,
   ServiceKind,
 } from "@/lib/api/gear-service";
+import { daysBetweenIsoDates, todayIsoDate } from "@/lib/date-time";
+import { countNoun } from "@/lib/format";
 
 // How far ahead a due date starts reading as "due soon". 30 days is roughly the lead
 // time for getting a regulator booked in and back before the next trip.
@@ -36,33 +38,6 @@ export function hoursOfDiving(seconds: number): number {
 }
 
 export type ServiceStatus = "ok" | "due_soon" | "overdue";
-
-// Today as "YYYY-MM-DD" in the *viewer's* timezone. Built from local getters rather
-// than `toISOString()`, which would render UTC and so show tomorrow's (or yesterday's)
-// date for anyone far enough east or west.
-export function todayIsoDate(now: Date = new Date()): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-// Whole days from `from` to `to`, both bare "YYYY-MM-DD" strings. Negative once `to` is
-// in the past.
-//
-// Both dates are constructed from their split parts, never `new Date(dateString)`: a
-// bare date string parses as UTC midnight, which lands on the previous day in every
-// negative-UTC-offset timezone and would make a due date read as one day closer than it
-// is. Same reasoning as `formatDateOnly()` in `lib/date-time.ts`.
-//
-// Using local midnight for both ends also makes this immune to DST: the two Dates shift
-// by the same offset, and rounding the millisecond difference absorbs the one 23- or
-// 25-hour day in between.
-export function daysBetweenIsoDates(from: string, to: string): number {
-  const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
-  const [toYear, toMonth, toDay] = to.split("-").map(Number);
-  const start = new Date(fromYear, fromMonth - 1, fromDay);
-  const end = new Date(toYear, toMonth - 1, toDay);
-  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
-}
 
 // How urgent one schedule is, given the item's live dive count and dive time (seconds).
 //
@@ -128,30 +103,17 @@ export function serviceStatusLabel(status: ServiceStatus): string {
 }
 
 // Maps onto the `Badge` variants already in the design system rather than introducing
-// new colours. All three are filled now, and the scale is read by hue rather than by
+// new colours. All three are filled, and the scale is read by hue rather than by
 // weight: teal for settled, the brand coral for due-soon, --destructive-solid for
-// overdue. Due-soon used to be `secondary`, which is nearly invisible on a card in
-// dark mode and, being the same chip as "Rented", didn't read as a status at all;
-// then --warning's amber, which read as a fourth accent beside a palette that has
-// three.
+// overdue. Not `secondary` for due-soon: it is nearly invisible on a card in dark
+// mode and, being the same chip as "Rented", doesn't read as a status at all; nor
+// --warning's amber, which reads as a fourth accent beside a palette that has three.
 export function serviceStatusBadgeVariant(
   status: ServiceStatus,
 ): "destructive" | "coral" | "teal" {
   if (status === "overdue") return "destructive";
   if (status === "due_soon") return "coral";
   return "teal";
-}
-
-// How many dives an item has done since a baseline snapshot, floored at zero.
-//
-// The floor matters: `dive_count` is a lifetime counter, so deleting dives drives it
-// back down and a raw subtraction can go negative. Mirrors `dives_since` in the API's
-// `services/gear_service.py`.
-export function divesSince(
-  diveCount: number,
-  baselineDiveCount: number,
-): number {
-  return Math.max(0, diveCount - baselineDiveCount);
 }
 
 type DueUnit = "day" | "dive" | "hour";
@@ -212,7 +174,7 @@ function nextServiceDue(
 // "3 dives", "1 day", "12 hours of diving" - an hours figure always says it is
 // diving, so it never reads as clock hours.
 export function countOf(count: number, unit: DueUnit): string {
-  const counted = `${count} ${unit}${count === 1 ? "" : "s"}`;
+  const counted = countNoun(count, unit);
   return unit === "hour" ? `${counted} of diving` : counted;
 }
 

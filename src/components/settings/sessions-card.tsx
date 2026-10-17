@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { LogOut, MonitorSmartphone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,22 +20,15 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useOptionalList } from "@/hooks/useOptionalList";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { sessionsAPI, type UserSession } from "@/lib/api/sessions";
 import { formatDateTime } from "@/lib/date-time";
 import { deviceNameForUserAgent } from "@/lib/passkey-name";
-
-// What the list request came back with. `absent` is the instance whose API
-// predates server-side sessions and 404s: that is not an error to report on a
-// settings page, it is a feature this copy of OpenDiving does not have, so the
-// whole card goes. Same union, and the same reasoning, as `PasskeysCard`.
-type ListState =
-  | { status: "loading" }
-  | { status: "ready"; sessions: UserSession[] }
-  | { status: "absent" }
-  | { status: "failed"; message: string };
+import { countNoun } from "@/lib/format";
 
 const LIST_FAILED = "Couldn't load your signed-in devices.";
+const loadSessions = () => sessionsAPI.getSessions();
 
 /**
  * The devices signed in to the account: what each one looks like, where it signed
@@ -55,38 +48,11 @@ const LIST_FAILED = "Couldn't load your signed-in devices.";
  */
 export function SessionsCard() {
   const { toast } = useToast();
-  const [list, setList] = useState<ListState>({ status: "loading" });
   const [confirmingOthers, setConfirmingOthers] = useState(false);
   const [isRevokingOthers, setIsRevokingOthers] = useState(false);
 
-  // A promise chain rather than `async`/`await`, because it is called from the
-  // effect below and `react-hooks/set-state-in-effect` rejects a
-  // synchronous-looking setState there - the same shape `PasskeysCard.refresh`
-  // has, for the same rule.
-  const refresh = useCallback(
-    () =>
-      sessionsAPI
-        .listSessions()
-        .then((sessions) => setList({ status: "ready", sessions }))
-        .catch((error: unknown) => {
-          console.error(LIST_FAILED, error);
-          const status = (error as { response?: { status?: number } })?.response
-            ?.status;
-          setList(
-            status === 404
-              ? { status: "absent" }
-              : {
-                  status: "failed",
-                  message: getApiErrorMessage(error, LIST_FAILED),
-                },
-          );
-        }),
-    [],
-  );
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  // An API predating server-side sessions 404s, and the whole card goes.
+  const { list, refresh } = useOptionalList(loadSessions, LIST_FAILED);
 
   const { deletingId, pendingId, requestDelete, cancelDelete, confirmDelete } =
     useDeleteResource((uuid: string) => sessionsAPI.revokeSession(uuid), {
@@ -100,8 +66,8 @@ export function SessionsCard() {
   const sessions =
     list.status === "ready"
       ? [
-          ...list.sessions.filter((one) => one.current),
-          ...list.sessions.filter((one) => !one.current),
+          ...list.data.filter((one) => one.current),
+          ...list.data.filter((one) => !one.current),
         ]
       : [];
   const pendingSession = sessions.find((one) => one.uuid === pendingId);
@@ -119,10 +85,7 @@ export function SessionsCard() {
         title: "Success",
         // The count comes from the response and can come from nowhere else: the
         // confirmation fires before the request, so the dialog never knew it.
-        description:
-          revoked === 1
-            ? "1 other device was signed out."
-            : `${revoked} other devices were signed out.`,
+        description: `${countNoun(revoked, "other device was", "other devices were")} signed out.`,
       });
       await refresh();
     } catch (error) {

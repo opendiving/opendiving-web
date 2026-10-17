@@ -51,6 +51,7 @@ export function realignMixtureMarks(
   return next;
 }
 
+/** What `useAutofillMarks` returns: which fields an automatic write filled in. */
 export interface AutofillMarks {
   /** Whether the field at `name` - a key, or `mixtures.<i>.<column>` - is marked. */
   isMarked: (name: string) => boolean;

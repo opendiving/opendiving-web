@@ -19,6 +19,7 @@ export interface StorageUsage {
   pictures_bytes: number;
 }
 
+/** The signed-in caller's storage figures. */
 export const storageAPI = {
   /**
    * The caller's stored bytes, by kind, against the instance's limit. Uncached

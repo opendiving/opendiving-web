@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveMixturesCard } from "./dive-mixtures-card";
 import type { Dive, DiveMixture, GasRole, TankUsage } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 
 // This render reads the diver's units, so it needs an auth context. Metric, which
 // is every existing account's default.
@@ -26,15 +27,8 @@ const EAN54: DiveMixture = {
   helium: 0,
 };
 
-function dive(mixtures: DiveMixture[], maxDepth: number | null): Dive {
-  return {
-    uuid: "test",
-    dive_number: 1,
-    start_time: "2026-06-03T12:15:00+02:00",
-    submerged_time: 3600,
-    max_depth: maxDepth,
-    mixtures,
-  } as Dive;
+function dive(mixtures: DiveMixture[], maxDepth: number): Dive {
+  return baseDive({ max_depth: maxDepth, mixtures });
 }
 
 // Each card's MOD as the diver reads it: the label with the limit it was computed
@@ -273,14 +267,14 @@ describe("DiveMixturesCard role badge", () => {
     expect(screen.queryByText("Bottom")).not.toBeInTheDocument();
   });
 
-  it("falls back to the wire value for a role the label map hasn't caught up with", () => {
+  it("de-snakes a role the label map hasn't caught up with", () => {
     // `GAS_ROLE_LABELS` is kept in step with the API's `GasRole` by hand, so the
     // cast stands in for the window after a role is added there. Without the
     // fallback this renders an empty badge.
-    const unknown = { ...EAN54, role: "bailout" as GasRole };
+    const unknown = { ...EAN54, role: "bail_out" as GasRole };
     render(<DiveMixturesCard dive={dive([unknown], 30)} />);
 
-    expect(screen.getByText("bailout")).toBeInTheDocument();
+    expect(screen.getByText("Bail out")).toBeInTheDocument();
   });
 });
 
@@ -315,7 +309,7 @@ describe("DiveMixturesCard usage", () => {
     expect(screen.queryByText(/Parallel|Staged/)).not.toBeInTheDocument();
   });
 
-  it("falls back to the wire value for a usage the label map hasn't caught up with", () => {
+  it("de-snakes a usage the label map hasn't caught up with", () => {
     // `TANK_USAGE_LABELS` mirrors the API's `TankUsage` by hand, same as the role
     // map above. Without the fallback a flag the diver recorded would be visible
     // nowhere outside the edit form.
@@ -323,7 +317,7 @@ describe("DiveMixturesCard usage", () => {
     render(<DiveMixturesCard dive={dive([AIR, unknown], 20)} />);
 
     expect(screen.getAllByRole("listitem")[1]).toHaveTextContent(
-      "O₂ 54% · manifolded",
+      "O₂ 54% · Manifolded",
     );
   });
 });

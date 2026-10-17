@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, type ReactNode } from "react";
-import { FileText, ImageOff, Loader2 } from "lucide-react";
+import { FileText, ImageOff } from "lucide-react";
 import {
   certificationsAPI,
   CertificationFileInfo,
@@ -15,6 +15,7 @@ import {
   certificationFileVersion,
 } from "@/lib/certification";
 import { cn } from "@/lib/utils";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 interface CertificationCardFrameProps {
   /**
@@ -166,7 +167,7 @@ export function CertificationCardImage({
   if (isLoading) {
     return (
       <CertificationCardFrame compact={compact} className={className}>
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <ButtonSpinner className="text-muted-foreground" />
       </CertificationCardFrame>
     );
   }

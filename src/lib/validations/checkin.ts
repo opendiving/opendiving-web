@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { optionalDateField } from "./fields";
 
 import type { DivingFigures } from "@/lib/checkin";
-import { todayIsoDate } from "@/lib/gear-service";
+import { todayIsoDate } from "@/lib/date-time";
 
 /**
  * The count's ceiling on `POST /user/checkin-link`: a check-in link keeps the figures
@@ -36,14 +37,12 @@ export const divingFiguresSchema = z.object({
   // 404, so `0` is the value this box is *seeded* with for exactly the diver this
   // dialog exists for. Rejecting it blocks the submit on a field they never touched.
   max_depth: z.number().min(0, "Max depth cannot be negative").nullable(),
-  last_dive_on: z
-    .union([
-      z.literal(""),
-      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date"),
-    ])
-    .refine((value) => !value || value <= todayIsoDate(), {
+  last_dive_on: optionalDateField().refine(
+    (value) => !value || value <= todayIsoDate(),
+    {
       message: "A dive cannot be in the future",
-    }),
+    },
+  ),
 });
 
 export type DivingFiguresInput = z.input<typeof divingFiguresSchema>;

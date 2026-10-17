@@ -28,6 +28,7 @@ import {
   stepMonth,
 } from "@/components/admin/daily-stats";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
+import { countNoun } from "@/lib/format";
 
 type Loaded =
   | { month: StatsMonth; stats: AdminStats }
@@ -290,5 +291,5 @@ function describeActivity(stats: AdminStats, label: string): string {
     return `Sign-ins and active accounts per day in ${label}: none.`;
   }
 
-  return `Sign-ins and active accounts per day in ${label}.${peakDay ? ` Most active day: ${dayLabel(peakDay)}, with ${peak} active ${peak === 1 ? "account" : "accounts"}.` : ""}`;
+  return `Sign-ins and active accounts per day in ${label}.${peakDay ? ` Most active day: ${dayLabel(peakDay)}, with ${countNoun(peak, "active account")}.` : ""}`;
 }

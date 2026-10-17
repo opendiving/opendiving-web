@@ -19,10 +19,21 @@ const alias = { "@": path.resolve(dirname, "./src") };
 // walk `node_modules` looking for tests.
 const BROWSER_TESTS = "src/**/*.browser.test.{ts,tsx}";
 
-// The map renderer runs in Node, not in a page, so its tests do too - in a
-// project of their own, because the unit project's setup file patches a
-// `window` that Node does not have.
-const RENDERER_TESTS = "src/map-renderer/**/*.test.ts";
+// Code that only ever runs on the server - the map renderer, the middleware,
+// route handlers and the modules behind them - is tested in Node, where `fetch`,
+// `AbortSignal` and `Response` are the ones it runs against in production rather
+// than jsdom's. A project of its own, because the unit project's setup file
+// patches a `window` that Node does not have.
+const NODE_TESTS = [
+  "src/map-renderer/**/*.test.ts",
+  "src/proxy.test.ts",
+  "src/app/robots.test.ts",
+  "src/app/layout.test.ts",
+  "src/app/healthz/route.test.ts",
+  "src/lib/api-proxy.test.ts",
+  "src/lib/api/config.server.test.ts",
+  "src/lib/runtime-config.test.ts",
+];
 
 export default defineConfig({
   resolve: { alias },
@@ -34,7 +45,7 @@ export default defineConfig({
           name: "unit",
           environment: "jsdom",
           include: ["src/**/*.test.{ts,tsx}"],
-          exclude: [...configDefaults.exclude, BROWSER_TESTS, RENDERER_TESTS],
+          exclude: [...configDefaults.exclude, BROWSER_TESTS, ...NODE_TESTS],
           // Scoped to this project, and that is the point rather than tidiness.
           // `vitest.setup.ts` is a jsdom patch kit - a no-op `ResizeObserver`, a
           // `matchMedia` that always answers false, pointer-capture no-ops.
@@ -50,8 +61,9 @@ export default defineConfig({
         test: {
           name: "node",
           environment: "node",
-          include: [RENDERER_TESTS],
+          include: NODE_TESTS,
           exclude: [...configDefaults.exclude, BROWSER_TESTS],
+          setupFiles: ["./vitest.setup.node.ts"],
         },
       },
       {
@@ -72,15 +84,16 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      // Was `src/lib/**` only, which made `hooks/`, `contexts/`, `components/` and
-      // `app/` invisible to the report - so "coverage is fine" said nothing about
-      // the layers where the divergent-error-handling and stale-state bugs lived.
+      // Every layer is in scope, so "coverage is fine" says something about the
+      // layers where error handling and stale state go wrong, not only about `lib/`.
       include: [
         "src/lib/**/*.{ts,tsx}",
         "src/hooks/**/*.{ts,tsx}",
         "src/contexts/**/*.{ts,tsx}",
         "src/components/**/*.{ts,tsx}",
         "src/app/**/*.{ts,tsx}",
+        "src/proxy.ts",
+        "src/map-renderer/**/*.ts",
       ],
       exclude: [
         // Vendored from shadcn/ui and deliberately kept close to upstream, so its
@@ -94,10 +107,9 @@ export default defineConfig({
       // make a run pass is the thing they exist to prevent.
       //
       // The global numbers look low because `components/` and `app/` are in scope and
-      // almost entirely untested. That is deliberate: the point of widening the scope
-      // was to make the gap *visible* in the report rather than to flatter the
-      // headline figure. The per-directory floors below are what actually hold the
-      // tested layers to account.
+      // almost entirely untested. That is deliberate: the scope makes the gap *visible*
+      // in the report rather than flattering the headline figure. The per-directory
+      // floors below are what actually hold the tested layers to account.
       thresholds: {
         statements: 24,
         branches: 19,

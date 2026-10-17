@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getApiErrorMessage, getApiFieldError } from "./error";
+import {
+  getApiErrorMessage,
+  getApiErrorStatus,
+  getApiFieldError,
+} from "./error";
 
 function axiosErrorWithDetail(detail: unknown) {
   return { response: { data: { detail } } };
@@ -106,5 +110,16 @@ describe("getApiFieldError", () => {
       { loc: ["body", "people", 0, "username"], msg: "Nope" },
     ]);
     expect(getApiFieldError(error, "username")).toBeNull();
+  });
+});
+
+describe("getApiErrorStatus", () => {
+  it("reads the response's status", () => {
+    expect(getApiErrorStatus({ response: { status: 404 } })).toBe(404);
+  });
+
+  it("is undefined for an error with no response", () => {
+    expect(getApiErrorStatus(new Error("Network Error"))).toBeUndefined();
+    expect(getApiErrorStatus(null)).toBeUndefined();
   });
 });

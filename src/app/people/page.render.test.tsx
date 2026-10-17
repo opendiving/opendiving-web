@@ -125,6 +125,6 @@ describe("the People page", () => {
         name: "Search people by name or username",
       }),
     ).toBeInTheDocument();
-    expect(getPeople).toHaveBeenCalledWith(1, 10, undefined);
+    expect(getPeople).toHaveBeenCalledWith(1, 10, { search: "" });
   });
 });

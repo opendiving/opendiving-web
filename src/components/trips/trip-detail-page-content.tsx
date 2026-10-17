@@ -30,27 +30,29 @@ import {
   HERO_BODY,
   HERO_CONTROL,
   MapHeroPageSkeleton,
+  PAGE_COLUMN,
 } from "@/components/ui/map-hero";
 import { PeopleList } from "@/components/people/people-list";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { BedDouble, Edit, Plus, Calendar, Luggage, MapPin } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
+import { getApiErrorStatus } from "@/lib/api/error";
+import { countNoun } from "@/lib/format";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
 // Cebu 2026" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Trip deleted successfully.";
 
-const dives = (count: number) => `${count} ${count === 1 ? "dive" : "dives"}`;
-
 // What an add that came back `added` of `expected` says. Short means the rest
 // stopped being candidates between the page's read and the add.
 function addedMessage(added: number, expected: number): string {
-  if (added >= expected) return `${dives(added)} added to the trip.`;
+  if (added >= expected)
+    return `${countNoun(added, "dive")} added to the trip.`;
   const rest = "moved to another trip or deleted since the page loaded";
   return added === 0
     ? `No dives added: they were ${rest}.`
-    : `${dives(added)} of ${expected} added to the trip. The rest were ${rest}.`;
+    : `${countNoun(added, "dive")} of ${expected} added to the trip. The rest were ${rest}.`;
 }
 
 export function TripDetailPageContent() {
@@ -119,8 +121,7 @@ export function TripDetailPageContent() {
         toast({ description: addedMessage(added, expected) });
         return added > 0;
       } catch (error) {
-        const status = (error as { response?: { status?: number } })?.response
-          ?.status;
+        const status = getApiErrorStatus(error);
         if (status === 422) {
           // A part named by dates the trip no longer carries: it was edited
           // somewhere else since this page read it.
@@ -187,7 +188,7 @@ export function TripDetailPageContent() {
 
   if (!trip) {
     return (
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className={PAGE_COLUMN}>
         <NotFoundState
           message="Trip not found."
           backHref={back.href}

@@ -36,7 +36,9 @@ beforeEach(() => {
   vi.mocked(authAPI.copyAvatarToPortrait)
     .mockReset()
     .mockResolvedValue({ sha256: "a" });
-  vi.mocked(authAPI.removePicture).mockReset().mockResolvedValue(undefined);
+  vi.mocked(authAPI.removePicture)
+    .mockReset()
+    .mockResolvedValue({ message: "ok" });
 });
 
 describe("applyPictureEdit sends exactly the one request an edit needs", () => {

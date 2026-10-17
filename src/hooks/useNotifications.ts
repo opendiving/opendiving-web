@@ -31,6 +31,7 @@ export interface NotificationFeed<T> {
   failed: boolean;
 }
 
+/** What `useNotifications` returns: the notifications bell's two lists. */
 export interface NotificationsState {
   /** False until the reads and the shared check-in details have all settled. */
   isLoaded: boolean;

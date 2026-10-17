@@ -2,23 +2,12 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveDetailMain } from "./dive-detail-main";
 import type { Dive, Sighting } from "@/lib/api/dives";
+import { dive } from "@/test/dive-fixtures";
 
 // These renders read the diver's units, so they need an auth context.
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
 }));
-
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
-    uuid: "test",
-    dive_number: 1,
-    start_time: "2021-04-04T10:04:47+02:00",
-    submerged_time: 2700,
-    dive_sites: [],
-    mixtures: [],
-    ...overrides,
-  } as Dive;
-}
 
 // A sighting as the detail read carries one: the species' summary, and nothing
 // counted or written unless a test says so.
@@ -123,7 +112,7 @@ describe("DiveDetailMain species card counts and notes", () => {
     ).toHaveTextContent("Many 11–100");
   });
 
-  it("shows a band this build has no label for as its slug, with no range", () => {
+  it("shows a band this build has no label for de-snaked, with no range", () => {
     const unknown = {
       ...TURTLE,
       abundance: "teeming" as unknown as Sighting["abundance"],
@@ -133,6 +122,6 @@ describe("DiveDetailMain species card counts and notes", () => {
     expect(
       cardOf("Green sea turtle").getByText("Abundance", { selector: "dt" })
         .nextElementSibling,
-    ).toHaveTextContent(/^teeming$/);
+    ).toHaveTextContent(/^Teeming$/);
   });
 });

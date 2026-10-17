@@ -2,21 +2,9 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   darkMode: "class",
-  content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-  ],
+  content: ["./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
     extend: {
       colors: {
         border: "hsl(var(--border))",
@@ -56,6 +44,13 @@ const config: Config = {
         cns: "hsl(var(--cns))",
         "gradient-factor": "hsl(var(--gradient-factor))",
         "surface-gradient-factor": "hsl(var(--surface-gradient-factor))",
+        "gas-oxygen": "hsl(var(--gas-oxygen))",
+        "gas-helium": "hsl(var(--gas-helium))",
+        // Whole colours, not HSL triplets - see `--map-water` in `globals.css`.
+        "map-water": {
+          DEFAULT: "var(--map-water)",
+          foreground: "var(--map-water-foreground)",
+        },
         tooltip: {
           DEFAULT: "hsl(var(--tooltip))",
           foreground: "hsl(var(--tooltip-foreground))",

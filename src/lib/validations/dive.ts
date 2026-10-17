@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { maxLength } from "./fields";
 import { notesField } from "./notes";
 import { personReferenceSchema } from "./person";
 import {
@@ -17,6 +18,7 @@ import {
   WAVES,
   WEATHER,
   type Dive,
+  type DiveCreate,
   type DiveMixture,
   type DiveUpdate,
   type GasRole,
@@ -90,17 +92,11 @@ const durationField = (
   message = "Dive time must be minutes or MM:SS, e.g. 45 or 67:30",
 ) => z.string().min(1, "Dive time is required").regex(DURATION_REGEX, message);
 
-// Total ballast carried on the dive, in kilograms. Identical in the create and
-// update schemas (it's optional in both), so it lives in one helper rather than
-// being written out twice.
-const weightField = () =>
-  z.number().min(0, "Weight must be zero or positive").nullable().optional();
-
 // A dive-level vocabulary - the water, the dive type, the conditions, the entry - as a
 // `<select>` edits it. `""` is the "Not recorded" option's value and a live form
 // state, never something sent to the API: it is the cleared sentinel react-hook-form
 // needs (see `diveMixtureSchema.role`, the same pattern for the same reason),
-// converted away by `buildDiveUpdate` and by the create page's submit.
+// converted away by `buildDiveUpdate` and `buildDiveCreate`.
 export const vocabularyField = <const T extends readonly [string, ...string[]]>(
   values: T,
 ) =>
@@ -129,11 +125,7 @@ const BOAT_NAME_MAX = 255;
 // A single-line box, `""` meaning not recorded - the select's sentinel, for the same
 // reason. The API trims it and refuses a blank one, so both submit paths trim it
 // first and turn what is left of an empty box into "not recorded".
-const boatNameField = () =>
-  z
-    .string()
-    .max(BOAT_NAME_MAX, `Boat name cannot exceed ${BOAT_NAME_MAX} characters`)
-    .optional();
+const boatNameField = () => maxLength("Boat name", BOAT_NAME_MAX).optional();
 
 // By name, in the diver's order - the picker trims each and keeps one of any two
 // that match. One message for the list rather than one per tag, which would have
@@ -432,8 +424,8 @@ export interface NormalizedDiveMixture {
 // Fields are listed out explicitly (rather than spreading the input and
 // overriding start_pressure/end_pressure) because TypeScript doesn't reliably
 // narrow a spread-then-overridden property away from its original generic
-// union type, which previously let the "" placeholder type leak into the
-// inferred return type.
+// union type, which lets the "" placeholder type leak into the inferred
+// return type.
 export function normalizeMixtures(
   mixtures: {
     id?: number;
@@ -575,13 +567,12 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
   };
 }
 
-export const diveCreateSchema = z.object({
-  dive_number: z
-    .number()
-    .int()
-    .positive("Dive number must be a positive integer"),
-  start_time: dateTimeField(),
-  submerged_time: durationField(),
+const diveNumberField = () =>
+  z.number().int().positive("Dive number must be a positive integer");
+
+// What a new dive and an edit hold the same way: every one optional in both, since a
+// dive records any of them or none.
+const diveFields = {
   max_depth: z
     .number()
     .positive("Max depth must be positive")
@@ -612,10 +603,65 @@ export const diveCreateSchema = z.object({
   // Kilograms. `min(0)` rather than `positive()`, unlike the depths above:
   // diving with no lead at all is a real entry, and it's worth distinguishing
   // from not having recorded it - mirrors `ck_dive_weight_non_negative`.
-  weight: weightField(),
+  weight: z
+    .number()
+    .min(0, "Weight must be zero or positive")
+    .nullable()
+    .optional(),
+  // Nullable, not just optional: `null` is how the edit form says "detach this
+  // dive from its trip". See `DiveUpdate.trip_uuid` in `lib/api/dives.ts`.
   trip_uuid: z.string().nullable().optional(),
+  // And the same for the training course and the contact, for the same reason.
   course_uuid: z.string().nullable().optional(),
   contact_uuid: z.string().nullable().optional(),
+};
+
+/**
+ * A form with nothing in it, which both pages start from: the new dive adds its
+ * number, its start time and what the URL names, and the edit page replaces the lot
+ * with `diveToFormValues` once the dive is read.
+ *
+ * The selects and the boxes hold `""` rather than `undefined`, which
+ * react-hook-form would answer by re-displaying the default. No cylinder: a form must
+ * not write gas the diver never entered - see "The create form proposes no
+ * cylinder" in DECISIONS.md.
+ */
+export function emptyDiveFormValues() {
+  return {
+    submerged_time: "",
+    max_depth: undefined,
+    avg_depth: undefined,
+    bottom_temperature: undefined,
+    visibility: undefined,
+    water_type: "",
+    altitude: undefined,
+    type: "",
+    rating: null,
+    air_temperature: undefined,
+    current: "",
+    waves: "",
+    weather: "",
+    entry_type: "",
+    boat_name: "",
+    weight: undefined,
+    trip_uuid: undefined,
+    course_uuid: undefined,
+    contact_uuid: null,
+    people: [],
+    dive_site_uuids: [],
+    gear_item_uuids: [],
+    sightings: [],
+    tags: [],
+    notes: "",
+    mixtures: [],
+  } satisfies Omit<DiveCreateInput, "dive_number" | "start_time">;
+}
+
+export const diveCreateSchema = z.object({
+  dive_number: diveNumberField(),
+  start_time: dateTimeField(),
+  submerged_time: durationField(),
+  ...diveFields,
   people: z.array(personReferenceSchema).default([]),
   dive_site_uuids: z.array(z.string()).default([]),
   gear_item_uuids: z.array(z.string()).default([]),
@@ -626,47 +672,10 @@ export const diveCreateSchema = z.object({
 });
 
 export const diveUpdateSchema = z.object({
-  dive_number: z
-    .number()
-    .int()
-    .positive("Dive number must be a positive integer")
-    .optional(),
+  dive_number: diveNumberField().optional(),
   start_time: updatedDateTimeField().optional(),
   submerged_time: durationField().optional(),
-  max_depth: z
-    .number()
-    .positive("Max depth must be positive")
-    .nullable()
-    .optional(),
-  avg_depth: z
-    .number()
-    .positive("Average depth must be positive")
-    .nullable()
-    .optional(),
-  bottom_temperature: z.number().nullable().optional(),
-  visibility: z
-    .number()
-    .int("Visibility must be an integer")
-    .positive("Visibility must be positive")
-    .nullable()
-    .optional(),
-  water_type: vocabularyField(WATER_TYPES),
-  altitude: altitudeField(),
-  type: vocabularyField(DIVE_TYPES),
-  rating: ratingField(),
-  air_temperature: z.number().nullable().optional(),
-  current: vocabularyField(CURRENTS),
-  waves: vocabularyField(WAVES),
-  weather: vocabularyField(WEATHER),
-  entry_type: vocabularyField(ENTRY_TYPES),
-  boat_name: boatNameField(),
-  weight: weightField(),
-  // Nullable, not just optional: `null` is how the edit form says "detach this
-  // dive from its trip". See `DiveUpdate.trip_uuid` in `lib/api/dives.ts`.
-  trip_uuid: z.string().nullable().optional(),
-  // And the same for the training course and the contact, for the same reason.
-  course_uuid: z.string().nullable().optional(),
-  contact_uuid: z.string().nullable().optional(),
+  ...diveFields,
   people: z.array(personReferenceSchema).optional(),
   dive_site_uuids: z.array(z.string()).optional(),
   gear_item_uuids: z.array(z.string()).optional(),
@@ -693,20 +702,15 @@ export function boatNameOrNull(value: string): string | null {
 // The one rule, and the whole reason this isn't a plain spread: a field that is
 // `undefined` was never touched and must not appear in the request at all,
 // while a field that is `null` is a value the diver deliberately cleared and
-// must be sent so the API can null it out. Collapsing those two together is
-// what previously made a dive's trip impossible to remove - the picker cleared
-// to `undefined`, the field was dropped, and the trip survived a save that
-// reported success.
+// must be sent so the API can null it out. Collapsing those two together makes
+// a dive's trip impossible to remove - a picker cleared to `undefined` drops
+// the field, and the trip survives a save that reports success.
 //
-// It used to take react-hook-form's `dirtyFields` as well, and drop every field
-// the diver had not touched. That existed because the API soft-deleted trips
-// and dive sites and then hid them from a dive read, which made the form's own
-// seed a lie: a dive whose trip had been deleted came back with
-// `trip_uuid: null`, and echoing that null back unlinked the trip for real. The
-// API hard-deletes those rows now and hides nothing, so a read is the whole
-// truth and an echo of it says exactly what the dive already holds - see "The
-// edit form submits the whole dive, because the read is the whole dive" in
-// DECISIONS.md.
+// It does not take react-hook-form's `dirtyFields` and drop every field the
+// diver has not touched: the API hard-deletes trips and dive sites and hides
+// nothing from a dive read, so a read is the whole truth and an echo of it says
+// exactly what the dive already holds - see "The edit form submits the whole
+// dive, because the read is the whole dive" in DECISIONS.md.
 //
 // `submerged_time` is the only shape change: the form edits it as an "MM:SS" string
 // and the API takes seconds. Done here rather than in the schema because
@@ -776,4 +780,29 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
   }
 
   return update;
+}
+
+// Turns the create form's values into the POST body for `divesAPI.createDive`.
+//
+// Where `buildDiveUpdate` sends a cleared picker or select as `null`, this omits it:
+// a new dive has nothing to detach from or clear, so "cleared" and "untouched"
+// collapse into one, and neither sends `""`, which the API's enums refuse - see "A
+// dive-level select carries the same three states" in DECISIONS.md.
+export function buildDiveCreate(data: DiveCreateInput): DiveCreate {
+  return {
+    ...data,
+    submerged_time: parseFormDuration(data.submerged_time),
+    notes: data.notes || "",
+    trip_uuid: data.trip_uuid ?? undefined,
+    course_uuid: data.course_uuid ?? undefined,
+    contact_uuid: data.contact_uuid ?? undefined,
+    water_type: data.water_type === "" ? undefined : data.water_type,
+    type: data.type === "" ? undefined : data.type,
+    current: data.current === "" ? undefined : data.current,
+    waves: data.waves === "" ? undefined : data.waves,
+    weather: data.weather === "" ? undefined : data.weather,
+    entry_type: data.entry_type === "" ? undefined : data.entry_type,
+    boat_name: boatNameOrNull(data.boat_name ?? "") ?? undefined,
+    mixtures: normalizeMixtures(data.mixtures ?? []),
+  };
 }

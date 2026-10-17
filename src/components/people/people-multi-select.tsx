@@ -47,7 +47,6 @@ export interface PeopleMultiSelectProps extends FormControlSlotProps {
   // trip's and course's people. Each is read by uuid, and shown while their
   // name contains the query.
   pinnedUuids?: readonly string[];
-  placeholder?: string;
   disabled?: boolean;
 }
 
@@ -66,7 +65,6 @@ export function PeopleMultiSelect({
   excludeIds,
   until,
   pinnedUuids,
-  placeholder,
   disabled,
   // Forwarded to the "add a person" combobox - the field's one control a label
   // can name. The rows above it name their own controls.
@@ -235,7 +233,7 @@ export function PeopleMultiSelect({
                       </option>
                     ))}
                     {/* A role a newer API stored that this build has no word
-                        for is kept, and offered as itself, rather than read as
+                        for is kept, and offered de-snaked, rather than read as
                         "No role" and cleared by the next save. */}
                     {role !== NO_ROLE && !knownRole && (
                       <option value={role}>{personRoleLabel(role)}</option>
@@ -274,8 +272,7 @@ export function PeopleMultiSelect({
         onCreate={createNamed}
         disabled={disabled}
         placeholder={
-          placeholder ??
-          (value.length ? "Add another person..." : "Select a person...")
+          value.length ? "Add another person..." : "Select a person..."
         }
         noItemsLabel="No people yet. Type a name and press Enter to add one."
         noMatchesLabel="Nobody matches. Press Enter to add a person of that name."

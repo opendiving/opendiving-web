@@ -27,16 +27,14 @@ interface UseDeleteResourceOptions {
  * settings. Confirmation is driven by a `ConfirmDialog` (via
  * `pendingId`/`requestDelete`) rather than the blocking native `confirm()`.
  *
- * The detail pages used to hand-roll this, and had drifted: only `gear/[id]` ran the
- * failure through `getApiErrorMessage`, so a 409 from the API - "this dive site is
- * used by 3 dives", the one message that tells the diver what to do about it - was
- * replaced by a generic "Please try again." on dives, sites and trips.
+ * One copy, so every delete runs its failure through `getApiErrorMessage`: a 409
+ * from the API - "this dive site is used by 3 dives" - is the one message that
+ * tells the diver what to do about it, and a generic "Please try again." hides it.
  */
 export function useDeleteResource(
   // The second argument is for the deletes that take one: `deleteTrip` and
   // `deleteDiveSite` accept the uuid to move the resource's dives onto. A
-  // `deleteFn` that only takes an id satisfies this too, which is why the call
-  // sites whose delete takes nothing but an id are unchanged.
+  // `deleteFn` that only takes an id satisfies this too.
   deleteFn: (id: string, option?: string) => Promise<unknown>,
   {
     confirmMessage,

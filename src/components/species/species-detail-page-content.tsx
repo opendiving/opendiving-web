@@ -22,29 +22,12 @@ import {
   HERO_BODY,
   MapHero,
   MapHeroPageSkeleton,
+  PAGE_COLUMN,
   type MapHeroFigure,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { PageSpinner } from "@/components/ui/page-spinner";
-
-// One labelled fact in the taxonomy card, rendered only when the catalog
-// records it - the same shape the course and dive sidebars use.
-function InfoRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="text-sm font-medium text-muted-foreground mb-1">
-        {label}
-      </div>
-      <div className="text-sm">{children}</div>
-    </div>
-  );
-}
+import { InfoRow } from "@/components/ui/info-row";
 
 /**
  * One species: its photo across the hero and its credit in a card, what the
@@ -106,7 +89,7 @@ export function SpeciesDetailPageContent() {
 
   if (!species) {
     return (
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div className={PAGE_COLUMN}>
         <NotFoundState
           message="Species not found."
           backHref={back.href}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { CERTIFICATION_EXPIRING_SOON_DAYS } from "@/lib/certification";
 import { readLegalPageConfig } from "@/lib/api/config.server";
@@ -9,6 +9,7 @@ import {
   OperatorBlock,
 } from "@/components/legal/operator-block";
 import { Card, CardContent } from "@/components/ui/card";
+import { PAGE_COLUMN } from "@/components/ui/map-hero";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -48,8 +49,8 @@ export default async function PrivacyPage() {
   const { projectOperated, joinLinks, mapTiles } = await readLegalPageConfig();
 
   return (
-    <div className="max-w-6xl mx-auto px-2.5 sm:px-6 lg:px-8 pt-8 pb-6 space-y-6">
-      <div>
+    <div className={PAGE_COLUMN}>
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Privacy Policy
         </h1>

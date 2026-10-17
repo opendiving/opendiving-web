@@ -94,20 +94,17 @@ export function EntryUnitToggle({
  * The toggle is positioned rather than laid out beside the label, and that is the
  * whole point of this component: **any flex or grid parent blockifies its
  * children**, and `FormLabel` is a `<label>`, which is `display: inline` by
- * default. Wrapping it in `flex items-center justify-between` therefore shrank its
- * box from the 17px inline content area to the 14px line box its `leading-none`
- * declares, while the 18px toggle became the row's height instead — so a field
- * with a toggle sat its input 2px lower and its label text 2px higher than the
- * field beside it in the same grid row. Measured on `Water type` / `Altitude`,
- * which are side by side, and identical on all five toggles in the dive form.
+ * default. Inside `flex items-center justify-between` its box shrinks from the
+ * 17px inline content area to the 14px line box its `leading-none` declares,
+ * while the 18px toggle becomes the row's height instead — so a field with a
+ * toggle sits its input 2px lower and its label text 2px higher than the field
+ * beside it in the same grid row.
  *
- * Taking the toggle out of flow fixes both halves at once: the label stays inline
- * in an ordinary block, so the row is the same line box it always was and the text
- * keeps its baseline, and the toggle no longer has any say in the row's height. It
- * is centred on that line box, which is the same relationship to the label text it
- * had before. Nothing about the non-toggle fields changes, and nothing here needs
- * to know the toggle's height — which is what stops this drifting the next time
- * the control's padding moves.
+ * Out of flow, the toggle leaves the label inline in an ordinary block, so the row
+ * is the same line box as a field without a toggle and the text keeps its
+ * baseline, and the toggle has no say in the row's height. It is centred on that
+ * line box. Nothing here needs to know the toggle's height — which is what stops
+ * this drifting the next time the control's padding moves.
  */
 export function EntryUnitLabelRow({
   children,

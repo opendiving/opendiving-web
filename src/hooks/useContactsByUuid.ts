@@ -8,8 +8,11 @@ import { fetchAllContacts, type Contact } from "@/lib/api/contacts";
  * a gear item's service history, a trip's parts and the dives on it. The records
  * store the uuid and nothing else, so the names are read here.
  *
- * One read of the whole list rather than one request per uuid: a diver keeps tens
- * of contacts, and a trip naming five would otherwise cost five. It is read again
+ * One read of the whole list, where `usePeopleByUuid` reads one per uuid, because
+ * the two lists grow differently: a diver keeps tens of contacts - the shops and
+ * places they dive with - so a trip naming five costs one request rather than five,
+ * while people gather with every buddy, guide and instructor logged, and a card
+ * naming three should not page through hundreds. It is read again
  * only when a uuid turns up that the last read did not hold - a contact created
  * from a dialog on the same page - and never for one that read already answered,
  * so a contact deleted since is not asked for on every render.

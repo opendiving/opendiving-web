@@ -20,11 +20,10 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { Input } from "@/components/ui/input";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { countNoun } from "@/lib/format";
 
-const diveCount = (count: number) =>
-  count === 1 ? "1 dive" : `${count} dives`;
-const siteCount = (count: number) =>
-  count === 1 ? "1 site" : `${count} sites`;
+const diveCount = (count: number) => countNoun(count, "dive");
+const siteCount = (count: number) => countNoun(count, "site");
 
 // How many of each carry the tag. The sites only where there are some, since
 // most tags are a dive's alone; the dives always, so a tag carried by nothing

@@ -1,14 +1,27 @@
 import { apiClient } from "./client";
 
-// The bounds `GET /geocode/search` declares on its own `q`. Mirrored rather than
-// discovered, because a query outside them is a 422 and a 422 is an exception,
-// and the place picker's whole error story is "an empty list is survivable, a
-// thrown error is not".
-//
-// Both are exported because a field that searches has to say something while the
-// query is outside them, and "no places found" is not it: nothing was looked for.
+/**
+ * The bounds `GET /geocode/search` declares on its own `q`. Mirrored rather than
+ * discovered, because a query outside them is a 422 and a 422 is an exception,
+ * and the place picker's whole error story is "an empty list is survivable, a
+ * thrown error is not".
+ *
+ * Both are exported because a field that searches has to say something while the
+ * query is outside them, and "no places found" is not it: nothing was looked for.
+ */
 export const MIN_PLACE_QUERY_LENGTH = 2;
+/** The longest `q` `GET /geocode/search` accepts; see `MIN_PLACE_QUERY_LENGTH`. */
 export const MAX_PLACE_QUERY_LENGTH = 200;
+
+/**
+ * How long a place search waits after a keystroke - slower than the combobox's
+ * own 250 ms on purpose. Every keystroke that gets past it reaches the geocoder
+ * through the API's proxy, which enforces one request a second to each provider
+ * across the whole instance and answers `[]` rather than queueing once that is
+ * exceeded - so a fast debounce doesn't just waste requests, it turns them into
+ * empty menus.
+ */
+export const PLACE_SEARCH_DEBOUNCE_MS = 450;
 
 /**
  * One place, normalized by the API away from whichever provider answered.
@@ -76,9 +89,11 @@ export type ReverseGeocode =
  * such endpoint at all.
  */
 export const geocodingAPI = {
-  // Name the place at a position, so a site pinned on the map can offer a
-  // `location`. The API rounds the position before looking it up and caches the
-  // answer, so calling this per pin costs the provider almost nothing.
+  /**
+   * Name the place at a position, so a site pinned on the map can offer a
+   * `location`. The API rounds the position before looking it up and caches the
+   * answer, so calling this per pin costs the provider almost nothing.
+   */
   async reverseGeocode(
     latitude: number,
     longitude: number,

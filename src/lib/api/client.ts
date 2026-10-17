@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 import { API_BASE_URL } from "@/lib/api-base";
+import { getApiErrorStatus } from "./error";
 
 /**
  * Dispatched when a token refresh fails so `AuthContext` can clear the stale
@@ -8,19 +9,6 @@ import { API_BASE_URL } from "@/lib/api-base";
  * guards then handle navigation via Next's router instead of a hard page reload.
  */
 export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
-
-// The full base every request is appended to, `/api/v1` prefix included - the API
-// mounts nothing at the bare origin, so a value without it 404s on every call.
-//
-// Unset, this is the *relative* `/api/v1`, served by this app's own proxy route and
-// resolved by the browser against whatever origin loaded the page. `NEXT_PUBLIC_API_URL`
-// overrides it at build time for a split-origin deployment, and local dev sets it in
-// `.env` so the browser keeps talking to `localhost:8000` directly.
-//
-// Declared in `lib/api-base.ts` rather than here because axios is no longer its only
-// consumer: a species photo is an unauthenticated `<img src>` that never goes through
-// this client and still has to resolve to the same base. Two copies of the `||` would be
-// two places for the split-origin build to break.
 
 // The access token is intentionally kept in memory only, never in
 // localStorage/sessionStorage: those are readable by any JS running on the
@@ -224,7 +212,7 @@ apiClient.interceptors.response.use(
     const isAuthEndpoint = SESSION_MINTING_PATHS.has(originalRequest?.url);
 
     if (
-      error.response?.status === 401 &&
+      getApiErrorStatus(error) === 401 &&
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {
@@ -287,25 +275,69 @@ apiClient.get = ((url: string, config?: AxiosRequestConfig) => {
   return request;
 }) as typeof apiClient.get;
 
-// The envelope every list endpoint returns (fastcrud's `PaginatedListResponse`).
-// It lives here, in the lowest layer, because `lib/api/*` is what produces it -
-// it used to be declared in `hooks/usePaginatedResource.ts`, a layer *above*
-// `lib/api/`, which is why eight modules each redeclared their own copy rather
-// than import upwards.
-//
-// All five fields are declared, matching the eight per-resource copies this
-// replaces. Nothing in the app reads `page`/`items_per_page` - `total_count` and
-// `has_more` are what `useInfiniteResource` reads, and between them drive every
-// load-on-scroll trigger in the app - but they are always on the wire, so
-// omitting them (as the `hooks/` copy did) made the envelope look like it had
-// three fields. Note the API clamps both, so the `items_per_page` echoed back can
-// be smaller than the one requested.
+/**
+ * The envelope every list endpoint returns (fastcrud's `PaginatedListResponse`).
+ * It lives here, in the lowest layer, because `lib/api/*` is what produces it and
+ * nothing in `lib/api/` imports upwards from `hooks/`.
+ *
+ * All five fields are declared. Nothing in the app reads `page`/`items_per_page` -
+ * `total_count` and `has_more` are what `useInfiniteResource` reads, and between
+ * them drive every load-on-scroll trigger in the app - but they are always on the
+ * wire, and omitting them would make the envelope look like it had three fields.
+ * Note the API clamps both, so the `items_per_page` echoed back can be smaller than
+ * the one requested.
+ */
 export interface PaginatedResponse<T> {
   data: T[];
   total_count: number;
   has_more: boolean;
   page: number;
   items_per_page: number;
+}
+
+/**
+ * What a write the API answers with a sentence rather than a row resolves with -
+ * every update and delete that does, handed on rather than dropped, so the type
+ * says what is on the wire. No caller shows it: a toast is worded by the page that
+ * knows what was saved.
+ */
+export interface MessageResponse {
+  message: string;
+}
+
+/**
+ * What a plain list narrows by besides its page: one `search` the API matches
+ * server-side, left off the request when empty.
+ */
+export interface SearchFilters {
+  search?: string;
+}
+
+/**
+ * A request config for a multipart body. The client's default `Content-Type` is
+ * `application/json`, which would make the API see no file at all; clearing it
+ * lets the browser set `multipart/form-data` with the boundary only it can
+ * compute.
+ */
+export function multipartRequest(
+  config: AxiosRequestConfig = {},
+): AxiosRequestConfig {
+  return { ...config, headers: { "Content-Type": undefined } };
+}
+
+/**
+ * A request config for bytes the API caches with `max-age=300`. `version` - a
+ * digest or an `updated_at` that changes with the contents - goes as a `v` query
+ * param the API ignores, so each version gets its own URL: without it the browser
+ * would serve the old bytes from its own cache for five minutes after a replace,
+ * however correctly the app refetches. Stable while the contents are, so repeat
+ * views still hit the cache.
+ */
+export function versionedRequest(
+  version: string | undefined,
+  config: AxiosRequestConfig = {},
+): AxiosRequestConfig {
+  return { ...config, params: version ? { v: version } : undefined };
 }
 
 /**
@@ -357,6 +389,39 @@ export function lookupRequest(
   };
 }
 
+/** One page of a `/<plural>/lookup` route, as the pickers ask for it. */
+export type LookupFetcher<T, Q extends LookupQuery = LookupQuery> = (
+  page: number,
+  items_per_page: number,
+  query?: Q,
+) => Promise<PaginatedResponse<T>>;
+
+/** The page fetcher of the lookup route at `path`, whose rows are `T`. */
+export function lookupFetcher<T, Q extends LookupQuery = LookupQuery>(
+  path: string,
+): LookupFetcher<T, Q> {
+  return async (page, items_per_page, query) => {
+    const response = await apiClient.get<PaginatedResponse<T>>(
+      path,
+      lookupRequest(page, items_per_page, query),
+    );
+    return response.data;
+  };
+}
+
+/**
+ * The rows of a lookup that the given uuids name, in no particular order: one
+ * page exactly as long as the list, and no request for an empty one.
+ */
+export function lookupByUuid<T>(
+  lookup: LookupFetcher<T, UuidLookupQuery>,
+): (uuids: readonly string[]) => Promise<T[]> {
+  return async (uuids) => {
+    if (uuids.length === 0) return [];
+    return (await lookup(1, uuids.length, { uuids })).data;
+  };
+}
+
 export interface FetchAllPagesOptions<T> {
   // Ceiling on requests, not on items. 20 pages x 100 items is far past what any
   // of the "fetch everything" call sites are actually sized for.
@@ -394,11 +459,11 @@ export function isAbortError(error: unknown): boolean {
 /**
  * Walks every page of a list endpoint and returns the items as one array.
  *
- * This replaces four hand-rolled `while (hasMore)` loops. They were not the
- * infinite-loop hazard they looked like - the API clamps `items_per_page` to 100
- * and computes `has_more` as `page * items_per_page < total_count`, so `page`
- * outruns any realistic insert rate - but they were unbounded, uncancellable, and
- * silent about it.
+ * Bounded, cancellable between pages, and loud when it truncates. A bare
+ * `while (hasMore)` is not an infinite-loop hazard - the API clamps
+ * `items_per_page` to 100 and computes `has_more` as
+ * `page * items_per_page < total_count`, so `page` outruns any realistic insert
+ * rate - but it is unbounded, uncancellable, and silent about it.
  *
  * The real hazard is subtler and is why `keyOf` exists: list pages are cached for
  * 60 seconds under a per-`page` key, so a loop can stitch together *different

@@ -3,6 +3,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveCard } from "./dive-card";
 import type { Dive } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 import { giveFramesASize } from "@/test/frame-size";
 import { reveal } from "@/test/intersection";
 
@@ -68,20 +69,15 @@ vi.mock("@/components/dives/dive-profile-silhouette", () => ({
   ),
 }));
 
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
+const dive = (overrides: Partial<Dive> = {}) =>
+  baseDive({
     uuid: "dive-1",
     dive_number: 212,
-    start_time: "2026-04-04T10:04:47+02:00",
-    submerged_time: 2700,
     max_depth: 30.52,
     avg_depth: 18.2,
     bottom_temperature: 24.4,
-    dive_sites: [],
-    mixtures: [],
     ...overrides,
-  } as Dive;
-}
+  });
 
 const card = (props: Partial<Parameters<typeof DiveCard>[0]> = {}) => {
   render(
@@ -93,8 +89,7 @@ const card = (props: Partial<Parameters<typeof DiveCard>[0]> = {}) => {
   return screen.getByRole("listitem");
 };
 
-const water = (item: HTMLElement) =>
-  item.querySelector(".bg-\\[var\\(--map-water\\)\\] svg");
+const water = (item: HTMLElement) => item.querySelector(".bg-map-water svg");
 
 describe("DiveCard", () => {
   // Named from the dive's own sites and fixes: its tiles carry nothing of it.

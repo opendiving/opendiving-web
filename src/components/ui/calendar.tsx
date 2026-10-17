@@ -106,12 +106,12 @@ function Calendar({
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         // Previous arrow, caption and next arrow share the first row; the day
-        // grid spans all three columns on the second. The arrows used to be
-        // `absolute`, which resolved against whichever ancestor happened to be
-        // positioned - never this month - and dropped them somewhere unrelated
-        // to the caption they steer. Laying the row out in flow keeps them on
-        // the caption's baseline at any width, and keeps them off the month and
-        // year selects rather than merely near-missing them.
+        // grid spans all three columns on the second. The arrows are in flow,
+        // not `absolute`, which resolves against whichever ancestor happens to
+        // be positioned - never this month - and drops them somewhere unrelated
+        // to the caption they steer. In flow they stay on the caption's
+        // baseline at any width, and off the month and year selects rather than
+        // merely near-missing them.
         month: "grid grid-cols-[auto_1fr_auto] items-center gap-y-4",
         month_caption: "flex justify-center items-center",
         caption_label: "text-sm font-medium",

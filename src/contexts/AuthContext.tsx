@@ -197,8 +197,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (outcome.status === "deletion_pending") {
         setRestore({
-          restoreToken: outcome.restore_token!,
-          email: outcome.email!,
+          restoreToken: outcome.restore_token,
+          email: outcome.email,
           purgeAfter: outcome.purge_after ?? null,
         });
         setOnboarding(null);
@@ -206,8 +206,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       setOnboarding({
-        onboardingToken: outcome.onboarding_token!,
-        email: outcome.email!,
+        onboardingToken: outcome.onboarding_token,
+        email: outcome.email,
         name: outcome.name,
       });
       setRestore(null);

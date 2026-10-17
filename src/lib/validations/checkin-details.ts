@@ -9,7 +9,13 @@ import {
   type EmergencyContact,
   type InsurancePolicy,
 } from "@/lib/api/checkin-details";
-import { todayIsoDate } from "@/lib/gear-service";
+import { todayIsoDate } from "@/lib/date-time";
+import {
+  maxLength,
+  optionalDateField,
+  optionalEmailField,
+  phoneField,
+} from "./fields";
 
 // Every value is a string in form state, `""` being "not set": react-hook-form
 // re-displays a field's default the moment its value resolves to
@@ -52,45 +58,31 @@ export const CHECKIN_GROUPS = {
 
 export type CheckinGroup = keyof typeof CHECKIN_GROUPS;
 
-// Bare "YYYY-MM-DD", with `""` for a cleared field - a union rather than a
-// `.transform()`, which would change what `z.input<>` infers and break the form's
-// field types (see DECISIONS.md).
-const optionalDate = z.union([
-  z.literal(""),
-  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date"),
-]);
-
 // The API's bounds, which are DiveJSON's for the member each travels as. Over-long is
 // a 422 there rather than a truncation, so it is caught in the field here.
 const emergencyContactSchema = z.object({
-  name: z
-    .string()
-    .max(255, "Name cannot exceed 255 characters")
-    .refine((value) => value.trim() !== "", "Enter who to call"),
-  phone: z.string().max(32, "Phone number cannot exceed 32 characters"),
-  relationship: z.string().max(64, "Relationship cannot exceed 64 characters"),
+  name: maxLength("Name", 255).refine(
+    (value) => value.trim() !== "",
+    "Enter who to call",
+  ),
+  phone: phoneField("Phone number"),
+  relationship: maxLength("Relationship", 64),
 });
 
 const insurancePolicySchema = z.object({
-  provider: z
-    .string()
-    .max(255, "Provider cannot exceed 255 characters")
-    .refine((value) => value.trim() !== "", "Enter the provider"),
-  number: z.string().max(64, "Policy number cannot exceed 64 characters"),
-  expires_on: optionalDate,
+  provider: maxLength("Provider", 255).refine(
+    (value) => value.trim() !== "",
+    "Enter the provider",
+  ),
+  number: maxLength("Policy number", 64),
+  expires_on: optionalDateField(),
 });
 
 const MEMBER_SCHEMAS: Record<CheckinMemberKey, z.ZodTypeAny> = {
-  email: z
-    .string()
-    .max(255, "Email cannot exceed 255 characters")
-    .refine(
-      (value) => !value.trim() || z.email().safeParse(value.trim()).success,
-      "Please enter a valid email address",
-    ),
-  phone: z.string().max(32, "Phone number cannot exceed 32 characters"),
+  email: optionalEmailField(),
+  phone: phoneField("Phone number"),
   // Today itself is accepted, as it is there.
-  date_of_birth: optionalDate.refine(
+  date_of_birth: optionalDateField().refine(
     (value) => value <= todayIsoDate(),
     "Date of birth cannot be in the future",
   ),

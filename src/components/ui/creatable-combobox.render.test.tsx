@@ -6,7 +6,7 @@ import { CreatableCombobox, type ComboboxItem } from "./creatable-combobox";
 
 // A selection is not a query. Everything here is about the single-select with
 // something already in it - the trip picker on a dive that is already filed
-// under one - where the input's text doubles as the search query and so used to
+// under one - where the input's text doubles as the search query and so would
 // open the menu on the one row already chosen.
 
 const TRIPS: ComboboxItem[] = [

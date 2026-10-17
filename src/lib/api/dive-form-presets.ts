@@ -1,4 +1,9 @@
-import { apiClient, fetchAllPages, type PaginatedResponse } from "./client";
+import {
+  apiClient,
+  fetchAllPages,
+  type MessageResponse,
+  type PaginatedResponse,
+} from "./client";
 import {
   hiddenFieldsEqual,
   type DiveFormFieldKey,
@@ -81,16 +86,17 @@ export interface DiveFormPresetUpdate {
   hidden_fields?: DiveFormFieldKey[];
 }
 
-export type PaginatedDiveFormPresetsResponse =
-  PaginatedResponse<DiveFormPreset>;
-
+/** The account's named dive-form field presets. */
 export const diveFormPresetsAPI = {
   /**
    * Save the current hidden set under a name. 422 when the account already has a
    * preset by that name, compared case-insensitively.
    */
   async createPreset(data: DiveFormPresetCreate): Promise<DiveFormPreset> {
-    const response = await apiClient.post(`/dive-form-preset`, data);
+    const response = await apiClient.post<DiveFormPreset>(
+      `/dive-form-preset`,
+      data,
+    );
     return response.data;
   },
 
@@ -98,15 +104,11 @@ export const diveFormPresetsAPI = {
   async getPresets(
     page: number = 1,
     items_per_page: number = 100,
-  ): Promise<PaginatedDiveFormPresetsResponse> {
-    const response = await apiClient.get(`/dive-form-presets`, {
-      params: { page, items_per_page },
-    });
-    return response.data;
-  },
-
-  async getPreset(presetUuid: string): Promise<DiveFormPreset> {
-    const response = await apiClient.get(`/dive-form-preset/${presetUuid}`);
+  ): Promise<PaginatedResponse<DiveFormPreset>> {
+    const response = await apiClient.get<PaginatedResponse<DiveFormPreset>>(
+      `/dive-form-presets`,
+      { params: { page, items_per_page } },
+    );
     return response.data;
   },
 
@@ -114,16 +116,19 @@ export const diveFormPresetsAPI = {
   async updatePreset(
     presetUuid: string,
     updateData: DiveFormPresetUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
       `/dive-form-preset/${presetUuid}`,
       updateData,
     );
     return response.data;
   },
 
-  async deletePreset(presetUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/dive-form-preset/${presetUuid}`);
+  /** Delete a preset. */
+  async deletePreset(presetUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/dive-form-preset/${presetUuid}`,
+    );
     return response.data;
   },
 
@@ -137,7 +142,9 @@ export const diveFormPresetsAPI = {
    * with only what it created, which is what the confirmation counts.
    */
   async restoreDefaults(): Promise<DiveFormPreset[]> {
-    const response = await apiClient.post(`/dive-form-presets/defaults`);
+    const response = await apiClient.post<DiveFormPreset[]>(
+      `/dive-form-presets/defaults`,
+    );
     return response.data;
   },
 };

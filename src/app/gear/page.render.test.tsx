@@ -11,8 +11,9 @@ import { announceSavedElsewhere } from "@/lib/saved-elsewhere";
 // keeps one identity across renders, and this page's two fetch callbacks list `user`
 // in their dependencies. A mock handing back a fresh `user` per render gives
 // `useInfiniteResource` a new `fetchFn` every time, and its fetch-on-mount effect
-// re-runs on every render the fetch itself causes. See "The new-dive render test was
-// in a loop with itself" in DECISIONS.md, and "reads the gear list once" below.
+// re-runs on every render the fetch itself causes. See "The new-dive render test's
+// mocks are identity-stable, so the prefill effect runs once" in DECISIONS.md, and
+// "reads the gear list once" below.
 //
 // `vi.hoisted` because a `vi.mock` factory is hoisted above every other statement in
 // the file and so cannot close over an ordinary `const`.
@@ -268,8 +269,8 @@ describe("an empty gear card keeps only its hidden heading", () => {
   });
 
   it("keeps it, switch and all, when the only gear is archived", async () => {
-    getGearItems.mockImplementation(async (_page, _perPage, includeArchived) =>
-      page(includeArchived ? [gearItem({ is_archived: true })] : []),
+    getGearItems.mockImplementation(async (_page, _perPage, filters) =>
+      page(filters?.includeArchived ? [gearItem({ is_archived: true })] : []),
     );
 
     render(<GearPage />);
@@ -350,7 +351,9 @@ describe("a service logged from the header's bell", () => {
     );
 
     await waitFor(() =>
-      expect(getGearItems).toHaveBeenCalledWith(1, 11, false),
+      expect(getGearItems).toHaveBeenCalledWith(1, 11, {
+        includeArchived: false,
+      }),
     );
     expect(screen.getByText("Item 10")).toBeInTheDocument();
   });

@@ -20,14 +20,14 @@ vi.mock("@/lib/api/admin", async (importOriginal) => {
   return {
     ...actual,
     adminAPI: {
-      listInviteRequests: vi.fn(),
+      getInviteRequests: vi.fn(),
       sendInvitations: vi.fn(),
       removeInviteRequests: vi.fn(),
     },
   };
 });
 
-const listInviteRequests = vi.mocked(adminAPI.listInviteRequests);
+const getInviteRequests = vi.mocked(adminAPI.getInviteRequests);
 const sendInvitations = vi.mocked(adminAPI.sendInvitations);
 const removeInviteRequests = vi.mocked(adminAPI.removeInviteRequests);
 
@@ -60,7 +60,7 @@ beforeEach(() => {
   // A fresh object per call, which is what a real API client returns and the
   // only shape in which a render loop shows up as a rising call count. See "A
   // shared mock response object hides a render loop" in DECISIONS.md.
-  listInviteRequests.mockImplementation(async () => page([request(), SECOND]));
+  getInviteRequests.mockImplementation(async () => page([request(), SECOND]));
   sendInvitations.mockResolvedValue(
     outcomes([{ email: "first@example.com", outcome: "invited" }]),
   );
@@ -97,7 +97,7 @@ describe("the invite queue", () => {
     await screen.findByText("first@example.com");
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    expect(listInviteRequests).toHaveBeenCalledTimes(1);
+    expect(getInviteRequests).toHaveBeenCalledTimes(1);
   });
 
   it("lists each address with when it was requested", async () => {
@@ -109,7 +109,7 @@ describe("the invite queue", () => {
   });
 
   it("marks a request whose address already has an account", async () => {
-    listInviteRequests.mockImplementation(async () =>
+    getInviteRequests.mockImplementation(async () =>
       page([request({ has_account: true }), SECOND]),
     );
 
@@ -165,15 +165,15 @@ describe("the invite queue", () => {
 
   // The queue accumulates as the operator scrolls, and both batch routes reject
   // more than a hundred addresses outright rather than sending part of the
-  // batch. Selection used to be held under that ceiling for free, by being
-  // cleared on every page turn; loading on scroll is what removed the page turn.
+  // batch. Loading on scroll means no page turn clears the selection, so nothing
+  // but the select-all itself holds it under that ceiling.
   describe("the hundred-address batch cap", () => {
     const many = Array.from({ length: 130 }, (_, i) =>
       request({ email: `diver${i}@example.com` }),
     );
 
     beforeEach(() => {
-      listInviteRequests.mockImplementation(async () => page(many));
+      getInviteRequests.mockImplementation(async () => page(many));
     });
 
     it("selects at most a full batch, not every row on screen", async () => {
@@ -293,7 +293,7 @@ describe("sending invitations", () => {
     await act("Send invitations", ["first@example.com"]);
     await confirm("Send");
 
-    await waitFor(() => expect(listInviteRequests).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(getInviteRequests).toHaveBeenCalledTimes(2));
     expect(
       screen.getByRole("checkbox", { name: "Select first@example.com" }),
     ).not.toBeChecked();
@@ -356,6 +356,6 @@ describe("removing requests", () => {
     await act("Remove", ["first@example.com"]);
     await confirm("Remove");
 
-    await waitFor(() => expect(listInviteRequests).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(getInviteRequests).toHaveBeenCalledTimes(2));
   });
 });

@@ -20,7 +20,7 @@ import {
 } from "@/components/dives/dive-form-sections";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveSiteSummary, Recording } from "@/lib/api/dives";
-import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
+import type { DiveFileListProps } from "@/components/dives/use-pending-dive-files";
 import { GearItemSummary } from "@/lib/api/gear";
 import { SpeciesSummary } from "@/lib/api/species";
 import {
@@ -43,16 +43,9 @@ export interface DiveFormProps<TFieldValues extends DiveFormValues> {
   cancelHref: string;
   submittingLabel: string;
   submitLabel: string;
-  // Passed straight through to `DiveFileImport`, every one of them. The page,
-  // not this card, owns what the file list is about: a picked file can only be
-  // attached once the dive exists, which is after `onSubmit` resolves, and a
-  // stored one is deleted in the same pass rather than when it is struck off.
-  onFileAdded?: (pending: PendingDiveFile) => void;
-  pendingFiles?: PendingDiveFile[];
-  onRemovePendingFile?: (id: string) => void;
-  removedStoredFiles?: string[];
-  onRemoveStoredFile?: (fileUuid: string) => void;
-  onRestoreStoredFile?: (fileUuid: string) => void;
+  // Passed straight through to `DiveFileImport`. The page, not this card, owns
+  // the file list - see `usePendingDiveFiles`.
+  fileList?: DiveFileListProps;
   recordings?: Recording[];
   // The dive being edited, so the import can tell a match against it from a
   // match against some other dive. Absent when creating.
@@ -79,12 +72,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
   cancelHref,
   submittingLabel,
   submitLabel,
-  onFileAdded,
-  pendingFiles,
-  onRemovePendingFile,
-  removedStoredFiles,
-  onRemoveStoredFile,
-  onRestoreStoredFile,
+  fileList,
   recordings,
   diveUuid,
   knownDiveSites,
@@ -193,7 +181,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
               <DiveFormSectionIndex className="sticky top-[calc(var(--header-height)+--spacing(6))]" />
             </div>
             <form
-              // The browser no longer cancels this submit on its own - see
+              // The browser doesn't cancel this submit on its own - see
               // `handleSubmitEvent`, which asks it the same question and reports
               // the answer rather than leaving the diver with a dead button.
               noValidate
@@ -205,12 +193,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
                 <DiveFileImport
                   form={form}
                   replaceMixtures={mixtureFieldArray.replace}
-                  onFileAdded={onFileAdded}
-                  pending={pendingFiles}
-                  onRemovePending={onRemovePendingFile}
-                  removedStored={removedStoredFiles}
-                  onRemoveStored={onRemoveStoredFile}
-                  onRestoreStored={onRestoreStoredFile}
+                  {...fileList}
                   recordings={recordings}
                   diveUuid={diveUuid}
                   returnTo={cancelHref}

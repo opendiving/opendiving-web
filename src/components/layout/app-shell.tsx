@@ -42,9 +42,9 @@ function isChromeFree(pathname: string | null): boolean {
 /**
  * Renders the persistent app chrome (Header + Footer) around page content.
  *
- * Living once in the root layout (rather than being re-declared on every
- * page) means Header/Footer no longer unmount and remount on every
- * navigation, which is what made switching between pages feel janky.
+ * Lives once in the root layout rather than on every page, so Header/Footer
+ * do not unmount and remount on every navigation - which makes switching
+ * between pages feel janky.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -1,6 +1,5 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import {
   Toast,
   ToastClose,
@@ -10,6 +9,7 @@ import {
   ToastViewport,
 } from "@/components/ui/toast";
 import { useToast } from "@/components/ui/use-toast";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 /**
  * Tailwind's `sm`, spelled out. `ToastViewport` puts the stack at the top of a
@@ -20,32 +20,11 @@ import { useToast } from "@/components/ui/use-toast";
  */
 const WIDE_VIEWPORT = "(min-width: 40rem)";
 
-/**
- * Whether the toast stack is in its bottom-right corner rather than across the
- * top of the screen.
- *
- * `useSyncExternalStore` rather than an effect, so the first client render
- * already has the answer and no toast is ever briefly swipeable in the wrong
- * direction. The server snapshot is `false` because the classes it pairs with
- * are mobile-first: the narrow layout is what the markup says before any
- * `sm:` rule applies, and a server that guessed `true` would disagree with its
- * own HTML.
- */
-function useWideViewport() {
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      const query = window.matchMedia(WIDE_VIEWPORT);
-      query.addEventListener("change", onStoreChange);
-      return () => query.removeEventListener("change", onStoreChange);
-    },
-    () => window.matchMedia(WIDE_VIEWPORT).matches,
-    () => false,
-  );
-}
-
 export function Toaster() {
   const { toasts } = useToast();
-  const isWide = useWideViewport();
+  // Whether the stack is in its bottom-right corner rather than across the top.
+  // `false` on the server, as the mobile-first classes it pairs with are.
+  const isWide = useMediaQuery(WIDE_VIEWPORT);
 
   return (
     // Swiped away in the direction the toast is already sitting in. Radix's

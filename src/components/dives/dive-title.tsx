@@ -16,8 +16,7 @@ export interface DiveTitleProps {
 
 // A step under the name's size and level with its capitals, glowing off the
 // map as the line's icons do.
-const RATING =
-  "align-[-0.0625em] text-[0.75em] [filter:drop-shadow(0_0_2px_var(--backdrop-fade))_drop-shadow(0_0_5px_var(--backdrop-fade))]";
+const RATING = "align-[-0.0625em] text-[0.75em] glow-icon";
 
 // `DiveTitle` as plain text, for where no markup can go - the tab's title.
 export function diveTitleText(diveNumber: number, sites: DiveSiteSummary[]) {

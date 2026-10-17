@@ -2,10 +2,11 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { Loader2, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 // Where Up/Down moves the highlight, given the current position and how many
 // options are on offer.
@@ -345,7 +346,7 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   // Single-value callers leave this off - once they have their one value, the
   // menu closing and the input showing the chosen name is the right outcome.
   //
-  // It implies `commitOnEnterOnly`, which used to be part of it.
+  // It implies `commitOnEnterOnly`.
   keepOpenOnSelect?: boolean;
   // For an append-only field where one item is the usual answer: a pick still
   // clears the filter, but closes the menu and leaves the field rather than
@@ -432,7 +433,7 @@ export function CreatableCombobox({
   });
   // The query `remoteResult` actually answers. Null until a search resolves, which
   // is what lets `commitAction` tell "the server says there is no such trip" apart
-  // from "we never asked" - the two used to be the same empty list.
+  // from "we never asked" - otherwise the two are the same empty list.
   const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   // The query whose search threw, or null if the last one to finish came back
@@ -610,7 +611,7 @@ export function CreatableCombobox({
   }, [activeOption]);
 
   // And do the same once for the selected row when the menu opens on one. The
-  // list is no longer filtered down to it (see `menuQuery`), so the trip a dive
+  // list is not filtered down to it (see `menuQuery`), so the trip a dive
   // is already filed under can sit anywhere in it - below the fold, as far as
   // the diver can tell absent. Nothing is *highlighted*: `activeIndex` stays -1
   // so Enter keeps its "commit the text" meaning, and the row is found by its
@@ -754,8 +755,7 @@ export function CreatableCombobox({
       onChange(undefined);
       // Including here, which is the Enter-on-an-empty-field case: pressed out
       // of habit after adding a place, it would otherwise close the menu and
-      // drop focus to `<body>` - precisely what `readyForNext` exists to stop,
-      // reached by the one branch that used to return before calling it.
+      // drop focus to `<body>` - precisely what `readyForNext` exists to stop.
       readyForNext();
       return;
     }
@@ -914,7 +914,7 @@ export function CreatableCombobox({
           }}
         />
         {(isSaving || isSearching) && (
-          <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+          <ButtonSpinner className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
         )}
         {!isSaving &&
           !isSearching &&

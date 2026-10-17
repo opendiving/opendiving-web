@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   combineStartTime,
+  daysBetweenIsoDates,
   formatDateOnly,
   formatDateTime,
   formatDateTimeForForm,
@@ -10,16 +11,15 @@ import {
   formatDiveTimeOnly,
   formatDurationForForm,
   formatDurationHoursMinutes,
-  formatTimeOnly,
   formatTripDateRange,
   formatUtcOffset,
   getBrowserUtcOffsetMinutes,
   diveWallClockTime,
   isDateOnlyStartTime,
   normalizeParsedStartTime,
-  parseFormDateTime,
   parseFormDuration,
   parseUtcOffsetMinutes,
+  todayIsoDate,
   splitStartTime,
 } from "./date-time";
 
@@ -32,22 +32,6 @@ describe("formatDateTimeForForm", () => {
   it("zero-pads single-digit month/day/hour/minute/second", () => {
     const date = new Date(2024, 0, 2, 3, 4, 5); // Jan 2, 2024, 03:04:05
     expect(formatDateTimeForForm(date)).toBe("2024-01-02 03:04:05");
-  });
-});
-
-describe("parseFormDateTime", () => {
-  it("round-trips with formatDateTimeForForm", () => {
-    const original = new Date(2024, 5, 1, 9, 5, 3);
-    const formatted = formatDateTimeForForm(original);
-    const parsed = parseFormDateTime(formatted);
-    expect(parsed.getTime()).toBe(original.getTime());
-  });
-
-  it("replaces the space with a T before parsing", () => {
-    const parsed = parseFormDateTime("2024-06-01 09:05:03");
-    expect(parsed.getFullYear()).toBe(2024);
-    expect(parsed.getMonth()).toBe(5);
-    expect(parsed.getDate()).toBe(1);
   });
 });
 
@@ -87,16 +71,6 @@ describe("formatDateTime", () => {
         day: "numeric",
       }),
     ).toBe("June 1, 2024");
-  });
-});
-
-describe("formatTimeOnly", () => {
-  it("formats a full ISO datetime string's time-of-day component in 24h format", () => {
-    expect(formatTimeOnly("2024-06-01T09:05:00")).toBe("09:05");
-  });
-
-  it("formats an afternoon time in 24h format, not AM/PM", () => {
-    expect(formatTimeOnly("2024-06-01T15:30:00")).toBe("15:30");
   });
 });
 
@@ -165,6 +139,30 @@ describe("normalizeParsedStartTime", () => {
     );
   });
 
+  // 02:30 on 2025-03-09 does not exist in New York: the clocks jump from 02:00 to
+  // 03:00. A local parse lands it on 03:30, an hour off the clock the computer
+  // recorded. The zone and the clock are both pinned, so the offset is known.
+  describe("in a zone whose spring-forward gap holds the clock", () => {
+    const originalTz = process.env.TZ;
+
+    beforeEach(() => {
+      process.env.TZ = "America/New_York";
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2025-06-01T12:00:00Z"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      process.env.TZ = originalTz;
+    });
+
+    it("keeps a naive 02:30 at 02:30", () => {
+      expect(normalizeParsedStartTime("2025-03-09T02:30:00")).toBe(
+        "2025-03-09T02:30:00-04:00",
+      );
+    });
+  });
+
   it("returns undefined for something that isn't a datetime at all", () => {
     expect(normalizeParsedStartTime("not a date")).toBeUndefined();
     expect(normalizeParsedStartTime("")).toBeUndefined();
@@ -223,21 +221,19 @@ describe("splitStartTime/combineStartTime", () => {
     spy.mockRestore();
   });
 
-  // This used to assert `0` - "defaults to a UTC offset for a naive string with
-  // none" - and that default is the bug rather than the behaviour. An imported
-  // dive whose zone was never recorded arrives naive, and collapsing it to UTC
-  // both moved the clock and invented a zone the first save then wrote down.
+  // Not `0`: an imported dive whose zone was never recorded arrives naive, and
+  // collapsing it to UTC moves the clock and invents a zone the first save then
+  // writes down.
   it("reports a null offset for a string carrying none, rather than UTC", () => {
     const { offsetMinutes } = splitStartTime("2024-05-01T09:00:00");
     expect(offsetMinutes).toBeNull();
   });
 
   it("keeps a naive string's wall clock exactly as written", () => {
-    // Load-bearing only outside UTC, and deliberately written anyway: the old
-    // code read a naive value through `new Date()`, which ECMAScript parses as
-    // *local*, so these digits came back shifted by whatever offset the reader
-    // happened to be sitting in - and came back correct, by luck, in UTC. The
-    // round-trip below is the assertion that fails in every zone.
+    // Load-bearing only outside UTC: reading a naive value through `new Date()`
+    // parses it as *local*, shifting these digits by whatever offset the reader
+    // is sitting in - and leaving them correct, by luck, in UTC. The round-trip
+    // below is the assertion that fails in every zone.
     const { localDateTime } = splitStartTime("2026-04-17T11:49:23");
     expect(localDateTime).toBe("2026-04-17 11:49:23");
   });
@@ -488,5 +484,49 @@ describe("formatTripDateRange", () => {
 
   it("formats just the end date when only end_date is set", () => {
     expect(formatTripDateRange(undefined, "2024-06-08")).toBe("Jun 8, 2024");
+  });
+});
+
+describe("todayIsoDate", () => {
+  it("formats as YYYY-MM-DD", () => {
+    expect(todayIsoDate(new Date(2026, 7, 9, 23, 30))).toBe("2026-08-09");
+  });
+
+  it("uses local date parts, not UTC", () => {
+    // 23:30 local on the 9th is already the 10th in UTC for any positive offset, so a
+    // `toISOString()`-based implementation would report tomorrow for half the world.
+    const late = new Date(2026, 7, 9, 23, 30);
+    expect(todayIsoDate(late)).toBe(
+      `${late.getFullYear()}-08-0${late.getDate()}`,
+    );
+  });
+});
+
+describe("daysBetweenIsoDates", () => {
+  it("counts forward and backward", () => {
+    expect(daysBetweenIsoDates("2026-08-10", "2026-08-20")).toBe(10);
+    expect(daysBetweenIsoDates("2026-08-10", "2026-08-01")).toBe(-9);
+    expect(daysBetweenIsoDates("2026-08-10", "2026-08-10")).toBe(0);
+  });
+
+  it("crosses month and year boundaries", () => {
+    expect(daysBetweenIsoDates("2026-12-25", "2027-01-01")).toBe(7);
+    expect(daysBetweenIsoDates("2028-02-28", "2028-03-01")).toBe(2); // leap year
+  });
+
+  it("is exact across a DST transition", () => {
+    // Most of Europe springs forward on 29 March 2026 and falls back on 25 October.
+    // A naive millisecond division would return 6.958… or 7.041… days here; rounding
+    // local-midnight Dates absorbs the 23- and 25-hour day.
+    expect(daysBetweenIsoDates("2026-03-26", "2026-04-02")).toBe(7);
+    expect(daysBetweenIsoDates("2026-10-22", "2026-10-29")).toBe(7);
+  });
+
+  it("never shifts a bare date by a day", () => {
+    // The `new Date("2026-08-20")` trap: that parses as UTC midnight, which is the
+    // 19th anywhere west of Greenwich. Building from split parts avoids it, so this
+    // holds regardless of the machine's timezone.
+    expect(daysBetweenIsoDates("2026-08-10", "2026-08-20")).toBe(10);
+    expect(daysBetweenIsoDates("2026-01-01", "2026-01-02")).toBe(1);
   });
 });

@@ -36,11 +36,8 @@ export interface PublicConfig {
    * The basemap every map draws, already resolved: a style URL pair or a raster
    * template pair, plus the credit rendered over whichever is active.
    *
-   * One field, and it was briefly two. A `tiles` pair sat beside it for the one
-   * change in which the site picker still drew its own `<img>` tiles and needed
-   * a raster template in every configuration - including the default, where this
-   * is a vector style and offers none. Both renderers are MapLibre now, so an
-   * operator's `MAP_STYLE_URL` reaches every map rather than all but one.
+   * One field, because every map is drawn by MapLibre: an operator's
+   * `MAP_STYLE_URL` reaches every map.
    */
   basemap: Basemap;
 }
@@ -48,9 +45,9 @@ export interface PublicConfig {
 /** `PublicConfig` plus the parts only the server renders with. */
 export interface RuntimeConfig extends PublicConfig {
   /**
-   * This instance's own origin. In the web server only `metadataBase` and the OpenGraph
-   * URL use it, so there a wrong value costs link previews; the map renderer also names the
-   * instance by it to the basemap and resolves a relative style URL against it.
+   * This instance's own origin. In the web server only `metadataBase` uses it, so there a
+   * wrong value costs the canonical URLs that resolve against it; the map renderer also names
+   * the instance by it to the basemap and resolves a relative style URL against it.
    */
   siteUrl: string;
   /**
@@ -76,14 +73,14 @@ export interface RuntimeConfig extends PublicConfig {
 
 /**
  * A configured value, preferring the runtime name and falling back to the
- * `NEXT_PUBLIC_`-prefixed one that used to carry it.
+ * `NEXT_PUBLIC_`-prefixed one.
  *
  * The fallback is reached through a *computed* key on purpose. Written as the literal
  * `process.env.NEXT_PUBLIC_X`, the compiler replaces the whole expression with whatever
  * the build machine had - and the published image is built with none of these set, so
  * the fallback would be frozen to `undefined` while still reading like it worked. A
  * computed key is left alone, which is what keeps a build-time-configured deployment
- * working after this module took over.
+ * working.
  *
  * Blank counts as unset at both levels. A compose file that names a variable it has no
  * value for (`GOOGLE_CLIENT_ID=`) has configured nothing, and reading that as "explicitly
@@ -128,7 +125,7 @@ function flag(
  *
  * `metadataBase` is a `new URL(...)`, which throws on a malformed value - and it is
  * built in the root layout, so a typo'd `SITE_URL` would take every page down over
- * OpenGraph tags. Failing back to the default and saying so is the same trade
+ * page metadata. Failing back to the default and saying so is the same trade
  * `lib/api-base.ts` and `lib/basemap.ts` make for the CSP.
  */
 function resolveSiteUrl(value: string | undefined): string {
@@ -137,7 +134,7 @@ function resolveSiteUrl(value: string | undefined): string {
     const { protocol } = new URL(value);
     // As in `apiCspSource`: `new URL` only throws when there is no parseable scheme at
     // all, so "htp://example.com" would sail through and reach crawlers as an
-    // unfetchable `og:url`.
+    // unfetchable canonical URL.
     if (protocol !== "http:" && protocol !== "https:")
       throw new Error(protocol);
     return value;
@@ -166,13 +163,13 @@ export function readRuntimeConfig(
     siteUrl: resolveSiteUrl(configured(env, "SITE_URL")),
     contactEmail: configured(env, "CONTACT_EMAIL"),
     googleClientId: configured(env, "GOOGLE_CLIENT_ID"),
-    // `MAP_ATTRIBUTION` belongs to neither mode, which is why it lost the
+    // `MAP_ATTRIBUTION` belongs to neither mode, which is why it carries no
     // `MAP_TILE_` prefix: it is one credit, applying to whichever basemap is
     // active, and an operator who configures a vector style must be able to set
-    // it. Left inside the raster group - where it used to be - a style could be
-    // configured with no way to credit it, and the app would render the bundled
-    // pair's OpenMapTiles credit over somebody else's tiles: false, and a
-    // licence breach for any style that is not OpenFreeMap's.
+    // it. Inside the raster group a style could be configured with no way to
+    // credit it, and the app would render the bundled pair's OpenMapTiles credit
+    // over somebody else's tiles: false, and a licence breach for any style that
+    // is not OpenFreeMap's.
     basemap: resolveBasemap({
       styleUrl: configured(env, "MAP_STYLE_URL"),
       styleUrlDark: configured(env, "MAP_STYLE_URL_DARK"),
@@ -181,9 +178,9 @@ export function readRuntimeConfig(
       attribution: configured(env, "MAP_ATTRIBUTION"),
       apiKey: configured(env, "MAP_TILE_API_KEY"),
     }),
-    // Read directly rather than through `configured`: these two are new names with no
-    // `NEXT_PUBLIC_` past to fall back to, and offering one would invite an operator to
-    // set a variable that reaches the browser for a decision the server makes alone.
+    // Read directly rather than through `configured`: these two have no `NEXT_PUBLIC_`
+    // spelling to fall back to, and offering one would invite an operator to set a
+    // variable that reaches the browser for a decision the server makes alone.
     hstsEnabled: flag("WEB_HSTS", set(env.WEB_HSTS), true),
     noindex: flag("WEB_NOINDEX", set(env.WEB_NOINDEX), false),
   };

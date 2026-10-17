@@ -30,11 +30,10 @@ beforeEach(() => {
   getRecentVolumes.mockResolvedValue([]);
 });
 
-// The field is a text input wearing `role="combobox"`, and it used to be a number
-// input wearing the same role - which ARIA does not allow on a `spinbutton`. The
-// swap is safe only because a draft string now sits between the keystrokes and the
-// `number` the form holds, so that is what these pin: a decimal has to survive
-// being typed, and the committed value has to win once typing stops.
+// The field is a text input wearing `role="combobox"`, not a number input: ARIA
+// does not allow that role on a `spinbutton`. A draft string sits between the
+// keystrokes and the `number` the form holds, so that is what these pin: a decimal
+// has to survive being typed, and the committed value has to win once typing stops.
 
 function Harness({
   initial,

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { maxLength } from "./fields";
 
 // The API's `NOTES_MAX_LENGTH` (`core/schemas.py`), one figure for every record
 // that carries notes. Set past any note a person writes because an imported one
@@ -7,10 +7,4 @@ import { z } from "zod";
 export const NOTES_MAX_LENGTH = 100_000;
 
 /** A record's free-text notes, bounded where the API bounds them. */
-export const notesField = () =>
-  z
-    .string()
-    .max(
-      NOTES_MAX_LENGTH,
-      `Notes cannot exceed ${NOTES_MAX_LENGTH.toLocaleString("en-US")} characters`,
-    );
+export const notesField = () => maxLength("Notes", NOTES_MAX_LENGTH);

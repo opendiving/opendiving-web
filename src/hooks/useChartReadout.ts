@@ -28,6 +28,7 @@ interface Readout<T> {
   pinned: boolean;
 }
 
+/** What `useChartReadout` returns: the value a chart reads out, and how it is chosen. */
 export interface ChartReadout<T> {
   /** What the chart is reading out, or null for nothing. */
   value: T | null;

@@ -12,10 +12,8 @@
 // only drives it, so `npm install` never downloads a browser. Signing in works the same
 // way `screenshots.mjs` does: request a magic link and read the token back out of the API
 // container's log, so this only runs against a local stack whose logs you can read.
-// `API_DIR` is where `docker compose logs` is run, and it defaults to the sibling
-// `../opendiving-api`. That default is right in a checkout and wrong in a git worktree,
-// which sits under `.claude/worktrees/` and so resolves `..` inside itself: name the
-// checkout there rather than counting the levels back to it.
+// `API_DIR` is where `docker compose logs` is run - see `lib/local-stack.mjs` for why a
+// worktree has to set it.
 //
 // ------------------------------------------------------------ the build it needs
 //
@@ -24,12 +22,12 @@
 // measurement of a different navigation.
 //
 //   NEXT_PUBLIC_API_URL= npm run build
-//   API_INTERNAL_URL=http://localhost:8000 npx next start -p 3001
-//   WEB_URL=http://localhost:3001 npm run measure-navigations -- you@example.com
+//   API_INTERNAL_URL=http://localhost:8000 npx next start -p 3002
+//   WEB_URL=http://localhost:3002 npm run measure-navigations -- you@example.com
 //
 // Both halves of the first line matter. `.env` bakes `NEXT_PUBLIC_API_URL` into the
 // bundle at build time and the browser then talks to the API directly, but the API's CORS
-// allowlist names `:3000` only - so every request from `:3001` preflights and fails.
+// allowlist names `:3000` only - so every request from `:3002` preflights and fails.
 // Emptying the variable puts the build on the same-origin route handler instead, which
 // reads `API_INTERNAL_URL` per request. A worktree has no `.env` at all (it is gitignored,
 // so it does not follow a `git worktree add`), and that is the right state here: do not
@@ -104,25 +102,13 @@
 // `--next` between URLs, so every URL gets its own `-w` on a single warm connection. Print
 // `status` and `bytes` in every `-w` and read `bytes=0` as a redirect rather than as a
 // fast response.
-import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const API_DIR = process.env.API_DIR ?? path.join(root, "..", "opendiving-api");
-const WEB = process.env.WEB_URL ?? "http://localhost:3001";
-// Same variable the app builds its axios `baseURL` from, so it carries the `/api/v1`
-// prefix and the fetches below append only the route.
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+import { chromePath, magicLink, root } from "./lib/local-stack.mjs";
 
-const CHROME_CANDIDATES = [
-  process.env.CHROME_PATH,
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/usr/bin/google-chrome",
-  "/usr/bin/chromium",
-];
+const WEB = process.env.WEB_URL ?? "http://localhost:3002";
 
 // Wide enough for the header's desktop nav, which is `hidden md:flex` - at a phone width
 // the "Gear" link this measures is inside a menu that has to be opened first, which is a
@@ -236,7 +222,10 @@ const NAVIGATIONS = [
     from: (subjects) => subjects.dive,
     // Under the hero's menu, whose items are portalled out of `<main>`.
     before: (page) =>
-      page.locator("main").getByRole("button", { name: "More actions" }).click(),
+      page
+        .locator("main")
+        .getByRole("button", { name: "More actions" })
+        .click(),
     target: (page) => page.getByRole("menuitem", { name: "Edit", exact: true }),
   },
   {
@@ -291,38 +280,8 @@ const selected = NAVIGATIONS.filter(
   (navigation) => only.length === 0 || only.includes(navigation.id),
 );
 
-const chromePath = CHROME_CANDIDATES.find(
-  (candidate) => candidate && existsSync(candidate),
-);
-if (!chromePath) {
-  console.error(
-    "No Chrome found. Set CHROME_PATH to a Chrome or Chromium binary.",
-  );
-  process.exit(1);
-}
-
-// ------------------------------------------------------------------- sign in
-async function magicLink() {
-  const response = await fetch(`${API}/auth/email/request`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-  if (!response.ok)
-    throw new Error(`magic-link request failed: ${response.status}`);
-
-  const logs = execFileSync(
-    "docker",
-    ["compose", "logs", "api", "--tail", "40"],
-    {
-      cwd: API_DIR,
-    },
-  ).toString();
-  const token = [...logs.matchAll(/token=([A-Za-z0-9_.-]+)/g)].at(-1)?.[1];
-  if (!token)
-    throw new Error(`no magic-link token in the API log at ${API_DIR}`);
-  return token;
-}
+// Before signing in, so a missing browser does not spend a magic link.
+const executablePath = chromePath();
 
 // --------------------------------------------------------------- what to press
 // The first dive on whatever page is open, by its own href rather than by its position on
@@ -367,7 +326,8 @@ async function pagerStep(page) {
 // short log is not a failure: the run says how far it got and the figure it reports is
 // about the list it actually measured.
 async function loadRows(page, target) {
-  const rows = () => page.locator("main li:has(> div > a[href^='/dives/'])").count();
+  const rows = () =>
+    page.locator("main li:has(> div > a[href^='/dives/'])").count();
   const button = page.getByRole("button", { name: /^Load more/ });
   for (let press = 0; (await rows()) < target; press++) {
     if (press > target || (await button.count()) === 0) break;
@@ -423,8 +383,7 @@ function routeOf(pathname) {
     (route) =>
       route.length === parts.length &&
       route.every(
-        (segment, index) =>
-          segment.startsWith("[") || segment === parts[index],
+        (segment, index) => segment.startsWith("[") || segment === parts[index],
       ),
   ).sort(
     (a, b) =>
@@ -889,9 +848,9 @@ function checkAcceptance(rows) {
 }
 
 // ------------------------------------------------------------------- the run
-const link = await magicLink();
+const link = await magicLink(email);
 
-const browser = await chromium.launch({ executablePath: chromePath });
+const browser = await chromium.launch({ executablePath });
 const context = await browser.newContext({
   viewport: VIEWPORT,
   ...(REDUCED_MOTION ? { reducedMotion: "reduce" } : {}),

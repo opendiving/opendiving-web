@@ -18,6 +18,22 @@
   }
 }
 
+/* Lifts text, or an icon, off whatever a map backdrop shows beneath it, with a
+   glow in the colour the backdrop fades to. Two close layers: more of them, or
+   wider ones, drew each layer's edge as a visible ring - `drop-shadow`s chain,
+   each blurring the last one's 8-bit output. The icon's is a filter because
+   `text-shadow` stops at an SVG. */
+@utility glow-text {
+  text-shadow:
+    0 0 2px var(--backdrop-fade),
+    0 0 5px var(--backdrop-fade);
+}
+
+@utility glow-icon {
+  filter: drop-shadow(0 0 2px var(--backdrop-fade))
+    drop-shadow(0 0 5px var(--backdrop-fade));
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -61,46 +77,44 @@
 
     /* Errors and destructive actions are coral, not red. Hue 10 sits six degrees
        off the brand --coral's 16, in the same warm family as every other accent
-       here; shadcn's default is a saturated hue-0 red, the one colour in the app
-       belonging to no other token, and against a palette built on coral and teal it
-       read as imported rather than chosen.
+       here; shadcn's default saturated hue-0 red would be the one colour in the
+       app belonging to no other token, and against a palette built on coral and
+       teal it reads as imported rather than chosen.
 
-       Also darker than the red it replaces - 42% against 60.2% - and that is not a
-       side effect of the hue change. `text-destructive` is real body text in
-       `FormMessage`, and at 60.2% it was 3.76:1 on --background: an AA failure on
-       every validation message in the app. Hue 10 at 42% is 5.5:1 there, and 4.6:1
-       over its own /10 tint, which is the surface `StatusMessage` and the
-       delete-account panel put it on. */
+       Also darker than shadcn's red - 42% against 60.2% - and that is not a side
+       effect of the hue. `text-destructive` is real body text in `FormMessage`,
+       and 60.2% is 3.76:1 on --background: an AA failure on every validation
+       message in the app. Hue 10 at 42% is 5.5:1 there, and 4.6:1 over its own
+       /10 tint, which is the surface `StatusMessage` and the delete-account panel
+       put it on. */
     --destructive: 10 88% 42%;
     --destructive-foreground: 210 40% 98%;
 
     /* Same coral, darkened until the label on it clears WCAG AA - 5.6:1 under the
        light theme's near-white --destructive-foreground, 5.9:1 under the dark
-       theme's pure white. The split
-       survives the recolour, but its reason has narrowed: --destructive is now dark
-       enough in *this* theme to carry white itself, and what still needs a separate
-       token is the dark theme, where --destructive has to be light enough to read as
-       text on a near-black background and so cannot sit under a white label. This
-       split is now unique to the destructive pair: the brand accents each collapsed
-       to a single hue, and --destructive / --destructive-solid is the carve-out the
-       collapse deliberately left standing, because here the colour is carrying
-       meaning rather than brand. --destructive for text, icons and tints;
-       --destructive-solid for anything filled. */
+       theme's pure white. --destructive is dark enough in *this* theme to carry
+       white itself; the separate token is for the dark theme, where --destructive
+       has to be light enough to read as text on a near-black background and so
+       cannot sit under a white label. It is the palette's only per-role split: the
+       brand accents are a single hue each, and the destructive pair is the
+       exception because here the colour carries meaning rather than brand.
+       --destructive for text, icons and tints; --destructive-solid for anything
+       filled. */
     --destructive-solid: 10 88% 40%;
 
     /* The counterpart to --destructive, for a confirmation that has to persist in
-       place rather than in a toast (see `StatusMessage`). Five components each
-       hand-picked a green-600/green-400 pair for this; a token means the pair is
-       tuned once and stays consistent with --destructive's weight. Darker than the
-       obvious green so it clears AA against --background as body text. */
+       place rather than in a toast (see `StatusMessage`). A token rather than a
+       green-600/green-400 pair per component, so the pair is tuned once and stays
+       consistent with --destructive's weight. Darker than the obvious green so
+       it clears AA against --background as body text. */
     --success: 142 72% 29%;
     --success-foreground: 0 0% 100%;
 
     /* Between --success and --destructive in weight: something to take seriously
-       that is not a failure. Currently one use - the terms page's safety notice,
-       which is deliberately *not* one of the informational callouts that became
-       `bg-muted`. A dive log telling people it is not a source of safety advice
-       should not look like a footnote. */
+       that is not a failure: caution text, the course status badge, and the
+       terms page's safety notice, which is deliberately *not* one of the
+       `bg-muted` informational callouts. A dive log telling people it is not a
+       source of safety advice should not look like a footnote. */
     --warning: 32 92% 27%;
     --warning-foreground: 0 0% 100%;
 
@@ -110,39 +124,36 @@
 
     /* The two brand accents, and each is exactly its CSS named colour: --coral is
        `coral` (#FF7F50) and --teal is `teal` (#008080). That is the whole
-       definition, deliberately - one hue per accent, no per-role variants. The
-       palette had grown --coral-solid, --coral-text and --teal-solid alongside
-       these, each a contrast-tuned darkening for one job (a filled button, text
-       on a light background), and picking between four coral-ish classes at every
-       call site is what the owner asked to be rid of. Anything coral is now
-       `coral`; anything teal is `teal`.
+       definition, deliberately - one hue per accent, not per-role variants such as
+       --coral-solid, --coral-text and --teal-solid, each a contrast-tuned darkening
+       for one job (a filled button, text on a light background), which leave every
+       call site picking between coral-ish classes. Anything coral is `coral`;
+       anything teal is `teal`.
 
        Both are constant across light/dark - not redeclared under .dark - so a
-       brand colour reads the same in both themes. --coral-text used to be the one
-       exception and is gone with the rest.
+       brand colour reads the same in both themes.
 
-       65.7%, not the 66% this token carried for months: the rounded value renders
-       #FF8052, two units off coral on two channels. Imperceptible on its own and
-       not imperceptible next to `icon.svg`, which hard-codes #FF7F50 for the
-       favicon - the brand mark and its own favicon were quietly different colours.
-       180 100% 25% needs no such correction; it lands on #008080 exactly.
+       65.7%, not 66%: the rounded value renders #FF8052, two units off coral on
+       two channels. Imperceptible on its own and not imperceptible next to
+       `icon.svg`, which hard-codes #FF7F50 for the favicon. 180 100% 25% needs no
+       such correction; it lands on #008080 exactly.
 
-       The cost is real and was accepted knowingly. It falls differently on each of
-       the three removed tokens, so the call sites are worth naming rather than
-       summarising - DECISIONS.md carries the same three lists, and they are meant
-       to stay identical:
+       The cost is real and accepted. It falls differently on each of the three
+       tuned variants, so the call sites are worth naming rather than summarising
+       - DECISIONS.md carries the same three lists, and they are meant to stay
+       identical:
 
-       --coral-text (6.1:1 on white -> 2.5:1, light theme only; the dark theme is
-       untouched, since --coral-text already resolved to the brand coral there):
+       --coral-text (6.1:1 on white -> 2.5:1, light theme only; the dark theme
+       loses nothing, since --coral-text would resolve to the brand coral there):
        the landing hero's accent word, the header's nav items active in both the
        desktop and the mobile menu and on hover in the desktop one, the Home page
        stat cell's label on group-hover, and the species card's hover border.
 
        --coral-solid (5.1:1 under white -> 2.5:1, in *both* themes - neither token
-       was ever redeclared under .dark, so fill and white label are theme-constant
-       and the pairing never involved --background): the sign-in button in the
-       header, and AuthForm's submit button. This is where the change makes the
-       dark theme worse, and it is easy to reason about backwards from
+       is redeclared under .dark, so fill and white label are theme-constant and
+       the pairing never involves --background): the sign-in button in the
+       header, and AuthForm's submit button. This is where the single hue costs
+       the dark theme, and it is easy to reason about backwards from
        --coral-text's dark behaviour, which does not apply here.
 
        --teal-solid (5.8:1 under white -> 4.8:1, both themes, still clearing AA):
@@ -151,7 +162,7 @@
 
        The exception that keeps its tuned pair is the one where colour carries
        meaning rather than brand: errors and destructive actions,
-       --destructive / --destructive-solid below. */
+       --destructive / --destructive-solid above. */
     --coral: 16 100% 65.7%;
     --teal: 180 100% 25%;
 
@@ -174,7 +185,8 @@
        the 4.5:1 AA asks of the label, where a near-black would have been 7.23:1.
        Teal is the dark half of the pair and has no such problem - 4.77:1 under
        white, and only 3.8:1 under the near-black, so it wanted white anyway.
-       See "the service scale is three brand fills now" in DECISIONS.md. */
+       See "The service scale is three brand fills, and `--warning`'s amber
+       would be a fourth accent" in DECISIONS.md. */
     --coral-foreground: 0 0% 100%;
     --teal-foreground: 0 0% 100%;
 
@@ -250,6 +262,16 @@
     --gradient-factor: 95 55% 35%;
     --surface-gradient-factor: 230 70% 62%;
 
+    /* A cylinder's gas, in the US medical-gas colours dive shops borrow:
+       oxygen green, helium brown. See `components/icons/tank-icon.tsx`. */
+    --gas-oxygen: 144 100% 39%;
+    --gas-helium: 25 100% 37%;
+
+    /* A backdrop card's own colour and its hover, a step off the page's either
+       way - see `BackdropCard`. */
+    --backdrop-surface: 240 4% 95.5%;
+    --backdrop-surface-hover: 240 4% 92.5%;
+
     /* The shipped basemaps' water and the colour of the sea names drawn on it,
        for anything standing in for a map of open water - a dive card with no
        place yet. Whole colours rather than HSL triplets so they are exactly
@@ -294,9 +316,8 @@
      systemGray6 for surfaces (a very slightly cool/blue-gray, not a
      perfectly neutral gray), labelColor for text, and macOS's "Graphite"
      system accent color (a desaturated gray, not blue) for primary/ring.
-     Destructive used to be systemRed and no longer is - it left the system
-     palette for the coral family along with its light-theme counterpart,
-     for the reasons on the token itself below. */
+     Destructive is the exception: it is in the coral family, as in the light
+     theme, for the reasons on the token itself below. */
   .dark {
     --background: 240 4% 9%;
     --foreground: 240 6% 93%;
@@ -355,6 +376,12 @@
     --border: 240 4% 18%;
     --input: 240 4% 18%;
     --ring: 240 2% 55%;
+
+    /* Helium a step lighter on the dark surface. */
+    --gas-helium: 30 100% 44%;
+
+    --backdrop-surface: var(--card);
+    --backdrop-surface-hover: var(--muted);
 
     --map-water: rgb(68 108 107);
     --map-water-foreground: rgb(178 226 226);

@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { pad } from "@/lib/date-time";
 import { filenameFromContentDisposition } from "@/lib/download";
 
 /**
@@ -49,12 +50,13 @@ export function exportFilename(
   const safe = scrubbed || "export";
   const stamp = [
     now.getUTCFullYear(),
-    String(now.getUTCMonth() + 1).padStart(2, "0"),
-    String(now.getUTCDate()).padStart(2, "0"),
+    pad(now.getUTCMonth() + 1),
+    pad(now.getUTCDate()),
   ].join("");
   return `opendiving-${safe}-${stamp}.${EXPORT_EXTENSIONS[format]}`;
 }
 
+/** Exports of the signed-in diver's own logbook. */
 export const exportAPI = {
   /**
    * Fetches one of the four exports of the signed-in diver's own logbook.

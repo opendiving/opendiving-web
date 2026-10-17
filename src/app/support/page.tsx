@@ -10,7 +10,7 @@ import { SupportForm } from "@/components/support/support-form";
 import { ISSUE_TRACKERS } from "@/lib/support";
 import { runtimeConfig } from "@/lib/runtime-config";
 import Link from "next/link";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { AlertCircle, Anchor, Bug, Heart, Mail, Shield } from "lucide-react";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
@@ -41,10 +41,12 @@ export default function SupportPage() {
           <div className="lg:col-span-1 space-y-6 max-sm:space-y-2.5">
             <Card>
               <CardHeader>
-                {/* Only the two semantic icons below are coloured. `text-primary`
-                    used to be on the other three, and is a mid-grey in dark mode
-                    (see DECISIONS.md) - dimmer there than the description under
-                    it, and indistinguishable from the title in light mode. */}
+                {/* Only the two semantic icons below are coloured; the rest
+                    inherit the title's. `text-primary` is a mid-grey in dark
+                    mode - dimmer there than the description under it, and
+                    indistinguishable from the title in light mode. See "One
+                    card-header shape: `space-y-1.5` only reaches `CardHeader`'s
+                    _direct_ children" in DECISIONS.md. */}
                 <CardTitle as="h2" className="flex items-center gap-2">
                   <Bug className="h-5 w-5" />
                   Bugs & Feature Requests
@@ -130,11 +132,8 @@ export default function SupportPage() {
                   - we cannot see them, restore them, or reset an account on it.
                   Whoever operates that server is the one who can.
                 </p>
-                {/* The product repository. This used to be an `#quickstart`
-                    anchor on the API repo's README, which has no heading of that
-                    name and never had one - so the button landed at the top of a
-                    component's README either way. The install is a product-level
-                    thing and now lives where it is written. */}
+                {/* The product repository, not the API repo's README: the
+                    install is a product-level thing and is written there. */}
                 <Button asChild variant="outline" className="w-full">
                   <a
                     href="https://github.com/opendiving/opendiving"

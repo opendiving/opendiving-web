@@ -2,7 +2,7 @@
 
 import { Control, FieldValues, Path } from "react-hook-form";
 import type { LucideIcon } from "lucide-react";
-import { vocabularyLabel } from "@/lib/api/dives";
+import { labelOrFallback } from "@/lib/api/labels";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
   FormControl,
@@ -72,7 +72,7 @@ export function DiveVocabularyField<
                   : [...values, field.value as TValue]
                 ).map((value) => (
                   <option key={value} value={value}>
-                    {vocabularyLabel(labels, value)}
+                    {labelOrFallback(labels, value)}
                   </option>
                 ))}
               </NativeSelect>

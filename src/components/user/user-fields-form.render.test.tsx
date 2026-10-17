@@ -12,8 +12,8 @@ import { UserFieldsForm, UserFieldsSubmitButton } from "./user-fields-form";
 // refuses after Save is a picture refused after the fields beside it have saved.
 
 // Hoisted and returned by identity, `user` included, as the real `AuthContext` keeps
-// one identity across renders. See "The new-dive render test was in a loop with
-// itself" in DECISIONS.md.
+// one identity across renders. See "The new-dive render test's mocks are
+// identity-stable, so the prefill effect runs once" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
   user: {
     uuid: "user-1",
@@ -131,7 +131,7 @@ beforeEach(() => {
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
   vi.mocked(authAPI.updateProfile)
     .mockReset()
-    .mockImplementation(record("patch /user", undefined));
+    .mockImplementation(record("patch /user", { message: "ok" }));
   vi.mocked(authAPI.uploadPicture)
     .mockReset()
     .mockImplementation(record("put", { sha256: "new" }));
@@ -143,7 +143,7 @@ beforeEach(() => {
     .mockImplementation(record("copy", { sha256: "new" }));
   vi.mocked(authAPI.removePicture)
     .mockReset()
-    .mockImplementation(record("delete", undefined));
+    .mockImplementation(record("delete", { message: "ok" }));
   vi.mocked(authAPI.getPictureBlob).mockReset().mockResolvedValue(new Blob());
   vi.mocked(authAPI.getPictureOriginalBlob)
     .mockReset()

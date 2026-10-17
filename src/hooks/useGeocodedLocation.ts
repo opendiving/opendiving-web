@@ -4,12 +4,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { geocodingAPI } from "@/lib/api/geocoding";
 import type { LocationFormValue } from "@/lib/validations/location";
 
-// A whole position, as the form holds it.
+/** A whole position, as the form holds it. */
 export interface GeocodedPosition {
   latitude: string;
   longitude: string;
 }
 
+/** What `useGeocodedLocation` takes. */
 export interface UseGeocodedLocationOptions {
   // Whether the dialog this belongs to is open, so a reopen starts clean - see
   // the reset below.
@@ -35,6 +36,7 @@ export interface AdoptedPlace {
   attribution: string;
 }
 
+/** What `useGeocodedLocation` returns. */
 export interface GeocodedLocation {
   /**
    * Name the position that was just placed, and write a place carrying that
@@ -121,10 +123,8 @@ export function useGeocodedLocation({
     liveRef.current = { latitude, longitude, location };
   });
 
-  // This state used to live in `DiveSiteMapField`, which unmounts with the
-  // dialog's content and so was clean on every open. The dialog itself is
-  // always mounted, so the reset has to be said out loud or a credit outlives
-  // the site it was earned on.
+  // The dialog itself is always mounted, so the reset has to be said out loud or
+  // a credit outlives the site it was earned on.
   useEffect(() => {
     if (!open) return;
     // Anything still in the air was asked about the site the dialog showed last

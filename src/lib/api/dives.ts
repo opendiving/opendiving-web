@@ -1,67 +1,78 @@
 import { announceServiceDueChanged } from "@/lib/service-due";
-import { apiClient } from "./client";
-import type { PaginatedResponse } from "./client";
+import { apiClient, multipartRequest, versionedRequest } from "./client";
+import type { MessageResponse, PaginatedResponse } from "./client";
 import { GearItemInfo, GearItemSummary } from "./gear";
 import type { Location } from "./location";
 import { SpeciesSummary } from "./species";
 import type { PersonReference } from "./people";
 
-// A single gas mixture / scuba tank used during a dive.
-// The ppO₂ vocabulary and the cylinder-role vocabulary the API accepts. Mirrors
-// `GasRole` (`schemas/dive_mixture.py`), which is the single source of truth - the API
-// rejects anything outside it, so this list has to be kept in step by hand.
+/**
+ * The ppO₂ vocabulary and the cylinder-role vocabulary the API accepts. Mirrors
+ * `GasRole` (`schemas/dive_mixture.py`), which is the single source of truth - the API
+ * rejects anything outside it, so this list has to be kept in step by hand.
+ */
 export const GAS_ROLES = ["bottom", "deco", "diluent", "oxygen"] as const;
 export type GasRole = (typeof GAS_ROLES)[number];
 
-// How a cylinder was breathed, which is not what it was carried for - the two are
-// orthogonal, and a dive can carry a `parallel` pair and a `staged` bottle at once.
-// Mirrors `TankUsage` (`schemas/dive_mixture.py`), which is the single source of truth -
-// the same hand-kept mirroring as `GAS_ROLES` above.
-//
-// `parallel` is a sidemount pair or independent doubles, breathed alternately at the
-// same depth; `staged` is a bottle breathed at its own depth. Null is "not recorded",
-// which is what every imported cylinder says: no format this app parses carries the
-// distinction, so the flag only ever arrives from the diver's own answer on the form.
-//
-// Declaration order is the picker's order, and `parallel` leads for the reason the API's
-// enum gives: it is the answer that does something. A dive whose cylinders are *all*
-// `parallel` gets a consumption figure by summing their litres, which is otherwise
-// unavailable without per-cylinder gas switches; `staged` changes no arithmetic today.
+/**
+ * How a cylinder was breathed, which is not what it was carried for - the two are
+ * orthogonal, and a dive can carry a `parallel` pair and a `staged` bottle at once.
+ * Mirrors `TankUsage` (`schemas/dive_mixture.py`), which is the single source of truth -
+ * the same hand-kept mirroring as `GAS_ROLES` above.
+ *
+ * `parallel` is a sidemount pair or independent doubles, breathed alternately at the
+ * same depth; `staged` is a bottle breathed at its own depth. Null is "not recorded",
+ * which is what every imported cylinder says: no format this app parses carries the
+ * distinction, so the flag only ever arrives from the diver's own answer on the form.
+ *
+ * Declaration order is the picker's order, and `parallel` leads for the reason the API's
+ * enum gives: it is the answer that does something. A dive whose cylinders are *all*
+ * `parallel` gets a consumption figure by summing their litres, which is otherwise
+ * unavailable without per-cylinder gas switches; `staged` changes no arithmetic today.
+ */
 export const TANK_USAGE = ["parallel", "staged"] as const;
 export type TankUsage = (typeof TANK_USAGE)[number];
 
-// What the water was - a fact about the dive, which a diver knows and types. Mirrors
-// `WaterType` (`schemas/dive.py`), which is the single source of truth - the same
-// hand-kept mirroring as `GAS_ROLES` above and `GEAR_TYPES` in `lib/api/gear.ts`.
-//
-// Declaration order is the picker's order, so the two real answers come first. The
-// density a computer was set to - EN13319 among them - is not a kind of water and is
-// not here: it is `Recording.salinity`, a setting of one device.
+/**
+ * What the water was - a fact about the dive, which a diver knows and types. Mirrors
+ * `WaterType` (`schemas/dive.py`), which is the single source of truth - the same
+ * hand-kept mirroring as `GAS_ROLES` above and `GEAR_TYPES` in `lib/api/gear.ts`.
+ *
+ * Declaration order is the picker's order, so the two real answers come first. The
+ * density a computer was set to - EN13319 among them - is not a kind of water and is
+ * not here: it is `Recording.salinity`, a setting of one device.
+ */
 export const WATER_TYPES = ["salt", "fresh", "brackish"] as const;
 export type WaterType = (typeof WATER_TYPES)[number];
 
-// Display labels, kept beside the vocabulary the way `GEAR_TYPE_LABELS` is. "Salt
-// water"/"Fresh water" rather than the bare adjective because the field's own label
-// is "Water type" and the option has to read as an answer to it.
+/**
+ * Display labels, kept beside the vocabulary the way `GEAR_TYPE_LABELS` is. "Salt
+ * water"/"Fresh water" rather than the bare adjective because the field's own label
+ * is "Water type" and the option has to read as an answer to it.
+ */
 export const WATER_TYPE_LABELS: Record<WaterType, string> = {
   salt: "Salt water",
   fresh: "Fresh water",
   brackish: "Brackish",
 };
 
-// What a dive's title is tagged with, as `DIVE_TYPE_ABBREVIATIONS` below. Salt
-// water has none: it is the water that goes without saying.
+/**
+ * What a dive's title is tagged with, as `DIVE_TYPE_ABBREVIATIONS` below. Salt
+ * water has none: it is the water that goes without saying.
+ */
 export const WATER_TYPE_ABBREVIATIONS: Partial<Record<WaterType, string>> = {
   fresh: "Fresh",
   brackish: "Brackish",
 };
 
-// What kind of dive it was, the diver's own statement - never read off a recording's
-// mode, since a backup computer run in gauge mode was on an open-circuit dive. The
-// four below are the conditions on the day and where the diver got in. Each mirrors
-// its enum in the API's `schemas/dive.py` (`DiveType`, `Current`, `Waves`, `Weather`,
-// `EntryType`) by hand, as `WATER_TYPES` does, in the picker's order, with no
-// "other": a value the list cannot name is not recorded.
+/**
+ * What kind of dive it was, the diver's own statement - never read off a recording's
+ * mode, since a backup computer run in gauge mode was on an open-circuit dive. The
+ * four below are the conditions on the day and where the diver got in. Each mirrors
+ * its enum in the API's `schemas/dive.py` (`DiveType`, `Current`, `Waves`, `Weather`,
+ * `EntryType`) by hand, as `WATER_TYPES` does, in the picker's order, with no
+ * "other": a value the list cannot name is not recorded.
+ */
 export const DIVE_TYPES = [
   "open_circuit",
   "closed_circuit",
@@ -72,8 +83,10 @@ export const DIVE_TYPES = [
 ] as const;
 export type DiveType = (typeof DIVE_TYPES)[number];
 
-// "Snorkeling" rather than "Snorkel": the value is the outing, and the bare noun is
-// the gear item of that name.
+/**
+ * "Snorkeling" rather than "Snorkel": the value is the outing, and the bare noun is
+ * the gear item of that name.
+ */
 export const DIVE_TYPE_LABELS: Record<DiveType, string> = {
   open_circuit: "Open circuit",
   closed_circuit: "Closed circuit",
@@ -83,9 +96,11 @@ export const DIVE_TYPE_LABELS: Record<DiveType, string> = {
   surface_supplied: "Surface-supplied",
 };
 
-// What a dive's title is tagged with, for the kinds a diver says by their
-// initials. Open circuit has none: it is the dive that goes without saying.
-// The two without initials anyone uses are spelled short instead.
+/**
+ * What a dive's title is tagged with, for the kinds a diver says by their
+ * initials. Open circuit has none: it is the dive that goes without saying.
+ * The two without initials anyone uses are spelled short instead.
+ */
 export const DIVE_TYPE_ABBREVIATIONS: Partial<Record<DiveType, string>> = {
   closed_circuit: "CCR",
   semi_closed: "SCR",
@@ -94,6 +109,7 @@ export const DIVE_TYPE_ABBREVIATIONS: Partial<Record<DiveType, string>> = {
   snorkel: "Snorkel",
 };
 
+/** The current on the day, the API's `Current`. */
 export const CURRENTS = [
   "none",
   "light",
@@ -103,6 +119,7 @@ export const CURRENTS = [
 ] as const;
 export type DiveCurrent = (typeof CURRENTS)[number];
 
+/** Display labels for `CURRENTS`. */
 export const CURRENT_LABELS: Record<DiveCurrent, string> = {
   none: "None",
   light: "Light",
@@ -111,9 +128,11 @@ export const CURRENT_LABELS: Record<DiveCurrent, string> = {
   extreme: "Extreme",
 };
 
+/** The surface on the day, the API's `Waves`. */
 export const WAVES = ["calm", "slight", "moderate", "rough"] as const;
 export type DiveWaves = (typeof WAVES)[number];
 
+/** Display labels for `WAVES`. */
 export const WAVES_LABELS: Record<DiveWaves, string> = {
   calm: "Calm",
   slight: "Slight",
@@ -121,6 +140,7 @@ export const WAVES_LABELS: Record<DiveWaves, string> = {
   rough: "Rough",
 };
 
+/** The weather on the day, the API's `Weather`. */
 export const WEATHER = [
   "clear",
   "partly_cloudy",
@@ -132,6 +152,7 @@ export const WEATHER = [
 ] as const;
 export type DiveWeather = (typeof WEATHER)[number];
 
+/** Display labels for `WEATHER`. */
 export const WEATHER_LABELS: Record<DiveWeather, string> = {
   clear: "Clear",
   partly_cloudy: "Partly cloudy",
@@ -142,11 +163,14 @@ export const WEATHER_LABELS: Record<DiveWeather, string> = {
   fog: "Fog",
 };
 
-// `pier` covers a jetty, a dock, a pontoon and a harbour wall; the technique - a
-// giant stride, a back roll - is a tag.
+/**
+ * `pier` covers a jetty, a dock, a pontoon and a harbour wall; the technique - a
+ * giant stride, a back roll - is a tag.
+ */
 export const ENTRY_TYPES = ["shore", "boat", "pier", "pool"] as const;
 export type EntryType = (typeof ENTRY_TYPES)[number];
 
+/** Display labels for `ENTRY_TYPES`. */
 export const ENTRY_TYPE_LABELS: Record<EntryType, string> = {
   shore: "Shore",
   boat: "Boat",
@@ -155,40 +179,30 @@ export const ENTRY_TYPE_LABELS: Record<EntryType, string> = {
 };
 
 /**
- * A stored vocabulary value's label, or the value itself where this build has none
- * yet: the API can grow a member before the web ships its label, and the slug beats
- * a blank. Own keys only, so a value named like an inherited property reads as
- * itself.
+ * The dive list's two orders, the API's `DiveListSort`: `date` newest first, the
+ * default; `rating` highest first, every unrated dive after every rated one, ties
+ * newest first.
  */
-export const vocabularyLabel = <T extends string>(
-  labels: Record<T, string>,
-  value: string,
-): string =>
-  Object.prototype.hasOwnProperty.call(labels, value)
-    ? labels[value as T]
-    : value;
-
-// The dive list's two orders, the API's `DiveListSort`: `date` newest first, the
-// default; `rating` highest first, every unrated dive after every rated one, ties
-// newest first.
 export const DIVE_LIST_SORTS = ["date", "rating"] as const;
 export type DiveListSort = (typeof DIVE_LIST_SORTS)[number];
 
-// Every field but `id` is `| null` because that is what comes back on the wire, not
-// merely what could be missing: the API declares them `X | None` (`DiveMixtureBase`
-// in `schemas/dive_mixture.py`) and sets no `exclude_none`, so an unrecorded field
-// arrives as an explicit `null` rather than an absent key. Writing them `?: number`
-// alone made TypeScript vouch for a value the response never promised, and the form
-// pages - which feed these straight into `diveMixtureSchema`, where `null` is not a
-// member of any field's union - were the ones that paid for it.
-//
-// `volume`, `oxygen` and `helium` were the last three to hold out, and they are the
-// expensive ones to get wrong. A cylinder may now record a mix with no vessel - a
-// UDDF `<tankdata>` with a gas link and no `<tankvolume>` is the shape that forced
-// it - so the API stores NULL and sends it, and every guard written downstream of a
-// `volume: number` here looks redundant to a compiler that has been told the value
-// is always there. Absent is not 11.1 L, and for `oxygen` it is explicitly not 21:
-// a diver plans gas off that number.
+/**
+ * Every field but `id` is `| null` because that is what comes back on the wire, not
+ * merely what could be missing: the API declares them `X | None` (`DiveMixtureBase`
+ * in `schemas/dive_mixture.py`) and sets no `exclude_none`, so an unrecorded field
+ * arrives as an explicit `null` rather than an absent key. Writing them `?: number`
+ * alone made TypeScript vouch for a value the response never promised, and the form
+ * pages - which feed these straight into `diveMixtureSchema`, where `null` is not a
+ * member of any field's union - were the ones that paid for it.
+ *
+ * `volume`, `oxygen` and `helium` were the last three to hold out, and they are the
+ * expensive ones to get wrong. A cylinder may now record a mix with no vessel - a
+ * UDDF `<tankdata>` with a gas link and no `<tankvolume>` is the shape that forced
+ * it - so the API stores NULL and sends it, and every guard written downstream of a
+ * `volume: number` here looks redundant to a compiler that has been told the value
+ * is always there. Absent is not 11.1 L, and for `oxygen` it is explicitly not 21:
+ * a diver plans gas off that number.
+ */
 export interface DiveMixture {
   id?: number;
   volume?: number | null;
@@ -222,9 +236,11 @@ export interface DiveMixture {
   gear_item?: GearItemInfo | null;
 }
 
-// A cylinder as a create or update sends it: the read's members less the two the
-// API derives, and the vessel by uuid. `null` is "no vessel", which is what an
-// unlinked tank sends rather than leaving the key off.
+/**
+ * A cylinder as a create or update sends it: the read's members less the two the
+ * API derives, and the vessel by uuid. `null` is "no vessel", which is what an
+ * unlinked tank sends rather than leaving the key off.
+ */
 export interface DiveMixtureWrite extends Omit<
   DiveMixture,
   "id" | "gear_item"
@@ -232,9 +248,11 @@ export interface DiveMixtureWrite extends Omit<
   gear_item_uuid?: string | null;
 }
 
-// A dive site visited during a dive, as embedded in a `Dive`. Dives are
-// ordered by the sequence they were visited in - `dive_sites[0]` is the
-// primary/first site, shown wherever only one site can be displayed.
+/**
+ * A dive site visited during a dive, as embedded in a `Dive`. Dives are
+ * ordered by the sequence they were visited in - `dive_sites[0]` is the
+ * primary/first site, shown wherever only one site can be displayed.
+ */
 export interface DiveSiteSummary {
   uuid: string;
   name: string;
@@ -256,22 +274,24 @@ export interface DiveSiteSummary {
   longitude?: number | null;
 }
 
-// One cylinder's share of a dive's consumption, on a dive where the API could tell
-// which tank was breathed when.
-//
-// That knowledge comes from **the gas switches the dive computer recorded**, and from
-// nothing else (`dive_profile.gas_attribution`, derived by `derive_gas_attribution`).
-// The obvious second source - watching each cylinder's pressure curve for activity -
-// was considered and rejected on both counts: the exports carry one pressure channel
-// per file, and a cylinder's pressure moves with its temperature long after the diver
-// has switched away from it. Without switches, a dive with several cylinders yields no
-// figures at all rather than a guess (see `DiveGasUse.tanks`).
-//
-// The litres still come from `DiveMixture.start_pressure`/`end_pressure`, which
-// round-trip through the form - not from the profile's pressure curve, which disagrees
-// with the recorded header by several bar on a cylinder that kept cooling after the
-// switch. The attribution column deliberately carries no pressures at all: only which
-// cylinder, for how long, at what mean depth.
+/**
+ * One cylinder's share of a dive's consumption, on a dive where the API could tell
+ * which tank was breathed when.
+ *
+ * That knowledge comes from **the gas switches the dive computer recorded**, and from
+ * nothing else (`dive_profile.gas_attribution`, derived by `derive_gas_attribution`).
+ * The obvious second source - watching each cylinder's pressure curve for activity -
+ * was considered and rejected on both counts: the exports carry one pressure channel
+ * per file, and a cylinder's pressure moves with its temperature long after the diver
+ * has switched away from it. Without switches, a dive with several cylinders yields no
+ * figures at all rather than a guess (see `DiveGasUse.tanks`).
+ *
+ * The litres still come from `DiveMixture.start_pressure`/`end_pressure`, which
+ * round-trip through the form - not from the profile's pressure curve, which disagrees
+ * with the recorded header by several bar on a cylinder that kept cooling after the
+ * switch. The attribution column deliberately carries no pressures at all: only which
+ * cylinder, for how long, at what mean depth.
+ */
 export interface DiveTankGasUse {
   // Which cylinder this is, joined against `DiveMixture.gas_number`. Carries that
   // field's warning with it: a device's own label, not an index, and 0 is a real
@@ -296,14 +316,16 @@ export interface DiveTankGasUse {
   mean_depth: number;
 }
 
-// Surface-normalized gas consumption for a dive, derived by the API from the
-// dive's submerged time, average depth and cylinder pressures - see the API's
-// `services/dive_gas.py` for the arithmetic and the assumptions baked into it.
-//
-// Deliberately *not* recomputed in the browser, unlike gear service status:
-// that one depends on today's date, so a cached value would be a lie, whereas
-// this is a pure function of stored fields and can never go stale. There is one
-// implementation of the formula and it lives in the API.
+/**
+ * Surface-normalized gas consumption for a dive, derived by the API from the
+ * dive's submerged time, average depth and cylinder pressures - see the API's
+ * `services/dive_gas.py` for the arithmetic and the assumptions baked into it.
+ *
+ * Deliberately *not* recomputed in the browser, unlike gear service status:
+ * that one depends on today's date, so a cached value would be a lie, whereas
+ * this is a pure function of stored fields and can never go stale. There is one
+ * implementation of the formula and it lives in the API.
+ */
 export interface DiveGasUse {
   // Gas breathed, in liters at surface pressure. The sum across `tanks` where
   // there are several.
@@ -377,6 +399,7 @@ export interface DiveGasUse {
 export const ABUNDANCES = ["few", "many", "abundant"] as const;
 export type SightingAbundance = (typeof ABUNDANCES)[number];
 
+/** Display labels for `ABUNDANCES`. */
 export const ABUNDANCE_LABELS: Record<SightingAbundance, string> = {
   few: "Few",
   many: "Many",
@@ -515,12 +538,12 @@ export interface Dive {
   user_uuid: string;
   created_at: string;
   mixtures: DiveMixture[];
-  // What recorded this dive, in order, and **the first is primary**. A dive has
-  // an ordered list of these rather than the one stored file and one profile it
-  // carried before: one computer exported as JSON and again as FIT is one
-  // recording holding two files, while a second computer on the same dive is a
-  // second recording with its own device, its own start and its own profile.
-  // `DECISIONS.md` has the whole argument, and names the two retired members.
+  // What recorded this dive, in order, and **the first is primary**. A list
+  // rather than one stored file and one profile: one computer exported as JSON
+  // and again as FIT is one recording holding two files, while a second computer
+  // on the same dive is a second recording with its own device, its own start
+  // and its own profile. See "A dive has recordings, and the first one is
+  // primary, picked only by `primaryRecording()`" in DECISIONS.md.
   //
   // A client that wants "the" file or "the" profile takes `recordings[0]`'s,
   // which is what ordinal 0 means - and `primaryRecording()` in
@@ -586,16 +609,18 @@ export interface DepthOutline {
   values: number[];
 }
 
-// What recorded a dive, as that device's own export named it.
-//
-// Every member is nullable because no format carries all six, and a recording
-// whose source named no computer at all reports `null` for the whole object
-// rather than six nulls - so a caller tests the object, not its members.
-//
-// Values are as the file wrote them and are never normalized: a FIT decodes its
-// maker to the lowercase `suunto` while the Suunto app's JSON writes `Suunto`.
-// Render one through `recordingDeviceLabel()` (`lib/dive-recordings.ts`) rather
-// than concatenating members at the call site.
+/**
+ * What recorded a dive, as that device's own export named it.
+ *
+ * Every member is nullable because no format carries all six, and a recording
+ * whose source named no computer at all reports `null` for the whole object
+ * rather than six nulls - so a caller tests the object, not its members.
+ *
+ * Values are as the file wrote them and are never normalized: a FIT decodes its
+ * maker to the lowercase `suunto` while the Suunto app's JSON writes `Suunto`.
+ * Render one through `recordingDeviceLabel()` (`lib/dive-recordings.ts`) rather
+ * than concatenating members at the call site.
+ */
 export interface RecordingDevice {
   brand?: string | null;
   model?: string | null;
@@ -609,26 +634,19 @@ export interface RecordingDevice {
   dive_number?: number | null;
 }
 
-// One device's record of a dive: what recorded it, when it started, its files
-// and a summary of its samples.
-//
-// `files` may hold more than one legitimately - the same computer exported as
-// JSON and again as FIT is one record of one dive in two spellings, each
-// filling what the other left blank - and `profile` may be present with `files`
-// empty, which is what an import creates from a logbook of several dives, whose
-// file belongs to no one dive. That is first-class rather than degenerate, and
-// the file list says so in words.
-// The decompression model one device ran on one dive, and the settings it ran it
-// with. Null for the whole object where the source recorded none, rather than
-// five nulls - so a caller tests the object, not its members, exactly as it does
-// for `RecordingDevice`.
-//
-// `algorithm` is a value from the API's `DecoAlgorithm` (`buhlmann`, `rgbm`)
-// and is typed `string` here for the reason every closed vocabulary crossing
-// this boundary is: the two repos deploy independently, so the set is closed in
-// the API's *current* build and not in the bytes this browser holds. Render it
-// through `recordingSettingsLabel()` (`lib/dive-recordings.ts`), which falls back
-// to the device's own `name` rather than to a word it made up.
+/**
+ * The decompression model one device ran on one dive, and the settings it ran it
+ * with. Null for the whole object where the source recorded none, rather than
+ * five nulls - so a caller tests the object, not its members, exactly as it does
+ * for `RecordingDevice`.
+ *
+ * `algorithm` is a value from the API's `DecoAlgorithm` (`buhlmann`, `rgbm`)
+ * and is typed `string` here for the reason every closed vocabulary crossing
+ * this boundary is: the two repos deploy independently, so the set is closed in
+ * the API's *current* build and not in the bytes this browser holds. Render it
+ * through `recordingSettingsLabel()` (`lib/dive-recordings.ts`), which falls back
+ * to the device's own `name` rather than to a word it made up.
+ */
 export interface RecordingDecoModel {
   // The model's family, where the source named one.
   algorithm?: string | null;
@@ -644,16 +662,18 @@ export interface RecordingDecoModel {
   conservatism?: number | null;
 }
 
-// What one computer reported about the dive as a whole, off its own arithmetic -
-// the API's `RecordingReadouts`. The recording's rather than the dive's because CNS
-// and OTU depend on the algorithm the device ran and on the exposure it carried
-// over, and two computers on one dive give two answers to every one of these.
-// Written by the import and **not settable through the form**; the API keeps them
-// off every write schema (see its DECISIONS.md).
-//
-// `| null` because the API declares all five `float | None` with no
-// `exclude_none`, so an unrecorded reading arrives as an explicit `null`, not an
-// absent key.
+/**
+ * What one computer reported about the dive as a whole, off its own arithmetic -
+ * the API's `RecordingReadouts`. The recording's rather than the dive's because CNS
+ * and OTU depend on the algorithm the device ran and on the exposure it carried
+ * over, and two computers on one dive give two answers to every one of these.
+ * Written by the import and **not settable through the form**; the API keeps them
+ * off every write schema (see its DECISIONS.md).
+ *
+ * `| null` because the API declares all five `float | None` with no
+ * `exclude_none`, so an unrecorded reading arrives as an explicit `null`, not an
+ * absent key.
+ */
 export interface RecordingReadouts {
   // The CNS oxygen-toxicity clock at the start and the end, in %.
   cns_start?: number | null;
@@ -666,6 +686,17 @@ export interface RecordingReadouts {
   surface_pressure_bar?: number | null;
 }
 
+/**
+ * One device's record of a dive: what recorded it, when it started, its files
+ * and a summary of its samples.
+ *
+ * `files` may hold more than one legitimately - the same computer exported as
+ * JSON and again as FIT is one record of one dive in two spellings, each
+ * filling what the other left blank - and `profile` may be present with `files`
+ * empty, which is what an import creates from a logbook of several dives, whose
+ * file belongs to no one dive. That is first-class rather than degenerate, and
+ * the file list says so in words.
+ */
 export interface Recording extends RecordingReadouts {
   uuid: string;
   // Position among this dive's recordings; 0 is primary.
@@ -705,7 +736,7 @@ export interface Recording extends RecordingReadouts {
   updated_at?: string | null;
 }
 
-// What `POST /dives/merge` produced.
+/** What `POST /dives/merge` produced. */
 export interface DiveMergeResult {
   // The surviving dive, read back whole - its recordings, cylinders and figures
   // as merged. Always the earlier of the two.
@@ -719,21 +750,25 @@ export interface DiveMergeResult {
   folded: boolean;
 }
 
-// Where a stored profile's samples came from. A closed vocabulary like
-// `DiveProfileEventType`, and deliberately not the API's own
-// `dive_profile.parser_key`: that column answers "can these samples be extracted
-// again" and holds a parser key or one of two sentinels, so reading it here would
-// mean hard-coding the sentinels and treating the open, growing set of parser keys
-// as the third case.
-//
-// `file` is not "this recording has files": a merge keeps whatever files either
-// half had, and those samples are still `merge`. This says what produced the
-// samples, which is why it sits on the profile rather than on the recording.
+/**
+ * Where a stored profile's samples came from. A closed vocabulary like
+ * `DiveProfileEventType`, and deliberately not the API's own
+ * `dive_profile.parser_key`: that column answers "can these samples be extracted
+ * again" and holds a parser key or one of two sentinels, so reading it here would
+ * mean hard-coding the sentinels and treating the open, growing set of parser keys
+ * as the third case.
+ *
+ * `file` is not "this recording has files": a merge keeps whatever files either
+ * half had, and those samples are still `merge`. This says what produced the
+ * samples, which is why it sits on the profile rather than on the recording.
+ */
 export type DiveProfileProvenance = "file" | "divejson_import" | "merge";
 
-// What the dive detail response says about a dive's profile without carrying it:
-// enough to decide whether to render the card, what to put in its heading, and
-// which version of the series to ask for.
+/**
+ * What the dive detail response says about a dive's profile without carrying it:
+ * enough to decide whether to render the card, what to put in its heading, and
+ * which version of the series to ask for.
+ */
 export interface DiveProfileInfo {
   uuid: string;
   // Span of the recorded samples in **milliseconds**, the profile's own
@@ -773,21 +808,23 @@ export interface DiveProfileInfo {
   updated_at?: string | null;
 }
 
-// One channel of a profile, in the DiveJSON vocabulary the API serves it in:
-// `times` is elapsed **milliseconds** from the recording's `started_at` (DiveJSON
-// §5.1), so a sample a device stamped 160 ms after its header sits at 160 rather
-// than at zero; `values` is integer-scaled (see `PROFILE_CHANNELS` in
-// `lib/dive-profile.ts` for the divisor per channel). The API's *storage* still
-// uses the compact `t`/`v` keys and maps them here on the way out, so a payload
-// dumped from its JSONB column does not look like this.
-//
-// Integers rather than floats deliberately, both on the wire and in the
-// database: a float round-trip reintroduces `20.600000000000023`-class noise
-// several thousand times per dive, and the chart is going to map every point
-// through a scale function anyway - so it divides once per point there.
-//
-// There are no nulls inside a series. A sensor dropout is a *gap in `times`*,
-// which `segmentByTimeGap` turns into separate polylines.
+/**
+ * One channel of a profile, in the DiveJSON vocabulary the API serves it in:
+ * `times` is elapsed **milliseconds** from the recording's `started_at` (DiveJSON
+ * §5.1), so a sample a device stamped 160 ms after its header sits at 160 rather
+ * than at zero; `values` is integer-scaled (see `PROFILE_CHANNELS` in
+ * `lib/dive-profile.ts` for the divisor per channel). The API's *storage* still
+ * uses the compact `t`/`v` keys and maps them here on the way out, so a payload
+ * dumped from its JSONB column does not look like this.
+ *
+ * Integers rather than floats deliberately, both on the wire and in the
+ * database: a float round-trip reintroduces `20.600000000000023`-class noise
+ * several thousand times per dive, and the chart is going to map every point
+ * through a scale function anyway - so it divides once per point there.
+ *
+ * There are no nulls inside a series. A sensor dropout is a *gap in `times`*,
+ * which `segmentByTimeGap` turns into separate polylines.
+ */
 export interface DiveProfileSeries {
   times: number[];
   values: number[];
@@ -802,20 +839,22 @@ export interface DiveProfilePressureSeries extends DiveProfileSeries {
   gas_number: number;
 }
 
-// What a marker on the profile chart says happened. The vocabulary the API
-// normalizes three export formats into (`ProfileEventType` in its
-// `schemas/dive_profile.py`), so a chart never has to interpret a device's own
-// wording - except where there is no type at all, which is exactly the case
-// where it hands that wording over in `label`.
-//
-// **There is no `other` here, and that is the shape of the wire rather than an
-// omission.** DiveJSON §6.6 makes `type` OPTIONAL and spells "the device
-// recorded something and nothing in the vocabulary says what" as an *absent*
-// type beside a `label` that is then required; the API stores that fact as
-// `OTHER` and maps it to a null on the way out. A payload from an older build
-// still carrying the string is handled by the same fallbacks an unknown type
-// gets - `describeEvent`'s `default` and `glyphFor`'s - so nothing has to keep a
-// member for it.
+/**
+ * What a marker on the profile chart says happened. The vocabulary the API
+ * normalizes three export formats into (`ProfileEventType` in its
+ * `schemas/dive_profile.py`), so a chart never has to interpret a device's own
+ * wording - except where there is no type at all, which is exactly the case
+ * where it hands that wording over in `label`.
+ *
+ * **There is no `other` here, and that is the shape of the wire rather than an
+ * omission.** DiveJSON §6.6 makes `type` OPTIONAL and spells "the device
+ * recorded something and nothing in the vocabulary says what" as an *absent*
+ * type beside a `label` that is then required; the API stores that fact as
+ * `OTHER` and maps it to a null on the way out. A payload from an older build
+ * still carrying the string is handled by the same fallbacks an unknown type
+ * gets - `describeEvent`'s `default` and `glyphFor`'s - so nothing has to keep a
+ * member for it.
+ */
 export type DiveProfileEventType =
   | "gas_switch"
   | "deep_stop"
@@ -835,8 +874,10 @@ export type DiveProfileEventType =
   | "pressure_low"
   | "depth_alarm";
 
-// One thing the dive computer recorded happening, at an instant rather than
-// over a channel.
+/**
+ * One thing the dive computer recorded happening, at an instant rather than
+ * over a channel.
+ */
 export interface DiveProfileEvent {
   // Elapsed milliseconds from the recording's start, on the same axis as every
   // series' `times`.
@@ -861,14 +902,16 @@ export interface DiveProfileEvent {
   label?: string | null;
 }
 
-// The drawable half of a profile, and **deliberately narrower than the recording
-// route's response**: that route serves `provenance` alongside these channels
-// (`RecordingProfileRead` in the API's `schemas/dive_profile.py`), and this
-// interface leaves it out rather than making every caller supply one. It is the
-// chart's prop type as well as a response shape - `DiveProfileChart` takes a
-// `DiveProfile` - and a chart that draws curves has no business demanding to know
-// where they came from. The app reads the provenance off `DiveProfileInfo`, on
-// the dive detail response, which is the surface that has to say it.
+/**
+ * The drawable half of a profile, and **deliberately narrower than the recording
+ * route's response**: that route serves `provenance` alongside these channels
+ * (`RecordingProfileRead` in the API's `schemas/dive_profile.py`), and this
+ * interface leaves it out rather than making every caller supply one. It is the
+ * chart's prop type as well as a response shape - `DiveProfileChart` takes a
+ * `DiveProfile` - and a chart that draws curves has no business demanding to know
+ * where they came from. The app reads the provenance off `DiveProfileInfo`, on
+ * the dive detail response, which is the surface that has to say it.
+ */
 export interface DiveProfile {
   // The span of the sample channels, in milliseconds. An event may sit past it: the
   // API leaves a marker pressed after the recorder's last sample where the file
@@ -942,10 +985,12 @@ export interface DiveProfile {
  */
 export const MAX_DIVE_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-// Metadata about one dive-computer export a recording was read from - never its
-// bytes. The file itself is fetched separately (and authenticated) via
-// `getDiveFileBlob`, which needs the file's own uuid as well as the dive's: a
-// recording can hold several files and a dive several recordings.
+/**
+ * Metadata about one dive-computer export a recording was read from - never its
+ * bytes. The file itself is fetched separately (and authenticated) via
+ * `getDiveFileBlob`, which needs the file's own uuid as well as the dive's: a
+ * recording can hold several files and a dive several recordings.
+ */
 export interface DiveFileInfo {
   uuid: string;
   original_filename: string;
@@ -954,7 +999,7 @@ export interface DiveFileInfo {
   // The format the API's reader recognised the file as - a converter format id
   // such as "suunto_json", or `divejson_import` for an archive-restored file
   // this build cannot read. Render it with `importSourceLabel`, the logbook
-  // import's label, which falls back to the raw id.
+  // import's label, which de-snakes an id it has no label for.
   parser_key: string;
   updated_at?: string | null;
 }
@@ -1074,11 +1119,13 @@ export interface DiveUpdate {
   mixtures?: DiveMixtureWrite[];
 }
 
-// What to prefill a new dive's number with, from `/dives/next-number`.
-//
-// Derived by the API from the dive's *date*, not from the newest dive in the
-// log: back-filling a 2019 dive into a log that already reaches #212 should
-// suggest #12, not #213. See the API's `services/dive_numbering.py`.
+/**
+ * What to prefill a new dive's number with, from `/dives/next-number`.
+ *
+ * Derived by the API from the dive's *date*, not from the newest dive in the
+ * log: back-filling a 2019 dive into a log that already reaches #212 should
+ * suggest #12, not #213. See the API's `services/dive_numbering.py`.
+ */
 export interface DiveNumberSuggestion {
   dive_number: number;
   // Whether an existing dive already carries this number. Advisory only - show
@@ -1087,16 +1134,20 @@ export interface DiveNumberSuggestion {
   is_taken: boolean;
 }
 
-// `/dives/recent-volumes`: distinct cylinder volumes, most recently used first.
+/**
+ * `/dives/recent-volumes`: distinct cylinder volumes, most recently used first.
+ */
 export interface RecentVolumes {
   volumes: number[];
 }
 
-// The state of a user's dive numbering, from `/dives/numbering`.
-//
-// Reported, never enforced. A gap means "part of my log lives in a paper
-// logbook" as often as it means "my numbering is a mess", and only the diver
-// knows which - so this drives an indicator they can ignore, not a warning.
+/**
+ * The state of a user's dive numbering, from `/dives/numbering`.
+ *
+ * Reported, never enforced. A gap means "part of my log lives in a paper
+ * logbook" as often as it means "my numbering is a mess", and only the diver
+ * knows which - so this drives an indicator they can ignore, not a warning.
+ */
 export interface DiveNumberingSummary {
   total_dives: number;
   // Null only when the log is empty.
@@ -1142,31 +1193,33 @@ export interface DiveRenumberResult {
   changes: DiveRenumberChange[];
 }
 
-// One of the two dives chronologically adjacent to another, from
-// `/dive/{uuid}/neighbors`. Just enough to label a link and follow it - the
-// neighbour itself is loaded when the diver actually goes there.
+/**
+ * One of the two dives chronologically adjacent to another, from
+ * `/dive/{uuid}/neighbors`. Just enough to label a link and follow it - the
+ * neighbour itself is loaded when the diver actually goes there.
+ */
 export interface DiveNeighbor {
   uuid: string;
   dive_number: number;
   start_time: string;
 }
 
-// A dive's chronological neighbours, ordered by `start_time` and **not** by
-// `dive_number`: numbers can have gaps, duplicates and runs that don't follow
-// the dates (see `DiveNumberingSummary`), so they are a label, not a sequence.
-//
-// `next` is the *later* dive. That's the opposite end of the log from where
-// `getDives` starts - it lists newest first, so a dive's `next` is the one
-// above it there - and it is the direction a `>` control has to move for the
-// arrows to read as a timeline rather than as list navigation.
-//
-// Either side is null at the ends of the log; a log of one dive has both null.
+/**
+ * A dive's chronological neighbours, ordered by `start_time` and **not** by
+ * `dive_number`: numbers can have gaps, duplicates and runs that don't follow
+ * the dates (see `DiveNumberingSummary`), so they are a label, not a sequence.
+ *
+ * `next` is the *later* dive. That's the opposite end of the log from where
+ * `getDives` starts - it lists newest first, so a dive's `next` is the one
+ * above it there - and it is the direction a `>` control has to move for the
+ * arrows to read as a timeline rather than as list navigation.
+ *
+ * Either side is null at the ends of the log; a log of one dive has both null.
+ */
 export interface DiveNeighbors {
   previous: DiveNeighbor | null;
   next: DiveNeighbor | null;
 }
-
-export type PaginatedDivesResponse = PaginatedResponse<Dive>;
 
 /**
  * What narrows a dive list, and the order it comes in. Every filter set is AND-ed
@@ -1192,18 +1245,20 @@ export interface DiveFilters {
   sort?: DiveListSort;
 }
 
-// A gas mixture as read out of a dive-computer export, mirroring the API's
-// `DiveMixtureSchema`. Every field is nullable and `null` means "the file didn't
-// record this" - the API's parsers report what they read and never substitute a
-// plausible value.
-//
-// The gaps are **not** filled from `DEFAULT_MIXTURE` on the way into the form: a
-// blank box is what the file said, and `mergeMixture` (`lib/dive-import.ts`) leaves
-// it blank unless the form already held a cylinder to carry over - which it does say,
-// via `describeMixtureImport`. A guessed cylinder size feeds `gas_use`, so a diver
-// who cannot tell it from a reading gets an RMV presented as a derived fact. A
-// cylinder added by hand still starts from `DEFAULT_MIXTURE`, where the diver can see
-// the numbers and change them.
+/**
+ * A gas mixture as read out of a dive-computer export, mirroring the API's
+ * `DiveMixtureSchema`. Every field is nullable and `null` means "the file didn't
+ * record this" - the API's parsers report what they read and never substitute a
+ * plausible value.
+ *
+ * The gaps are **not** filled from `DEFAULT_MIXTURE` on the way into the form: a
+ * blank box is what the file said, and `mergeMixture` (`lib/dive-import.ts`) leaves
+ * it blank unless the form already held a cylinder to carry over - which it does say,
+ * via `describeMixtureImport`. A guessed cylinder size feeds `gas_use`, so a diver
+ * who cannot tell it from a reading gets an RMV presented as a derived fact. A
+ * cylinder added by hand still starts from `DEFAULT_MIXTURE`, where the diver can see
+ * the numbers and change them.
+ */
 export interface ParsedDiveMixture {
   volume: number | null;
   start_pressure: number | null;
@@ -1217,12 +1272,16 @@ export interface ParsedDiveMixture {
   role: GasRole | null;
 }
 
-// A figure of `ParsedDive` the reader can derive rather than read off the file.
+/**
+ * A figure of `ParsedDive` the reader can derive rather than read off the file.
+ */
 export type ParsedDiveInferredField =
   "submerged_time" | "avg_depth" | "max_depth";
 
-// Result of reading one dive's file, in any format the API reads, via /dive/parse.
-// Most fields are nullable since not every dive-computer format populates every field.
+/**
+ * Result of reading one dive's file, in any format the API reads, via /dive/parse.
+ * Most fields are nullable since not every dive-computer format populates every field.
+ */
 export interface ParsedDive {
   dive_number: number | null;
   // The dive computer's raw exported timestamp - unlike `Dive.start_time`,
@@ -1292,15 +1351,17 @@ export interface ParsedDive {
   [key: string]: unknown;
 }
 
-// A dive of the caller's that a just-parsed file might already belong to.
-//
-// `same_recording` separates the two kinds of offer. `true` means the file looks
-// like a **second export of a record that dive already has** - the same
-// computer's JSON beside its FIT - so attaching fills that recording's blanks
-// and overwrites nothing. `false` means only the start times are close, which is
-// every second computer and also every unrelated dive that began within the
-// window; there the diver is deciding whether these are two records of one dive
-// at all.
+/**
+ * A dive of the caller's that a just-parsed file might already belong to.
+ *
+ * `same_recording` separates the two kinds of offer. `true` means the file looks
+ * like a **second export of a record that dive already has** - the same
+ * computer's JSON beside its FIT - so attaching fills that recording's blanks
+ * and overwrites nothing. `false` means only the start times are close, which is
+ * every second computer and also every unrelated dive that began within the
+ * window; there the diver is deciding whether these are two records of one dive
+ * at all.
+ */
 export interface ParsedDiveMatch {
   dive_uuid: string;
   // The diver's own number for it, for naming it on the form.
@@ -1324,9 +1385,9 @@ export interface ParsedDiveMatch {
  * correct the parsed values before anything is stored.
  */
 export const divesAPI = {
-  // Create a new dive, owned by the signed-in user.
+  /** Create a new dive, owned by the signed-in user. */
   async createDive(diveData: DiveCreate): Promise<Dive> {
-    const response = await apiClient.post(`/dive`, diveData);
+    const response = await apiClient.post<Dive>(`/dive`, diveData);
     announceServiceDueChanged();
     return response.data;
   },
@@ -1343,7 +1404,7 @@ export const divesAPI = {
     page: number = 1,
     items_per_page: number = 10,
     filters: DiveFilters = {},
-  ): Promise<PaginatedDivesResponse> {
+  ): Promise<PaginatedResponse<Dive>> {
     const {
       tripUuid,
       diveSiteUuid,
@@ -1355,7 +1416,7 @@ export const divesAPI = {
       type,
       sort,
     } = filters;
-    const response = await apiClient.get(`/dives`, {
+    const response = await apiClient.get<PaginatedResponse<Dive>>(`/dives`, {
       params: {
         page,
         items_per_page,
@@ -1373,35 +1434,44 @@ export const divesAPI = {
     return response.data;
   },
 
-  // Get a specific dive by uuid
+  /** One dive by uuid. */
   async getDive(diveUuid: string): Promise<Dive> {
-    const response = await apiClient.get(`/dive/${diveUuid}`);
+    const response = await apiClient.get<Dive>(`/dive/${diveUuid}`);
     return response.data;
   },
 
-  // The dives immediately before and after `diveUuid` in the signed-in user's
-  // log, by start time. Either side is null at the ends of the log.
-  //
-  // Separate from `getDive` rather than embedded in it: the neighbours change
-  // whenever any *other* dive is added, moved or deleted, so folding them into
-  // the dive would tie the detail response's cache lifetime to edits that have
-  // nothing to do with the dive being shown.
+  /**
+   * The dives immediately before and after `diveUuid` in the signed-in user's
+   * log, by start time. Either side is null at the ends of the log.
+   *
+   * Separate from `getDive` rather than embedded in it: the neighbours change
+   * whenever any *other* dive is added, moved or deleted, so folding them into
+   * the dive would tie the detail response's cache lifetime to edits that have
+   * nothing to do with the dive being shown.
+   */
   async getDiveNeighbors(diveUuid: string): Promise<DiveNeighbors> {
-    const response = await apiClient.get(`/dive/${diveUuid}/neighbors`);
+    const response = await apiClient.get<DiveNeighbors>(
+      `/dive/${diveUuid}/neighbors`,
+    );
     return response.data;
   },
 
-  // The dive number to prefill for a dive starting at `startTime` (offset-aware
-  // ISO 8601 - build one with `combineStartTime()` from `lib/date-time.ts`).
-  // Offset-**required**, for the same reason as `DiveRenumberRequest`: it orders
-  // the new dive against existing ones, which is a question about instants.
-  //
-  // A suggestion, not a reservation. Always the signed-in user's own log, so
-  // unlike `getDives` this takes no user uuid.
+  /**
+   * The dive number to prefill for a dive starting at `startTime` (offset-aware
+   * ISO 8601 - build one with `combineStartTime()` from `lib/date-time.ts`).
+   * Offset-**required**, for the same reason as `DiveRenumberRequest`: it orders
+   * the new dive against existing ones, which is a question about instants.
+   *
+   * A suggestion, not a reservation. Always the signed-in user's own log, so
+   * unlike `getDives` this takes no user uuid.
+   */
   async getNextDiveNumber(startTime: string): Promise<DiveNumberSuggestion> {
-    const response = await apiClient.get(`/dives/next-number`, {
-      params: { start_time: startTime },
-    });
+    const response = await apiClient.get<DiveNumberSuggestion>(
+      `/dives/next-number`,
+      {
+        params: { start_time: startTime },
+      },
+    );
     return response.data;
   },
 
@@ -1418,76 +1488,89 @@ export const divesAPI = {
     return response.data.volumes;
   },
 
-  // The state of the signed-in user's dive numbering, for the log's numbering
-  // indicator.
+  /**
+   * The state of the signed-in user's dive numbering, for the log's numbering
+   * indicator.
+   */
   async getDiveNumbering(): Promise<DiveNumberingSummary> {
-    const response = await apiClient.get(`/dives/numbering`);
+    const response =
+      await apiClient.get<DiveNumberingSummary>(`/dives/numbering`);
     return response.data;
   },
 
-  // Renumber the signed-in user's dives consecutively, in date order.
-  //
-  // The one call in the app that rewrites numbers the diver entered. Call it
-  // with `dry_run: true` first and show the result before calling it for real -
-  // some of those numbers may also be written in a paper logbook.
+  /**
+   * Renumber the signed-in user's dives consecutively, in date order.
+   *
+   * The one call in the app that rewrites numbers the diver entered. Call it
+   * with `dry_run: true` first and show the result before calling it for real -
+   * some of those numbers may also be written in a paper logbook.
+   */
   async renumberDives(
     request: DiveRenumberRequest = {},
   ): Promise<DiveRenumberResult> {
-    const response = await apiClient.post(`/dives/renumber`, request);
+    const response = await apiClient.post<DiveRenumberResult>(
+      `/dives/renumber`,
+      request,
+    );
     return response.data;
   },
 
-  // Update a dive
+  /** Update a dive. The API answers with a status message, not the dive. */
   async updateDive(
     diveUuid: string,
     updateData: DiveUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(`/dive/${diveUuid}`, updateData);
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
+      `/dive/${diveUuid}`,
+      updateData,
+    );
     announceServiceDueChanged();
     return response.data;
   },
 
-  // Delete a dive
-  async deleteDive(diveUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/dive/${diveUuid}`);
+  /** Delete a dive. */
+  async deleteDive(diveUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/dive/${diveUuid}`,
+    );
     announceServiceDueChanged();
     return response.data;
   },
 
-  // Read one dive's file, in any format the API reads, into structured dive data
+  /**
+   * Read one dive's file, in any format the API reads, into structured dive data
+   */
   async parseDiveFile(file: File): Promise<ParsedDive> {
     const formData = new FormData();
     formData.append("file", file);
 
-    // The apiClient instance has a fixed default "Content-Type: application/json" header.
-    // For multipart uploads we must clear it so the browser can set the correct
-    // "multipart/form-data; boundary=..." header itself.
-    const response = await apiClient.post("/dive/parse", formData, {
-      headers: { "Content-Type": undefined },
-    });
+    const response = await apiClient.post<ParsedDive>(
+      "/dive/parse",
+      formData,
+      multipartRequest(),
+    );
     return response.data;
   },
 
-  // Attach a dive-computer export to a dive, and get back the recording it
-  // landed in.
-  //
-  // Called after the dive has been created or updated, not when the file is
-  // picked: `/dive/parse` stores nothing, so a file only becomes worth keeping
-  // once it has actually produced a dive.
-  //
-  // **Attaching never replaces.** The API decides where the bytes belong: an
-  // existing recording of this dive when the file passes the same-recording
-  // test - the same computer's JSON beside its FIT - else a new recording
-  // appended after the ones already there. The same bytes twice is a no-op
-  // returning the recording they are already in, and bytes stored against a
-  // *different* dive of the account are a 409 naming it.
-  //
-  // `fileToken` is the `file_token` from the `parseDiveFile` call for this same
-  // file. Without it the API rejects the upload - it is what proves the bytes
-  // are the ones that pre-filled the form rather than an arbitrary blob.
-  //
-  // The `Content-Type` header is explicitly cleared so the browser sets
-  // `multipart/form-data` *with its own boundary* - same as `parseDiveFile`.
+  /**
+   * Attach a dive-computer export to a dive, and get back the recording it
+   * landed in.
+   *
+   * Called after the dive has been created or updated, not when the file is
+   * picked: `/dive/parse` stores nothing, so a file only becomes worth keeping
+   * once it has actually produced a dive.
+   *
+   * **Attaching never replaces.** The API decides where the bytes belong: an
+   * existing recording of this dive when the file passes the same-recording
+   * test - the same computer's JSON beside its FIT - else a new recording
+   * appended after the ones already there. The same bytes twice is a no-op
+   * returning the recording they are already in, and bytes stored against a
+   * *different* dive of the account are a 409 naming it.
+   *
+   * `fileToken` is the `file_token` from the `parseDiveFile` call for this same
+   * file. Without it the API rejects the upload - it is what proves the bytes
+   * are the ones that pre-filled the form rather than an arbitrary blob.
+   */
   async attachRecordingFile(
     diveUuid: string,
     file: File,
@@ -1497,105 +1580,121 @@ export const divesAPI = {
     formData.append("file", file);
     formData.append("file_token", fileToken);
 
-    const response = await apiClient.post(
+    const response = await apiClient.post<Recording>(
       `/dive/${diveUuid}/recordings`,
       formData,
-      { headers: { "Content-Type": undefined } },
+      multipartRequest(),
     );
     return response.data;
   },
 
-  // Remove one stored file.
-  //
-  // The recording's profile and readouts - and, when it was primary, the dive's
-  // entry and exit positions - are re-derived server-side from whatever files
-  // are left, and deleting the last file of a file-backed recording deletes the
-  // recording too. A recording whose profile came from logbook import or from a
-  // merge survives, because no file can re-yield those samples. Re-read the
-  // dive afterwards rather than predicting any of it here.
-  async deleteDiveFile(diveUuid: string, fileUuid: string): Promise<void> {
-    await apiClient.delete(`/dive/${diveUuid}/file/${fileUuid}`);
+  /**
+   * Remove one stored file.
+   *
+   * The recording's profile and readouts - and, when it was primary, the dive's
+   * entry and exit positions - are re-derived server-side from whatever files
+   * are left, and deleting the last file of a file-backed recording deletes the
+   * recording too. A recording whose profile came from logbook import or from a
+   * merge survives, because no file can re-yield those samples. Re-read the
+   * dive afterwards rather than predicting any of it here.
+   */
+  async deleteDiveFile(
+    diveUuid: string,
+    fileUuid: string,
+  ): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/dive/${diveUuid}/file/${fileUuid}`,
+    );
+    return response.data;
   },
 
-  // Delete a whole recording, files and profile with it. The first recording's
-  // deletion promotes the next.
+  /**
+   * Delete a whole recording, files and profile with it. The first recording's
+   * deletion promotes the next.
+   */
   async deleteRecording(
     diveUuid: string,
     recordingUuid: string,
-  ): Promise<void> {
-    await apiClient.delete(`/dive/${diveUuid}/recording/${recordingUuid}`);
+  ): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/dive/${diveUuid}/recording/${recordingUuid}`,
+    );
+    return response.data;
   },
 
-  // Move a recording to the front, which re-derives the dive's entry and exit
-  // positions from it and makes its readouts the ones the exposure card shows.
-  //
-  // `{ primary: true }` is the only body the API accepts - `false` is a 422,
-  // because *something* has to be primary and "make this one not primary" is
-  // not an operation. A diver who means that is promoting a different one.
+  /**
+   * Move a recording to the front, which re-derives the dive's entry and exit
+   * positions from it and makes its readouts the ones the exposure card shows.
+   *
+   * `{ primary: true }` is the only body the API accepts - `false` is a 422,
+   * because *something* has to be primary and "make this one not primary" is
+   * not an operation. A diver who means that is promoting a different one.
+   */
   async makeRecordingPrimary(
     diveUuid: string,
     recordingUuid: string,
   ): Promise<Recording> {
-    const response = await apiClient.patch(
+    const response = await apiClient.patch<Recording>(
       `/dive/${diveUuid}/recording/${recordingUuid}`,
       { primary: true },
     );
     return response.data;
   },
 
-  // Fold two dives into one - one computer's two records of a dive it chopped
-  // in half, or two computers' records of one dive.
-  //
-  // The two uuids are symmetric inputs: which survives is the server's answer
-  // (the earlier dive), not the caller's, and the response says which it was.
-  // The other is soft-deleted and **not recoverable through the API**, so
-  // anything holding `removed_dive_uuid` must stop pointing at it.
+  /**
+   * Fold two dives into one - one computer's two records of a dive it chopped
+   * in half, or two computers' records of one dive.
+   *
+   * The two uuids are symmetric inputs: which survives is the server's answer
+   * (the earlier dive), not the caller's, and the response says which it was.
+   * The other is soft-deleted and **not recoverable through the API**, so
+   * anything holding `removed_dive_uuid` must stop pointing at it.
+   */
   async mergeDives(diveUuids: [string, string]): Promise<DiveMergeResult> {
-    const response = await apiClient.post("/dives/merge", {
+    const response = await apiClient.post<DiveMergeResult>("/dives/merge", {
       dive_uuids: diveUuids,
     });
     announceServiceDueChanged();
     return response.data;
   },
 
-  // Fetch one of a dive's stored exports as a Blob.
-  //
-  // This has to go through the API client rather than a plain link: the file is
-  // private, the endpoint requires an `Authorization` header, and an `<a href>`
-  // cannot send one (the access token lives in memory, not in a cookie).
-  //
-  // `version` is sent as a `v` query param the API ignores. Its job is to give
-  // each version of a file its own URL: the response is cached with
-  // `max-age=300`, so without it the browser would keep serving the old bytes
-  // for five minutes after a replace.
+  /**
+   * Fetch one of a dive's stored exports as a Blob.
+   *
+   * This has to go through the API client rather than a plain link: the file is
+   * private, the endpoint requires an `Authorization` header, and an `<a href>`
+   * cannot send one (the access token lives in memory, not in a cookie).
+   * `version` is as `versionedRequest` describes.
+   */
   async getDiveFileBlob(
     diveUuid: string,
     fileUuid: string,
     version?: string,
   ): Promise<Blob> {
-    const response = await apiClient.get(`/dive/${diveUuid}/file/${fileUuid}`, {
-      responseType: "blob",
-      params: version ? { v: version } : undefined,
-    });
+    const response = await apiClient.get<Blob>(
+      `/dive/${diveUuid}/file/${fileUuid}`,
+      versionedRequest(version, { responseType: "blob" }),
+    );
     return response.data;
   },
 
-  // Fetch one recording's per-sample profile. 404s when that recording carried
-  // no samples - check the recording's `profile` summary first rather than
-  // calling this speculatively.
-  //
-  // `version` is sent as a `v` query param the API ignores, for the same reason
-  // as `getDiveFileBlob`: the response is `max-age=300`, and a re-extraction
-  // (after an extractor-version bump, say) would otherwise be masked by the
-  // previous payload for five minutes. Pass the profile's `updated_at`.
+  /**
+   * Fetch one recording's per-sample profile. 404s when that recording carried
+   * no samples - check the recording's `profile` summary first rather than
+   * calling this speculatively.
+   *
+   * Pass the profile's `updated_at` as `version` (see `versionedRequest`): a
+   * re-extraction, after an extractor-version bump say, would otherwise be masked
+   * by the previous payload for five minutes.
+   */
   async getRecordingProfile(
     diveUuid: string,
     recordingUuid: string,
     version?: string,
   ): Promise<DiveProfile> {
-    const response = await apiClient.get(
+    const response = await apiClient.get<DiveProfile>(
       `/dive/${diveUuid}/recording/${recordingUuid}/profile`,
-      { params: version ? { v: version } : undefined },
+      versionedRequest(version),
     );
     return response.data;
   },

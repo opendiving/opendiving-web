@@ -155,7 +155,7 @@ describe("readRuntimeConfig", () => {
 
   describe("SITE_URL", () => {
     // `metadataBase` is a `new URL(...)` built in the root layout, so a value that
-    // throws would take every page down over an OpenGraph tag.
+    // throws would take every page down over its metadata.
     it("falls back and warns rather than letting the layout throw", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -168,7 +168,7 @@ describe("readRuntimeConfig", () => {
     });
 
     // "htp://" parses happily as a non-special scheme, so nothing throws - it just
-    // reaches crawlers as an `og:url` nobody can fetch.
+    // reaches crawlers as a canonical URL nobody can fetch.
     it("rejects a mistyped scheme", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
 

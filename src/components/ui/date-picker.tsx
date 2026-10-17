@@ -5,6 +5,7 @@ import { CalendarIcon, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { parseDateInput } from "@/lib/date-input";
+import { pad } from "@/lib/date-time";
 import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { Input } from "@/components/ui/input";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -18,10 +19,6 @@ import {
 import type { FormControlSlotProps } from "@/components/ui/form";
 
 const DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
 
 function formatDate(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;

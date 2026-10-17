@@ -15,6 +15,7 @@ import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
 import { GearPageFrame } from "@/components/gear/gear-page-frame";
+import { countNoun } from "@/lib/format";
 
 export function GearPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -34,7 +35,7 @@ export function GearPageContent() {
 
   const fetchGearItems = useCallback(
     (page: number, perPage: number) =>
-      gearAPI.getGearItems(page, perPage, showArchived),
+      gearAPI.getGearItems(page, perPage, { includeArchived: showArchived }),
     [showArchived],
   );
 
@@ -77,7 +78,7 @@ export function GearPageContent() {
     if (!activeListIsEmpty) return;
     let cancelled = false;
     gearAPI
-      .getGearItems(1, 1, true)
+      .getGearItems(1, 1, { includeArchived: true })
       .then((response) => response.total_count > 0)
       // Unknown reads as "has some": a header left up for nothing costs less than
       // a switch the diver can no longer reach.
@@ -286,9 +287,7 @@ export function GearPageContent() {
         title="Archive gear"
         description={
           archivingItem
-            ? `"${gearItemLabel(archivingItem)}" will stay on the ${archivingItem.dive_count} dive${
-                archivingItem.dive_count === 1 ? "" : "s"
-              } it's already logged on, but won't be offered when logging new ones.`
+            ? `"${gearItemLabel(archivingItem)}" will stay on the ${countNoun(archivingItem.dive_count, "dive")} it's already logged on, but won't be offered when logging new ones.`
             : undefined
         }
         confirmText="Archive"

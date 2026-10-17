@@ -11,6 +11,7 @@ import { Star } from "lucide-react";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { RATING_MAX, RATING_MIN } from "@/lib/validations/dive";
 import { cn } from "@/lib/utils";
+import { countNoun } from "@/lib/format";
 
 const STEPS = Array.from(
   { length: RATING_MAX - RATING_MIN + 1 },
@@ -18,12 +19,12 @@ const STEPS = Array.from(
 );
 
 /** One step's name, which is what a screen reader reads for it. */
-export function ratingStepLabel(step: number): string {
-  return step === 1 ? "1 star" : `${step} stars`;
+function ratingStepLabel(step: number): string {
+  return countNoun(step, "star");
 }
 
 /** A stored rating as a sentence, for the places that show one. */
-export function ratingSummary(rating: number): string {
+function ratingSummary(rating: number): string {
   return `${rating} of ${RATING_MAX} stars`;
 }
 

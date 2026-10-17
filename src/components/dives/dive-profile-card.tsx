@@ -25,19 +25,19 @@ import {
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
 import { cn } from "@/lib/utils";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth, type UnitSystem } from "@/lib/units";
+import { countNoun } from "@/lib/format";
 
 // What the card knows about the profile right now. `null` is "in flight", derived
 // rather than stored - the same shape `useAuthedBlobUrl` uses, so nothing has to be
 // set synchronously in an effect body just to mark the fetch as started.
 //
-// A single settled value rather than the `profile` + `hasFailed` pair this used to
-// keep. Two independent states could disagree: `hasFailed` was never reset when the
-// dive or the profile version changed, so one failure was permanent for the life of
-// the page, and `profile` was never cleared, so a re-imported dive rendered the
-// *previous* version's chart under the new sample count.
+// A single settled value rather than a `profile` + `hasFailed` pair, because two
+// independent states can disagree: a failure flag not reset when the dive or the
+// profile version changes is permanent for the life of the page, and a `profile` not
+// cleared renders the *previous* version's chart under a re-import's sample count.
 type ProfileResult =
   | { status: "ready"; profile: DiveProfile }
   // The API says this dive has no profile. Nothing to retry - re-asking returns the
@@ -77,9 +77,7 @@ function describeProfileContents(
   ];
 
   if (info.event_count && info.event_count > 0) {
-    parts.push(
-      `${info.event_count} ${info.event_count === 1 ? "marker" : "markers"}`,
-    );
+    parts.push(countNoun(info.event_count, "marker"));
   }
   // Stated here as well as drawn, because a deco obligation is the one thing in
   // this card worth knowing without reading a chart.
@@ -168,11 +166,7 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
         //
         // The API's own wording where it has one - "This dive has no profile" -
         // now that the response interceptor unwraps blob-wrapped error bodies.
-        const status =
-          (error as { response?: { status?: number } })?.response?.status ===
-          404
-            ? "missing"
-            : "failed";
+        const status = getApiErrorStatus(error) === 404 ? "missing" : "failed";
         setResult({
           status,
           message: getApiErrorMessage(

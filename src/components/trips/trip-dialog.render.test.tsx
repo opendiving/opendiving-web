@@ -42,10 +42,11 @@ const SAM = {
   created_at: "2026-03-01T09:00:00Z",
 };
 
-vi.mock("@/lib/api/geocoding", () => ({
+// The real constants - the debounce and the query bounds the field hands the
+// combobox - with only the transport replaced.
+vi.mock("@/lib/api/geocoding", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/geocoding")>()),
   geocodingAPI: { searchPlaces: vi.fn().mockResolvedValue([]) },
-  MIN_PLACE_QUERY_LENGTH: 2,
-  MAX_PLACE_QUERY_LENGTH: 200,
 }));
 
 // The real map is behind `next/dynamic`, which renders its skeleton and nothing

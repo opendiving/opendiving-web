@@ -9,6 +9,8 @@ import {
   type ImportNoteCode,
   type ImportReport,
 } from "@/lib/api/logbook-import";
+import { countNoun } from "@/lib/format";
+import { labelOrFallback } from "@/lib/api/labels";
 
 // What each envelope collection is called on screen. The API sends the wire name
 // ("gear_service_schedules") and the diver reads the app's own word for the thing
@@ -33,19 +35,12 @@ const COLLECTION_LABELS: Record<string, string> = {
 };
 
 /**
- * A collection's display name, tolerating one this build has never heard of.
- *
- * A newer API that grew a collection this build has no label for should render
- * as a readable row rather than a blank cell, so an unknown wire name is
- * de-snaked instead of dropped - the same forward-compatibility stance `certificationAgencyLabel`
- * takes for a new agency. Counts are the point of the row and they are correct
- * whatever the heading says.
+ * A collection's display name. A newer API can grow a collection this build has
+ * no label for, which falls back as `labelOrFallback` says; counts are the point
+ * of the row and they are correct whatever the heading says.
  */
 export function collectionLabel(collection: string): string {
-  return (
-    COLLECTION_LABELS[collection] ??
-    collection.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
-  );
+  return labelOrFallback(COLLECTION_LABELS, collection);
 }
 
 /** The four disjoint counts, summed across collection rows. */
@@ -152,9 +147,7 @@ export function noteIsWarning(code: ImportNoteCode | string): boolean {
  */
 export function truncatedNotesSentence(notesTruncated: number): string | null {
   if (notesTruncated <= 0) return null;
-  return notesTruncated === 1
-    ? "1 further note is not shown. The counts above are complete."
-    : `${notesTruncated} further notes are not shown. The counts above are complete.`;
+  return `${countNoun(notesTruncated, "further note is", "further notes are")} not shown. The counts above are complete.`;
 }
 
 /**
@@ -185,19 +178,15 @@ const CONVERSION_KIND_LABELS: Record<string, string> = {
 };
 
 /**
- * A finding's badge text, de-snaking a kind this build has never heard of.
+ * A finding's badge text.
  *
  * The API sends `kind` as an **opaque string on purpose** and says so in the
  * field's own description: its converter gained a fourth kind mid-feature, and
  * the pin that decides which set a build sees moves with no change here. So a
- * fifth arrives as itself rather than as a blank badge - `collectionLabel`'s
- * treatment of an unknown collection, for the same reason.
+ * fifth falls back as `labelOrFallback` says rather than as a blank badge.
  */
 export function conversionKindLabel(kind: string): string {
-  return (
-    CONVERSION_KIND_LABELS[kind] ??
-    kind.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
-  );
+  return labelOrFallback(CONVERSION_KIND_LABELS, kind);
 }
 
 /** How loudly a conversion finding should read. */
@@ -235,7 +224,7 @@ export function conversionKindTone(kind: string): ConversionKindTone {
  * says nothing extra.
  */
 export function conversionWhereSentence(group: ConversionNoteGroup): string {
-  const places = group.count === 1 ? "1 place" : `${group.count} places`;
+  const places = countNoun(group.count, "place");
   if (group.wheres.length === 0) return places;
   const more = group.count - group.wheres.length;
   const listed =
@@ -256,9 +245,7 @@ export function truncatedConversionSentence(
   groupsTruncated: number,
 ): string | null {
   if (groupsTruncated <= 0) return null;
-  return groupsTruncated === 1
-    ? "1 further finding is not shown. The record counts above are complete."
-    : `${groupsTruncated} further findings are not shown. The record counts above are complete.`;
+  return `${countNoun(groupsTruncated, "further finding is", "further findings are")} not shown. The record counts above are complete.`;
 }
 
 // Why a file that was read is not kept, in the diver's terms.
@@ -279,10 +266,6 @@ export function importMemberNotKeptSentence(reason: string): string {
   return sentences[reason] ?? "Not kept";
 }
 
-function counted(n: number, one: string, many: string): string {
-  return n === 1 ? one : `${n} ${many}`;
-}
-
 /**
  * What an import does to one dive, in the diver's words rather than the code.
  *
@@ -299,14 +282,14 @@ export function importDiveOutcomeSentence(row: ImportDiveReport): string {
     case "updated": {
       const gains = [
         row.files_added > 0
-          ? counted(row.files_added, "a file", "files")
+          ? row.files_added === 1
+            ? "a file"
+            : `${row.files_added} files`
           : null,
         row.recordings_added > 0
-          ? counted(
-              row.recordings_added,
-              "another computer's recording",
-              "other computers' recordings",
-            )
+          ? row.recordings_added === 1
+            ? "another computer's recording"
+            : `${row.recordings_added} other computers' recordings`
           : null,
       ].filter((gain): gain is string => gain !== null);
       return gains.length > 0
@@ -334,7 +317,7 @@ export function importButtonLabel(dives: readonly ImportDiveReport[]): string {
   const brought = dives.filter(
     (row) => row.outcome === "created" || row.outcome === "restored",
   ).length;
-  if (brought > 0) return `Import ${counted(brought, "1 dive", "dives")}`;
+  if (brought > 0) return `Import ${countNoun(brought, "dive")}`;
 
   const updated = dives.filter((row) => row.outcome === "updated");
   const files = updated.reduce((sum, row) => sum + row.files_added, 0);
@@ -343,8 +326,8 @@ export function importButtonLabel(dives: readonly ImportDiveReport[]): string {
     0,
   );
   const gains = [
-    files > 0 ? counted(files, "1 file", "files") : null,
-    recordings > 0 ? counted(recordings, "1 recording", "recordings") : null,
+    files > 0 ? countNoun(files, "file") : null,
+    recordings > 0 ? countNoun(recordings, "recording") : null,
   ].filter((gain): gain is string => gain !== null);
   return gains.length > 0 ? `Import ${gains.join(" and ")}` : "Import";
 }

@@ -45,9 +45,9 @@ configure({ asyncUtilTimeout: 5_000 });
 // form's `defaultValues` and the last-dive prefill both decide what `mixtures` holds
 // before the diver touches anything, and `onSubmit` sends it unconditionally. The
 // question is what a diver who never opens the gas card ends up with on the wire -
-// and the answer used to be a cylinder the page invented (an 11.1 L of air), which
-// `prefillFromLastDive` then carried to the next dive and `diveModWarning` was happy
-// to raise a depth warning against.
+// and the answer must not be a cylinder the page invents (an 11.1 L of air), which
+// `prefillFromLastDive` would carry to the next dive and `diveModWarning` would
+// raise a depth warning against.
 
 // Every one of these is returned by identity rather than rebuilt per call, and
 // for `user` that is load-bearing rather than tidiness: the real `AuthContext`
@@ -56,8 +56,8 @@ configure({ asyncUtilTimeout: 5_000 });
 // re-runs that effect on every render, and the effect ends in `form.reset` - so
 // on any test whose last dive exists, reset and effect drive each other round in
 // an unbounded loop. It fails nothing outright; it just re-reads the last dive
-// ~75 times a second for as long as the page is mounted, which is what made this
-// file's timings wander and its slowest tests reach vitest's 5s limit. Pinned by
+// ~75 times a second for as long as the page is mounted, which makes this file's
+// timings wander and its slowest tests reach vitest's 5s limit. Pinned by
 // "reads the last dive once" below. Same trap as the `useRouter` note in
 // DECISIONS.md, one hook further along.
 //
@@ -349,7 +349,7 @@ beforeEach(() => {
   stable.auth.user.dive_form_preset_uuid = null;
   stable.searchParams = new URLSearchParams();
   stable.router.bfcacheId = "visit-1";
-  vi.mocked(authAPI.updateProfile).mockResolvedValue(undefined);
+  vi.mocked(authAPI.updateProfile).mockResolvedValue({ message: "ok" });
   vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([]);
   vi.mocked(divesAPI.getDives).mockResolvedValue(emptyPage());
   vi.mocked(divesAPI.getNextDiveNumber).mockResolvedValue({
@@ -452,7 +452,7 @@ describe("logging a dive without touching the gas card", () => {
   });
 
   it("raises no depth warning on a dive deep enough for one", async () => {
-    // 60 m is past air's 56.66 m working limit, so the seeded cylinder used to make
+    // 60 m is past air's 56.66 m working limit, so a seeded cylinder would make
     // this form warn about gas the diver never entered - the worst kind of wrong,
     // since it trains a diver to ignore the real ones.
     render(<NewDivePage />);
@@ -622,9 +622,8 @@ describe("the last-dive prefill", () => {
     expect(
       await screen.findByText(/no tanks recorded for this dive/i),
     ).toBeInTheDocument();
-    // The bug this pins: a cylinder-less dive used to hand the next form a
-    // fabricated one, so the phantom propagated down the log rather than staying
-    // on dive 1.
+    // Pins that a cylinder-less dive hands the next form no fabricated one, which
+    // would propagate down the log rather than stay on dive 1.
     expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
   });
 
@@ -1254,8 +1253,8 @@ describe("a stored hidden set", () => {
   });
 
   it("hides Weight without taking Gear with it", async () => {
-    // The two are nested in one render so the gear picker can write the weight, and
-    // that nesting used to be the reason they could not come apart.
+    // The two are nested in one render so the gear picker can write the weight;
+    // this pins that the nesting does not tie them together.
     stable.auth.user.dive_form_hidden_fields = ["weight"];
     render(<NewDivePage />);
     await screen.findByLabelText(/dive time/i);
@@ -1472,10 +1471,10 @@ describe("what the prefill does to a hidden field", () => {
 
 describe("persisting a toggle", () => {
   it("sends the canonical list, and does not reset the form", async () => {
-    // The trap this pins: the prefill effect used to key on the `user` object, and
-    // folding a saved toggle back into the context replaces it. That would refetch
-    // the last dive and re-stamp `start_time` with `nowStartTime()` - on a form the
-    // diver was in the middle of.
+    // Pins that the prefill effect does not key on the `user` object: folding a
+    // saved toggle back into the context replaces it, which would refetch the last
+    // dive and re-stamp `start_time` with `nowStartTime()` - on a form the diver is
+    // in the middle of.
     lastDiveWith({ water_type: "brackish" });
 
     render(<NewDivePage />);
@@ -3169,8 +3168,9 @@ describe("hiding the species picker while it is still resolving a pick", () => {
   it("leaves the save button usable", async () => {
     // The picker reports a pending catalog resolve to the card, and the card
     // disables the submit on it. Unmounting it - by switching Species off, or by
-    // applying a preset that hides it - used to leave that report stuck at true and
-    // the button on "Adding species..." until a reload: a form wedged by a switch.
+    // applying a preset that hides it - must not leave that report stuck at true
+    // and the button on "Adding species..." until a reload: a form wedged by a
+    // switch.
     vi.mocked(speciesAPI.suggestSpecies).mockResolvedValue({
       results: [
         {

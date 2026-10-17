@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
+import { countNoun } from "@/lib/format";
 
 export interface DiveGearFieldProps extends FormControlSlotProps {
   // Selected gear item uuids for this dive.
@@ -168,9 +169,7 @@ export function DiveGearField({
         open={pendingSet !== null}
         onOpenChange={(open) => !open && setPendingSet(null)}
         title="Replace this dive's gear?"
-        description={`Loading "${pendingSet?.name}" replaces the ${value.length} item${
-          value.length === 1 ? "" : "s"
-        } currently on this dive.`}
+        description={`Loading "${pendingSet?.name}" replaces the ${countNoun(value.length, "item")} currently on this dive.`}
         confirmText="Replace"
         variant="default"
         onConfirm={() => {
