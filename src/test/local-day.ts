@@ -26,7 +26,7 @@ export function localDay(iso: string): string {
 // A bare "YYYY-MM-DD" `days` from now, in the suite's own timezone.
 //
 // Built from local getters because the fields these fixtures feed are compared against
-// a local date (`todayIsoDate` in `lib/gear-service.ts`). East of UTC in the small
+// a local date (`todayIsoDate` in `lib/date-time.ts`). East of UTC in the small
 // hours `toISOString().slice(0, 10)` renders tomorrow as today, and an assertion that a
 // future date is refused then never fires. Spelled out rather than calling
 // `todayIsoDate` so a bug in that one cannot cancel itself out here.
