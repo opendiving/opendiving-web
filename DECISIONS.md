@@ -786,9 +786,8 @@ for the reminder email; the constants are named identically on both sides
 `grep SERVICE_DUE_SOON` finds the trio. Every interval arm is evaluated and the most urgent wins
 ("annually or every 100 dives, whichever comes first"); an hours remainder is compared in seconds
 and shown rounded up to whole hours of diving, as the digest shows it. `worstServiceStatus()`
-collapses an item's schedules into the gear list's one badge and returns `null`, not `"ok"`, when
-there are no schedules: nothing tracked is not everything fine, and `ServiceStatusBadge` renders it
-as a muted dash.
+collapses an item's schedules into a gear card's one chip and returns `null`, not `"ok"`, when there
+are no schedules: nothing tracked is not everything fine, so the card shows no chip.
 
 ## `lib/gear-service.ts` holds the logic, `lib/api/gear-service.ts` holds the transport
 
@@ -1825,11 +1824,11 @@ The script commits nothing over there.
 ## "Due soon" is a `warning` badge, because `secondary` is invisible on a card
 
 `serviceStatusBadgeVariant` never maps `due_soon` onto `secondary`. Every place the chip renders
-(gear list, gear detail card, the bell's service-due list) sits on `--card` or `--popover`, one
-value in both themes, and dark `--secondary` against it is a near-neutral grey a few lightness
-points off its surface: 1.2:1, with no border. The label passes every text-contrast scan, so a
-text-node walker never flags it; non-text contrast is the check that fails. It also made "Due soon"
-identical to "Rented", a fact about an item rather than a status.
+(gear cards, gear detail card, the bell's service-due list) sits on `--card` or `--popover` in dark,
+and dark `--secondary` against it is a near-neutral grey a few lightness points off its surface:
+1.2:1, with no border. The label passes every text-contrast scan, so a text-node walker never flags
+it; non-text contrast is the check that fails. It also made "Due soon" identical to "Rented", a fact
+about an item rather than a status.
 
 `--warning` is dark and slightly brown in light mode (`32 92% 27%`) because it carries white text
 and a mid-amber only reaches 3.9:1 under white; in dark mode it is `38 95% 62%` with near-black
@@ -1839,9 +1838,9 @@ used both ways. `lib/gear-service.ts` does not touch it.
 ## Dark `--secondary` is 22%, because every secondary chip renders on a card
 
 Dark `--secondary` is 22%, nine points above `--card`, because every `secondary` chip (the count
-chips on dives, sites, trips, certifications, gear and gear sets; "Rented" in `gear-items-card`,
-`dive-detail-main` and `gear-item-multi-select`; Home's `doneCount/steps` chip) renders on a card
-header, where three points of lightness is no background at all.
+chips on dives, sites, trips, certifications, gear and gear sets; "Rented" in `dive-detail-main` and
+`gear-item-multi-select`; Home's `doneCount/steps` chip) renders on a card header, where three
+points of lightness is no background at all.
 
 Lightness rather than a border: the base `Badge` carries `border` and `secondary` sets
 `border-transparent`; a visible border makes it look like `outline`, which sits three rows away as
@@ -1924,11 +1923,11 @@ Card-title icons are `gap-2` on the title, never `mr-2` on the icon, and inherit
 `DiveDetailMain`'s Gear card is a `Table` rather than a `<ul>` of `gearItemLabel(item)`: brand and
 name glued into one string give the eye nothing to scan down at seven items.
 
-Columns are Type, Brand, Name, deliberately not `/gear`'s Name/Type/Brand. `/gear` lists things you
-own, looked up by name; the dive page is a kit list read by type ("what suit? what computer?"), and
-the closed vocabulary gives a short repeating left edge. Splitting brand out retires `gearItemLabel`
-here; it stays where a one-line label is needed (picker, sets card, archive/delete confirmations).
-The Name cell keeps the link and the Rented/Archived badges.
+Columns are Type, Brand, Name, deliberately not led by the name as `/gear`'s cards are. `/gear`
+lists things you own, looked up by name; the dive page is a kit list read by type ("what suit? what
+computer?"), and the closed vocabulary gives a short repeating left edge. Splitting brand out
+retires `gearItemLabel` here; it stays where a one-line label is needed (picker, sets card,
+archive/delete confirmations). The Name cell keeps the link and the Rented/Archived badges.
 
 The whole Type column is `text-muted-foreground`: the type is the question, the name the answer, and
 a full-strength category column competes with the names. Brand stays full strength, being part of
@@ -2588,9 +2587,7 @@ Measured on nine tables at 375–1440 px with `padding-inline` injected, reading
 against `table.parentElement.clientWidth`. At 1024 px and above nothing overflows at any padding; at
 375 px everything scrolls regardless; 640–768 px is the argument: `px-2` clears every table's 640 px
 overflow, and at 768 px stops `Date & Time` and `Apr 16, 2026, 12:59` wrapping in the dive log.
-`px-3` clears under half. The one cost is the gutter between right-aligned `Dives` and `Service` in
-`gear-items-card.tsx`; if that pair reads as one number, add `pr-` there rather than widening every
-table. An `overflow-x-auto` div around a `Table` is inert, and fools
+`px-3` clears under half. An `overflow-x-auto` div around a `Table` is inert, and fools
 `closest('[class*="overflow-x-auto"]')`.
 
 ## Dive site coordinates are two free-typed strings, validated as a pair
@@ -4519,16 +4516,16 @@ Home page under three route names and never renders the landing page or sign-in 
 
 ## Ten rows of "Edit" name nothing
 
-Row-action controls in the three tables (gear items, gear sets, courses) and the dive, trip, site
-and certification cards' actions menus name their row: `Actions for dive #412`,
-`Actions for Palau 2025`, `Delete Pescador Island`. Uniqueness among the page's controls is the
-point: axe's `button-name` and `link-name` pass `aria-label="Edit"` ten times over, so only reading
-the controls list catches a bare label. Dive cards key off `dive.dive_number`, what the card leads
-with and what a diver says out loud. Certification cards carry agency and level through
-`certificationLabel` in `lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no
-unique-name constraint by design, and level alone gives two `Actions for Advanced Nitrox` menus.
-Gear rows use `gearItemLabel`'s brand-then-name shape. A qualifier belongs in the name where the
-diver says it and the collision is structural; otherwise it is a second sentence.
+Row-action controls in the courses table and the dive, trip, site, certification, gear and gear set
+cards' actions menus name their row: `Actions for dive #412`, `Actions for Palau 2025`,
+`Delete Pescador Island`. Uniqueness among the page's controls is the point: axe's `button-name` and
+`link-name` pass `aria-label="Edit"` ten times over, so only reading the controls list catches a
+bare label. Dive cards key off `dive.dive_number`, what the card leads with and what a diver says
+out loud. Certification cards carry agency and level through `certificationLabel` in
+`lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no unique-name constraint
+by design, and level alone gives two `Actions for Advanced Nitrox` menus. Gear cards use
+`gearItemLabel`'s brand-then-name shape. A qualifier belongs in the name where the diver says it and
+the collision is structural; otherwise it is a second sentence.
 `app/certifications/page.render.test.tsx` and `app/gear/page.render.test.tsx` render two records,
 because a constant name passes a one-record test.
 

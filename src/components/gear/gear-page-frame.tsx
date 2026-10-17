@@ -7,20 +7,20 @@ import { Button } from "@/components/ui/button";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 import { cn } from "@/lib/utils";
 import {
-  GearItemsCard,
-  type GearItemsCardProps,
-} from "@/components/gear/gear-items-card";
+  GearItemsList,
+  type GearItemsListProps,
+} from "@/components/gear/gear-items-list";
 import {
-  GearSetsCard,
-  type GearSetsCardProps,
-} from "@/components/gear/gear-sets-card";
+  GearSetsList,
+  type GearSetsListProps,
+} from "@/components/gear/gear-sets-list";
 import { DEFAULT_ITEMS_PER_PAGE } from "@/hooks/useInfiniteResource";
 
 const noop = () => {};
 
-// What each card is handed before anything has been asked for. The page passes
+// What each list is handed before anything has been asked for. The page passes
 // its own bundles once it has them; without them these are its first render.
-const PENDING_ITEMS: GearItemsCardProps = {
+const PENDING_ITEMS: GearItemsListProps = {
   items: [],
   isLoading: true,
   isLoadingMore: false,
@@ -40,7 +40,7 @@ const PENDING_ITEMS: GearItemsCardProps = {
   onDelete: noop,
 };
 
-const PENDING_SETS: GearSetsCardProps = {
+const PENDING_SETS: GearSetsListProps = {
   sets: [],
   isLoading: true,
   isLoadingMore: false,
@@ -57,8 +57,8 @@ const PENDING_SETS: GearSetsCardProps = {
 };
 
 export interface GearPageFrameProps {
-  items?: GearItemsCardProps;
-  sets?: GearSetsCardProps;
+  items?: GearItemsListProps;
+  sets?: GearSetsListProps;
   /** Opens the new-gear dialog. */
   onNew?: () => void;
   /** The page watches this box to decide when to ask for the sets. */
@@ -88,10 +88,10 @@ export function GearPageFrame({
       />
 
       <div className={cn(HERO_BODY, "space-y-6 max-sm:space-y-2.5")}>
-        <GearItemsCard {...items} />
+        <GearItemsList {...items} />
 
         <div ref={setsCardRef}>
-          <GearSetsCard {...sets} />
+          <GearSetsList {...sets} />
         </div>
       </div>
     </div>

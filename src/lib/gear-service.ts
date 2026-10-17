@@ -75,10 +75,10 @@ export function serviceStatus(
   return dueSoon ? "due_soon" : "ok";
 }
 
-// The most urgent status across all of an item's schedules, for the one badge shown in
-// the gear list. `null` when the item has no schedules at all, which the UI renders as
-// a muted dash rather than a reassuring "ok" - nothing is being tracked, which isn't
-// the same as everything being fine.
+// The most urgent status across all of an item's schedules, for the one chip on its
+// gear card. `null` when the item has no schedules at all, for which the card shows no
+// chip rather than a reassuring "ok" - nothing is being tracked, which isn't the same
+// as everything being fine.
 export function worstServiceStatus(
   schedules: GearServiceScheduleSummary[],
   diveCount: number,

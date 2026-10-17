@@ -96,13 +96,17 @@ beforeEach(() => {
   deleteGearItem.mockResolvedValue({ message: "Gear deleted" });
 });
 
-// Renders the page and opens the delete confirmation for its first row.
+// Opens a card's actions menu by its name and picks one of its items.
+const pick = async (menu: string, item: string) => {
+  await userEvent.click(await screen.findByRole("button", { name: menu }));
+  await userEvent.click(await screen.findByRole("menuitem", { name: item }));
+};
+
+// Renders the page and opens the delete confirmation for its first card.
 const openDeleteDialog = async () => {
   render(<GearPage />);
   await screen.findByText("MK25 EVO");
-  await userEvent.click(
-    screen.getByRole("button", { name: "Delete Scubapro MK25 EVO" }),
-  );
+  await pick("Actions for Scubapro MK25 EVO", "Delete");
   return screen.findByRole("dialog");
 };
 
@@ -162,37 +166,39 @@ describe("gear page delete confirmation", () => {
   });
 });
 
-// A screen reader's controls list is flat: ten rows of "Edit" name nothing, so each
-// row's controls carry the item they act on. See DECISIONS.md, "Ten rows of 'Edit'
+// A screen reader's controls list is flat: ten menus of "Actions" name nothing, so
+// each card's menu carries the item it acts on. See DECISIONS.md, "Ten rows of 'Edit'
 // name nothing".
-describe("gear row actions name their row", () => {
-  it("names each gear item's controls after the item", async () => {
-    render(<GearPage />);
-    await screen.findByText("MK25 EVO");
+describe("gear card menus name their card", () => {
+  // The items of the menu that is open.
+  const menuItems = async () =>
+    (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
 
-    expect(
-      screen.getByRole("button", { name: "Edit Scubapro MK25 EVO" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Archive Scubapro MK25 EVO" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Delete Scubapro MK25 EVO" }),
-    ).toBeInTheDocument();
+  it("names each gear item's menu after the item", async () => {
+    render(<GearPage />);
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Actions for Scubapro MK25 EVO",
+      }),
+    );
+
+    expect(await menuItems()).toEqual(["Edit", "Archive", "Delete"]);
   });
 
-  it("keeps the item in the name when the action flips to Unarchive", async () => {
+  it("offers to unarchive gear that is archived", async () => {
     getGearItems.mockResolvedValue(page([gearItem({ is_archived: true })]));
 
     render(<GearPage />);
-    await screen.findByText("MK25 EVO");
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Actions for Scubapro MK25 EVO",
+      }),
+    );
 
-    expect(
-      screen.getByRole("button", { name: "Unarchive Scubapro MK25 EVO" }),
-    ).toBeInTheDocument();
+    expect(await menuItems()).toEqual(["Edit", "Unarchive", "Delete"]);
   });
 
-  it("tells two rows apart by name rather than by position", async () => {
+  it("tells two cards apart by name rather than by position", async () => {
     getGearItems.mockResolvedValue(
       page([
         gearItem(),
@@ -203,13 +209,14 @@ describe("gear row actions name their row", () => {
     render(<GearPage />);
     await screen.findByText("R195");
 
-    const editButtons = screen.getAllByRole("button", { name: /^Edit / });
-    expect(
-      editButtons.map((button) => button.getAttribute("aria-label")),
-    ).toEqual(["Edit Scubapro MK25 EVO", "Edit Scubapro R195"]);
+    const menus = screen.getAllByRole("button", { name: /^Actions for / });
+    expect(menus.map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Actions for Scubapro MK25 EVO",
+      "Actions for Scubapro R195",
+    ]);
   });
 
-  it("names each gear set's controls after the set", async () => {
+  it("names each gear set's menu after the set", async () => {
     vi.mocked(gearAPI.getGearSets).mockResolvedValue(page([gearSet()]));
 
     render(<GearPage />);
@@ -217,17 +224,11 @@ describe("gear row actions name their row", () => {
     // the gear list and reads as its continuation. Nothing here is on screen in
     // jsdom, so the scroll has to be stated.
     await act(async () => reveal());
-    await screen.findByText("Warm water rig");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Actions for Warm water rig" }),
+    );
 
-    expect(
-      screen.getByRole("button", { name: "Edit Warm water rig" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Duplicate Warm water rig" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Delete Warm water rig" }),
-    ).toBeInTheDocument();
+    expect(await menuItems()).toEqual(["Edit", "Duplicate", "Delete"]);
   });
 
   it("opens a duplicated set as a new one, named after the original", async () => {
@@ -235,9 +236,7 @@ describe("gear row actions name their row", () => {
 
     render(<GearPage />);
     await act(async () => reveal());
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Duplicate Warm water rig" }),
-    );
+    await pick("Actions for Warm water rig", "Duplicate");
 
     const dialog = within(await screen.findByRole("dialog"));
     expect(dialog.getByText("New Gear Set")).toBeInTheDocument();
