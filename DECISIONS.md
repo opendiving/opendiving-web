@@ -1821,7 +1821,7 @@ exist; the front pages may differ until that README is edited.
 Rejected: hotlinking this repository's raw URLs from the product README, which breaks on a rename.
 The script commits nothing over there.
 
-## "Due soon" is a `warning` badge, because `secondary` is invisible on a card
+## "Due soon" is never `secondary`, because `secondary` is invisible on a card
 
 `serviceStatusBadgeVariant` never maps `due_soon` onto `secondary`. Every place the chip renders
 (gear cards, gear detail card, the bell's service-due list) sits on `--card` or `--popover` in dark,
