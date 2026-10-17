@@ -19,8 +19,8 @@ import {
 // unfamiliar kind lands on `neutral` - see `conversionKindTone`.
 const CONVERSION_TONE_CLASSES = {
   warning: {
-    row: "text-amber-700 dark:text-amber-500",
-    badge: "border-amber-600/40 text-amber-700 dark:text-amber-500",
+    row: "text-warning",
+    badge: "border-warning/40 text-warning",
   },
   neutral: { row: "text-foreground", badge: "border-border text-foreground" },
   muted: {
@@ -159,7 +159,7 @@ export function ImportReportView({
                 key={`${note.code}-${note.uuid ?? index}-${index}`}
                 className={
                   noteIsWarning(note.code)
-                    ? "text-sm text-amber-700 dark:text-amber-500"
+                    ? "text-sm text-warning"
                     : "text-sm text-muted-foreground"
                 }
               >

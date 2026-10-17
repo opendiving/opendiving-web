@@ -154,7 +154,7 @@ export function GearItemDialog({
 
       if (gearItem) {
         await gearAPI.updateGearItem(gearItem.uuid, {
-          name: data.name,
+          name: data.name.trim(),
           brand: data.brand || null,
           type,
           notes: data.notes || "",
@@ -163,7 +163,7 @@ export function GearItemDialog({
         });
         onSaved({
           ...gearItem,
-          name: data.name,
+          name: data.name.trim(),
           brand: data.brand || null,
           type,
           notes: data.notes || "",
@@ -172,7 +172,7 @@ export function GearItemDialog({
         });
       } else {
         const created = await gearAPI.createGearItem({
-          name: data.name,
+          name: data.name.trim(),
           brand: data.brand || undefined,
           type: type ?? undefined,
           notes: data.notes || undefined,

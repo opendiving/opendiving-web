@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { notesField } from "./notes";
+import { requiredName } from "./name";
 import type { ContactAddress } from "@/lib/api/contacts";
 
 // The API's bounds for a contact (`schemas/contact.py`), which are DiveJSON's.
@@ -82,10 +83,7 @@ function hasAddress(address: ContactAddressInput): boolean {
 // `z.input<>` and the form's own types the same (CONTRIBUTING.md).
 export const contactSchema = z
   .object({
-    name: z
-      .string()
-      .min(1, "Name is required")
-      .max(NAME_MAX, "Name cannot exceed 255 characters"),
+    name: requiredName("Name", NAME_MAX),
     // Strings rather than the vocabulary's enum, so an edit keeps a role this
     // build has no checkbox for - see `ContactCreate.roles`.
     roles: z.array(z.string()),

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { notesField } from "./notes";
+import { requiredName } from "./name";
 import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
 
 // Bare "YYYY-MM-DD", optional. `""` is what a cleared date input holds while
@@ -20,10 +21,7 @@ export const certificationSchema = z
       .optional(),
     // The level as printed on the card. Free text: every agency names its levels
     // differently and renames them between syllabus revisions.
-    name: z
-      .string()
-      .min(1, "Certification name is required")
-      .max(255, "Certification name cannot exceed 255 characters"),
+    name: requiredName("Certification name", 255),
     certification_number: z
       .string()
       .max(64, "Certification number cannot exceed 64 characters")

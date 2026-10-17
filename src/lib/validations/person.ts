@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { notesField } from "./notes";
+import { requiredName } from "./name";
 
 // The API's bounds for a person (`schemas/person.py`), which are DiveJSON's, and
 // a username's own: nothing longer names an account.
@@ -24,15 +25,7 @@ export function normalizeLinkedUsername(value: string): string | null {
 // keeps `z.input<>` and the form's own types the same (CONTRIBUTING.md).
 export const personSchema = z
   .object({
-    // Checked on what will be sent: the API stores a name trimmed, and a name of
-    // spaces alone is none.
-    name: z
-      .string()
-      .refine((value) => value.trim() !== "", "Name is required")
-      .refine(
-        (value) => value.trim().length <= NAME_MAX,
-        "Name cannot exceed 255 characters",
-      ),
+    name: requiredName("Name", NAME_MAX),
     username: z.string(),
     email: z.union([
       z.literal(""),
