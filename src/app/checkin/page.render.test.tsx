@@ -60,12 +60,12 @@ vi.mock("@/lib/api/people", async (importOriginal) => ({
 
 vi.mock("@/lib/api/checkin-links", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  checkinLinkAPI: { mint: vi.fn(), live: vi.fn(), revoke: vi.fn() },
+  checkinLinksAPI: { mint: vi.fn(), getLiveLink: vi.fn(), revoke: vi.fn() },
 }));
 
 vi.mock("@/lib/api/checkin-details", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  checkinDetailsAPI: { get: vi.fn(), update: vi.fn() },
+  checkinDetailsAPI: { getCheckinDetails: vi.fn(), update: vi.fn() },
 }));
 
 vi.mock("@/hooks/useAuthedBlobUrl", () => ({
@@ -82,9 +82,9 @@ const { diveStatsAPI } = await import("@/lib/api/dive-stats");
 const { divesAPI } = await import("@/lib/api/dives");
 const { fetchAllContacts } = await import("@/lib/api/contacts");
 const { fetchAllPeople } = await import("@/lib/api/people");
-const { checkinLinkAPI } = await import("@/lib/api/checkin-links");
+const { checkinLinksAPI } = await import("@/lib/api/checkin-links");
 const { checkinDetailsAPI } = await import("@/lib/api/checkin-details");
-const getDetails = vi.mocked(checkinDetailsAPI.get);
+const getDetails = vi.mocked(checkinDetailsAPI.getCheckinDetails);
 
 // Under the root layout's provider, which holds the check-in details.
 const render = (ui: React.ReactElement) =>
@@ -95,9 +95,9 @@ const getDiveStats = vi.mocked(diveStatsAPI.getDiveStats);
 const getDives = vi.mocked(divesAPI.getDives);
 const getContacts = vi.mocked(fetchAllContacts);
 const getPeople = vi.mocked(fetchAllPeople);
-const mintLink = vi.mocked(checkinLinkAPI.mint);
-const liveLink = vi.mocked(checkinLinkAPI.live);
-const revokeLink = vi.mocked(checkinLinkAPI.revoke);
+const mintLink = vi.mocked(checkinLinksAPI.mint);
+const liveLink = vi.mocked(checkinLinksAPI.getLiveLink);
+const revokeLink = vi.mocked(checkinLinksAPI.revoke);
 
 const stats: UserDiveStats = {
   user_uuid: "user-1",
@@ -165,7 +165,7 @@ beforeEach(() => {
     expires_at: "2026-09-27T10:00:00Z",
   });
   liveLink.mockReset().mockResolvedValue(null);
-  revokeLink.mockReset().mockResolvedValue(undefined);
+  revokeLink.mockReset().mockResolvedValue({ message: "ok" });
   getDetails.mockReset().mockResolvedValue({
     email: "desk@example.org",
     phone: null,

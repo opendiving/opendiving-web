@@ -44,13 +44,13 @@ describe("DiveVocabularyField", () => {
   });
 
   // The API can grow a member before this build ships its label.
-  it("offers a stored value this build has no label for, as itself", () => {
+  it("offers a stored value this build has no label for, de-snaked", () => {
     render(<Harness stored="sidemount" />);
 
     expect(options()).toEqual(["", "open_circuit", "sidemount"]);
     expect(screen.getByLabelText("Dive type")).toHaveValue("sidemount");
     expect(
-      screen.getByRole("option", { name: "sidemount" }),
+      screen.getByRole("option", { name: "Sidemount" }),
     ).toBeInTheDocument();
   });
 });

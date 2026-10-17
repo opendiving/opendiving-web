@@ -3,7 +3,8 @@ import type {
   EmergencyContact,
   InsurancePolicy,
 } from "./checkin-details";
-import { apiClient } from "./client";
+import { apiClient, multipartRequest } from "./client";
+import { labelOrFallback } from "./labels";
 import type { RecordingDevice } from "./dives";
 
 /**
@@ -87,7 +88,7 @@ const IMPORT_CONTAINER_LABELS: Record<
  * The fallback is the whole point rather than defensiveness: the API's format
  * list is derived from its pinned converter on every call, that pin moves by
  * dependency bump alone, and a `Record` lookup would render `undefined` in the
- * import report the day a new reader ships. Showing a bare `shearwater_db` is
+ * import report the day a new reader ships. A de-snaked "Shearwater db" is
  * worse than a label and far better than a blank.
  *
  * **It has already happened once, which is the argument for keeping it.** The
@@ -97,11 +98,10 @@ const IMPORT_CONTAINER_LABELS: Record<
  * for it is now written out above; the fallback is what covers the next one.
  */
 export function importSourceLabel(format: string): string {
-  const labels: Record<string, string> = {
-    ...IMPORT_SOURCE_LABELS,
-    ...IMPORT_CONTAINER_LABELS,
-  };
-  return labels[format] ?? format;
+  return labelOrFallback(
+    { ...IMPORT_SOURCE_LABELS, ...IMPORT_CONTAINER_LABELS },
+    format,
+  );
 }
 
 /**
@@ -127,6 +127,7 @@ export const DIVE_COMPUTER_FILE_ACCEPT = Object.values(
  * dive-computer files.
  */
 export const MAX_IMPORT_DOCUMENT_SIZE = 100 * 1024 * 1024; // 100 MB
+/** The largest zip, and the largest request; see `MAX_IMPORT_DOCUMENT_SIZE`. */
 export const MAX_IMPORT_ARCHIVE_SIZE = 500 * 1024 * 1024; // 500 MB
 /** How many files one import may carry; past it, the API asks for a zip. */
 export const MAX_IMPORT_FILES = 1000;
@@ -524,20 +525,20 @@ function importForm(files: readonly File[]): FormData {
   return formData;
 }
 
-// The `Content-Type` header is explicitly cleared so the browser sets the
-// `multipart/form-data; boundary=...` it alone can compute - the shared client
-// defaults to `application/json`, which would make the API see no file at all.
 async function postImport<T>(
   path: string,
   formData: FormData,
   onProgress?: ImportUploadProgress,
 ): Promise<T> {
-  const response = await apiClient.post<T>(path, formData, {
-    headers: { "Content-Type": undefined },
-    onUploadProgress: onProgress
-      ? ({ loaded, total }) => onProgress(loaded, total ?? loaded)
-      : undefined,
-  });
+  const response = await apiClient.post<T>(
+    path,
+    formData,
+    multipartRequest({
+      onUploadProgress: onProgress
+        ? ({ loaded, total }) => onProgress(loaded, total ?? loaded)
+        : undefined,
+    }),
+  );
   return response.data;
 }
 

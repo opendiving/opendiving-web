@@ -35,7 +35,7 @@ const updateProfile = vi.mocked(authAPI.updateProfile);
 beforeEach(() => {
   auth.user.units = "metric";
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
-  updateProfile.mockReset().mockResolvedValue(undefined);
+  updateProfile.mockReset().mockResolvedValue({ message: "ok" });
 });
 
 const picker = () => screen.getByLabelText("Measurement system");

@@ -10,6 +10,7 @@ import {
   WAVES_LABELS,
   WEATHER_LABELS,
 } from "@/lib/api/dives";
+import { labelOrFallback } from "@/lib/api/labels";
 import { Trip } from "@/lib/api/trips";
 import { Course } from "@/lib/api/courses";
 import { Contact } from "@/lib/api/contacts";
@@ -57,17 +58,6 @@ interface DiveDetailSidebarProps {
 }
 
 const NO_PEOPLE: Readonly<Record<string, Person>> = {};
-
-// A stored vocabulary value's label, falling back to the wire value, like
-// `gearTypeLabel` and the tank cards' role badge: the API can grow a member
-// before this build ships a label for it, and rendering the slug beats rendering
-// a blank row.
-function labelOf<T extends string>(
-  labels: Record<T, string>,
-  value: T,
-): string {
-  return labels[value] ?? value;
-}
 
 /**
  * The dive detail page's sidebar: where the dive was, what the water was like, and
@@ -297,7 +287,7 @@ export function DiveDetailSidebar({
                   Entry type
                 </div>
                 <div className="text-sm">
-                  {labelOf(ENTRY_TYPE_LABELS, dive.entry_type)}
+                  {labelOrFallback(ENTRY_TYPE_LABELS, dive.entry_type)}
                 </div>
               </div>
             )}
@@ -347,7 +337,7 @@ export function DiveDetailSidebar({
               {dive.water_type != null && (
                 <CardFigure
                   label="Water type"
-                  value={labelOf(WATER_TYPE_LABELS, dive.water_type)}
+                  value={labelOrFallback(WATER_TYPE_LABELS, dive.water_type)}
                 />
               )}
               {dive.altitude != null && (
@@ -359,19 +349,19 @@ export function DiveDetailSidebar({
               {dive.current != null && (
                 <CardFigure
                   label="Current"
-                  value={labelOf(CURRENT_LABELS, dive.current)}
+                  value={labelOrFallback(CURRENT_LABELS, dive.current)}
                 />
               )}
               {dive.waves != null && (
                 <CardFigure
                   label="Waves"
-                  value={labelOf(WAVES_LABELS, dive.waves)}
+                  value={labelOrFallback(WAVES_LABELS, dive.waves)}
                 />
               )}
               {dive.weather != null && (
                 <CardFigure
                   label="Weather"
-                  value={labelOf(WEATHER_LABELS, dive.weather)}
+                  value={labelOrFallback(WEATHER_LABELS, dive.weather)}
                 />
               )}
             </CardFigures>

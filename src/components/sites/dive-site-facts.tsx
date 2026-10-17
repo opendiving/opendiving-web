@@ -1,11 +1,8 @@
 import type { ReactNode } from "react";
 import { ArrowDownToLine, Mountain, Waves, WavesArrowDown } from "lucide-react";
 import type { DiveSite } from "@/lib/api/dive-sites";
-import {
-  ENTRY_TYPE_LABELS,
-  vocabularyLabel,
-  WATER_TYPE_LABELS,
-} from "@/lib/api/dives";
+import { ENTRY_TYPE_LABELS, WATER_TYPE_LABELS } from "@/lib/api/dives";
+import { labelOrFallback } from "@/lib/api/labels";
 import { IconFact } from "@/components/ui/icon-fact";
 import { formatAltitude, formatDepth, type UnitSystem } from "@/lib/units";
 
@@ -36,7 +33,7 @@ export function diveSiteFacts(site: DiveSite, units: UnitSystem): ReactNode[] {
     site.location?.name,
     site.water_type && site.water_type !== "salt" && (
       <IconFact icon={Waves} label="Water type">
-        {vocabularyLabel(WATER_TYPE_LABELS, site.water_type)}
+        {labelOrFallback(WATER_TYPE_LABELS, site.water_type)}
       </IconFact>
     ),
     depths && (
@@ -55,7 +52,7 @@ export function diveSiteFacts(site: DiveSite, units: UnitSystem): ReactNode[] {
         label={entryTypes.length > 1 ? "Entry types" : "Entry type"}
       >
         {entryTypes
-          .map((entry) => vocabularyLabel(ENTRY_TYPE_LABELS, entry))
+          .map((entry) => labelOrFallback(ENTRY_TYPE_LABELS, entry))
           .join(", ")}
       </IconFact>
     ),

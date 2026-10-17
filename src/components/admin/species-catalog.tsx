@@ -64,7 +64,7 @@ export function SpeciesCatalog() {
   // pages it holds and start again from the first.
   const fetchSpecies = useCallback(
     (page: number, perPage: number) =>
-      adminAPI.listSpecies(page, perPage, {
+      adminAPI.getSpecies(page, perPage, {
         search: search || undefined,
         filter: filter ?? undefined,
       }),

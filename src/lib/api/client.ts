@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 import { API_BASE_URL } from "@/lib/api-base";
+import { getApiErrorStatus } from "./error";
 
 /**
  * Dispatched when a token refresh fails so `AuthContext` can clear the stale
@@ -211,7 +212,7 @@ apiClient.interceptors.response.use(
     const isAuthEndpoint = SESSION_MINTING_PATHS.has(originalRequest?.url);
 
     if (
-      error.response?.status === 401 &&
+      getApiErrorStatus(error) === 401 &&
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {
@@ -274,22 +275,69 @@ apiClient.get = ((url: string, config?: AxiosRequestConfig) => {
   return request;
 }) as typeof apiClient.get;
 
-// The envelope every list endpoint returns (fastcrud's `PaginatedListResponse`).
-// It lives here, in the lowest layer, because `lib/api/*` is what produces it and
-// nothing in `lib/api/` imports upwards from `hooks/`.
-//
-// All five fields are declared. Nothing in the app reads `page`/`items_per_page` -
-// `total_count` and `has_more` are what `useInfiniteResource` reads, and between
-// them drive every load-on-scroll trigger in the app - but they are always on the
-// wire, and omitting them would make the envelope look like it had three fields.
-// Note the API clamps both, so the `items_per_page` echoed back can be smaller than
-// the one requested.
+/**
+ * The envelope every list endpoint returns (fastcrud's `PaginatedListResponse`).
+ * It lives here, in the lowest layer, because `lib/api/*` is what produces it and
+ * nothing in `lib/api/` imports upwards from `hooks/`.
+ *
+ * All five fields are declared. Nothing in the app reads `page`/`items_per_page` -
+ * `total_count` and `has_more` are what `useInfiniteResource` reads, and between
+ * them drive every load-on-scroll trigger in the app - but they are always on the
+ * wire, and omitting them would make the envelope look like it had three fields.
+ * Note the API clamps both, so the `items_per_page` echoed back can be smaller than
+ * the one requested.
+ */
 export interface PaginatedResponse<T> {
   data: T[];
   total_count: number;
   has_more: boolean;
   page: number;
   items_per_page: number;
+}
+
+/**
+ * What a write the API answers with a sentence rather than a row resolves with -
+ * every update and delete that does, handed on rather than dropped, so the type
+ * says what is on the wire. No caller shows it: a toast is worded by the page that
+ * knows what was saved.
+ */
+export interface MessageResponse {
+  message: string;
+}
+
+/**
+ * What a plain list narrows by besides its page: one `search` the API matches
+ * server-side, left off the request when empty.
+ */
+export interface SearchFilters {
+  search?: string;
+}
+
+/**
+ * A request config for a multipart body. The client's default `Content-Type` is
+ * `application/json`, which would make the API see no file at all; clearing it
+ * lets the browser set `multipart/form-data` with the boundary only it can
+ * compute.
+ */
+export function multipartRequest(
+  config: AxiosRequestConfig = {},
+): AxiosRequestConfig {
+  return { ...config, headers: { "Content-Type": undefined } };
+}
+
+/**
+ * A request config for bytes the API caches with `max-age=300`. `version` - a
+ * digest or an `updated_at` that changes with the contents - goes as a `v` query
+ * param the API ignores, so each version gets its own URL: without it the browser
+ * would serve the old bytes from its own cache for five minutes after a replace,
+ * however correctly the app refetches. Stable while the contents are, so repeat
+ * views still hit the cache.
+ */
+export function versionedRequest(
+  version: string | undefined,
+  config: AxiosRequestConfig = {},
+): AxiosRequestConfig {
+  return { ...config, params: version ? { v: version } : undefined };
 }
 
 /**
@@ -338,6 +386,39 @@ export function lookupRequest(
       ...(uuids?.length ? { uuid: [...uuids] } : {}),
     },
     paramsSerializer: { indexes: null },
+  };
+}
+
+/** One page of a `/<plural>/lookup` route, as the pickers ask for it. */
+export type LookupFetcher<T, Q extends LookupQuery = LookupQuery> = (
+  page: number,
+  items_per_page: number,
+  query?: Q,
+) => Promise<PaginatedResponse<T>>;
+
+/** The page fetcher of the lookup route at `path`, whose rows are `T`. */
+export function lookupFetcher<T, Q extends LookupQuery = LookupQuery>(
+  path: string,
+): LookupFetcher<T, Q> {
+  return async (page, items_per_page, query) => {
+    const response = await apiClient.get<PaginatedResponse<T>>(
+      path,
+      lookupRequest(page, items_per_page, query),
+    );
+    return response.data;
+  };
+}
+
+/**
+ * The rows of a lookup that the given uuids name, in no particular order: one
+ * page exactly as long as the list, and no request for an empty one.
+ */
+export function lookupByUuid<T>(
+  lookup: LookupFetcher<T, UuidLookupQuery>,
+): (uuids: readonly string[]) => Promise<T[]> {
+  return async (uuids) => {
+    if (uuids.length === 0) return [];
+    return (await lookup(1, uuids.length, { uuids })).data;
   };
 }
 

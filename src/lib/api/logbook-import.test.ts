@@ -10,7 +10,8 @@ import {
   type ImportSourceFormat,
 } from "./logbook-import";
 
-vi.mock("./client", () => ({
+vi.mock("./client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./client")>()),
   apiClient: { post: vi.fn().mockResolvedValue({ data: {} }) },
 }));
 
@@ -65,7 +66,7 @@ describe("importSourceLabel", () => {
     expect(importSourceLabel("mixed")).toBe("Several formats");
   });
 
-  it("falls back to the id for a format this build has never heard of", () => {
+  it("de-snakes a format this build has never heard of", () => {
     // Not defensiveness: the API derives its format list from its pinned
     // converter on every call, and that pin moves by dependency bump with no
     // change in this repository - so a reader can reach a diver's card before
@@ -74,7 +75,7 @@ describe("importSourceLabel", () => {
     // format that does not exist rather than the next one anybody expects: an
     // assertion pinned to a real upcoming id stops testing the fallback the
     // moment that id ships, and starts failing instead.
-    expect(importSourceLabel("kraken_binary")).toBe("kraken_binary");
+    expect(importSourceLabel("kraken_binary")).toBe("Kraken binary");
   });
 });
 

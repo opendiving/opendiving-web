@@ -152,8 +152,8 @@ beforeEach(() => {
   stable.auth.user.dive_form_hidden_fields = [];
   vi.mocked(divesAPI.getDive).mockResolvedValue(storedDive());
   vi.mocked(divesAPI.updateDive).mockResolvedValue({ message: "ok" });
-  vi.mocked(divesAPI.deleteDiveFile).mockResolvedValue(undefined);
-  vi.mocked(authAPI.updateProfile).mockResolvedValue(undefined);
+  vi.mocked(divesAPI.deleteDiveFile).mockResolvedValue({ message: "ok" });
+  vi.mocked(authAPI.updateProfile).mockResolvedValue({ message: "ok" });
   vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([]);
   vi.mocked(tripsAPI.lookupTrips).mockResolvedValue(emptyPage());
   vi.mocked(diveSitesAPI.lookupDiveSites).mockResolvedValue(emptyPage());

@@ -1,5 +1,10 @@
-import { apiClient, lookupRequest } from "./client";
-import type { PaginatedResponse, UuidLookupQuery } from "./client";
+import { apiClient, lookupByUuid, lookupFetcher } from "./client";
+import type {
+  MessageResponse,
+  PaginatedResponse,
+  SearchFilters,
+  UuidLookupQuery,
+} from "./client";
 import type { Dive } from "./dives";
 import type { Location } from "./location";
 import type { PersonReference } from "./people";
@@ -26,9 +31,11 @@ export interface TripPart {
   candidate_count?: number;
 }
 
-// What a write sends: a part without what the API reads off the dives. Its own
-// interface rather than `TripPart`, because the API forbids unknown members on a
-// part, so a write that echoed `candidate_count` would be refused.
+/**
+ * What a write sends: a part without what the API reads off the dives. Its own
+ * interface rather than `TripPart`, because the API forbids unknown members on a
+ * part, so a write that echoed `candidate_count` would be refused.
+ */
 export interface TripPartInput {
   start_date?: string | null;
   end_date?: string | null;
@@ -66,8 +73,10 @@ export interface Trip {
   contact_uuids: string[];
 }
 
-// A trip stores no dates of its own. Its span is derived from its parts -
-// `tripSpan` in `lib/trip-parts.ts` - so nothing here carries `start_date`.
+/**
+ * A trip stores no dates of its own. Its span is derived from its parts -
+ * `tripSpan` in `lib/trip-parts.ts` - so nothing here carries `start_date`.
+ */
 export interface TripCreate {
   name: string;
   parts?: TripPartInput[];
@@ -84,8 +93,6 @@ export interface TripUpdate {
   people?: PersonReference[];
   notes?: string;
 }
-
-export type PaginatedTripsResponse = PaginatedResponse<Trip>;
 
 /**
  * Which of a trip's candidates `addTripDives` puts on it: the dives named (one to
@@ -107,24 +114,30 @@ export interface TripLookupItem {
   people?: PersonReference[];
 }
 
+const lookupTrips = lookupFetcher<TripLookupItem, UuidLookupQuery>(
+  `/trips/lookup`,
+);
+
 /** Trip CRUD. Every call is scoped to the signed-in user by the API. */
 export const tripsAPI = {
-  // Create a new trip, owned by the signed-in user.
+  /** Create a new trip, owned by the signed-in user. */
   async createTrip(tripData: TripCreate): Promise<Trip> {
-    const response = await apiClient.post(`/trip`, tripData);
+    const response = await apiClient.post<Trip>(`/trip`, tripData);
     return response.data;
   },
 
-  // Get a user's trips (paginated, most recent first). `search` narrows to trips
-  // whose name *or* any of whose location names contains it, case-insensitively
-  // - the API caps `items_per_page` at 100, so this is a page of matches, never
-  // the whole set.
+  /**
+   * A page of the user's trips, most recent first. `search` narrows to trips
+   * whose name *or* any of whose location names contains it, case-insensitively
+   * - the API caps `items_per_page` at 100, so this is a page of matches, never
+   * the whole set.
+   */
   async getTrips(
     page: number = 1,
     items_per_page: number = 10,
-    search?: string,
-  ): Promise<PaginatedTripsResponse> {
-    const response = await apiClient.get(`/trips`, {
+    { search }: SearchFilters = {},
+  ): Promise<PaginatedResponse<Trip>> {
+    const response = await apiClient.get<PaginatedResponse<Trip>>(`/trips`, {
       params: {
         page,
         items_per_page,
@@ -139,23 +152,10 @@ export const tripsAPI = {
    * or before `until` first, then never-dived trips newest first. `search` matches
    * what `getTrips` matches.
    */
-  async lookupTrips(
-    page: number,
-    items_per_page: number,
-    query: UuidLookupQuery = {},
-  ): Promise<PaginatedResponse<TripLookupItem>> {
-    const response = await apiClient.get(
-      `/trips/lookup`,
-      lookupRequest(page, items_per_page, query),
-    );
-    return response.data;
-  },
+  lookupTrips,
 
   /** The lookup rows of trips a form holds, in no particular order. */
-  async lookupTripsByUuid(uuids: readonly string[]): Promise<TripLookupItem[]> {
-    if (uuids.length === 0) return [];
-    return (await this.lookupTrips(1, uuids.length, { uuids })).data;
-  },
+  lookupTripsByUuid: lookupByUuid(lookupTrips),
 
   /**
    * Every place the caller's trips went, each once - the same place on several
@@ -163,13 +163,13 @@ export const tripsAPI = {
    * with no position, are left out; a diver with no placed trips gets `[]`.
    */
   async getTripPlaces(): Promise<Location[]> {
-    const response = await apiClient.get("/user/trip-places");
+    const response = await apiClient.get<Location[]>("/user/trip-places");
     return response.data;
   },
 
-  // Get a specific trip by uuid
+  /** One trip by uuid. */
   async getTrip(tripUuid: string): Promise<Trip> {
-    const response = await apiClient.get(`/trip/${tripUuid}`);
+    const response = await apiClient.get<Trip>(`/trip/${tripUuid}`);
     return response.data;
   },
 
@@ -183,9 +183,12 @@ export const tripsAPI = {
     page: number,
     items_per_page: number,
   ): Promise<PaginatedResponse<Dive>> {
-    const response = await apiClient.get(`/trip/${tripUuid}/dives`, {
-      params: { page, items_per_page },
-    });
+    const response = await apiClient.get<PaginatedResponse<Dive>>(
+      `/trip/${tripUuid}/dives`,
+      {
+        params: { page, items_per_page },
+      },
+    );
     return response.data;
   },
 
@@ -201,16 +204,22 @@ export const tripsAPI = {
     tripUuid: string,
     scope: TripDiveAddScope,
   ): Promise<{ added: number }> {
-    const response = await apiClient.post(`/trip/${tripUuid}/dives`, scope);
+    const response = await apiClient.post<{ added: number }>(
+      `/trip/${tripUuid}/dives`,
+      scope,
+    );
     return response.data;
   },
 
-  // Update a trip
+  /** Update a trip. The API answers with a status message, not the trip. */
   async updateTrip(
     tripUuid: string,
     updateData: TripUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(`/trip/${tripUuid}`, updateData);
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
+      `/trip/${tripUuid}`,
+      updateData,
+    );
     return response.data;
   },
 
@@ -234,10 +243,13 @@ export const tripsAPI = {
   async deleteTrip(
     tripUuid: string,
     moveDivesTo?: string,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/trip/${tripUuid}`, {
-      params: moveDivesTo ? { move_dives_to: moveDivesTo } : undefined,
-    });
+  ): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/trip/${tripUuid}`,
+      {
+        params: moveDivesTo ? { move_dives_to: moveDivesTo } : undefined,
+      },
+    );
     return response.data;
   },
 };

@@ -46,8 +46,9 @@ export interface CheckinDetailsUpdate {
   insurance_policies?: InsurancePolicy[];
 }
 
-/** The longest each list may be; the API refuses a longer one. */
+/** The most emergency contacts the API stores; it refuses a longer list. */
 export const MAX_EMERGENCY_CONTACTS = 5;
+/** The most insurance policies the API stores; it refuses a longer list. */
 export const MAX_INSURANCE_POLICIES = 5;
 
 /** The details of a diver who has filled none of them in. */
@@ -65,7 +66,7 @@ export const EMPTY_CHECKIN_DETAILS: CheckinDetails = {
  */
 export const checkinDetailsAPI = {
   /** The whole object. */
-  async get(signal?: AbortSignal): Promise<CheckinDetails> {
+  async getCheckinDetails(signal?: AbortSignal): Promise<CheckinDetails> {
     const response = await apiClient.get<CheckinDetails>(
       "/user/checkin-details",
       { signal },

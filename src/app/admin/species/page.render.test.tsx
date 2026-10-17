@@ -19,8 +19,8 @@ vi.mock("@/lib/api/admin", async (importOriginal) => {
   return {
     ...actual,
     adminAPI: {
-      listSpecies: vi.fn(),
-      speciesPhotoCandidates: vi.fn(),
+      getSpecies: vi.fn(),
+      getSpeciesPhotoCandidates: vi.fn(),
       pinSpeciesPhoto: vi.fn(),
       hideSpeciesPhoto: vi.fn(),
       refetchSpeciesPhoto: vi.fn(),
@@ -28,8 +28,8 @@ vi.mock("@/lib/api/admin", async (importOriginal) => {
   };
 });
 
-const listSpecies = vi.mocked(adminAPI.listSpecies);
-const speciesPhotoCandidates = vi.mocked(adminAPI.speciesPhotoCandidates);
+const getSpecies = vi.mocked(adminAPI.getSpecies);
+const getSpeciesPhotoCandidates = vi.mocked(adminAPI.getSpeciesPhotoCandidates);
 const pinSpeciesPhoto = vi.mocked(adminAPI.pinSpeciesPhoto);
 const hideSpeciesPhoto = vi.mocked(adminAPI.hideSpeciesPhoto);
 const refetchSpeciesPhoto = vi.mocked(adminAPI.refetchSpeciesPhoto);
@@ -101,8 +101,8 @@ const HIDDEN = species({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  listSpecies.mockImplementation(async () => page([species()]));
-  speciesPhotoCandidates.mockResolvedValue({
+  getSpecies.mockImplementation(async () => page([species()]));
+  getSpeciesPhotoCandidates.mockResolvedValue({
     category: "Seriphus politus",
     candidates: [
       candidate({ file: "Seriphus politus Mspc094.jpg", is_current: true }),
@@ -119,8 +119,8 @@ describe("the species catalog", () => {
     render(<AdminSpeciesPage />);
     await card();
 
-    expect(listSpecies).toHaveBeenCalledTimes(1);
-    expect(listSpecies).toHaveBeenCalledWith(1, 24, {
+    expect(getSpecies).toHaveBeenCalledTimes(1);
+    expect(getSpecies).toHaveBeenCalledWith(1, 24, {
       search: undefined,
       filter: undefined,
     });
@@ -145,7 +145,7 @@ describe("the species catalog", () => {
   });
 
   it("shows no Wikidata link for a species without an item", async () => {
-    listSpecies.mockImplementation(async () =>
+    getSpecies.mockImplementation(async () =>
       page([species({ wikidata_qid: null })]),
     );
     render(<AdminSpeciesPage />);
@@ -156,7 +156,7 @@ describe("the species catalog", () => {
   });
 
   it("badges a pinned photo under the floor with both", async () => {
-    listSpecies.mockImplementation(async () =>
+    getSpecies.mockImplementation(async () =>
       page([species({ photo_curation: "pinned", photo_width: 282 })]),
     );
     render(<AdminSpeciesPage />);
@@ -173,7 +173,7 @@ describe("the species catalog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Below 500 px" }));
 
     await waitFor(() =>
-      expect(listSpecies).toHaveBeenLastCalledWith(1, 24, {
+      expect(getSpecies).toHaveBeenLastCalledWith(1, 24, {
         search: undefined,
         filter: "narrow",
       }),
@@ -193,7 +193,7 @@ describe("the species catalog", () => {
     );
 
     await waitFor(() =>
-      expect(listSpecies).toHaveBeenLastCalledWith(1, 24, {
+      expect(getSpecies).toHaveBeenLastCalledWith(1, 24, {
         search: "queen",
         filter: undefined,
       }),
@@ -217,7 +217,7 @@ describe("hiding a photo", () => {
       expect(hideSpeciesPhoto).toHaveBeenCalledWith(QUEENFISH),
     );
     expect(await (await card()).findByText("Hidden")).toBeInTheDocument();
-    expect(listSpecies).toHaveBeenCalledTimes(1);
+    expect(getSpecies).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -233,7 +233,7 @@ describe("replacing a photo", () => {
   it("offers the candidates, the current one marked, a missing preview still pickable", async () => {
     const dialog = await openPicker();
 
-    expect(speciesPhotoCandidates).toHaveBeenCalledWith(QUEENFISH);
+    expect(getSpeciesPhotoCandidates).toHaveBeenCalledWith(QUEENFISH);
     const current = await dialog.findByRole("button", {
       name: "Use Seriphus politus Mspc094.jpg",
     });
@@ -271,7 +271,7 @@ describe("replacing a photo", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
     expect((await card()).getByText("Pinned")).toBeInTheDocument();
-    expect(listSpecies).toHaveBeenCalledTimes(1);
+    expect(getSpecies).toHaveBeenCalledTimes(1);
   });
 
   it("pins a pasted URL as it was typed", async () => {
@@ -334,7 +334,7 @@ describe("re-fetching a photo", () => {
   });
 
   it("asks first on a pinned row, saying the pin is dropped", async () => {
-    listSpecies.mockImplementation(async () =>
+    getSpecies.mockImplementation(async () =>
       page([species({ photo_curation: "pinned" })]),
     );
     refetchSpeciesPhoto.mockResolvedValue(

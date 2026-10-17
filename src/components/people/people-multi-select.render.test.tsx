@@ -183,8 +183,8 @@ describe("PeopleMultiSelect", () => {
     // said so yet, and the API refuses a second of the name.
     lookupPeople.mockResolvedValue(page([]));
     // Read from the list, whose name order leads with the exact match.
-    getPeople.mockImplementation(async (_page, _perPage, search) =>
-      page(search === "sam" ? [SAM] : []),
+    getPeople.mockImplementation(async (_page, _perPage, filters) =>
+      page(filters?.search === "sam" ? [SAM] : []),
     );
     createPerson.mockRejectedValue({
       response: { data: { detail: "A person with this name already exists" } },

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Dive, DiveMixture } from "@/lib/api/dives";
 import { gearItemLabel } from "@/lib/api/gear";
+import { labelOrFallback } from "@/lib/api/labels";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { Badge } from "@/components/ui/badge";
 import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
@@ -86,10 +87,8 @@ function TankCard({
   if (mixture.volume != null) facts.push(`${mixture.volume} L`);
   if (mixture.oxygen != null) facts.push(`O₂ ${mixture.oxygen}%`);
   if (showHelium && mixture.helium != null) facts.push(`He ${mixture.helium}%`);
-  // The wire value where `TANK_USAGE_LABELS` has not caught up with the API's
-  // `TankUsage`, as the role badge falls back.
   if (mixture.usage) {
-    facts.push(TANK_USAGE_LABELS[mixture.usage] ?? mixture.usage);
+    facts.push(labelOrFallback(TANK_USAGE_LABELS, mixture.usage));
   }
   return (
     <li className="rounded-lg border p-3">
@@ -110,10 +109,10 @@ function TankCard({
               )}
             </h3>
             {mixture.role && (
-              // The wire value where `GAS_ROLE_LABELS`, kept in step with the API's
+              // De-snaked where `GAS_ROLE_LABELS`, kept in step with the API's
               // `GasRole` by hand, has not caught up yet.
               <Badge variant="teal">
-                {GAS_ROLE_LABELS[mixture.role] ?? mixture.role}
+                {labelOrFallback(GAS_ROLE_LABELS, mixture.role)}
               </Badge>
             )}
           </div>

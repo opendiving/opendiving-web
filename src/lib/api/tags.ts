@@ -1,5 +1,9 @@
 import { apiClient, fetchAllPages } from "./client";
-import type { PaginatedResponse } from "./client";
+import type {
+  MessageResponse,
+  PaginatedResponse,
+  SearchFilters,
+} from "./client";
 
 /**
  * The longest tag the API stores, in code points: DiveJSON's bound on one, and
@@ -26,8 +30,6 @@ export interface Tag {
   updated_at?: string | null;
 }
 
-export type PaginatedTagsResponse = PaginatedResponse<Tag>;
-
 /**
  * Tag reads, renames and deletes. There is no create: a dive or site write names
  * its tags and creates the ones the diver lacks. Every call is scoped to the
@@ -41,9 +43,9 @@ export const tagsAPI = {
   async getTags(
     page: number = 1,
     items_per_page: number = 10,
-    search?: string,
-  ): Promise<PaginatedTagsResponse> {
-    const response = await apiClient.get(`/tags`, {
+    { search }: SearchFilters = {},
+  ): Promise<PaginatedResponse<Tag>> {
+    const response = await apiClient.get<PaginatedResponse<Tag>>(`/tags`, {
       params: {
         page,
         items_per_page,
@@ -59,8 +61,10 @@ export const tagsAPI = {
    * case-folded is a 422 naming the clash. A change of case alone is a rename like
    * any other.
    */
-  async renameTag(tagUuid: string, name: string): Promise<{ message: string }> {
-    const response = await apiClient.patch(`/tag/${tagUuid}`, { name });
+  async renameTag(tagUuid: string, name: string): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(`/tag/${tagUuid}`, {
+      name,
+    });
     return response.data;
   },
 
@@ -68,8 +72,8 @@ export const tagsAPI = {
    * Delete a tag. It leaves every dive and site that carried it, and nothing else
    * about them changes. A second delete on the same uuid is a 404.
    */
-  async deleteTag(tagUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/tag/${tagUuid}`);
+  async deleteTag(tagUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(`/tag/${tagUuid}`);
     return response.data;
   },
 };

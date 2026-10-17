@@ -229,7 +229,7 @@ const page = <T,>(items: T[]) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   createCertification.mockResolvedValue({ ...EXISTING, uuid: "cert-new" });
-  updateCertification.mockResolvedValue(undefined);
+  updateCertification.mockResolvedValue({ message: "ok" });
   getCertification.mockResolvedValue(EXISTING);
   uploadFile.mockResolvedValue({
     uuid: "file-1",
@@ -238,7 +238,7 @@ beforeEach(() => {
     byte_size: 7,
     original_filename: "card-front.webp",
   });
-  deleteFile.mockResolvedValue(undefined);
+  deleteFile.mockResolvedValue({ message: "ok" });
   decode.mockResolvedValue({} as HTMLImageElement);
   crop.mockResolvedValue(CROPPED);
   // The server filters by `search`; the stub answers every query with both

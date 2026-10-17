@@ -24,7 +24,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("adminAPI.listInviteRequests", () => {
+describe("adminAPI.getInviteRequests", () => {
   it("asks for the page it was given, in the API's own parameter names", async () => {
     get.mockResolvedValue({
       data: {
@@ -36,7 +36,7 @@ describe("adminAPI.listInviteRequests", () => {
       },
     });
 
-    const response = await adminAPI.listInviteRequests(2, 25);
+    const response = await adminAPI.getInviteRequests(2, 25);
 
     expect(get).toHaveBeenCalledWith("/admin/invite-requests", {
       params: { page: 2, items_per_page: 25 },
@@ -57,7 +57,7 @@ describe("adminAPI.listInviteRequests", () => {
       },
     });
 
-    const response = await adminAPI.listInviteRequests();
+    const response = await adminAPI.getInviteRequests();
 
     expect(response.total_count).toBe(42);
     expect(response.has_more).toBe(true);
@@ -116,7 +116,7 @@ describe("the species catalog routes", () => {
   it("lists a page with neither search nor filter when none is given", async () => {
     get.mockResolvedValue({ data: { data: [], total_count: 0 } });
 
-    await adminAPI.listSpecies(1, 24);
+    await adminAPI.getSpecies(1, 24);
 
     expect(get).toHaveBeenCalledWith("/admin/species", {
       params: { page: 1, items_per_page: 24 },
@@ -126,7 +126,7 @@ describe("the species catalog routes", () => {
   it("sends the search and the chip in the API's own names", async () => {
     get.mockResolvedValue({ data: { data: [], total_count: 0 } });
 
-    await adminAPI.listSpecies(2, 24, { search: "queen", filter: "narrow" });
+    await adminAPI.getSpecies(2, 24, { search: "queen", filter: "narrow" });
 
     expect(get).toHaveBeenCalledWith("/admin/species", {
       params: {
@@ -141,7 +141,7 @@ describe("the species catalog routes", () => {
   it("reads one species' candidates", async () => {
     get.mockResolvedValue({ data: { category: null, candidates: [] } });
 
-    const response = await adminAPI.speciesPhotoCandidates(UUID);
+    const response = await adminAPI.getSpeciesPhotoCandidates(UUID);
 
     expect(get).toHaveBeenCalledWith(`/admin/species/${UUID}/photo-candidates`);
     expect(response).toEqual({ category: null, candidates: [] });

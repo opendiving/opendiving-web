@@ -59,7 +59,7 @@ const storedDive: Dive = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(divesAPI.deleteDiveFile).mockResolvedValue(undefined);
+  vi.mocked(divesAPI.deleteDiveFile).mockResolvedValue({ message: "ok" });
 });
 
 describe("DiveImportDialog", () => {

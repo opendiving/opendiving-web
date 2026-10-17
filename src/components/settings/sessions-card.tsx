@@ -67,7 +67,7 @@ export function SessionsCard() {
   const refresh = useCallback(
     () =>
       sessionsAPI
-        .listSessions()
+        .getSessions()
         .then((sessions) => setList({ status: "ready", sessions }))
         .catch((error: unknown) => {
           console.error(LIST_FAILED, error);

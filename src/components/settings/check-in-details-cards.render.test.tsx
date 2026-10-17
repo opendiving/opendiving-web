@@ -51,7 +51,7 @@ vi.mock("@/lib/api/auth", () => ({
 
 vi.mock("@/lib/api/checkin-details", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  checkinDetailsAPI: { get: vi.fn(), update: vi.fn() },
+  checkinDetailsAPI: { getCheckinDetails: vi.fn(), update: vi.fn() },
 }));
 
 vi.mock("@/hooks/useAuthedBlobUrl", () => ({
@@ -70,7 +70,7 @@ vi.mock("@/components/ui/use-toast", async (importOriginal) => ({
 
 const { authAPI } = await import("@/lib/api/auth");
 const { checkinDetailsAPI } = await import("@/lib/api/checkin-details");
-const get = vi.mocked(checkinDetailsAPI.get);
+const get = vi.mocked(checkinDetailsAPI.getCheckinDetails);
 const update = vi.mocked(checkinDetailsAPI.update);
 
 // The account's stored object, which `update` writes the way the API does - each key
@@ -92,7 +92,9 @@ beforeEach(() => {
     return structuredClone(server);
   });
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
-  vi.mocked(authAPI.updateProfile).mockReset().mockResolvedValue(undefined);
+  vi.mocked(authAPI.updateProfile)
+    .mockReset()
+    .mockResolvedValue({ message: "ok" });
 });
 
 const withCopy = (ui: React.ReactNode) =>

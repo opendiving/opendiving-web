@@ -1,6 +1,7 @@
 import { announceServiceDueChanged } from "@/lib/service-due";
 import { apiClient, fetchAllPages } from "./client";
-import type { PaginatedResponse } from "./client";
+import { labelOrFallback } from "./labels";
+import type { MessageResponse, PaginatedResponse } from "./client";
 
 /**
  * What kind of servicing a schedule or record is about. Mirrors the API's `ServiceKind`
@@ -30,15 +31,12 @@ const SERVICE_KIND_LABELS: Record<ServiceKind, string> = {
   other: "Other",
 };
 
-/**
- * Label for a service kind, tolerating a value this build doesn't know about (an API
- * that has grown a new kind shouldn't render as a blank cell). Mirrors `gearTypeLabel`.
- */
+/** Label for a service kind, or `null` for none; an unknown one as `labelOrFallback` says. */
 export function serviceKindLabel(
   kind: string | null | undefined,
 ): string | null {
   if (!kind) return null;
-  return SERVICE_KIND_LABELS[kind as ServiceKind] ?? kind;
+  return labelOrFallback(SERVICE_KIND_LABELS, kind);
 }
 
 /**
@@ -59,11 +57,13 @@ export function serviceKindAndLabel(entry: {
   return entry.label ? `${kind} (${entry.label})` : kind;
 }
 
-// The compact shape embedded in a `GearItem`, so the gear list can badge "service due"
-// without a request per row.
-//
-// Note what is *not* here: a status. Status depends on today's date and would be stale
-// inside a cached response, so it's derived in the browser - see `lib/gear-service.ts`.
+/**
+ * The compact shape embedded in a `GearItem`, so the gear list can badge "service due"
+ * without a request per row.
+ *
+ * Note what is *not* here: a status. Status depends on today's date and would be stale
+ * inside a cached response, so it's derived in the browser - see `lib/gear-service.ts`.
+ */
 export interface GearServiceScheduleSummary {
   uuid: string;
   kind: ServiceKind;
@@ -84,8 +84,10 @@ export interface GearServiceScheduleSummary {
   is_active: boolean;
 }
 
-// A servicing rule: "this regulator needs a full service every 12 months or every 100
-// dives, whichever comes first".
+/**
+ * A servicing rule: "this regulator needs a full service every 12 months or every 100
+ * dives, whichever comes first".
+ */
 export interface GearServiceSchedule extends GearServiceScheduleSummary {
   // Baseline the first due date is measured from, until a service is logged against it.
   starts_on: string;
@@ -118,8 +120,10 @@ export interface GearServiceScheduleUpdate {
   is_active?: boolean;
 }
 
-// One servicing event that actually happened. Records outlive the rule they satisfied -
-// deleting a reminder never throws away the receipts.
+/**
+ * One servicing event that actually happened. Records outlive the rule they satisfied -
+ * deleting a reminder never throws away the receipts.
+ */
 export interface GearServiceRecord {
   uuid: string;
   kind: ServiceKind;
@@ -155,7 +159,9 @@ export interface GearServiceRecordCreate {
   gear_service_schedule_uuid?: string | null;
 }
 
-// `null` on `contact_uuid` unlinks the shop; omitting it leaves the link alone.
+/**
+ * `null` on `contact_uuid` unlinks the shop; omitting it leaves the link alone.
+ */
 export interface GearServiceRecordUpdate {
   kind?: ServiceKind;
   serviced_on?: string;
@@ -165,7 +171,7 @@ export interface GearServiceRecordUpdate {
   notes?: string;
 }
 
-// One row of the notifications bell's "Service Due" list.
+/** One row of the notifications bell's "Service Due" list. */
 export interface GearServiceDueEntry {
   schedule_uuid: string;
   kind: ServiceKind;
@@ -211,11 +217,11 @@ export function scheduleFromDueEntry(
   };
 }
 
-export type PaginatedServiceSchedulesResponse =
-  PaginatedResponse<GearServiceSchedule>;
-
-export type PaginatedServiceRecordsResponse =
-  PaginatedResponse<GearServiceRecord>;
+/** What narrows the service schedule and record lists. */
+export interface GearServiceFilters {
+  /** Only this gear item's; every item's when left out. */
+  gearItemUuid?: string;
+}
 
 /**
  * Service schedules and service history for gear items.
@@ -225,20 +231,27 @@ export type PaginatedServiceRecordsResponse =
  * a 404 rather than a 403.
  */
 export const gearServiceAPI = {
+  /** Create a servicing rule for a gear item. */
   async createSchedule(
     data: GearServiceScheduleCreate,
   ): Promise<GearServiceSchedule> {
-    const response = await apiClient.post(`/gear-service-schedule`, data);
+    const response = await apiClient.post<GearServiceSchedule>(
+      `/gear-service-schedule`,
+      data,
+    );
     announceServiceDueChanged();
     return response.data;
   },
 
+  /** A page of the user's servicing rules, narrowed to one item when asked. */
   async getSchedules(
-    gearItemUuid?: string,
     page: number = 1,
     items_per_page: number = 10,
-  ): Promise<PaginatedServiceSchedulesResponse> {
-    const response = await apiClient.get(`/gear-service-schedules`, {
+    { gearItemUuid }: GearServiceFilters = {},
+  ): Promise<PaginatedResponse<GearServiceSchedule>> {
+    const response = await apiClient.get<
+      PaginatedResponse<GearServiceSchedule>
+    >(`/gear-service-schedules`, {
       params: {
         gear_item_uuid: gearItemUuid,
         page,
@@ -248,11 +261,12 @@ export const gearServiceAPI = {
     return response.data;
   },
 
+  /** Update a servicing rule; `is_active: false` pauses it. */
   async updateSchedule(
     scheduleUuid: string,
     updateData: GearServiceScheduleUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
       `/gear-service-schedule/${scheduleUuid}`,
       updateData,
     );
@@ -260,42 +274,52 @@ export const gearServiceAPI = {
     return response.data;
   },
 
-  async deleteSchedule(scheduleUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(
+  /** Delete a servicing rule. The records it was satisfied by are kept. */
+  async deleteSchedule(scheduleUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
       `/gear-service-schedule/${scheduleUuid}`,
     );
     announceServiceDueChanged();
     return response.data;
   },
 
+  /** Log a servicing that happened. */
   async createRecord(
     data: GearServiceRecordCreate,
   ): Promise<GearServiceRecord> {
-    const response = await apiClient.post(`/gear-service-record`, data);
+    const response = await apiClient.post<GearServiceRecord>(
+      `/gear-service-record`,
+      data,
+    );
     announceServiceDueChanged();
     return response.data;
   },
 
+  /** A page of the user's service history, narrowed to one item when asked. */
   async getRecords(
-    gearItemUuid?: string,
     page: number = 1,
     items_per_page: number = 10,
-  ): Promise<PaginatedServiceRecordsResponse> {
-    const response = await apiClient.get(`/gear-service-records`, {
-      params: {
-        gear_item_uuid: gearItemUuid,
-        page,
-        items_per_page,
+    { gearItemUuid }: GearServiceFilters = {},
+  ): Promise<PaginatedResponse<GearServiceRecord>> {
+    const response = await apiClient.get<PaginatedResponse<GearServiceRecord>>(
+      `/gear-service-records`,
+      {
+        params: {
+          gear_item_uuid: gearItemUuid,
+          page,
+          items_per_page,
+        },
       },
-    });
+    );
     return response.data;
   },
 
+  /** Correct a logged servicing. */
   async updateRecord(
     recordUuid: string,
     updateData: GearServiceRecordUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
       `/gear-service-record/${recordUuid}`,
       updateData,
     );
@@ -303,19 +327,23 @@ export const gearServiceAPI = {
     return response.data;
   },
 
-  async deleteRecord(recordUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(
+  /** Delete a logged servicing. */
+  async deleteRecord(recordUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
       `/gear-service-record/${recordUuid}`,
     );
     announceServiceDueChanged();
     return response.data;
   },
 
-  // Every active schedule the user owns - no date horizon, deliberately. A server-side
-  // "due within N days" filter would bake today's date into the cached response, which
-  // then goes wrong at midnight; the client buckets these itself.
+  /**
+   * Every active schedule the user owns - no date horizon, deliberately. A server-side
+   * "due within N days" filter would bake today's date into the cached response, which
+   * then goes wrong at midnight; the client buckets these itself.
+   */
   async getDue(): Promise<GearServiceDueResponse> {
-    const response = await apiClient.get(`/gear-service-due`);
+    const response =
+      await apiClient.get<GearServiceDueResponse>(`/gear-service-due`);
     return response.data;
   },
 };
@@ -330,7 +358,7 @@ export async function fetchAllServiceRecords(
 ): Promise<GearServiceRecord[]> {
   return fetchAllPages(
     (page, itemsPerPage) =>
-      gearServiceAPI.getRecords(gearItemUuid, page, itemsPerPage),
+      gearServiceAPI.getRecords(page, itemsPerPage, { gearItemUuid }),
     { signal, label: "service records", keyOf: (record) => record.uuid },
   );
 }

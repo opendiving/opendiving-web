@@ -164,8 +164,8 @@ export function CoursesPageContent() {
                         the brand fills gear and certifications moved to.
 
                         `whitespace-nowrap` earns more here than it does there.
-                        `courseStatusLabel` falls back to the raw wire value for a
-                        status this build doesn't know, so the label is not drawn
+                        `courseStatusLabel` de-snakes a status this build doesn't
+                        know, so the label is not drawn
                         from a fixed set of six and can be arbitrarily long. */}
             <TableCell>
               <Badge

@@ -145,7 +145,7 @@ describe("DiveSiteCard", () => {
     const line = subtitleOf(item);
     // Each marked by an icon on screen and by a word to a screen reader.
     expect(line).toHaveTextContent(
-      "Dahab, South Sinai, Egypt · Altitude 12 m · Entry types Shore, Boat, hovercraft",
+      "Dahab, South Sinai, Egypt · Altitude 12 m · Entry types Shore, Boat, Hovercraft",
     );
     expect(line.querySelector("svg.lucide-mountain")).toHaveAttribute(
       "aria-hidden",

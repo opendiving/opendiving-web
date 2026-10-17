@@ -123,7 +123,7 @@ describe("DiveDetailMain species card counts and notes", () => {
     ).toHaveTextContent("Many 11–100");
   });
 
-  it("shows a band this build has no label for as its slug, with no range", () => {
+  it("shows a band this build has no label for de-snaked, with no range", () => {
     const unknown = {
       ...TURTLE,
       abundance: "teeming" as unknown as Sighting["abundance"],
@@ -133,6 +133,6 @@ describe("DiveDetailMain species card counts and notes", () => {
     expect(
       cardOf("Green sea turtle").getByText("Abundance", { selector: "dt" })
         .nextElementSibling,
-    ).toHaveTextContent(/^teeming$/);
+    ).toHaveTextContent(/^Teeming$/);
   });
 });

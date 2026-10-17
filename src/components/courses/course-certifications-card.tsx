@@ -71,7 +71,7 @@ export function CourseCertificationsCard({
   const fetchCertifications = useCallback(
     () =>
       certificationsAPI
-        .getCertifications(1, CERTIFICATIONS_LIMIT, courseUuid)
+        .getCertifications(1, CERTIFICATIONS_LIMIT, { courseUuid })
         .then((response) => response.data)
         // Supplementary to the page, like Home's own cards: a failed
         // fetch leaves this empty rather than turning the course page into an

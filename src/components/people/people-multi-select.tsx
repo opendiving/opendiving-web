@@ -233,7 +233,7 @@ export function PeopleMultiSelect({
                       </option>
                     ))}
                     {/* A role a newer API stored that this build has no word
-                        for is kept, and offered as itself, rather than read as
+                        for is kept, and offered de-snaked, rather than read as
                         "No role" and cleared by the next save. */}
                     {role !== NO_ROLE && !knownRole && (
                       <option value={role}>{personRoleLabel(role)}</option>

@@ -113,7 +113,7 @@ describe("verifySignIn", () => {
 
     const outcome = await passkeysAPI.verifySignIn("flow-1", CREDENTIAL);
 
-    expect(outcome.onboarding_token).toBe("onb");
+    expect(outcome).toMatchObject({ onboarding_token: "onb" });
     expect(storeToken).not.toHaveBeenCalled();
   });
 });

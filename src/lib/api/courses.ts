@@ -1,5 +1,14 @@
-import { apiClient, fetchAllPages, lookupRequest } from "./client";
-import type { PaginatedResponse, UuidLookupQuery } from "./client";
+import {
+  apiClient,
+  fetchAllPages,
+  lookupByUuid,
+  lookupFetcher,
+} from "./client";
+import type {
+  MessageResponse,
+  PaginatedResponse,
+  UuidLookupQuery,
+} from "./client";
 import type { CertificationAgency } from "./certifications";
 import type { PersonReference } from "./people";
 
@@ -83,11 +92,11 @@ export interface CourseCreate {
   notes?: string;
 }
 
-// `null` on `contact_uuid` unlinks the course from its contact; omitting the key
-// leaves the link alone.
+/**
+ * `null` on `contact_uuid` unlinks the course from its contact; omitting the key
+ * leaves the link alone.
+ */
 export type CourseUpdate = Partial<CourseCreate>;
-
-export type PaginatedCoursesResponse = PaginatedResponse<Course>;
 
 /**
  * One row of `GET /courses/lookup`: the name, and the contact and people a dive
@@ -130,12 +139,18 @@ export interface CourseFilters {
   status?: CourseStatus | "";
 }
 
+const lookupCourses = lookupFetcher<CourseLookupItem, UuidLookupQuery>(
+  `/courses/lookup`,
+);
+
 /** Training-course CRUD. Every call is scoped to the signed-in user by the API. */
 export const coursesAPI = {
-  // Create a course, owned by the signed-in user. Dives and certifications
-  // are linked to it from their own forms, not from here.
+  /**
+   * Create a course, owned by the signed-in user. Dives and certifications
+   * are linked to it from their own forms, not from here.
+   */
   async createCourse(data: CourseCreate): Promise<Course> {
-    const response = await apiClient.post(`/course`, data);
+    const response = await apiClient.post<Course>(`/course`, data);
     return response.data;
   },
 
@@ -155,19 +170,22 @@ export const coursesAPI = {
     page: number = 1,
     items_per_page: number = 10,
     filters: CourseFilters = {},
-  ): Promise<PaginatedCoursesResponse> {
+  ): Promise<PaginatedResponse<Course>> {
     const { search, dateFrom, dateTo, agency, status } = filters;
-    const response = await apiClient.get(`/courses`, {
-      params: {
-        page,
-        items_per_page,
-        ...(search ? { search } : {}),
-        ...(dateFrom ? { date_from: dateFrom } : {}),
-        ...(dateTo ? { date_to: dateTo } : {}),
-        ...(agency ? { agency } : {}),
-        ...(status ? { status } : {}),
+    const response = await apiClient.get<PaginatedResponse<Course>>(
+      `/courses`,
+      {
+        params: {
+          page,
+          items_per_page,
+          ...(search ? { search } : {}),
+          ...(dateFrom ? { date_from: dateFrom } : {}),
+          ...(dateTo ? { date_to: dateTo } : {}),
+          ...(agency ? { agency } : {}),
+          ...(status ? { status } : {}),
+        },
       },
-    });
+    );
     return response.data;
   },
 
@@ -176,36 +194,26 @@ export const coursesAPI = {
    * before `until` was last on first, then courses no such dive is on, newest
    * first. `search` matches what `getCourses` matches; no other filter applies.
    */
-  async lookupCourses(
-    page: number,
-    items_per_page: number,
-    query: UuidLookupQuery = {},
-  ): Promise<PaginatedResponse<CourseLookupItem>> {
-    const response = await apiClient.get(
-      `/courses/lookup`,
-      lookupRequest(page, items_per_page, query),
-    );
-    return response.data;
-  },
+  lookupCourses,
 
   /** The lookup rows of courses a form holds, in no particular order. */
-  async lookupCoursesByUuid(
-    uuids: readonly string[],
-  ): Promise<CourseLookupItem[]> {
-    if (uuids.length === 0) return [];
-    return (await this.lookupCourses(1, uuids.length, { uuids })).data;
-  },
+  lookupCoursesByUuid: lookupByUuid(lookupCourses),
 
+  /** One course by uuid. */
   async getCourse(courseUuid: string): Promise<Course> {
-    const response = await apiClient.get(`/course/${courseUuid}`);
+    const response = await apiClient.get<Course>(`/course/${courseUuid}`);
     return response.data;
   },
 
+  /** Update a course. The API answers with a status message, not the course. */
   async updateCourse(
     courseUuid: string,
     data: CourseUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(`/course/${courseUuid}`, data);
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
+      `/course/${courseUuid}`,
+      data,
+    );
     return response.data;
   },
 
@@ -215,8 +223,10 @@ export const coursesAPI = {
    * unlike `deleteTrip`. Not idempotent either: a second delete on the same uuid
    * is a 404, because the row really is gone.
    */
-  async deleteCourse(courseUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/course/${courseUuid}`);
+  async deleteCourse(courseUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/course/${courseUuid}`,
+    );
     return response.data;
   },
 };

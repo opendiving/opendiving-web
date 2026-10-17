@@ -36,7 +36,7 @@ export function ContactsPageContent() {
   // same query the pickers run.
   const fetchContacts = useCallback(
     (page: number, perPage: number) =>
-      contactsAPI.getContacts(page, perPage, search || undefined),
+      contactsAPI.getContacts(page, perPage, { search }),
     [search],
   );
 
