@@ -21,6 +21,16 @@ import {
 } from "@/lib/dive-recordings";
 import { importDiveOutcomeSentence } from "@/lib/logbook-import";
 import { formatDepth } from "@/lib/units";
+import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // A dive's start as the file gives it: its wall clock, then the offset that clock
 // was on where it records one. A naive start stops after the clock, and a bare
@@ -32,6 +42,10 @@ function startText(startTime: string | null): string {
   const offset = parseUtcOffsetMinutes(startTime);
   return offset === null ? when : `${when} ${formatUtcOffset(offset)}`;
 }
+
+// Denser than the table's own rows: an import can list hundreds of dives.
+const HEAD = "h-auto py-1";
+const CELL = "py-1.5";
 
 interface ImportDiveTableProps {
   dives: readonly ImportDiveReport[];
@@ -55,114 +69,110 @@ export function ImportDiveTable({
   const withReturnTo = useWithReturnTo();
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <caption className="sr-only">
-          {written
-            ? "The dives this import reached, and what happened to each"
-            : "The dives these files become, and what the import would do with each"}
-        </caption>
-        <thead>
-          <tr className="text-muted-foreground text-left">
-            <th scope="col" className="font-medium py-1 pr-3">
-              Start
-            </th>
-            <th
-              scope="col"
-              className="hidden md:table-cell font-medium py-1 px-3 text-right"
-            >
-              Dive time
-            </th>
-            <th scope="col" className="font-medium py-1 px-3 text-right">
-              Depth
-            </th>
-            <th
-              scope="col"
-              className="hidden md:table-cell font-medium py-1 px-3"
-            >
-              Recorded by
-            </th>
-            <th
-              scope="col"
-              className="hidden md:table-cell font-medium py-1 px-3"
-            >
-              Files
-            </th>
-            <th scope="col" className="font-medium py-1 pl-3">
-              Outcome
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {dives.map((dive, index) => {
-            const start = startText(dive.start_time);
-            const linkable =
-              dive.uuid !== null &&
-              (written ||
-                dive.outcome === "linked" ||
-                dive.outcome === "updated");
-            const files = dive.members
-              .map((member) => members[member]?.name)
-              .filter((name): name is string => Boolean(name));
-            const diveTime =
-              dive.submerged_time != null
-                ? formatDurationForForm(dive.submerged_time)
-                : null;
-            const device = dive.device
-              ? (recordingDeviceLabel(dive.device) ?? UNNAMED_DEVICE_LABEL)
+    <Table>
+      <TableCaption className="sr-only">
+        {written
+          ? "The dives this import reached, and what happened to each"
+          : "The dives these files become, and what the import would do with each"}
+      </TableCaption>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className={cn(HEAD, "pl-0")}>Start</TableHead>
+          <TableHead className={cn(HEAD, "hidden md:table-cell text-right")}>
+            Dive time
+          </TableHead>
+          <TableHead className={cn(HEAD, "text-right")}>Depth</TableHead>
+          <TableHead className={cn(HEAD, "hidden md:table-cell")}>
+            Recorded by
+          </TableHead>
+          <TableHead className={cn(HEAD, "hidden md:table-cell")}>
+            Files
+          </TableHead>
+          <TableHead className={cn(HEAD, "pr-0")}>Outcome</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {dives.map((dive, index) => {
+          const start = startText(dive.start_time);
+          const linkable =
+            dive.uuid !== null &&
+            (written ||
+              dive.outcome === "linked" ||
+              dive.outcome === "updated");
+          const files = dive.members
+            .map((member) => members[member]?.name)
+            .filter((name): name is string => Boolean(name));
+          const diveTime =
+            dive.submerged_time != null
+              ? formatDurationForForm(dive.submerged_time)
               : null;
-            return (
-              // Indexed: a skipped dive has no uuid, and two rows can name one
-              // uuid where a document claims it twice. The list is rebuilt
-              // wholesale from each response.
-              <tr key={`${dive.uuid ?? "skipped"}-${index}`}>
-                <th scope="row" className="text-left font-normal py-1.5 pr-3">
-                  {linkable ? (
-                    <Link
-                      // A new tab has no importer to go back to: the preview
-                      // lives in this one.
-                      href={
-                        written
-                          ? withReturnTo(`/dives/${dive.uuid}`)
-                          : `/dives/${dive.uuid}`
-                      }
-                      className="underline underline-offset-2"
-                      {...(written
-                        ? {}
-                        : { target: "_blank", rel: "noopener noreferrer" })}
-                    >
-                      {start}
-                    </Link>
-                  ) : (
-                    start
-                  )}
-                  {/* The columns a phone has no room for, folded under the start. */}
-                  <span className="md:hidden block text-xs text-muted-foreground">
-                    {[diveTime, device].filter(Boolean).join(" · ")}
-                  </span>
-                </th>
-                <td className="hidden md:table-cell py-1.5 px-3 text-right tabular-nums whitespace-nowrap">
-                  {diveTime ?? "—"}
-                </td>
-                <td className="py-1.5 px-3 text-right tabular-nums whitespace-nowrap">
-                  {dive.max_depth != null
-                    ? formatDepth(dive.max_depth, units, { decimals: 1 })
-                    : "—"}
-                </td>
-                <td className="hidden md:table-cell py-1.5 px-3">
-                  {device ?? "—"}
-                </td>
-                <td className="hidden md:table-cell py-1.5 px-3 break-all">
-                  {files.length > 0 ? files.join(", ") : "—"}
-                </td>
-                <td className="py-1.5 pl-3">
-                  {importDiveOutcomeSentence(dive)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+          const device = dive.device
+            ? (recordingDeviceLabel(dive.device) ?? UNNAMED_DEVICE_LABEL)
+            : null;
+          return (
+            // Indexed: a skipped dive has no uuid, and two rows can name one
+            // uuid where a document claims it twice. The list is rebuilt
+            // wholesale from each response.
+            <TableRow key={`${dive.uuid ?? "skipped"}-${index}`}>
+              <TableHead
+                scope="row"
+                className={cn(CELL, "h-auto pl-0 font-normal text-foreground")}
+              >
+                {linkable ? (
+                  <Link
+                    // A new tab has no importer to go back to: the preview
+                    // lives in this one.
+                    href={
+                      written
+                        ? withReturnTo(`/dives/${dive.uuid}`)
+                        : `/dives/${dive.uuid}`
+                    }
+                    className="underline underline-offset-2"
+                    {...(written
+                      ? {}
+                      : { target: "_blank", rel: "noopener noreferrer" })}
+                  >
+                    {start}
+                  </Link>
+                ) : (
+                  start
+                )}
+                {/* The columns a phone has no room for, folded under the start. */}
+                <span className="md:hidden block text-xs text-muted-foreground">
+                  {[diveTime, device].filter(Boolean).join(" · ")}
+                </span>
+              </TableHead>
+              <TableCell
+                className={cn(
+                  CELL,
+                  "hidden md:table-cell text-right tabular-nums whitespace-nowrap",
+                )}
+              >
+                {diveTime ?? "—"}
+              </TableCell>
+              <TableCell
+                className={cn(
+                  CELL,
+                  "text-right tabular-nums whitespace-nowrap",
+                )}
+              >
+                {dive.max_depth != null
+                  ? formatDepth(dive.max_depth, units, { decimals: 1 })
+                  : "—"}
+              </TableCell>
+              <TableCell className={cn(CELL, "hidden md:table-cell")}>
+                {device ?? "—"}
+              </TableCell>
+              <TableCell className={cn(CELL, "hidden md:table-cell break-all")}>
+                {files.length > 0 ? files.join(", ") : "—"}
+              </TableCell>
+              <TableCell className={cn(CELL, "pr-0")}>
+                {importDiveOutcomeSentence(dive)}
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }

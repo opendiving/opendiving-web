@@ -1576,8 +1576,8 @@ the outline and ghost variants.
 ## Theme tokens, and the three colours that needed a second variant
 
 Colours come from theme tokens, not raw Tailwind palette classes. Two raw uses stay on purpose: the
-dialog overlay's `bg-black/80` (a scrim is black in both themes) and the chart tooltips'
-`border-white/10` hairline over a dark surface.
+scrims' `bg-black/80`, the dialog overlay's and the mobile menu's (a scrim is black in both themes)
+and the chart tooltips' `border-white/10` hairline over a dark surface.
 
 A colour tuned to sit behind white text cannot also read as text. `--coral` and `--teal` carry no
 second variant; the destructive pair does: `--destructive-solid` fills buttons, badges and toasts,
@@ -2580,8 +2580,9 @@ fraction is left out of the facts line; a missing pressure or MOD is a muted das
 ## Cell padding is `px-2` app-wide
 
 `ui/table.tsx` diverges from shadcn: `TableHead` is `px-2`, not `px-4`; `TableCell` is `px-2 py-4`,
-not `p-4`. Vertical padding is untouched. No table overrides cell padding; re-adding the component
-from the shadcn registry silently restores `p-4`/`px-4`, hence the comment in the file.
+not `p-4`. Vertical padding is untouched. Only the import tables override it, for dense rows: an
+import can list hundreds of dives. Re-adding the component from the shadcn registry silently
+restores `p-4`/`px-4`, hence the comment in the file.
 
 Measured on nine tables at 375–1440 px with `padding-inline` injected, reading `table.scrollWidth`
 against `table.parentElement.clientWidth`. At 1024 px and above nothing overflows at any padding; at

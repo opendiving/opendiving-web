@@ -44,6 +44,13 @@ const config: Config = {
         cns: "hsl(var(--cns))",
         "gradient-factor": "hsl(var(--gradient-factor))",
         "surface-gradient-factor": "hsl(var(--surface-gradient-factor))",
+        "gas-oxygen": "hsl(var(--gas-oxygen))",
+        "gas-helium": "hsl(var(--gas-helium))",
+        // Whole colours, not HSL triplets - see `--map-water` in `globals.css`.
+        "map-water": {
+          DEFAULT: "var(--map-water)",
+          foreground: "var(--map-water-foreground)",
+        },
         tooltip: {
           DEFAULT: "hsl(var(--tooltip))",
           foreground: "hsl(var(--tooltip-foreground))",

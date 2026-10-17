@@ -18,6 +18,22 @@
   }
 }
 
+/* Lifts text, or an icon, off whatever a map backdrop shows beneath it, with a
+   glow in the colour the backdrop fades to. Two close layers: more of them, or
+   wider ones, drew each layer's edge as a visible ring - `drop-shadow`s chain,
+   each blurring the last one's 8-bit output. The icon's is a filter because
+   `text-shadow` stops at an SVG. */
+@utility glow-text {
+  text-shadow:
+    0 0 2px var(--backdrop-fade),
+    0 0 5px var(--backdrop-fade);
+}
+
+@utility glow-icon {
+  filter: drop-shadow(0 0 2px var(--backdrop-fade))
+    drop-shadow(0 0 5px var(--backdrop-fade));
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -246,6 +262,16 @@
     --gradient-factor: 95 55% 35%;
     --surface-gradient-factor: 230 70% 62%;
 
+    /* A cylinder's gas, in the US medical-gas colours dive shops borrow:
+       oxygen green, helium brown. See `components/icons/tank-icon.tsx`. */
+    --gas-oxygen: 144 100% 39%;
+    --gas-helium: 25 100% 37%;
+
+    /* A backdrop card's own colour and its hover, a step off the page's either
+       way - see `BackdropCard`. */
+    --backdrop-surface: 240 4% 95.5%;
+    --backdrop-surface-hover: 240 4% 92.5%;
+
     /* The shipped basemaps' water and the colour of the sea names drawn on it,
        for anything standing in for a map of open water - a dive card with no
        place yet. Whole colours rather than HSL triplets so they are exactly
@@ -350,6 +376,12 @@
     --border: 240 4% 18%;
     --input: 240 4% 18%;
     --ring: 240 2% 55%;
+
+    /* Helium a step lighter on the dark surface. */
+    --gas-helium: 30 100% 44%;
+
+    --backdrop-surface: var(--card);
+    --backdrop-surface-hover: var(--muted);
 
     --map-water: rgb(68 108 107);
     --map-water-foreground: rgb(178 226 226);
