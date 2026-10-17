@@ -56,7 +56,9 @@ export function GearItemCard({
       href={`/gear/${item.uuid}`}
       badges={
         <>
-          {item.rented && <Badge variant="secondary">Rented</Badge>}
+          {/* Outlined, as Archived is: on a list card's grey a `secondary`
+              chip's fill is a lightness point off it in light. */}
+          {item.rented && <Badge variant="outline">Rented</Badge>}
           {item.is_archived && <Badge variant="outline">Archived</Badge>}
           {/* An item with no schedules gets no chip: nothing tracked is not
               everything fine. */}

@@ -1838,9 +1838,9 @@ used both ways. `lib/gear-service.ts` does not touch it.
 ## Dark `--secondary` is 22%, because every secondary chip renders on a card
 
 Dark `--secondary` is 22%, nine points above `--card`, because every `secondary` chip (the count
-chips on dives, sites, trips, certifications, gear and gear sets; "Rented" in `gear-item-card`,
-`dive-detail-main` and `gear-item-multi-select`; Home's `doneCount/steps` chip) renders on a card
-header, where three points of lightness is no background at all.
+chips on dives, sites, trips, certifications, gear and gear sets; "Rented" in `dive-detail-main` and
+`gear-item-multi-select`; Home's `doneCount/steps` chip) renders on a card header, where three
+points of lightness is no background at all.
 
 Lightness rather than a border: the base `Badge` carries `border` and `secondary` sets
 `border-transparent`; a visible border makes it look like `outline`, which sits three rows away as
