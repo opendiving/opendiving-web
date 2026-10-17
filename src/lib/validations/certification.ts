@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { maxLength, optionalDateField } from "./fields";
 import { notesField } from "./notes";
+import { requiredName } from "./name";
 import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
 
 export const certificationSchema = z
@@ -10,10 +11,7 @@ export const certificationSchema = z
     agency_other: maxLength("Agency name", 64).optional(),
     // The level as printed on the card. Free text: every agency names its levels
     // differently and renames them between syllabus revisions.
-    name: maxLength("Certification name", 255).min(
-      1,
-      "Certification name is required",
-    ),
+    name: requiredName("Certification name", 255),
     certification_number: maxLength("Certification number", 64).optional(),
     certified_on: optionalDateField().optional(),
     expires_on: optionalDateField().optional(),

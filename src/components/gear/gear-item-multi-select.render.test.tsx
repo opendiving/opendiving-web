@@ -117,4 +117,28 @@ describe("GearItemMultiSelect", () => {
       }),
     );
   });
+
+  it("opens the new-gear dialog seeded with what was typed", async () => {
+    vi.mocked(gearAPI.lookupGearItems).mockResolvedValue({
+      data: [],
+      total_count: 0,
+      has_more: false,
+      page: 1,
+      items_per_page: 25,
+    });
+    render(
+      <GearItemMultiSelect aria-label="Gear" value={[]} onChange={() => {}} />,
+    );
+
+    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.type(screen.getByRole("combobox"), "Perdix 2 ");
+    await userEvent.click(
+      await screen.findByRole("option", { name: "New gear item..." }),
+    );
+
+    await screen.findByRole("dialog", { name: "New Gear" });
+    await waitFor(() =>
+      expect(screen.getByLabelText("Name *")).toHaveValue("Perdix 2"),
+    );
+  });
 });

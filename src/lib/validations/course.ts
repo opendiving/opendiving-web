@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { maxLength, optionalDateField } from "./fields";
 import { notesField } from "./notes";
+import { requiredName } from "./name";
 import { personReferenceSchema } from "./person";
 import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
 import { COURSE_STATUSES } from "@/lib/api/courses";
@@ -11,7 +12,7 @@ import { COURSE_STATUSES } from "@/lib/api/courses";
 // caught before the round trip rather than as a 422.
 export const courseSchema = z
   .object({
-    name: maxLength("Course name", 255).min(1, "Course name is required"),
+    name: requiredName("Course name", 255),
     // `null` is this field's "not set", mirroring the API's own `agency: None`
     // rather than the `""` the text fields use: the picker holds a value or it
     // holds nothing, the way `course_uuid` does on a certification.

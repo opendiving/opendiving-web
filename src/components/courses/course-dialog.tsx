@@ -158,7 +158,7 @@ export function CourseDialog({
       // the agency is "other", so switching away from "other" must send null
       // rather than the stale name still sitting in the form state.
       const shared = {
-        name: data.name,
+        name: data.name.trim(),
         agency: data.agency,
         agency_other:
           data.agency === "other" ? data.agency_other || null : null,

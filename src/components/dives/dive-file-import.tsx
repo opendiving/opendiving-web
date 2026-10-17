@@ -666,9 +666,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
           afterwards, so this announces exactly once - see `describeMixtureImport`. */}
       <p
         role="status"
-        className={
-          importNote ? "text-sm text-amber-700 dark:text-amber-500" : "sr-only"
-        }
+        className={importNote ? "text-sm text-warning" : "sr-only"}
       >
         {importNote}
       </p>

@@ -162,7 +162,7 @@ function Splash({ leaving }: { leaving: boolean }) {
       id="launch-splash"
       role="status"
       aria-label="Loading OpenDiving"
-      className="fixed inset-0 z-[100] grid place-items-center bg-coral text-white transition-opacity ease-out motion-reduce:transition-none data-[leaving]:pointer-events-none data-[leaving]:opacity-0"
+      className="fixed inset-0 z-[100] grid place-items-center bg-coral text-coral-foreground transition-opacity ease-out motion-reduce:transition-none data-[leaving]:pointer-events-none data-[leaving]:opacity-0"
       style={
         {
           "--mark": "min(22vmin, 160px)",

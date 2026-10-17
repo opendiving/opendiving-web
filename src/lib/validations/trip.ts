@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { maxLength, optionalDateField } from "./fields";
+import { optionalDateField } from "./fields";
 import { notesField } from "./notes";
+import { requiredName } from "./name";
 import { locationSchema } from "./location";
 import { personReferenceSchema } from "./person";
 
@@ -53,7 +54,7 @@ export function emptyTripPart(): TripPartFormValue {
 // form for either, and it always shows every field, so an update never sends a
 // partial object.
 export const tripFormSchema = z.object({
-  name: maxLength("Trip name", 255).min(1, "Trip name is required"),
+  name: requiredName("Trip name", 255),
   // Where the trip went and when, in the order the diver arranged it. The trip
   // itself carries no dates: its span is the span of these.
   parts: z

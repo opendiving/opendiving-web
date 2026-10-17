@@ -1518,6 +1518,20 @@ describe("DiveProfileChart legend group name", () => {
   });
 });
 
+describe("DiveProfileChart legend off state", () => {
+  it("draws a switched-off entry in full-strength muted text", () => {
+    // Faded below `text-muted-foreground` it fails AA in both themes - see
+    // DECISIONS.md on the unit toggle's off half, which this matches.
+    render(<DiveProfileChart profile={everyChannel()} />);
+    const temperature = screen.getByRole("button", { name: /^Temperature/ });
+    fireEvent.click(temperature);
+
+    expect(temperature).toHaveAttribute("aria-pressed", "false");
+    expect(temperature).toHaveClass("text-muted-foreground");
+    expect(temperature.className).not.toMatch(/text-muted-foreground\//);
+  });
+});
+
 describe("DiveProfileChart legend menu", () => {
   it("groups its entries by the graph each is drawn on", () => {
     render(

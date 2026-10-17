@@ -141,7 +141,7 @@ export function ContactDialog({
       // explicit null, which on an update is what clears a stored value; `notes`
       // is the exception, being a string the API never takes as null.
       const shared = {
-        name: data.name,
+        name: data.name.trim(),
         roles: data.roles,
         phone: data.phone.trim() || null,
         email: data.email.trim() || null,
