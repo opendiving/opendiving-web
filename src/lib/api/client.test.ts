@@ -401,10 +401,7 @@ describe("refreshAccessToken across tabs", () => {
 
     const token = refreshAccessToken();
     await Promise.resolve();
-    expect(request).toHaveBeenCalledWith(
-      "opendiving:auth-refresh",
-      expect.any(Function),
-    );
+    expect(request).toHaveBeenCalledWith("auth-refresh", expect.any(Function));
     expect(answer).not.toHaveBeenCalled();
 
     grant();

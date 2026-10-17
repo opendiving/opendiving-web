@@ -84,7 +84,8 @@ export interface RefreshResponse {
 // other tab has just rotated - most often when a browser restores several tabs at
 // startup. Held under one lock per origin, the second tab presents the cookie the
 // first was handed. Without Web Locks the refresh simply runs unqueued.
-const REFRESH_LOCK = "opendiving:auth-refresh";
+// No `opendiving:` prefix: that marks a browser-storage key, and a lock stores nothing.
+const REFRESH_LOCK = "auth-refresh";
 
 function oneTabAtATime<T>(work: () => Promise<T>): Promise<T> {
   const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
