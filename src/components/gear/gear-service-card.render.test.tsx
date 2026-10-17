@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { GearServiceCard } from "./gear-service-card";
 import { announceSavedElsewhere } from "@/lib/saved-elsewhere";
 import { fetchAllContacts } from "@/lib/api/contacts";
@@ -23,7 +24,12 @@ vi.mock("@/lib/api/gear-service", async (importOriginal) => {
   return {
     ...actual,
     fetchAllServiceRecords: vi.fn(),
-    gearServiceAPI: { ...actual.gearServiceAPI, getSchedules: vi.fn() },
+    gearServiceAPI: {
+      ...actual.gearServiceAPI,
+      getSchedules: vi.fn(),
+      deleteSchedule: vi.fn(),
+      deleteRecord: vi.fn(),
+    },
   };
 });
 
@@ -32,10 +38,8 @@ vi.mock("@/lib/api/gear-service", async (importOriginal) => {
 // real hook (`toast` is a module-level function) and an infinite refetch loop against
 // a mock that hands back a new one on every render. The loop is invisible while it
 // happens to lose the race to a passing assertion, which is how it went unnoticed.
-vi.mock("@/components/ui/use-toast", () => {
-  const toast = vi.fn();
-  return { useToast: () => ({ toast }) };
-});
+const toast = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ui/use-toast", () => ({ useToast: () => ({ toast }) }));
 
 const gearItem: GearItem = {
   uuid: "item-1",
@@ -89,6 +93,8 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
 const getSchedules = vi.mocked(gearServiceAPI.getSchedules);
 const getRecords = vi.mocked(fetchAllServiceRecords);
 const getContacts = vi.mocked(fetchAllContacts);
+const deleteSchedule = vi.mocked(gearServiceAPI.deleteSchedule);
+const deleteRecord = vi.mocked(gearServiceAPI.deleteRecord);
 
 // Renders the card and waits out the mount fetch, which the spinner stands in for until
 // both lists have arrived.
@@ -104,8 +110,10 @@ const renderCard = async (
     items_per_page: 100,
   });
   getRecords.mockResolvedValue(records);
-  render(<GearServiceCard gearItem={gearItem} onChanged={vi.fn()} />);
+  const onChanged = vi.fn();
+  render(<GearServiceCard gearItem={gearItem} onChanged={onChanged} />);
   await screen.findByText("Service History");
+  return { onChanged };
 };
 
 beforeEach(() => {
@@ -322,5 +330,64 @@ describe("GearServiceCard row controls", () => {
     // card; a row control repeating it would make two.
     expect(names.filter((name) => name === "Log service")).toHaveLength(1);
     expect(new Set(names).size).toBe(names.length);
+  });
+});
+
+describe("GearServiceCard deletes", () => {
+  it("deletes a schedule on confirm, says so, and reads the service again", async () => {
+    deleteSchedule.mockResolvedValue({ message: "Deleted" });
+    const { onChanged } = await renderCard([schedule()], []);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete Service schedule" }),
+    );
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", {
+          name: "Delete service schedule",
+        }),
+      ).getByRole("button", { name: "Delete" }),
+    );
+
+    await vi.waitFor(() =>
+      expect(toast).toHaveBeenCalledWith({
+        title: "Success",
+        description: "Service schedule deleted successfully.",
+      }),
+    );
+    expect(deleteSchedule).toHaveBeenCalledWith("schedule-1", undefined);
+    expect(getSchedules).toHaveBeenCalledTimes(2);
+    expect(onChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the API's reason when a record's delete is refused, and reads nothing again", async () => {
+    deleteRecord.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 409, data: { detail: "Record is locked." } },
+    });
+    const { onChanged } = await renderCard([], [record()]);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete Service on Mar 12, 2025" }),
+    );
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", {
+          name: "Delete service record",
+        }),
+      ).getByRole("button", { name: "Delete" }),
+    );
+
+    await vi.waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          description: "Record is locked.",
+        }),
+      ),
+    );
+    expect(deleteRecord).toHaveBeenCalledWith("record-1", undefined);
+    expect(getSchedules).toHaveBeenCalledTimes(1);
+    expect(onChanged).not.toHaveBeenCalled();
   });
 });

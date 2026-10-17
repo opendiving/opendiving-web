@@ -2000,7 +2000,7 @@ function LegendToggles({
                 onClick={() => onToggle(key)}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch:min-h-11",
-                  on ? "text-foreground" : "text-muted-foreground/60",
+                  on ? "text-foreground" : "text-muted-foreground",
                 )}
               >
                 {channel ? (

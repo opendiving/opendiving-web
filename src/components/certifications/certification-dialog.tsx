@@ -331,7 +331,7 @@ export function CertificationDialog({
         agency: data.agency as CertificationAgency,
         agency_other:
           data.agency === "other" ? data.agency_other || null : null,
-        name: data.name,
+        name: data.name.trim(),
         certification_number: data.certification_number || null,
         certified_on: data.certified_on || null,
         expires_on: data.expires_on || null,
