@@ -81,8 +81,17 @@ async function renderOverPage() {
 }
 
 // The menu slides and its backdrop fades over 300ms, and a box mid-slide is
-// neither where it starts nor where it ends.
-const slid = () => act(() => new Promise((done) => setTimeout(done, 350)));
+// neither where it starts nor where it ends. Their transitions are waited out
+// rather than timed: under a full suite's load a slide starts late, and a fixed
+// wait then measures it part of the way in.
+const slid = () =>
+  act(async () => {
+    const moving = [
+      document.getElementById("mobile-menu"),
+      document.querySelector("[data-mobile-menu-backdrop]"),
+    ].flatMap((element) => element?.getAnimations() ?? []);
+    await Promise.allSettled(moving.map((animation) => animation.finished));
+  });
 
 const centre = (element: Element) => {
   const box = element.getBoundingClientRect();
