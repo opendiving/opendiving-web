@@ -3211,9 +3211,9 @@ become renames. The absent-key path `get_gear_items_for_set` documents is exerci
 
 ## The create form proposes no cylinder, and the last one is removable
 
-`new-dive-page-content.tsx` seeds no mixture in `defaultValues` or in `prefillFromLastDive`'s
-fallback, the remove button in `mixture-fields.tsx` has no `index > 0` gate, and `onSubmit` sends
-`normalizeMixtures(data.mixtures ?? [])`, so an untouched gas card reaches `POST /dive` as
+`emptyDiveFormValues` seeds no mixture, for `defaultValues` and `prefillFromLastDive`'s fallback
+alike, the remove button in `mixture-fields.tsx` has no `index > 0` gate, and `buildDiveCreate`
+sends `normalizeMixtures(data.mixtures ?? [])`, so an untouched gas card reaches `POST /dive` as
 `mixtures: []` — which `DiveCreate.mixtures` (`default_factory=list`) and `dive-mixtures-card.tsx`
 expect.
 
