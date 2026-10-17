@@ -55,10 +55,10 @@ export const MAX_PICTURE_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB
 // The API's two pixel caps, mirrored so a picture it would refuse is refused at the
 // pick rather than after Save, when the form's fields have already saved. The first
 // judges what the file declares; the second what the API actually decodes, which for
-// a PNG is every pixel and for a JPEG is Pillow's reduced `draft` towards 512 px.
+// a PNG is every pixel. A JPEG never meets the second: the API decodes it reduced, as
+// deep as it takes to come in under it.
 const MAX_PICTURE_PIXELS = 50_000_000;
 const MAX_ORIGINAL_DECODE_PIXELS = 4032 * 3024;
-const JPEG_DRAFT_TARGET = 512;
 
 export type PictureType = "image/jpeg" | "image/png";
 
@@ -84,18 +84,6 @@ export async function readPictureType(file: Blob): Promise<PictureType | null> {
   return sniffPictureType(new Uint8Array(await file.slice(0, 8).arrayBuffer()));
 }
 
-// What Pillow's `JpegImageFile.draft` rasterizes: the largest of 1/8, 1/4 and 1/2
-// that leaves both edges at least the target, rounded up. Orientation cannot change
-// it - the minimum and the product are both symmetric in the two edges.
-function jpegDecodedPixels(width: number, height: number): number {
-  const reduction = Math.min(
-    Math.floor(width / JPEG_DRAFT_TARGET),
-    Math.floor(height / JPEG_DRAFT_TARGET),
-  );
-  const scale = [8, 4, 2, 1].find((step) => reduction >= step) ?? 1;
-  return Math.ceil(width / scale) * Math.ceil(height / scale);
-}
-
 /**
  * Why the API would refuse a picture of this type and size, or null when it would
  * not. `width` and `height` are the decoded image's, in either orientation.
@@ -112,13 +100,8 @@ export function pictureSizeProblem(
       ? `A PNG can be at most 4032 × 3024 pixels, and this one is ${size}. A JPEG of it will do.`
       : null;
   }
-  if (width * height > MAX_PICTURE_PIXELS) {
-    return `A JPEG can be at most 50 megapixels, and this one is ${size}.`;
-  }
-  // Only a very wide JPEG reaches this: its short edge keeps the reduction from
-  // happening, so the API decodes it whole.
-  return jpegDecodedPixels(width, height) > MAX_ORIGINAL_DECODE_PIXELS
-    ? `A ${size} photo this wide is too large to process. Crop it a little first.`
+  return width * height > MAX_PICTURE_PIXELS
+    ? `A JPEG can be at most 50 megapixels, and this one is ${size}.`
     : null;
 }
 

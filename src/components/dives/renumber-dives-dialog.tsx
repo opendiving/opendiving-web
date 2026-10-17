@@ -21,7 +21,8 @@ import {
   formatDiveDateTime,
   getBrowserUtcOffsetMinutes,
 } from "@/lib/date-time";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
+import { POSTGRES_INTEGER_MAX } from "@/lib/validations/fields";
 
 // Long enough that typing "1", "0", "2" into the start-at box is one preview
 // rather than three.
@@ -57,6 +58,9 @@ interface TaggedPreview {
   // Null when the request failed - distinct from having no preview for these
   // inputs yet, which is `null` for the whole `TaggedPreview`.
   result: DiveRenumberResult | null;
+  // Why it failed, when the API said: a renumber that would number the last dive
+  // past what the column holds is a 422 with a sentence of its own.
+  error: string | null;
 }
 
 // What the form opens on, for a caller that knows which part of the log wants
@@ -83,7 +87,10 @@ function RenumberForm({
   // `""` while the box is empty mid-edit; nothing is previewed until it holds a
   // number, rather than previewing a renumber from 1 nobody asked for.
   const parsedStartAt = Number.parseInt(startAt, 10);
-  const isStartAtValid = Number.isInteger(parsedStartAt) && parsedStartAt >= 1;
+  const isStartAtValid =
+    Number.isInteger(parsedStartAt) &&
+    parsedStartAt >= 1 &&
+    parsedStartAt <= POSTGRES_INTEGER_MAX;
 
   const isPreviewCurrent =
     preview !== null &&
@@ -96,6 +103,7 @@ function RenumberForm({
     let cancelled = false;
     const timer = setTimeout(async () => {
       let result: DiveRenumberResult | null = null;
+      let failure: string | null = null;
       try {
         result = await divesAPI.renumberDives({
           start_at: parsedStartAt,
@@ -106,11 +114,22 @@ function RenumberForm({
         // Shown in place of the change list rather than toasted: a preview that
         // failed to load is information about this dialog, not about the log.
         console.error("Failed to preview the renumber:", error);
+        failure =
+          getApiErrorStatus(error) === 422
+            ? getApiErrorMessage(error, "")
+            : null;
       }
       // One state update for both outcomes, tagged with the inputs it came
       // from - a failed preview still has to replace whatever was on screen,
       // or the diver reads a change list for different settings.
-      if (!cancelled) setPreview({ startAt: parsedStartAt, fromDate, result });
+      if (!cancelled) {
+        setPreview({
+          startAt: parsedStartAt,
+          fromDate,
+          result,
+          error: failure,
+        });
+      }
     }, PREVIEW_DEBOUNCE_MS);
 
     return () => {
@@ -199,7 +218,8 @@ function RenumberForm({
         <div className="rounded-md border p-3 text-sm">
           {!isStartAtValid ? (
             <span className="text-muted-foreground">
-              Enter a starting number of 1 or more.
+              Enter a starting number from 1 to{" "}
+              {POSTGRES_INTEGER_MAX.toLocaleString("en-US")}.
             </span>
           ) : !isPreviewCurrent ? (
             <span className="flex items-center text-muted-foreground">
@@ -208,7 +228,8 @@ function RenumberForm({
             </span>
           ) : preview.result === null ? (
             <span className="text-muted-foreground">
-              Couldn&apos;t load a preview. Check your connection and try again.
+              {preview.error ||
+                "Couldn't load a preview. Check your connection and try again."}
             </span>
           ) : changeCount === 0 ? (
             <span className="text-muted-foreground">

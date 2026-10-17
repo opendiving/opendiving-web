@@ -19,7 +19,7 @@ import {
 import type { GearItem } from "@/lib/api/gear";
 import { todayIsoDate } from "@/lib/date-time";
 import { defaultSchedulesForGearType } from "@/lib/gear-service";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiDuplicateError, getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   Dialog,
@@ -79,7 +79,7 @@ export function GearServiceScheduleDialog({
     },
   });
 
-  const { reset } = form;
+  const { reset, setError, setFocus } = form;
   useEffectOnChange(() => {
     if (!open) return;
 
@@ -127,7 +127,7 @@ export function GearServiceScheduleDialog({
       if (schedule) {
         await gearServiceAPI.updateSchedule(schedule.uuid, {
           kind: data.kind,
-          label: data.label || null,
+          label: data.label?.trim() || null,
           starts_on: data.starts_on,
           interval_months: months,
           interval_dives: dives,
@@ -137,7 +137,7 @@ export function GearServiceScheduleDialog({
         await gearServiceAPI.createSchedule({
           gear_item_uuid: gearItem.uuid,
           kind: data.kind,
-          label: data.label || undefined,
+          label: data.label?.trim() || undefined,
           starts_on: data.starts_on,
           interval_months: months,
           interval_dives: dives,
@@ -148,6 +148,13 @@ export function GearServiceScheduleDialog({
       onSaved();
       onOpenChange(false);
     } catch (error) {
+      // A kind this item already has a schedule for is shown on the kind.
+      const duplicate = getApiDuplicateError(error);
+      if (duplicate) {
+        setError("kind", { message: duplicate });
+        setFocus("kind");
+        return;
+      }
       setApiError(
         getApiErrorMessage(
           error,

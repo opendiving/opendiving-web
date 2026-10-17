@@ -72,14 +72,18 @@ describe("gearServiceScheduleSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("bounds the hours interval at the API's ceiling", () => {
-    const hours = (interval_hours: number) =>
-      gearServiceScheduleSchema.safeParse({ ...validSchedule, interval_hours })
+  it.each([
+    ["interval_months", 1_200],
+    ["interval_dives", 1_000_000],
+    ["interval_hours", 1_000_000],
+  ])("bounds %s at the API's ceiling of %i", (field, ceiling) => {
+    const accepts = (value: number) =>
+      gearServiceScheduleSchema.safeParse({ ...validSchedule, [field]: value })
         .success;
-    expect(hours(1_000_000)).toBe(true);
-    expect(hours(1_000_001)).toBe(false);
-    expect(hours(0)).toBe(false);
-    expect(hours(1.5)).toBe(false);
+    expect(accepts(ceiling)).toBe(true);
+    expect(accepts(ceiling + 1)).toBe(false);
+    expect(accepts(0)).toBe(false);
+    expect(accepts(1.5)).toBe(false);
   });
 
   it("accepts one arm cleared as long as the other is set", () => {

@@ -75,3 +75,21 @@ export function getApiFieldError(error: unknown, field: string): string | null {
   );
   return match?.msg || null;
 }
+
+/**
+ * The API's sentence when a save is refused because the name is already one of the
+ * caller's - a trip, a contact, a gear set, a dive site at that locality - or `null`.
+ *
+ * The API matches names trimmed and case-folded, and answers a match with a flat 422
+ * (`{"detail": "A trip with this name already exists"}`) rather than a field error,
+ * so the sentence is the only thing marking it. For the dialogs that show it on the
+ * name field; one this misreads still reaches the diver through `getApiErrorMessage`.
+ */
+export function getApiDuplicateError(error: unknown): string | null {
+  if (getApiErrorStatus(error) !== 422) return null;
+  const detail = (error as { response?: { data?: { detail?: unknown } } })
+    ?.response?.data?.detail;
+  return typeof detail === "string" && /\balready (exists|has)\b/.test(detail)
+    ? detail
+    : null;
+}
