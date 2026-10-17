@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { maxLength } from "./fields";
+import { POSTGRES_INTEGER_MAX, maxLength } from "./fields";
 import { notesField } from "./notes";
 import { personReferenceSchema } from "./person";
 import {
@@ -355,9 +355,8 @@ export const diveMixtureSchema = z
 
 export type DiveMixtureInput = z.input<typeof diveMixtureSchema>;
 
-// The API's `POSTGRES_INTEGER_MAX`: a count is stored in a Postgres `integer`, and the
-// format sets no ceiling of its own.
-export const SIGHTING_COUNT_MAX = 2 ** 31 - 1;
+// A count is stored in a Postgres `integer`, and the format sets no ceiling of its own.
+export const SIGHTING_COUNT_MAX = POSTGRES_INTEGER_MAX;
 
 /**
  * One species seen on the dive, as the form holds it - the wire shape exactly, so it
@@ -568,7 +567,14 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
 }
 
 const diveNumberField = () =>
-  z.number().int().positive("Dive number must be a positive integer");
+  z
+    .number()
+    .int()
+    .positive("Dive number must be a positive integer")
+    .max(
+      POSTGRES_INTEGER_MAX,
+      `Dive number must be at most ${POSTGRES_INTEGER_MAX.toLocaleString("en-US")}`,
+    );
 
 // What a new dive and an edit hold the same way: every one optional in both, since a
 // dive records any of them or none.
@@ -588,6 +594,8 @@ const diveFields = {
     .number()
     .int("Visibility must be an integer")
     .positive("Visibility must be positive")
+    // Unit-free: the box takes feet in imperial mode, and the ceiling is the column's.
+    .max(POSTGRES_INTEGER_MAX, "That's more than a visibility can hold")
     .nullable()
     .optional(),
   water_type: vocabularyField(WATER_TYPES),

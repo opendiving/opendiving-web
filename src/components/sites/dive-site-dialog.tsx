@@ -30,7 +30,7 @@ import {
 } from "@/components/sites/location-search-dialog";
 import { MapSearchIcon } from "@/components/icons/map-search-icon";
 import { useGeocodedLocation } from "@/hooks/useGeocodedLocation";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiDuplicateError, getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   Dialog,
@@ -119,7 +119,7 @@ export function DiveSiteDialog({
   // Reload the form whenever the dialog is opened, so it shows the dive site
   // being edited (or a clean slate) rather than whatever the previous
   // invocation left behind.
-  const { reset, setValue, getValues } = form;
+  const { reset, setValue, getValues, setError, setFocus } = form;
   useEffectOnChange(() => {
     if (!open) return;
     reset(diveSiteFormValues(diveSite));
@@ -278,8 +278,11 @@ export function DiveSiteDialog({
       // The whole place, or an explicit null. Naming it replaces the stored one
       // wholesale, which is why the field carries the object it was seeded with
       // rather than a text box over its name; null is what clears a locality
-      // that was entered wrongly.
-      const location = data.location ?? null;
+      // that was entered wrongly. A typed name is held as typed and trimmed here,
+      // as the API stores it.
+      const location = data.location
+        ? { ...data.location, name: data.location.name.trim() }
+        : null;
       const members = diveSiteMembersFromForm(data);
 
       if (diveSite) {
@@ -307,6 +310,13 @@ export function DiveSiteDialog({
 
       onOpenChange(false);
     } catch (error) {
+      // A name already taken is shown on the name, beside what the diver typed.
+      const duplicate = getApiDuplicateError(error);
+      if (duplicate) {
+        setError("name", { message: duplicate });
+        setFocus("name");
+        return;
+      }
       setApiError(
         getApiErrorMessage(
           error,

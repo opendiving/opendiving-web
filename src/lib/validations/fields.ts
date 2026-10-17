@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+/**
+ * The API's `POSTGRES_INTEGER_MAX`: the most a Postgres `integer` column holds, and the
+ * ceiling of every whole number the API bounds by its column alone.
+ */
+export const POSTGRES_INTEGER_MAX = 2 ** 31 - 1;
+
 /** The one spelling of a length limit, for a check `.max()` cannot express. */
 export const maxLengthMessage = (label: string, max: number) =>
   `${label} cannot exceed ${max.toLocaleString("en-US")} characters`;

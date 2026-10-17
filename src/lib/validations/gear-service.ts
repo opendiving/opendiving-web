@@ -3,23 +3,28 @@ import { dateField, maxLength } from "./fields";
 import { notesField } from "./notes";
 import { SERVICE_KINDS } from "@/lib/api/gear-service";
 
-// The API's `INTERVAL_HOURS_MAX`: a typed interval past it would overflow the
-// threshold column the API derives from it, so the API refuses it and this says so
-// first.
+// The API's ceilings on a schedule's intervals. Each threshold it derives is a snapshot
+// plus the interval, in a column a larger one would overflow, and a century of months is
+// past any service rule; the API refuses beyond them and this says so first.
+export const INTERVAL_MONTHS_MAX = 1_200;
+export const INTERVAL_DIVES_MAX = 1_000_000;
 export const INTERVAL_HOURS_MAX = 1_000_000;
 
 // `""` is what a cleared number input holds while editing, so every interval field
 // accept it and the dialog maps it back to `null` on submit. Kept as a union rather
 // than a `z.preprocess()`/`.transform()`: those change what `z.input<>` infers, which
 // breaks the form's field types (see DECISIONS.md).
-const optionalPositiveInt = (label: string) =>
-  z.union([
-    z.literal(""),
-    z
-      .number()
-      .int(`${label} must be a whole number`)
-      .positive(`${label} must be greater than zero`),
-  ]);
+const optionalInterval = (label: string, max: number) =>
+  z
+    .union([
+      z.literal(""),
+      z
+        .number()
+        .int(`${label} must be a whole number`)
+        .positive(`${label} must be greater than zero`)
+        .max(max, `${label} cannot exceed ${max.toLocaleString("en-US")}`),
+    ])
+    .optional();
 
 export const gearServiceScheduleSchema = z
   .object({
@@ -29,21 +34,12 @@ export const gearServiceScheduleSchema = z
     label: maxLength("Label", 120).optional(),
     // Bare "YYYY-MM-DD". Never parsed with `new Date(dateString)` anywhere downstream.
     starts_on: dateField("An in-service date is required"),
-    interval_months: optionalPositiveInt("Interval in months").optional(),
-    interval_dives: optionalPositiveInt("Interval in dives").optional(),
-    interval_hours: z
-      .union([
-        z.literal(""),
-        z
-          .number()
-          .int("Interval in hours must be a whole number")
-          .positive("Interval in hours must be greater than zero")
-          .max(
-            INTERVAL_HOURS_MAX,
-            `Interval in hours cannot exceed ${INTERVAL_HOURS_MAX.toLocaleString("en-US")}`,
-          ),
-      ])
-      .optional(),
+    interval_months: optionalInterval(
+      "Interval in months",
+      INTERVAL_MONTHS_MAX,
+    ),
+    interval_dives: optionalInterval("Interval in dives", INTERVAL_DIVES_MAX),
+    interval_hours: optionalInterval("Interval in hours", INTERVAL_HOURS_MAX),
   })
   // Mirrors the API's `require_an_interval` validator and the DB's
   // `ck_gear_service_schedule_has_an_interval`: a rule with no interval could never

@@ -124,7 +124,7 @@ export function GearServiceRecordDialog({
       if (record) {
         await gearServiceAPI.updateRecord(record.uuid, {
           kind: data.kind,
-          label: data.label || null,
+          label: data.label?.trim() || null,
           serviced_on: data.serviced_on,
           contact_uuid: data.contact_uuid ?? null,
           performed_by: data.performed_by || null,
@@ -134,7 +134,7 @@ export function GearServiceRecordDialog({
         await gearServiceAPI.createRecord({
           gear_item_uuid: gearItemUuid,
           kind: data.kind,
-          label: data.label || undefined,
+          label: data.label?.trim() || undefined,
           serviced_on: data.serviced_on,
           contact_uuid: data.contact_uuid ?? undefined,
           performed_by: data.performed_by || undefined,
