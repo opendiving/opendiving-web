@@ -96,7 +96,7 @@ export function InvitationsCard() {
   const refresh = useCallback(
     () =>
       invitationsAPI
-        .listInvitations()
+        .getInvitations()
         .then((response) =>
           setList({
             status: "ready",
@@ -171,7 +171,7 @@ export function InvitationsCard() {
     if (list.status !== "ready") return;
     try {
       setIsLoadingMore(true);
-      const response = await invitationsAPI.listInvitations(list.page + 1);
+      const response = await invitationsAPI.getInvitations(list.page + 1);
       setList((current) => {
         if (current.status !== "ready") return current;
         // Deduped by uuid, and this is load-bearing rather than belt-and-braces.

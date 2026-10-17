@@ -28,8 +28,8 @@ describe("courseStatusLabel", () => {
     expect(new Set(labels).size).toBe(COURSE_STATUSES.length);
   });
 
-  it("falls back to the wire value for a status this build doesn't know", () => {
-    expect(courseStatusLabel("deferred")).toBe("deferred");
+  it("de-snakes a status this build doesn't know", () => {
+    expect(courseStatusLabel("on_hold")).toBe("On hold");
   });
 
   it("renders nothing for a missing status", () => {

@@ -673,10 +673,9 @@ errors not swallowed.
 [DiveJSON](https://github.com/divejson/divejson). Declaration order is the picker's order, so a new
 category enters the format first and lands here at its position.
 
-`gearTypeLabel()` falls back to the raw value for a type this build lacks (a slug beats a blank
-cell), and a test walks `GEAR_TYPES` for a type without a label. Nothing generates the list from
-either source, so the API widens first — it rejects an unknown `type` with a 422 — and the picker
-last.
+`gearTypeLabel()` de-snakes a type this build lacks, through `labelOrFallback`, and a test walks
+`GEAR_TYPES` for a type without a label. Nothing generates the list from either source, so the API
+widens first — it rejects an unknown `type` with a 422 — and the picker last.
 
 Type is optional: `""` is the form's "not set" state, sent as explicit `null` on update and omitted
 on create, and it is the "No type" option's value.
@@ -1496,9 +1495,10 @@ instead of a generic "Please try again."
 ## `PaginatedResponse` lives in `lib/api/client.ts`, and dialogs share their error state
 
 `PaginatedResponse<T>` lives in `lib/api/client.ts`, beside the client that produces it, and the
-paginated `lib/api/` modules are type aliases over it; nothing in `lib/api/` imports upward from
-`hooks/`, so a copy beside the hook would leave each module declaring its own.
-`hooks/useInfiniteResource.ts` re-exports it for pages importing the type alongside the hook.
+paginated `lib/api/` modules write it inline rather than aliasing it per resource; nothing in
+`lib/api/` imports upward from `hooks/`, so a copy beside the hook would leave each module declaring
+its own. `hooks/useInfiniteResource.ts` re-exports it for pages importing the type alongside the
+hook.
 
 `useDialogApiError` owns the `apiError` state of the create/edit dialogs, so the effect that resets
 a form does nothing but `reset(...)`, which `react-hooks/set-state-in-effect` has no quarrel with.
@@ -3960,12 +3960,11 @@ of an account they still have. Same asymmetry as `signOut` after a failed `POST 
 
 `AuthOutcome.status` has a third value, `deletion_pending`: the identity was verified, an account
 exists inside its deletion grace period, and nothing was written and no session issued.
-`AuthContext.applyOutcome` branches on that status rather than on `authenticated` versus
-everything-else — an else branch that non-null-asserts `outcome.onboarding_token` stashes an
-onboarding session with an `undefined` token for `/auth/complete`, since a `deletion_pending`
-outcome carries none. The magic-link page, the six-digit code card, the Google button and
-`usePasskeySignIn` all take their destination from that status too, instead of a
-`signedIn ? next : "/onboarding"` ternary each.
+`AuthOutcome` is a union discriminated on `status`, so each token is reachable only under its own
+status: an else branch reading `onboarding_token` after testing for `authenticated` alone is a type
+error, where a non-null assertion stashed an `undefined` token for `/auth/complete`. The magic-link
+page, the six-digit code card, the Google button and `usePasskeySignIn` all take their destination
+from that status too, instead of a `signedIn ? next : "/onboarding"` ternary each.
 
 ## One function decides where an outcome lands
 
@@ -5699,7 +5698,7 @@ the same `Record`.
 
 The only lockstep part: the API's list comes from `divejson.read_formats()`, which a Renovate bump
 moves, so a reader can reach the Import page before this repository names it. `conversion.format`
-renders through `importSourceLabel`, falling back to the id until a label exists (`suunto_xml` is
+renders through `importSourceLabel`, de-snaking the id until a label exists (`suunto_xml` is
 `"Suunto DM5 XML"`); `conversion.groups[].kind` is an opaque string (`conversionKindTone` reads it
 as information, `conversionKindLabel` de-snakes it); the form's picker alone does not widen — a new
 format is unpickable there until its extension lands. The Import page filters nothing, so it takes

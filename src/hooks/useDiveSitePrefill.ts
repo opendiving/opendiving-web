@@ -7,6 +7,7 @@ import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { siteEntryTypes, siteWaterType } from "@/lib/validations/dive-site";
 import type { DiveCreateInput } from "@/lib/validations/dive";
 
+/** What `useDiveSitePrefill` takes. */
 export interface UseDiveSitePrefillOptions {
   control: Control<DiveCreateInput>;
   visibility: Pick<DiveFormVisibility, "autofill">;

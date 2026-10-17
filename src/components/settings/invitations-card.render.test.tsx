@@ -10,19 +10,19 @@ import { localDay } from "@/test/local-day";
 // it are pinned in `lib/api/invitations.test.ts`, and the invite-link block's own
 // behaviour in `invite-link-block.render.test.tsx`.
 const mocks = vi.hoisted(() => ({
-  listInvitations: vi.fn(),
+  getInvitations: vi.fn(),
   sendInvitation: vi.fn(),
   revokeInvitation: vi.fn(),
-  inviteLink: vi.fn(),
+  getInviteLink: vi.fn(),
   toast: vi.fn(),
 }));
 
 vi.mock("@/lib/api/invitations", () => ({
   invitationsAPI: {
-    listInvitations: mocks.listInvitations,
+    getInvitations: mocks.getInvitations,
     sendInvitation: mocks.sendInvitation,
     revokeInvitation: mocks.revokeInvitation,
-    inviteLink: mocks.inviteLink,
+    getInviteLink: mocks.getInviteLink,
   },
 }));
 
@@ -99,11 +99,11 @@ beforeEach(() => {
   // A fresh object per call rather than one shared between them: a mock that
   // hands the same array back on every read makes a re-render that re-reads look
   // identical to one that does not.
-  mocks.listInvitations.mockImplementation(() =>
+  mocks.getInvitations.mockImplementation(() =>
     Promise.resolve(page([PENDING, ACCEPTED, REVOKED])),
   );
   mocks.revokeInvitation.mockResolvedValue({ message: "Invitation revoked" });
-  mocks.inviteLink.mockResolvedValue(null);
+  mocks.getInviteLink.mockResolvedValue(null);
 });
 
 describe("InvitationsCard", () => {
@@ -169,7 +169,7 @@ describe("InvitationsCard", () => {
     expect(mocks.sendInvitation).toHaveBeenCalledWith("buddy@example.com");
     // The list request is the one from mount and nothing else - the route answers
     // with the row it created, so a second GET would ask for what it already has.
-    expect(mocks.listInvitations).toHaveBeenCalledTimes(1);
+    expect(mocks.getInvitations).toHaveBeenCalledTimes(1);
     // And the field is empty again, ready for the next address.
     expect(emailField()).toHaveValue("");
   });
@@ -215,14 +215,14 @@ describe("InvitationsCard", () => {
     );
     // Re-read once, because `revoked_at` is the server's stamp: one read on
     // mount and one after the action, and no more.
-    await waitFor(() => expect(mocks.listInvitations).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.getInvitations).toHaveBeenCalledTimes(2));
   });
 
   // The whole point of the 404: the card learns the registration mode from the
   // list route rather than from anything the web knows, exactly as the sessions
   // and passkeys cards learn whether their features exist.
   it("removes itself where the API says the feature is absent", async () => {
-    mocks.listInvitations.mockRejectedValue({ response: { status: 404 } });
+    mocks.getInvitations.mockRejectedValue({ response: { status: 404 } });
 
     const { container } = render(<InvitationsCard />);
 
@@ -230,7 +230,7 @@ describe("InvitationsCard", () => {
   });
 
   it("reports a load failure that is not a 404, and offers a retry", async () => {
-    mocks.listInvitations.mockRejectedValueOnce({
+    mocks.getInvitations.mockRejectedValueOnce({
       response: { status: 500, data: { detail: "Something broke." } },
     });
     const user = userEvent.setup();
@@ -243,7 +243,7 @@ describe("InvitationsCard", () => {
   });
 
   it("appends the next page rather than replacing what is on screen", async () => {
-    mocks.listInvitations.mockImplementation((requested: number = 1) =>
+    mocks.getInvitations.mockImplementation((requested: number = 1) =>
       Promise.resolve(
         requested === 1
           ? page([PENDING], { has_more: true, page: 1 })
@@ -261,7 +261,7 @@ describe("InvitationsCard", () => {
 
     expect(await screen.findByText("revoked@example.com")).toBeInTheDocument();
     expect(screen.getByText("pending@example.com")).toBeInTheDocument();
-    expect(mocks.listInvitations).toHaveBeenLastCalledWith(2);
+    expect(mocks.getInvitations).toHaveBeenLastCalledWith(2);
     // And the button goes once there is nothing older left.
     expect(
       screen.queryByRole("button", { name: /show older invitations/i }),
@@ -275,7 +275,7 @@ describe("InvitationsCard", () => {
   // the server genuinely behaves: page 2 comes back containing that boundary
   // row, and the card must not render it twice under the same React key.
   it("does not duplicate the boundary row when a send has shifted the pages", async () => {
-    mocks.listInvitations.mockImplementation((requested: number = 1) =>
+    mocks.getInvitations.mockImplementation((requested: number = 1) =>
       Promise.resolve(
         requested === 1
           ? page([PENDING, ACCEPTED], { has_more: true, page: 1 })
@@ -311,7 +311,7 @@ describe("InvitationsCard", () => {
   });
 
   it("shows somebody who joined through the link by name, with the day and nothing else", async () => {
-    mocks.listInvitations.mockResolvedValue(
+    mocks.getInvitations.mockResolvedValue(
       page([JOINED, { ...JOINED, uuid: "inv-6", member_name: null }, PENDING]),
     );
 
@@ -349,7 +349,7 @@ describe("InvitationsCard", () => {
   // moment before the card goes.
   it("asks nothing about the link while the list is loading, nor where the feature is absent", async () => {
     let answer!: (value: unknown) => void;
-    mocks.listInvitations.mockReturnValue(
+    mocks.getInvitations.mockReturnValue(
       new Promise((_resolve, reject) => {
         answer = reject;
       }),
@@ -358,13 +358,13 @@ describe("InvitationsCard", () => {
     const { container } = render(<InvitationsCard />);
 
     expect(emailField()).toBeInTheDocument();
-    expect(mocks.inviteLink).not.toHaveBeenCalled();
+    expect(mocks.getInviteLink).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("button", { name: /create your invite link/i }),
     ).toBeNull();
 
     answer({ response: { status: 404 } });
     await waitFor(() => expect(container).toBeEmptyDOMElement());
-    expect(mocks.inviteLink).not.toHaveBeenCalled();
+    expect(mocks.getInviteLink).not.toHaveBeenCalled();
   });
 });

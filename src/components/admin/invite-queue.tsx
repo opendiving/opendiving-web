@@ -46,7 +46,7 @@ export function InviteQueue() {
   // loop" in DECISIONS.md for what a per-render callback would cost here.
   const fetchRequests = useCallback(
     (page: number, perPage: number) =>
-      adminAPI.listInviteRequests(page, perPage),
+      adminAPI.getInviteRequests(page, perPage),
     [],
   );
 

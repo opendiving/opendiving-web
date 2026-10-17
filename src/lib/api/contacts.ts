@@ -1,5 +1,10 @@
-import { apiClient, fetchAllPages, lookupRequest } from "./client";
-import type { LookupQuery, PaginatedResponse } from "./client";
+import { apiClient, fetchAllPages, lookupFetcher } from "./client";
+import { labelOrFallback } from "./labels";
+import type {
+  MessageResponse,
+  PaginatedResponse,
+  SearchFilters,
+} from "./client";
 
 /**
  * What a contact is to the diver. Mirrors the API's `ContactRole`, value for value
@@ -22,6 +27,7 @@ export const CONTACT_ROLES = [
 
 export type ContactRole = (typeof CONTACT_ROLES)[number];
 
+/** Display labels for `CONTACT_ROLES`, in the dialog's wording. */
 export const CONTACT_ROLE_LABELS: Record<ContactRole, string> = {
   dive_center: "Dive center",
   school: "School",
@@ -33,15 +39,11 @@ export const CONTACT_ROLE_LABELS: Record<ContactRole, string> = {
 };
 
 /**
- * A role's display name, tolerating one this build has never heard of: the API
- * reads its roles back as plain strings, so a value added there before this build
- * ships a label renders de-snaked rather than blank.
+ * A role's display name. The API reads its roles back as plain strings, so one
+ * this build has never heard of falls back as `labelOrFallback` says.
  */
 export function contactRoleLabel(role: string): string {
-  return (
-    CONTACT_ROLE_LABELS[role as ContactRole] ??
-    role.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
-  );
+  return labelOrFallback(CONTACT_ROLE_LABELS, role);
 }
 
 /**
@@ -90,12 +92,12 @@ export interface ContactCreate {
   notes?: string;
 }
 
-// The `PATCH /contact/{uuid}` body. An explicit `null` clears the phone, the
-// email, the website or the address, and naming `address` replaces it whole;
-// `name`, `roles` and `notes` take no null.
+/**
+ * The `PATCH /contact/{uuid}` body. An explicit `null` clears the phone, the
+ * email, the website or the address, and naming `address` replaces it whole;
+ * `name`, `roles` and `notes` take no null.
+ */
 export type ContactUpdate = Partial<ContactCreate>;
-
-export type PaginatedContactsResponse = PaginatedResponse<Contact>;
 
 /** One row of `GET /contacts/lookup`: the name, and the address the picker's hint reads. */
 export interface ContactLookupItem {
@@ -111,7 +113,7 @@ export const contactsAPI = {
    * a second "Blue Ocean" is a 422 whose message `getApiErrorMessage` reads out.
    */
   async createContact(data: ContactCreate): Promise<Contact> {
-    const response = await apiClient.post(`/contact`, data);
+    const response = await apiClient.post<Contact>(`/contact`, data);
     return response.data;
   },
 
@@ -123,15 +125,18 @@ export const contactsAPI = {
   async getContacts(
     page: number = 1,
     items_per_page: number = 10,
-    search?: string,
-  ): Promise<PaginatedContactsResponse> {
-    const response = await apiClient.get(`/contacts`, {
-      params: {
-        page,
-        items_per_page,
-        ...(search ? { search } : {}),
+    { search }: SearchFilters = {},
+  ): Promise<PaginatedResponse<Contact>> {
+    const response = await apiClient.get<PaginatedResponse<Contact>>(
+      `/contacts`,
+      {
+        params: {
+          page,
+          items_per_page,
+          ...(search ? { search } : {}),
+        },
       },
-    });
+    );
     return response.data;
   },
 
@@ -140,28 +145,23 @@ export const contactsAPI = {
    * before `until` last named first, then contacts no such dive names, newest
    * first. `search` matches what `getContacts` matches.
    */
-  async lookupContacts(
-    page: number,
-    items_per_page: number,
-    query: LookupQuery = {},
-  ): Promise<PaginatedResponse<ContactLookupItem>> {
-    const response = await apiClient.get(
-      `/contacts/lookup`,
-      lookupRequest(page, items_per_page, query),
-    );
-    return response.data;
-  },
+  lookupContacts: lookupFetcher<ContactLookupItem>(`/contacts/lookup`),
 
+  /** One contact by uuid. */
   async getContact(contactUuid: string): Promise<Contact> {
-    const response = await apiClient.get(`/contact/${contactUuid}`);
+    const response = await apiClient.get<Contact>(`/contact/${contactUuid}`);
     return response.data;
   },
 
+  /** Update a contact. The API answers with a status message, not the contact. */
   async updateContact(
     contactUuid: string,
     data: ContactUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(`/contact/${contactUuid}`, data);
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
+      `/contact/${contactUuid}`,
+      data,
+    );
     return response.data;
   },
 
@@ -170,8 +170,10 @@ export const contactsAPI = {
    * service records, trip parts - survives with the link gone, so there is no
    * reassign option to pass. A second delete on the same uuid is a 404.
    */
-  async deleteContact(contactUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/contact/${contactUuid}`);
+  async deleteContact(contactUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/contact/${contactUuid}`,
+    );
     return response.data;
   },
 };

@@ -35,7 +35,7 @@ export function PeoplePageContent() {
   // username - the same query the pickers run.
   const fetchPeople = useCallback(
     (page: number, perPage: number) =>
-      peopleAPI.getPeople(page, perPage, search || undefined),
+      peopleAPI.getPeople(page, perPage, { search }),
     [search],
   );
 

@@ -3,19 +3,22 @@ import type { ExternalId } from "./dive-sites";
 import type { GeoPoint } from "@/lib/geo-distance";
 import { formatPlaceContext } from "@/lib/locations";
 
-// The bounds `GET /dive-sites/suggest` declares on its own `q`. Mirrored rather
-// than discovered, for the same reason `MIN_PLACE_QUERY_LENGTH` is: a query
-// outside them is a 422, and a 422 is an exception - which the picker's error
-// story ("an empty list is survivable, a thrown error is not") has no answer for.
-//
-// This guard is not inherited from anywhere. `PlaceSearch` hands its own
-// `minSearchLength`/`maxSearchLength` to the combobox, but those feed the empty
-// menu's wording only - the primitive's search effect calls `onSearch` with no
-// length gate at all, including once with "" the moment the menu opens. Without
-// the check below, every open of the dive site dialog would fire `q=`, take a
-// 422, and land in the combobox's catch as "couldn't reach the place search"
-// before the diver had typed a character.
+/**
+ * The bounds `GET /dive-sites/suggest` declares on its own `q`. Mirrored rather
+ * than discovered, for the same reason `MIN_PLACE_QUERY_LENGTH` is: a query
+ * outside them is a 422, and a 422 is an exception - which the picker's error
+ * story ("an empty list is survivable, a thrown error is not") has no answer for.
+ *
+ * This guard is not inherited from anywhere. `PlaceSearch` hands its own
+ * `minSearchLength`/`maxSearchLength` to the combobox, but those feed the empty
+ * menu's wording only - the primitive's search effect calls `onSearch` with no
+ * length gate at all, including once with "" the moment the menu opens. Without
+ * the check below, every open of the dive site dialog would fire `q=`, take a
+ * 422, and land in the combobox's catch as "couldn't reach the place search"
+ * before the diver had typed a character.
+ */
 export const MIN_SITE_QUERY_LENGTH = 2;
+/** The longest `q` `GET /dive-sites/suggest` accepts; see `MIN_SITE_QUERY_LENGTH`. */
 export const MAX_SITE_QUERY_LENGTH = 200;
 
 /** Which database a suggestion came from. Each carries its own licence. */

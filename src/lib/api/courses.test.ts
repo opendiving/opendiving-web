@@ -4,7 +4,8 @@ import { coursesAPI } from "./courses";
 // What `getCourses` puts on the query string, which is the half of the filter
 // feature the UI cannot show. The controls themselves are in
 // `components/courses/courses-filters.render.test.tsx`.
-vi.mock("./client", () => ({
+vi.mock("./client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./client")>()),
   apiClient: { get: vi.fn() },
 }));
 

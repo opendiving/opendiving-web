@@ -1,6 +1,7 @@
 import { announceServiceDueChanged } from "@/lib/service-due";
-import { apiClient, fetchAllPages, lookupRequest } from "./client";
-import type { LookupQuery, PaginatedResponse } from "./client";
+import { apiClient, fetchAllPages, lookupFetcher } from "./client";
+import { labelOrFallback } from "./labels";
+import type { MessageResponse, PaginatedResponse } from "./client";
 // Type-only, so it erases at compile time - `gear-service.ts` has no import back to
 // here, but keeping this one type-only means the pair can never become a real cycle.
 import type { GearServiceScheduleSummary } from "./gear-service";
@@ -84,13 +85,10 @@ const GEAR_TYPE_LABELS: Record<GearType, string> = {
   other: "Other",
 };
 
-/**
- * Label for a gear type, tolerating a value this build doesn't know about (an
- * API that has grown a new category shouldn't render as a blank cell).
- */
+/** Label for a gear type, or `null` for none; an unknown one as `labelOrFallback` says. */
 export function gearTypeLabel(type: string | null | undefined): string | null {
   if (!type) return null;
-  return GEAR_TYPE_LABELS[type as GearType] ?? type;
+  return labelOrFallback(GEAR_TYPE_LABELS, type);
 }
 
 /**
@@ -107,9 +105,9 @@ const CYLINDER_MATERIAL_LABELS: Record<CylinderMaterial, string> = {
   carbon: "Carbon",
 };
 
-/** A material's label, or the stored value where this build has none yet. */
+/** A material's label; an unknown one as `labelOrFallback` says. */
 export function cylinderMaterialLabel(material: string): string {
-  return CYLINDER_MATERIAL_LABELS[material as CylinderMaterial] ?? material;
+  return labelOrFallback(CYLINDER_MATERIAL_LABELS, material);
 }
 
 /**
@@ -126,7 +124,9 @@ export interface VesselFacts {
   material?: string | null;
 }
 
-// A single piece of diving equipment (regulator, BCD, drysuit, computer, ...).
+/**
+ * A single piece of diving equipment (regulator, BCD, drysuit, computer, ...).
+ */
 export interface GearItem extends VesselFacts {
   uuid: string;
   name: string;
@@ -155,7 +155,7 @@ export interface GearItem extends VesselFacts {
   created_at: string;
 }
 
-// The summary shape embedded in a `Dive` or a `GearSet`.
+/** The summary shape embedded in a `Dive` or a `GearSet`. */
 export interface GearItemSummary {
   uuid: string;
   name: string;
@@ -196,9 +196,11 @@ export interface GearItemUpdate {
   material?: CylinderMaterial | null;
 }
 
-// A named, reusable grouping of gear items ("Sidemount", "Tech - trimix", ...).
-// Sets are a form-filling shortcut only: a dive stores the resulting items, never
-// the set, so editing or deleting a set never rewrites logged dives.
+/**
+ * A named, reusable grouping of gear items ("Sidemount", "Tech - trimix", ...).
+ * Sets are a form-filling shortcut only: a dive stores the resulting items, never
+ * the set, so editing or deleting a set never rewrites logged dives.
+ */
 export interface GearSet {
   uuid: string;
   name: string;
@@ -223,8 +225,6 @@ export interface GearSetUpdate {
   gear_item_uuids?: string[];
 }
 
-export type PaginatedGearItemsResponse = PaginatedResponse<GearItem>;
-
 /**
  * One row of `GET /gear-items/lookup`: the members of `GearItemSummary`, which a
  * picker stores for its label and its Rented and Archived badges, and the vessel
@@ -232,29 +232,36 @@ export type PaginatedGearItemsResponse = PaginatedResponse<GearItem>;
  */
 export type GearItemLookupItem = GearItemInfo;
 
-export type PaginatedGearSetsResponse = PaginatedResponse<GearSet>;
+/** What narrows the gear list. */
+export interface GearItemFilters {
+  /** Archived items are left out unless this is true. */
+  includeArchived?: boolean;
+}
 
 /**
  * Gear item and gear set CRUD. Sets are named bundles of items, carrying an optional
  * default weight the dive form pre-fills.
  */
 export const gearAPI = {
-  // Create a gear item, owned by the signed-in user.
+  /** Create a gear item, owned by the signed-in user. */
   async createGearItem(data: GearItemCreate): Promise<GearItem> {
-    const response = await apiClient.post(`/gear-item`, data);
+    const response = await apiClient.post<GearItem>(`/gear-item`, data);
     return response.data;
   },
 
-  // Get a user's gear (paginated). Archived items are excluded unless
-  // `includeArchived` is true.
+  /**
+   * A page of the user's gear. `include_archived` is always sent, `false`
+   * unless the filter says otherwise.
+   */
   async getGearItems(
     page: number = 1,
     items_per_page: number = 10,
-    includeArchived: boolean = false,
-  ): Promise<PaginatedGearItemsResponse> {
-    const response = await apiClient.get(`/gear-items`, {
-      params: { page, items_per_page, include_archived: includeArchived },
-    });
+    { includeArchived = false }: GearItemFilters = {},
+  ): Promise<PaginatedResponse<GearItem>> {
+    const response = await apiClient.get<PaginatedResponse<GearItem>>(
+      `/gear-items`,
+      { params: { page, items_per_page, include_archived: includeArchived } },
+    );
     return response.data;
   },
 
@@ -263,30 +270,25 @@ export const gearAPI = {
    * before `until` first, then items on no such dive, newest first. Archived gear
    * is never listed. `search` matches an item's name *or* brand, case-insensitively.
    */
-  async lookupGearItems(
-    page: number,
-    items_per_page: number,
-    query: LookupQuery = {},
-  ): Promise<PaginatedResponse<GearItemLookupItem>> {
-    const response = await apiClient.get(
-      `/gear-items/lookup`,
-      lookupRequest(page, items_per_page, query),
+  lookupGearItems: lookupFetcher<GearItemLookupItem>(`/gear-items/lookup`),
+
+  /** One gear item by uuid. */
+  async getGearItem(gearItemUuid: string): Promise<GearItem> {
+    const response = await apiClient.get<GearItem>(
+      `/gear-item/${gearItemUuid}`,
     );
     return response.data;
   },
 
-  async getGearItem(gearItemUuid: string): Promise<GearItem> {
-    const response = await apiClient.get(`/gear-item/${gearItemUuid}`);
-    return response.data;
-  },
-
-  // Update a gear item. Pass `is_archived` to archive/unarchive it - the API
-  // derives the `archived_at` timestamp itself.
+  /**
+   * Update a gear item. Pass `is_archived` to archive/unarchive it - the API
+   * derives the `archived_at` timestamp itself.
+   */
   async updateGearItem(
     gearItemUuid: string,
     updateData: GearItemUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
       `/gear-item/${gearItemUuid}`,
       updateData,
     );
@@ -294,46 +296,59 @@ export const gearAPI = {
     return response.data;
   },
 
-  async deleteGearItem(gearItemUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/gear-item/${gearItemUuid}`);
+  /**
+   * Delete a gear item: it drops off its dives and sets, and its service history
+   * goes with it. Archiving is the way to retire kit and keep both.
+   */
+  async deleteGearItem(gearItemUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/gear-item/${gearItemUuid}`,
+    );
     announceServiceDueChanged();
     return response.data;
   },
 
+  /** Create a gear set, owned by the signed-in user. */
   async createGearSet(data: GearSetCreate): Promise<GearSet> {
-    const response = await apiClient.post(`/gear-set`, data);
+    const response = await apiClient.post<GearSet>(`/gear-set`, data);
     return response.data;
   },
 
+  /** A page of the user's gear sets. */
   async getGearSets(
     page: number = 1,
     items_per_page: number = 10,
-  ): Promise<PaginatedGearSetsResponse> {
-    const response = await apiClient.get(`/gear-sets`, {
-      params: { page, items_per_page },
-    });
+  ): Promise<PaginatedResponse<GearSet>> {
+    const response = await apiClient.get<PaginatedResponse<GearSet>>(
+      `/gear-sets`,
+      { params: { page, items_per_page } },
+    );
     return response.data;
   },
 
+  /** One gear set by uuid. */
   async getGearSet(gearSetUuid: string): Promise<GearSet> {
-    const response = await apiClient.get(`/gear-set/${gearSetUuid}`);
+    const response = await apiClient.get<GearSet>(`/gear-set/${gearSetUuid}`);
     return response.data;
   },
 
-  // Update a gear set. Passing `gear_item_uuids` replaces its members wholesale.
+  /** Update a gear set. Passing `gear_item_uuids` replaces its members wholesale. */
   async updateGearSet(
     gearSetUuid: string,
     updateData: GearSetUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
       `/gear-set/${gearSetUuid}`,
       updateData,
     );
     return response.data;
   },
 
-  async deleteGearSet(gearSetUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/gear-set/${gearSetUuid}`);
+  /** Delete a gear set. Its items, and the dives they were on, are untouched. */
+  async deleteGearSet(gearSetUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/gear-set/${gearSetUuid}`,
+    );
     return response.data;
   },
 };

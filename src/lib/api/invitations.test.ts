@@ -54,7 +54,7 @@ describe("requestInvite", () => {
   });
 });
 
-describe("listInvitations", () => {
+describe("getInvitations", () => {
   it("reads the first page with the card's page size by default", async () => {
     get.mockResolvedValue({
       data: {
@@ -66,7 +66,7 @@ describe("listInvitations", () => {
       },
     });
 
-    const listed = await invitationsAPI.listInvitations();
+    const listed = await invitationsAPI.getInvitations();
 
     expect(listed.data).toEqual([PENDING]);
     expect(get).toHaveBeenCalledWith("/user/invitations", {
@@ -85,7 +85,7 @@ describe("listInvitations", () => {
       },
     });
 
-    await invitationsAPI.listInvitations(2);
+    await invitationsAPI.getInvitations(2);
 
     expect(get).toHaveBeenCalledWith("/user/invitations", {
       params: { page: 2, items_per_page: 20 },
@@ -97,7 +97,7 @@ describe("listInvitations", () => {
   it("lets the open-mode 404 reach the caller", async () => {
     get.mockRejectedValue({ response: { status: 404 } });
 
-    await expect(invitationsAPI.listInvitations()).rejects.toMatchObject({
+    await expect(invitationsAPI.getInvitations()).rejects.toMatchObject({
       response: { status: 404 },
     });
   });
@@ -156,7 +156,7 @@ describe("the invite link", () => {
   it("reads the caller's link", async () => {
     get.mockResolvedValue({ data: LINK });
 
-    await expect(invitationsAPI.inviteLink()).resolves.toEqual(LINK);
+    await expect(invitationsAPI.getInviteLink()).resolves.toEqual(LINK);
     expect(get).toHaveBeenCalledWith("/user/invite-link");
   });
 
@@ -165,13 +165,13 @@ describe("the invite link", () => {
   it("answers null for a caller with no link", async () => {
     get.mockRejectedValue({ response: { status: 404 } });
 
-    await expect(invitationsAPI.inviteLink()).resolves.toBeNull();
+    await expect(invitationsAPI.getInviteLink()).resolves.toBeNull();
   });
 
   it("lets any other failure reach the caller", async () => {
     get.mockRejectedValue({ response: { status: 500 } });
 
-    await expect(invitationsAPI.inviteLink()).rejects.toMatchObject({
+    await expect(invitationsAPI.getInviteLink()).rejects.toMatchObject({
       response: { status: 500 },
     });
   });

@@ -147,7 +147,9 @@ describe("the course's certifications card", () => {
     await screen.findByText("No certifications from this course yet");
 
     expect(getCertifications).toHaveBeenCalledTimes(1);
-    expect(getCertifications).toHaveBeenCalledWith(1, 50, COURSE.uuid);
+    expect(getCertifications).toHaveBeenCalledWith(1, 50, {
+      courseUuid: COURSE.uuid,
+    });
   });
 
   it("carries exactly one way into the dialog, worded apart from the sidebar's", async () => {

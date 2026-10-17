@@ -1,5 +1,6 @@
 import type { DiveSiteLookupItem } from "@/lib/api/dive-sites";
-import { vocabularyLabel, WATER_TYPE_LABELS } from "@/lib/api/dives";
+import { WATER_TYPE_LABELS } from "@/lib/api/dives";
+import { labelOrFallback } from "@/lib/api/labels";
 import { formatAltitude, type UnitSystem } from "@/lib/units";
 
 type ComparedSite = Pick<
@@ -20,7 +21,7 @@ export function diveSiteMismatches(
   const water = sites.find((site) => site.water_type);
   const altitude = sites.find((site) => site.altitude != null);
   const waterLabel = (site: ComparedSite) =>
-    vocabularyLabel(WATER_TYPE_LABELS, site.water_type ?? "");
+    labelOrFallback(WATER_TYPE_LABELS, site.water_type ?? "");
 
   return sites.map((site) => {
     const mismatches: string[] = [];

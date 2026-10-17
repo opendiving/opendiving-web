@@ -35,7 +35,7 @@ export function GearPageContent() {
 
   const fetchGearItems = useCallback(
     (page: number, perPage: number) =>
-      gearAPI.getGearItems(page, perPage, showArchived),
+      gearAPI.getGearItems(page, perPage, { includeArchived: showArchived }),
     [showArchived],
   );
 
@@ -78,7 +78,7 @@ export function GearPageContent() {
     if (!activeListIsEmpty) return;
     let cancelled = false;
     gearAPI
-      .getGearItems(1, 1, true)
+      .getGearItems(1, 1, { includeArchived: true })
       .then((response) => response.total_count > 0)
       // Unknown reads as "has some": a header left up for nothing costs less than
       // a switch the diver can no longer reach.

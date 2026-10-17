@@ -270,8 +270,8 @@ describe("an empty gear card keeps only its hidden heading", () => {
   });
 
   it("keeps it, switch and all, when the only gear is archived", async () => {
-    getGearItems.mockImplementation(async (_page, _perPage, includeArchived) =>
-      page(includeArchived ? [gearItem({ is_archived: true })] : []),
+    getGearItems.mockImplementation(async (_page, _perPage, filters) =>
+      page(filters?.includeArchived ? [gearItem({ is_archived: true })] : []),
     );
 
     render(<GearPage />);
@@ -352,7 +352,9 @@ describe("a service logged from the header's bell", () => {
     );
 
     await waitFor(() =>
-      expect(getGearItems).toHaveBeenCalledWith(1, 11, false),
+      expect(getGearItems).toHaveBeenCalledWith(1, 11, {
+        includeArchived: false,
+      }),
     );
     expect(screen.getByText("Item 10")).toBeInTheDocument();
   });

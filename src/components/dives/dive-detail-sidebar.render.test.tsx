@@ -325,10 +325,10 @@ describe.each([
 describe("DiveDetailSidebar environment, read from a newer API", () => {
   // A member the API grew before this build shipped a label renders as itself
   // rather than as a blank row.
-  it("shows a value this build has no label for as the wire value", () => {
-    renderSidebar(dive({ current: "surge" as Dive["current"] }));
+  it("shows a value this build has no label for de-snaked", () => {
+    renderSidebar(dive({ current: "tidal_surge" as Dive["current"] }));
 
-    expect(screen.getByText("surge")).toBeInTheDocument();
+    expect(screen.getByText("Tidal surge")).toBeInTheDocument();
   });
 });
 

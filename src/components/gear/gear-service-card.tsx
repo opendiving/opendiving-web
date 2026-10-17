@@ -94,7 +94,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
   const load = useCallback(
     async (signal?: AbortSignal) => {
       const [schedulePage, allRecords] = await Promise.all([
-        gearServiceAPI.getSchedules(gearItem.uuid, 1, 100),
+        gearServiceAPI.getSchedules(1, 100, { gearItemUuid: gearItem.uuid }),
         fetchAllServiceRecords(gearItem.uuid, signal),
       ]);
       setSchedules(schedulePage.data);

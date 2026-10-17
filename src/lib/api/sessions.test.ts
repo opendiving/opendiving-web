@@ -27,11 +27,11 @@ beforeEach(() => {
   remove.mockReset();
 });
 
-describe("listSessions", () => {
+describe("getSessions", () => {
   it("reads the unpaginated list off the collection route", async () => {
     get.mockResolvedValue({ data: [SESSION] });
 
-    await expect(sessionsAPI.listSessions()).resolves.toEqual([SESSION]);
+    await expect(sessionsAPI.getSessions()).resolves.toEqual([SESSION]);
     expect(get).toHaveBeenCalledWith("/user/sessions");
   });
 
@@ -41,7 +41,7 @@ describe("listSessions", () => {
   it("passes the raw user agent through rather than labelling it", async () => {
     get.mockResolvedValue({ data: [{ ...SESSION, user_agent: "curl/8.7.1" }] });
 
-    const [session] = await sessionsAPI.listSessions();
+    const [session] = await sessionsAPI.getSessions();
 
     expect(session.user_agent).toBe("curl/8.7.1");
   });
@@ -51,7 +51,7 @@ describe("listSessions", () => {
   it("lets a failure reach the caller", async () => {
     get.mockRejectedValue({ response: { status: 404 } });
 
-    await expect(sessionsAPI.listSessions()).rejects.toMatchObject({
+    await expect(sessionsAPI.getSessions()).rejects.toMatchObject({
       response: { status: 404 },
     });
   });

@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "@/lib/api-base";
 import type { CheckInDiver, DivingFiguresWire } from "@/lib/checkin";
 import type { UnitSystem } from "@/lib/units";
-import { apiClient } from "./client";
+import { apiClient, type MessageResponse } from "./client";
 import { getApiErrorStatus } from "./error";
 
 /** `POST /user/checkin-link`'s answer: the one response that ever carries the token. */
@@ -51,7 +51,7 @@ export interface SharedCheckIn {
 /**
  * The signed-in diver's own check-in link: one live at a time, 24 hours each.
  */
-export const checkinLinkAPI = {
+export const checkinLinksAPI = {
   /**
    * Makes a link showing the page with these figures for its whole life, retiring any
    * link made before it. The token is in this response and nowhere else - the API keeps
@@ -66,7 +66,7 @@ export const checkinLinkAPI = {
   },
 
   /** When the live link expires, or null when there is none. Never its token. */
-  async live(signal?: AbortSignal): Promise<CheckinLinkLive | null> {
+  async getLiveLink(signal?: AbortSignal): Promise<CheckinLinkLive | null> {
     try {
       const response = await apiClient.get<CheckinLinkLive>(
         "/user/checkin-link",
@@ -81,8 +81,10 @@ export const checkinLinkAPI = {
   },
 
   /** Stops the live link at its next request. Succeeds with nothing to revoke. */
-  async revoke(): Promise<void> {
-    await apiClient.delete("/user/checkin-link");
+  async revoke(): Promise<MessageResponse> {
+    const response =
+      await apiClient.delete<MessageResponse>("/user/checkin-link");
+    return response.data;
   },
 };
 
@@ -110,11 +112,14 @@ export async function fetchSharedCheckIn(
   return (await response.json()) as SharedCheckIn;
 }
 
-// The token in the path is the credential, so these need no bearer token - read them with
-// `fetchSharedPicture`, as the summary is read.
+/**
+ * Where a link's portrait is read. The token in the path is the credential, so this
+ * needs no bearer token - read it with `fetchSharedPicture`, as the summary is read.
+ */
 export const sharedPortraitUrl = (token: string) =>
   `${sharedBase(token)}/portrait`;
 
+/** Where a link's card front is read, as `sharedPortraitUrl` is. */
 export const sharedCardFrontUrl = (token: string, certificationUuid: string) =>
   `${sharedBase(token)}/certification/${encodeURIComponent(certificationUuid)}/front`;
 

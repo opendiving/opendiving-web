@@ -7,8 +7,8 @@ import {
   ABUNDANCE_RANGES,
   Dive,
   type Sighting,
-  vocabularyLabel,
 } from "@/lib/api/dives";
+import { labelOrFallback } from "@/lib/api/labels";
 import { gearTypeLabel } from "@/lib/api/gear";
 import {
   SPECIES_CARD_GRID,
@@ -53,7 +53,7 @@ function sightingFigures(sighting: Sighting): BackdropCardFigure[] {
         label: "Abundance",
         value: (
           <>
-            {vocabularyLabel(ABUNDANCE_LABELS, sighting.abundance)}
+            {labelOrFallback(ABUNDANCE_LABELS, sighting.abundance)}
             {range && <span className="text-xs font-normal"> {range}</span>}
           </>
         ),

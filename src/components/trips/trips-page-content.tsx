@@ -32,7 +32,7 @@ export function TripsPageContent() {
   // `Liveaboard` that went there.
   const fetchTrips = useCallback(
     (page: number, perPage: number) =>
-      tripsAPI.getTrips(page, perPage, search || undefined),
+      tripsAPI.getTrips(page, perPage, { search }),
     [search],
   );
 

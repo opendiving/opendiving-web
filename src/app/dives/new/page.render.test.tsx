@@ -349,7 +349,7 @@ beforeEach(() => {
   stable.auth.user.dive_form_preset_uuid = null;
   stable.searchParams = new URLSearchParams();
   stable.router.bfcacheId = "visit-1";
-  vi.mocked(authAPI.updateProfile).mockResolvedValue(undefined);
+  vi.mocked(authAPI.updateProfile).mockResolvedValue({ message: "ok" });
   vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([]);
   vi.mocked(divesAPI.getDives).mockResolvedValue(emptyPage());
   vi.mocked(divesAPI.getNextDiveNumber).mockResolvedValue({

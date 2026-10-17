@@ -62,7 +62,7 @@ export function InviteLinkBlock() {
   const load = useCallback(
     () =>
       invitationsAPI
-        .inviteLink()
+        .getInviteLink()
         .then((found) =>
           setLink(
             found ? { status: "live", token: found.token } : { status: "none" },

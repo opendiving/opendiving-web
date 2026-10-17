@@ -124,7 +124,7 @@ function PickerBody({
   useEffect(() => {
     let current = true;
     adminAPI
-      .speciesPhotoCandidates(uuid)
+      .getSpeciesPhotoCandidates(uuid)
       .then(({ category, candidates }) => {
         if (current) setCandidates({ state: "loaded", category, candidates });
       })

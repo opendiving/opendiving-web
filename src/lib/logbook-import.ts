@@ -10,6 +10,7 @@ import {
   type ImportReport,
 } from "@/lib/api/logbook-import";
 import { countNoun } from "@/lib/format";
+import { labelOrFallback } from "@/lib/api/labels";
 
 // What each envelope collection is called on screen. The API sends the wire name
 // ("gear_service_schedules") and the diver reads the app's own word for the thing
@@ -34,19 +35,12 @@ const COLLECTION_LABELS: Record<string, string> = {
 };
 
 /**
- * A collection's display name, tolerating one this build has never heard of.
- *
- * A newer API that grew a collection this build has no label for should render
- * as a readable row rather than a blank cell, so an unknown wire name is
- * de-snaked instead of dropped - the same forward-compatibility stance `certificationAgencyLabel`
- * takes for a new agency. Counts are the point of the row and they are correct
- * whatever the heading says.
+ * A collection's display name. A newer API can grow a collection this build has
+ * no label for, which falls back as `labelOrFallback` says; counts are the point
+ * of the row and they are correct whatever the heading says.
  */
 export function collectionLabel(collection: string): string {
-  return (
-    COLLECTION_LABELS[collection] ??
-    collection.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
-  );
+  return labelOrFallback(COLLECTION_LABELS, collection);
 }
 
 /** The four disjoint counts, summed across collection rows. */
@@ -184,19 +178,15 @@ const CONVERSION_KIND_LABELS: Record<string, string> = {
 };
 
 /**
- * A finding's badge text, de-snaking a kind this build has never heard of.
+ * A finding's badge text.
  *
  * The API sends `kind` as an **opaque string on purpose** and says so in the
  * field's own description: its converter gained a fourth kind mid-feature, and
  * the pin that decides which set a build sees moves with no change here. So a
- * fifth arrives as itself rather than as a blank badge - `collectionLabel`'s
- * treatment of an unknown collection, for the same reason.
+ * fifth falls back as `labelOrFallback` says rather than as a blank badge.
  */
 export function conversionKindLabel(kind: string): string {
-  return (
-    CONVERSION_KIND_LABELS[kind] ??
-    kind.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
-  );
+  return labelOrFallback(CONVERSION_KIND_LABELS, kind);
 }
 
 /** How loudly a conversion finding should read. */
