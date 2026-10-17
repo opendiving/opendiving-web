@@ -134,7 +134,7 @@ function VerifyMagicLinkContent() {
       // "Sign in" must never silently restore anything. That case falls through to
       // `/restore`, where the offer is made properly.
       if (restoring && outcome.status === "deletion_pending") {
-        await restoreAccount(outcome.restore_token!);
+        await restoreAccount(outcome.restore_token);
         router.replace(destinationForOutcome("authenticated", next));
         return;
       }

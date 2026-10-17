@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, type MessageResponse } from "./client";
 
 /**
  * A closed vocabulary shared with the API's `SupportCategory` (see
@@ -45,11 +45,13 @@ export interface SupportRequest {
  * caller should surface rather than retry.
  */
 export const supportAPI = {
-  // Forwards a support request to whoever runs this instance. Unauthenticated on both
-  // sides - someone who can't sign in is exactly the person who needs it - and
-  // rate-limited server-side by email and by IP.
-  async sendRequest(request: SupportRequest): Promise<{ message: string }> {
-    const response = await apiClient.post("/support", request);
+  /**
+   * Forwards a support request to whoever runs this instance. Unauthenticated on both
+   * sides - someone who can't sign in is exactly the person who needs it - and
+   * rate-limited server-side by email and by IP.
+   */
+  async sendRequest(request: SupportRequest): Promise<MessageResponse> {
+    const response = await apiClient.post<MessageResponse>("/support", request);
     return response.data;
   },
 };

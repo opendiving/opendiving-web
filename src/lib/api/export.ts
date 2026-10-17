@@ -55,6 +55,7 @@ export function exportFilename(
   return `opendiving-${safe}-${stamp}.${EXPORT_EXTENSIONS[format]}`;
 }
 
+/** Exports of the signed-in diver's own logbook. */
 export const exportAPI = {
   /**
    * Fetches one of the four exports of the signed-in diver's own logbook.

@@ -43,9 +43,9 @@ describe("gearTypeLabel", () => {
     expect(gearTypeLabel("")).toBeNull();
   });
 
-  it("falls back to the raw value for a type this build doesn't know", () => {
+  it("de-snakes a type this build doesn't know", () => {
     // The API may grow a category before the frontend does; a blank cell would
-    // be worse than showing the slug.
-    expect(gearTypeLabel("hookah")).toBe("hookah");
+    // be worse than a readable stand-in.
+    expect(gearTypeLabel("hookah_line")).toBe("Hookah line");
   });
 });

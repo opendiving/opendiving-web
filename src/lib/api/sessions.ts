@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, type MessageResponse } from "./client";
 
 /**
  * One device signed in to the account, as `GET /user/sessions` lists it.
@@ -52,7 +52,7 @@ export const sessionsAPI = {
    * the API caps live sessions per account and lists above that cap, so this can
    * never truncate.
    */
-  async listSessions(): Promise<UserSession[]> {
+  async getSessions(): Promise<UserSession[]> {
     const response = await apiClient.get<UserSession[]>("/user/sessions");
     return response.data;
   },
@@ -72,8 +72,11 @@ export const sessionsAPI = {
    * the token it is already holding buys it nothing, and the refresh cookie it
    * would have renewed with is dead alongside it.
    */
-  async revokeSession(uuid: string): Promise<void> {
-    await apiClient.delete(`/user/session/${uuid}`);
+  async revokeSession(uuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/user/session/${uuid}`,
+    );
+    return response.data;
   },
 
   /**

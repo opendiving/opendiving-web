@@ -7,6 +7,7 @@ import {
   CERTIFICATION_AGENCIES,
   type CertificationAgency,
 } from "@/lib/api/certifications";
+import { labelOrFallback } from "@/lib/api/labels";
 
 // Human labels for a course's status. Derived in the browser rather than sent by
 // the API, the same way `certificationExpiryLabel` is: the wire value is a slug
@@ -20,15 +21,10 @@ const COURSE_STATUS_LABELS: Record<CourseStatus, string> = {
   not_passed: "Not passed",
 };
 
-/**
- * Label for a course's status, falling back to the wire value for one this build
- * doesn't know about - the same tolerance `certificationAgencyLabel` and the
- * tank cards' role badge have, since the API can grow a member before the
- * app ships a label for it, and rendering the slug beats rendering a blank cell.
- */
+/** Label for a course's status, or `""` for none; an unknown one as `labelOrFallback` says. */
 export function courseStatusLabel(status: string | null | undefined): string {
   if (!status) return "";
-  return COURSE_STATUS_LABELS[status as CourseStatus] ?? status;
+  return labelOrFallback(COURSE_STATUS_LABELS, status);
 }
 
 /**

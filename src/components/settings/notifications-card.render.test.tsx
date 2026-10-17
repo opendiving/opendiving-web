@@ -38,7 +38,7 @@ beforeEach(() => {
   }
   auth.user.uuid = "user-1";
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
-  updateProfile.mockReset().mockResolvedValue(undefined);
+  updateProfile.mockReset().mockResolvedValue({ message: "ok" });
 });
 
 describe("NotificationsCard", () => {

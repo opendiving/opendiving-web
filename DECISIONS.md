@@ -176,8 +176,8 @@ Pickers of trips, sites, contacts, people, courses and gear search `/<plural>/lo
 edited record's date as its form holds it, or none. Remote rows are never re-filtered or re-sorted.
 
 A label comes from a `known*` prop, a lookup row, or a per-uuid read fired once with no `cancelled`
-flag: under StrictMode the request in flight is the discarded mount's. A host needing the whole
-record reads it on pick.
+flag (`useLookupLabels`): under StrictMode the request in flight is the discarded mount's. A host
+needing the whole record reads it on pick.
 
 The dive form lists its trip's and course's people, and the course's contact, first and unlabelled:
 a heading would teach the combobox unselectable rows. A pin the lookup matched by username or city
@@ -673,10 +673,9 @@ errors not swallowed.
 [DiveJSON](https://github.com/divejson/divejson). Declaration order is the picker's order, so a new
 category enters the format first and lands here at its position.
 
-`gearTypeLabel()` falls back to the raw value for a type this build lacks (a slug beats a blank
-cell), and a test walks `GEAR_TYPES` for a type without a label. Nothing generates the list from
-either source, so the API widens first — it rejects an unknown `type` with a 422 — and the picker
-last.
+`gearTypeLabel()` de-snakes a type this build lacks, through `labelOrFallback`, and a test walks
+`GEAR_TYPES` for a type without a label. Nothing generates the list from either source, so the API
+widens first — it rejects an unknown `type` with a 422 — and the picker last.
 
 Type is optional: `""` is the form's "not set" state, sent as explicit `null` on update and omitted
 on create, and it is the "No type" option's value.
@@ -1016,9 +1015,8 @@ The same `Dive` interface backs `GET /dives` and `GET /dive/{uuid}`, and the API
 only on the detail one — the list is its hottest query and nothing in the table renders an
 attachment. Hence `recordings?:` rather than a required member; do not "fix" the missing value by
 adding it to the list server-side. A file's `parser_key` renders through `importSourceLabel`, which
-falls back to the raw id for a format this build has not heard of, rather than to a blank or
-"Unknown": the API can grow a reader ahead of the frontend, and a slug in the cell beats an empty
-one that reads as a bug.
+de-snakes the id of a format this build has not heard of rather than showing a blank or "Unknown":
+the API can grow a reader ahead of the frontend, and an empty cell reads as a bug.
 
 ## Air consumption is the API's number; the browser only explains its absence
 
@@ -1496,9 +1494,10 @@ instead of a generic "Please try again."
 ## `PaginatedResponse` lives in `lib/api/client.ts`, and dialogs share their error state
 
 `PaginatedResponse<T>` lives in `lib/api/client.ts`, beside the client that produces it, and the
-paginated `lib/api/` modules are type aliases over it; nothing in `lib/api/` imports upward from
-`hooks/`, so a copy beside the hook would leave each module declaring its own.
-`hooks/useInfiniteResource.ts` re-exports it for pages importing the type alongside the hook.
+paginated `lib/api/` modules write it inline rather than aliasing it per resource; nothing in
+`lib/api/` imports upward from `hooks/`, so a copy beside the hook would leave each module declaring
+its own. `hooks/useInfiniteResource.ts` re-exports it for pages importing the type alongside the
+hook.
 
 `useDialogApiError` owns the `apiError` state of the create/edit dialogs, so the effect that resets
 a form does nothing but `reset(...)`, which `react-hooks/set-state-in-effect` has no quarrel with.
@@ -3211,9 +3210,9 @@ become renames. The absent-key path `get_gear_items_for_set` documents is exerci
 
 ## The create form proposes no cylinder, and the last one is removable
 
-`new-dive-page-content.tsx` seeds no mixture in `defaultValues` or in `prefillFromLastDive`'s
-fallback, the remove button in `mixture-fields.tsx` has no `index > 0` gate, and `onSubmit` sends
-`normalizeMixtures(data.mixtures ?? [])`, so an untouched gas card reaches `POST /dive` as
+`emptyDiveFormValues` seeds no mixture, for `defaultValues` and `prefillFromLastDive`'s fallback
+alike, the remove button in `mixture-fields.tsx` has no `index > 0` gate, and `buildDiveCreate`
+sends `normalizeMixtures(data.mixtures ?? [])`, so an untouched gas card reaches `POST /dive` as
 `mixtures: []` — which `DiveCreate.mixtures` (`default_factory=list`) and `dive-mixtures-card.tsx`
 expect.
 
@@ -3238,8 +3237,8 @@ default' React Hook Form quirk" and "The API sends `null` and the form schema wa
 default. `undefined` means untouched and is dropped from a PATCH; `null` means cleared and is sent.
 
 `buildDiveUpdate` converts `""` to an explicit `null`: an edit may already hold a value, and
-dropping the key would keep it while the toast says otherwise. The create page omits it instead, as
-with `trip_uuid`. Neither sends `""`, which `WaterType` (`StrEnum`) and `DiveCreate`
+dropping the key would keep it while the toast says otherwise. `buildDiveCreate` omits it instead,
+as with `trip_uuid`. Neither sends `""`, which `WaterType` (`StrEnum`) and `DiveCreate`
 (`extra="forbid"`) reject with a 422.
 
 Altitude is `min="-450" max="6500"`, mirroring `ck_dive_altitude_range`, not Visibility's `min="0"`
@@ -3960,12 +3959,11 @@ of an account they still have. Same asymmetry as `signOut` after a failed `POST 
 
 `AuthOutcome.status` has a third value, `deletion_pending`: the identity was verified, an account
 exists inside its deletion grace period, and nothing was written and no session issued.
-`AuthContext.applyOutcome` branches on that status rather than on `authenticated` versus
-everything-else — an else branch that non-null-asserts `outcome.onboarding_token` stashes an
-onboarding session with an `undefined` token for `/auth/complete`, since a `deletion_pending`
-outcome carries none. The magic-link page, the six-digit code card, the Google button and
-`usePasskeySignIn` all take their destination from that status too, instead of a
-`signedIn ? next : "/onboarding"` ternary each.
+`AuthOutcome` is a union discriminated on `status`, so each token is reachable only under its own
+status: an else branch reading `onboarding_token` after testing for `authenticated` alone is a type
+error. The magic-link page, the six-digit code card, the Google button and `usePasskeySignIn` all
+take their destination from that status too, instead of a `signedIn ? next : "/onboarding"` ternary
+each.
 
 ## One function decides where an outcome lands
 
@@ -4768,7 +4766,8 @@ depth.
 ## A tank card's line carries its usage, and its icon reads a twin set off the volume
 
 The usage flag is the last fact on the card's line, as the label the diver picked ("Parallel",
-"Staged"), falling back to the wire value as the role badge does; its meaning stays in the form.
+"Staged"), de-snaked through `labelOrFallback` where it has none, as the role badge is; its meaning
+stays in the form.
 
 The card draws the twin-set icon for a cylinder whose litres match a twin-set preset
 (`isTwinSetVolume` in `volume-combobox.tsx`): `DiveMixture` records no twin flag, and no single in
@@ -5699,7 +5698,7 @@ the same `Record`.
 
 The only lockstep part: the API's list comes from `divejson.read_formats()`, which a Renovate bump
 moves, so a reader can reach the Import page before this repository names it. `conversion.format`
-renders through `importSourceLabel`, falling back to the id until a label exists (`suunto_xml` is
+renders through `importSourceLabel`, de-snaking the id until a label exists (`suunto_xml` is
 `"Suunto DM5 XML"`); `conversion.groups[].kind` is an opaque string (`conversionKindTone` reads it
 as information, `conversionKindLabel` de-snakes it); the form's picker alone does not widen — a new
 format is unpickable there until its extension lands. The Import page filters nothing, so it takes
@@ -6498,10 +6497,10 @@ the first file's note mid-batch.
 
 ## The edit forms delete a stored file on save, beside the attaches
 
-`dives/[id]/edit` and the Recordings card's edit dialog hold `removedFileUuids` beside
-`pendingFiles`: a marked row stays struck through saying `Deleted when you save`, and the Trash icon
-becomes an Undo. Deleting on confirm would make Cancel a lie. On submit deletions run first, then
-attaches, one toast per failure and none stopping the next.
+`dives/[id]/edit` and the Recordings card's edit dialog hold struck-off stored files beside the
+picked ones, in `usePendingDiveFiles`: a marked row stays struck through saying
+`Deleted when you save`, and the Trash icon becomes an Undo. Deleting on confirm would make Cancel a
+lie. On submit deletions run first, then attaches, one toast per failure and none stopping the next.
 
 The forms wrap `deleteFileConfirmation` in `lib/dive-recordings.ts` as `removeFileConfirmation`: the
 first mark keeps the three-outcome text, the dive on screen being the one the save finds; later

@@ -1,17 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { tripsAPI, Trip } from "@/lib/api/trips";
+import { useLookupLabels } from "@/hooks/useLookupLabels";
 import { TripDialog } from "@/components/trips/trip-dialog";
 
 // How many trips the dropdown asks for at a time. Enough to scroll through
 // before typing, far short of the API's 100 cap.
 const TRIPS_PER_SEARCH = 25;
+
+const lookupTrips = (uuids: string[]) => tripsAPI.lookupTripsByUuid(uuids);
 
 export interface TripComboboxProps extends FormControlSlotProps {
   value?: string | null;
@@ -38,34 +41,9 @@ export function TripCombobox({
   ...slotProps
 }: TripComboboxProps) {
   const [showNewDialog, setShowNewDialog] = useState(false);
-  // Names for every trip this picker has seen - its own search results, whatever
-  // it created, and a lookup for a `value` that arrived from the form. Without
-  // it the input would sit empty on a dive that already has a trip, since the
-  // browser doesn't hold the full list to look the name up in.
-  const [names, setNames] = useState<Record<string, string>>({});
-  // Fired-for uuids, so a failed lookup isn't retried on every render.
-  const requestedRef = useRef<Set<string>>(new Set());
-
-  const remember = useCallback(
-    (trip: Pick<Trip, "uuid" | "name">) =>
-      setNames((prev) => ({ ...prev, [trip.uuid]: trip.name })),
-    [],
-  );
-
-  // No cancellation flag on this one, deliberately. `requestedRef` means the
-  // request fires exactly once per uuid, so under StrictMode's mount/unmount/
-  // remount the *only* in-flight lookup belongs to the discarded first mount -
-  // ignoring its result on cleanup would drop the name for good. Writing to a
-  // uuid-keyed map is idempotent, so a late arrival is always safe to apply.
-  useEffect(() => {
-    if (!value || names[value] || requestedRef.current.has(value)) return;
-    requestedRef.current.add(value);
-
-    tripsAPI
-      .lookupTripsByUuid([value])
-      .then((trips) => trips.forEach(remember))
-      .catch((error) => console.error("Failed to fetch trip:", error));
-  }, [value, names, remember]);
+  // Without a lookup for a `value` that arrived from the form, the input would sit
+  // empty on a dive that already has a trip.
+  const { records: trips, remember } = useLookupLabels(lookupTrips, [value]);
 
   const searchTrips = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
@@ -73,7 +51,7 @@ export function TripCombobox({
         search: query,
         until,
       });
-      response.data.forEach(remember);
+      remember(...response.data);
       return {
         items: response.data.map((trip) => ({
           id: trip.uuid,
@@ -97,7 +75,9 @@ export function TripCombobox({
         onSearch={searchTrips}
         value={value ?? undefined}
         selectedItem={
-          value && names[value] ? { id: value, name: names[value] } : undefined
+          value && trips[value]
+            ? { id: value, name: trips[value].name }
+            : undefined
         }
         onChange={(tripId) => onChange(tripId ?? null)}
         disabled={disabled}

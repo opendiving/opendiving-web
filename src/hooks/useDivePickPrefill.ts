@@ -9,6 +9,7 @@ import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { mergePeople } from "@/lib/people";
 import type { DiveCreateInput } from "@/lib/validations/dive";
 
+/** What `useDivePickPrefill` takes. */
 export interface UseDivePickPrefillOptions {
   form: UseFormReturn<DiveCreateInput>;
   visibility: Pick<DiveFormVisibility, "autofill" | "overwrite" | "isVisible">;

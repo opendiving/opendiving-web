@@ -1,5 +1,9 @@
-import { apiClient, lookupRequest } from "./client";
-import type { PaginatedResponse, UuidLookupQuery } from "./client";
+import { apiClient, lookupByUuid, lookupFetcher } from "./client";
+import type {
+  MessageResponse,
+  PaginatedResponse,
+  UuidLookupQuery,
+} from "./client";
 import type { EntryType, WaterType } from "./dives";
 import type { Location } from "./location";
 
@@ -31,24 +35,26 @@ export interface DiveSiteDiveSummary {
   average_rating: number | null;
 }
 
-// A site carries two positions that mean different things: `latitude`/
-// `longitude` are the pin a diver dropped, and `location.latitude`/
-// `location.longitude` are the centre of the town the geocoder resolved.
-// Nothing fills either from the other.
-//
-// `latitude`/`longitude` are both-or-neither on the API, and the rule is about
-// the request body rather than the resulting row: naming one without the other
-// is a 422, so is naming both with only one value, and the stored row is never
-// consulted. Sending both as `null` is how a position is cleared, and moving a
-// site means sending both numbers even when only one changed.
-// `lib/validations/dive-site.ts` enforces the same rule in the form.
-//
-// `water_type`, `altitude` and `entry_types` are the *place's*, where a dive's are
-// what was recorded that day; neither is filled from the other, and the new-dive
-// form offering a site's is the app's behaviour, not the format's. The two
-// vocabularies are read as strings, a value the web does not know being read as
-// absent. The members and the summary are optional here only because a site
-// assembled in the web from an older shape lacks them; every read carries them.
+/**
+ * A site carries two positions that mean different things: `latitude`/
+ * `longitude` are the pin a diver dropped, and `location.latitude`/
+ * `location.longitude` are the centre of the town the geocoder resolved.
+ * Nothing fills either from the other.
+ *
+ * `latitude`/`longitude` are both-or-neither on the API, and the rule is about
+ * the request body rather than the resulting row: naming one without the other
+ * is a 422, so is naming both with only one value, and the stored row is never
+ * consulted. Sending both as `null` is how a position is cleared, and moving a
+ * site means sending both numbers even when only one changed.
+ * `lib/validations/dive-site.ts` enforces the same rule in the form.
+ *
+ * `water_type`, `altitude` and `entry_types` are the *place's*, where a dive's are
+ * what was recorded that day; neither is filled from the other, and the new-dive
+ * form offering a site's is the app's behaviour, not the format's. The two
+ * vocabularies are read as strings, a value the web does not know being read as
+ * absent. The members and the summary are optional here only because a site
+ * assembled in the web from an older shape lacks them; every read carries them.
+ */
 export interface DiveSite extends Partial<DiveSiteDiveSummary> {
   uuid: string;
   name: string;
@@ -96,18 +102,20 @@ export interface DiveSiteCreate extends DiveSiteMembersWrite {
   notes?: string;
 }
 
-// The `PATCH /dive-site/{uuid}` body, which is the API's nested
-// `DiveSiteUpdateRequest` rather than the flat `DiveSiteUpdate` beside it -
-// that one is the admin panel's form and is swept against the table's columns,
-// so it spells the locality as eight `location_*` fields and cannot nest.
-//
-// Naming `location` **replaces** the stored place wholesale: it is a value
-// object with nothing to merge into, and a partial update would leave a cleared
-// locality's centre and box behind. An explicit `null` clears it, which is how
-// a site entered with the wrong place is corrected back to "not recorded".
-//
-// A member left out is left as it is. `null` clears a depth, the water type and
-// the altitude, and is refused on the three lists, where `[]` is the clear.
+/**
+ * The `PATCH /dive-site/{uuid}` body, which is the API's nested
+ * `DiveSiteUpdateRequest` rather than the flat `DiveSiteUpdate` beside it -
+ * that one is the admin panel's form and is swept against the table's columns,
+ * so it spells the locality as eight `location_*` fields and cannot nest.
+ *
+ * Naming `location` **replaces** the stored place wholesale: it is a value
+ * object with nothing to merge into, and a partial update would leave a cleared
+ * locality's centre and box behind. An explicit `null` clears it, which is how
+ * a site entered with the wrong place is corrected back to "not recorded".
+ *
+ * A member left out is left as it is. `null` clears a depth, the water type and
+ * the altitude, and is refused on the three lists, where `[]` is the clear.
+ */
 export interface DiveSiteUpdate extends DiveSiteMembersWrite {
   name?: string;
   location?: Location | null;
@@ -134,8 +142,6 @@ export interface DiveSiteFilters {
   sort?: DiveSiteListSort;
 }
 
-export type PaginatedDiveSitesResponse = PaginatedResponse<DiveSite>;
-
 /**
  * One row of `GET /dive-sites/lookup`: the name and the locality a picker shows
  * under it, and the place's water, altitude and entries a dive form fills in from
@@ -150,35 +156,44 @@ export interface DiveSiteLookupItem {
   entry_types?: string[];
 }
 
+const lookupDiveSites = lookupFetcher<DiveSiteLookupItem, UuidLookupQuery>(
+  `/dive-sites/lookup`,
+);
+
 /**
  * Dive-site CRUD. `getDiveSites` and `lookupDiveSites` take a `search` the API matches
  * server-side against the site's name, its other names and its locality's name, which is
  * what lets the pickers narrow as you type instead of loading a diver's whole site list.
  */
 export const diveSitesAPI = {
-  // Create a new dive site, owned by the signed-in user.
+  /** Create a new dive site, owned by the signed-in user. */
   async createDiveSite(data: DiveSiteCreate): Promise<DiveSite> {
-    const response = await apiClient.post(`/dive-site`, data);
+    const response = await apiClient.post<DiveSite>(`/dive-site`, data);
     return response.data;
   },
 
-  // Get a page of the user's dive sites, each with its summary. The API caps
-  // `items_per_page` at 100, so a search is a page of matches, never the whole
-  // set. A filter or the default order is left off the request rather than sent.
+  /**
+   * A page of the user's dive sites, each with its summary. The API caps
+   * `items_per_page` at 100, so a search is a page of matches, never the whole
+   * set. A filter or the default order is left off the request rather than sent.
+   */
   async getDiveSites(
     page: number = 1,
     items_per_page: number = 10,
     { search, tagUuid, sort }: DiveSiteFilters = {},
-  ): Promise<PaginatedDiveSitesResponse> {
-    const response = await apiClient.get(`/dive-sites`, {
-      params: {
-        page,
-        items_per_page,
-        ...(search ? { search } : {}),
-        ...(tagUuid ? { tag_uuid: tagUuid } : {}),
-        ...(sort && sort !== "name" ? { sort } : {}),
+  ): Promise<PaginatedResponse<DiveSite>> {
+    const response = await apiClient.get<PaginatedResponse<DiveSite>>(
+      `/dive-sites`,
+      {
+        params: {
+          page,
+          items_per_page,
+          ...(search ? { search } : {}),
+          ...(tagUuid ? { tag_uuid: tagUuid } : {}),
+          ...(sort && sort !== "name" ? { sort } : {}),
+        },
       },
-    });
+    );
     return response.data;
   },
 
@@ -187,38 +202,25 @@ export const diveSitesAPI = {
    * or before `until` first, then never-dived sites newest first. `search` matches
    * what `getDiveSites` matches.
    */
-  async lookupDiveSites(
-    page: number,
-    items_per_page: number,
-    query: UuidLookupQuery = {},
-  ): Promise<PaginatedResponse<DiveSiteLookupItem>> {
-    const response = await apiClient.get(
-      `/dive-sites/lookup`,
-      lookupRequest(page, items_per_page, query),
+  lookupDiveSites,
+
+  /** The lookup rows of sites a form holds, in no particular order. */
+  lookupDiveSitesByUuid: lookupByUuid(lookupDiveSites),
+
+  /** One dive site by uuid. */
+  async getDiveSite(diveSiteUuid: string): Promise<DiveSite> {
+    const response = await apiClient.get<DiveSite>(
+      `/dive-site/${diveSiteUuid}`,
     );
     return response.data;
   },
 
-  /** The lookup rows of sites a form holds, in no particular order. */
-  async lookupDiveSitesByUuid(
-    uuids: readonly string[],
-  ): Promise<DiveSiteLookupItem[]> {
-    if (uuids.length === 0) return [];
-    return (await this.lookupDiveSites(1, uuids.length, { uuids })).data;
-  },
-
-  // Get a specific dive site by uuid
-  async getDiveSite(diveSiteUuid: string): Promise<DiveSite> {
-    const response = await apiClient.get(`/dive-site/${diveSiteUuid}`);
-    return response.data;
-  },
-
-  // Update a dive site
+  /** Update a dive site. The API answers with a status message, not the site. */
   async updateDiveSite(
     diveSiteUuid: string,
     updateData: DiveSiteUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
       `/dive-site/${diveSiteUuid}`,
       updateData,
     );
@@ -244,10 +246,13 @@ export const diveSitesAPI = {
   async deleteDiveSite(
     diveSiteUuid: string,
     moveDivesTo?: string,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/dive-site/${diveSiteUuid}`, {
-      params: moveDivesTo ? { move_dives_to: moveDivesTo } : undefined,
-    });
+  ): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/dive-site/${diveSiteUuid}`,
+      {
+        params: moveDivesTo ? { move_dives_to: moveDivesTo } : undefined,
+      },
+    );
     return response.data;
   },
 };

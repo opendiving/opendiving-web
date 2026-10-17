@@ -52,7 +52,7 @@ vi.mock("@/lib/api/auth", async (importOriginal) => ({
 // The dialogs read and save the shared copy; `update` writes it the way the API does.
 vi.mock("@/lib/api/checkin-details", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  checkinDetailsAPI: { get: vi.fn(), update: vi.fn() },
+  checkinDetailsAPI: { getCheckinDetails: vi.fn(), update: vi.fn() },
 }));
 
 vi.mock("@/lib/api/certifications", async (importOriginal) => ({
@@ -159,7 +159,7 @@ beforeEach(() => {
     emergency_contacts: [],
     insurance_policies: [],
   };
-  vi.mocked(checkinDetailsAPI.get)
+  vi.mocked(checkinDetailsAPI.getCheckinDetails)
     .mockReset()
     .mockImplementation(async () => structuredClone(details));
   updateDetails
@@ -169,7 +169,7 @@ beforeEach(() => {
       return structuredClone(details);
     });
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
-  updateProfile.mockReset().mockResolvedValue(undefined);
+  updateProfile.mockReset().mockResolvedValue({ message: "ok" });
   vi.mocked(coursesAPI.getCourses).mockReset().mockResolvedValue({
     data: [],
     total_count: 0,
@@ -812,7 +812,10 @@ describe("editing from the sheet", () => {
   it("sends a changed name to the account first, then the object, and re-reads the user", async () => {
     Object.assign(details, COMPLETE);
     const sent: string[] = [];
-    updateProfile.mockImplementation(async () => void sent.push("user"));
+    updateProfile.mockImplementation(async () => {
+      sent.push("user");
+      return { message: "ok" };
+    });
     updateDetails.mockImplementation(async (patch) => {
       sent.push("checkin-details");
       return { ...details, ...patch };

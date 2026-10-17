@@ -2,6 +2,7 @@
 
 import { type RefCallback, useCallback, useState } from "react";
 
+/** What `useElementSize` measures: the element's client width and height. */
 export interface ElementSize {
   width: number;
   height: number;

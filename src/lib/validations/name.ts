@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { maxLengthMessage } from "./fields";
 
 /**
  * A record's required name, checked on what will be sent: every dialog trims the
@@ -11,5 +12,5 @@ export const requiredName = (label: string, max: number) =>
     .refine((value) => value.trim() !== "", `${label} is required`)
     .refine(
       (value) => value.trim().length <= max,
-      `${label} cannot exceed ${max} characters`,
+      maxLengthMessage(label, max),
     );

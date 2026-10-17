@@ -10,7 +10,7 @@ vi.mock("@/components/ui/use-toast", () => ({
 
 vi.mock("@/lib/api/admin", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/admin")>()),
-  adminAPI: { speciesPhotoCandidates: vi.fn(() => new Promise(() => {})) },
+  adminAPI: { getSpeciesPhotoCandidates: vi.fn(() => new Promise(() => {})) },
 }));
 
 const species = {

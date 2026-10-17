@@ -54,9 +54,9 @@ describe("certificationAgencyLabel", () => {
     expect(certificationAgencyLabel("other")).toBe("Other");
   });
 
-  it("passes through an agency this build doesn't know", () => {
-    expect(certificationAgencyLabel("nobody-has-heard-of-it")).toBe(
-      "nobody-has-heard-of-it",
+  it("de-snakes an agency this build doesn't know", () => {
+    expect(certificationAgencyLabel("nobody_heard_of_it")).toBe(
+      "Nobody heard of it",
     );
   });
 

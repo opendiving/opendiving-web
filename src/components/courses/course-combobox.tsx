@@ -1,17 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
 import type { FormControlSlotProps } from "@/components/ui/form";
-import { coursesAPI, Course, CourseLookupItem } from "@/lib/api/courses";
+import { coursesAPI, Course } from "@/lib/api/courses";
 import { CourseDialog } from "@/components/courses/course-dialog";
+import { useLookupLabels } from "@/hooks/useLookupLabels";
 
 // How many courses the dropdown asks for at a time. Enough to scroll through
 // before typing, far short of the API's 100 cap.
 const COURSES_PER_SEARCH = 25;
+
+const lookupCourses = (uuids: string[]) =>
+  coursesAPI.lookupCoursesByUuid(uuids);
 
 export interface CourseComboboxProps extends FormControlSlotProps {
   value?: string | null;
@@ -51,38 +55,13 @@ export function CourseCombobox({
   ...slotProps
 }: CourseComboboxProps) {
   const [showNewDialog, setShowNewDialog] = useState(false);
-  // Every course this picker has seen - its own search results, whatever it
-  // created, and a lookup for a `value` that arrived from the form. Without it
-  // the input would sit empty on a dive that already has a course, since the
-  // browser never holds the full list to look the name up in.
-  const [courses, setCourses] = useState<Record<string, CourseLookupItem>>({});
-  // Fired-for uuids, so a failed lookup isn't retried on every render.
-  const requestedRef = useRef<Set<string>>(new Set());
+  const { records: courses, remember } = useLookupLabels(lookupCourses, [
+    value,
+  ]);
   // Counts picks and clears, so a read landing after a later one fires nothing -
   // a counter rather than the uuid, since re-picking the same course must not
   // let the superseded read fire as well.
   const pickRef = useRef(0);
-
-  const remember = useCallback(
-    (course: CourseLookupItem) =>
-      setCourses((prev) => ({ ...prev, [course.uuid]: course })),
-    [],
-  );
-
-  // No cancellation flag on this one, deliberately. `requestedRef` means the
-  // request fires exactly once per uuid, so under StrictMode's mount/unmount/
-  // remount the *only* in-flight lookup belongs to the discarded first mount -
-  // ignoring its result on cleanup would drop the name for good. Writing to a
-  // uuid-keyed map is idempotent, so a late arrival is always safe to apply.
-  useEffect(() => {
-    if (!value || courses[value] || requestedRef.current.has(value)) return;
-    requestedRef.current.add(value);
-
-    coursesAPI
-      .lookupCoursesByUuid([value])
-      .then((rows) => rows.forEach(remember))
-      .catch((error) => console.error("Failed to fetch course:", error));
-  }, [value, courses, remember]);
 
   const searchCourses = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
@@ -90,7 +69,7 @@ export function CourseCombobox({
         search: query,
         until,
       });
-      response.data.forEach(remember);
+      remember(...response.data);
       return {
         items: response.data.map((course) => ({
           id: course.uuid,

@@ -12,7 +12,7 @@ import { SessionsCard } from "./sessions-card";
 // `vi.hoisted` because `vi.mock` is lifted above every other statement in the
 // file, so plain `const`s here would not exist yet when the factories run.
 const mocks = vi.hoisted(() => ({
-  listSessions: vi.fn(),
+  getSessions: vi.fn(),
   revokeSession: vi.fn(),
   revokeOtherSessions: vi.fn(),
   toast: vi.fn(),
@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/api/sessions", () => ({
   sessionsAPI: {
-    listSessions: mocks.listSessions,
+    getSessions: mocks.getSessions,
     revokeSession: mocks.revokeSession,
     revokeOtherSessions: mocks.revokeOtherSessions,
   },
@@ -72,7 +72,7 @@ const row = (name: string) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.listSessions.mockImplementation(async () => [
+  mocks.getSessions.mockImplementation(async () => [
     thisDevice(),
     otherDevice(),
   ]);
@@ -99,7 +99,7 @@ describe("SessionsCard", () => {
   // A client that sent no User-Agent at all still gets a row, because a session
   // nobody can see is a session nobody can revoke.
   it("still names and offers a row whose user agent is empty", async () => {
-    mocks.listSessions.mockImplementation(async () => [
+    mocks.getSessions.mockImplementation(async () => [
       thisDevice(),
       unlabelled(),
     ]);
@@ -135,7 +135,7 @@ describe("SessionsCard", () => {
 
   // The API orders by last use, so a device used since this one comes back above it.
   it("lists this device first, and the rest in the order the API gave", async () => {
-    mocks.listSessions.mockImplementation(async () => [
+    mocks.getSessions.mockImplementation(async () => [
       otherDevice(),
       unlabelled(),
       thisDevice(),
@@ -161,7 +161,7 @@ describe("SessionsCard", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Firefox on Linux");
-    mocks.listSessions.mockImplementation(async () => [thisDevice()]);
+    mocks.getSessions.mockImplementation(async () => [thisDevice()]);
     await user.click(within(dialog).getByRole("button", { name: "Sign out" }));
 
     await waitFor(() =>
@@ -175,7 +175,7 @@ describe("SessionsCard", () => {
   describe("signing every other device out", () => {
     it("reports the count the API returned, not one it worked out itself", async () => {
       const user = userEvent.setup();
-      mocks.listSessions.mockImplementation(async () => [
+      mocks.getSessions.mockImplementation(async () => [
         thisDevice(),
         otherDevice(),
         { ...unlabelled(), current: false },
@@ -193,7 +193,7 @@ describe("SessionsCard", () => {
       expect(mocks.revokeOtherSessions).not.toHaveBeenCalled();
 
       const dialog = await screen.findByRole("dialog");
-      mocks.listSessions.mockImplementation(async () => [thisDevice()]);
+      mocks.getSessions.mockImplementation(async () => [thisDevice()]);
       await user.click(
         within(dialog).getByRole("button", { name: "Sign them out" }),
       );
@@ -236,7 +236,7 @@ describe("SessionsCard", () => {
     // gated on there actually being another row - is there another device - and
     // not on a count, which only approximates that question.
     it("is not offered when this device is the only one signed in", async () => {
-      mocks.listSessions.mockImplementation(async () => [thisDevice()]);
+      mocks.getSessions.mockImplementation(async () => [thisDevice()]);
       render(<SessionsCard />);
       await screen.findByText("Chrome on macOS");
 
@@ -248,7 +248,7 @@ describe("SessionsCard", () => {
 
   it("says so when the list can't be loaded, and offers a retry", async () => {
     const user = userEvent.setup();
-    mocks.listSessions.mockRejectedValueOnce({
+    mocks.getSessions.mockRejectedValueOnce({
       response: { status: 500, data: { detail: "Database is down" } },
     });
     render(<SessionsCard />);
@@ -264,7 +264,7 @@ describe("SessionsCard", () => {
   // error on a settings page - it is a feature this copy of OpenDiving does not
   // have, so the card goes rather than explaining itself.
   it("removes itself when the API has no session routes", async () => {
-    mocks.listSessions.mockRejectedValue({ response: { status: 404 } });
+    mocks.getSessions.mockRejectedValue({ response: { status: 404 } });
     const { container } = render(<SessionsCard />);
 
     await waitFor(() => expect(container).toBeEmptyDOMElement());
@@ -279,6 +279,6 @@ describe("SessionsCard", () => {
     await screen.findByText("Chrome on macOS");
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(mocks.listSessions).toHaveBeenCalledTimes(1);
+    expect(mocks.getSessions).toHaveBeenCalledTimes(1);
   });
 });

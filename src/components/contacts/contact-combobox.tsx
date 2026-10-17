@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ComboboxSearchResult,
   CreatableCombobox,
@@ -14,10 +14,14 @@ import {
 } from "@/lib/api/contacts";
 import { formatContactPlace } from "@/lib/contact";
 import { ContactDialog } from "@/components/contacts/contact-dialog";
+import { readEach, useLookupLabels } from "@/hooks/useLookupLabels";
 
 // How many contacts the dropdown asks for at a time. Enough to scroll through
 // before typing, far short of the API's 100 cap.
 const CONTACTS_PER_SEARCH = 25;
+
+// One read per contact: the contact lookup cannot be narrowed to uuids.
+const readContacts = readEach((uuid: string) => contactsAPI.getContact(uuid));
 
 export interface ContactComboboxProps extends FormControlSlotProps {
   value?: string | null;
@@ -68,35 +72,12 @@ export function ContactCombobox({
   const trackText = useCallback((text: string) => {
     textRef.current = text;
   }, []);
-  // Every contact this picker has seen - its own search results, whatever it
-  // created, and a read for a `value` that arrived from the form or a pin.
-  const [contacts, setContacts] = useState<Record<string, ContactLookupItem>>(
-    {},
+  // A read for a `value` that arrived from the form, and for each pin.
+  const { records: contacts, remember } = useLookupLabels<ContactLookupItem>(
+    readContacts,
+    [value, ...(pinnedUuids ?? [])],
   );
-  // Fired-for uuids, so a failed read isn't retried on every render.
-  const requestedRef = useRef<Set<string>>(new Set());
-
-  const remember = useCallback(
-    (contact: ContactLookupItem) =>
-      setContacts((prev) => ({ ...prev, [contact.uuid]: contact })),
-    [],
-  );
-
-  // No cancellation flag, for the reason `TripCombobox` gives: the request fires
-  // once per uuid, and writing to a uuid-keyed map is idempotent.
   const pinnedKey = (pinnedUuids ?? []).join(",");
-  useEffect(() => {
-    const wanted = [value, ...(pinnedKey ? pinnedKey.split(",") : [])];
-    for (const uuid of wanted) {
-      if (!uuid || contacts[uuid] || requestedRef.current.has(uuid)) continue;
-      requestedRef.current.add(uuid);
-
-      contactsAPI
-        .getContact(uuid)
-        .then(remember)
-        .catch((error) => console.error("Failed to fetch contact:", error));
-    }
-  }, [value, pinnedKey, contacts, remember]);
 
   const searchContacts = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
@@ -105,7 +86,7 @@ export function ContactCombobox({
         CONTACTS_PER_SEARCH,
         { search: query, until },
       );
-      response.data.forEach(remember);
+      remember(...response.data);
       // The pins whose name holds the query go first; a pin the lookup found by
       // its city alone stays where the lookup put it.
       const needle = query.trim().toLowerCase();

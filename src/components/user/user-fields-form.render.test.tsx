@@ -131,7 +131,7 @@ beforeEach(() => {
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
   vi.mocked(authAPI.updateProfile)
     .mockReset()
-    .mockImplementation(record("patch /user", undefined));
+    .mockImplementation(record("patch /user", { message: "ok" }));
   vi.mocked(authAPI.uploadPicture)
     .mockReset()
     .mockImplementation(record("put", { sha256: "new" }));
@@ -143,7 +143,7 @@ beforeEach(() => {
     .mockImplementation(record("copy", { sha256: "new" }));
   vi.mocked(authAPI.removePicture)
     .mockReset()
-    .mockImplementation(record("delete", undefined));
+    .mockImplementation(record("delete", { message: "ok" }));
   vi.mocked(authAPI.getPictureBlob).mockReset().mockResolvedValue(new Blob());
   vi.mocked(authAPI.getPictureOriginalBlob)
     .mockReset()

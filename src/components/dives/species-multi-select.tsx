@@ -40,6 +40,7 @@ import {
   speciesSeenOn,
 } from "@/lib/species";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
+import { readEach, useLookupLabels } from "@/hooks/useLookupLabels";
 import {
   SightingQuantityField,
   type SightingQuantity,
@@ -56,6 +57,8 @@ import { countNoun } from "@/lib/format";
 // Deliberately not a bare number: form state holds uuids, and an id that could
 // be mistaken for one is how a synthetic value ends up in a request body.
 const PENDING_ID_PREFIX = "aphia:";
+
+const readSpecies = readEach((uuid: string) => speciesAPI.getSpecies(uuid));
 
 /** The menu-row id for an upstream species, keyed by its AphiaID. */
 export function pendingSpeciesId(aphiaId: number): string {
@@ -262,15 +265,22 @@ export function SpeciesMultiSelect({
 }: SpeciesMultiSelectProps) {
   const { toast } = useToast();
   const idPrefix = useId();
-  const [labels, setLabels] = useState<Record<string, SpeciesSummary>>({});
+  // Read through the `knownSpecies` prop rather than copied into `labels`: the
+  // copy wouldn't have landed yet on the render that first sees a selection. The
+  // rest are read so a selection never renders nameless - a dive has a handful of
+  // species at most, so one at a time.
+  const { records: labels, remember: rememberLabels } =
+    useLookupLabels<SpeciesSummary>(
+      readSpecies,
+      value
+        .map((sighting) => sighting.species_uuid)
+        .filter((uuid) => !knownSpecies?.some((entry) => entry.uuid === uuid)),
+    );
   const [pending, setPending] = useState<PendingSpecies[]>([]);
   // Kept for the session rather than cleared with each query: the credit is a
   // licence condition of data that has already been shown and, once picked, is
   // sitting in the list.
   const [attributions, setAttributions] = useState<string[]>([]);
-  // Every uuid a single-species lookup has already been fired for, successful or
-  // not.
-  const requestedRef = useRef<Set<string>>(new Set());
   // What each menu row would add, by row id - the combobox hands back an id, and
   // this is what turns it back into the result it came from, so a pending row
   // can be labelled without waiting for the resolve it is waiting on.
@@ -309,15 +319,6 @@ export function SpeciesMultiSelect({
     return () => onPendingChangeRef.current?.(false);
   }, []);
 
-  const rememberLabels = useCallback((species: SpeciesSummary[]) => {
-    if (species.length === 0) return;
-    setLabels((prev) => {
-      const next = { ...prev };
-      species.forEach((entry) => (next[entry.uuid] = entry));
-      return next;
-    });
-  }, []);
-
   const rememberAttributions = useCallback((credits: string[]) => {
     if (credits.length === 0) return;
     setAttributions((previous) => {
@@ -326,46 +327,8 @@ export function SpeciesMultiSelect({
     });
   }, []);
 
-  // Read through the `knownSpecies` prop rather than copying it into `labels`
-  // via an effect: the copy wouldn't have landed yet on the render that first
-  // sees a selection, so the lookup below would fire for species the caller had
-  // already handed over.
   const labelFor = (uuid: string): SpeciesSummary | undefined =>
     labels[uuid] ?? knownSpecies?.find((entry) => entry.uuid === uuid);
-
-  // Resolve any selected species whose name isn't already known - the safety net
-  // that keeps a selection from ever rendering nameless. A dive has a handful of
-  // species at most, so these are one-off single-record fetches.
-  useEffect(() => {
-    const unresolved = value
-      .map((sighting) => sighting.species_uuid)
-      .filter(
-        (uuid) =>
-          !labels[uuid] &&
-          !knownSpecies?.some((entry) => entry.uuid === uuid) &&
-          !requestedRef.current.has(uuid),
-      );
-    if (unresolved.length === 0) return;
-
-    // Marked before the request, not after: a failed lookup must not be retried
-    // on every subsequent render, and this effect re-runs whenever `labels`
-    // changes - i.e. after each sibling lookup that did succeed.
-    //
-    // That same guard is why there's no cancellation flag here: it makes each
-    // uuid fetch exactly once, so under StrictMode's mount/unmount/remount the
-    // only in-flight lookup belongs to the discarded first mount, and ignoring
-    // its result would drop the name for good. Writing to a uuid-keyed map is
-    // idempotent, so a late arrival is always safe to apply.
-    unresolved.forEach((uuid) => requestedRef.current.add(uuid));
-
-    unresolved.forEach(async (uuid) => {
-      try {
-        rememberLabels([await speciesAPI.getSpecies(uuid)]);
-      } catch (error) {
-        console.error("Failed to fetch species:", error);
-      }
-    });
-  }, [value, labels, knownSpecies, rememberLabels]);
 
   const searchSpecies = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
@@ -390,7 +353,7 @@ export function SpeciesMultiSelect({
       // Accumulated across queries rather than replaced: the menu can hand back
       // a row from a list the next keystroke has already superseded.
       results.forEach((result, id) => resultsRef.current.set(id, result));
-      rememberLabels(summaries);
+      rememberLabels(...summaries);
       rememberAttributions(credits);
       return { items, hasMore };
     },
@@ -439,7 +402,7 @@ export function SpeciesMultiSelect({
     );
     try {
       const species = await speciesAPI.resolveSpecies(aphiaId);
-      rememberLabels([species]);
+      rememberLabels(species);
       appendSighting(species.uuid);
     } catch (error) {
       toast({

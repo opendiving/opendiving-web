@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@/components/ui/use-toast";
-import { checkinLinkAPI, checkinLinkUrl } from "@/lib/api/checkin-links";
+import { checkinLinksAPI, checkinLinkUrl } from "@/lib/api/checkin-links";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { divingFiguresToWire, type DivingFigures } from "@/lib/checkin";
 
@@ -17,12 +17,15 @@ export interface LiveCheckinLink {
   url: string | null;
 }
 
+/** What `useCheckinLink` returns: the live link, and the two ways to change it. */
 export interface CheckinLinkControls {
+  /** The live link, or null for none. */
   live: LiveCheckinLink | null;
   /** True while a mint or a revoke is in flight. */
   busy: boolean;
   /** Makes a new link showing these figures, retiring any live one. */
   mint: (figures: DivingFigures) => Promise<void>;
+  /** Stops the live link. */
   revoke: () => Promise<void>;
 }
 
@@ -46,8 +49,8 @@ export function useCheckinLink(enabled: boolean): CheckinLinkControls {
     if (!enabled) return;
     const controller = new AbortController();
     const started = generation.current;
-    checkinLinkAPI
-      .live(controller.signal)
+    checkinLinksAPI
+      .getLiveLink(controller.signal)
       .then((found) => {
         if (controller.signal.aborted || generation.current !== started) return;
         setLive((current) =>
@@ -73,7 +76,7 @@ export function useCheckinLink(enabled: boolean): CheckinLinkControls {
       generation.current += 1;
       setBusy(true);
       try {
-        const { token, expires_at } = await checkinLinkAPI.mint(
+        const { token, expires_at } = await checkinLinksAPI.mint(
           divingFiguresToWire(figures),
         );
         setLive({
@@ -101,7 +104,7 @@ export function useCheckinLink(enabled: boolean): CheckinLinkControls {
     generation.current += 1;
     setBusy(true);
     try {
-      await checkinLinkAPI.revoke();
+      await checkinLinksAPI.revoke();
       setLive(null);
       toast({
         title: "Link revoked",

@@ -1,5 +1,10 @@
-import { apiClient, fetchAllPages, lookupRequest } from "./client";
-import type { LookupQuery, PaginatedResponse } from "./client";
+import { apiClient, fetchAllPages, lookupFetcher } from "./client";
+import { labelOrFallback } from "./labels";
+import type {
+  MessageResponse,
+  PaginatedResponse,
+  SearchFilters,
+} from "./client";
 
 /**
  * What a person was on one occasion - a dive, a trip, a course. Mirrors the API's
@@ -29,15 +34,11 @@ const PERSON_ROLE_LABELS: Record<PersonRole, string> = {
 };
 
 /**
- * A role's display name, tolerating one this build has never heard of: the API
- * reads a stored role back as a plain string, so a value added there before this
- * build ships a label renders de-snaked rather than blank.
+ * A role's display name. The API reads a stored role back as a plain string, so
+ * one this build has never heard of falls back as `labelOrFallback` says.
  */
 export function personRoleLabel(role: string): string {
-  return (
-    PERSON_ROLE_LABELS[role as PersonRole] ??
-    role.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
-  );
+  return labelOrFallback(PERSON_ROLE_LABELS, role);
 }
 
 /**
@@ -90,12 +91,12 @@ export interface PersonCreate {
   username?: string | null;
 }
 
-// The `PATCH /person/{uuid}` body. An explicit `null` clears the email or the
-// phone, and `null` for `username` unlinks the person; `name` and `notes` take no
-// null. Omitting a key leaves it alone.
+/**
+ * The `PATCH /person/{uuid}` body. An explicit `null` clears the email or the
+ * phone, and `null` for `username` unlinks the person; `name` and `notes` take no
+ * null. Omitting a key leaves it alone.
+ */
 export type PersonUpdate = Partial<PersonCreate>;
-
-export type PaginatedPeopleResponse = PaginatedResponse<Person>;
 
 /** One row of `GET /people/lookup`: the name and the linked account's current username. */
 export interface PersonLookupItem {
@@ -112,7 +113,7 @@ export const peopleAPI = {
    * against a per-user limit and answers 429 past it.
    */
   async createPerson(data: PersonCreate): Promise<Person> {
-    const response = await apiClient.post(`/person`, data);
+    const response = await apiClient.post<Person>(`/person`, data);
     return response.data;
   },
 
@@ -125,9 +126,9 @@ export const peopleAPI = {
   async getPeople(
     page: number = 1,
     items_per_page: number = 10,
-    search?: string,
-  ): Promise<PaginatedPeopleResponse> {
-    const response = await apiClient.get(`/people`, {
+    { search }: SearchFilters = {},
+  ): Promise<PaginatedResponse<Person>> {
+    const response = await apiClient.get<PaginatedResponse<Person>>(`/people`, {
       params: {
         page,
         items_per_page,
@@ -142,20 +143,11 @@ export const peopleAPI = {
    * dive at or before `until` first, then people on no such dive, newest first.
    * `search` matches what `getPeople` matches.
    */
-  async lookupPeople(
-    page: number,
-    items_per_page: number,
-    query: LookupQuery = {},
-  ): Promise<PaginatedResponse<PersonLookupItem>> {
-    const response = await apiClient.get(
-      `/people/lookup`,
-      lookupRequest(page, items_per_page, query),
-    );
-    return response.data;
-  },
+  lookupPeople: lookupFetcher<PersonLookupItem>(`/people/lookup`),
 
+  /** One person by uuid. */
   async getPerson(personUuid: string): Promise<Person> {
-    const response = await apiClient.get(`/person/${personUuid}`);
+    const response = await apiClient.get<Person>(`/person/${personUuid}`);
     return response.data;
   },
 
@@ -166,8 +158,11 @@ export const peopleAPI = {
   async updatePerson(
     personUuid: string,
     data: PersonUpdate,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch(`/person/${personUuid}`, data);
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
+      `/person/${personUuid}`,
+      data,
+    );
     return response.data;
   },
 
@@ -176,8 +171,10 @@ export const peopleAPI = {
    * else, and every card it signed stops naming an instructor. There is no
    * reassign option to pass, and a second delete on the same uuid is a 404.
    */
-  async deletePerson(personUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/person/${personUuid}`);
+  async deletePerson(personUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `/person/${personUuid}`,
+    );
     return response.data;
   },
 };

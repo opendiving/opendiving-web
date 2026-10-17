@@ -36,6 +36,7 @@ import {
   formatSac,
   type UnitSystem,
 } from "@/lib/units";
+import { labelOrFallback } from "@/lib/api/labels";
 
 interface DiveGasConsumptionCardProps {
   dive: Dive;
@@ -162,10 +163,10 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                         {row.role && (
                           // Same hand-maintained map and same fallback as the
                           // Tanks card - a role the API has and this build
-                          // hasn't renders as its wire value rather than as an
-                          // empty badge.
+                          // hasn't renders de-snaked rather than as an empty
+                          // badge.
                           <Badge variant="teal">
-                            {GAS_ROLE_LABELS[row.role] ?? row.role}
+                            {labelOrFallback(GAS_ROLE_LABELS, row.role)}
                           </Badge>
                         )}
                       </div>

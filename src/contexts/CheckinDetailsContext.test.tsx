@@ -21,11 +21,11 @@ vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => auth }));
 
 vi.mock("@/lib/api/checkin-details", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  checkinDetailsAPI: { get: vi.fn(), update: vi.fn() },
+  checkinDetailsAPI: { getCheckinDetails: vi.fn(), update: vi.fn() },
 }));
 
 const { checkinDetailsAPI } = await import("@/lib/api/checkin-details");
-const get = vi.mocked(checkinDetailsAPI.get);
+const get = vi.mocked(checkinDetailsAPI.getCheckinDetails);
 const update = vi.mocked(checkinDetailsAPI.update);
 
 const object = (email: string | null): CheckinDetails => ({

@@ -81,7 +81,7 @@ export function usePersonPicker(until?: string) {
         // match leads its page, where the lookup's last-use order could push a
         // never-dived one past it.
         const existing = await peopleAPI
-          .getPeople(1, PEOPLE_PER_SEARCH, name.trim())
+          .getPeople(1, PEOPLE_PER_SEARCH, { search: name.trim() })
           .then((response) =>
             response.data.find((person) => sameName(person.name, name)),
           )

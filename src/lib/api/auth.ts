@@ -2,7 +2,10 @@ import {
   apiClient,
   clearAccessToken,
   getAccessToken,
+  multipartRequest,
   setAccessToken,
+  versionedRequest,
+  type MessageResponse,
 } from "./client";
 import type { UnitSystem } from "@/lib/units";
 import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
@@ -74,38 +77,57 @@ export interface User {
   is_superuser?: boolean;
 }
 
-// Mirrors the backend's `AuthOutcome` (see `schemas/auth.py`), and it has three
-// shapes rather than two: the caller is signed straight in, no account exists yet for
-// the verified identity (`onboarding_token` goes to `completeProfile`), or an account
-// does exist and is inside its deletion grace period (`restore_token` goes to
-// `restoreAccount`).
-//
-// The third is not a session and not a failure: nothing was written and no token was
-// issued, so a caller that treats it as either is wrong in a way the type system
-// cannot catch. Branch on `status`, never on "did an access token come back".
-export type AuthStatus =
-  "authenticated" | "onboarding_required" | "deletion_pending";
+/** The caller is signed straight in, and the access token is in hand. */
+export interface AuthenticatedOutcome {
+  status: "authenticated";
+  access_token: string;
+  token_type: string;
+}
 
-export interface AuthOutcome {
-  status: AuthStatus;
-  access_token?: string;
-  token_type?: string;
-  onboarding_token?: string;
-  // Set only when status is "deletion_pending". `purge_after` is the date the account
-  // stops being recoverable at all, and the API leaves it out for a row flagged with
-  // no clock to count from - so the screen showing it has to cope with its absence.
-  restore_token?: string;
-  purge_after?: string;
-  email?: string;
+/**
+ * No account exists yet for the verified identity: `onboarding_token` goes to
+ * `completeProfile`, with the address and, where the identity carried one, the name.
+ */
+export interface OnboardingOutcome {
+  status: "onboarding_required";
+  onboarding_token: string;
+  email: string;
   name?: string;
 }
 
-// Mirrors the backend's response to `POST /auth/email/request`: the same generic
-// message for every address (see `requestEmailLink`), plus the id of the request
-// row it just minted. That id is handed only to the browser that asked, and is what
-// names the row to `verifyEmailCode` - so the code in the email is reachable only
-// from the tab that requested it, and nobody can burn someone else's five attempts
-// by knowing their address.
+/**
+ * An account exists and is inside its deletion grace period: `restore_token` goes
+ * to `restoreAccount`. Not a session and not a failure - nothing was written and no
+ * token was issued. `purge_after` is the date the account stops being recoverable
+ * at all, and the API leaves it out for a row flagged with no clock to count from,
+ * so the screen showing it has to cope with its absence.
+ */
+export interface DeletionPendingOutcome {
+  status: "deletion_pending";
+  restore_token: string;
+  email: string;
+  purge_after?: string;
+}
+
+/**
+ * Mirrors the backend's `AuthOutcome` (see `schemas/auth.py`), one shape per
+ * `status`. Narrow on `status` to reach a token; never branch on "did an access
+ * token come back".
+ */
+export type AuthOutcome =
+  AuthenticatedOutcome | OnboardingOutcome | DeletionPendingOutcome;
+
+/** Which of the three outcomes an entry point landed on. */
+export type AuthStatus = AuthOutcome["status"];
+
+/**
+ * Mirrors the backend's response to `POST /auth/email/request`: the same generic
+ * message for every address (see `requestEmailLink`), plus the id of the request
+ * row it just minted. That id is handed only to the browser that asked, and is what
+ * names the row to `verifyEmailCode` - so the code in the email is reachable only
+ * from the tab that requested it, and nobody can burn someone else's five attempts
+ * by knowing their address.
+ */
 export interface EmailLinkRequestResult {
   message: string;
   request_id: string;
@@ -135,18 +157,16 @@ export interface PictureWriteResult {
   sha256: string;
 }
 
-export interface EmailChangeResponse {
-  message: string;
-}
-
 export interface EmailChangeVerifyResult {
   message: string;
   email: string;
 }
 
-// Mirrors the backend's `LinkCheckResponse` - the result of a side-effect-free
-// precheck of a magic-link/confirmation token, used to decide whether to show a
-// confirmation button at all before the user acts on it.
+/**
+ * Mirrors the backend's `LinkCheckResponse` - the result of a side-effect-free
+ * precheck of a magic-link/confirmation token, used to decide whether to show a
+ * confirmation button at all before the user acts on it.
+ */
 export interface LinkCheckResult {
   valid: boolean;
   email?: string;
@@ -158,10 +178,12 @@ export interface LinkCheckResult {
   purge_after?: string;
 }
 
-// What a completed trip to Google comes back with, ready for the API to redeem.
-// Minted and stored per attempt by `lib/google-oauth.ts`, and read out again by
-// the callback route; snake_cased into the request body by `signInWithGoogle`,
-// which is the only place these names cross into the API's spelling.
+/**
+ * What a completed trip to Google comes back with, ready for the API to redeem.
+ * Minted and stored per attempt by `lib/google-oauth.ts`, and read out again by
+ * the callback route; snake_cased into the request body by `signInWithGoogle`,
+ * which is the only place these names cross into the API's spelling.
+ */
 export interface GoogleAuthorizationGrant {
   // Google's single-use `?code=`. Worthless without the two below and the API's
   // client secret, which is why it is safe for it to have travelled through the
@@ -180,15 +202,17 @@ export interface GoogleAuthorizationGrant {
   via?: string | null;
 }
 
-// Every call that can hand back a session does the same thing with it: the access
-// token lives in memory only (see `client.ts`), so it has to be captured as the
-// response goes past rather than re-read from anywhere later.
-//
-// Exported for `lib/api/passkeys.ts`, which is a second module speaking the same
-// `AuthOutcome` - the passkey ceremony ends in the API's one shared funnel, so it
-// hands back exactly this shape and has exactly this to do with it.
+/**
+ * Every call that can hand back a session does the same thing with it: the access
+ * token lives in memory only (see `client.ts`), so it has to be captured as the
+ * response goes past rather than re-read from anywhere later.
+ *
+ * Exported for `lib/api/passkeys.ts`, which is a second module speaking the same
+ * `AuthOutcome` - the passkey ceremony ends in the API's one shared funnel, so it
+ * hands back exactly this shape and has exactly this to do with it.
+ */
 export function captureSession(outcome: AuthOutcome): AuthOutcome {
-  if (outcome.status === "authenticated" && outcome.access_token) {
+  if (outcome.status === "authenticated") {
     setAccessToken(outcome.access_token);
   }
   return outcome;
@@ -204,18 +228,20 @@ export function captureSession(outcome: AuthOutcome): AuthOutcome {
  * Callers have to branch on `status` rather than assuming a session came back.
  */
 export const authAPI = {
-  // Step 1 of the email flow: always resolves with the same generic message,
-  // whether or not `email` belongs to an existing account. The `request_id` beside
-  // it names the request row the email is about, and is what `verifyEmailCode`
-  // needs - keep it for as long as the "check your email" card is on screen.
-  //
-  // `via` is the join link's slug or the invite link's token the form is on - one
-  // field for both, which the API tells apart. The API keeps it on the request
-  // row, so the link and the code both carry it to the gate whichever device
-  // redeems them, and nothing here has to remember it past this call. The key is
-  // left out entirely without one, so every other sign-in sends the body it always
-  // did. On an invite-only copy a join link since removed, or an invite link since
-  // reset or removed, is a `403` here, with a sentence the form shows as it is.
+  /**
+   * Step 1 of the email flow: always resolves with the same generic message,
+   * whether or not `email` belongs to an existing account. The `request_id` beside
+   * it names the request row the email is about, and is what `verifyEmailCode`
+   * needs - keep it for as long as the "check your email" card is on screen.
+   *
+   * `via` is the join link's slug or the invite link's token the form is on - one
+   * field for both, which the API tells apart. The API keeps it on the request
+   * row, so the link and the code both carry it to the gate whichever device
+   * redeems them, and nothing here has to remember it past this call. The key is
+   * left out entirely without one, so every other sign-in sends the body it always
+   * did. On an invite-only copy a join link since removed, or an invite link since
+   * reset or removed, is a `403` here, with a sentence the form shows as it is.
+   */
   async requestEmailLink(
     email: string,
     via?: string,
@@ -227,10 +253,12 @@ export const authAPI = {
     return response.data;
   },
 
-  // Side-effect-free precheck of a sign-in link, used by the verify landing page
-  // to decide whether to show the "Sign in" button at all (e.g. a link revisited
-  // via the browser's back button after already signing in should show an error
-  // immediately, not a misleadingly clickable button).
+  /**
+   * Side-effect-free precheck of a sign-in link, used by the verify landing page
+   * to decide whether to show the "Sign in" button at all (e.g. a link revisited
+   * via the browser's back button after already signing in should show an error
+   * immediately, not a misleadingly clickable button).
+   */
   async checkEmailLink(token: string): Promise<LinkCheckResult> {
     const response = await apiClient.get<LinkCheckResult>(
       "/auth/email/verify/check",
@@ -239,8 +267,10 @@ export const authAPI = {
     return response.data;
   },
 
-  // Step 2 of the email flow: validates the magic-link token from the URL the user
-  // clicked, and either signs them in or hands back an onboarding session.
+  /**
+   * Step 2 of the email flow: validates the magic-link token from the URL the user
+   * clicked, and either signs them in or hands back an onboarding session.
+   */
   async verifyEmailLink(token: string): Promise<AuthOutcome> {
     const response = await apiClient.post<AuthOutcome>("/auth/email/verify", {
       token,
@@ -248,11 +278,13 @@ export const authAPI = {
     return captureSession(response.data);
   },
 
-  // The other half of the same email: the six-digit code printed beside the link,
-  // typed into the tab that asked for it. `requestId` is what `requestEmailLink`
-  // returned - the row cannot be named without it, which is what keeps a stranger
-  // who merely knows the address from guessing at someone else's code. Same two
-  // outcomes as the link, since it claims the same row.
+  /**
+   * The other half of the same email: the six-digit code printed beside the link,
+   * typed into the tab that asked for it. `requestId` is what `requestEmailLink`
+   * returned - the row cannot be named without it, which is what keeps a stranger
+   * who merely knows the address from guessing at someone else's code. Same two
+   * outcomes as the link, since it claims the same row.
+   */
   async verifyEmailCode(requestId: string, code: string): Promise<AuthOutcome> {
     const response = await apiClient.post<AuthOutcome>(
       "/auth/email/verify-code",
@@ -261,14 +293,16 @@ export const authAPI = {
     return captureSession(response.data);
   },
 
-  // Sign in (or start onboarding for a new account) with Google.
-  //
-  // What travels here is a single-use authorization code, not an identity. The
-  // backend redeems it at Google's token endpoint using its own client secret and
-  // the PKCE verifier this browser minted, verifies the ID token that comes back,
-  // and finds-or-creates the matching identity. Nothing Google issues that
-  // identifies anyone ever passes through the browser, which is why a code that
-  // did is safe to have travelled this way.
+  /**
+   * Sign in (or start onboarding for a new account) with Google.
+   *
+   * What travels here is a single-use authorization code, not an identity. The
+   * backend redeems it at Google's token endpoint using its own client secret and
+   * the PKCE verifier this browser minted, verifies the ID token that comes back,
+   * and finds-or-creates the matching identity. Nothing Google issues that
+   * identifies anyone ever passes through the browser, which is why a code that
+   * did is safe to have travelled this way.
+   */
   async signInWithGoogle(
     grant: GoogleAuthorizationGrant,
   ): Promise<AuthOutcome> {
@@ -281,8 +315,10 @@ export const authAPI = {
     return captureSession(response.data);
   },
 
-  // Creates the account for a verified identity that had no user record yet, then
-  // signs the new user in. The only place a `User` row is ever created.
+  /**
+   * Creates the account for a verified identity that had no user record yet, then
+   * signs the new user in. The only place a `User` row is ever created.
+   */
   async completeProfile(
     onboardingToken: string,
     name: string,
@@ -296,14 +332,16 @@ export const authAPI = {
     return captureSession(response.data);
   },
 
-  // The second half of a `deletion_pending` outcome, and the only thing that undoes a
-  // deletion: the four entry points verify an identity and hand back a `restore_token`,
-  // and the account stays deleted until this runs. Signs the restored account back in
-  // on success, so it resolves with an `authenticated` outcome like the others.
-  //
-  // The token is single-use and short-lived (it expires with an onboarding token), and
-  // a 401 here is worth showing verbatim: it distinguishes a spent or expired token
-  // from an account whose grace period ran out while the offer was on screen.
+  /**
+   * The second half of a `deletion_pending` outcome, and the only thing that undoes a
+   * deletion: the four entry points verify an identity and hand back a `restore_token`,
+   * and the account stays deleted until this runs. Signs the restored account back in
+   * on success, so it resolves with an `authenticated` outcome like the others.
+   *
+   * The token is single-use and short-lived (it expires with an onboarding token), and
+   * a 401 here is worth showing verbatim: it distinguishes a spent or expired token
+   * from an account whose grace period ran out while the offer was on screen.
+   */
   async restoreAccount(restoreToken: string): Promise<AuthOutcome> {
     const response = await apiClient.post<AuthOutcome>("/auth/restore", {
       restore_token: restoreToken,
@@ -311,27 +349,35 @@ export const authAPI = {
     return captureSession(response.data);
   },
 
-  // Sign out
+  /** Sign out, dropping the in-memory token even when the request fails. */
   async signOut(): Promise<void> {
     try {
-      await apiClient.post("/auth/logout");
+      await apiClient.post<MessageResponse>("/auth/logout");
     } finally {
       // Always drop the in-memory token, even if the logout request failed
       clearAccessToken();
     }
   },
 
-  // Get current user
+  /** The signed-in caller's own record. */
   async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get("/user");
+    const response = await apiClient.get<User>("/user");
     return response.data;
   },
 
-  // Update the signed-in caller's own profile (name/username only - see
-  // requestEmailChange/verifyEmailChange below for the only way to change
-  // `email`). Always operates on the caller's own account - no uuid parameter.
-  async updateProfile(profileData: UpdateProfileData): Promise<void> {
-    await apiClient.patch("/user", profileData);
+  /**
+   * Update the signed-in caller's own profile (name/username only - see
+   * requestEmailChange/verifyEmailChange below for the only way to change
+   * `email`). Always operates on the caller's own account - no uuid parameter.
+   */
+  async updateProfile(
+    profileData: UpdateProfileData,
+  ): Promise<MessageResponse> {
+    const response = await apiClient.patch<MessageResponse>(
+      "/user",
+      profileData,
+    );
+    return response.data;
   },
 
   /**
@@ -343,9 +389,6 @@ export const authAPI = {
    * shows from it through `crop` - so a later `adjustPicture` needs no upload. The
    * crop travels as a JSON string in its own form field, which is how the route reads
    * it.
-   *
-   * `Content-Type: undefined` lets the browser set the multipart boundary; axios
-   * cannot know it. Same shape as the certification card upload.
    */
   async uploadPicture(
     kind: PictureKind,
@@ -360,7 +403,7 @@ export const authAPI = {
     const response = await apiClient.put<PictureWriteResult>(
       `/user/${kind}`,
       formData,
-      { headers: { "Content-Type": undefined } },
+      multipartRequest(),
     );
     return response.data;
   },
@@ -394,8 +437,9 @@ export const authAPI = {
   },
 
   /** Remove a picture and its original. 404 when there was none. */
-  async removePicture(kind: PictureKind): Promise<void> {
-    await apiClient.delete(`/user/${kind}`);
+  async removePicture(kind: PictureKind): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(`/user/${kind}`);
+    return response.data;
   },
 
   /**
@@ -407,52 +451,53 @@ export const authAPI = {
    * `<img>` cannot send (the access token lives in memory, not in a cookie). Callers
    * turn the Blob into an object URL - see `hooks/useAuthedBlobUrl.ts`.
    *
-   * `version` is the picture's `*_sha256`, sent as a `v` query param the API ignores.
-   * Its job is to give each version of the picture its own URL: the response is
-   * cached with `max-age=300`, so without it the browser would keep serving the old
-   * bytes from its own cache for five minutes after a replace, however correctly the
-   * app refetches. Stable while the picture is unchanged, so repeat mounts still hit
-   * the cache (and revalidate against the `ETag` after that).
+   * `version` is the picture's `*_sha256` (see `versionedRequest`); repeat mounts
+   * hit the cache, and revalidate against the `ETag` after that.
    */
   async getPictureBlob(kind: PictureKind, version?: string): Promise<Blob> {
-    const response = await apiClient.get(`/user/${kind}`, {
-      responseType: "blob",
-      params: version ? { v: version } : undefined,
-    });
+    const response = await apiClient.get<Blob>(
+      `/user/${kind}`,
+      versionedRequest(version, { responseType: "blob" }),
+    );
     return response.data;
   },
 
   /**
    * Fetch the original a picture is rendered from, for adjusting its crop.
-   * `version` is its `*_original_sha256`, for the reason `getPictureBlob` gives.
+   * `version` is its `*_original_sha256`.
    */
   async getPictureOriginalBlob(
     kind: PictureKind,
     version?: string,
   ): Promise<Blob> {
-    const response = await apiClient.get(`/user/${kind}/original`, {
-      responseType: "blob",
-      params: version ? { v: version } : undefined,
-    });
+    const response = await apiClient.get<Blob>(
+      `/user/${kind}/original`,
+      versionedRequest(version, { responseType: "blob" }),
+    );
     return response.data;
   },
 
-  // Step 1 of changing an account's email: always resolves with the same generic
-  // message, whether or not `newEmail` already belongs to another account. The
-  // change doesn't take effect until the emailed confirmation link is clicked.
-  // Always operates on the signed-in caller's own account - no uuid parameter.
-  async requestEmailChange(newEmail: string): Promise<EmailChangeResponse> {
-    const response = await apiClient.post("/user/email-change/request", {
-      new_email: newEmail,
-    });
+  /**
+   * Step 1 of changing an account's email: always resolves with the same generic
+   * message, whether or not `newEmail` already belongs to another account. The
+   * change doesn't take effect until the emailed confirmation link is clicked.
+   * Always operates on the signed-in caller's own account - no uuid parameter.
+   */
+  async requestEmailChange(newEmail: string): Promise<MessageResponse> {
+    const response = await apiClient.post<MessageResponse>(
+      "/user/email-change/request",
+      { new_email: newEmail },
+    );
     return response.data;
   },
 
-  // Side-effect-free precheck of an email-change confirmation link, used by the
-  // confirmation page to decide whether to show the "Confirm email change" button
-  // at all (e.g. a link revisited via the browser's back button after already
-  // confirming should show an error immediately, not a misleadingly clickable
-  // button), and to display the target email up front.
+  /**
+   * Side-effect-free precheck of an email-change confirmation link, used by the
+   * confirmation page to decide whether to show the "Confirm email change" button
+   * at all (e.g. a link revisited via the browser's back button after already
+   * confirming should show an error immediately, not a misleadingly clickable
+   * button), and to display the target email up front.
+   */
   async checkEmailChangeLink(token: string): Promise<LinkCheckResult> {
     const response = await apiClient.get<LinkCheckResult>(
       "/user/email-change/verify/check",
@@ -461,7 +506,9 @@ export const authAPI = {
     return response.data;
   },
 
-  // Step 2: validates the confirmation link's token and applies the email change.
+  /**
+   * Step 2: validates the confirmation link's token and applies the email change.
+   */
   async verifyEmailChange(token: string): Promise<EmailChangeVerifyResult> {
     const response = await apiClient.post<EmailChangeVerifyResult>(
       "/user/email-change/verify",
@@ -470,10 +517,12 @@ export const authAPI = {
     return response.data;
   },
 
-  // Whether we currently hold an access token in memory. Note this only
-  // reflects the current tab/page load - use `refreshAccessToken` (from
-  // `./client`) to re-derive a token from the httpOnly refresh cookie, e.g.
-  // on initial page load.
+  /**
+   * Whether we currently hold an access token in memory. Note this only
+   * reflects the current tab/page load - use `refreshAccessToken` (from
+   * `./client`) to re-derive a token from the httpOnly refresh cookie, e.g.
+   * on initial page load.
+   */
   isAuthenticated(): boolean {
     return !!getAccessToken();
   },

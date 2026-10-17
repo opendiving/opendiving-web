@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dateField, maxLength } from "./fields";
 import { notesField } from "./notes";
 import { SERVICE_KINDS } from "@/lib/api/gear-service";
 
@@ -25,12 +26,9 @@ export const gearServiceScheduleSchema = z
     kind: z.enum(SERVICE_KINDS),
     // Free-text companion to `kind`, and part of what makes a schedule unique on an
     // item - it's how "other" can be used more than once.
-    label: z.string().max(120, "Label cannot exceed 120 characters").optional(),
+    label: maxLength("Label", 120).optional(),
     // Bare "YYYY-MM-DD". Never parsed with `new Date(dateString)` anywhere downstream.
-    starts_on: z
-      .string()
-      .min(1, "An in-service date is required")
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date"),
+    starts_on: dateField("An in-service date is required"),
     interval_months: optionalPositiveInt("Interval in months").optional(),
     interval_dives: optionalPositiveInt("Interval in dives").optional(),
     interval_hours: z
@@ -64,14 +62,11 @@ export const gearServiceScheduleSchema = z
 
 export const gearServiceRecordSchema = z.object({
   kind: z.enum(SERVICE_KINDS),
-  label: z.string().max(120, "Label cannot exceed 120 characters").optional(),
-  serviced_on: z
-    .string()
-    .min(1, "A service date is required")
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date"),
+  label: maxLength("Label", 120).optional(),
+  serviced_on: dateField("A service date is required"),
   // A picker, so `null` rather than `""` is "no shop".
   contact_uuid: z.string().nullable().optional(),
-  performed_by: z.string().max(255, "Cannot exceed 255 characters").optional(),
+  performed_by: maxLength("Serviced by", 255).optional(),
   notes: notesField().optional(),
 });
 

@@ -73,7 +73,7 @@ export function CheckinDetailsProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController();
     const started = generation.current;
     checkinDetailsAPI
-      .get(controller.signal)
+      .getCheckinDetails(controller.signal)
       .then((details) => {
         if (controller.signal.aborted || generation.current !== started) return;
         setHeld({ uuid: userUuid, details });

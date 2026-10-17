@@ -47,6 +47,7 @@ function sameValue(first: unknown, second: unknown): boolean {
   return JSON.stringify(first) === JSON.stringify(second);
 }
 
+/** What `useDiveFormVisibility` returns: which dive-form fields show, and why. */
 export interface DiveFormVisibility {
   /** The stored hidden set, canonical - what a preset is compared against. */
   hidden: readonly DiveFormFieldKey[];
@@ -132,6 +133,7 @@ export interface DiveFormVisibility {
   isSaving: boolean;
 }
 
+/** What `useDiveFormVisibility` takes. */
 export interface UseDiveFormVisibilityOptions<
   TFieldValues extends FieldValues,
 > {

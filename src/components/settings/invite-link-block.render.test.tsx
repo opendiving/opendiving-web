@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { InviteLinkBlock } from "./invite-link-block";
 
 const mocks = vi.hoisted(() => ({
-  inviteLink: vi.fn(),
+  getInviteLink: vi.fn(),
   createInviteLink: vi.fn(),
   removeInviteLink: vi.fn(),
   toast: vi.fn(),
@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/api/invitations", () => ({
   invitationsAPI: {
-    inviteLink: mocks.inviteLink,
+    getInviteLink: mocks.getInviteLink,
     createInviteLink: mocks.createInviteLink,
     removeInviteLink: mocks.removeInviteLink,
   },
@@ -44,7 +44,7 @@ function stubShare(share: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
-  mocks.inviteLink.mockResolvedValue({
+  mocks.getInviteLink.mockResolvedValue({
     token: TOKEN,
     created_at: "2026-10-14T09:00:00Z",
   });
@@ -62,7 +62,7 @@ afterEach(() => {
 
 describe("InviteLinkBlock", () => {
   it("offers to make a link where there is none, and says what it is", async () => {
-    mocks.inviteLink.mockResolvedValue(null);
+    mocks.getInviteLink.mockResolvedValue(null);
     const user = userEvent.setup();
 
     render(<InviteLinkBlock />);
@@ -205,7 +205,7 @@ describe("InviteLinkBlock", () => {
   });
 
   it("reports a failed read, and offers a retry", async () => {
-    mocks.inviteLink.mockRejectedValueOnce({
+    mocks.getInviteLink.mockRejectedValueOnce({
       response: { status: 500, data: { detail: "Something broke." } },
     });
     const user = userEvent.setup();

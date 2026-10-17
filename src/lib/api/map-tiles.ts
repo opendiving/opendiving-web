@@ -19,6 +19,7 @@ export function mapTileUrl(
   return `/map-tiles/${theme}/${z}/${x}/${y}`;
 }
 
+/** This instance's own map tiles, which the API draws on first request. */
 export const mapTilesAPI = {
   /**
    * A map tile, as WebP bytes, at a URL `mapTileUrl` built.

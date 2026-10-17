@@ -19,6 +19,7 @@ const EVERY_OPTION: CourseVocabulary = {
   statuses: [...COURSE_STATUSES],
 };
 
+/** What `useCourseFilterOptions` returns: the vocabulary in use, and a re-read. */
 export interface CourseFilterOptions extends CourseVocabulary {
   /** Re-reads the vocabulary; a no-op while `enabled` is false. */
   reload: () => void;
