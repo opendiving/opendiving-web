@@ -113,8 +113,8 @@ export function CourseDetailPageContent() {
     );
   }
 
-  // In the courses table's formats, so a course reads the same on its page as
-  // in the list.
+  // In its card's formats, so a course reads the same on its page as in the
+  // list.
   const subtitle = [
     certificationAgencyLabel(course.agency, course.agency_other),
     formatTripDateRange(

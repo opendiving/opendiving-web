@@ -56,7 +56,7 @@ export interface CoursesFiltersProps {
 // Keeps whatever is picked on the list even once it is no longer in use - the
 // last course with that agency deleted while the filter is set, say. A select
 // whose value is not among its options shows blank, which reads as a filter that
-// has quietly forgotten itself while the table stays narrowed by it.
+// has quietly forgotten itself while the list stays narrowed by it.
 function withPicked<T extends string>(
   options: readonly T[],
   picked: T | "",
@@ -65,7 +65,7 @@ function withPicked<T extends string>(
   return options.includes(picked as T) ? options : [...options, picked as T];
 }
 
-// The four filters above the course table. They narrow the same query as the
+// The four filters above the course list. They narrow the same query as the
 // header's search rather than competing: the API AND-s them, so a name and a
 // status answer the courses matching both.
 export function CoursesFilters({

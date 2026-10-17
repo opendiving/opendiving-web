@@ -35,17 +35,16 @@ export function courseStatusLabel(status: string | null | undefined): string {
  * cannot be confused with the five that mean the course is still open or went
  * wrong. Beyond that the grouping is by how much attention the state wants -
  * `not_passed` is the only one worth the destructive red, and the two states that
- * mean "unfinished business" share the warning amber. An unknown status reads as
- * `outline`, which is the neutral one.
+ * mean "unfinished business" share the warning amber. The rest - planned, under
+ * way, or a status this build doesn't know - read as `outline`, the neutral one:
+ * a `secondary` fill is a lightness point off a list card's grey in light.
  */
 export function courseStatusBadgeVariant(
   status: string | null | undefined,
-): "default" | "secondary" | "warning" | "destructive" | "outline" {
+): "default" | "warning" | "destructive" | "outline" {
   switch (status) {
     case "completed":
       return "default";
-    case "in_progress":
-      return "secondary";
     case "incomplete":
     case "provisional":
       return "warning";
@@ -80,7 +79,7 @@ function inUse<T extends string>(
  * Which agencies and statuses to offer for narrowing a course list: the ones the
  * courses carry, not the nineteen agencies the format defines. A filter row
  * listing agencies the diver has never trained with offers eighteen ways to
- * empty the table.
+ * empty the list.
  *
  * A course need not name an agency, and one that doesn't contributes nothing -
  * there is no "no agency" filter to offer, since the API's `agency` takes a

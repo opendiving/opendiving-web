@@ -1888,10 +1888,9 @@ arm selection so the two cannot disagree about which arm is urgent.
 `certificationExpiryBadgeVariant` returns `destructive` / `coral`, never `secondary`: grey beside
 coral reads as not a status. A healthy certification has no status and no chip.
 
-Chip widths: service `min-w-24`, certification `min-w-28`, the courses Status column `min-w-24`;
-`courseStatusBadgeVariant` keeps its own vocabulary, courses sharing no screen with gear or
-certification chips. All carry `whitespace-nowrap`, so a longer label overflows the pill visibly
-rather than growing a second line.
+Chip widths: service `min-w-24`, certification `min-w-28`; `courseStatusBadgeVariant` keeps its own
+vocabulary, courses sharing no screen with gear or certification chips. All carry
+`whitespace-nowrap`, so a longer label overflows the pill visibly rather than growing a second line.
 
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
@@ -4516,16 +4515,16 @@ Home page under three route names and never renders the landing page or sign-in 
 
 ## Ten rows of "Edit" name nothing
 
-Row-action controls in the courses table and the dive, trip, site, certification, gear and gear set
-cards' actions menus name their row: `Actions for dive #412`, `Actions for Palau 2025`,
-`Delete Pescador Island`. Uniqueness among the page's controls is the point: axe's `button-name` and
-`link-name` pass `aria-label="Edit"` ten times over, so only reading the controls list catches a
-bare label. Dive cards key off `dive.dive_number`, what the card leads with and what a diver says
-out loud. Certification cards carry agency and level through `certificationLabel` in
-`lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no unique-name constraint
-by design, and level alone gives two `Actions for Advanced Nitrox` menus. Gear cards use
-`gearItemLabel`'s brand-then-name shape. A qualifier belongs in the name where the diver says it and
-the collision is structural; otherwise it is a second sentence.
+Row-action controls in the contacts and people tables and the dive, trip, site, certification, gear,
+gear set and course cards' actions menus name their row: `Actions for dive #412`,
+`Actions for Palau 2025`, `Delete Pescador Island`. Uniqueness among the page's controls is the
+point: axe's `button-name` and `link-name` pass `aria-label="Edit"` ten times over, so only reading
+the controls list catches a bare label. Dive cards key off `dive.dive_number`, what the card leads
+with and what a diver says out loud. Certification cards carry agency and level through
+`certificationLabel` in `lib/api/certifications.ts` (`PADI Advanced Nitrox`): certifications have no
+unique-name constraint by design, and level alone gives two `Actions for Advanced Nitrox` menus.
+Gear cards use `gearItemLabel`'s brand-then-name shape. A qualifier belongs in the name where the
+diver says it and the collision is structural; otherwise it is a second sentence.
 `app/certifications/page.render.test.tsx` and `app/gear/page.render.test.tsx` render two records,
 because a constant name passes a one-record test.
 

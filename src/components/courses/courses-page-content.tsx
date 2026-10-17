@@ -7,23 +7,17 @@ import { useCourseFilterOptions } from "@/hooks/useCourseFilterOptions";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { coursesAPI, Course } from "@/lib/api/courses";
-import { certificationAgencyLabel } from "@/lib/api/certifications";
-import { courseStatusBadgeVariant, courseStatusLabel } from "@/lib/course";
-import { formatTripDateRange } from "@/lib/date-time";
-import { Badge } from "@/components/ui/badge";
 import { CoursesPageFrame } from "@/components/courses/courses-page-frame";
+import { CourseCard } from "@/components/courses/course-card";
 import {
   hasCourseFilters,
   NO_COURSE_FILTERS,
   type CourseListFilters,
 } from "@/components/courses/courses-filters";
-import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CourseDialog } from "@/components/courses/course-dialog";
 import { useQuickCreate } from "@/components/layout/quick-create";
-import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { RowActions } from "@/components/ui/row-actions";
 
 export function CoursesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -132,57 +126,14 @@ export function CoursesPageContent() {
         onFiltersOpened={() => setWantsFilterOptions(true)}
         agencies={agencies}
         statuses={statuses}
-        rows={courses.map((course) => (
-          <TableRow key={course.uuid}>
-            <TableCell className="font-medium">
-              <Link
-                href={`/courses/${course.uuid}`}
-                className="relative hover:underline touch:tap-target"
-              >
-                {course.name}
-              </Link>
-            </TableCell>
-            {/* A course need not name an agency, so this cell gets the
-                        same dash the Dates one does rather than a gap that
-                        reads as a rendering fault. */}
-            <TableCell>
-              {certificationAgencyLabel(course.agency, course.agency_other) ?? (
-                <span className="text-muted-foreground">-</span>
-              )}
-            </TableCell>
-            <TableCell>
-              {formatTripDateRange(
-                course.start_date ?? undefined,
-                course.end_date ?? undefined,
-              ) ?? <span className="text-muted-foreground">-</span>}
-            </TableCell>
-            {/* A status column, so the chips get one width the way
-                        `ServiceStatusBadge`'s do - `min-w-24` is the same
-                        6rem, and clears "Not passed" at 88px, the widest of the
-                        six labels. Only the layout is shared: these variants are
-                        still the older `default`/`secondary`/`warning` scale, not
-                        the brand fills gear and certifications moved to.
-
-                        `whitespace-nowrap` earns more here than it does there.
-                        `courseStatusLabel` de-snakes a status this build doesn't
-                        know, so the label is not drawn
-                        from a fixed set of six and can be arbitrarily long. */}
-            <TableCell>
-              <Badge
-                variant={courseStatusBadgeVariant(course.status)}
-                className="min-w-24 justify-center whitespace-nowrap"
-              >
-                {courseStatusLabel(course.status)}
-              </Badge>
-            </TableCell>
-            <RowActions
-              label={course.name}
-              viewHref={`/courses/${course.uuid}`}
-              onEdit={() => setEditingCourse(course)}
-              onDelete={() => requestDelete(course.uuid)}
-              isDeleting={deletingId === course.uuid}
-            />
-          </TableRow>
+        cards={courses.map((course) => (
+          <CourseCard
+            key={course.uuid}
+            course={course}
+            onEdit={() => setEditingCourse(course)}
+            onDelete={() => requestDelete(course.uuid)}
+            isDeleting={deletingId === course.uuid}
+          />
         ))}
       />
 
