@@ -1545,15 +1545,10 @@ four are re-checked by hand after any change to `globals.css`.
 
 ## Metadata, and why every page is a Server Component
 
-The root layout sets `metadataBase` (a relative URL field, `/join`'s canonical among them, fails the
-build without it), a `title.template` of `"%s – OpenDiving"`, the README's pitch, and only the
-site's own OpenGraph fields. `SITE_URL` lets a self-hosted instance name its own origin; the
-localhost fallback is harmless, since only public pages unfurl.
-
-Every page previews as itself because the root's `openGraph` holds no title, description or `url`:
-Next fills a missing OpenGraph title and description from the page's own metadata, and the Twitter
-card from those. A root-level title or `url` is inherited by every page that sets no `openGraph`,
-which sent each shared link's preview to the home page. The card is `summary`; there is no image.
+The root layout sets `metadataBase` (`/join`'s relative canonical needs it), a `title.template` of
+`"%s – OpenDiving"`, the README's pitch, and only the site's own OpenGraph fields, so each page
+previews as itself. `SITE_URL` lets a self-hosted instance name its own origin; the localhost
+fallback is harmless, since only public pages unfurl.
 
 Every `page.tsx` is a Server Component exporting its name as `metadata.title` and rendering a client
 body from `components/`, the only way a client page gets a title. A page inside a section names

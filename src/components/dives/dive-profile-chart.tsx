@@ -1540,9 +1540,9 @@ const EVENT_GLYPHS: Record<DiveProfileEventType, EventGlyph> = {
 // wire that TypeScript has been told is one of thirteen, the two repos deploy
 // independently, and an API that grows a fourteenth reaches browsers still
 // running this bundle. Indexing `EVENT_GLYPHS` with either yields `undefined`,
-// and destructuring that is a `TypeError` inside render - which, with no
-// `error.tsx` anywhere under `src/app`, takes out the whole dive detail route
-// rather than one tick. A neutral grey circle is the honest degradation for
+// and destructuring that is a `TypeError` inside render - which trades the whole
+// dive page for `app/error.tsx` rather than losing one tick. A neutral grey
+// circle is the honest degradation for
 // both, and `describeEvent` falls back to the device's own wording beside it.
 const UNKNOWN_EVENT_GLYPH: EventGlyph = {
   colorClass: "text-muted-foreground",
