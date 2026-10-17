@@ -36,12 +36,11 @@ export const instant = false;
 // would be evaluated while the image is being built - freezing whatever the build
 // machine had into every instance that ever runs it.
 //
-// `metadataBase` is where relative URLs in metadata (OpenGraph images, canonicals)
-// resolve against. Without it Next warns on every build and emits relative `og:image`
-// URLs, which no crawler or link unfurler can fetch. A self-hosted instance sets
-// `SITE_URL` to its own origin; the localhost fallback is right for development and
-// harmless anywhere else, since the only pages worth unfurling are public ones a private
-// deployment doesn't expose.
+// `metadataBase` is what relative URLs in metadata resolve against - `/join`'s canonical
+// `/` among them - and a relative URL field without it fails the build. A self-hosted
+// instance sets `SITE_URL` to its own origin; the localhost fallback is right for
+// development and harmless anywhere else, since the only pages worth unfurling are
+// public ones a private deployment doesn't expose.
 export function generateMetadata(): Metadata {
   const { siteUrl } = runtimeConfig();
 
@@ -58,20 +57,12 @@ export function generateMetadata(): Metadata {
     },
     description: SITE_DESCRIPTION,
     applicationName: "OpenDiving",
-    openGraph: {
-      type: "website",
-      siteName: "OpenDiving",
-      title: "OpenDiving - a dive log built to outlive every vendor",
-      description:
-        "An open-source logbook for scuba divers: gas mixtures, multiple sites per dive, dive-computer import with full depth profiles, gear service history and c-cards.",
-      url: siteUrl,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: "OpenDiving - a dive log built to outlive every vendor",
-      description:
-        "An open-source logbook for scuba divers. Your dives, your data - vendor exports in, open formats, and yours to take out at any time.",
-    },
+    // The site's own fields only, so every page previews as itself: Next fills an
+    // `openGraph` without a title or description from the page's own, and the Twitter
+    // card from that. No `url` either - an unfurler names the address it fetched.
+    openGraph: { type: "website", siteName: "OpenDiving" },
+    // `summary`, since there is no image to make a large card of.
+    twitter: { card: "summary" },
   };
 }
 

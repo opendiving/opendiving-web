@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { CERTIFICATION_EXPIRING_SOON_DAYS } from "@/lib/certification";
 import { readLegalPageConfig } from "@/lib/api/config.server";

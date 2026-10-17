@@ -10,7 +10,7 @@ import { SupportForm } from "@/components/support/support-form";
 import { ISSUE_TRACKERS } from "@/lib/support";
 import { runtimeConfig } from "@/lib/runtime-config";
 import Link from "next/link";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { AlertCircle, Anchor, Bug, Heart, Mail, Shield } from "lucide-react";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 

@@ -233,11 +233,11 @@ script's header.
 ## Layout width convention
 
 Every page inside the shared chrome puts its content in one `max-w-6xl` column - `HERO_BODY` in
-`ui/map-hero.tsx` under a hero, `PAGE_COLUMN` where there is none - whose gutter the header and
-footer share. The landing page (`/`), built from full-bleed alternating sections, is the exemption,
-and so are the dive "new"/"edit" forms, whose hero and body share one centred `max-w-2xl` column
-(`FORM_COLUMN`). This is a content-width choice only; `Header`/`Footer` come from `AppShell` (next
-section).
+`ui/map-hero.tsx` under a hero, `PAGE_COLUMN` where there is none - and the header and footer share
+that column, so their edges line up with the content's. The landing page (`/`), built from
+full-bleed alternating sections, is the exemption, and so are the dive "new"/"edit" forms, whose
+hero and body share one centred `max-w-2xl` column (`FORM_COLUMN`). This is a content-width choice
+only; `Header`/`Footer` come from `AppShell` (next section).
 
 ## `Header`/`Footer` live once in `AppShell`, not per-page
 
@@ -1545,10 +1545,15 @@ four are re-checked by hand after any change to `globals.css`.
 
 ## Metadata, and why every page is a Server Component
 
-The root layout sets `metadataBase` (or Next emits relative `og:image` URLs no crawler can fetch), a
-`title.template` of `"%s – OpenDiving"`, OpenGraph and Twitter cards, and the README's pitch.
-`SITE_URL` lets a self-hosted instance name its own origin; the localhost fallback is harmless,
-since only public pages unfurl.
+The root layout sets `metadataBase` (a relative URL field, `/join`'s canonical among them, fails the
+build without it), a `title.template` of `"%s – OpenDiving"`, the README's pitch, and only the
+site's own OpenGraph fields. `SITE_URL` lets a self-hosted instance name its own origin; the
+localhost fallback is harmless, since only public pages unfurl.
+
+Every page previews as itself because the root's `openGraph` holds no title, description or `url`:
+Next fills a missing OpenGraph title and description from the page's own metadata, and the Twitter
+card from those. A root-level title or `url` is inherited by every page that sets no `openGraph`,
+which sent each shared link's preview to the home page. The card is `summary`; there is no image.
 
 Every `page.tsx` is a Server Component exporting its name as `metadata.title` and rendering a client
 body from `components/`, the only way a client page gets a title. A page inside a section names
@@ -2177,8 +2182,8 @@ recommended pause.
 `w-0 min-w-full`, which wraps it inside the column the labels set rather than widening it.
 
 `glyphFor` takes a `string` with a grey-circle fallback and `describeEvent` has a `default`:
-`ProfileEventType` is closed only here, and with no `error.tsx` under `src/app` an unknown
-`EVENT_GLYPHS` key takes out the dive route.
+`ProfileEventType` is closed only here, and an unknown `EVENT_GLYPHS` key would otherwise trade the
+dive page for `app/error.tsx`.
 
 Resting opacity is 0.9; 0.55 puts `--ceiling` and `--pressure` under 3:1.
 
