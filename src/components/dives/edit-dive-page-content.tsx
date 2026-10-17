@@ -10,14 +10,15 @@ import { useResource } from "@/hooks/useResource";
 import { useReturnTo } from "@/hooks/useReturnTo";
 import { withReturnTo } from "@/lib/return-to";
 import { divesAPI, Dive } from "@/lib/api/dives";
-import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import {
   buildDiveUpdate,
   diveToFormValues,
   diveUpdateSchema,
   DiveUpdateInput,
+  emptyDiveFormValues,
 } from "@/lib/validations/dive";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
+import { usePendingDiveFiles } from "@/components/dives/use-pending-dive-files";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveForm } from "@/components/dives/dive-form";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
@@ -39,57 +40,10 @@ export function EditDivePageContent() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Attached after the edit is saved rather than when the file is picked, so
-  // that importing a file and then cancelling the edit doesn't silently change
-  // what the dive holds. A list, for the reason the create page's is one: a dive
-  // can gain a second computer's recording and a second file of an existing one
-  // in the same edit.
-  const [pendingFiles, setPendingFiles] = useState<PendingDiveFile[]>([]);
-  // Stored files the diver has struck off the list, deleted after the edit is
-  // saved for the reason the attaches above wait for it: a form describes what
-  // the dive should hold when the diver is done with it, and Cancel has to mean
-  // the dive is exactly as they found it - deleting on the dialog's confirm
-  // would make "Cancel" a lie about the one part of the form that is not
-  // undoable.
-  const [removedFileUuids, setRemovedFileUuids] = useState<string[]>([]);
 
   const form = useForm<DiveUpdateInput>({
     resolver: zodResolver(diveUpdateSchema),
-    defaultValues: {
-      dive_number: undefined,
-      start_time: "",
-      submerged_time: "",
-      max_depth: undefined,
-      avg_depth: undefined,
-      bottom_temperature: undefined,
-      visibility: undefined,
-      // The select's "Not recorded" option, for the same reason as on the create
-      // page: `undefined` is what react-hook-form re-displays a default for.
-      water_type: "",
-      altitude: undefined,
-      type: "",
-      rating: null,
-      air_temperature: undefined,
-      current: "",
-      waves: "",
-      weather: "",
-      entry_type: "",
-      boat_name: "",
-      weight: undefined,
-      trip_uuid: undefined,
-      course_uuid: undefined,
-      contact_uuid: undefined,
-      dive_site_uuids: [],
-      gear_item_uuids: [],
-      tags: [],
-      notes: "",
-      // Empty, and the same for the seed `diveToFormValues` overwrites this
-      // with: the whole form is submitted on save, so a cylinder invented here
-      // is a cylinder written to the dive. The create form starts empty too, on
-      // its own grounds - see "The create form proposes no cylinder" in
-      // DECISIONS.md.
-      mixtures: [],
-    },
+    defaultValues: { ...emptyDiveFormValues(), start_time: "" },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
   // `fillsDefaults: false` - the edit form has no defaults to carry. What appears
@@ -140,14 +94,7 @@ export function EditDivePageContent() {
     label: "Back to dive",
   });
 
-  // What to call a struck-off file in a failure toast. Read off the loaded dive
-  // rather than carried alongside the uuid, since the list on screen is already
-  // built from exactly these rows; the uuid is the fallback for a dive that was
-  // re-read out from under the form.
-  const removedFileName = (fileUuid: string) =>
-    (dive?.recordings ?? [])
-      .flatMap((recording) => recording.files)
-      .find((file) => file.uuid === fileUuid)?.original_filename ?? "a file";
+  const files = usePendingDiveFiles(dive?.recordings);
 
   const onSubmit = async (data: DiveUpdateInput) => {
     if (!user || !diveId) return;
@@ -159,48 +106,7 @@ export function EditDivePageContent() {
 
       await divesAPI.updateDive(diveId, updateData);
 
-      // Removals before additions, so each attach lands in the state the diver
-      // was looking at rather than beside rows they had already struck off.
-      // Each failure is its own toast and none of them stops the next: the edit
-      // is saved either way, and a file that survived is a smaller loss than a
-      // save the diver has to make twice.
-      for (const fileUuid of removedFileUuids) {
-        try {
-          await divesAPI.deleteDiveFile(diveId, fileUuid);
-        } catch (error) {
-          console.error("Failed to delete the dive file:", error);
-          toast({
-            title: `Dive updated, but ${removedFileName(fileUuid)} wasn't deleted`,
-            description: getApiErrorMessage(
-              error,
-              "Try removing the file again.",
-            ),
-            variant: "destructive",
-          });
-        }
-      }
-
-      // Serially and in pick order, for the reason the create page gives: the
-      // API decides per file which recording it joins, and racing two attaches
-      // would make that depend on request arrival order.
-      for (const item of pendingFiles) {
-        try {
-          await divesAPI.attachRecordingFile(diveId, item.file, item.token);
-        } catch (error) {
-          // Non-fatal, for the same reason as on the new-dive page: the edit
-          // itself succeeded, and losing the attachment is a much smaller cost
-          // than failing a save the diver already made.
-          console.error("Failed to attach the dive file:", error);
-          toast({
-            title: `Dive updated, but ${item.file.name} wasn't attached`,
-            description: getApiErrorMessage(
-              error,
-              "Try importing the file again.",
-            ),
-            variant: "destructive",
-          });
-        }
-      }
+      await files.save(diveId, { saved: "Dive updated, but " });
 
       toast({
         title: "Success",
@@ -284,22 +190,7 @@ export function EditDivePageContent() {
           cancelHref={returnTo.href}
           submittingLabel="Saving..."
           submitLabel="Save changes"
-          onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
-          pendingFiles={pendingFiles}
-          onRemovePendingFile={(id) =>
-            setPendingFiles((files) => files.filter((item) => item.id !== id))
-          }
-          removedStoredFiles={removedFileUuids}
-          onRemoveStoredFile={(fileUuid) =>
-            setRemovedFileUuids((uuids) =>
-              uuids.includes(fileUuid) ? uuids : [...uuids, fileUuid],
-            )
-          }
-          onRestoreStoredFile={(fileUuid) =>
-            setRemovedFileUuids((uuids) =>
-              uuids.filter((uuid) => uuid !== fileUuid),
-            )
-          }
+          fileList={files.fileList}
           recordings={dive.recordings ?? []}
           diveUuid={dive.uuid}
           // The dive already carries its sites' names, so the picker doesn't have

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { emailField } from "./fields";
 
 // The account's email, which is not an ordinary field: changing it requires
 // confirming ownership of the new address first (`authAPI.requestEmailChange` /
@@ -6,7 +7,7 @@ import { z } from "zod";
 // a form. Every field that *is* ordinary lives in `validations/user-fields.ts`, which
 // is the one place their bounds and messages are written.
 export const emailChangeSchema = z.object({
-  newEmail: z.string().email("Please enter a valid email address"),
+  newEmail: emailField(),
 });
 
 export type EmailChangeFormData = z.infer<typeof emailChangeSchema>;

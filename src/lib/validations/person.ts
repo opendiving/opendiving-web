@@ -1,11 +1,10 @@
 import { z } from "zod";
+import { maxLengthMessage, optionalEmailField, phoneField } from "./fields";
 import { notesField } from "./notes";
 
 // The API's bounds for a person (`schemas/person.py`), which are DiveJSON's, and
 // a username's own: nothing longer names an account.
 const NAME_MAX = 255;
-const EMAIL_MAX = 255;
-const PHONE_MAX = 32;
 const USERNAME_MAX = 20;
 
 /**
@@ -31,24 +30,18 @@ export const personSchema = z
       .refine((value) => value.trim() !== "", "Name is required")
       .refine(
         (value) => value.trim().length <= NAME_MAX,
-        "Name cannot exceed 255 characters",
+        maxLengthMessage("Name", NAME_MAX),
       ),
     username: z.string(),
-    email: z.union([
-      z.literal(""),
-      z
-        .string()
-        .email("Please enter a valid email address")
-        .max(EMAIL_MAX, "Email cannot exceed 255 characters"),
-    ]),
-    phone: z.string().max(PHONE_MAX, "Phone cannot exceed 32 characters"),
+    email: optionalEmailField(),
+    phone: phoneField(),
     notes: notesField(),
   })
   .refine(
     (data) =>
       (normalizeLinkedUsername(data.username) ?? "").length <= USERNAME_MAX,
     {
-      message: "A username is at most 20 characters",
+      message: maxLengthMessage("Username", USERNAME_MAX),
       path: ["username"],
     },
   );

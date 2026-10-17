@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { GripVertical, X } from "lucide-react";
 import {
@@ -10,6 +10,7 @@ import {
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
+import { readEach, useLookupLabels } from "@/hooks/useLookupLabels";
 import { cn } from "@/lib/utils";
 import {
   gearAPI,
@@ -23,6 +24,8 @@ import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 // How much gear the dropdown asks for at a time. Enough to scroll through
 // before typing, far short of the API's 100 cap.
 const GEAR_PER_SEARCH = 25;
+
+const readGearItems = readEach((uuid: string) => gearAPI.getGearItem(uuid));
 
 export interface GearItemMultiSelectProps extends FormControlSlotProps {
   // Selected gear item uuids, in the order they were added.
@@ -54,54 +57,21 @@ export function GearItemMultiSelect({
   onManualChange,
   ...slotProps
 }: GearItemMultiSelectProps) {
-  // Every gear item this picker has seen, keyed by uuid - its own search
-  // results, whatever it created, and lookups for selections that arrived from
-  // the form. Rows show a type plus "Rented"/"Archived" badges, so this keeps
-  // the whole summary rather than just a name.
-  const [known, setKnown] = useState<Record<string, GearItemSummary>>({});
-  const [showNewDialog, setShowNewDialog] = useState(false);
-  // Fired-for uuids, so a failed lookup isn't retried on every render.
-  const requestedRef = useRef<Set<string>>(new Set());
-
-  const remember = useCallback(
-    (item: GearItemSummary) =>
-      setKnown((prev) => ({ ...prev, [item.uuid]: item })),
-    [],
+  // The whole summary rather than just a name: rows show a type plus
+  // "Rented"/"Archived" badges. A selection `knownItems` does not name is read,
+  // which is also what keeps *archived* gear rendering: an older dive can
+  // reference retired kit, which the dropdown never offers, so it can only
+  // arrive here by uuid.
+  const { records: known, remember } = useLookupLabels<GearItemSummary>(
+    readGearItems,
+    value.filter((uuid) => !knownItems?.some((item) => item.uuid === uuid)),
   );
+  const [showNewDialog, setShowNewDialog] = useState(false);
 
-  // Read through the `knownItems` prop rather than copying it in via an effect:
-  // the copy wouldn't have landed on the render that first sees a selection, so
-  // the lookup below would fire for items the caller had already handed over.
+  // Read through the `knownItems` prop rather than copied into `known`: the copy
+  // wouldn't have landed on the render that first sees a selection.
   const itemFor = (uuid: string): GearItemSummary | undefined =>
     known[uuid] ?? knownItems?.find((item) => item.uuid === uuid);
-
-  // Resolve any selection whose record isn't known yet. This is also what keeps
-  // *archived* gear rendering properly: an older dive can legitimately reference
-  // retired kit, which the dropdown deliberately never offers, so it can only
-  // ever arrive here by uuid.
-  useEffect(() => {
-    const unresolved = value.filter(
-      (uuid) =>
-        !known[uuid] &&
-        !knownItems?.some((item) => item.uuid === uuid) &&
-        !requestedRef.current.has(uuid),
-    );
-    if (unresolved.length === 0) return;
-
-    // Marked before the request, so a failure isn't retried on every render -
-    // and, for the same reason as `DiveSiteMultiSelect`, why there's no
-    // cancellation flag: each uuid is fetched exactly once, so discarding a
-    // late result on cleanup would lose it for good.
-    unresolved.forEach((uuid) => requestedRef.current.add(uuid));
-
-    unresolved.forEach(async (uuid) => {
-      try {
-        remember(await gearAPI.getGearItem(uuid));
-      } catch (error) {
-        console.error("Failed to fetch gear item:", error);
-      }
-    });
-  }, [value, known, knownItems, remember]);
 
   const searchGear = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
@@ -112,7 +82,7 @@ export function GearItemMultiSelect({
         search: query,
         until,
       });
-      response.data.forEach(remember);
+      remember(...response.data);
       return {
         items: response.data.map((item) => ({
           id: item.uuid,

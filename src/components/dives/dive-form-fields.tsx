@@ -21,7 +21,6 @@ import {
   Wind,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { UnitNumberInput } from "@/components/unit-number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { DiveStartTimeField } from "@/components/dives/dive-start-time-field";
 import {
@@ -49,6 +48,10 @@ import {
   SpeciesMultiSelect,
   type SightingErrors,
 } from "@/components/dives/species-multi-select";
+import {
+  DiveUnitNumberField,
+  DiveUnitNumberItem,
+} from "@/components/dives/dive-unit-number-field";
 import { DiveVocabularyField } from "@/components/dives/dive-vocabulary-field";
 import { RatingInput } from "@/components/dives/rating-input";
 import { TagsMultiSelect } from "@/components/dives/tags-multi-select";
@@ -76,9 +79,6 @@ import {
 } from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
 import { SpeciesSummary } from "@/lib/api/species";
-import { useEntryUnits } from "@/hooks/useEntryUnits";
-import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
-import { unitLabel } from "@/lib/units";
 import type {
   DiveFormFieldGroup,
   DiveFormFieldKey,
@@ -236,11 +236,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 }: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
-  // Read once here and handed to the labels and the number boxes below, per
-  // dimension: the account preference unless the diver has flipped that dimension
-  // with the toggle in its label row. Form state itself stays metric whatever
-  // this says - see `UnitNumberInput`.
-  const { entryUnits, toggleEntryUnits } = useEntryUnits();
   const isVisible = visibility.isVisible;
   // The rating is a group, which a label names by reference rather than by `for`.
   const ratingLabelId = useId();
@@ -282,22 +277,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
       </DiveFormSection>
     );
   };
-
-  // Every field with a unit carries its own toggle, and the fields of one dimension
-  // share it: flipping Maximum depth flips Average depth too, since both read the one
-  // setting `useEntryUnits` keeps per dimension.
-  const unitLabelRow = (
-    dimension: "depth" | "temperature",
-    label: ReactNode,
-  ): ReactNode => (
-    <EntryUnitLabelRow
-      dimension={dimension}
-      entryUnits={entryUnits(dimension)}
-      onToggle={() => toggleEntryUnits(dimension)}
-    >
-      {label}
-    </EntryUnitLabelRow>
-  );
 
   return (
     // A fragment, so each section is a card in the form's own stack.
@@ -565,70 +544,26 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           {(isVisible("max_depth") || isVisible("avg_depth")) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {isVisible("max_depth") && (
-                <FormField
+                <DiveUnitNumberField
                   control={control}
                   name={"max_depth" as Path<TFieldValues>}
-                  render={({ field }) => (
-                    <FormItem>
-                      {unitLabelRow(
-                        "depth",
-                        <FormLabel>
-                          Maximum depth (
-                          {unitLabel("depth", entryUnits("depth"))})
-                        </FormLabel>,
-                      )}
-                      <div className="relative">
-                        <ArrowDownToLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                        <FormControl>
-                          <UnitNumberInput
-                            dimension="depth"
-                            units={entryUnits("depth")}
-                            min={0}
-                            placeholderValue={30.52}
-                            className="pl-9"
-                            {...field}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Maximum depth"
+                  dimension="depth"
+                  icon={ArrowDownToLine}
+                  min={0}
+                  placeholderValue={30.52}
                 />
               )}
 
               {isVisible("avg_depth") && (
-                <FormField
+                <DiveUnitNumberField
                   control={control}
                   name={"avg_depth" as Path<TFieldValues>}
-                  render={({ field }) => (
-                    <FormItem>
-                      {unitLabelRow(
-                        "depth",
-                        <FormLabel>
-                          Average depth (
-                          {unitLabel("depth", entryUnits("depth"))})
-                        </FormLabel>,
-                      )}
-                      <div className="relative">
-                        <ChevronsDownUp className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                        <FormControl>
-                          <UnitNumberInput
-                            dimension="depth"
-                            units={entryUnits("depth")}
-                            min={0}
-                            placeholderValue={18.24}
-                            className="pl-9"
-                            {...field}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Average depth"
+                  dimension="depth"
+                  icon={ChevronsDownUp}
+                  min={0}
+                  placeholderValue={18.24}
                 />
               )}
             </div>
@@ -664,81 +599,31 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           phone the fields stack at 1.5rem - one grid has one row gap. */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
               {isVisible("bottom_temperature") && (
-                <FormField
+                <DiveUnitNumberField
                   control={control}
                   name={"bottom_temperature" as Path<TFieldValues>}
-                  render={({ field }) => (
-                    <FormItem>
-                      {unitLabelRow(
-                        "temperature",
-                        <FormLabel>
-                          Bottom temperature (
-                          {unitLabel("temperature", entryUnits("temperature"))})
-                        </FormLabel>,
-                      )}
-                      <div className="relative">
-                        <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                        <FormControl>
-                          {/* The 2-decimal entry rounding this field has always done is
-                      now the component's, and every float sibling above and
-                      below gets it too. */}
-                          <UnitNumberInput
-                            dimension="temperature"
-                            units={entryUnits("temperature")}
-                            min={-50}
-                            max={50}
-                            placeholderValue={22.5}
-                            className="pl-9"
-                            {...field}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Bottom temperature"
+                  dimension="temperature"
+                  icon={Thermometer}
+                  min={-50}
+                  max={50}
+                  placeholderValue={22.5}
                 />
               )}
 
               {isVisible("visibility") && (
-                <FormField
+                // An `Integer` column, so feet commit whole metres: 50 ft is stored
+                // as 15 m and reads back as 49 ft. Accepted - see DECISIONS.md -
+                // because visibility is an estimate and whole-metre resolution is
+                // finer than anyone judges it to.
+                <DiveUnitNumberField
                   control={control}
                   name={"visibility" as Path<TFieldValues>}
-                  render={({ field }) => (
-                    <FormItem>
-                      <EntryUnitLabelRow
-                        dimension="visibility"
-                        entryUnits={entryUnits("visibility")}
-                        onToggle={() => toggleEntryUnits("visibility")}
-                      >
-                        <FormLabel>
-                          Visibility (
-                          {unitLabel("visibility", entryUnits("visibility"))})
-                        </FormLabel>
-                      </EntryUnitLabelRow>
-                      <div className="relative">
-                        <Eye className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                        <FormControl>
-                          {/* An `Integer` column, so feet commit whole metres: 50 ft is
-                      stored as 15 m and reads back as 49 ft. Accepted - see
-                      DECISIONS.md - because visibility is an estimate and
-                      whole-metre resolution is finer than anyone judges it to. */}
-                          <UnitNumberInput
-                            dimension="visibility"
-                            units={entryUnits("visibility")}
-                            min={0}
-                            placeholderValue={15}
-                            className="pl-9"
-                            {...field}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Visibility"
+                  dimension="visibility"
+                  icon={Eye}
+                  min={0}
+                  placeholderValue={15}
                 />
               )}
               {/* Water and altitude - what the water was and where it was, which the
@@ -755,47 +640,19 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 />
               )}
               {isVisible("altitude") && (
-                <FormField
+                // Bounds in metres, which the Zod schema and the DB `CHECK` behind it
+                // are written in; the box converts them for the spinner. Not
+                // Visibility's `min={0}`: the Dead Sea is below sea level, which is
+                // the whole reason the API's bound is -450 rather than 0.
+                <DiveUnitNumberField
                   control={control}
                   name={"altitude" as Path<TFieldValues>}
-                  render={({ field }) => (
-                    <FormItem>
-                      <EntryUnitLabelRow
-                        dimension="altitude"
-                        entryUnits={entryUnits("altitude")}
-                        onToggle={() => toggleEntryUnits("altitude")}
-                      >
-                        <FormLabel>
-                          Altitude (
-                          {unitLabel("altitude", entryUnits("altitude"))})
-                        </FormLabel>
-                      </EntryUnitLabelRow>
-                      <div className="relative">
-                        <Mountain className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                        <FormControl>
-                          {/* Bounds declared in metres, which is what the Zod schema and
-                      the DB `CHECK` behind it are written in; the component
-                      converts them inward for the spinner, so what the arrows
-                      offer is always something the schema will accept. */}
-                          <UnitNumberInput
-                            dimension="altitude"
-                            units={entryUnits("altitude")}
-                            // Not Visibility's `min={0}`, which this box otherwise
-                            // copies: the Dead Sea is below sea level and admitting it
-                            // is the whole reason the API's bound is -450 rather than 0.
-                            min={-450}
-                            max={6500}
-                            placeholderValue={372}
-                            className="pl-9"
-                            {...field}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Altitude"
+                  dimension="altitude"
+                  icon={Mountain}
+                  min={-450}
+                  max={6500}
+                  placeholderValue={372}
                 />
               )}
               {/* Then up from the water: the surface, and the air above it. */}
@@ -831,37 +688,15 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               )}
 
               {isVisible("air_temperature") && (
-                <FormField
+                <DiveUnitNumberField
                   control={control}
                   name={"air_temperature" as Path<TFieldValues>}
-                  render={({ field }) => (
-                    <FormItem>
-                      {unitLabelRow(
-                        "temperature",
-                        <FormLabel>
-                          Air temperature (
-                          {unitLabel("temperature", entryUnits("temperature"))})
-                        </FormLabel>,
-                      )}
-                      <div className="relative">
-                        <ThermometerSun className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                        <FormControl>
-                          <UnitNumberInput
-                            dimension="temperature"
-                            units={entryUnits("temperature")}
-                            min={-60}
-                            max={60}
-                            placeholderValue={28}
-                            className="pl-9"
-                            {...field}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Air temperature"
+                  dimension="temperature"
+                  icon={ThermometerSun}
+                  min={-60}
+                  max={60}
+                  placeholderValue={28}
                 />
               )}
             </div>
@@ -942,38 +777,20 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 
                 {isVisible("weight") && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormItem>
-                      {/* Weight is the one dimension with a second toggle elsewhere:
+                    {/* Weight is the one dimension with a second toggle elsewhere:
                     the gear-set dialog opens from inside this form and enters a
                     weight of its own. Both read the same store, so the two never
                     disagree, and Radix's modal `aria-hidden` keeps only one of
-                    them exposed at a time. */}
-                      <EntryUnitLabelRow
-                        dimension="weight"
-                        entryUnits={entryUnits("weight")}
-                        onToggle={() => toggleEntryUnits("weight")}
-                      >
-                        <FormLabel>
-                          Weight ({unitLabel("weight", entryUnits("weight"))})
-                        </FormLabel>
-                      </EntryUnitLabelRow>
-                      <div className="relative">
-                        <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                        <FormControl>
-                          <UnitNumberInput
-                            dimension="weight"
-                            units={entryUnits("weight")}
-                            min={0}
-                            placeholderValue={6}
-                            className="pl-9"
-                            {...weightField}
-                            value={weightField.value}
-                            onChange={weightField.onChange}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
+                    them exposed at a time. The outer `FormField` holds `weight`, so
+                    this is the field's body alone. */}
+                    <DiveUnitNumberItem
+                      field={weightField}
+                      label="Weight"
+                      dimension="weight"
+                      icon={Weight}
+                      min={0}
+                      placeholderValue={6}
+                    />
                   </div>
                 )}
               </div>

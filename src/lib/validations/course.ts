@@ -1,16 +1,9 @@
 import { z } from "zod";
+import { maxLength, optionalDateField } from "./fields";
 import { notesField } from "./notes";
 import { personReferenceSchema } from "./person";
 import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
 import { COURSE_STATUSES } from "@/lib/api/courses";
-
-// Bare "YYYY-MM-DD", optional. `""` is what a cleared date input holds while
-// editing, so the empty string is accepted here and mapped back to `null` on
-// submit. Kept as a union rather than a `z.preprocess()`/`.transform()`: those
-// change what `z.input<>` infers, which breaks the form's field types (see
-// DECISIONS.md).
-const optionalDate = (message: string) =>
-  z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message)]);
 
 // One schema for both creating and editing a course: `CourseDialog` is the only
 // form for either and always shows every field, so an update never sends a
@@ -18,31 +11,22 @@ const optionalDate = (message: string) =>
 // caught before the round trip rather than as a 422.
 export const courseSchema = z
   .object({
-    name: z
-      .string()
-      .min(1, "Course name is required")
-      .max(255, "Course name cannot exceed 255 characters"),
+    name: maxLength("Course name", 255).min(1, "Course name is required"),
     // `null` is this field's "not set", mirroring the API's own `agency: None`
     // rather than the `""` the text fields use: the picker holds a value or it
     // holds nothing, the way `course_uuid` does on a certification.
     agency: z.enum(CERTIFICATION_AGENCIES).nullable(),
     // Only meaningful alongside `agency: "other"`, which the refine below
     // enforces - the same pairing rule the API applies to both models.
-    agency_other: z
-      .string()
-      .max(64, "Agency name cannot exceed 64 characters")
-      .optional(),
+    agency_other: maxLength("Agency name", 64).optional(),
     status: z.enum(COURSE_STATUSES),
-    start_date: optionalDate("Use a valid date").optional(),
-    end_date: optionalDate("Use a valid date").optional(),
+    start_date: optionalDateField().optional(),
+    end_date: optionalDateField().optional(),
     // A picker, so `null` is "no instructor". Held apart from `people` while the
     // form is open and written back onto it, as the first reference, on save -
     // see `joinCourseInstructor`.
     instructor_uuid: z.string().nullable().optional(),
-    instructor_number: z
-      .string()
-      .max(64, "Instructor number cannot exceed 64 characters")
-      .optional(),
+    instructor_number: maxLength("Instructor number", 64).optional(),
     // A picker, so `null` rather than `""` is "no contact" - the shape
     // `course_uuid` has on a certification.
     contact_uuid: z.string().nullable().optional(),

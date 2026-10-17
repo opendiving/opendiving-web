@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { maxLength, optionalDateField } from "./fields";
 import { notesField } from "./notes";
 import { locationSchema } from "./location";
 import { personReferenceSchema } from "./person";
@@ -21,8 +22,8 @@ export const MAX_TRIP_PARTS = 20;
 const tripPartSchema = z
   .object({
     location: locationSchema.nullish(),
-    start_date: z.string().optional(),
-    end_date: z.string().optional(),
+    start_date: optionalDateField().optional(),
+    end_date: optionalDateField().optional(),
     // Where the diver slept during the part - a contact, picked like a course.
     accommodation_uuid: z.string().nullable().optional(),
   })
@@ -52,10 +53,7 @@ export function emptyTripPart(): TripPartFormValue {
 // form for either, and it always shows every field, so an update never sends a
 // partial object.
 export const tripFormSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Trip name is required")
-    .max(255, "Trip name cannot exceed 255 characters"),
+  name: maxLength("Trip name", 255).min(1, "Trip name is required"),
   // Where the trip went and when, in the order the diver arranged it. The trip
   // itself carries no dates: its span is the span of these.
   parts: z

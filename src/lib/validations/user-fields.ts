@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { maxLength } from "./fields";
 
 import type { UpdateProfileData, User } from "@/lib/api/auth";
 
@@ -23,14 +24,9 @@ export type UserFieldValues = Record<UserFieldKey, string>;
 
 /** Each field's schema, which the sheet's About You dialog borrows for the name. */
 export const USER_FIELD_SCHEMAS: Record<UserFieldKey, z.ZodString> = {
-  name: z
-    .string()
-    .min(2, "Name must be at least 2 characters")
-    .max(30, "Name must not exceed 30 characters"),
-  username: z
-    .string()
+  name: maxLength("Name", 30).min(2, "Name must be at least 2 characters"),
+  username: maxLength("Username", 20)
     .min(2, "Username must be at least 2 characters")
-    .max(20, "Username must not exceed 20 characters")
     .regex(
       /^[a-z0-9]+$/,
       "Username can only contain lowercase letters and numbers",

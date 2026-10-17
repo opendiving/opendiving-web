@@ -1,39 +1,23 @@
 import { z } from "zod";
+import { maxLength, optionalDateField } from "./fields";
 import { notesField } from "./notes";
 import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
-
-// Bare "YYYY-MM-DD", optional. `""` is what a cleared date input holds while
-// editing, so the empty string is accepted here and mapped back to `null` on
-// submit. Kept as a union rather than a `z.preprocess()`/`.transform()`: those
-// change what `z.input<>` infers, which breaks the form's field types (see
-// DECISIONS.md).
-const optionalDate = (message: string) =>
-  z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message)]);
 
 export const certificationSchema = z
   .object({
     agency: z.enum(CERTIFICATION_AGENCIES),
     // Only meaningful alongside `agency: "other"`, which the refine below enforces.
-    agency_other: z
-      .string()
-      .max(64, "Agency name cannot exceed 64 characters")
-      .optional(),
+    agency_other: maxLength("Agency name", 64).optional(),
     // The level as printed on the card. Free text: every agency names its levels
     // differently and renames them between syllabus revisions.
-    name: z
-      .string()
-      .min(1, "Certification name is required")
-      .max(255, "Certification name cannot exceed 255 characters"),
-    certification_number: z
-      .string()
-      .max(64, "Certification number cannot exceed 64 characters")
-      .optional(),
-    certified_on: optionalDate("Use a valid date").optional(),
-    expires_on: optionalDate("Use a valid date").optional(),
-    instructor_number: z
-      .string()
-      .max(64, "Instructor number cannot exceed 64 characters")
-      .optional(),
+    name: maxLength("Certification name", 255).min(
+      1,
+      "Certification name is required",
+    ),
+    certification_number: maxLength("Certification number", 64).optional(),
+    certified_on: optionalDateField().optional(),
+    expires_on: optionalDateField().optional(),
+    instructor_number: maxLength("Instructor number", 64).optional(),
     notes: notesField().optional(),
     // Nullable rather than `""`-empty, unlike the text fields above: these are
     // pickers, and `null` is how one says "none" as against a field nobody

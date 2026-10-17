@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { maxLength } from "./fields";
 import { notesField } from "./notes";
 import { locationSchema } from "./location";
 import { altitudeField, tagsField, vocabularyField } from "./dive";
@@ -44,10 +45,7 @@ const siteDepthField = (label: string) =>
 // sends a partial object.
 export const diveSiteFormSchema = z
   .object({
-    name: z
-      .string()
-      .min(1, "Dive site name is required")
-      .max(255, "Dive site name cannot exceed 255 characters"),
+    name: maxLength("Dive site name", 255).min(1, "Dive site name is required"),
     // The whole place, not a text box over its name. The dialog seeds this from
     // the site it was handed and PATCHes it back, so a field holding only the
     // name would drop a picked locality's centre and its box on every edit of an
