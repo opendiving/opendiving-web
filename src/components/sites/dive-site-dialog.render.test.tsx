@@ -24,13 +24,14 @@ vi.mock("@/lib/api/tags", async (importOriginal) => ({
   fetchAllTags: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock("@/lib/api/geocoding", () => ({
+// The real constants - the debounce and the query bounds the field hands the
+// combobox - with only the transport replaced.
+vi.mock("@/lib/api/geocoding", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/geocoding")>()),
   geocodingAPI: {
     reverseGeocode: vi.fn(),
     searchPlaces: vi.fn().mockResolvedValue([]),
   },
-  MIN_PLACE_QUERY_LENGTH: 2,
-  MAX_PLACE_QUERY_LENGTH: 200,
 }));
 
 // Only the call is stubbed; `diveSitePlaceContext` is the rule this dialog

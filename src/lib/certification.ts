@@ -4,7 +4,7 @@ import {
   type CertificationExpiringEntry,
   type CertificationFileInfo,
 } from "@/lib/api/certifications";
-import { daysBetweenIsoDates, todayIsoDate } from "@/lib/gear-service";
+import { daysBetweenIsoDates, todayIsoDate } from "@/lib/date-time";
 
 // A token identifying the *current contents* of a stored card file, or `null` when
 // there is no file.

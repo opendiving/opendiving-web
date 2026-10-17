@@ -1,4 +1,5 @@
 import type { AdminStats } from "@/lib/api/admin";
+import { pad } from "@/lib/date-time";
 
 // Everything the stats page computes from `GET /admin/stats`, kept apart from the
 // markup so the arithmetic is assertable.
@@ -10,8 +11,6 @@ import type { AdminStats } from "@/lib/api/admin";
 
 /** A calendar month, written `YYYY-MM`. */
 export type StatsMonth = string;
-
-const pad = (value: number) => String(value).padStart(2, "0");
 
 function parts(month: StatsMonth): [number, number] {
   const [year, monthOfYear] = month.split("-").map(Number);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 // Asks about the pointer rather than the screen. A tablet at desktop width is
 // still driven by a finger, and a laptop at phone width is still driven by a
@@ -25,13 +25,5 @@ const COARSE_POINTER = "(hover: none) and (pointer: coarse)";
  * return coarsePointer ? <NativePicker {...props} /> : <CalendarPicker {...props} />;
  */
 export function useCoarsePointer(): boolean {
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      const query = window.matchMedia(COARSE_POINTER);
-      query.addEventListener("change", onStoreChange);
-      return () => query.removeEventListener("change", onStoreChange);
-    },
-    () => window.matchMedia(COARSE_POINTER).matches,
-    () => false,
-  );
+  return useMediaQuery(COARSE_POINTER);
 }

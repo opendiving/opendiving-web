@@ -14,6 +14,16 @@ export const MIN_PLACE_QUERY_LENGTH = 2;
 export const MAX_PLACE_QUERY_LENGTH = 200;
 
 /**
+ * How long a place search waits after a keystroke - slower than the combobox's
+ * own 250 ms on purpose. Every keystroke that gets past it reaches the geocoder
+ * through the API's proxy, which enforces one request a second to each provider
+ * across the whole instance and answers `[]` rather than queueing once that is
+ * exceeded - so a fast debounce doesn't just waste requests, it turns them into
+ * empty menus.
+ */
+export const PLACE_SEARCH_DEBOUNCE_MS = 450;
+
+/**
  * One place, normalized by the API away from whichever provider answered.
  *
  * `location` is what a pick saves as a place's `name`, in the site dialog and

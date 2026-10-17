@@ -9,7 +9,7 @@ import {
   type EmergencyContact,
   type InsurancePolicy,
 } from "@/lib/api/checkin-details";
-import { todayIsoDate } from "@/lib/gear-service";
+import { todayIsoDate } from "@/lib/date-time";
 import {
   maxLength,
   optionalDateField,

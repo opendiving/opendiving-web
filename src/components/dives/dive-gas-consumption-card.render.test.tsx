@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import { DiveGasConsumptionCard } from "./dive-gas-consumption-card";
 import type { Dive, DiveMixture, DiveTankGasUse } from "@/lib/api/dives";
 import type { UnitSystem } from "@/lib/units";
+import { dive as baseDive } from "@/test/dive-fixtures";
 
 // These renders read the diver's units, so they need an auth context. Held in a
 // mutable box rather than a fixed literal so a test can switch systems - `vi.mock`'s
@@ -48,23 +49,13 @@ function tank(overrides: Partial<DiveTankGasUse> = {}): DiveTankGasUse {
   };
 }
 
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
-    uuid: "d1",
-    dive_number: 493,
-    start_time: "2026-06-03T12:15:00+02:00",
-    submerged_time: 2700,
+const dive = (overrides: Partial<Dive> = {}) =>
+  baseDive({
     avg_depth: 26.4,
     max_depth: 45.91,
-    dive_sites: [],
-    gear_items: [],
-    notes: "",
-    user_uuid: "u1",
-    created_at: "2026-06-03T10:15:00Z",
     mixtures: [mixture()],
     ...overrides,
-  };
-}
+  });
 
 // The shape the two-cylinder XML export in the corpus produces: a 21/0 back gas and a
 // 49/0 deco bottle, breathed at wildly different depths.

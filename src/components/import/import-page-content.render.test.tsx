@@ -18,6 +18,7 @@ import type {
   ImportPreview,
   ImportReport,
 } from "@/lib/api/logbook-import";
+import { importDiveReport } from "@/test/dive-fixtures";
 
 // What only a render reaches: that a read writes nothing and an import sends the
 // same files with the read's token; what the client refuses before sending; that
@@ -153,16 +154,9 @@ function member(
   };
 }
 
-function dive(overrides: Partial<ImportDiveReport> = {}): ImportDiveReport {
-  return {
-    uuid: "11111111-1111-4111-8111-111111111111",
-    outcome: "created",
-    files_added: 0,
-    recordings_added: 0,
-    reason: null,
+const dive = (overrides: Partial<ImportDiveReport> = {}) =>
+  importDiveReport({
     start_time: "2026-09-07T11:04:58.880+03:00",
-    submerged_time: 4063,
-    max_depth: 21.8,
     device: {
       brand: "suunto",
       model: "Suunto Ocean",
@@ -171,8 +165,7 @@ function dive(overrides: Partial<ImportDiveReport> = {}): ImportDiveReport {
     },
     members: [0, 1],
     ...overrides,
-  };
-}
+  });
 
 function row(
   collection: string,

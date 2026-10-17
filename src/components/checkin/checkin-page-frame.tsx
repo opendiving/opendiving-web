@@ -39,7 +39,7 @@ import {
   type DivingFigures,
 } from "@/lib/checkin";
 import { formatDateOnly, formatDateTime } from "@/lib/date-time";
-import { todayIsoDate } from "@/lib/gear-service";
+import { todayIsoDate } from "@/lib/date-time";
 import { formatDepth, type UnitSystem } from "@/lib/units";
 import { shrinkPicture } from "@/lib/shrink-picture";
 import { cn } from "@/lib/utils";

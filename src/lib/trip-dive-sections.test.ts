@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { Dive } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 import type { TripPart } from "@/lib/api/trips";
 import { tripDiveSections, tripPartForDay } from "./trip-dive-sections";
 
 const dive = (uuid: string, start_time: string) =>
-  ({ uuid, start_time }) as Dive;
+  baseDive({ uuid, start_time });
 
 const uuids = (sections: ReturnType<typeof tripDiveSections>) =>
   sections.map((section) =>

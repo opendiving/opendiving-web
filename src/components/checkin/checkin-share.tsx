@@ -1,13 +1,10 @@
 "use client";
 
-import { Copy } from "lucide-react";
-
 import type { CheckinLinkControls } from "@/hooks/useCheckinLink";
 import { formatDateTime } from "@/lib/date-time";
 import { QrCode } from "@/components/checkin/qr-code";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { LinkAddressField } from "@/components/ui/link-address-field";
 
 // The live link, on screen only. A link made in this visit comes with its QR code and
 // address; one found on a later visit has neither, the API having kept only a hash.
@@ -16,28 +13,11 @@ export function CheckInLinkPanel({
 }: {
   sharing: CheckinLinkControls;
 }) {
-  const { toast } = useToast();
   const { live } = sharing;
   if (!live) return null;
 
   const expires = formatDateTime(live.expiresAt);
   const url = live.url;
-
-  const copy = async () => {
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast({ title: "Link copied" });
-    } catch (error) {
-      // No clipboard on a page served over plain HTTP, which a LAN instance is.
-      console.error("Couldn't copy the check-in link:", error);
-      toast({
-        title: "Couldn't copy",
-        description: "Select the address and copy it from there.",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <section
@@ -68,18 +48,11 @@ export function CheckInLinkPanel({
           </>
         )}
         {url && (
-          <div className="flex gap-2">
-            <Input
-              readOnly
-              value={url}
-              aria-label="Link address"
-              onFocus={(event) => event.currentTarget.select()}
-            />
-            <Button type="button" variant="outline" onClick={copy}>
-              <Copy className="h-4 w-4 mr-2" />
-              Copy
-            </Button>
-          </div>
+          <LinkAddressField
+            url={url}
+            label="Link address"
+            what="check-in link"
+          />
         )}
         <Button
           type="button"

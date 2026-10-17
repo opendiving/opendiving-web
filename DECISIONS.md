@@ -932,7 +932,7 @@ it can reveal previously silent `set-state-in-effect` errors in the same file.
 
 ## Certification expiry is derived in the browser, and `null` means "don't badge"
 
-`lib/certification.ts` reuses `todayIsoDate`/`daysBetweenIsoDates` from `lib/gear-service.ts`; both
+`lib/certification.ts` reuses `todayIsoDate`/`daysBetweenIsoDates` from `lib/date-time.ts`; both
 avoid `new Date(dateString)` on a bare date, which parses as UTC midnight and lands a day early in
 western timezones.
 

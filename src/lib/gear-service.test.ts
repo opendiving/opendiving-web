@@ -5,7 +5,6 @@ import {
   SERVICE_DUE_SOON_DIVES,
   SERVICE_DUE_SOON_HOURS,
   countOf,
-  daysBetweenIsoDates,
   defaultSchedulesForGearType,
   formatServiceDue,
   formatServiceDueQualifier,
@@ -14,9 +13,9 @@ import {
   serviceStatus,
   serviceStatusBadgeVariant,
   serviceStatusLabel,
-  todayIsoDate,
   worstServiceStatus,
 } from "@/lib/gear-service";
+import { daysBetweenIsoDates } from "@/lib/date-time";
 
 const TODAY = "2026-08-10";
 const HOUR = 3600;
@@ -31,50 +30,6 @@ function schedule(
     ...overrides,
   };
 }
-
-describe("todayIsoDate", () => {
-  it("formats as YYYY-MM-DD", () => {
-    expect(todayIsoDate(new Date(2026, 7, 9, 23, 30))).toBe("2026-08-09");
-  });
-
-  it("uses local date parts, not UTC", () => {
-    // 23:30 local on the 9th is already the 10th in UTC for any positive offset, so a
-    // `toISOString()`-based implementation would report tomorrow for half the world.
-    const late = new Date(2026, 7, 9, 23, 30);
-    expect(todayIsoDate(late)).toBe(
-      `${late.getFullYear()}-08-0${late.getDate()}`,
-    );
-  });
-});
-
-describe("daysBetweenIsoDates", () => {
-  it("counts forward and backward", () => {
-    expect(daysBetweenIsoDates("2026-08-10", "2026-08-20")).toBe(10);
-    expect(daysBetweenIsoDates("2026-08-10", "2026-08-01")).toBe(-9);
-    expect(daysBetweenIsoDates("2026-08-10", "2026-08-10")).toBe(0);
-  });
-
-  it("crosses month and year boundaries", () => {
-    expect(daysBetweenIsoDates("2026-12-25", "2027-01-01")).toBe(7);
-    expect(daysBetweenIsoDates("2028-02-28", "2028-03-01")).toBe(2); // leap year
-  });
-
-  it("is exact across a DST transition", () => {
-    // Most of Europe springs forward on 29 March 2026 and falls back on 25 October.
-    // A naive millisecond division would return 6.958… or 7.041… days here; rounding
-    // local-midnight Dates absorbs the 23- and 25-hour day.
-    expect(daysBetweenIsoDates("2026-03-26", "2026-04-02")).toBe(7);
-    expect(daysBetweenIsoDates("2026-10-22", "2026-10-29")).toBe(7);
-  });
-
-  it("never shifts a bare date by a day", () => {
-    // The `new Date("2026-08-20")` trap: that parses as UTC midnight, which is the
-    // 19th anywhere west of Greenwich. Building from split parts avoids it, so this
-    // holds regardless of the machine's timezone.
-    expect(daysBetweenIsoDates(TODAY, "2026-08-20")).toBe(10);
-    expect(daysBetweenIsoDates("2026-01-01", "2026-01-02")).toBe(1);
-  });
-});
 
 describe("serviceStatus", () => {
   it("is ok when nothing is tracked", () => {

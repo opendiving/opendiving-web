@@ -8,6 +8,7 @@ import type {
   DiveProfileInfo,
   Recording,
 } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 
 // What this card has to get right is a set of claims about the account's
 // contents: which computers recorded the dive, which files are still held for
@@ -60,21 +61,9 @@ function profileInfo(
   };
 }
 
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
-    uuid: "d1",
-    dive_number: 2,
-    start_time: "2026-09-08T15:18:10",
-    submerged_time: 3163,
-    dive_sites: [],
-    gear_items: [],
-    notes: "",
-    user_uuid: "u1",
-    created_at: "2026-09-08T13:18:10Z",
-    mixtures: [],
-    ...overrides,
-  };
-}
+// The start a recording's own clock is compared against.
+const dive = (overrides: Partial<Dive> = {}) =>
+  baseDive({ start_time: "2026-09-08T15:18:10", ...overrides });
 
 beforeEach(() => {
   vi.clearAllMocks();

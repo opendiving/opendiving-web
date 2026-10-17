@@ -4,6 +4,7 @@ import { DiveHero } from "./dive-hero";
 import { DiveIcon } from "@/components/logo";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
 import type { Dive } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 import type { UnitSystem } from "@/lib/units";
 
 // The dive page's heading: its title and line, the three numbers that describe
@@ -32,17 +33,8 @@ afterEach(() => {
   tiles.drawn = true;
 });
 
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
-    uuid: "test",
-    dive_number: 1,
-    start_time: "2021-04-04T10:04:47+02:00",
-    submerged_time: 2700,
-    dive_sites: [],
-    mixtures: [],
-    ...overrides,
-  } as Dive;
-}
+const dive = (overrides: Partial<Dive> = {}) =>
+  baseDive({ start_time: "2021-04-04T10:04:47+02:00", ...overrides });
 
 // Dahab: an exit fix from the corpus, and a site's pin.
 const EXIT = { exit_latitude: 28.4375, exit_longitude: 34.4584 };

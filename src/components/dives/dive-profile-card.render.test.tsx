@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveProfileCard } from "./dive-profile-card";
-import type { Dive, DiveProfile, Recording } from "@/lib/api/dives";
+import type { DiveProfile, Recording } from "@/lib/api/dives";
+import { dive } from "@/test/dive-fixtures";
 
 // The chart itself has its own suite. What only this card can answer is which
 // recording's samples are on screen - a question that did not exist while a dive
@@ -53,22 +54,6 @@ function profileInfo(uuid: string) {
 
 function recording(overrides: Partial<Recording> = {}): Recording {
   return { uuid: "r1", ordinal: 0, files: [], ...overrides };
-}
-
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
-    uuid: "d1",
-    dive_number: 2,
-    start_time: "2026-09-08T15:18:10",
-    submerged_time: 3163,
-    dive_sites: [],
-    gear_items: [],
-    notes: "",
-    user_uuid: "u1",
-    created_at: "2026-09-08T13:18:10Z",
-    mixtures: [],
-    ...overrides,
-  };
 }
 
 const twoComputers = dive({

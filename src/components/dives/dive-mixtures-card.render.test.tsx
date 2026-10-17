@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveMixturesCard } from "./dive-mixtures-card";
 import type { Dive, DiveMixture, GasRole, TankUsage } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 
 // This render reads the diver's units, so it needs an auth context. Metric, which
 // is every existing account's default.
@@ -26,15 +27,8 @@ const EAN54: DiveMixture = {
   helium: 0,
 };
 
-function dive(mixtures: DiveMixture[], maxDepth: number | null): Dive {
-  return {
-    uuid: "test",
-    dive_number: 1,
-    start_time: "2026-06-03T12:15:00+02:00",
-    submerged_time: 3600,
-    max_depth: maxDepth,
-    mixtures,
-  } as Dive;
+function dive(mixtures: DiveMixture[], maxDepth: number): Dive {
+  return baseDive({ max_depth: maxDepth, mixtures });
 }
 
 // Each card's MOD as the diver reads it: the label with the limit it was computed

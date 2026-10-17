@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DiveExposureCard } from "./dive-exposure-card";
 import type { Dive, Recording, RecordingReadouts } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 
 // Nothing here is derived - the card renders five stored numbers exactly as the device
 // recorded them - so what a render actually tests is the decisions layered on top of
@@ -21,15 +22,7 @@ function dive(
   readouts: RecordingReadouts,
   recordings: Recording[] = [recording(readouts)],
 ): Dive {
-  return {
-    uuid: "test",
-    dive_number: 1,
-    start_time: "2026-06-03T12:15:00+02:00",
-    submerged_time: 3600,
-    max_depth: 30,
-    mixtures: [],
-    recordings,
-  } as unknown as Dive;
+  return baseDive({ recordings });
 }
 
 describe("DiveExposureCard's recording", () => {

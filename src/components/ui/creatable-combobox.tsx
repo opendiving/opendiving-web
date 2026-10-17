@@ -2,10 +2,11 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { Loader2, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 // Where Up/Down moves the highlight, given the current position and how many
 // options are on offer.
@@ -913,7 +914,7 @@ export function CreatableCombobox({
           }}
         />
         {(isSaving || isSearching) && (
-          <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+          <ButtonSpinner className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
         )}
         {!isSaving &&
           !isSearching &&

@@ -12,12 +12,11 @@ import type { Contact } from "@/lib/api/contacts";
 // without leaving it, and the ceiling the form's schema would otherwise enforce
 // far too late to be useful.
 
-vi.mock("@/lib/api/geocoding", () => ({
+// The real constants - the debounce and the query bounds the field hands the
+// combobox - with only the transport replaced.
+vi.mock("@/lib/api/geocoding", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/geocoding")>()),
   geocodingAPI: { searchPlaces: vi.fn().mockResolvedValue([]) },
-  // The real values, since the field hands them to the combobox as the lengths
-  // outside which "no places found" would be a claim about nothing.
-  MIN_PLACE_QUERY_LENGTH: 2,
-  MAX_PLACE_QUERY_LENGTH: 200,
 }));
 
 vi.mock("@/lib/api/contacts", async (importOriginal) => ({

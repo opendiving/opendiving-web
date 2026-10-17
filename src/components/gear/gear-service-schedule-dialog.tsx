@@ -17,7 +17,8 @@ import {
   type ServiceKind,
 } from "@/lib/api/gear-service";
 import type { GearItem } from "@/lib/api/gear";
-import { defaultSchedulesForGearType, todayIsoDate } from "@/lib/gear-service";
+import { todayIsoDate } from "@/lib/date-time";
+import { defaultSchedulesForGearType } from "@/lib/gear-service";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {

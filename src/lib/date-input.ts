@@ -11,9 +11,7 @@
 // so. `DatePicker`'s placeholder spells the order out; a field that overrides it
 // for something more useful owes the same hint in the copy beside the box.
 
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
-}
+import { pad } from "@/lib/date-time";
 
 function padYear(value: number): string {
   return String(value).padStart(4, "0");

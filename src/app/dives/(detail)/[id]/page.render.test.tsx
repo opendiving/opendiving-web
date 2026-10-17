@@ -7,6 +7,7 @@ import {
   type DiveDetailValue,
 } from "@/components/dives/dive-detail-context";
 import type { Dive } from "@/lib/api/dives";
+import { dive } from "@/test/dive-fixtures";
 
 // What this page is, with the header and the fetch in the layout: the card grid,
 // plus the one piece of state that split exists to make reachable. The dim under
@@ -27,27 +28,11 @@ vi.mock("@/components/dives/dive-detail-sidebar", () => ({
   ),
 }));
 
-function dive(overrides: Partial<Dive> = {}): Dive {
-  return {
-    uuid: "dive-492",
-    dive_number: 492,
-    start_time: "2021-04-04T10:04:47+02:00",
-    submerged_time: 2700,
-    created_at: "2021-04-05T08:00:00+02:00",
-    user_uuid: "user",
-    notes: "",
-    dive_sites: [],
-    gear_items: [],
-    mixtures: [],
-    ...overrides,
-  };
-}
-
 function renderPage(value: Partial<DiveDetailValue> = {}) {
   const { container } = render(
     <DiveDetailProvider
       value={{
-        dive: dive(),
+        dive: dive({ uuid: "dive-492" }),
         isLoading: false,
         trip: null,
         course: null,

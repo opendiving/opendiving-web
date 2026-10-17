@@ -7,6 +7,7 @@ import { resolveBasemap } from "@/lib/basemap";
 import { bandIn, FIT_PADDING } from "@/lib/map-frame";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import type { Dive } from "@/lib/api/dives";
+import { dive as baseDive } from "@/test/dive-fixtures";
 import type { DiveSite } from "@/lib/api/dive-sites";
 import type { Trip } from "@/lib/api/trips";
 import { DiveCard } from "@/components/dives/dive-card";
@@ -43,14 +44,13 @@ const dive = (
   sites: { latitude: number; longitude: number }[],
   fixes: Partial<Dive> = {},
 ): Dive =>
-  ({
+  baseDive({
     uuid: "dive-1",
     dive_number: 128,
     start_time: "2026-04-18T09:30:00+02:00",
     submerged_time: 3120,
     max_depth: 31.4,
     avg_depth: 17.2,
-    mixtures: [],
     dive_sites: sites.map((site, index) => ({
       uuid: `site-${index}`,
       name: `Site ${index}`,
@@ -63,7 +63,7 @@ const dive = (
       values: [0, 800, 1800, 3140, 2600, 1500, 900, 500, 500, 0],
     },
     ...fixes,
-  }) as unknown as Dive;
+  });
 
 const DIVES: [string, Dive][] = [
   ["a lone site", dive([SITE_PIN])],

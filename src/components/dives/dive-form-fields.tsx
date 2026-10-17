@@ -35,14 +35,14 @@ import {
   MixtureFieldArray,
   MixtureFields,
 } from "@/components/dives/mixture-fields";
-import { TripCombobox } from "@/components/dives/trip-combobox";
+import { TripCombobox } from "@/components/trips/trip-combobox";
 import { CourseCombobox } from "@/components/courses/course-combobox";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
 import { PeopleMultiSelect } from "@/components/people/people-multi-select";
 import type { PersonReference } from "@/lib/api/people";
-import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
-import { useDiveRoster } from "@/components/dives/use-dive-roster";
+import { DiveSiteMultiSelect } from "@/components/sites/dive-site-multi-select";
+import { useDiveRoster } from "@/hooks/useDiveRoster";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
 import {
   SpeciesMultiSelect,
