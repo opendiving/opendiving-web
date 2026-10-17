@@ -66,14 +66,9 @@ describe("what the API would refuse by size", () => {
     );
   });
 
-  it("refuses a JPEG too narrow to be reduced and too large to decode whole", () => {
-    // A 15000 x 1000 panorama: its short edge is under twice 512, so the API decodes
-    // all 15 MP of it and refuses the lot.
-    expect(pictureSizeProblem("image/jpeg", 15000, 1000)).toMatch(
-      /too large to process/,
-    );
-    // The same width with a short edge of 1024 halves, to 3.75 MP.
-    expect(pictureSizeProblem("image/jpeg", 15000, 1024)).toBeNull();
+  it("passes a panorama, which the API reduces however narrow it is", () => {
+    expect(pictureSizeProblem("image/jpeg", 15000, 1000)).toBeNull();
+    expect(pictureSizeProblem("image/jpeg", 40000, 500)).toBeNull();
   });
 });
 
