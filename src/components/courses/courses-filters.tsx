@@ -56,7 +56,7 @@ export interface CoursesFiltersProps {
 // Keeps whatever is picked on the list even once it is no longer in use - the
 // last course with that agency deleted while the filter is set, say. A select
 // whose value is not among its options shows blank, which reads as a filter that
-// has quietly forgotten itself while the table stays narrowed by it.
+// has quietly forgotten itself while the list stays narrowed by it.
 function withPicked<T extends string>(
   options: readonly T[],
   picked: T | "",

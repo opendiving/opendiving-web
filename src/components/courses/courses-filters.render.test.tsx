@@ -121,7 +121,7 @@ describe("CoursesFilters", () => {
     ).not.toBeInTheDocument();
   });
 
-  // Nineteen agencies are eighteen ways to empty a table for a diver who trained
+  // Nineteen agencies are eighteen ways to empty a list for a diver who trained
   // with one of them. What the selects offer is the vocabulary the courses
   // themselves carry, which the page reads off its own list.
   it("offers only the agencies and statuses it is given", () => {
@@ -139,7 +139,7 @@ describe("CoursesFilters", () => {
   });
 
   // The last PADI course deleted while the filter still says PADI. Dropping the
-  // option would blank the select while the table stayed narrowed by it.
+  // option would blank the select while the list stayed narrowed by it.
   it("keeps a picked value that is no longer in use", () => {
     render(
       <Row

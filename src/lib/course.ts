@@ -79,7 +79,7 @@ function inUse<T extends string>(
  * Which agencies and statuses to offer for narrowing a course list: the ones the
  * courses carry, not the nineteen agencies the format defines. A filter row
  * listing agencies the diver has never trained with offers eighteen ways to
- * empty the table.
+ * empty the list.
  *
  * A course need not name an agency, and one that doesn't contributes nothing -
  * there is no "no agency" filter to offer, since the API's `agency` takes a
