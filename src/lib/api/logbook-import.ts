@@ -373,6 +373,12 @@ export interface ImportDiveReport {
   device: RecordingDevice | null;
   /** The indexes in `members` of the files the dive came from. */
   members: number[];
+  /**
+   * The indexes in the report's `notes` of the notes about this dive, ascending.
+   * No note is on two rows, and `notes` still lists every one; a note the cap
+   * left out of `notes` is on no row.
+   */
+  notes: number[];
 }
 
 /** The body of both responses: the same shape whether it is a plan or a result. */

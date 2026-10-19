@@ -35,6 +35,7 @@ export function importDiveReport(
     max_depth: 21.8,
     device: null,
     members: [0],
+    notes: [],
     ...overrides,
   };
 }

@@ -15,6 +15,7 @@ import type {
   ImportCollectionReport,
   ImportDiveReport,
   ImportMemberReport,
+  ImportNote,
   ImportPreview,
   ImportReport,
 } from "@/lib/api/logbook-import";
@@ -591,6 +592,41 @@ describe("the dive rows", () => {
       .getAllByRole("rowheader")
       .map((header) => header.firstChild?.textContent);
     expect(starts).toEqual(["Sep 21, 2026, 10:47", "Jun 18, 2002"]);
+  });
+
+  it("put each dive's notes in the row under it, and list only the rest", async () => {
+    const coldest: ImportNote = {
+      code: "value_derived",
+      collection: "dives",
+      uuid: null,
+      message: "This dive records no bottom temperature.",
+    };
+    await readWith(
+      preview({
+        members,
+        notes: [
+          coldest,
+          {
+            code: "tags_created",
+            collection: null,
+            uuid: null,
+            message: "Two tags were created.",
+          },
+          coldest,
+        ],
+        dives: [
+          dive({ uuid: "a", notes: [0] }),
+          dive({ uuid: "b", notes: [2] }),
+        ],
+      }),
+    );
+
+    const rows = screen.getAllByRole("row");
+    expect(within(rows[2]).getByText(coldest.message)).toBeVisible();
+    expect(within(rows[4]).getByText(coldest.message)).toBeVisible();
+    expect(screen.getAllByText(coldest.message)).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Notes (1)" })).toBeVisible();
+    expect(screen.getByText("Two tags were created.")).toBeVisible();
   });
 });
 

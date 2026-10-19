@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 
 import { useUnits } from "@/hooks/useUnits";
@@ -7,6 +8,7 @@ import { useWithReturnTo } from "@/hooks/useReturnTo";
 import type {
   ImportDiveReport,
   ImportMemberReport,
+  ImportNote,
 } from "@/lib/api/logbook-import";
 import {
   formatDiveDateTime,
@@ -19,7 +21,11 @@ import {
   recordingDeviceLabel,
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
-import { importDiveOutcomeSentence } from "@/lib/logbook-import";
+import {
+  collectionLabel,
+  importDiveOutcomeSentence,
+  noteIsWarning,
+} from "@/lib/logbook-import";
 import { formatDepth } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import {
@@ -46,10 +52,13 @@ function startText(startTime: string | null): string {
 // Denser than the table's own rows: an import can list hundreds of dives.
 const HEAD = "h-auto py-1";
 const CELL = "py-1.5";
+const COLUMNS = 6;
 
 interface ImportDiveTableProps {
   dives: readonly ImportDiveReport[];
   members: readonly ImportMemberReport[];
+  /** The report's notes, which each dive names by index. */
+  notes: readonly ImportNote[];
   /**
    * Whether the rows are what was written. A result links every dive it names;
    * a plan links only the dives the diver already has, and opens them in a new
@@ -59,10 +68,12 @@ interface ImportDiveTableProps {
 }
 
 // One row per dive the import creates or touches - the report on dives, which
-// the counts table below it leaves to these rows.
+// the counts table below it leaves to these rows - and under it a row of the
+// notes about that dive, which say "this dive" and only read right beside it.
 export function ImportDiveTable({
   dives,
   members,
+  notes,
   written,
 }: ImportDiveTableProps) {
   const units = useUnits();
@@ -109,74 +120,112 @@ export function ImportDiveTable({
           const device = dive.device
             ? (recordingDeviceLabel(dive.device) ?? UNNAMED_DEVICE_LABEL)
             : null;
+          const diveNotes = dive.notes.flatMap((note) =>
+            notes[note] ? [{ index: note, note: notes[note] }] : [],
+          );
           return (
             // Indexed: a skipped dive has no uuid, and two rows can name one
             // uuid where a document claims it twice. The list is rebuilt
             // wholesale from each response.
-            <TableRow key={`${dive.uuid ?? "skipped"}-${index}`}>
-              <TableHead
-                scope="row"
-                className={cn(CELL, "h-auto pl-0 font-normal text-foreground")}
-              >
-                {linkable ? (
-                  <Link
-                    // A new tab has no importer to go back to: the preview
-                    // lives in this one.
-                    href={
-                      written
-                        ? withReturnTo(`/dives/${dive.uuid}`)
-                        : `/dives/${dive.uuid}`
-                    }
-                    className="underline underline-offset-2"
-                    {...(written
-                      ? {}
-                      : { target: "_blank", rel: "noopener noreferrer" })}
-                  >
-                    {start}
-                  </Link>
-                ) : (
-                  start
-                )}
-                {/* The columns a phone has no room for, folded under the start. */}
-                <span className="md:hidden block text-xs text-muted-foreground">
-                  {[diveTime, device].filter(Boolean).join(" · ")}
-                </span>
-              </TableHead>
-              <TableCell
-                className={cn(
-                  CELL,
-                  "hidden md:table-cell text-right tabular-nums whitespace-nowrap",
-                )}
-              >
-                {diveTime ?? "—"}
-              </TableCell>
-              <TableCell
-                className={cn(
-                  CELL,
-                  "text-right tabular-nums whitespace-nowrap",
-                )}
-              >
-                {dive.max_depth != null
-                  ? formatDepth(dive.max_depth, units, { decimals: 1 })
-                  : "—"}
-              </TableCell>
-              <TableCell className={cn(CELL, "hidden md:table-cell")}>
-                {device ?? "—"}
-              </TableCell>
-              <TableCell className={cn(CELL, "hidden md:table-cell break-all")}>
-                {files.length > 0
-                  ? files.map((name, fileIndex) => (
-                      // Indexed: a batch can carry two files of one name.
-                      <span key={`${name}-${fileIndex}`} className="block">
-                        {name}
-                      </span>
-                    ))
-                  : "—"}
-              </TableCell>
-              <TableCell className={cn(CELL, "pr-0")}>
-                {importDiveOutcomeSentence(dive)}
-              </TableCell>
-            </TableRow>
+            <Fragment key={`${dive.uuid ?? "skipped"}-${index}`}>
+              <TableRow className={cn(diveNotes.length > 0 && "border-b-0")}>
+                <TableHead
+                  scope="row"
+                  className={cn(
+                    CELL,
+                    "h-auto pl-0 font-normal text-foreground",
+                  )}
+                >
+                  {linkable ? (
+                    <Link
+                      // A new tab has no importer to go back to: the preview
+                      // lives in this one.
+                      href={
+                        written
+                          ? withReturnTo(`/dives/${dive.uuid}`)
+                          : `/dives/${dive.uuid}`
+                      }
+                      className="underline underline-offset-2"
+                      {...(written
+                        ? {}
+                        : { target: "_blank", rel: "noopener noreferrer" })}
+                    >
+                      {start}
+                    </Link>
+                  ) : (
+                    start
+                  )}
+                  {/* The columns a phone has no room for, folded under the start. */}
+                  <span className="md:hidden block text-xs text-muted-foreground">
+                    {[diveTime, device].filter(Boolean).join(" · ")}
+                  </span>
+                </TableHead>
+                <TableCell
+                  className={cn(
+                    CELL,
+                    "hidden md:table-cell text-right tabular-nums whitespace-nowrap",
+                  )}
+                >
+                  {diveTime ?? "—"}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    CELL,
+                    "text-right tabular-nums whitespace-nowrap",
+                  )}
+                >
+                  {dive.max_depth != null
+                    ? formatDepth(dive.max_depth, units, { decimals: 1 })
+                    : "—"}
+                </TableCell>
+                <TableCell className={cn(CELL, "hidden md:table-cell")}>
+                  {device ?? "—"}
+                </TableCell>
+                <TableCell
+                  className={cn(CELL, "hidden md:table-cell break-all")}
+                >
+                  {files.length > 0
+                    ? files.map((name, fileIndex) => (
+                        // Indexed: a batch can carry two files of one name.
+                        <span key={`${name}-${fileIndex}`} className="block">
+                          {name}
+                        </span>
+                      ))
+                    : "—"}
+                </TableCell>
+                <TableCell className={cn(CELL, "pr-0")}>
+                  {importDiveOutcomeSentence(dive)}
+                </TableCell>
+              </TableRow>
+              {diveNotes.length > 0 && (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={COLUMNS} className="px-0 pt-0 pb-1.5">
+                    <ul className="space-y-0.5">
+                      {diveNotes.map(({ index: noteIndex, note }) => (
+                        <li
+                          key={noteIndex}
+                          className={cn(
+                            "text-xs",
+                            noteIsWarning(note.code)
+                              ? "text-warning"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {/* The row says which dive; another collection's
+                            note, such as a sighting's, still says whose. */}
+                          {note.collection && note.collection !== "dives" && (
+                            <span className="font-medium">
+                              {collectionLabel(note.collection)}:{" "}
+                            </span>
+                          )}
+                          {note.message}
+                        </li>
+                      ))}
+                    </ul>
+                  </TableCell>
+                </TableRow>
+              )}
+            </Fragment>
           );
         })}
       </TableBody>

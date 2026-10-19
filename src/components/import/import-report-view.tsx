@@ -62,6 +62,11 @@ export function ImportReportView({
   const rows = reviewCollectionRows(report);
   const totals = importTotals(rows);
   const truncated = truncatedNotesSentence(report.notes_truncated);
+  // A note a dive row names is shown under that row; the list keeps the rest.
+  const onRows = new Set(report.dives.flatMap((dive) => dive.notes));
+  const listed = report.notes.flatMap((note, index) =>
+    onRows.has(index) ? [] : [{ note, index }],
+  );
   const hint = fileRestoreHint(report, archive);
   const conversion = report.conversion;
   const conversionTruncated = truncatedConversionSentence(
@@ -162,16 +167,18 @@ export function ImportReportView({
         </div>
       )}
 
-      {report.notes.length > 0 && (
+      {(listed.length > 0 || truncated) && (
         <div>
-          <h3 className="text-sm font-medium">Notes ({report.notes.length})</h3>
+          <h3 className="text-sm font-medium">
+            {listed.length > 0 ? `Notes (${listed.length})` : "Notes"}
+          </h3>
           <ul className="mt-2 space-y-1.5 max-h-64 overflow-y-auto">
-            {report.notes.map((note, index) => (
+            {listed.map(({ note, index }) => (
               // Indexed because a note has no identifier of its own: `uuid` is the
               // record's and repeats across notes about one record, and `code`
-              // repeats far more. The list is rebuilt wholesale from each response
-              // and never reordered or filtered, so the index is stable for as
-              // long as it is rendered.
+              // repeats far more. The index is the note's own in `notes`, which is
+              // rebuilt wholesale from each response, so it is stable for as long
+              // as it is rendered.
               <li
                 key={`${note.code}-${note.uuid ?? index}-${index}`}
                 className={
