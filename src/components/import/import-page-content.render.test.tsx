@@ -15,6 +15,7 @@ import type {
   ImportCollectionReport,
   ImportDiveReport,
   ImportMemberReport,
+  ImportNote,
   ImportPreview,
   ImportReport,
 } from "@/lib/api/logbook-import";
@@ -522,7 +523,9 @@ describe("the dive rows", () => {
     expect(
       cells.getAllByText("Suunto Ocean · 253810000400 (Porvoo)").length,
     ).toBeGreaterThan(0);
-    expect(cells.getByText("1.fit, 1.json")).toBeVisible();
+    // One line each, not a comma-joined run.
+    expect(cells.getByText("1.fit")).toBeVisible();
+    expect(cells.getByText("1.json")).toBeVisible();
     expect(cells.getByText("New")).toBeVisible();
   });
 
@@ -589,6 +592,81 @@ describe("the dive rows", () => {
       .getAllByRole("rowheader")
       .map((header) => header.firstChild?.textContent);
     expect(starts).toEqual(["Sep 21, 2026, 10:47", "Jun 18, 2002"]);
+  });
+
+  it("put each dive's notes in the row under it, and list only the rest", async () => {
+    const coldest: ImportNote = {
+      code: "value_derived",
+      collection: "dives",
+      uuid: null,
+      message: "This dive records no bottom temperature.",
+    };
+    await readWith(
+      preview({
+        members,
+        notes: [
+          coldest,
+          {
+            code: "tags_created",
+            collection: null,
+            uuid: null,
+            message: "Two tags were created.",
+          },
+          coldest,
+        ],
+        dives: [
+          dive({ uuid: "a", notes: [0] }),
+          dive({ uuid: "b", notes: [2] }),
+        ],
+      }),
+    );
+
+    const rows = screen.getAllByRole("row");
+    expect(within(rows[2]).getByText(coldest.message)).toBeVisible();
+    expect(within(rows[4]).getByText(coldest.message)).toBeVisible();
+    expect(screen.getAllByText(coldest.message)).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Notes (1)" })).toBeVisible();
+    expect(screen.getByText("Two tags were created.")).toBeVisible();
+  });
+
+  it("put each dive's conversion findings in the row under it, saying where a cap cut them", async () => {
+    await readWith(
+      preview({
+        members,
+        dives: [
+          dive({
+            uuid: "a",
+            conversion_notes: [
+              {
+                kind: "resolved",
+                message: "This fix is taken as the dive's exit.",
+                where: "sample/2985.93",
+              },
+              {
+                kind: "absent",
+                message: "No gas mixture is recorded.",
+                where: null,
+              },
+            ],
+            conversion_notes_truncated: 2,
+          }),
+          dive({ uuid: "b" }),
+        ],
+      }),
+    );
+
+    const rows = screen.getAllByRole("row");
+    const under = within(rows[2]);
+    expect(
+      under.getByText("This fix is taken as the dive's exit."),
+    ).toBeVisible();
+    expect(under.getByText("sample/2985.93")).toBeVisible();
+    expect(under.getByText("No gas mixture is recorded.")).toBeVisible();
+    expect(
+      under.getByText("2 further findings about this dive are not shown."),
+    ).toBeVisible();
+    // The second dive has nothing to say, so no row follows it.
+    expect(rows).toHaveLength(4);
   });
 });
 

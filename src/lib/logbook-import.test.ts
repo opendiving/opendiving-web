@@ -17,6 +17,7 @@ import {
   noteIsWarning,
   reviewCollectionRows,
   truncatedConversionSentence,
+  truncatedDiveFindingsSentence,
   truncatedNotesSentence,
 } from "./logbook-import";
 import type {
@@ -326,6 +327,21 @@ describe("conversionWhereSentence", () => {
   it("says the count alone when the converter named no path", () => {
     expect(conversionWhereSentence(group({ count: 4, wheres: [] }))).toBe(
       "4 places",
+    );
+  });
+});
+
+describe("truncatedDiveFindingsSentence", () => {
+  it("says nothing when the row lists every finding", () => {
+    expect(truncatedDiveFindingsSentence(0)).toBeNull();
+  });
+
+  it("says how many of the dive's findings are missing", () => {
+    expect(truncatedDiveFindingsSentence(1)).toBe(
+      "1 further finding about this dive is not shown.",
+    );
+    expect(truncatedDiveFindingsSentence(3)).toBe(
+      "3 further findings about this dive are not shown.",
     );
   });
 });

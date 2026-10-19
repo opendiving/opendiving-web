@@ -158,6 +158,9 @@ function importedDive(
     max_depth: null,
     device: null,
     members: [],
+    notes: [],
+    conversion_notes: [],
+    conversion_notes_truncated: 0,
   };
 }
 

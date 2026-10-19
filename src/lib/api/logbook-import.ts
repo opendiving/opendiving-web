@@ -277,6 +277,23 @@ export interface ConversionNoteGroup {
 }
 
 /**
+ * One finding of `ConversionReport.groups`, ungrouped and on the row of the dive
+ * it is about. Each is still counted in its group.
+ */
+export interface ConversionNote {
+  /** As a group's `kind`: opaque, and an unfamiliar one reads as information. */
+  kind: string;
+  /** One sentence, ready to render. */
+  message: string;
+  /**
+   * The path below the dive in its source file, as the converter writes it, e.g.
+   * `sample/2985.93` - the segment is seconds in some formats and an index in
+   * others, so it is not a time. `null` for a finding about the dive itself.
+   */
+  where: string | null;
+}
+
+/**
  * What converting the import's non-DiveJSON files could not carry. `null` when
  * every file was DiveJSON already.
  *
@@ -373,6 +390,19 @@ export interface ImportDiveReport {
   device: RecordingDevice | null;
   /** The indexes in `members` of the files the dive came from. */
   members: number[];
+  /**
+   * The indexes in the report's `notes` of the notes about this dive, ascending.
+   * No note is on two rows, and `notes` still lists every one; a note the cap
+   * left out of `notes` is on no row.
+   */
+  notes: number[];
+  /**
+   * What converting this dive's files could not carry, in the import's order. A
+   * finding about a file, or placed at no dive, is on no row.
+   */
+  conversion_notes: ConversionNote[];
+  /** This dive's findings past the row's cap, which `conversion_notes` leaves out. */
+  conversion_notes_truncated: number;
 }
 
 /** The body of both responses: the same shape whether it is a plan or a result. */
