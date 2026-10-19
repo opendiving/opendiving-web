@@ -422,6 +422,31 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           </>,
         )}
 
+      {/* A person picked here is a buddy until the diver says otherwise. */}
+      {isVisible("people") &&
+        section(
+          "People",
+          <FormField
+            control={control}
+            name={"people" as Path<TFieldValues>}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>People</FormLabel>
+                <FormControl>
+                  <PeopleMultiSelect
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    defaultRole="buddy"
+                    until={until}
+                    pinnedUuids={roster.people}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />,
+        )}
+
       {section(
         "Dive info",
         <>
@@ -823,31 +848,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     onPendingChange={onSpeciesPendingChange}
                   />
                 </FormControl>
-              </FormItem>
-            )}
-          />,
-        )}
-
-      {/* A person picked here is a buddy until the diver says otherwise. */}
-      {isVisible("people") &&
-        section(
-          "People",
-          <FormField
-            control={control}
-            name={"people" as Path<TFieldValues>}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>People</FormLabel>
-                <FormControl>
-                  <PeopleMultiSelect
-                    value={field.value ?? []}
-                    onChange={field.onChange}
-                    defaultRole="buddy"
-                    until={until}
-                    pinnedUuids={roster.people}
-                  />
-                </FormControl>
-                <FormMessage />
               </FormItem>
             )}
           />,
