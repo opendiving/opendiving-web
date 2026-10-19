@@ -628,6 +628,46 @@ describe("the dive rows", () => {
     expect(screen.getByRole("heading", { name: "Notes (1)" })).toBeVisible();
     expect(screen.getByText("Two tags were created.")).toBeVisible();
   });
+
+  it("put each dive's conversion findings in the row under it, saying where a cap cut them", async () => {
+    await readWith(
+      preview({
+        members,
+        dives: [
+          dive({
+            uuid: "a",
+            conversion_notes: [
+              {
+                kind: "resolved",
+                message: "This fix is taken as the dive's exit.",
+                where: "sample/2985.93",
+              },
+              {
+                kind: "absent",
+                message: "No gas mixture is recorded.",
+                where: null,
+              },
+            ],
+            conversion_notes_truncated: 2,
+          }),
+          dive({ uuid: "b" }),
+        ],
+      }),
+    );
+
+    const rows = screen.getAllByRole("row");
+    const under = within(rows[2]);
+    expect(
+      under.getByText("This fix is taken as the dive's exit."),
+    ).toBeVisible();
+    expect(under.getByText("sample/2985.93")).toBeVisible();
+    expect(under.getByText("No gas mixture is recorded.")).toBeVisible();
+    expect(
+      under.getByText("2 further findings about this dive are not shown."),
+    ).toBeVisible();
+    // The second dive has nothing to say, so no row follows it.
+    expect(rows).toHaveLength(4);
+  });
 });
 
 describe("the counts and the files section", () => {

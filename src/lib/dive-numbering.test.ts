@@ -159,6 +159,8 @@ function importedDive(
     device: null,
     members: [],
     notes: [],
+    conversion_notes: [],
+    conversion_notes_truncated: 0,
   };
 }
 

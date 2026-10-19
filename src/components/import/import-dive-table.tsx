@@ -21,11 +21,7 @@ import {
   recordingDeviceLabel,
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
-import {
-  collectionLabel,
-  importDiveOutcomeSentence,
-  noteIsWarning,
-} from "@/lib/logbook-import";
+import { importDiveOutcomeSentence } from "@/lib/logbook-import";
 import { formatDepth } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import {
@@ -37,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ImportDiveNotes } from "@/components/import/import-dive-notes";
 
 // A dive's start as the file gives it: its wall clock, then the offset that clock
 // was on where it records one. A naive start stops after the clock, and a bare
@@ -68,8 +65,8 @@ interface ImportDiveTableProps {
 }
 
 // One row per dive the import creates or touches - the report on dives, which
-// the counts table below it leaves to these rows - and under it a row of the
-// notes about that dive, which say "this dive" and only read right beside it.
+// the counts table below it leaves to these rows - and under it a row of what
+// the import and the conversion said about that dive.
 export function ImportDiveTable({
   dives,
   members,
@@ -123,12 +120,16 @@ export function ImportDiveTable({
           const diveNotes = dive.notes.flatMap((note) =>
             notes[note] ? [{ index: note, note: notes[note] }] : [],
           );
+          const annotated =
+            diveNotes.length > 0 ||
+            dive.conversion_notes.length > 0 ||
+            dive.conversion_notes_truncated > 0;
           return (
             // Indexed: a skipped dive has no uuid, and two rows can name one
             // uuid where a document claims it twice. The list is rebuilt
             // wholesale from each response.
             <Fragment key={`${dive.uuid ?? "skipped"}-${index}`}>
-              <TableRow className={cn(diveNotes.length > 0 && "border-b-0")}>
+              <TableRow className={cn(annotated && "border-b-0")}>
                 <TableHead
                   scope="row"
                   className={cn(
@@ -197,31 +198,14 @@ export function ImportDiveTable({
                   {importDiveOutcomeSentence(dive)}
                 </TableCell>
               </TableRow>
-              {diveNotes.length > 0 && (
+              {annotated && (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={COLUMNS} className="px-0 pt-0 pb-1.5">
-                    <ul className="space-y-0.5">
-                      {diveNotes.map(({ index: noteIndex, note }) => (
-                        <li
-                          key={noteIndex}
-                          className={cn(
-                            "text-xs",
-                            noteIsWarning(note.code)
-                              ? "text-warning"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          {/* The row says which dive; another collection's
-                            note, such as a sighting's, still says whose. */}
-                          {note.collection && note.collection !== "dives" && (
-                            <span className="font-medium">
-                              {collectionLabel(note.collection)}:{" "}
-                            </span>
-                          )}
-                          {note.message}
-                        </li>
-                      ))}
-                    </ul>
+                    <ImportDiveNotes
+                      notes={diveNotes}
+                      conversionNotes={dive.conversion_notes}
+                      conversionNotesTruncated={dive.conversion_notes_truncated}
+                    />
                   </TableCell>
                 </TableRow>
               )}

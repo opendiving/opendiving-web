@@ -248,6 +248,17 @@ export function truncatedConversionSentence(
   return `${countNoun(groupsTruncated, "further finding is", "further findings are")} not shown. The record counts above are complete.`;
 }
 
+/**
+ * The sentence under a dive's findings that says the API cut the row's list, or
+ * `null` when it did not. The groups below still count every one.
+ */
+export function truncatedDiveFindingsSentence(
+  truncated: number,
+): string | null {
+  if (truncated <= 0) return null;
+  return `${countNoun(truncated, "further finding about this dive is", "further findings about this dive are")} not shown.`;
+}
+
 // Why a file that was read is not kept, in the diver's terms.
 const NOT_KEPT_SENTENCES: Record<ImportMemberNotKept, string> = {
   several_dives: "Not kept: it holds several dives",

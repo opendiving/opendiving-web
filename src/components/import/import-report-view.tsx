@@ -32,7 +32,7 @@ const CELL = "py-1.5";
 // The row colour per finding kind, and the badge beside it. Only `dropped` is a
 // loss and only `dropped` is amber; the rest explain rather than warn, and an
 // unfamiliar kind lands on `neutral` - see `conversionKindTone`.
-const CONVERSION_TONE_CLASSES = {
+export const CONVERSION_TONE_CLASSES = {
   warning: {
     row: "text-warning",
     badge: "border-warning/40 text-warning",

@@ -36,6 +36,8 @@ export function importDiveReport(
     device: null,
     members: [0],
     notes: [],
+    conversion_notes: [],
+    conversion_notes_truncated: 0,
     ...overrides,
   };
 }
