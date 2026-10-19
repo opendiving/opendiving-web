@@ -522,7 +522,9 @@ describe("the dive rows", () => {
     expect(
       cells.getAllByText("Suunto Ocean · 253810000400 (Porvoo)").length,
     ).toBeGreaterThan(0);
-    expect(cells.getByText("1.fit, 1.json")).toBeVisible();
+    // One line each, not a comma-joined run.
+    expect(cells.getByText("1.fit")).toBeVisible();
+    expect(cells.getByText("1.json")).toBeVisible();
     expect(cells.getByText("New")).toBeVisible();
   });
 

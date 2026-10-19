@@ -164,7 +164,14 @@ export function ImportDiveTable({
                 {device ?? "—"}
               </TableCell>
               <TableCell className={cn(CELL, "hidden md:table-cell break-all")}>
-                {files.length > 0 ? files.join(", ") : "—"}
+                {files.length > 0
+                  ? files.map((name, fileIndex) => (
+                      // Indexed: a batch can carry two files of one name.
+                      <span key={`${name}-${fileIndex}`} className="block">
+                        {name}
+                      </span>
+                    ))
+                  : "—"}
               </TableCell>
               <TableCell className={cn(CELL, "pr-0")}>
                 {importDiveOutcomeSentence(dive)}
