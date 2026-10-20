@@ -127,7 +127,8 @@ one.
 - **Year in review** — each January, an email with the year before in figures: dives and time
   underwater, the deepest and longest, dive sites, and species with the ones you saw for the first
   time.
-- **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
+- **Passwordless sign-in** — email magic links, a six-digit code, passkeys, or Google. No passwords
+  stored, ever.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 - **Installs like an app** — add it to a phone's home screen from the browser's install or share
   menu (on iOS 16.4 and later, Safari's Share → Add to Home Screen), and it opens in its own window
