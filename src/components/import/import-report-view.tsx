@@ -69,6 +69,12 @@ export function ImportReportView({
   );
   const hint = fileRestoreHint(report, archive);
   const conversion = report.conversion;
+  // The groups leave out what a dive row lists, so empty groups are not by
+  // themselves a conversion that lost nothing.
+  const findingsOnRows = report.dives.some(
+    (dive) =>
+      dive.conversion_notes.length > 0 || dive.conversion_notes_truncated > 0,
+  );
   const conversionTruncated = truncatedConversionSentence(
     conversion?.groups_truncated ?? 0,
   );
@@ -211,7 +217,9 @@ export function ImportReportView({
           <h3 className="text-sm font-medium">About the Original Files</h3>
           {conversion.groups.length === 0 ? (
             <p className="text-sm text-muted-foreground mt-2">
-              Everything in the converted files came across.
+              {findingsOnRows
+                ? "What the conversion could not carry is listed under the dive it is about."
+                : "Everything in the converted files came across."}
             </p>
           ) : (
             <ul className="mt-2 space-y-2 max-h-64 overflow-y-auto">

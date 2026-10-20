@@ -1101,3 +1101,42 @@ describe("the check-in details and the portrait", () => {
     expect(mocks.refreshUser).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("about the original files", () => {
+  const conversion = {
+    format: "uddf",
+    converter: { name: "divejson", version: "0.30.0" },
+    groups: [],
+    groups_truncated: 0,
+  };
+
+  it("says everything came across when no group and no dive row has a finding", async () => {
+    await readWith(preview({ conversion, dives: [dive()] }));
+
+    expect(
+      screen.getByText("Everything in the converted files came across."),
+    ).toBeVisible();
+  });
+
+  it("points at the dive rows when they hold every finding", async () => {
+    await readWith(
+      preview({
+        conversion,
+        dives: [
+          dive({
+            conversion_notes: [
+              { kind: "absent", message: "No gas mixture.", where: null },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        "What the conversion could not carry is listed under the dive it is about.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/came across/)).toBeNull();
+  });
+});
