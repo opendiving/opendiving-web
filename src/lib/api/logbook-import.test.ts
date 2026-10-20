@@ -63,7 +63,6 @@ describe("importSourceLabel", () => {
     expect(importSourceLabel("divejson")).toBe("DiveJSON");
     expect(importSourceLabel("archive")).toBe("OpenDiving archive");
     expect(importSourceLabel("zip")).toBe("Zip");
-    expect(importSourceLabel("mixed")).toBe("Several formats");
   });
 
   it("de-snakes a format this build has never heard of", () => {

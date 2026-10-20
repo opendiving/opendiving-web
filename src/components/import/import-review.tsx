@@ -57,7 +57,6 @@ export function ImportReview({
             <ImportDiveTable
               dives={preview.dives}
               members={preview.members}
-              notes={preview.notes}
               written={false}
             />
           </div>

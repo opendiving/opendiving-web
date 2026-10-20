@@ -15,7 +15,7 @@ import type {
   ImportCollectionReport,
   ImportDiveReport,
   ImportMemberReport,
-  ImportNote,
+  ImportNoteGroup,
   ImportPreview,
   ImportReport,
 } from "@/lib/api/logbook-import";
@@ -114,9 +114,21 @@ function report(overrides: Partial<ImportReport> = {}): ImportReport {
     files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
     notes: [],
     notes_truncated: 0,
-    conversion: null,
     members: [],
     dives: [],
+    ...overrides,
+  };
+}
+
+// A report-level note: the import's own by default, so no kind and no place.
+function group(overrides: Partial<ImportNoteGroup> = {}): ImportNoteGroup {
+  return {
+    code: "tags_created",
+    kind: null,
+    collection: null,
+    message: "",
+    count: 1,
+    wheres: [],
     ...overrides,
   };
 }
@@ -594,61 +606,45 @@ describe("the dive rows", () => {
     expect(starts).toEqual(["Sep 21, 2026, 10:47", "Jun 18, 2002"]);
   });
 
-  it("put each dive's notes in the row under it, and list only the rest", async () => {
-    const coldest: ImportNote = {
-      code: "value_derived",
-      collection: "dives",
-      uuid: null,
-      message: "This dive records no bottom temperature.",
-    };
-    await readWith(
-      preview({
-        members,
-        notes: [
-          coldest,
-          {
-            code: "tags_created",
-            collection: null,
-            uuid: null,
-            message: "Two tags were created.",
-          },
-          coldest,
-        ],
-        dives: [
-          dive({ uuid: "a", notes: [0] }),
-          dive({ uuid: "b", notes: [2] }),
-        ],
-      }),
-    );
-
-    const rows = screen.getAllByRole("row");
-    expect(within(rows[2]).getByText(coldest.message)).toBeVisible();
-    expect(within(rows[4]).getByText(coldest.message)).toBeVisible();
-    expect(screen.getAllByText(coldest.message)).toHaveLength(2);
-    expect(screen.getByRole("heading", { name: "Notes (1)" })).toBeVisible();
-    expect(screen.getByText("Two tags were created.")).toBeVisible();
-  });
-
-  it("put each dive's conversion findings in the row under it, saying where a cap cut them", async () => {
+  it("list each dive's notes as one list under its row, in the API's order", async () => {
     await readWith(
       preview({
         members,
         dives: [
           dive({
             uuid: "a",
-            conversion_notes: [
+            notes: [
               {
-                kind: "resolved",
-                message: "This fix is taken as the dive's exit.",
-                where: "sample/2985.93",
+                code: "value_derived",
+                kind: "inferred",
+                collection: "dives",
+                message: "This dive records no bottom temperature.",
               },
               {
+                code: "fix_chosen_by_accuracy",
+                kind: "resolved",
+                collection: "dives",
+                message: "The most accurate fix is taken as the dive's exit.",
+              },
+              {
+                code: "oxygen_figure_missing",
                 kind: "absent",
-                message: "No gas mixture is recorded.",
-                where: null,
+                collection: "dives",
+                message: "The file records no start CNS.",
+              },
+              {
+                code: "species_unresolved",
+                kind: "dropped",
+                collection: "sightings",
+                message: "A sighting names a species this app does not know.",
+              },
+              {
+                code: "record_linked",
+                kind: null,
+                collection: "dives",
+                message: "This dive is already in your logbook.",
               },
             ],
-            conversion_notes_truncated: 2,
           }),
           dive({ uuid: "b" }),
         ],
@@ -656,17 +652,143 @@ describe("the dive rows", () => {
     );
 
     const rows = screen.getAllByRole("row");
-    const under = within(rows[2]);
-    expect(
-      under.getByText("This fix is taken as the dive's exit."),
-    ).toBeVisible();
-    expect(under.getByText("sample/2985.93")).toBeVisible();
-    expect(under.getByText("No gas mixture is recorded.")).toBeVisible();
-    expect(
-      under.getByText("2 further findings about this dive are not shown."),
-    ).toBeVisible();
-    // The second dive has nothing to say, so no row follows it.
+    const items = within(rows[2]).getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Worked outThis dive records no bottom temperature.",
+      "ResolvedThe most accurate fix is taken as the dive's exit.",
+      "Not recordedThe file records no start CNS.",
+      "DroppedSightings: A sighting names a species this app does not know.",
+      "This dive is already in your logbook.",
+    ]);
+    // Tone follows the kind alone: only a loss is a warning, an absence is
+    // quiet, and the rest - a note with no kind among them - is information.
+    expect(items.map((item) => item.className)).toEqual([
+      "text-foreground",
+      "text-foreground",
+      "text-muted-foreground",
+      "text-warning",
+      "text-foreground",
+    ]);
+    // The second dive has nothing to say, so no row follows it, and nothing on
+    // a row is in the report's notes as well.
     expect(rows).toHaveLength(4);
+    expect(screen.queryByRole("heading", { name: /^Notes/ })).toBeNull();
+  });
+
+  it("read a code and a kind this build has never heard of as information", async () => {
+    await readWith(
+      preview({
+        members,
+        dives: [
+          dive({
+            notes: [
+              {
+                code: "something_this_build_predates",
+                kind: "partially_carried",
+                collection: "dives",
+                message: "Part of the dive's gas came across.",
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    const item = within(screen.getAllByRole("row")[2]).getByRole("listitem");
+    expect(item).toHaveClass("text-foreground");
+    expect(item).toHaveTextContent(
+      "Partially carriedPart of the dive's gas came across.",
+    );
+  });
+
+  it("say where a row's cap cut its notes", async () => {
+    await readWith(
+      preview({
+        members,
+        dives: [
+          dive({
+            notes: [
+              {
+                code: "gas_missing",
+                kind: "absent",
+                collection: "dives",
+                message: "No gas is recorded for one of this dive's cylinders.",
+              },
+            ],
+            notes_truncated: 2,
+          }),
+        ],
+      }),
+    );
+
+    expect(
+      within(screen.getAllByRole("row")[2]).getByText(
+        "2 further notes about this dive are listed with the import's notes below.",
+      ),
+    ).toBeVisible();
+  });
+});
+
+describe("the report's notes", () => {
+  it("list each group once, with how often and where it came up", async () => {
+    await readWith(
+      preview({
+        dives: [dive()],
+        notes: [
+          group({
+            code: "position_zero",
+            kind: "absent",
+            collection: "sites",
+            message: "The site's position is 0, 0, so it is left empty.",
+            count: 5,
+            wheres: [
+              "dives.uddf/site/0",
+              "dives.uddf/site/1",
+              "dives.uddf/site/2",
+            ],
+          }),
+          group({
+            code: "tags_created",
+            message: "Two tags were created.",
+          }),
+          group({
+            code: "record_skipped",
+            kind: "dropped",
+            collection: "dives",
+            message: "A dive with no start time is skipped.",
+            count: 3,
+          }),
+        ],
+        notes_truncated: 4,
+      }),
+    );
+
+    const heading = screen.getByRole("heading", { name: "Notes (3)" });
+    expect(heading).toBeVisible();
+    const items = within(heading.parentElement!).getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Not recordedDive sites: The site's position is 0, 0, so it is left empty.5 places — dives.uddf/site/0, dives.uddf/site/1, dives.uddf/site/2 and 2 more",
+      "Two tags were created.",
+      "DroppedDives: A dive with no start time is skipped.3 times",
+    ]);
+    expect(items[2]).toHaveClass("text-warning");
+    expect(
+      screen.getByText(
+        "4 further notes are not shown. The counts above are complete.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("name no conversion anywhere", async () => {
+    await readWith(
+      preview({
+        dives: [dive()],
+        notes: [group({ message: "Two tags were created." })],
+      }),
+    );
+
+    expect(screen.queryByText(/original files/i)).toBeNull();
+    expect(screen.queryByText(/conver/i)).toBeNull();
   });
 });
 
@@ -787,12 +909,11 @@ describe("the import button", () => {
       preview({
         dives: [dive({ outcome: "linked" })],
         notes: [
-          {
+          group({
             code: "recording_filled",
             collection: "dives",
-            uuid: null,
             message: "A recording's blanks were filled.",
-          },
+          }),
         ],
       }),
     ],
@@ -1082,12 +1203,10 @@ describe("the check-in details and the portrait", () => {
     mocks.apply.mockResolvedValueOnce(
       report({
         notes: [
-          {
+          group({
             code: "check_in_detail_written",
-            collection: null,
-            uuid: null,
             message: "The phone number was saved.",
-          },
+          }),
         ],
       }),
     );
@@ -1099,44 +1218,5 @@ describe("the check-in details and the portrait", () => {
     // the portrait's digest - one note marks both.
     expect(mocks.reloadCheckinDetails).toHaveBeenCalledTimes(1);
     expect(mocks.refreshUser).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("about the original files", () => {
-  const conversion = {
-    format: "uddf",
-    converter: { name: "divejson", version: "0.30.0" },
-    groups: [],
-    groups_truncated: 0,
-  };
-
-  it("says everything came across when no group and no dive row has a finding", async () => {
-    await readWith(preview({ conversion, dives: [dive()] }));
-
-    expect(
-      screen.getByText("Everything in the converted files came across."),
-    ).toBeVisible();
-  });
-
-  it("points at the dive rows when they hold every finding", async () => {
-    await readWith(
-      preview({
-        conversion,
-        dives: [
-          dive({
-            conversion_notes: [
-              { kind: "absent", message: "No gas mixture.", where: null },
-            ],
-          }),
-        ],
-      }),
-    );
-
-    expect(
-      screen.getByText(
-        "What the conversion could not carry is listed under the dive it is about.",
-      ),
-    ).toBeVisible();
-    expect(screen.queryByText(/came across/)).toBeNull();
   });
 });

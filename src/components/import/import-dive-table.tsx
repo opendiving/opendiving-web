@@ -8,7 +8,6 @@ import { useWithReturnTo } from "@/hooks/useReturnTo";
 import type {
   ImportDiveReport,
   ImportMemberReport,
-  ImportNote,
 } from "@/lib/api/logbook-import";
 import {
   formatDiveDateTime,
@@ -54,8 +53,6 @@ const COLUMNS = 6;
 interface ImportDiveTableProps {
   dives: readonly ImportDiveReport[];
   members: readonly ImportMemberReport[];
-  /** The report's notes, which each dive names by index. */
-  notes: readonly ImportNote[];
   /**
    * Whether the rows are what was written. A result links every dive it names;
    * a plan links only the dives the diver already has, and opens them in a new
@@ -66,11 +63,10 @@ interface ImportDiveTableProps {
 
 // One row per dive the import creates or touches - the report on dives, which
 // the counts table below it leaves to these rows - and under it a row of what
-// the import and the conversion said about that dive.
+// the import has to say about that dive.
 export function ImportDiveTable({
   dives,
   members,
-  notes,
   written,
 }: ImportDiveTableProps) {
   const units = useUnits();
@@ -117,13 +113,7 @@ export function ImportDiveTable({
           const device = dive.device
             ? (recordingDeviceLabel(dive.device) ?? UNNAMED_DEVICE_LABEL)
             : null;
-          const diveNotes = dive.notes.flatMap((note) =>
-            notes[note] ? [{ index: note, note: notes[note] }] : [],
-          );
-          const annotated =
-            diveNotes.length > 0 ||
-            dive.conversion_notes.length > 0 ||
-            dive.conversion_notes_truncated > 0;
+          const annotated = dive.notes.length > 0 || dive.notes_truncated > 0;
           return (
             // Indexed: a skipped dive has no uuid, and two rows can name one
             // uuid where a document claims it twice. The list is rebuilt
@@ -202,9 +192,8 @@ export function ImportDiveTable({
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={COLUMNS} className="px-0 pt-0 pb-1.5">
                     <ImportDiveNotes
-                      notes={diveNotes}
-                      conversionNotes={dive.conversion_notes}
-                      conversionNotesTruncated={dive.conversion_notes_truncated}
+                      notes={dive.notes}
+                      notesTruncated={dive.notes_truncated}
                     />
                   </TableCell>
                 </TableRow>

@@ -12,8 +12,7 @@ import type { RecordingDevice } from "./dives";
  *
  * These are `divejson.read_formats()` ids at the release the API pins, not a
  * closed vocabulary: the pin moves by dependency bump with no change here, so a
- * `conversion.format` outside this union is an ordinary event rather than an
- * error. Everything that renders one goes through `importSourceLabel`, which
+ * file's `format` outside this union is an ordinary event rather than an error. Everything that renders one goes through `importSourceLabel`, which
  * falls back to the id rather than taking the lockstep stance the hand-kept
  * enum mirrors take. The same ids label a file stored on a recording, since the
  * dive form reads through the same converter.
@@ -66,21 +65,16 @@ const IMPORT_SOURCE_LABELS: Record<ImportSourceFormat, string> = {
 
 /**
  * The ids an import reports beside the converter's own: what a file of the
- * import was read as when it was not converted (`divejson`, `archive`, `zip`),
- * and what `conversion.format` says when the converted files were not all one
- * format (`mixed`). Kept apart from `IMPORT_SOURCE_LABELS` because the dive
- * form's accept list is built from that map's key type, and none of these is a
- * file the form takes.
+ * import was read as when it was not converted (`divejson`, `archive`, `zip`).
+ * Kept apart from `IMPORT_SOURCE_LABELS` because the dive form's accept list is
+ * built from that map's key type, and none of these is a file the form takes.
  */
-const IMPORT_CONTAINER_LABELS: Record<
-  "divejson" | "archive" | "zip" | "mixed",
-  string
-> = {
-  divejson: "DiveJSON",
-  archive: "OpenDiving archive",
-  zip: "Zip",
-  mixed: "Several formats",
-};
+const IMPORT_CONTAINER_LABELS: Record<"divejson" | "archive" | "zip", string> =
+  {
+    divejson: "DiveJSON",
+    archive: "OpenDiving archive",
+    zip: "Zip",
+  };
 
 /**
  * A source format's display name, tolerating one this build has never heard of.
@@ -161,15 +155,14 @@ export type ImportNoteCode =
   // A value the document does not state, worked out from what it does - a
   // dive's submerged time and average depth from its samples deeper than 1.2 m (its
   // profile's span only where none is), its bottom temperature from its
-  // coldest sample. Information: nothing was lost. At the API's note cap these
-  // give way to every other note, so a truncated list keeps the others.
+  // coldest sample. Information: nothing was lost.
   | "value_derived"
   | "reference_unresolved"
   | "species_unresolved"
   | "file_not_contained"
   | "file_skipped"
-  // The two recording outcomes, and **neither is a warning**: `noteIsWarning`
-  // leaves both as plain information, which is what they are. A recording that
+  // The two recording outcomes, and **neither is a warning**: the API gives
+  // both no kind, so both read as plain information, which is what they are. A recording that
   // matched an existing dive was attached to it instead of creating a second
   // dive, and one that matched an existing *recording* filled that recording's
   // blanks. Both are the import doing exactly what it exists to do - the
@@ -198,15 +191,46 @@ export type ImportNoteCode =
   // no row of counts has them. Information: nothing is lost.
   | "tags_created";
 
-/** One thing the import decided, addressed to the diver. */
-export interface ImportNote {
-  code: ImportNoteCode;
+/**
+ * One line about one dive, whatever produced it: the import's own decision, or
+ * what one of the dive's files did not record, worked out, read one way of
+ * several, or lost.
+ *
+ * `code` and `kind` are **opaque strings, not unions**, and the API guarantees
+ * they stay so. A code is an `ImportNoteCode` or one of the file readers' own,
+ * and the readers' set moves by a dependency bump on the API with nothing here
+ * changing - as their kinds did once, three growing to four. So either can
+ * arrive unfamiliar between one deploy and the next, and `noteKindTone` renders
+ * an unfamiliar kind as plain information.
+ */
+export interface ImportDiveNote {
+  code: ImportNoteCode | string;
+  /**
+   * `absent` (not recorded), `inferred` (worked out), `resolved` (read one way
+   * of several), `dropped` (lost) at the time of writing, or `null` for a
+   * decision that is none of those.
+   */
+  kind: string | null;
   /** Which envelope collection this is about, e.g. `dives`. */
   collection: string | null;
-  /** The record's uuid **as the document spells it**, not as any row here does. */
-  uuid: string | null;
   /** One sentence, ready to render. */
   message: string;
+}
+
+/**
+ * A note on no dive's row, and every other with the same code, collection and
+ * sentence: one habit of a file is one line with a count rather than a line per
+ * record. Grouped by the API rather than here, so the rule has one
+ * implementation.
+ */
+export interface ImportNoteGroup extends ImportDiveNote {
+  /** How many notes the group holds, which may be more than `wheres` lists. */
+  count: number;
+  /**
+   * Up to three places in the files, each under the name of the file it is in,
+   * e.g. `dives.uddf/dive/0/tankdata/1`; empty for the import's own notes.
+   */
+  wheres: string[];
 }
 
 /**
@@ -244,80 +268,6 @@ export interface ImportFileReport {
   not_contained: number;
   /** Files whose bytes are here but could not be stored. */
   skipped: number;
-}
-
-/** What converted the upload, so a report can be attributed to a version of it. */
-export interface ConversionConverter {
-  name: string;
-  version: string;
-}
-
-/**
- * One thing the conversion could not carry, and everywhere it came up.
- *
- * `kind` is **an opaque string, not a union**, and the API guarantees it will
- * stay one. Its converter's kind set grew from three to four while this card was
- * being built, and the pin that decides which set a build sees moves by a
- * dependency bump with nothing here changing - so a kind this app has never seen
- * can arrive between one deploy and the next. `conversionKindTone` renders an
- * unfamiliar one as plain information, the `noteIsWarning` stance.
- */
-export interface ConversionNoteGroup {
-  /** `absent`, `inferred`, `resolved` or `dropped` at the time of writing. */
-  kind: string;
-  /** One sentence, ready to render. */
-  message: string;
-  /** How many places raised this, which may be more than `wheres` lists. */
-  count: number;
-  /**
-   * Up to three paths into the source files, each under the name of the file it
-   * is in, e.g. `dives.uddf/dive/0/tankdata/1`.
-   */
-  wheres: string[];
-}
-
-/**
- * One finding of `ConversionReport.groups`, ungrouped and on the row of the dive
- * it is about. Each is still counted in its group.
- */
-export interface ConversionNote {
-  /** As a group's `kind`: opaque, and an unfamiliar one reads as information. */
-  kind: string;
-  /** One sentence, ready to render. */
-  message: string;
-  /**
-   * The path below the dive in its source file, as the converter writes it, e.g.
-   * `sample/2985.93` - the segment is seconds in some formats and an index in
-   * others, so it is not a time. `null` for a finding about the dive itself.
-   */
-  where: string | null;
-}
-
-/**
- * What converting the import's non-DiveJSON files could not carry. `null` when
- * every file was DiveJSON already.
- *
- * Grouped by the API rather than here, and by `(kind, message)`: one source habit
- * makes one finding per record - eight dives with no UTC offset are eight
- * findings - and grouping in the browser would be a second implementation of a
- * rule that already has one.
- */
-export interface ConversionReport {
-  /**
-   * The format the converted files were read as, **as the converter names
-   * it**, or `mixed` when they were not all one format - so an id rather than
-   * a label, and not necessarily an `ImportSourceFormat` this build knows.
-   * Render it through `importSourceLabel`.
-   */
-  format: string;
-  converter: ConversionConverter;
-  /** Findings grouped by kind and message, in first-seen order. */
-  groups: ConversionNoteGroup[];
-  /**
-   * Groups beyond the API's cap that are **not** in `groups`. Non-zero means the
-   * list above is a prefix; the per-group counts stay complete either way.
-   */
-  groups_truncated: number;
 }
 
 /**
@@ -391,18 +341,16 @@ export interface ImportDiveReport {
   /** The indexes in `members` of the files the dive came from. */
   members: number[];
   /**
-   * The indexes in the report's `notes` of the notes about this dive, ascending.
-   * No note is on two rows, and `notes` still lists every one; a note the cap
-   * left out of `notes` is on no row.
+   * Everything to say about this dive, in the import's order: its own decisions
+   * first, then what its files did not record, worked out, or read one way of
+   * several. None of these is in the report's `notes` as well.
    */
-  notes: number[];
+  notes: ImportDiveNote[];
   /**
-   * What converting this dive's files could not carry, in the import's order. A
-   * finding about a file, or placed at no dive, is on no row.
+   * This dive's notes past the row's cap, which `notes` leaves out and the
+   * report's `notes` holds.
    */
-  conversion_notes: ConversionNote[];
-  /** This dive's findings past the row's cap, which `conversion_notes` leaves out. */
-  conversion_notes_truncated: number;
+  notes_truncated: number;
 }
 
 /** The body of both responses: the same shape whether it is a plan or a result. */
@@ -410,26 +358,23 @@ export interface ImportReport {
   /** One entry per envelope collection, in the envelope's own order. */
   collections: ImportCollectionReport[];
   files: ImportFileReport;
-  /** Every decision worth telling the diver about, in document order. */
-  notes: ImportNote[];
   /**
-   * Notes beyond the API's cap that are **not** in `notes`.
-   *
-   * Non-zero means the list above is not the whole story, and the UI has to say
-   * so - otherwise a 600-note import renders 500 notes as if they were all of
-   * them. The collection counts stay complete either way; it is only the note
-   * list that is truncated.
-   */
-  notes_truncated: number;
-  /**
-   * What the conversion could not carry, or `null` when every file was
-   * DiveJSON already.
+   * Every note on no dive's row, and each row's overflow, grouped by code,
+   * collection and sentence in first-seen order.
    *
    * On the report rather than on the preview alone, so the panel that stays on
-   * screen after an import still tells a diver what their computer's export lost
-   * on the way in - the same reason preview and result are one shape at all.
+   * screen after an import still tells a diver what their files left out - the
+   * same reason preview and result are one shape at all.
    */
-  conversion: ConversionReport | null;
+  notes: ImportNoteGroup[];
+  /**
+   * Groups beyond the API's cap that are **not** in `notes`.
+   *
+   * Non-zero means the list above is not the whole story, and the UI has to say
+   * so. The collection counts stay complete either way; it is only the list of
+   * notes that is truncated.
+   */
+  notes_truncated: number;
   /**
    * One row per file, in the order the import reads them: each part of the
    * request and each file a zip among them held.

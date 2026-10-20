@@ -255,7 +255,6 @@ function ImportFlow() {
           <ImportDiveTable
             dives={result.dives}
             members={result.members}
-            notes={result.notes}
             written
           />
         )}

@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   collectionLabel,
   collectionRowIsEmpty,
-  conversionKindLabel,
-  conversionKindTone,
-  conversionWhereSentence,
   fileRestoreHint,
   importButtonLabel,
   importDiveOutcomeSentence,
@@ -14,15 +11,16 @@ import {
   importTotals,
   isHiddenImportPath,
   isZipFile,
-  noteIsWarning,
+  noteGroupPlacesSentence,
+  noteKindLabel,
+  noteKindTone,
   reviewCollectionRows,
-  truncatedConversionSentence,
-  truncatedDiveFindingsSentence,
+  truncatedDiveNotesSentence,
   truncatedNotesSentence,
 } from "./logbook-import";
 import type {
-  ConversionNoteGroup,
   ImportCollectionReport,
+  ImportNoteGroup,
   ImportReport,
 } from "@/lib/api/logbook-import";
 import { importDiveReport as dive } from "@/test/dive-fixtures";
@@ -47,9 +45,6 @@ function report(overrides: Partial<ImportReport> = {}): ImportReport {
     files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
     notes: [],
     notes_truncated: 0,
-    // Null by default: the conversion block exists only when something was
-    // converted.
-    conversion: null,
     members: [],
     dives: [],
     ...overrides,
@@ -133,72 +128,15 @@ describe("collectionRowIsEmpty", () => {
   });
 });
 
-describe("noteIsWarning", () => {
-  it("warns only where the diver ends up with less than the document described", () => {
-    expect(
-      [
-        "record_skipped",
-        "value_dropped",
-        "reference_unresolved",
-        "species_unresolved",
-        "file_skipped",
-        "check_in_detail_dropped",
-      ].every(noteIsWarning),
-    ).toBe(true);
-  });
-
-  it("does not warn about the import working as designed", () => {
-    // `file_not_contained` is the load-bearing one: it is the *expected* state of
-    // every referenced file when a bare document rather than an archive was
-    // imported, so colouring it as a failure makes the ordinary case look broken.
-    // Both remaps are non-errors too - the record imported, under another uuid.
-    expect(
-      [
-        "record_linked",
-        "record_restored",
-        "record_remapped_references_follow",
-        "record_remapped_references_stay",
-        // An older writer's axis in seconds or readout on the dive, read as it
-        // meant it: nothing lost.
-        "read_as_written",
-        "diver_not_applied",
-        "file_not_contained",
-        // The two recording outcomes. A file that matched a dive already in the
-        // account was attached to it rather than creating a second one, and a
-        // file that matched an existing recording filled that recording's
-        // blanks - in both cases the alternative was a duplicate, so the note
-        // is reporting the import working, not falling short.
-        "recording_attached",
-        "recording_filled",
-        "check_in_detail_written",
-        "portrait_kept",
-        // A person linked to the account its entry names: what the file asked
-        // for, under the limit a typed username counts against.
-        "account_linked",
-        // The tags an import adds to the diver's list: the dives carry them, so
-        // nothing is lost.
-        "tags_created",
-        // A dive time or bottom temperature worked out from the profile: nothing
-        // is lost, and it lands on nearly every dive of a dive-computer file.
-        "value_derived",
-      ].some(noteIsWarning),
-    ).toBe(false);
-  });
-
-  it("reads a code from a newer API as information, not alarm", () => {
-    expect(noteIsWarning("something_this_build_predates")).toBe(false);
-  });
-});
-
 describe("truncatedNotesSentence", () => {
   it("says nothing when the list is the whole story", () => {
     expect(truncatedNotesSentence(0)).toBeNull();
   });
 
   it("says how many are missing, and that the counts are not", () => {
-    // Both halves matter: without the first a 600-note import renders 500 notes
-    // as if they were all of them, and without the second the diver has no way to
-    // know the numbers above are still complete.
+    // Both halves matter: without the first a capped list reads as if it were
+    // all of them, and without the second the diver has no way to know the
+    // numbers above are still complete.
     expect(truncatedNotesSentence(112)).toBe(
       "112 further notes are not shown. The counts above are complete.",
     );
@@ -251,11 +189,11 @@ describe("fileRestoreHint", () => {
   });
 });
 
-function group(
-  overrides: Partial<ConversionNoteGroup> = {},
-): ConversionNoteGroup {
+function group(overrides: Partial<ImportNoteGroup> = {}): ImportNoteGroup {
   return {
+    code: "value_dropped",
     kind: "dropped",
+    collection: "dives",
     message: "Visibility is a star rating here and has no metric equivalent.",
     count: 1,
     wheres: ["dive/0"],
@@ -263,48 +201,54 @@ function group(
   };
 }
 
-describe("conversionKindLabel", () => {
-  it("names each kind the converter emits today", () => {
-    expect(conversionKindLabel("absent")).toBe("Not recorded");
-    expect(conversionKindLabel("inferred")).toBe("Worked out");
-    expect(conversionKindLabel("resolved")).toBe("Resolved");
-    expect(conversionKindLabel("dropped")).toBe("Dropped");
+describe("noteKindLabel", () => {
+  it("names each kind the API sends today", () => {
+    expect(noteKindLabel("absent")).toBe("Not recorded");
+    expect(noteKindLabel("inferred")).toBe("Worked out");
+    expect(noteKindLabel("resolved")).toBe("Resolved");
+    expect(noteKindLabel("dropped")).toBe("Dropped");
+  });
+
+  it("gives a note with no kind no badge", () => {
+    expect(noteKindLabel(null)).toBeNull();
   });
 
   it("de-snakes a kind this build has never heard of", () => {
-    // The API sends `kind` as an opaque string deliberately: its converter's
-    // kind set grew from three to four mid-feature, and the pin deciding which
-    // set a build sees moves with no change here. A blank badge would be worse
-    // than the raw word.
-    expect(conversionKindLabel("partially_carried")).toBe("Partially carried");
+    // The API sends `kind` as an opaque string deliberately: the readers' kind
+    // set grew from three to four once, and the pin deciding which set a build
+    // sees moves with no change here. A blank badge would be worse than the raw
+    // word.
+    expect(noteKindLabel("partially_carried")).toBe("Partially carried");
   });
 });
 
-describe("conversionKindTone", () => {
-  it("is a warning only where the source recorded something that was lost", () => {
-    expect(conversionKindTone("dropped")).toBe("warning");
+describe("noteKindTone", () => {
+  it("is a warning only where the diver ends up with less", () => {
+    expect(noteKindTone("dropped")).toBe("warning");
   });
 
-  it("keeps the converter's own working plain, and an absence quietest", () => {
-    // `inferred` and `resolved` are the converter explaining itself rather than
-    // reporting a loss, and `absent` is a property of the file: the source never
-    // recorded the thing at all.
-    expect(conversionKindTone("inferred")).toBe("neutral");
-    expect(conversionKindTone("resolved")).toBe("neutral");
-    expect(conversionKindTone("absent")).toBe("muted");
+  it("keeps the import's working plain, and an absence quietest", () => {
+    // `inferred` and `resolved` explain rather than report a loss, and a note
+    // with no kind is a decision such as a linked record or a file a bare
+    // document does not carry - the import working as designed. `absent` is a
+    // property of the file: it never recorded the thing at all.
+    expect(noteKindTone("inferred")).toBe("neutral");
+    expect(noteKindTone("resolved")).toBe("neutral");
+    expect(noteKindTone(null)).toBe("neutral");
+    expect(noteKindTone("absent")).toBe("muted");
   });
 
-  it("reads a kind from a newer converter as information, not alarm", () => {
-    // The `noteIsWarning` stance, and reachable without anyone touching this
-    // repository - which is the whole reason it is here.
-    expect(conversionKindTone("stretched")).toBe("neutral");
+  it("reads a kind from a newer API as information, not alarm", () => {
+    // Reachable without anyone touching this repository - which is the whole
+    // reason it is here.
+    expect(noteKindTone("stretched")).toBe("neutral");
   });
 });
 
-describe("conversionWhereSentence", () => {
+describe("noteGroupPlacesSentence", () => {
   it("says how many places raised it, and where three of them were", () => {
     expect(
-      conversionWhereSentence(
+      noteGroupPlacesSentence(
         group({ count: 15, wheres: ["dive/0", "dive/1", "dive/2"] }),
       ),
     ).toBe("15 places — dive/0, dive/1, dive/2 and 12 more");
@@ -312,54 +256,42 @@ describe("conversionWhereSentence", () => {
 
   it("does not claim more when it listed all of them", () => {
     expect(
-      conversionWhereSentence(
+      noteGroupPlacesSentence(
         group({ count: 2, wheres: ["dive/0", "dive/3"] }),
       ),
     ).toBe("2 places — dive/0, dive/3");
   });
 
   it("does not say '1 places'", () => {
-    expect(conversionWhereSentence(group({ count: 1 }))).toBe(
+    expect(noteGroupPlacesSentence(group({ count: 1 }))).toBe(
       "1 place — dive/0",
     );
   });
 
-  it("says the count alone when the converter named no path", () => {
-    expect(conversionWhereSentence(group({ count: 4, wheres: [] }))).toBe(
-      "4 places",
-    );
+  it("counts the import's own notes, which name no place", () => {
+    expect(
+      noteGroupPlacesSentence(
+        group({ code: "record_linked", kind: null, count: 4, wheres: [] }),
+      ),
+    ).toBe("4 times");
+  });
+
+  it("says nothing of a note that came up once and names no place", () => {
+    expect(noteGroupPlacesSentence(group({ count: 1, wheres: [] }))).toBeNull();
   });
 });
 
-describe("truncatedDiveFindingsSentence", () => {
-  it("says nothing when the row lists every finding", () => {
-    expect(truncatedDiveFindingsSentence(0)).toBeNull();
+describe("truncatedDiveNotesSentence", () => {
+  it("says nothing when the row lists every note", () => {
+    expect(truncatedDiveNotesSentence(0)).toBeNull();
   });
 
-  it("says how many of the dive's findings are missing", () => {
-    expect(truncatedDiveFindingsSentence(1)).toBe(
-      "1 further finding about this dive is not shown.",
+  it("says how many of the dive's notes are missing, and where they went", () => {
+    expect(truncatedDiveNotesSentence(1)).toBe(
+      "1 further note about this dive is listed with the import's notes below.",
     );
-    expect(truncatedDiveFindingsSentence(3)).toBe(
-      "3 further findings about this dive are not shown.",
-    );
-  });
-});
-
-describe("truncatedConversionSentence", () => {
-  it("says nothing when every finding is on screen", () => {
-    expect(truncatedConversionSentence(0)).toBeNull();
-  });
-
-  it("says how many are missing, and that the record counts are not", () => {
-    const sentence = truncatedConversionSentence(7)!;
-    expect(sentence).toContain("7 further findings are not shown");
-    expect(sentence).toContain("record counts above are complete");
-  });
-
-  it("does not say '1 further findings'", () => {
-    expect(truncatedConversionSentence(1)).toContain(
-      "1 further finding is not shown",
+    expect(truncatedDiveNotesSentence(3)).toBe(
+      "3 further notes about this dive are listed with the import's notes below.",
     );
   });
 });

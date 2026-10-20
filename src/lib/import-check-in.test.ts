@@ -127,14 +127,17 @@ describe("checkInWasWritten", () => {
   const report = (codes: string[]): ImportReport => ({
     collections: [],
     files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
+    // One group per written detail, as the API reports them: each detail's
+    // sentence names its label, so no two share a group.
     notes: codes.map((code) => ({
-      code: code as ImportReport["notes"][number]["code"],
+      code,
+      kind: null,
       collection: null,
-      uuid: null,
       message: "",
+      count: 1,
+      wheres: [],
     })),
     notes_truncated: 0,
-    conversion: null,
     members: [],
     dives: [],
   });
