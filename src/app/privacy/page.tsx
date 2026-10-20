@@ -273,11 +273,11 @@ export default async function PrivacyPage() {
                   clubs and places you stayed that you record, to name them from
                   your dives, courses, certifications, service records and trips
                   &mdash; a name, what each one is to you, and, if you add them,
-                  its phone number, email address, website, postal address and
-                  your notes. A contact can be a person rather than a business
-                  &mdash; the friend whose flat you stayed in &mdash; and what
-                  you record about them is then somebody else&rsquo;s data,
-                  which you enter
+                  its phone number, email address, website, postal address,
+                  where it is on a map and your notes. A contact can be a person
+                  rather than a business &mdash; the friend whose flat you
+                  stayed in &mdash; and what you record about them is then
+                  somebody else&rsquo;s data, which you enter
                 </li>
                 <li>
                   <strong>People:</strong> The buddies, guides, instructors,
@@ -468,10 +468,10 @@ export default async function PrivacyPage() {
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
                   Coordinates you place yourself &mdash; a pin on the map, a
-                  pair of coordinates typed into a dive site or trip form, or a
-                  dive site you pick from the catalogue of named sites this copy
-                  carries, which also keeps that site&rsquo;s entry in
-                  OpenStreetMap or Wikidata
+                  pair of coordinates typed into a dive site, trip or contact
+                  form, or a dive site you pick from the catalogue of named
+                  sites this copy carries, which also keeps that site&rsquo;s
+                  entry in OpenStreetMap or Wikidata
                 </li>
                 <li>
                   GPS positions recorded inside a dive-computer file you import,
@@ -482,8 +482,8 @@ export default async function PrivacyPage() {
                   Coordinates carried in a logbook you import &mdash; a logbook
                   file can record where a dive entered and left the water, where
                   a dive site is and its entry in a registry such as
-                  OpenStreetMap, and where a trip went, and those are written as
-                  the file gives them
+                  OpenStreetMap, where a trip went and where a contact is, and
+                  those are written as the file gives them
                 </li>
                 <li>
                   GPS positions inside a photo you pick as your profile picture
@@ -664,20 +664,22 @@ export default async function PrivacyPage() {
                 4.4 Map Tiles
               </h3>
               <p className="text-foreground mb-4">
-                Two places in the app show a map your browser draws itself, and
-                for those your browser fetches the map&rsquo;s tiles directly
-                from a third-party basemap provider. That provider therefore
-                sees your IP address and which part of the world the map is
-                showing — which is, roughly, where you dive. It does not receive
-                your account, your dive log, or the name of anything on the map.
+                Three places in the app show a map your browser draws itself,
+                and for those your browser fetches the map&rsquo;s tiles
+                directly from a third-party basemap provider. That provider
+                therefore sees your IP address and which part of the world the
+                map is showing — which is, roughly, where you dive. It does not
+                receive your account, your dive log, or the name of anything on
+                the map.
               </p>
               <p className="text-foreground mb-4">
                 Your browser does this whenever one of those maps is on screen,
                 whether or not you interact with it: the form to add or edit a
                 dive site and the form to add or edit a trip, which load a map
                 as soon as they open — one to place a pin on, one to show you
-                the places you pick. Apart from those two, no page has your
-                browser contact the provider.
+                the places you pick — and the form to add or edit a contact,
+                which loads one only when you ask it to show the map. Apart from
+                those three, no page has your browser contact the provider.
               </p>
               {mapTiles ? (
                 <>

@@ -41,7 +41,7 @@ beforeEach(() => {
 });
 
 // Stands in for `DiveSiteDialog`, down to rendering the credit and the status
-// line the way `DiveSiteMapField` does: this hook's whole output is those two,
+// line the way `MapField` does: this hook's whole output is those two,
 // plus whatever it writes into the Location field, and the round trip through
 // the form is what makes staleness real rather than simulated.
 function Harness({
@@ -285,7 +285,7 @@ describe("useGeocodedLocation", () => {
   it("counts a whitespace-only location as nothing to clear", async () => {
     // Same guard, and the same reason: emptying "  " looks exactly like emptying
     // "" on screen, so announcing a clearing is wrong for exactly the reader who
-    // cannot check. `isSet` in `lib/validations/dive-site.ts` trims for the rest
+    // cannot check. `isSet` in `lib/validations/coordinates.ts` trims for the rest
     // of this form.
     reverseGeocode.mockResolvedValue({ status: "nameless" });
     const onUseLocation = vi.fn();

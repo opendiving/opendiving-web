@@ -407,6 +407,26 @@ describe.each([
     expect(listAfterHeading(/2\.3 Location Information/)).toHaveLength(claimed);
   });
 
+  // A contact carries a position too, placed or typed in its form and carried
+  // by a logbook, so the bullets that name where coordinates come from name it.
+  it("§2.3 names a contact's position among the ways it lists", async () => {
+    await renderPage({ google });
+
+    const bullets = listAfterHeading(/2\.3 Location Information/);
+    expect(bullets[0]).toMatch(
+      /typed into a dive site, trip or contact\s+form/,
+    );
+    expect(bullets[2]).toMatch(/where a contact is/);
+  });
+
+  it("lists a contact's place on the map among what is stored about it", async () => {
+    await renderPage({ google });
+
+    expect(
+      screen.getByText(/The dive centers, schools, shops/).closest("li"),
+    ).toHaveTextContent(/postal address, where it is on a map and your notes/);
+  });
+
   // §6.3 had no pin at all until the invitation email became its fourth
   // action-driven message, and the sentence that counts them - "Only the last of
   // those three is sent to your account's own address" - was exactly the kind of
@@ -707,7 +727,10 @@ describe("the map tiles", () => {
         /the form to add or edit a dive site and the form to add or edit a trip/,
       );
       expect(text).toMatch(
-        /Apart from those two, no page has your browser contact the provider/,
+        /and the form to add or edit a contact, which loads one only when you ask it to show the map/,
+      );
+      expect(text).toMatch(
+        /Apart from those three, no page has your browser contact the provider/,
       );
     },
   );

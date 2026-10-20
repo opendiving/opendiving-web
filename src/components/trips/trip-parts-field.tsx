@@ -365,7 +365,7 @@ export function TripPartsField({
           together is announced unreliably or not at all. One for the field
           rather than one per row: what it reports is the shortening of a name
           the diver has just this moment typed, so which row it was about is not
-          in doubt. Same shape as `dive-site-map-field.tsx`. */}
+          in doubt. Same shape as `map-field.tsx`. */}
       <p role="status" className="text-xs text-muted-foreground empty:hidden">
         {notice}
       </p>

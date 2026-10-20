@@ -2,6 +2,7 @@ import { z } from "zod";
 import { maxLength, optionalEmailField, phoneField } from "./fields";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
+import { coordinateField, isSet } from "./coordinates";
 import type { ContactAddress } from "@/lib/api/contacts";
 
 // The API's bounds for a contact (`schemas/contact.py`), which are DiveJSON's.
@@ -82,6 +83,10 @@ export const contactSchema = z
     email: optionalEmailField(),
     website: z.string(),
     address: addressSchema,
+    // Strings, converted at submit by `parseFormCoordinate`, for the reason the
+    // dive site form's are.
+    latitude: coordinateField(90, "Latitude", "27.8506"),
+    longitude: coordinateField(180, "Longitude", "34.3136"),
     notes: notesField(),
   })
   .refine((data) => isWebsite(data.website), {
@@ -97,7 +102,17 @@ export const contactSchema = z
       message: "An address needs its country",
       path: ["address", "country"],
     },
-  );
+  )
+  // Both-or-neither, as the API refuses half a pair; the message lands on the
+  // half that is missing.
+  .refine((data) => !isSet(data.longitude) || isSet(data.latitude), {
+    message: "Latitude is required when longitude is given",
+    path: ["latitude"],
+  })
+  .refine((data) => !isSet(data.latitude) || isSet(data.longitude), {
+    message: "Longitude is required when latitude is given",
+    path: ["longitude"],
+  });
 
 export type ContactInput = z.input<typeof contactSchema>;
 

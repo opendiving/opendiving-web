@@ -12,10 +12,10 @@ import {
   formatCoordinateForForm,
   parseCoordinatePair,
   parseFormPosition,
-} from "@/lib/validations/dive-site";
+} from "@/lib/validations/coordinates";
 import type { LocationFormValue } from "@/lib/validations/location";
 import { useGeocodedLocation } from "@/hooks/useGeocodedLocation";
-import { DiveSiteMapField } from "@/components/sites/dive-site-map-field";
+import { MapField } from "@/components/map/map-field";
 import { HeldSiteOffer } from "@/components/sites/held-site-offer";
 import { PlaceSearch, PlacePick } from "@/components/sites/place-search";
 import {
@@ -285,7 +285,8 @@ function LocationSearch({
             : "Enter both a latitude and a longitude in decimal degrees, or neither."}
         </p>
 
-        <DiveSiteMapField
+        <MapField
+          subject="the dive site"
           latitude={latitude}
           longitude={longitude}
           onPick={placePosition}

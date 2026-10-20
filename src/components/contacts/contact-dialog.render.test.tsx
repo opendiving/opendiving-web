@@ -16,6 +16,29 @@ vi.mock("@/lib/api/contacts", async (importOriginal) => ({
   },
 }));
 
+// The map is WebGL and `map-picker.browser.test.tsx`'s; here it is a stand-in
+// that says it was drawn, with the subject it was given, and can hand a pick
+// over the way the real one does - as the form's strings.
+const mapField = vi.fn();
+vi.mock("@/components/map/map-field", () => ({
+  MapField: (props: {
+    subject: string;
+    onPick: (position: { latitude: string; longitude: string }) => void;
+  }) => {
+    mapField(props);
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          props.onPick({ latitude: "28.5717", longitude: "34.5372" })
+        }
+      >
+        place {props.subject}
+      </button>
+    );
+  },
+}));
+
 const { contactsAPI } = await import("@/lib/api/contacts");
 const createContact = vi.mocked(contactsAPI.createContact);
 const updateContact = vi.mocked(contactsAPI.updateContact);
@@ -106,6 +129,8 @@ describe("ContactDialog", () => {
       email: null,
       website: "https://seadragon.example",
       address: null,
+      latitude: null,
+      longitude: null,
       notes: "",
     });
     expect(onSaved).toHaveBeenCalledWith(
@@ -176,6 +201,8 @@ describe("ContactDialog", () => {
           region: "South Sinai",
           country: "Egypt",
         },
+        latitude: null,
+        longitude: null,
         notes: "Ask for Ahmed.",
       },
     ]);
@@ -200,6 +227,115 @@ describe("ContactDialog", () => {
 
     await waitFor(() => expect(updateContact).toHaveBeenCalled());
     expect(updateContact.mock.calls[0][1]).toMatchObject({ address: null });
+  });
+});
+
+describe("ContactDialog's position", () => {
+  const POSITIONED: Contact = {
+    ...EXISTING,
+    latitude: 28.4939,
+    longitude: 34.5131,
+  };
+  const latitude = () => screen.getByLabelText("Latitude");
+  const longitude = () => screen.getByLabelText("Longitude");
+  const showMap = () =>
+    userEvent.click(screen.getByRole("button", { name: "Show map" }));
+
+  // The map's tiles come from the basemap host, and this dialog opens from the
+  // dive form and every other picker of a contact: drawing it on open would
+  // contact that host for a diver who never asked for a map.
+  it("opens a positioned contact with its pair, and no map until asked", async () => {
+    open({ contact: POSITIONED });
+
+    await waitFor(() => expect(latitude()).toHaveValue("28.4939"));
+    expect(longitude()).toHaveValue("34.5131");
+    expect(mapField).not.toHaveBeenCalled();
+
+    await showMap();
+
+    expect(mapField).toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "place the contact" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Show map" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the pair through a save that never opened the map", async () => {
+    open({ contact: POSITIONED });
+    await waitFor(() => expect(latitude()).toHaveValue("28.4939"));
+
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(updateContact).toHaveBeenCalled());
+    expect(updateContact.mock.calls[0][1]).toMatchObject({
+      latitude: 28.4939,
+      longitude: 34.5131,
+    });
+    expect(mapField).not.toHaveBeenCalled();
+  });
+
+  it("fills both inputs from a pin placed on the map, and sends the pair", async () => {
+    open();
+    await userEvent.type(screen.getByLabelText("Name *"), "Sea Dragon");
+
+    await showMap();
+    await userEvent.click(
+      screen.getByRole("button", { name: "place the contact" }),
+    );
+
+    expect(latitude()).toHaveValue("28.5717");
+    expect(longitude()).toHaveValue("34.5372");
+    await create();
+    await waitFor(() => expect(createContact).toHaveBeenCalled());
+    expect(createContact.mock.calls[0][0]).toMatchObject({
+      latitude: 28.5717,
+      longitude: 34.5372,
+    });
+  });
+
+  it("fills both inputs from a pair pasted into either", async () => {
+    open();
+
+    await userEvent.click(longitude());
+    await userEvent.paste("27.8506, 34.3136");
+
+    expect(latitude()).toHaveValue("27.8506");
+    expect(longitude()).toHaveValue("34.3136");
+    expect(mapField).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Latitude", "27.7", "Longitude is required when latitude is given"],
+    ["Longitude", "34.3", "Latitude is required when longitude is given"],
+  ])(
+    "refuses half a pair typed into %s, naming the missing half",
+    async (label, value, message) => {
+      open();
+      await userEvent.type(screen.getByLabelText("Name *"), "Sea Dragon");
+
+      await userEvent.type(screen.getByLabelText(label), value);
+      await create();
+
+      expect(await screen.findByText(message)).toBeVisible();
+      expect(createContact).not.toHaveBeenCalled();
+    },
+  );
+
+  it("clears a stored pair with an explicit null for each half", async () => {
+    open({ contact: POSITIONED });
+    await waitFor(() => expect(latitude()).toHaveValue("28.4939"));
+
+    await userEvent.clear(latitude());
+    await userEvent.clear(longitude());
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(updateContact).toHaveBeenCalled());
+    expect(updateContact.mock.calls[0][1]).toMatchObject({
+      latitude: null,
+      longitude: null,
+    });
   });
 });
 

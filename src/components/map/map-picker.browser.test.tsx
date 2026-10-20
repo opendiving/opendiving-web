@@ -9,7 +9,7 @@ import { ConfigProvider } from "@/contexts/ConfigContext";
 import {
   formatCoordinateForForm,
   parseFormPosition,
-} from "@/lib/validations/dive-site";
+} from "@/lib/validations/coordinates";
 
 // **Load-bearing, and it looks like a stray import.** Nothing in the browser
 // project loads this app's Tailwind - it arrives only through `app/layout.tsx`,
@@ -106,6 +106,7 @@ function renderPicker(
         latitude={position?.latitude ?? null}
         longitude={position?.longitude ?? null}
         onPick={onPick}
+        subject="the dive site"
       />
     </ConfigProvider>
   );
@@ -431,6 +432,20 @@ describe("MapPicker", () => {
     // the crosshair. Pin-anchored - correct while the pin is visible, wrong
     // here - would instead hold that distance fixed and throw the target out.
     expect(offsetAfter).toBeCloseTo(offsetBefore * 2, 0);
+  });
+
+  // The dive site form and the contact form draw this one picker, so what a pick
+  // places is the caller's word rather than the picker's.
+  it("names what a pick places, in its label and its help", async () => {
+    renderPicker();
+    await surfaceReady();
+
+    expect(surface()).toHaveAccessibleName(
+      "Map. Tap or click to place the dive site.",
+    );
+    expect(surface()).toHaveAccessibleDescription(
+      /^Tap or click to place the dive site\./,
+    );
   });
 
   // The `role="application"` contract, and the crosshair's focus state machine.

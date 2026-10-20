@@ -4,12 +4,14 @@ import {
   diveSiteFormSchema,
   diveSiteFormValues,
   diveSiteMembersFromForm,
+} from "./dive-site";
+import {
   formatCoordinateForForm,
   formatCoordinates,
   parseCoordinatePair,
   parseFormCoordinate,
   parseFormPosition,
-} from "./dive-site";
+} from "./coordinates";
 
 describe("diveSiteFormSchema", () => {
   it("accepts a valid dive site with only the required name", () => {
