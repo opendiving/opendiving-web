@@ -5657,16 +5657,24 @@ preview's `token`; `/import` renders both reports through one `ImportDiveTable` 
 `ImportReportView`, so an approved plan and its result are comparable. The files stay in page state
 beside the token because the API hashes the parts again and refuses a token minted for another set.
 
-"About the Original Files" renders `ImportReport.conversion`, omitted when `conversion` is `null`.
 `restored` keeps its own column, never folded into `created`: un-deleting is the number a backup
 restore came for. Notes are a persistent list, never a toast; a non-zero `notes_truncated` marks the
 list incomplete and says the counts are not.
 
-A bare document's `not_contained` files are expected, so `noteIsWarning` excludes
-`file_not_contained` and `fileRestoreHint` says to import the archive.
+A bare document's `not_contained` files are expected, so `file_not_contained` carries no kind and
+reads as information, and `fileRestoreHint` says to import the archive.
 `record_remapped_references_follow` and `record_remapped_references_stay` are two sentences, one per
 contract. An unrecognised code is information, not a warning — the `certificationAgencyLabel` and
 `collectionLabel` stance.
+
+## An import note's tone comes from its kind, and nothing else
+
+A dive's row lists one list of notes and the report one list of groups, rendered by one
+`ImportNoteText` whatever produced the note. `noteKindTone` reads `kind` alone: `dropped` is a loss
+and `text-warning`, `absent` is muted, and `inferred`, `resolved`, no kind and an unfamiliar kind
+are information. The API sets the kind of its own notes from their code, so no code is read for tone
+here — a list of warning codes beside the kind would be a second copy of a rule the API already
+holds. Inventing alarm for a kind this build predates is the worse error.
 
 ## A sentence about what one format lacks is a claim about all of them, and import keeps proving it
 
@@ -5694,16 +5702,16 @@ fails to compile; `logbook-import.test.ts` restates the map as an independent li
 the same `Record`.
 
 The only lockstep part: the API's list comes from `divejson.read_formats()`, which a Renovate bump
-moves, so a reader can reach the Import page before this repository names it. `conversion.format`
+moves, so a reader can reach the Import page before this repository names it. A file's `format`
 renders through `importSourceLabel`, de-snaking the id until a label exists (`suunto_xml` is
-`"Suunto DM5 XML"`); `conversion.groups[].kind` is an opaque string (`conversionKindTone` reads it
-as information, `conversionKindLabel` de-snakes it); the form's picker alone does not widen — a new
+`"Suunto DM5 XML"`); a note's `code` and `kind` are opaque strings, so an unfamiliar one reads as
+information and `noteKindLabel` de-snakes the kind; the form's picker alone does not widen — a new
 format is unpickable there until its extension lands. The Import page filters nothing, so it takes
 the new format at once.
 
-Nothing in the browser parses a dive file; the API groups findings by `(kind, message)` through the
-converter's `grouped()`, and this side owns only presentation, including the "and N more" count
-(`count` minus the three `wheres` sent).
+Nothing in the browser parses a dive file or groups a note; the API sends the report's notes
+grouped, and this side owns only presentation, including the "and N more" count (`count` minus the
+three `wheres` sent).
 
 ## The dive form and logbook import read one set of formats, labelled from one map
 
@@ -5711,10 +5719,10 @@ The API reads the dive form's file through the converter logbook import uses, so
 offers `DIVE_COMPUTER_FILE_ACCEPT` — the flattened `LOGBOOK_IMPORT_SOURCE_EXTENSIONS`, without
 `.divejson` and `.zip`, which the parse route refuses — and a stored file's `parser_key` renders
 through `importSourceLabel`, as an import's `members` rows do. The ids only an import reports
-(`divejson`, `archive`, `zip`, `mixed`) are labelled in a map of their own, so they never become the
-form's extensions. A second list beside these would have to move whenever the converter pin adds a
-reader. The form's copy names no formats of its own for the same reason: it says "any format logbook
-import reads", and the lists that name them are the import's.
+(`divejson`, `archive`, `zip`) are labelled in a map of their own, so they never become the form's
+extensions. A second list beside these would have to move whenever the converter pin adds a reader.
+The form's copy names no formats of its own for the same reason: it says "any format logbook import
+reads", and the lists that name them are the import's.
 
 ## "The original file is kept" is a claim about a file that is one dive, not about a logbook
 
@@ -5733,10 +5741,9 @@ The probe anchors on the noun, because Prettier wraps JSX prose across lines:
 git grep -niE "(original|dive-computer|source) files?" -- src README.md
 ```
 
-Hits that stay: the README's _Dive-computer import_ bullet, the landing page's **Computer Import**
-card, the Import page's _About the Original Files_ heading. A cardinality claim beside the promise
-(§2.1's "one per dive"; a dive holds one recording per export) shares no vocabulary with it; sweep
-for the count separately.
+Hits that stay: the README's _Dive-computer import_ bullet and the landing page's **Computer
+Import** card. A cardinality claim beside the promise (§2.1's "one per dive"; a dive holds one
+recording per export) shares no vocabulary with it; sweep for the count separately.
 
 ## A fixture meaning "in the future" is derived, never written down
 

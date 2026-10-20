@@ -3,17 +3,14 @@
 import type { ImportReport } from "@/lib/api/logbook-import";
 import {
   collectionLabel,
-  conversionKindLabel,
-  conversionKindTone,
-  conversionWhereSentence,
   fileRestoreHint,
   importTotals,
-  noteIsWarning,
+  noteGroupPlacesSentence,
   reviewCollectionRows,
-  truncatedConversionSentence,
   truncatedNotesSentence,
 } from "@/lib/logbook-import";
 import { cn } from "@/lib/utils";
+import { ImportNoteText, noteRowClass } from "@/components/import/import-note";
 import {
   Table,
   TableBody,
@@ -28,21 +25,6 @@ import {
 // Denser than the table's own rows, as the dive rows above it are.
 const HEAD = "h-auto py-1";
 const CELL = "py-1.5";
-
-// The row colour per finding kind, and the badge beside it. Only `dropped` is a
-// loss and only `dropped` is amber; the rest explain rather than warn, and an
-// unfamiliar kind lands on `neutral` - see `conversionKindTone`.
-export const CONVERSION_TONE_CLASSES = {
-  warning: {
-    row: "text-warning",
-    badge: "border-warning/40 text-warning",
-  },
-  neutral: { row: "text-foreground", badge: "border-border text-foreground" },
-  muted: {
-    row: "text-muted-foreground",
-    badge: "border-border/60 text-muted-foreground",
-  },
-} as const;
 
 // Everything a report says besides its dive rows, rendered identically for the
 // plan and for the result: a preview the diver approved and the result they got
@@ -62,22 +44,8 @@ export function ImportReportView({
   const rows = reviewCollectionRows(report);
   const totals = importTotals(rows);
   const truncated = truncatedNotesSentence(report.notes_truncated);
-  // A note a dive row names is shown under that row; the list keeps the rest.
-  const onRows = new Set(report.dives.flatMap((dive) => dive.notes));
-  const listed = report.notes.flatMap((note, index) =>
-    onRows.has(index) ? [] : [{ note, index }],
-  );
+  const groups = report.notes;
   const hint = fileRestoreHint(report, archive);
-  const conversion = report.conversion;
-  // The groups leave out what a dive row lists, so empty groups are not by
-  // themselves a conversion that lost nothing.
-  const findingsOnRows = report.dives.some(
-    (dive) =>
-      dive.conversion_notes.length > 0 || dive.conversion_notes_truncated > 0,
-  );
-  const conversionTruncated = truncatedConversionSentence(
-    conversion?.groups_truncated ?? 0,
-  );
 
   return (
     <div className="space-y-4">
@@ -173,84 +141,37 @@ export function ImportReportView({
         </div>
       )}
 
-      {(listed.length > 0 || truncated) && (
+      {/* What is about no dive's row, and each row's overflow: one line per
+          habit, with how often it came up. */}
+      {(groups.length > 0 || truncated) && (
         <div>
           <h3 className="text-sm font-medium">
-            {listed.length > 0 ? `Notes (${listed.length})` : "Notes"}
+            {groups.length > 0 ? `Notes (${groups.length})` : "Notes"}
           </h3>
           <ul className="mt-2 space-y-1.5 max-h-64 overflow-y-auto">
-            {listed.map(({ note, index }) => (
-              // Indexed because a note has no identifier of its own: `uuid` is the
-              // record's and repeats across notes about one record, and `code`
-              // repeats far more. The index is the note's own in `notes`, which is
-              // rebuilt wholesale from each response, so it is stable for as long
-              // as it is rendered.
-              <li
-                key={`${note.code}-${note.uuid ?? index}-${index}`}
-                className={
-                  noteIsWarning(note.code)
-                    ? "text-sm text-warning"
-                    : "text-sm text-muted-foreground"
-                }
-              >
-                {note.collection && (
-                  <span className="font-medium">
-                    {collectionLabel(note.collection)}:{" "}
-                  </span>
-                )}
-                {note.message}
-              </li>
-            ))}
+            {groups.map((group, index) => {
+              const places = noteGroupPlacesSentence(group);
+              return (
+                // Indexed: a group is identified by its code, collection and
+                // sentence together, and the list is rebuilt wholesale from
+                // each response.
+                <li
+                  key={`${group.code}-${index}`}
+                  className={cn("text-sm", noteRowClass(group))}
+                >
+                  <ImportNoteText note={group} />
+                  {places && (
+                    <span className="block text-xs text-muted-foreground mt-0.5 break-all">
+                      {places}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           {truncated && (
             <p className="text-sm text-muted-foreground mt-2 italic">
               {truncated}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Absent when nothing was converted: a heading saying nothing was lost
-          would be a claim about a conversion that never happened. */}
-      {conversion && (
-        <div>
-          <h3 className="text-sm font-medium">About the Original Files</h3>
-          {conversion.groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground mt-2">
-              {findingsOnRows
-                ? "What the conversion could not carry is listed under the dive it is about."
-                : "Everything in the converted files came across."}
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-2 max-h-64 overflow-y-auto">
-              {conversion.groups.map((group, index) => {
-                const tone =
-                  CONVERSION_TONE_CLASSES[conversionKindTone(group.kind)];
-                return (
-                  // Indexed for the same reason the notes list is: a group is
-                  // identified by its `(kind, message)` pair and nothing else,
-                  // and the list is rebuilt wholesale from each response.
-                  <li
-                    key={`${group.kind}-${index}`}
-                    className={`text-sm ${tone.row}`}
-                  >
-                    <span
-                      className={`inline-flex items-center rounded border px-1.5 py-0.5 mr-2 text-xs font-medium align-[1px] ${tone.badge}`}
-                    >
-                      {conversionKindLabel(group.kind)}
-                    </span>
-                    {group.message}
-                    <span className="block text-xs text-muted-foreground mt-0.5">
-                      {conversionWhereSentence(group)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {conversionTruncated && (
-            <p className="text-sm text-muted-foreground mt-2 italic">
-              {conversionTruncated}
             </p>
           )}
         </div>
