@@ -153,7 +153,7 @@ export const DEFAULT_BASEMAP_ATTRIBUTION =
  * `basemap.test.ts` pins the relationship against the slippy figures, which are
  * written out there now that the module holding them is gone, so that moving one
  * without the other fails rather than merely looking odd. The fourth row is
- * `PLACED_ZOOM` in `components/sites/map-picker.tsx`, which is the one that never
+ * `PLACED_ZOOM` in `components/map/map-picker.tsx`, which is the one that never
  * lived here.
  */
 export const MIN_ZOOM = 0;

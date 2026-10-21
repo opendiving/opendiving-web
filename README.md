@@ -92,9 +92,9 @@ one.
 - **Courses** — the training itself, with the agency, instructor and shop: link the dives you did on
   it and the cards it issued, so a course is one record instead of a shape you have to remember.
 - **Contacts** — the dive centers, schools, shops, clubs and places you stayed, each kept once with
-  its phone, email, website and address, and picked from a list for a dive, a course, a card, a gear
-  service or a trip part. A dive logged on a course takes its dive center from it, and a trip names
-  its dive centers from its dives.
+  its phone, email, website, address and place on the map, and picked from a list for a dive, a
+  course, a card, a gear service or a trip part. A dive logged on a course takes its dive center
+  from it, and a trip names its dive centers from its dives.
 - **People** — your buddies, guides, instructors, fellow students and whoever came along, each kept
   once and picked for a dive, a trip or a course with the role they had that time; a course's and a
   card's instructor is one of them. Type a name that is new and it becomes a person. Link one to

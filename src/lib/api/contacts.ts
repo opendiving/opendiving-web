@@ -75,6 +75,9 @@ export interface Contact {
   // prepends the scheme before sending one.
   website?: string | null;
   address?: ContactAddress | null;
+  // Where it is on a map, in decimal degrees: both or neither.
+  latitude?: number | null;
+  longitude?: number | null;
   notes: string;
   user_uuid: string;
   created_at: string;
@@ -89,13 +92,16 @@ export interface ContactCreate {
   email?: string | null;
   website?: string | null;
   address?: ContactAddress | null;
+  latitude?: number | null;
+  longitude?: number | null;
   notes?: string;
 }
 
 /**
  * The `PATCH /contact/{uuid}` body. An explicit `null` clears the phone, the
  * email, the website or the address, and naming `address` replaces it whole;
- * `name`, `roles` and `notes` take no null.
+ * `latitude` and `longitude` go as a pair, both `null` clearing it and half of
+ * one a 422; `name`, `roles` and `notes` take no null.
  */
 export type ContactUpdate = Partial<ContactCreate>;
 

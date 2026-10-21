@@ -14,6 +14,10 @@ import {
   type ContactInput,
 } from "@/lib/validations/contact";
 import {
+  formatCoordinateForForm,
+  parseFormCoordinate,
+} from "@/lib/validations/coordinates";
+import {
   contactsAPI,
   CONTACT_ROLES,
   CONTACT_ROLE_LABELS,
@@ -44,6 +48,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { ContactPositionField } from "@/components/contacts/contact-position-field";
 
 interface ContactDialogProps {
   open: boolean;
@@ -101,6 +106,8 @@ export function ContactDialog({
       email: "",
       website: "",
       address: EMPTY_CONTACT_ADDRESS,
+      latitude: "",
+      longitude: "",
       notes: "",
     },
   });
@@ -129,6 +136,8 @@ export function ContactDialog({
       email: contact?.email ?? "",
       website: contact?.website ?? "",
       address: contactAddressToForm(contact?.address),
+      latitude: formatCoordinateForForm(contact?.latitude),
+      longitude: formatCoordinateForForm(contact?.longitude),
       notes: contact?.notes ?? "",
     });
     // Same deliberate reset-on-open pattern as `course-dialog.tsx`.
@@ -147,6 +156,8 @@ export function ContactDialog({
         email: data.email.trim() || null,
         website: normalizeWebsite(data.website),
         address: contactAddressFromForm(data.address),
+        latitude: parseFormCoordinate(data.latitude),
+        longitude: parseFormCoordinate(data.longitude),
         notes: data.notes,
       };
 
@@ -346,6 +357,8 @@ export function ContactDialog({
                 />
               ))}
             </div>
+
+            <ContactPositionField form={form} />
 
             <FormField
               control={form.control}

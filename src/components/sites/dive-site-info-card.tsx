@@ -2,7 +2,7 @@
 
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import type { DiveSite } from "@/lib/api/dive-sites";
-import { formatCoordinates } from "@/lib/validations/dive-site";
+import { formatCoordinates } from "@/lib/validations/coordinates";
 import { ExternalIdLink } from "@/components/sites/external-id-link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

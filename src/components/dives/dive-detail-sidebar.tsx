@@ -17,7 +17,7 @@ import { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
 import { formatContactAddress, formatWebsite } from "@/lib/contact";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
-import { formatCoordinates } from "@/lib/validations/dive-site";
+import { formatCoordinates } from "@/lib/validations/coordinates";
 import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { tripPartLocations } from "@/lib/trip-parts";

@@ -644,7 +644,7 @@
    wheel over this map is the diver scrolling down the dialog towards Save, and
    flashing a dark panel over the map every time they do it is worse than the
    silence it replaces. So the screen is hidden and
-   `components/sites/map-picker.tsx` listens for `cooperativegestureprevented`
+   `components/map/map-picker.tsx` listens for `cooperativegestureprevented`
    instead, showing the app's own hint for the one case that needs explaining.
 
    Outside `@layer base`, and two class names deep, because `maplibre-gl.css` is

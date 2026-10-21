@@ -75,20 +75,23 @@ interface Recentre {
 }
 
 export interface MapPickerProps {
-  // The site's current position, or null for a site that has none yet.
+  // The current position, or null for a thing that has none yet.
   latitude: number | null;
   longitude: number | null;
   // Called with the position the diver placed, in decimal degrees.
   onPick: (position: LatLon) => void;
+  // What a pick places, as the label and the help text say it: "the site".
+  subject: string;
 }
 
 /**
- * A map for placing a dive site, drawn by MapLibre through `MapCanvas`.
+ * A map for placing one point - a dive site, a contact - drawn by MapLibre
+ * through `MapCanvas`.
  *
- * Loaded through `next/dynamic` by its only caller (`dive-site-map-field.tsx`),
- * so the renderer and its worker sit in their own chunk, fetched when the dive
- * site dialog opens rather than in the bundle every page pays for. The basemap
- * loads as soon as it mounts, which is why `/privacy` says so.
+ * Loaded through `next/dynamic` by its only caller (`map-field.tsx`), so the
+ * renderer and its worker sit in their own chunk, fetched when the map is first
+ * shown rather than in the bundle every page pays for. The basemap loads as
+ * soon as it mounts, which is why `/privacy` says so.
  *
  * This is an enhancement, not the only way in: the latitude and longitude
  * inputs beside it accept the same position typed or pasted, which is what
@@ -100,9 +103,14 @@ export interface MapPickerProps {
  *
  * MapLibre owns the camera. What this component owns is everything the renderer
  * has no opinion about: the round trip with the form, where a zoom is anchored,
- * the keyboard, and the crosshair that says where Enter would place the site.
+ * the keyboard, and the crosshair that says where Enter would place the point.
  */
-export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
+export function MapPicker({
+  latitude,
+  longitude,
+  onPick,
+  subject,
+}: MapPickerProps) {
   const { resolvedTheme } = useTheme();
   // From the instance's runtime configuration, so a published image can be
   // pointed at another basemap without a rebuild (`lib/runtime-config.ts`).
@@ -478,7 +486,7 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
           // renderer owns and rebuilds: the crosshair and the hint are its
           // siblings, and the tests select through it for exactly that reason.
           role="application"
-          aria-label="Map. Tap or click to place the dive site."
+          aria-label={`Map. Tap or click to place ${subject}.`}
           aria-describedby="map-picker-help"
           tabIndex={0}
           onKeyDown={handleKeyDown}
@@ -510,7 +518,7 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
 
           {showCrosshair && (
             // Only under keyboard focus: it marks where Enter would place
-            // the site, which is not a question a diver reaching for the mouse
+            // the point, which is not a question a diver reaching for the mouse
             // is asking.
             <div
               aria-hidden
@@ -586,7 +594,7 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
       </p>
 
       <p id="map-picker-help" className="text-sm text-muted-foreground">
-        Tap or click to place the site. A mouse drags to pan; two fingers pan
+        Tap or click to place {subject}. A mouse drags to pan; two fingers pan
         and pinch to zoom; <kbd>Ctrl</kbd>/<kbd>⌘</kbd> and the wheel zooms.
         With the map focused, arrow keys pan, <kbd>+</kbd>/<kbd>-</kbd> zoom and{" "}
         <kbd>Enter</kbd> places it at the crosshair.

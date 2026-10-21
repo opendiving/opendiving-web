@@ -2684,14 +2684,14 @@ otherwise write the stale name back.
 
 ## Coordinates that were picked, not typed, are numbers
 
-`lib/validations/dive-site.ts` validates a _site's own pin_ as strings against a regex because a
-diver typing a latitude passes through "-" and "-17." on the way to "-17.9". A place's coordinates
-arrive whole inside an object picked from a menu, or are absent for a typed-in place; there is no
-half-entered state, and no field for one. So `locationSchema` in `lib/validations/location.ts` uses
-plain `z.number()` with the API's bounds, catching a nonsense object before the round trip. It
-carries no `z.preprocess` or `.transform`, which keeps `z.input<>` inference working and
-`LocationFormValue` usable as either form's own type — one schema, because a dive site's locality
-and a trip part's are one object.
+`lib/validations/coordinates.ts` validates a _site's or a contact's pin_ as strings against a regex
+because a diver typing a latitude passes through "-" and "-17." on the way to "-17.9". A place's
+coordinates arrive whole inside an object picked from a menu, or are absent for a typed-in place;
+there is no half-entered state, and no field for one. So `locationSchema` in
+`lib/validations/location.ts` uses plain `z.number()` with the API's bounds, catching a nonsense
+object before the round trip. It carries no `z.preprocess` or `.transform`, which keeps `z.input<>`
+inference working and `LocationFormValue` usable as either form's own type — one schema, because a
+dive site's locality and a trip part's are one object.
 
 ## The confirmation map is not `MapPicker`, and that is most of why it is short
 
@@ -2742,13 +2742,13 @@ so it should open where the coast is recognisable rather than in a grid of house
 
 ## A dive site's map opens further out than the picker that placed its pin
 
-`MapPicker` opens at `PLACED_ZOOM` (11, `components/sites/map-picker.tsx`) for a site with a
-position; the site page's map fits to `MAX_FIT_ZOOM` (9, `lib/basemap.ts`), the same cap a trip
-location gets. Matching the picker is wrong for one reason: the picker can be zoomed out and a
-static map cannot. Across a phone an offshore site (Chumphon Pinnacle off Koh Tao, Kimud Shoal off
-Cebu) renders at the deeper zoom as featureless grey with a coral dot and no land or labels; two
-levels out shows the island and named towns. A shore site reads well at either, and roughly half of
-dive sites are offshore.
+`MapPicker` opens at `PLACED_ZOOM` (11, `components/map/map-picker.tsx`) for a site with a position;
+the site page's map fits to `MAX_FIT_ZOOM` (9, `lib/basemap.ts`), the same cap a trip location gets.
+Matching the picker is wrong for one reason: the picker can be zoomed out and a static map cannot.
+Across a phone an offshore site (Chumphon Pinnacle off Koh Tao, Kimud Shoal off Cebu) renders at the
+deeper zoom as featureless grey with a coral dot and no land or labels; two levels out shows the
+island and named towns. A shore site reads well at either, and roughly half of dive sites are
+offshore.
 
 The cap is `MAX_FIT_ZOOM`, single rather than per caller: a per-caller argument had one value, one
 explicit caller, and a second plausible number sitting in `MapPicker` inviting someone to pass it.
@@ -3284,7 +3284,7 @@ in both systems".
 `TripDialog` renders `LocationsMap` unconditionally; `showWhenEmpty`, an opt-in prop, draws the
 whole world until the first place is picked. A frame appearing with the first place shoves the lower
 fields down mid-edit, and an empty map says the field above wants a place, not free text — as
-`DiveSiteMapField` does with `MapPicker`.
+`MapField` does with `MapPicker`.
 
 `showWhenEmpty` stays opt-in: a dive or a site is at one spot, and the world says nothing about
 which, so their cards and heroes draw the map's water for one with no position. A trip's card and
@@ -3377,7 +3377,7 @@ the API's geocoders, and a self-hoster configures the two apart.
 A position arrives three ways — pin, place search, pasted latitude/longitude pair — and the dialog
 holding the coordinates sees them all, so the reverse geocode and its guards live in
 `hooks/useGeocodedLocation.ts`, used by `DiveSiteDialog` and `LocationSearchDialog` alike;
-`DiveSiteMapField` renders map and credit.
+`MapField` renders map and credit.
 
 **A reverse-geocoded place is a name and nothing else**, where a forward search fills the whole
 place. The coordinates that come back are the _site's_ — it is the pin the diver just dropped that
@@ -3413,7 +3413,7 @@ exactly-typed name, and a pick here moves the pin.
 Searched places are not rounded; only `MapPicker`'s `emit` rounds, for its own echo.
 
 Its credit is its own, held open with `min-h-4`. The map is `h-40 sm:h-48` like `LocationsMap`, and
-the `dive-site-map-field.tsx` skeleton matches. `/privacy` §4.5 covers both forms.
+the `map-field.tsx` skeleton matches. `/privacy` §4.5 covers both forms.
 
 ## The species picker resolves a pick into a catalog row before form state sees it
 
@@ -5108,7 +5108,7 @@ app reads.
 
 ## The picker's contract is its own, and MapLibre is configured to meet it
 
-`components/sites/map-picker.tsx` sets `cooperativeGestures: true`, which covers the
+`components/map/map-picker.tsx` sets `cooperativeGestures: true`, which covers the
 one-finger-scroll, two-finger-pan, ctrl/⌘-wheel rules. Its screen fires on every blocked gesture,
 plain wheel included, so `globals.css` hides it, the `locale` strings are emptied (MapLibre's
 duplicate this app's sentence), and the picker hints on `cooperativegestureprevented` only for

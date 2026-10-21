@@ -30,7 +30,7 @@ import {
 const SLIPPY_MIN_ZOOM = 1;
 const SLIPPY_MAX_ZOOM = 18;
 const SLIPPY_MAX_FIT_ZOOM = 10;
-// `PLACED_ZOOM` in `components/sites/map-picker.tsx`, which never lived here.
+// `PLACED_ZOOM` in `components/map/map-picker.tsx`, which never lived here.
 const SLIPPY_PLACED_ZOOM = 12;
 
 afterEach(() => {

@@ -175,7 +175,7 @@ export function useGeocodedLocation({
         // nothing, and the announcement below would still say it happened -
         // telling a screen reader user something was destroyed when nothing
         // was, in text nobody looking at the screen can see is wrong. Trimmed,
-        // the way `isSet` in `lib/validations/dive-site.ts` treats every other
+        // the way `isSet` in `lib/validations/coordinates.ts` treats every other
         // field here: a stray space is not something a diver typed on purpose,
         // and emptying it looks identical on screen to emptying nothing.
         if (outcome.status === "nameless" && !live.location?.name?.trim())

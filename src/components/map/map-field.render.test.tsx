@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { DiveSiteMapField } from "./dive-site-map-field";
+import { MapField } from "./map-field";
 
 const BLUE_HOLE = { latitude: 28.5717, longitude: 34.5372 };
 
@@ -18,7 +18,8 @@ vi.mock("./map-picker", () => ({
 
 function renderField(props: Partial<{ onPick: () => void }> = {}) {
   return render(
-    <DiveSiteMapField
+    <MapField
+      subject="the dive site"
       latitude=""
       longitude=""
       onPick={vi.fn()}
@@ -31,7 +32,7 @@ function renderField(props: Partial<{ onPick: () => void }> = {}) {
 // The map is always shown; `next/dynamic` still resolves it asynchronously.
 const placePin = () => screen.findByRole("button", { name: "place the pin" });
 
-describe("DiveSiteMapField", () => {
+describe("MapField", () => {
   it("writes the placed position into the coordinate fields", async () => {
     // The map deals in numbers and the form in strings, and this is the only
     // place that converts between them.
@@ -51,7 +52,8 @@ describe("DiveSiteMapField", () => {
   // 1.0.](https://osm.org/copyright)".
   it("renders the credit's licence link rather than its markdown", () => {
     render(
-      <DiveSiteMapField
+      <MapField
+        subject="the dive site"
         latitude="28.5717"
         longitude="34.5372"
         onPick={vi.fn()}
@@ -71,7 +73,8 @@ describe("DiveSiteMapField", () => {
   // prose, which has to keep working exactly as it did.
   it("renders a credit that carries no link at all", () => {
     render(
-      <DiveSiteMapField
+      <MapField
+        subject="the dive site"
         latitude="28.5717"
         longitude="34.5372"
         onPick={vi.fn()}
@@ -91,7 +94,8 @@ describe("DiveSiteMapField", () => {
     // The field writes itself a round trip after the position was placed, and
     // nobody is looking at it when it happens.
     render(
-      <DiveSiteMapField
+      <MapField
+        subject="the dive site"
         latitude="28.5717"
         longitude="34.5372"
         onPick={vi.fn()}
@@ -102,5 +106,21 @@ describe("DiveSiteMapField", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Location set to Dahab, Egypt.",
     );
+  });
+
+  // The contact form geocodes nothing, so it has no Location to credit or to
+  // announce, and an empty status line would only add a gap under the map.
+  it("draws no status line for a caller that geocodes nothing", async () => {
+    render(
+      <MapField
+        subject="the contact"
+        latitude="28.5717"
+        longitude="34.5372"
+        onPick={vi.fn()}
+      />,
+    );
+
+    await placePin();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });

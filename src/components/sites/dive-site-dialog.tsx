@@ -10,17 +10,19 @@ import {
   DiveSiteFormInput,
   diveSiteFormValues,
   diveSiteMembersFromForm,
+} from "@/lib/validations/dive-site";
+import {
   parseCoordinatePair,
   parseFormCoordinate,
   parseFormPosition,
-} from "@/lib/validations/dive-site";
+} from "@/lib/validations/coordinates";
 import { diveSitesAPI, DiveSite, ExternalId } from "@/lib/api/dive-sites";
 import { pickExternalId } from "@/lib/external-ids";
 import {
   MAX_LOCATION_NAME_LENGTH,
   type LocationFormValue,
 } from "@/lib/validations/location";
-import { DiveSiteMapField } from "@/components/sites/dive-site-map-field";
+import { MapField } from "@/components/map/map-field";
 import { DiveSiteDetailsFields } from "@/components/sites/dive-site-details-fields";
 import { OtherNamesField } from "@/components/sites/other-names-field";
 import { ExternalIdsField } from "@/components/sites/external-ids-field";
@@ -479,7 +481,8 @@ export function DiveSiteDialog({
               {COORDINATE_HINT}
             </p>
 
-            <DiveSiteMapField
+            <MapField
+              subject="the dive site"
               latitude={watchedLatitude}
               longitude={watchedLongitude}
               onPick={placePosition}
