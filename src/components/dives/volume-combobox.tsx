@@ -317,7 +317,7 @@ export function VolumeCombobox({
   // was relying on.
   const [draft, setDraft] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const scrollToTop = useScrollFieldToTop();
+  useScrollFieldToTop(inputRef);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const listId = useId();
   const optionId = (index: number) => `${listId}-option-${index}`;
@@ -377,10 +377,7 @@ export function VolumeCombobox({
         aria-activedescendant={
           isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined
         }
-        onFocus={(e) => {
-          setIsOpen(!readOnly);
-          if (!readOnly) scrollToTop(e.currentTarget);
-        }}
+        onFocus={() => setIsOpen(!readOnly)}
         onClick={() => setIsOpen(!readOnly)}
         onBlur={() => {
           setDraft(null);

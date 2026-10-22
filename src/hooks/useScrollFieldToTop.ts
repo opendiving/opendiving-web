@@ -1,7 +1,12 @@
 "use client";
 
+import { useEffect, type RefObject } from "react";
+
 import { useCoarsePointer } from "@/hooks/useCoarsePointer";
-import { scrollContainerOf } from "@/hooks/useVisualViewport";
+import {
+  scrollContainerOf,
+  useFocusTappedFieldInPlace,
+} from "@/hooks/useVisualViewport";
 
 /**
  * How far below the scrollport's top the sticky rows above `field` reach once
@@ -58,15 +63,8 @@ function labelledTop(field: HTMLElement, rem: number): number {
   return gap >= 0 && gap <= LABEL_GAP_REM * rem ? box.top : top;
 }
 
-/**
- * Scrolls `field`, with a label directly above it, to the top of what its
- * scroll container shows - the dialog it sits in, or the page - below its
- * `scroll-padding-top` and below every sticky row that would cover it there.
- *
- * Only the nearest container moves. A field in a dialog scrolls the dialog and
- * never the page locked behind it, which the scrim is anchored to.
- */
-export function scrollFieldToTop(field: HTMLElement) {
+/** What `scrollFieldToTop` would scroll, and by how much. */
+function scrollToTopPlan(field: HTMLElement) {
   const container = scrollContainerOf(field);
   const scroller = container ?? document.documentElement;
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
@@ -82,27 +80,58 @@ export function scrollFieldToTop(field: HTMLElement) {
     ? container.getBoundingClientRect().top + container.clientTop
     : (window.visualViewport?.offsetTop ?? 0);
   const top = labelledTop(field, rem) - visibleTop - padding;
-  (container ?? window).scrollBy({ top, behavior: "instant" });
+  const room =
+    scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+  return { target: container ?? window, top, reachable: top <= room + 1 };
 }
 
 /**
- * Returns a focus handler that scrolls a dropdown picker's input to the top of
- * the screen where a finger is driving, and does nothing for a mouse.
+ * Scrolls `field`, with a label directly above it, to the top of what its
+ * scroll container shows - the dialog it sits in, or the page - below its
+ * `scroll-padding-top` and below every sticky row that would cover it there.
+ * A field too near the end goes as far up as the container scrolls.
+ *
+ * Only the nearest container moves. A field in a dialog scrolls the dialog and
+ * never the page locked behind it, which the scrim is anchored to.
+ */
+export function scrollFieldToTop(field: HTMLElement) {
+  const { target, top } = scrollToTopPlan(field);
+  target.scrollBy({ top, behavior: "instant" });
+}
+
+/**
+ * Scrolls a dropdown picker's input to the top of the screen as it takes focus
+ * where a finger is driving, and does nothing for a mouse.
  *
  * On a phone the keyboard takes the bottom half of the screen, and a field
  * left where it was tapped has its menu squeezed into what is left below it or
  * hidden behind the keys. At the top, the whole space above the keyboard is the
- * menu's. Instant rather than smooth: Safari starves the page of frames while
- * the keyboard rises, and the field already at the top is what keeps it from
- * panning to the field on its own.
+ * menu's.
  *
- * @example
- * const scrollToTop = useScrollFieldToTop();
- * <input onFocus={(e) => scrollToTop(e.currentTarget)} />
+ * **A tap is focused with `preventScroll`, or Safari undoes the scroll.** As
+ * the keyboard rises it pans the visual viewport to centre the field above it,
+ * whether or not the field is already in view, and the pan takes the sticky
+ * header up off the screen with it. `useFocusTappedFieldInPlace` stops the pan
+ * as it does in a dialog. Only where the scroll reaches, though: a field too
+ * near the end of the page to come up is left to the pan, which is then all
+ * that keeps it out from behind the keyboard. Instant rather than smooth, since
+ * Safari starves the page of frames while the keyboard rises.
  */
-export function useScrollFieldToTop(): (field: HTMLElement) => void {
+export function useScrollFieldToTop(field: RefObject<HTMLInputElement | null>) {
   const coarsePointer = useCoarsePointer();
-  return (field) => {
-    if (coarsePointer) scrollFieldToTop(field);
-  };
+
+  useFocusTappedFieldInPlace({
+    within: field,
+    takeOver: (tapped) => coarsePointer && scrollToTopPlan(tapped).reachable,
+  });
+
+  useEffect(() => {
+    const input = field.current;
+    if (!coarsePointer || !input) return;
+    const onFocus = () => {
+      if (!input.readOnly) scrollFieldToTop(input);
+    };
+    input.addEventListener("focus", onFocus);
+    return () => input.removeEventListener("focus", onFocus);
+  }, [coarsePointer, field]);
 }

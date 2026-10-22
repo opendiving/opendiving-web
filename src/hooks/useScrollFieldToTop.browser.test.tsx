@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 import { page } from "vitest/browser";
@@ -13,24 +14,39 @@ const HEADER = 60;
 // `TOP_GAP_REM` at the browser's 16px root.
 const GAP = 8;
 
-function Field({ onFocus }: { onFocus?: (field: HTMLElement) => void }) {
-  return (
-    <input
-      aria-label="Picker"
-      onFocus={onFocus && ((e) => onFocus(e.currentTarget))}
-    />
-  );
+function Field() {
+  return <input aria-label="Picker" />;
 }
 
-function OnPage() {
-  const scrollToTop = useScrollFieldToTop();
+/** A picker with `after` pixels of page below it. */
+function OnPage({ after = 2000 }: { after?: number }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useScrollFieldToTop(ref);
   return (
     <div>
       <div style={{ height: 900 }} />
-      <Field onFocus={scrollToTop} />
-      <div style={{ height: 2000 }} />
+      <input ref={ref} aria-label="Picker" />
+      <div style={{ height: after }} />
     </div>
   );
+}
+
+// Chromium's `Touch` needs a real touch-enabled context, so the events are
+// plain ones carrying the two lists the hook reads - as in
+// `useVisualViewport.test.tsx`.
+function tap(target: Element) {
+  const contact = { clientX: 40, clientY: 20, target };
+  const fire = (type: "touchstart" | "touchend") => {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperties(event, {
+      touches: { value: type === "touchend" ? [] : [contact] },
+      changedTouches: { value: [contact] },
+    });
+    target.dispatchEvent(event);
+    return event;
+  };
+  fire("touchstart");
+  return fire("touchend");
 }
 
 afterEach(() => {
@@ -162,5 +178,32 @@ describe("useScrollFieldToTop", () => {
     const input = getByLabelText("Picker");
     fireEvent.focus(input);
     expect(window.scrollY).toBe(0);
+  });
+
+  it("focuses a tapped picker in place, so Safari has no pan to make", async () => {
+    await page.viewport(393, 700);
+    usePointer("coarse");
+    const { getByLabelText } = render(<OnPage />);
+    const input = getByLabelText("Picker");
+    const end = tap(input);
+    expect(end.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(input);
+    expect(input.getBoundingClientRect().top).toBeCloseTo(GAP, 0);
+  });
+
+  it("leaves the tap to Safari where the page cannot scroll the picker up", async () => {
+    await page.viewport(393, 700);
+    usePointer("coarse");
+    const { getByLabelText } = render(<OnPage after={100} />);
+    const end = tap(getByLabelText("Picker"));
+    expect(end.defaultPrevented).toBe(false);
+  });
+
+  it("leaves a mouse's tap alone", async () => {
+    await page.viewport(393, 700);
+    usePointer("fine");
+    const { getByLabelText } = render(<OnPage />);
+    const end = tap(getByLabelText("Picker"));
+    expect(end.defaultPrevented).toBe(false);
   });
 });

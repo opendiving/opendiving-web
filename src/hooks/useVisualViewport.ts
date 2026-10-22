@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 /** The visible height of the page, in CSS pixels. */
 const HEIGHT_VAR = "--visual-viewport-height";
@@ -413,10 +413,29 @@ function placeCaret(field: KeyboardField, x: number, y: number) {
  * caret natively.
  *
  * Listens on the document so that a field in a popover over the dialog is
- * covered too. Only a one-finger tap counts; a drag is the diver scrolling.
+ * covered too, or on `within` alone where one is given. `takeOver` declines a
+ * tap by returning false, which leaves it to the browser. Only a one-finger
+ * tap counts; a drag is the diver scrolling.
  */
-export function useFocusTappedFieldInPlace() {
+export function useFocusTappedFieldInPlace({
+  within,
+  takeOver,
+}: {
+  within?: RefObject<HTMLElement | null>;
+  takeOver?: (field: KeyboardField) => boolean;
+} = {}) {
+  // A ref, so that a caller's inline arrow does not re-subscribe every render.
+  const takeOverRef = useRef(takeOver);
   useEffect(() => {
+    takeOverRef.current = takeOver;
+  });
+
+  useEffect(() => {
+    // Typed as what both share, which carries the touch events' own types.
+    const scope: GlobalEventHandlers | null = within
+      ? within.current
+      : document;
+    if (!scope) return;
     let start: { x: number; y: number } | null = null;
 
     const onTouchStart = (event: TouchEvent) => {
@@ -430,8 +449,8 @@ export function useFocusTappedFieldInPlace() {
       const from = start;
       start = null;
       const touch = event.changedTouches[0];
-      // `defaultPrevented` is a second open dialog's copy of this having
-      // handled the tap already.
+      // `defaultPrevented` is another copy of this having handled the tap
+      // already: a second open dialog's, or a dialog's over a picker's own.
       if (!from || !touch || event.touches.length || event.defaultPrevented) {
         return;
       }
@@ -439,6 +458,7 @@ export function useFocusTappedFieldInPlace() {
       if (drift > TAP_SLOP) return;
       const field = tappedField(event.target);
       if (!field || field === document.activeElement) return;
+      if (takeOverRef.current && !takeOverRef.current(field)) return;
 
       event.preventDefault();
       // Caret first, so that a focus handler's own selection stands:
@@ -449,20 +469,20 @@ export function useFocusTappedFieldInPlace() {
     };
 
     const capture = { capture: true };
-    document.addEventListener("touchstart", onTouchStart, {
+    scope.addEventListener("touchstart", onTouchStart, {
       capture: true,
       passive: true,
     });
     // Not passive, or `preventDefault` is ignored.
-    document.addEventListener("touchend", onTouchEnd, {
+    scope.addEventListener("touchend", onTouchEnd, {
       capture: true,
       passive: false,
     });
-    document.addEventListener("touchcancel", onTouchCancel, capture);
+    scope.addEventListener("touchcancel", onTouchCancel, capture);
     return () => {
-      document.removeEventListener("touchstart", onTouchStart, capture);
-      document.removeEventListener("touchend", onTouchEnd, capture);
-      document.removeEventListener("touchcancel", onTouchCancel, capture);
+      scope.removeEventListener("touchstart", onTouchStart, capture);
+      scope.removeEventListener("touchend", onTouchEnd, capture);
+      scope.removeEventListener("touchcancel", onTouchCancel, capture);
     };
-  }, []);
+  }, [within]);
 }
