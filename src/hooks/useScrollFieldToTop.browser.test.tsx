@@ -10,6 +10,8 @@ import { scrollFieldToTop, useScrollFieldToTop } from "./useScrollFieldToTop";
 // case scrolls under is the one it states.
 
 const HEADER = 60;
+// `FOCUS_RING_GAP_REM` at the browser's 16px root.
+const GAP = 8;
 
 function Field({ onFocus }: { onFocus?: (field: HTMLElement) => void }) {
   return (
@@ -43,7 +45,7 @@ describe("scrollFieldToTop", () => {
     const { getByLabelText } = render(<OnPage />);
     const input = getByLabelText("Picker");
     scrollFieldToTop(input);
-    expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER, 0);
+    expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER + GAP, 0);
   });
 
   it("stops below a section heading stuck under the header", async () => {
@@ -66,7 +68,7 @@ describe("scrollFieldToTop", () => {
     );
     const input = getByLabelText("Picker");
     scrollFieldToTop(input);
-    expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER + 50, 0);
+    expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER + 50 + GAP, 0);
   });
 
   it("scrolls a dialog's own box and leaves the page behind it alone", async () => {
@@ -92,7 +94,7 @@ describe("scrollFieldToTop", () => {
     );
     const input = getByLabelText("Picker");
     scrollFieldToTop(input);
-    expect(input.getBoundingClientRect().top).toBeCloseTo(100 + 20, 0);
+    expect(input.getBoundingClientRect().top).toBeCloseTo(100 + 20 + GAP, 0);
     expect(window.scrollY).toBe(0);
   });
 });
@@ -104,7 +106,7 @@ describe("useScrollFieldToTop", () => {
     const { getByLabelText } = render(<OnPage />);
     const input = getByLabelText("Picker");
     fireEvent.focus(input);
-    expect(input.getBoundingClientRect().top).toBeCloseTo(0, 0);
+    expect(input.getBoundingClientRect().top).toBeCloseTo(GAP, 0);
   });
 
   it("leaves the page where it is for a mouse", async () => {

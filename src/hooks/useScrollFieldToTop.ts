@@ -34,9 +34,15 @@ function stuckRowsBottom(field: HTMLElement, scroller: HTMLElement): number {
 }
 
 /**
+ * Clearance above the field: its focus ring is drawn 4px outside its box
+ * (`ring-2 ring-offset-2`), where a row stuck flush against the box covers it.
+ */
+const FOCUS_RING_GAP_REM = 0.5;
+
+/**
  * Scrolls `field` to the top of what its scroll container shows - the dialog
  * it sits in, or the page - below its `scroll-padding-top` and below every
- * sticky row that would cover it there.
+ * sticky row that would cover it there, with room for its focus ring.
  *
  * Only the nearest container moves. A field in a dialog scrolls the dialog and
  * never the page locked behind it, which the scrim is anchored to.
@@ -44,10 +50,13 @@ function stuckRowsBottom(field: HTMLElement, scroller: HTMLElement): number {
 export function scrollFieldToTop(field: HTMLElement) {
   const container = scrollContainerOf(field);
   const scroller = container ?? document.documentElement;
-  const padding = Math.max(
-    parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0,
-    stuckRowsBottom(field, scroller),
-  );
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const padding =
+    Math.max(
+      parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0,
+      stuckRowsBottom(field, scroller),
+    ) +
+    FOCUS_RING_GAP_REM * rem;
   // The page's visible top is the visual viewport's, which Safari pans below
   // the layout viewport's while a keyboard is already up.
   const visibleTop = container
