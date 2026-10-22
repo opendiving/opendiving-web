@@ -7,6 +7,7 @@ import { parseDecimal } from "@/lib/decimal-entry";
 import { cn } from "@/lib/utils";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { useUnits } from "@/hooks/useUnits";
+import { useScrollFieldToTop } from "@/hooks/useScrollFieldToTop";
 import type { UnitSystem } from "@/lib/units";
 import { divesAPI } from "@/lib/api/dives";
 
@@ -316,6 +317,7 @@ export function VolumeCombobox({
   // was relying on.
   const [draft, setDraft] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollToTop = useScrollFieldToTop();
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const listId = useId();
   const optionId = (index: number) => `${listId}-option-${index}`;
@@ -375,7 +377,10 @@ export function VolumeCombobox({
         aria-activedescendant={
           isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined
         }
-        onFocus={() => setIsOpen(!readOnly)}
+        onFocus={(e) => {
+          setIsOpen(!readOnly);
+          if (!readOnly) scrollToTop(e.currentTarget);
+        }}
         onClick={() => setIsOpen(!readOnly)}
         onBlur={() => {
           setDraft(null);

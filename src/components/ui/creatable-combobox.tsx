@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { useScrollFieldToTop } from "@/hooks/useScrollFieldToTop";
 
 // Where Up/Down moves the highlight, given the current position and how many
 // options are on offer.
@@ -449,6 +450,7 @@ export function CreatableCombobox({
   // leave the page it answered before the pick on screen.
   const [searchRun, setSearchRun] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollToTop = useScrollFieldToTop();
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   // Remembers what was picked, so remote mode can still show the selected item's
   // name in the input once it has dropped out of the current search results.
@@ -830,8 +832,9 @@ export function CreatableCombobox({
           disabled={disabled || isLoading}
           className={cn(value !== undefined && "pr-7")}
           onChange={(e) => handleInputChange(e.target.value)}
-          onFocus={() => {
+          onFocus={(e) => {
             setIsOpen(true);
+            scrollToTop(e.currentTarget);
             // The menu now opens unfiltered, so the text sitting in a filled
             // single-select is a label rather than a query - and clicking in to
             // change the trip and typing gave "Dahab 2025R" against an empty menu.
