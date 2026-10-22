@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { ChartPeriodControls } from "@/components/dives/chart-period-controls";
 import { ChartSkeleton } from "@/components/dives/chart-skeleton";
-import { ChartStat } from "@/components/dives/chart-stat";
+import { ChartStat, ChartStatRow } from "@/components/dives/chart-stat";
 import { GasUseChart } from "@/components/dives/gas-use-chart";
 import { diveStatsAPI, DiveGasUsePoint } from "@/lib/api/dive-stats";
 import { type GasUseSummary, summarizeGasUse } from "@/lib/dive-gas";
@@ -120,7 +120,7 @@ function GasUseSummaryRow({
   units: UnitSystem;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-start gap-x-6 gap-y-3">
+    <ChartStatRow className="mb-5">
       <ChartStat label="Median" detail={<Change summary={summary} />}>
         <Figure value={summary.median} units={units} />
       </ChartStat>
@@ -132,7 +132,7 @@ function GasUseSummaryRow({
           {summary.dives}
         </span>
       </ChartStat>
-    </div>
+    </ChartStatRow>
   );
 }
 
