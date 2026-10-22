@@ -170,3 +170,32 @@ describe("GasUseChart point descriptions", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("GasUseChart bins", () => {
+  it("never draws a box with a negative width at the window's edge", () => {
+    // At "all" the window starts at the first dive, so the first bin is cut to
+    // whatever of it the dives occupy: three dives on the last two days of a
+    // month, in a four-year career read in month bins, leave it under a unit
+    // wide - narrower than the inset either side of a box.
+    const dives = [
+      "2022-01-30T09:00:00+02:00",
+      "2022-01-30T14:00:00+02:00",
+      "2022-01-31T09:00:00+02:00",
+      "2024-06-10T09:00:00+02:00",
+      "2026-01-15T09:00:00+02:00",
+    ];
+    const { container } = render(
+      <GasUseChart
+        points={dives.map((start_time, index) =>
+          point({ dive_uuid: `d${index}`, dive_number: index + 1, start_time }),
+        )}
+        scope="all"
+        anchor={Date.parse(dives[0])}
+      />,
+    );
+
+    const boxes = [...container.querySelectorAll("g.pointer-events-none rect")];
+    expect(boxes).toHaveLength(1);
+    expect(Number(boxes[0].getAttribute("width"))).toBeGreaterThanOrEqual(0);
+  });
+});

@@ -214,17 +214,15 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // every other dive timestamp in the app. Read back with `getUTC*` only.
   const times = points.map((point) => diveWallClockTime(point.start_time));
   // Converted once, here, and everything below - the domain, the axis ticks, the
-  // trend, the spread band, the reference line - is then in the diver's own units,
-  // so `niceDomain` picks round cuft/min rather than round L/min rescaled.
+  // bins, the baseline - is then in the diver's own units, so `niceDomain` picks
+  // round cuft/min rather than round L/min rescaled.
   const displayRmv = (rmv: number) => toDisplayUnits(rmv, "rmv", units);
   const rmvs = points.map((point) => displayRmv(point.gas_use.rmv));
 
-  // Both derived from the *whole* series, deliberately, and then windowed. The y
-  // axis staying put while you page through years is what makes the periods
+  // Derived from the *whole* series, deliberately, and then windowed. The y axis
+  // staying put while you page through years is what makes the periods
   // comparable at a glance - a per-window domain would rescale on every click
-  // and make a good year look identical to a bad one. Likewise the trailing mean
-  // is computed across the whole history, so the first dive of a year carries
-  // the context of the last few dives of the one before instead of restarting.
+  // and make a good year look identical to a bad one.
   //
   // Scaled to the series with its outliers left off (`clipOutliers`); a dive
   // outside the axis is pinned to its edge and drawn hollow, see below.
@@ -273,9 +271,9 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
     );
 
   // Nothing drawn leaves the plot, whatever the arithmetic says. The axis is
-  // scaled to the series with its outliers left off, so a dive, a window's mean
-  // plus a standard deviation, or a quartile can sit just outside it - which
-  // would draw over the axis labels rather than reporting anything.
+  // scaled to the series with its outliers left off, so a dive or a bin's
+  // quartile can sit just outside it - which would draw over the axis labels
+  // rather than reporting anything.
   const clamp = (rmv: number) =>
     Math.min(domain.max, Math.max(domain.min, rmv));
   const outside = (rmv: number) => rmv < domain.min || rmv > domain.max;
@@ -288,13 +286,19 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // scope is only the bin, which `binUnit` sizes to the axis: a day in a month,
   // a week in a year, a month across a career. Summarized over the whole series
   // and then windowed, so a week straddling New Year is the same box in both
-  // years, and kept inside the plot either way.
+  // years, and kept inside the plot either way. A bin cut to a sliver by the
+  // window's edge - a week straddling New Year of which one day is in this year
+  // - gets an inset no wider than half of what is left, so its box never has a
+  // negative width.
   const unit = binUnit(range.end - range.start, plotWidth);
   const bins = binSummaries(times, rmvs, unit)
     .filter((bin) => bin.end > range.start && bin.start < range.end)
     .map((bin) => {
-      const x0 = Math.max(CHART_PADDING.left, x(bin.start)) + BIN_INSET;
-      const x1 = Math.min(width - CHART_PADDING.right, x(bin.end)) - BIN_INSET;
+      const left = Math.max(CHART_PADDING.left, x(bin.start));
+      const right = Math.min(width - CHART_PADDING.right, x(bin.end));
+      const inset = Math.min(BIN_INSET, (right - left) / 2);
+      const x0 = left + inset;
+      const x1 = right - inset;
 
       return { ...bin, x0, x1, mid: (x0 + x1) / 2 };
     });
@@ -366,10 +370,9 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             />
           ))}
 
-          {/* Dashed gridlines, and only these: with a month band, a spread
-                band, a reference line and a trend all sharing the plot, solid
-                rules across it competed with the data instead of supporting
-                it. */}
+          {/* Dashed gridlines, and only these: with a month band, the
+                baseline band and the bins all sharing the plot, solid rules
+                across it competed with the data instead of supporting it. */}
           <ChartYAxis ticks={axisTicks(domain)} y={y} width={width} />
 
           {xTicks.map(({ label, time }) => (

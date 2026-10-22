@@ -32,8 +32,8 @@ export function buildAreaPath(points: Point[], baselineY: number): string {
   return `${line} L${points[points.length - 1].x},${baselineY} L${points[0].x},${baselineY} Z`;
 }
 
-// The cubic segments joining `points`, without the leading `M` - the shared
-// middle of `smoothPath` and `smoothBandPath`.
+// The cubic segments joining `points`, without the leading `M` - the body of
+// `smoothPath`.
 //
 // Monotone cubic interpolation (Fritsch-Carlson), specifically, rather than the
 // Catmull-Rom spline that every "smooth line chart" snippet reaches for. The
@@ -122,18 +122,6 @@ export function smoothPath(points: Point[]): string {
   if (points.length === 1) return start;
 
   return `${start} ${curveCommands(points)}`;
-}
-
-// The `d` of a closed band between two curves sharing an x series: out along
-// `upper`, back along `lower`, closed. Both edges are smoothed the same way, so
-// the band hugs the line it surrounds instead of drifting away from it at the
-// bends.
-export function smoothBandPath(upper: Point[], lower: Point[]): string {
-  if (upper.length < 2 || upper.length !== lower.length) return "";
-
-  const back = [...lower].reverse();
-
-  return `${smoothPath(upper)} L${round(back[0].x)},${round(back[0].y)} ${curveCommands(back)} Z`;
 }
 
 // The `d` of a bar with its top two corners rounded and its bottom two square.

@@ -1041,15 +1041,11 @@ a `<style>` element breaks only in production. `gas-use-chart.tsx` is plain `<sv
 
 The trend mark is a quartile box per calendar bin: the median as a tick, the middle half as the box,
 a thin line between bin medians, dashed across a break longer than `TREND_GAP_MS` (60 days) so a
-summer without dives is a gap, not a steady line. `binUnit()` picks the finest of day, week, month,
-quarter and year whose bins get `BIN_MIN_WIDTH` of the axis, so the unit follows the room on screen
-rather than the scope: days in a month, weeks in a year, months across a career, one step coarser on
-a phone. Rejected: a trailing N-dive mean with a one-standard-deviation band, which at a year's
-scale smooths inside one slot of the axis and runs flat between trips while its band follows
-outliers; and grouping by the gaps between dives, which makes a weekend diver's career a smear of
-overlapping marks and an instructor's season one box. Quartiles rather than mean and deviation
-because one misread gauge moves a quartile by at most a rank; the all-time baseline is a median
-inside the all-time middle half for the same reason.
+summer without dives is a gap, not a steady line. `binUnit()` picks the unit by the room each bin
+gets on the axis, and its comment carries why a fixed unit, a trailing window of dives or grouping
+by the gaps between dives were rejected. Quartiles rather than mean and deviation because one
+misread gauge moves a quartile by at most a rank; the all-time baseline is a median inside the
+all-time middle half for the same reason.
 
 Coral boxes, teal dots: declared once in `globals.css`, never under `.dark`, so they hold contrast
 in both themes.

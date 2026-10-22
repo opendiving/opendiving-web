@@ -64,7 +64,9 @@ const BIN_UNIT_MS: Record<BinUnit, number> = {
 
 // The narrowest a bin may be, in viewBox units, before the chart steps up to
 // the next unit. Wide enough for a box with a median tick inside it to read as
-// one; about half the design width's room for a week in a year.
+// one, and just under the design width's room for a week in a year (664 units
+// over 52 weeks), so a year is read in weeks on a desktop and in months on a
+// phone.
 export const BIN_MIN_WIDTH = 12;
 
 // The finest unit whose bins get at least `BIN_MIN_WIDTH` of a `plotWidth`-wide
@@ -168,10 +170,9 @@ export function binSummaries(
   }));
 }
 
-// The fraction of the series an axis is allowed to leave off each end.
-//
-// One misread gauge at 27 L/min used to set the top of the y axis for the other
-// two hundred dives, squashing all of them into the bottom third of the plot.
+// The fraction of the series an axis is allowed to leave off each end, so one
+// misread gauge at twice everyone else's rate does not set the top of the axis
+// and squash the other two hundred dives into the bottom third of the plot.
 // Dropping one dive in a hundred from each end only ever touches a series of a
 // hundred or more - a shorter one keeps its extremes - and the chart pins what
 // it drops to the edge rather than hiding it.
@@ -188,11 +189,10 @@ export function clipOutliers(values: number[]): number[] {
 }
 
 // The three marks sharing the gas chart's plot, each of which the diver can turn
-// off. The trend and its spread band are one mark, not two: the band is what
-// gives the line body and says how tightly the dives it averages were clustered,
-// so a chart with one and not the other says less than either alone. (The band
-// is still dropped at the "all" scope, where a fortnight of diving is four units
-// wide and it collapses into a smear - see `GasUseChart`.)
+// off. A bin's box and its median tick are one mark, not two: the tick is the
+// figure and the box says how tightly the dives behind it were clustered, so a
+// chart with one and not the other says less than either alone. Likewise the
+// baseline's median line and its middle-half band.
 export const GAS_USE_MARKS = ["dives", "trend", "average"] as const;
 
 export type GasUseMark = (typeof GAS_USE_MARKS)[number];
@@ -344,16 +344,16 @@ export function summarizeGasUse(
   };
 }
 
-// How long a break in diving has to be before the trend line stops being drawn
-// across it (see `segmentByTimeGap`). Two months is comfortably longer than the
-// gap between dives on a trip, or between trips in an active season, and
+// How long a break in diving has to be before the line joining one bin's median
+// to the next is drawn dashed across it. Two months is comfortably longer than
+// the gap between dives on a trip, or between trips in an active season, and
 // comfortably shorter than an off-season.
 //
-// The trailing mean itself deliberately still averages across the gap: your gas
-// consumption doesn't reset because you took a winter off. It's only the drawn
-// connector that's a lie - a week in April and a week in October joined by a
-// long flat segment reads as "my consumption was steady all summer" when the
-// truth is "there is no data here".
+// A solid connector across that gap is a lie - a week in April and a week in
+// October joined by a long segment reads as "my consumption was steady all
+// summer" when the truth is "there is no data here". Dashed, it still carries
+// the eye from one trip's figure to the next without claiming the months
+// between.
 export const TREND_GAP_MS = 60 * 24 * 60 * 60 * 1000;
 
 // Total pressure drop across a set of cylinders, in bar, with a row that is missing
