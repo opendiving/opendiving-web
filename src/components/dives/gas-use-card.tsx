@@ -120,7 +120,7 @@ function GasUseSummaryRow({
   units: UnitSystem;
 }) {
   return (
-    <ChartStatRow className="mb-5 items-start">
+    <ChartStatRow className="mb-5">
       <ChartStat label="Median" detail={<Change summary={summary} />}>
         <Figure value={summary.median} units={units} />
       </ChartStat>

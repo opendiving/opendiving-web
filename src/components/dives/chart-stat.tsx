@@ -60,6 +60,9 @@ export function ChartStat({
 // rendered widths of every figure in the row, so it is measured rather than
 // guessed at with a breakpoint - by laying the row out both ways, before paint,
 // on every render and every width change.
+//
+// Top-aligned, so the labels stay level whichever way a detail lands: a stacked
+// one makes its stat a line taller than the rest.
 export function ChartStatRow({
   className,
   children,
@@ -92,7 +95,10 @@ export function ChartStatRow({
   return (
     <div
       ref={ref}
-      className={cn("group/stats flex flex-wrap gap-x-6 gap-y-3", className)}
+      className={cn(
+        "group/stats flex flex-wrap items-start gap-x-6 gap-y-3",
+        className,
+      )}
     >
       {children}
     </div>
@@ -125,8 +131,7 @@ function placeDetails(row: HTMLElement) {
   function measure(stat: HTMLElement, index: number) {
     return {
       // A flex-wrap item starts a new line exactly when it lands no further
-      // right than the item before it. Tops would not do: under `items-end` a
-      // shorter stat moves every top on its line.
+      // right than the item before it, whatever the row's alignment.
       line: stats
         .slice(1, index + 1)
         .filter((item, i) => item.offsetLeft <= stats[i].offsetLeft).length,

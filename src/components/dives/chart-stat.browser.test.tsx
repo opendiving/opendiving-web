@@ -10,7 +10,7 @@ import "@/app/globals.css";
 function GasRow({ width }: { width: number }) {
   return (
     <div style={{ width }}>
-      <ChartStatRow className="items-start">
+      <ChartStatRow>
         <ChartStat
           label="Median"
           detail={<span className="text-xs">20% vs Oct 2025</span>}

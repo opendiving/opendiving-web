@@ -120,7 +120,7 @@ function DiveActivitySummaryRow({
   scope: ChartScope;
 }) {
   return (
-    <ChartStatRow className="mb-5 items-end">
+    <ChartStatRow className="mb-5">
       <ChartStat label="Dives" detail={<Change summary={summary} />}>
         <span className="text-base font-semibold tabular-nums">
           {summary.dives}
