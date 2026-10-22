@@ -414,25 +414,20 @@ function placeCaret(field: KeyboardField, x: number, y: number) {
  *
  * Listens on the document so that a field in a popover over the dialog is
  * covered too, or on `within` alone where one is given. `takeOver` declines a
- * tap by returning false, which leaves it to the browser, and `beforeFocus`
- * runs on a tap taken over just before the field takes focus. Only a
- * one-finger tap counts; a drag is the diver scrolling.
+ * tap by returning false, which leaves it to the browser. Only a one-finger
+ * tap counts; a drag is the diver scrolling.
  */
 export function useFocusTappedFieldInPlace({
   within,
   takeOver,
-  beforeFocus,
 }: {
   within?: RefObject<HTMLElement | null>;
   takeOver?: (field: KeyboardField) => boolean;
-  beforeFocus?: (field: KeyboardField) => void;
 } = {}) {
-  // Refs, so that a caller's inline arrows do not re-subscribe every render.
+  // A ref, so that a caller's inline arrow does not re-subscribe every render.
   const takeOverRef = useRef(takeOver);
-  const beforeFocusRef = useRef(beforeFocus);
   useEffect(() => {
     takeOverRef.current = takeOver;
-    beforeFocusRef.current = beforeFocus;
   });
 
   useEffect(() => {
@@ -470,7 +465,6 @@ export function useFocusTappedFieldInPlace({
       // `CreatableCombobox` selects its label for the first keystroke to
       // replace.
       placeCaret(field, touch.clientX, touch.clientY);
-      beforeFocusRef.current?.(field);
       field.focus({ preventScroll: true });
     };
 

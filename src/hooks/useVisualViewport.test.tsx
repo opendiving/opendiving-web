@@ -689,22 +689,4 @@ describe("useFocusTappedFieldInPlace", () => {
     unmount();
     cleanup();
   });
-
-  it("runs `beforeFocus` while the field is still unfocused", () => {
-    const { root, cleanup } = mount("<input />");
-    const field = root.querySelector("input")!;
-    const focusedThen: boolean[] = [];
-    const { unmount } = renderHook(() =>
-      useFocusTappedFieldInPlace({
-        beforeFocus: (tapped) =>
-          focusedThen.push(tapped === document.activeElement),
-      }),
-    );
-
-    tap(field);
-    expect(focusedThen).toEqual([false]);
-    expect(document.activeElement).toBe(field);
-    unmount();
-    cleanup();
-  });
 });

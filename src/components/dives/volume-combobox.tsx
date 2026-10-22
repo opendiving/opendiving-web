@@ -3,11 +3,15 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { nextActiveIndex } from "@/components/ui/creatable-combobox";
+import {
+  PickerSheet,
+  pickerMenuClassName,
+  usePickerSheet,
+} from "@/components/ui/picker-sheet";
 import { parseDecimal } from "@/lib/decimal-entry";
 import { cn } from "@/lib/utils";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { useUnits } from "@/hooks/useUnits";
-import { useScrollFieldToTop } from "@/hooks/useScrollFieldToTop";
 import type { UnitSystem } from "@/lib/units";
 import { divesAPI } from "@/lib/api/dives";
 
@@ -317,10 +321,10 @@ export function VolumeCombobox({
   // was relying on.
   const [draft, setDraft] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  useScrollFieldToTop(inputRef);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const listId = useId();
   const optionId = (index: number) => `${listId}-option-${index}`;
+  const sheet = usePickerSheet(inputRef, isOpen);
 
   useEffect(() => {
     if (activeIndex < 0) return;
@@ -339,141 +343,150 @@ export function VolumeCombobox({
     // menu. Same on blur below, which is where "11." settles back to "11".
     setDraft(null);
     closeMenu();
+    // Out of the sheet without the keyboard, as `CreatableCombobox` leaves it.
+    if (sheet) inputRef.current?.blur();
   };
 
   return (
-    <div className="relative">
-      <Input
-        {...slotProps}
-        ref={inputRef}
-        // `text` + `inputMode`, not `type="number"`. A number input's implicit
-        // role is `spinbutton`, and ARIA does not allow `role="combobox"` on it -
-        // axe reports `aria-allowed-role`, twice per dive form. Only text,
-        // search, tel, url and email may carry the role, which is why
-        // `CreatableCombobox` beside this one was already conforming.
-        //
-        // `inputMode="decimal"` keeps the numeric keypad on a phone, which is the
-        // half of `type="number"` that was worth having here. The other half -
-        // `step` and `min` - is gone with it and not missed: the arrow keys were
-        // already taken over for the menu (see `onKeyDown`), and the real
-        // constraint is `z.number().positive()` in the dive schema, not the
-        // browser's.
-        type="text"
-        inputMode="decimal"
-        placeholder={placeholder}
-        value={draft ?? (typeof value === "number" ? String(value) : "")}
-        disabled={disabled}
-        readOnly={readOnly}
-        onChange={(e) => {
-          if (readOnly) return;
-          const raw = e.target.value;
-          setDraft(raw);
-          const parsed = parseDecimal(raw);
-          onChange(Number.isNaN(parsed) ? "" : parsed);
-        }}
-        role="combobox"
-        aria-expanded={isOpen}
-        aria-controls={listId}
-        aria-activedescendant={
-          isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined
-        }
-        onFocus={() => setIsOpen(!readOnly)}
-        onClick={() => setIsOpen(!readOnly)}
-        onBlur={() => {
-          setDraft(null);
-          closeMenu();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-            // These navigate the preset list, so the caret doesn't get them:
-            // `preventDefault` stops the jump to the start or end of the text.
-            // Browsing the presets beats nudging a volume by a hundredth of
-            // a litre, so the keys never step the value either.
-            e.preventDefault();
+    <PickerSheet
+      sheet={sheet}
+      onDone={() => inputRef.current?.blur()}
+      field={
+        <Input
+          {...slotProps}
+          ref={inputRef}
+          // `text` + `inputMode`, not `type="number"`. A number input's implicit
+          // role is `spinbutton`, and ARIA does not allow `role="combobox"` on it -
+          // axe reports `aria-allowed-role`, twice per dive form. Only text,
+          // search, tel, url and email may carry the role, which is why
+          // `CreatableCombobox` beside this one was already conforming.
+          //
+          // `inputMode="decimal"` keeps the numeric keypad on a phone, which is the
+          // half of `type="number"` that was worth having here. The other half -
+          // `step` and `min` - is gone with it and not missed: the arrow keys were
+          // already taken over for the menu (see `onKeyDown`), and the real
+          // constraint is `z.number().positive()` in the dive schema, not the
+          // browser's.
+          type="text"
+          inputMode="decimal"
+          placeholder={placeholder}
+          value={draft ?? (typeof value === "number" ? String(value) : "")}
+          disabled={disabled}
+          readOnly={readOnly}
+          onChange={(e) => {
             if (readOnly) return;
-            if (!isOpen) {
-              setIsOpen(true);
-              return;
-            }
-            setActiveIndex((current) =>
-              nextActiveIndex(
-                current,
-                e.key === "ArrowDown" ? 1 : -1,
-                options.length,
-              ),
-            );
-            return;
+            const raw = e.target.value;
+            setDraft(raw);
+            const parsed = parseDecimal(raw);
+            onChange(Number.isNaN(parsed) ? "" : parsed);
+          }}
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls={listId}
+          aria-activedescendant={
+            isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined
           }
-
-          if (e.key === "Enter") {
-            e.preventDefault();
-            if (isOpen && activeIndex >= 0) {
-              handleSelect(options[activeIndex]);
-              return;
-            }
-            inputRef.current?.blur();
-            return;
-          }
-
-          if (e.key === "Escape") {
+          onFocus={() => setIsOpen(!readOnly)}
+          onClick={() => setIsOpen(!readOnly)}
+          onBlur={() => {
+            setDraft(null);
             closeMenu();
-            inputRef.current?.blur();
-          }
-        }}
-      />
-      {isOpen && (
-        <div
-          id={listId}
-          role="listbox"
-          className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto overscroll-contain"
-        >
-          {groups.map((group) => (
-            // `role="group"` named by `aria-label` rather than by pointing at the
-            // heading element: a listbox may own `group`s, and a group may own
-            // `option`s, but a bare heading node between them is neither. Hiding
-            // it keeps the accessible tree to listbox > group > option while the
-            // heading stays on screen, where the whole point of it is.
-            <div key={group.label} role="group" aria-label={group.label}>
-              <div
-                aria-hidden="true"
-                className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground"
-              >
-                {group.label}
-              </div>
-              {group.rows.map(({ option, index }) => (
-                <button
-                  // Keyed by label, not value: the HP117 and the LP95 are both
-                  // 15 L, and two rows keyed alike is a React warning and a
-                  // re-order bug. Labels are unique across the table; values are
-                  // not.
-                  key={option.label}
-                  type="button"
-                  id={optionId(index)}
-                  role="option"
-                  aria-selected={index === activeIndex}
-                  ref={(el) => {
-                    optionRefs.current[index] = el;
-                  }}
-                  className={cn(
-                    "w-full text-left px-3 py-2 touch:py-3 text-sm hover:bg-accent hover:text-accent-foreground",
-                    // Tints every row holding the committed value, so 15 L lights
-                    // up both the HP117 and the LP95. Correct rather than sloppy:
-                    // the mixture records litres and cannot tell those two apart.
-                    option.value === value && "bg-accent/50",
-                    index === activeIndex && "bg-accent text-accent-foreground",
-                  )}
-                  // Prevent the input's onBlur from firing before this click is registered.
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => handleSelect(option)}
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+              // These navigate the preset list, so the caret doesn't get them:
+              // `preventDefault` stops the jump to the start or end of the text.
+              // Browsing the presets beats nudging a volume by a hundredth of
+              // a litre, so the keys never step the value either.
+              e.preventDefault();
+              if (readOnly) return;
+              if (!isOpen) {
+                setIsOpen(true);
+                return;
+              }
+              setActiveIndex((current) =>
+                nextActiveIndex(
+                  current,
+                  e.key === "ArrowDown" ? 1 : -1,
+                  options.length,
+                ),
+              );
+              return;
+            }
+
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (isOpen && activeIndex >= 0) {
+                handleSelect(options[activeIndex]);
+                return;
+              }
+              inputRef.current?.blur();
+              return;
+            }
+
+            if (e.key === "Escape") {
+              closeMenu();
+              inputRef.current?.blur();
+            }
+          }}
+        />
+      }
+      menu={
+        isOpen && (
+          <div
+            id={listId}
+            role="listbox"
+            className={pickerMenuClassName(sheet)}
+          >
+            {groups.map((group) => (
+              // `role="group"` named by `aria-label` rather than by pointing at the
+              // heading element: a listbox may own `group`s, and a group may own
+              // `option`s, but a bare heading node between them is neither. Hiding
+              // it keeps the accessible tree to listbox > group > option while the
+              // heading stays on screen, where the whole point of it is.
+              <div key={group.label} role="group" aria-label={group.label}>
+                <div
+                  aria-hidden="true"
+                  className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground"
                 >
-                  {volumeOptionLabel(option, units)}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+                  {group.label}
+                </div>
+                {group.rows.map(({ option, index }) => (
+                  <button
+                    // Keyed by label, not value: the HP117 and the LP95 are both
+                    // 15 L, and two rows keyed alike is a React warning and a
+                    // re-order bug. Labels are unique across the table; values are
+                    // not.
+                    key={option.label}
+                    type="button"
+                    id={optionId(index)}
+                    role="option"
+                    aria-selected={index === activeIndex}
+                    ref={(el) => {
+                      optionRefs.current[index] = el;
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 touch:py-3 text-sm hover:bg-accent hover:text-accent-foreground",
+                      // Tints every row holding the committed value, so 15 L lights
+                      // up both the HP117 and the LP95. Correct rather than sloppy:
+                      // the mixture records litres and cannot tell those two apart.
+                      option.value === value && "bg-accent/50",
+                      index === activeIndex &&
+                        "bg-accent text-accent-foreground",
+                    )}
+                    // Prevent the input's onBlur from firing before this click is registered.
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => handleSelect(option)}
+                  >
+                    {volumeOptionLabel(option, units)}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )
+      }
+    />
   );
 }

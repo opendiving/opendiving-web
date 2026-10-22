@@ -14,6 +14,17 @@ import {
 } from "@/hooks/useVisualViewport";
 
 const Dialog = DialogPrimitive.Root;
+
+const InsideDialogContext = React.createContext(false);
+
+/**
+ * Whether the caller renders inside `DialogContent`, a box already fitted to
+ * the part of the screen the keyboard leaves - see `usePickerSheet`, which
+ * leaves a dropdown there as it is.
+ */
+function useInsideDialog() {
+  return React.useContext(InsideDialogContext);
+}
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
@@ -235,7 +246,9 @@ const DialogContent = React.forwardRef<
       >
         <RememberOpener openerRef={openerRef} />
         <VisualViewportEffects />
-        {children}
+        <InsideDialogContext.Provider value={true}>
+          {children}
+        </InsideDialogContext.Provider>
       </DialogPrimitive.Content>
     </DialogPortal>
   );
@@ -401,4 +414,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  useInsideDialog,
 };
