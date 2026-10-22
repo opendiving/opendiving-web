@@ -960,8 +960,8 @@ describe("bandRanges", () => {
 });
 
 describe("summarizeGasUse", () => {
-  // Two dives in April 2025 averaging 20, two in October averaging 15, one in
-  // March 2026 at 12.
+  // Two dives in April 2025 with a median of 20, two in October with a median
+  // of 15, one in March 2026 at 12.
   const times = [
     Date.UTC(2025, 3, 10),
     Date.UTC(2025, 3, 12),
@@ -971,10 +971,11 @@ describe("summarizeGasUse", () => {
   ];
   const rmvs = [18, 22, 14, 16, 12];
 
-  it("averages the whole series for the all scope", () => {
+  it("takes the median of the whole series for the all scope", () => {
     const summary = summarizeGasUse(times, rmvs, "all", times[4]);
 
-    expect(summary).toMatchObject({ dives: 5, average: 16.4, best: 12 });
+    // 16, not the mean's 16.4.
+    expect(summary).toMatchObject({ dives: 5, median: 16, best: 12 });
   });
 
   it("has nothing to compare the all scope against", () => {
@@ -984,15 +985,15 @@ describe("summarizeGasUse", () => {
     expect(summary?.previousLabel).toBeNull();
   });
 
-  it("averages only the anchored period", () => {
+  it("summarizes only the anchored period", () => {
     const summary = summarizeGasUse(times, rmvs, "month", times[0]);
 
-    expect(summary).toMatchObject({ dives: 2, average: 20, best: 18 });
+    expect(summary).toMatchObject({ dives: 2, median: 20, best: 18 });
   });
 
   it("reports an improvement as a negative change", () => {
-    // October averaged 15 against April's 20. Lower is better, so this is a 25%
-    // improvement and the sign has to say so.
+    // October's median of 15 against April's 20. Lower is better, so this is a
+    // 25% improvement and the sign has to say so.
     const summary = summarizeGasUse(times, rmvs, "month", times[2]);
 
     expect(summary?.changePercent).toBeCloseTo(-25);
@@ -1012,8 +1013,8 @@ describe("summarizeGasUse", () => {
     const summary = summarizeGasUse(times, rmvs, "year", times[4]);
 
     expect(summary?.previousLabel).toBe("2025");
-    // 12 against 2025's average of 17.5.
-    expect(summary?.changePercent).toBeCloseTo(-31.43, 1);
+    // 12 against 2025's median of 17.
+    expect(summary?.changePercent).toBeCloseTo(-29.41, 1);
   });
 
   it("has nothing to compare the earliest period against", () => {

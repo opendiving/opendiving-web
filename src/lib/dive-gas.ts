@@ -73,12 +73,13 @@ export const BIN_MIN_WIDTH = 12;
 // axis spanning `rangeMs`.
 //
 // The unit is chosen by room on the axis rather than by the calendar or by the
-// gaps between dives, and that is the whole design. A fixed unit fails in both
-// directions: dives grouped by the breaks between them turn a weekend diver's
-// career into a hundred and fifty overlapping marks and an instructor's season
-// into one box with one median, while a fixed trailing window of dives makes
-// ten turns inside one slot of a year's axis and then runs flat for months.
-// Sized to the axis, a week-long trip is one box in a year and seven in a
+// gaps between dives, and that is the whole design. Each fixed choice fails
+// somewhere: one calendar unit for every scope is a month of nothing but a
+// single box or a career of three hundred slivers; dives grouped by the breaks
+// between them turn a weekend diver's career into a hundred and fifty
+// overlapping marks and an instructor's season into one box with one median;
+// and a fixed trailing window of dives makes ten turns inside one slot of a
+// year's axis and then runs flat for months. Sized to the axis, a week-long trip is one box in a year and seven in a
 // month, a season is twenty-six boxes in a year and six in a career, and the
 // gaps between trips are simply empty bins. It is how a candlestick chart
 // moves from daily to weekly to monthly candles as it zooms out.
@@ -274,12 +275,15 @@ export function bandRanges(
 export interface GasUseSummary {
   // How many dives the figures below are drawn from.
   dives: number;
-  average: number;
+  // The period's median RMV. A median rather than a mean so the headline is
+  // judged against the chart's all-time median baseline like for like, and so
+  // one misread gauge in a period moves it by at most a rank.
+  median: number;
   // Lowest RMV in the period. Lower is better, so this is the best dive, not an
   // outlier to be explained away.
   best: number;
-  // Change in average against the previous period *with dives*, as a percentage
-  // of that period's average - negative being an improvement. Null when there
+  // Change in median against the previous period *with dives*, as a percentage
+  // of that period's median - negative being an improvement. Null when there
   // is nothing to compare against: the "all" scope, or the earliest period.
   changePercent: number | null;
   // What that previous period is called, for the label that carries the number.
@@ -287,8 +291,8 @@ export interface GasUseSummary {
   previousLabel: string | null;
 }
 
-// The figures above the chart: what this period averaged, the best dive in it,
-// and whether that average is going the right way.
+// The figures above the chart: this period's median, the best dive in it, and
+// whether that median is going the right way.
 //
 // The chart shows the shape; this answers "am I improving", which is the
 // question the card exists for and the one a scatter of dots is worst at. It
@@ -314,13 +318,10 @@ export function summarizeGasUse(
 
   if (current.length === 0) return null;
 
-  const mean = (values: number[]) =>
-    values.reduce((sum, value) => sum + value, 0) / values.length;
-
-  const average = mean(current);
+  const median = quantile(current, 0.5);
   const summary: GasUseSummary = {
     dives: current.length,
-    average,
+    median,
     best: Math.min(...current),
     changePercent: null,
     previousLabel: null,
@@ -335,11 +336,11 @@ export function summarizeGasUse(
   const previous = inPeriod(previousRange);
   // `stepPeriod` returned a dive's own timestamp, so the period it sits in has
   // at least that one dive and this cannot divide by zero.
-  const previousAverage = mean(previous);
+  const previousMedian = quantile(previous, 0.5);
 
   return {
     ...summary,
-    changePercent: ((average - previousAverage) / previousAverage) * 100,
+    changePercent: ((median - previousMedian) / previousMedian) * 100,
     previousLabel: periodLabel(previousRange.start, scope),
   };
 }

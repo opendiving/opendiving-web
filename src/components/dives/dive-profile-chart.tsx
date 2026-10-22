@@ -102,7 +102,7 @@ import type { UnitSystem } from "@/lib/units";
 // Ten channels, ten colors, all of them theme-stable tokens declared once in
 // `globals.css` and never redeclared under `.dark` (see the note on `--pressure`
 // there). `--primary` would not do: it is near-black in light mode and a mid
-// grey in dark, which left the gas chart's trend line barely visible.
+// grey in dark, which is barely visible against a dark card.
 
 // The viewBox coordinate space. Not pixels: the SVG scales to its container, so
 // these are only ever ratios to each other. This is the design width; a phone

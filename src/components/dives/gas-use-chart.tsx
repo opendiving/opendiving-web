@@ -626,7 +626,7 @@ function GasUseLegend({
 //
 // `aria-pressed` rather than a checkbox: these change the picture in place, and
 // the pressed state is what a screen reader needs to hear. The label stays the
-// mark's own name in both states - "Show all-time average" on a control that is
+// mark's own name in both states - "Show all-time median" on a control that is
 // currently showing it describes what the button does rather than what it is,
 // and `aria-pressed` already carries the rest.
 //
@@ -669,7 +669,7 @@ function describeSeries(
   medianRmv: number,
   units: UnitSystem,
 ): string {
-  // Metric in, and through the same formatter the visible "Average" stat uses, so
+  // Metric in, and through the same formatter the visible "Median" stat uses, so
   // the two cannot disagree: one decimal in L/min, two in cuft/min. Spelled out
   // rather than abbreviated, because "cuft/min" read aloud is not a unit.
   return `Gas consumption over ${dives} dives, against an all-time median of ${displayNumber(

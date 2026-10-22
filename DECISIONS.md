@@ -1045,7 +1045,8 @@ summer without dives is a gap, not a steady line. `binUnit()` picks the unit by 
 gets on the axis, and its comment carries why a fixed unit, a trailing window of dives or grouping
 by the gaps between dives were rejected. Quartiles rather than mean and deviation because one
 misread gauge moves a quartile by at most a rank; the all-time baseline is a median inside the
-all-time middle half for the same reason.
+all-time middle half, and the card's headline stat and its change against the previous period are
+medians too, so the headline is judged against the baseline like for like.
 
 Coral boxes, teal dots: declared once in `globals.css`, never under `.dark`, so they hold contrast
 in both themes.
