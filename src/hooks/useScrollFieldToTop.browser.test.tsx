@@ -31,6 +31,24 @@ function OnPage({ after = 2000 }: { after?: number }) {
   );
 }
 
+/** A picker in a fixed box that scrolls, as `DialogContent` is. */
+function InDialog() {
+  const ref = useRef<HTMLInputElement>(null);
+  useScrollFieldToTop(ref);
+  return (
+    <>
+      <div style={{ height: 3000 }} />
+      <div
+        style={{ position: "fixed", top: 100, height: 300, overflowY: "auto" }}
+      >
+        <div style={{ height: 500 }} />
+        <input ref={ref} aria-label="Picker" />
+        <div style={{ height: 500 }} />
+      </div>
+    </>
+  );
+}
+
 // Chromium's `Touch` needs a real touch-enabled context, so the events are
 // plain ones carrying the two lists the hook reads - as in
 // `useVisualViewport.test.tsx`.
@@ -162,22 +180,31 @@ describe("scrollFieldToTop", () => {
 });
 
 describe("useScrollFieldToTop", () => {
-  it("scrolls on focus where a finger is driving", async () => {
+  it("leaves the page alone on focus alone, which comes too late for iOS", async () => {
     await page.viewport(393, 700);
     usePointer("coarse");
     const { getByLabelText } = render(<OnPage />);
-    const input = getByLabelText("Picker");
-    fireEvent.focus(input);
-    expect(input.getBoundingClientRect().top).toBeCloseTo(GAP, 0);
+    fireEvent.focus(getByLabelText("Picker"));
+    expect(window.scrollY).toBe(0);
   });
 
-  it("leaves the page where it is for a mouse", async () => {
+  it("scrolls a dialog's box on focus, the dialog having taken the tap", async () => {
     await page.viewport(393, 700);
-    usePointer("fine");
-    const { getByLabelText } = render(<OnPage />);
+    usePointer("coarse");
+    const { getByLabelText } = render(<InDialog />);
     const input = getByLabelText("Picker");
     fireEvent.focus(input);
+    expect(input.getBoundingClientRect().top).toBeCloseTo(100 + GAP, 0);
     expect(window.scrollY).toBe(0);
+  });
+
+  it("leaves a dialog alone for a mouse", async () => {
+    await page.viewport(393, 700);
+    usePointer("fine");
+    const { getByLabelText } = render(<InDialog />);
+    const input = getByLabelText("Picker");
+    fireEvent.focus(input);
+    expect(input.getBoundingClientRect().top).toBeCloseTo(100 + 500, 0);
   });
 
   it("focuses a tapped picker in place, so Safari has no pan to make", async () => {
@@ -185,10 +212,15 @@ describe("useScrollFieldToTop", () => {
     usePointer("coarse");
     const { getByLabelText } = render(<OnPage />);
     const input = getByLabelText("Picker");
+    let topAtFocus = Number.NaN;
+    input.addEventListener("focus", () => {
+      topAtFocus = input.getBoundingClientRect().top;
+    });
     const end = tap(input);
     expect(end.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(input);
-    expect(input.getBoundingClientRect().top).toBeCloseTo(GAP, 0);
+    // Already up when focus arrives - see the hook for why that order matters.
+    expect(topAtFocus).toBeCloseTo(GAP, 0);
   });
 
   it("leaves the tap to Safari where the page cannot scroll the picker up", async () => {

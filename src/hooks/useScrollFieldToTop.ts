@@ -100,22 +100,27 @@ export function scrollFieldToTop(field: HTMLElement) {
 }
 
 /**
- * Scrolls a dropdown picker's input to the top of the screen as it takes focus
- * where a finger is driving, and does nothing for a mouse.
+ * Scrolls a dropdown picker's input to the top of the screen as a finger
+ * focuses it, and does nothing for a mouse.
  *
  * On a phone the keyboard takes the bottom half of the screen, and a field
  * left where it was tapped has its menu squeezed into what is left below it or
  * hidden behind the keys. At the top, the whole space above the keyboard is the
  * menu's.
  *
- * **A tap is focused with `preventScroll`, or Safari undoes the scroll.** As
- * the keyboard rises it pans the visual viewport to centre the field above it,
- * whether or not the field is already in view, and the pan takes the sticky
- * header up off the screen with it. `useFocusTappedFieldInPlace` stops the pan
- * as it does in a dialog. Only where the scroll reaches, though: a field too
- * near the end of the page to come up is left to the pan, which is then all
- * that keeps it out from behind the keyboard. Instant rather than smooth, since
- * Safari starves the page of frames while the keyboard rises.
+ * **On the page, the scroll has to land before the field has focus.** From
+ * focus on, iOS holds the layout viewport where it was and moves only the
+ * visual one, so a scroll then - in the focus handler, or once the keyboard is
+ * up - slides the sticky header off the top with everything else. So the tap is
+ * taken over by `useFocusTappedFieldInPlace`, which scrolls and then focuses
+ * with `preventScroll`, which also keeps Safari from panning to the field. Only
+ * where the scroll reaches, though: a field too near the end of the page to
+ * come up is left to that pan, which is all that keeps it out from behind the
+ * keyboard. A field in a dialog is scrolled on focus instead, since only the
+ * dialog's own box moves and the dialog's handler has the tap first.
+ *
+ * Instant rather than smooth: Safari starves the page of frames while the
+ * keyboard rises.
  */
 export function useScrollFieldToTop(field: RefObject<HTMLInputElement | null>) {
   const coarsePointer = useCoarsePointer();
@@ -123,13 +128,14 @@ export function useScrollFieldToTop(field: RefObject<HTMLInputElement | null>) {
   useFocusTappedFieldInPlace({
     within: field,
     takeOver: (tapped) => coarsePointer && scrollToTopPlan(tapped).reachable,
+    beforeFocus: scrollFieldToTop,
   });
 
   useEffect(() => {
     const input = field.current;
     if (!coarsePointer || !input) return;
     const onFocus = () => {
-      if (!input.readOnly) scrollFieldToTop(input);
+      if (!input.readOnly && scrollContainerOf(input)) scrollFieldToTop(input);
     };
     input.addEventListener("focus", onFocus);
     return () => input.removeEventListener("focus", onFocus);

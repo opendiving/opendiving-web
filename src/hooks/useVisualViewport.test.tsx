@@ -662,4 +662,49 @@ describe("useFocusTappedFieldInPlace", () => {
     expect(tap(field).defaultPrevented).toBe(false);
     cleanup();
   });
+
+  it("listens on `within` alone where one is given", () => {
+    const { root, cleanup } = mount("<input /><input />");
+    const [mine, other] = root.querySelectorAll("input");
+    const within = { current: mine };
+    const { unmount } = renderHook(() =>
+      useFocusTappedFieldInPlace({ within }),
+    );
+
+    expect(tap(other).defaultPrevented).toBe(false);
+    expect(tap(mine).defaultPrevented).toBe(true);
+    unmount();
+    cleanup();
+  });
+
+  it("leaves a tap `takeOver` declines to the browser", () => {
+    const { root, cleanup } = mount("<input />");
+    const field = root.querySelector("input")!;
+    const { unmount } = renderHook(() =>
+      useFocusTappedFieldInPlace({ takeOver: () => false }),
+    );
+
+    expect(tap(field).defaultPrevented).toBe(false);
+    expect(document.activeElement).not.toBe(field);
+    unmount();
+    cleanup();
+  });
+
+  it("runs `beforeFocus` while the field is still unfocused", () => {
+    const { root, cleanup } = mount("<input />");
+    const field = root.querySelector("input")!;
+    const focusedThen: boolean[] = [];
+    const { unmount } = renderHook(() =>
+      useFocusTappedFieldInPlace({
+        beforeFocus: (tapped) =>
+          focusedThen.push(tapped === document.activeElement),
+      }),
+    );
+
+    tap(field);
+    expect(focusedThen).toEqual([false]);
+    expect(document.activeElement).toBe(field);
+    unmount();
+    cleanup();
+  });
 });
