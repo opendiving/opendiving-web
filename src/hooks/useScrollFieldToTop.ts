@@ -40,17 +40,28 @@ function stuckRowsBottom(field: HTMLElement, scroller: HTMLElement): number {
  */
 const TOP_GAP_REM = 0.5;
 
-/** The top of `field`'s label where one sits above it, else of the field. */
-function labelledTop(field: HTMLElement): number {
+/**
+ * The most space between a label and its field for the label to count as
+ * directly above it: `FormItem`'s 0.5rem, with room. Anything rendered between
+ * them - the chosen sites or gear items over their picker - is a row of at
+ * least 44px on touch, and then the label stays where it is.
+ */
+const LABEL_GAP_REM = 1;
+
+/** The top of `field`'s label where it sits directly above, else of the field. */
+function labelledTop(field: HTMLElement, rem: number): number {
   const top = field.getBoundingClientRect().top;
   const label = field instanceof HTMLInputElement ? field.labels?.[0] : null;
-  return Math.min(top, label?.getBoundingClientRect().top ?? top);
+  if (!label) return top;
+  const box = label.getBoundingClientRect();
+  const gap = top - box.bottom;
+  return gap >= 0 && gap <= LABEL_GAP_REM * rem ? box.top : top;
 }
 
 /**
- * Scrolls `field`, with its label, to the top of what its scroll container
- * shows - the dialog it sits in, or the page - below its `scroll-padding-top`
- * and below every sticky row that would cover it there.
+ * Scrolls `field`, with a label directly above it, to the top of what its
+ * scroll container shows - the dialog it sits in, or the page - below its
+ * `scroll-padding-top` and below every sticky row that would cover it there.
  *
  * Only the nearest container moves. A field in a dialog scrolls the dialog and
  * never the page locked behind it, which the scrim is anchored to.
@@ -70,7 +81,7 @@ export function scrollFieldToTop(field: HTMLElement) {
   const visibleTop = container
     ? container.getBoundingClientRect().top + container.clientTop
     : (window.visualViewport?.offsetTop ?? 0);
-  const top = labelledTop(field) - visibleTop - padding;
+  const top = labelledTop(field, rem) - visibleTop - padding;
   (container ?? window).scrollBy({ top, behavior: "instant" });
 }
 

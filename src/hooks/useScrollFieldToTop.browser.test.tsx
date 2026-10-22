@@ -94,6 +94,29 @@ describe("scrollFieldToTop", () => {
     expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER + GAP + 30, 0);
   });
 
+  it("leaves the label behind when something sits between it and the field", async () => {
+    await page.viewport(393, 700);
+    document.documentElement.style.scrollPaddingTop = `${HEADER}px`;
+    const { getByLabelText } = render(
+      <div>
+        <div style={{ height: 900 }} />
+        <label htmlFor="picker" style={{ display: "block", height: 20 }}>
+          Dive sites
+        </label>
+        <div style={{ height: 10 }} />
+        <div>
+          <ul style={{ height: 44, margin: 0 }} />
+          <div style={{ height: 8 }} />
+          <input id="picker" />
+        </div>
+        <div style={{ height: 2000 }} />
+      </div>,
+    );
+    const input = getByLabelText("Dive sites");
+    scrollFieldToTop(input);
+    expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER + GAP, 0);
+  });
+
   it("scrolls a dialog's own box and leaves the page behind it alone", async () => {
     await page.viewport(393, 700);
     window.scrollTo(0, 0);
