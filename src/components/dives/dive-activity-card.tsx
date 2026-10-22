@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { ChartPeriodControls } from "@/components/dives/chart-period-controls";
 import { ChartSkeleton } from "@/components/dives/chart-skeleton";
-import { ChartStat } from "@/components/dives/chart-stat";
+import { ChartStat, ChartStatRow } from "@/components/dives/chart-stat";
 import { DiveActivityChart } from "@/components/dives/dive-activity-chart";
 import { diveStatsAPI, DiveActivityPoint } from "@/lib/api/dive-stats";
 import {
@@ -120,12 +120,11 @@ function DiveActivitySummaryRow({
   scope: ChartScope;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end gap-x-6 gap-y-3">
-      <ChartStat label="Dives">
+    <ChartStatRow className="mb-5 items-end">
+      <ChartStat label="Dives" detail={<Change summary={summary} />}>
         <span className="text-base font-semibold tabular-nums">
           {summary.dives}
         </span>
-        <Change summary={summary} />
       </ChartStat>
       <ChartStat label={BUSIEST_LABELS[scope]}>
         <span className="text-base font-semibold">{summary.busiestLabel}</span>
@@ -133,7 +132,7 @@ function DiveActivitySummaryRow({
           {summary.busiestDives} {summary.busiestDives === 1 ? "dive" : "dives"}
         </span>
       </ChartStat>
-    </div>
+    </ChartStatRow>
   );
 }
 
