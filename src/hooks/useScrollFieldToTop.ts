@@ -34,15 +34,23 @@ function stuckRowsBottom(field: HTMLElement, scroller: HTMLElement): number {
 }
 
 /**
- * Clearance above the field: its focus ring is drawn 4px outside its box
- * (`ring-2 ring-offset-2`), where a row stuck flush against the box covers it.
+ * Clearance above what scrolls up: a field's focus ring is drawn 4px outside
+ * its box (`ring-2 ring-offset-2`), where a row stuck flush against the box
+ * covers it.
  */
-const FOCUS_RING_GAP_REM = 0.5;
+const TOP_GAP_REM = 0.5;
+
+/** The top of `field`'s label where one sits above it, else of the field. */
+function labelledTop(field: HTMLElement): number {
+  const top = field.getBoundingClientRect().top;
+  const label = field instanceof HTMLInputElement ? field.labels?.[0] : null;
+  return Math.min(top, label?.getBoundingClientRect().top ?? top);
+}
 
 /**
- * Scrolls `field` to the top of what its scroll container shows - the dialog
- * it sits in, or the page - below its `scroll-padding-top` and below every
- * sticky row that would cover it there, with room for its focus ring.
+ * Scrolls `field`, with its label, to the top of what its scroll container
+ * shows - the dialog it sits in, or the page - below its `scroll-padding-top`
+ * and below every sticky row that would cover it there.
  *
  * Only the nearest container moves. A field in a dialog scrolls the dialog and
  * never the page locked behind it, which the scrim is anchored to.
@@ -56,13 +64,13 @@ export function scrollFieldToTop(field: HTMLElement) {
       parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0,
       stuckRowsBottom(field, scroller),
     ) +
-    FOCUS_RING_GAP_REM * rem;
+    TOP_GAP_REM * rem;
   // The page's visible top is the visual viewport's, which Safari pans below
   // the layout viewport's while a keyboard is already up.
   const visibleTop = container
     ? container.getBoundingClientRect().top + container.clientTop
     : (window.visualViewport?.offsetTop ?? 0);
-  const top = field.getBoundingClientRect().top - visibleTop - padding;
+  const top = labelledTop(field) - visibleTop - padding;
   (container ?? window).scrollBy({ top, behavior: "instant" });
 }
 

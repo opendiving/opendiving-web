@@ -10,7 +10,7 @@ import { scrollFieldToTop, useScrollFieldToTop } from "./useScrollFieldToTop";
 // case scrolls under is the one it states.
 
 const HEADER = 60;
-// `FOCUS_RING_GAP_REM` at the browser's 16px root.
+// `TOP_GAP_REM` at the browser's 16px root.
 const GAP = 8;
 
 function Field({ onFocus }: { onFocus?: (field: HTMLElement) => void }) {
@@ -69,6 +69,29 @@ describe("scrollFieldToTop", () => {
     const input = getByLabelText("Picker");
     scrollFieldToTop(input);
     expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER + 50 + GAP, 0);
+  });
+
+  it("brings the field's label up with it", async () => {
+    await page.viewport(393, 700);
+    document.documentElement.style.scrollPaddingTop = `${HEADER}px`;
+    const { getByLabelText, getByText } = render(
+      <div>
+        <div style={{ height: 900 }} />
+        <label htmlFor="picker" style={{ display: "block", height: 20 }}>
+          Course
+        </label>
+        <div style={{ height: 10 }} />
+        <input id="picker" />
+        <div style={{ height: 2000 }} />
+      </div>,
+    );
+    const input = getByLabelText("Course");
+    scrollFieldToTop(input);
+    expect(getByText("Course").getBoundingClientRect().top).toBeCloseTo(
+      HEADER + GAP,
+      0,
+    );
+    expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER + GAP + 30, 0);
   });
 
   it("scrolls a dialog's own box and leaves the page behind it alone", async () => {
