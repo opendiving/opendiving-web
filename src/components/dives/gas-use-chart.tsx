@@ -243,9 +243,9 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // chart does - and a hardcoded decimal there would quantize an imperial figure
   // to ~5 buckets across the whole plausible RMV range, which is the collapse
   // `rmv`'s two imperial decimals exist to prevent - and converted because that
-  // is the space the plot is drawn in. Derived rather than ranked twice: the
-  // conversion is a single multiplication, so the median of the converted values
-  // *is* the converted median.
+  // is the space the plot is drawn in. Ranked once in each: the conversion is a
+  // single multiplication, which keeps the order, so the two rankings land on the
+  // same dive.
   const medianRmv = quantile(
     points.map((point) => point.gas_use.rmv),
     0.5,
