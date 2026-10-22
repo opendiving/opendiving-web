@@ -226,7 +226,7 @@ export function scopeRange(
 // cluster of dots is impossible to place in the year without tracing down to the
 // axis. Shading is deliberately the mechanism rather than gridlines: a diving
 // season is an *interval*, not an instant, so a band is the honest mark for it -
-// and a chart that already carries dots, a trend, a spread band and a reference
+// and a chart that already carries dots, the bins and the baseline's band and
 // line does not need twelve more lines drawn through it.
 //
 // A month is too short to subdivide usefully, so it gets none. Everything is

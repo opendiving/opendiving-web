@@ -66,16 +66,16 @@ import {
 // production, which is a miserable bug to acquire for one chart. And this is the
 // same call already made for `VolumeCombobox` and the drag-to-reorder list.
 //
-// Two colors, doing two different jobs. The trend is `--coral` (the primary
-// brand accent, so the line you're meant to read is the one that stands out) and
+// Two colors, doing two different jobs. The bins are `--coral` (the primary
+// brand accent, so the mark you're meant to read is the one that stands out) and
 // the per-dive dots are `--teal`, which sits across the color wheel from it -
-// otherwise the dots and the line they're averaged into are the same mark in the
-// same color, and the eye can't separate the raw data from the smoothing.
+// otherwise the dots and the boxes summarizing them are the same mark in the
+// same color, and the eye can't separate the evidence from the reading.
 //
 // Both rather than `--primary`: coral and teal are deliberately declared once
 // and never redeclared under `.dark` (see `globals.css`), so they hold their
 // contrast in both themes, whereas `--primary` is near-black in light mode and a
-// mid grey in dark - which left the trend line barely visible on a dark card.
+// mid grey in dark, which is barely visible against a dark card.
 
 // How far from a dot a tap still means it, in CSS px - about half a fingertip.
 const TAP_REACH = 24;

@@ -1156,9 +1156,9 @@ Keyboard scrubbing is out of scope. The `aria-label` uses `formatDurationHoursMi
 
 ## The profile's line breaks are derived from the series' own cadence
 
-`segmentByTimeGap` (`lib/chart-path.ts`, shared with the gas chart): never draw a line across data
-that is not there, or a ten-minute transmitter dropout reads as a smooth pressure fall.
-`Dive_2025-03-08-1440.xml` has a 1 341-second hole in its pressure series.
+`segmentByTimeGap` (`lib/chart-path.ts`): never draw a line across data that is not there, or a
+ten-minute transmitter dropout reads as a smooth pressure fall. `Dive_2025-03-08-1440.xml` has a 1
+341-second hole in its pressure series.
 
 The threshold is derived (`gapThreshold`), not fixed: cadence ranges from 1 s (Suunto Ocean
 temperature) to 10 s (Suunto depth series), and the API's min/max downsampling stretches it
