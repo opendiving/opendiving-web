@@ -1,6 +1,6 @@
-// Path geometry shared by the app's hand-rolled SVG charts
-// (`gas-use-chart.tsx`, `dive-profile-chart.tsx`), in a module of its own because
-// a gas chart importing a dive-profile module to draw a filled shape reads as an
+// Path geometry shared by the app's hand-rolled SVG charts (the dive profile,
+// its silhouette, the activity and admin bars), in a module of its own because
+// a bar chart importing a dive-profile module to draw a shape reads as an
 // accident.
 
 export interface Point {
@@ -38,9 +38,9 @@ export function buildAreaPath(points: Point[], baselineY: number): string {
 // Monotone cubic interpolation (Fritsch-Carlson), specifically, rather than the
 // Catmull-Rom spline that every "smooth line chart" snippet reaches for. The
 // difference is the whole reason smoothing is safe to apply to data at all:
-// Catmull-Rom overshoots around a local extreme, so a dip in a trend line gets
-// drawn dipping *below* its lowest value. On this chart that would render a gas
-// consumption the diver never achieved, sitting under their actual best dive.
+// Catmull-Rom overshoots around a local extreme, so a dip in a line gets drawn
+// dipping *below* its lowest value. On a dive profile that would render a depth
+// the diver never reached, below the deepest point of the dive.
 // Monotone cubic is constructed to never leave the interval between two
 // neighbouring points, so the curve can only ever say what the numbers say.
 //

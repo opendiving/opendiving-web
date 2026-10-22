@@ -61,9 +61,9 @@ describe("smoothPath", () => {
 
   it("never overshoots a local extreme", () => {
     // The whole reason this is monotone cubic and not Catmull-Rom. A dip in a
-    // trend line must not be drawn dipping below its lowest value: on the gas
-    // chart that would render a gas consumption the diver never achieved,
-    // sitting under their actual best dive.
+    // line must not be drawn dipping below its lowest value: on a dive profile
+    // that would render a depth the diver never reached, below the deepest
+    // point of the dive.
     const path = smoothPath([
       { x: 0, y: 100 },
       { x: 10, y: 100 },

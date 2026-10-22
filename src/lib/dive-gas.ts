@@ -79,10 +79,11 @@ export const BIN_MIN_WIDTH = 12;
 // between them turn a weekend diver's career into a hundred and fifty
 // overlapping marks and an instructor's season into one box with one median;
 // and a fixed trailing window of dives makes ten turns inside one slot of a
-// year's axis and then runs flat for months. Sized to the axis, a week-long trip is one box in a year and seven in a
-// month, a season is twenty-six boxes in a year and six in a career, and the
-// gaps between trips are simply empty bins. It is how a candlestick chart
-// moves from daily to weekly to monthly candles as it zooms out.
+// year's axis and then runs flat for months. Sized to the axis, a week-long
+// trip is one box in a year and seven in a month, a season is twenty-six boxes
+// in a year and six in a career, and the gaps between trips are simply empty
+// bins. It is how a candlestick chart moves from daily to weekly to monthly
+// candles as it zooms out.
 export function binUnit(rangeMs: number, plotWidth: number): BinUnit {
   return (
     BIN_UNITS.find(

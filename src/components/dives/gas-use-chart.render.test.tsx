@@ -98,10 +98,10 @@ describe("GasUseChart point descriptions", () => {
   });
 
   // The chart's own accessible name, which is the one figure the whole plot is read
-  // against. It has to carry the same precision as the visible "Average" stat above
+  // against. It has to carry the same precision as the visible "Median" stat above
   // it: a cubic foot is 28 litres, so one decimal would quantize every plausible RMV
   // into about five buckets.
-  it("gives the summary the same precision as the visible average", () => {
+  it("gives the summary the same precision as the visible median", () => {
     auth.units = "imperial";
     render(
       <GasUseChart
