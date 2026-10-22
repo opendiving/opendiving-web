@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 /** The visible height of the page, in CSS pixels. */
 const HEIGHT_VAR = "--visual-viewport-height";
@@ -9,11 +9,12 @@ const TOP_VAR = "--visual-viewport-top";
 /**
  * The same edge in *document* coordinates - the page scroll plus that offset.
  *
- * Exists for the scrim alone, which cannot use the two above. iOS clips a
- * `position: fixed` box to the layout viewport and keeps a band between that
- * viewport and the keyboard which it goes on painting page content into, so the
- * scrim is positioned absolutely and needs its anchor in the coordinate system
- * absolute positioning actually uses. See `ui/dialog.tsx`.
+ * Exists for the backdrops behind a dialog and a picker sheet, which cannot use
+ * the two above. iOS clips a `position: fixed` box to the layout viewport and
+ * keeps a band between that viewport and the keyboard which it goes on painting
+ * page content into, so both are positioned absolutely and need their anchor in
+ * the coordinate system absolute positioning actually uses. See `ui/dialog.tsx`
+ * and `ui/picker-sheet.tsx`.
  */
 const DOC_TOP_VAR = "--visual-viewport-doc-top";
 // Refcounted, because two dialogs can be open at once - a confirm raised from
@@ -33,8 +34,9 @@ function syncViewportVars() {
   const root = document.documentElement;
   root.style.setProperty(HEIGHT_VAR, `${viewport.height}px`);
   root.style.setProperty(TOP_VAR, `${viewport.offsetTop}px`);
-  // `window.scrollY` rather than a second measurement: Radix locks the page
-  // behind an open dialog, so this is fixed for as long as anything reads it.
+  // `window.scrollY` rather than a second measurement: the page is held still
+  // for as long as anything reads it - by Radix's scroll lock behind a dialog,
+  // and by the sheet's own touch guard behind a picker sheet.
   root.style.setProperty(
     DOC_TOP_VAR,
     `${window.scrollY + viewport.offsetTop}px`,
@@ -151,14 +153,15 @@ export function useShortViewport() {
 
 /**
  * Mirrors `window.visualViewport` onto three CSS variables for as long as the
- * caller is mounted, so that a dialog can be sized and placed against the part
- * of the page a phone is actually showing - and marks the root while that part
- * is short, through `useShortViewport`.
+ * caller is mounted, so that a dialog or a picker sheet can be sized and placed
+ * against the part of the page a phone is actually showing - and marks the root
+ * while that part is short, through `useShortViewport`.
  *
  * Two of them describe the visible area within the layout viewport, which is
  * what `DialogContent` needs; the third repeats its top edge in document
- * coordinates for the scrim, which is absolutely positioned because iOS clips a
- * fixed box to that viewport and paints page content below it.
+ * coordinates for the backdrops behind a dialog and a picker sheet, which are
+ * absolutely positioned because iOS clips a fixed box to that viewport and
+ * paints page content below it.
  *
  * **`100vh` is not that part, and on iOS it never was.** `vh` there measures
  * the *large* viewport - the page as it would be with Safari's toolbars
@@ -413,10 +416,29 @@ function placeCaret(field: KeyboardField, x: number, y: number) {
  * caret natively.
  *
  * Listens on the document so that a field in a popover over the dialog is
- * covered too. Only a one-finger tap counts; a drag is the diver scrolling.
+ * covered too, or on `within` alone where one is given. `takeOver` declines a
+ * tap by returning false, which leaves it to the browser. Only a one-finger
+ * tap counts; a drag is the diver scrolling.
  */
-export function useFocusTappedFieldInPlace() {
+export function useFocusTappedFieldInPlace({
+  within,
+  takeOver,
+}: {
+  within?: RefObject<HTMLElement | null>;
+  takeOver?: (field: KeyboardField) => boolean;
+} = {}) {
+  // A ref, so that a caller's inline arrow does not re-subscribe every render.
+  const takeOverRef = useRef(takeOver);
   useEffect(() => {
+    takeOverRef.current = takeOver;
+  });
+
+  useEffect(() => {
+    // Typed as what both share, which carries the touch events' own types.
+    const scope: GlobalEventHandlers | null = within
+      ? within.current
+      : document;
+    if (!scope) return;
     let start: { x: number; y: number } | null = null;
 
     const onTouchStart = (event: TouchEvent) => {
@@ -430,8 +452,8 @@ export function useFocusTappedFieldInPlace() {
       const from = start;
       start = null;
       const touch = event.changedTouches[0];
-      // `defaultPrevented` is a second open dialog's copy of this having
-      // handled the tap already.
+      // `defaultPrevented` is another copy of this having handled the tap
+      // already: a second open dialog's, or a dialog's over a picker's own.
       if (!from || !touch || event.touches.length || event.defaultPrevented) {
         return;
       }
@@ -439,6 +461,7 @@ export function useFocusTappedFieldInPlace() {
       if (drift > TAP_SLOP) return;
       const field = tappedField(event.target);
       if (!field || field === document.activeElement) return;
+      if (takeOverRef.current && !takeOverRef.current(field)) return;
 
       event.preventDefault();
       // Caret first, so that a focus handler's own selection stands:
@@ -449,20 +472,20 @@ export function useFocusTappedFieldInPlace() {
     };
 
     const capture = { capture: true };
-    document.addEventListener("touchstart", onTouchStart, {
+    scope.addEventListener("touchstart", onTouchStart, {
       capture: true,
       passive: true,
     });
     // Not passive, or `preventDefault` is ignored.
-    document.addEventListener("touchend", onTouchEnd, {
+    scope.addEventListener("touchend", onTouchEnd, {
       capture: true,
       passive: false,
     });
-    document.addEventListener("touchcancel", onTouchCancel, capture);
+    scope.addEventListener("touchcancel", onTouchCancel, capture);
     return () => {
-      document.removeEventListener("touchstart", onTouchStart, capture);
-      document.removeEventListener("touchend", onTouchEnd, capture);
-      document.removeEventListener("touchcancel", onTouchCancel, capture);
+      scope.removeEventListener("touchstart", onTouchStart, capture);
+      scope.removeEventListener("touchend", onTouchEnd, capture);
+      scope.removeEventListener("touchcancel", onTouchCancel, capture);
     };
-  }, []);
+  }, [within]);
 }
