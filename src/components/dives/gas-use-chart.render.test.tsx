@@ -111,9 +111,9 @@ describe("GasUseChart point descriptions", () => {
       />,
     );
 
-    // 10.31 and 12.4 L/min average 11.355, which is 0.40 cuft/min - not "0.4".
+    // The median of 10.31 and 12.4 L/min is 11.355, which is 0.40 cuft/min - not "0.4".
     expect(
-      screen.getByLabelText(/all-time average of 0.40 cubic feet per minute\./),
+      screen.getByLabelText(/all-time median of 0.40 cubic feet per minute\./),
     ).toBeTruthy();
   });
 

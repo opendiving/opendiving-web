@@ -94,9 +94,9 @@ export function GasUseCard() {
             `dive-gas.ts`). The normalisation belongs in the sentence that has
             room to state it.
 
-            The rolling trend is not named here: the legend already labels it,
-            with the window length this sentence could not state (it varies by
-            scope - see `trendWindow`). */}
+            The trend is not named here: the legend already labels it, with
+            the bin this sentence could not state (it varies by scope - see
+            `binUnit`). */}
         <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           Surface-equivalent gas volume breathed per minute (RMV). Lower is

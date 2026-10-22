@@ -1032,21 +1032,32 @@ list response carries neither `mixtures` nor `gas_use`), and the multi-tank bran
 limitation rather than asking for a field, except the one case in "The multi-tank branch splits
 three ways, and tests attribution first".
 
-## The air-consumption chart is hand-rolled SVG, and breaks its trend line at gaps
+## The air-consumption chart is hand-rolled SVG, and summarizes dives per calendar bin
 
 No charting library: `src/proxy.ts` ships a nonce-based CSP that allows inline style attributes
 (`style-src-attr 'unsafe-inline'`) but nonce-gates `style-src` in production, so a library injecting
 a `<style>` element breaks only in production. `gas-use-chart.tsx` is plain `<svg>` themed off
 `currentColor`.
 
-`segmentByTimeGap()` splits the series where consecutive dives are more than `TREND_GAP_MS` (60
-days) apart, one polyline per run, so a summer without dives is a gap, not a flat line.
+The trend mark is a quartile box per calendar bin: the median as a tick, the middle half as the box,
+a thin line between bin medians, dashed across a break longer than `TREND_GAP_MS` (60 days) so a
+summer without dives is a gap, not a steady line. `binUnit()` picks the finest of day, week, month,
+quarter and year whose bins get `BIN_MIN_WIDTH` of the axis, so the unit follows the room on screen
+rather than the scope: days in a month, weeks in a year, months across a career, one step coarser on
+a phone. Rejected: a trailing N-dive mean with a one-standard-deviation band, which at a year's
+scale smooths inside one slot of the axis and runs flat between trips while its band follows
+outliers; and grouping by the gaps between dives, which makes a weekend diver's career a smear of
+overlapping marks and an instructor's season one box. Quartiles rather than mean and deviation
+because one misread gauge moves a quartile by at most a rank; the all-time baseline is a median
+inside the all-time middle half for the same reason.
 
-Coral trend, teal dots: declared once in `globals.css`, never under `.dark`, so they hold contrast
+Coral boxes, teal dots: declared once in `globals.css`, never under `.dark`, so they hold contrast
 in both themes.
 
 The y axis is not zero-based: `niceDomain()` rounds outward from the data, with 2.5 in its
-progression so a 5-to-26 spread does not step by 10.
+progression so a 5-to-26 spread does not step by 10. It is scaled to the series less one dive in a
+hundred at each end (`clipOutliers`), so one reading at twice the rest does not squash the rest into
+the bottom third; a clipped dive is pinned to the edge and drawn hollow.
 
 Each dot is a plain SVG `<a>`, not `next/link`. Below 560px the chart narrows its viewBox rather
 than scrolling (`fittedChartWidth`). The card renders when empty, unlike the bell's service-due
@@ -1056,8 +1067,9 @@ list: missing pressures or an average depth are something the diver can fix.
 
 `GasUseCard` owns a scope switch (`all`/`year`/`month`) with prev/next, and opens on `year` at the
 most recent dive. Three things derive from the whole series, not the window: the y domain, so
-periods stay comparable; the trailing mean, sliced after computing; and the x bounds, which are the
-calendar period, so one April trip is one cluster, not a stretched year.
+periods stay comparable; the bins, summarized before windowing so a week straddling New Year is one
+box in both years; and the x bounds, which are the calendar period, so one April trip is one
+cluster, not a stretched year.
 
 `periodRange`, `periodLabel`, `availablePeriods`, `stepPeriod` and `resolveAnchor` live in
 `lib/chart-period.ts`, shared with `DiveActivityCard`. `stepPeriod()` skips to the next period
@@ -1686,9 +1698,8 @@ Labelled axes follow what is plotted, so `PlottedChannel` carries the `domain` i
 rather than the axis recomputing one — wrong for pressure, where every cylinder shares one domain.
 The `aria-label` uses visible channels too.
 
-The gas chart's trend and spread band share one toggle; `withSpread` (`scope !== "all"`) is separate
-from `showSpread`, which also requires the trend, so the legend keeps saying "and spread" while the
-trend is off.
+The gas chart's box and its median tick share one toggle, and the legend names the bin it summarizes
+by (`BIN_LABELS[unit]`) whether or not the mark is drawn: it describes what the toggle turns on.
 
 ## Remembered selections use `useSyncExternalStore`, and the handler uses the updater form
 
