@@ -9,11 +9,12 @@ const TOP_VAR = "--visual-viewport-top";
 /**
  * The same edge in *document* coordinates - the page scroll plus that offset.
  *
- * Exists for the scrim alone, which cannot use the two above. iOS clips a
- * `position: fixed` box to the layout viewport and keeps a band between that
- * viewport and the keyboard which it goes on painting page content into, so the
- * scrim is positioned absolutely and needs its anchor in the coordinate system
- * absolute positioning actually uses. See `ui/dialog.tsx`.
+ * Exists for the backdrops behind a dialog and a picker sheet, which cannot use
+ * the two above. iOS clips a `position: fixed` box to the layout viewport and
+ * keeps a band between that viewport and the keyboard which it goes on painting
+ * page content into, so both are positioned absolutely and need their anchor in
+ * the coordinate system absolute positioning actually uses. See `ui/dialog.tsx`
+ * and `ui/picker-sheet.tsx`.
  */
 const DOC_TOP_VAR = "--visual-viewport-doc-top";
 // Refcounted, because two dialogs can be open at once - a confirm raised from
@@ -33,8 +34,9 @@ function syncViewportVars() {
   const root = document.documentElement;
   root.style.setProperty(HEIGHT_VAR, `${viewport.height}px`);
   root.style.setProperty(TOP_VAR, `${viewport.offsetTop}px`);
-  // `window.scrollY` rather than a second measurement: Radix locks the page
-  // behind an open dialog, so this is fixed for as long as anything reads it.
+  // `window.scrollY` rather than a second measurement: the page is held still
+  // for as long as anything reads it - by Radix's scroll lock behind a dialog,
+  // and by the sheet's own touch guard behind a picker sheet.
   root.style.setProperty(
     DOC_TOP_VAR,
     `${window.scrollY + viewport.offsetTop}px`,
@@ -151,14 +153,15 @@ export function useShortViewport() {
 
 /**
  * Mirrors `window.visualViewport` onto three CSS variables for as long as the
- * caller is mounted, so that a dialog can be sized and placed against the part
- * of the page a phone is actually showing - and marks the root while that part
- * is short, through `useShortViewport`.
+ * caller is mounted, so that a dialog or a picker sheet can be sized and placed
+ * against the part of the page a phone is actually showing - and marks the root
+ * while that part is short, through `useShortViewport`.
  *
  * Two of them describe the visible area within the layout viewport, which is
  * what `DialogContent` needs; the third repeats its top edge in document
- * coordinates for the scrim, which is absolutely positioned because iOS clips a
- * fixed box to that viewport and paints page content below it.
+ * coordinates for the backdrops behind a dialog and a picker sheet, which are
+ * absolutely positioned because iOS clips a fixed box to that viewport and
+ * paints page content below it.
  *
  * **`100vh` is not that part, and on iOS it never was.** `vh` there measures
  * the *large* viewport - the page as it would be with Safari's toolbars
