@@ -4,8 +4,39 @@ import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { scrollContainerOf } from "@/hooks/useVisualViewport";
 
 /**
- * Scrolls `field` to the top of what its scroll container shows: the dialog it
- * sits in, or the page, under `html`'s `scroll-padding-top` for the header.
+ * How far below the scrollport's top the sticky rows above `field` reach once
+ * they are stuck - the site header, and a dive-form section's heading under it.
+ *
+ * A sticky row before the field in any ancestor sticks while the field is
+ * scrolled past it, since its containing block holds the field too.
+ */
+function stuckRowsBottom(field: HTMLElement, scroller: HTMLElement): number {
+  let bottom = 0;
+  for (
+    let node: Element | null = field;
+    node && node !== scroller;
+    node = node.parentElement
+  ) {
+    for (
+      let row = node.previousElementSibling;
+      row;
+      row = row.previousElementSibling
+    ) {
+      const style = getComputedStyle(row);
+      if (style.position !== "sticky") continue;
+      // `auto` for a row stuck to the bottom, like the dive form's Save.
+      const top = parseFloat(style.top);
+      if (Number.isNaN(top)) continue;
+      bottom = Math.max(bottom, top + row.getBoundingClientRect().height);
+    }
+  }
+  return bottom;
+}
+
+/**
+ * Scrolls `field` to the top of what its scroll container shows - the dialog
+ * it sits in, or the page - below its `scroll-padding-top` and below every
+ * sticky row that would cover it there.
  *
  * Only the nearest container moves. A field in a dialog scrolls the dialog and
  * never the page locked behind it, which the scrim is anchored to.
@@ -13,7 +44,10 @@ import { scrollContainerOf } from "@/hooks/useVisualViewport";
 export function scrollFieldToTop(field: HTMLElement) {
   const container = scrollContainerOf(field);
   const scroller = container ?? document.documentElement;
-  const padding = parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0;
+  const padding = Math.max(
+    parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0,
+    stuckRowsBottom(field, scroller),
+  );
   // The page's visible top is the visual viewport's, which Safari pans below
   // the layout viewport's while a keyboard is already up.
   const visibleTop = container

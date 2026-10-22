@@ -46,6 +46,29 @@ describe("scrollFieldToTop", () => {
     expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER, 0);
   });
 
+  it("stops below a section heading stuck under the header", async () => {
+    await page.viewport(393, 700);
+    document.documentElement.style.scrollPaddingTop = `${HEADER}px`;
+    const { getByLabelText } = render(
+      <div>
+        <header style={{ position: "sticky", top: 0, height: HEADER }} />
+        <div style={{ height: 900 }} />
+        <section>
+          <h2 style={{ position: "sticky", top: HEADER, height: 50 }} />
+          <div style={{ height: 300 }} />
+          <div>
+            <Field />
+          </div>
+          <div style={{ position: "sticky", bottom: 0, height: 40 }} />
+        </section>
+        <div style={{ height: 2000 }} />
+      </div>,
+    );
+    const input = getByLabelText("Picker");
+    scrollFieldToTop(input);
+    expect(input.getBoundingClientRect().top).toBeCloseTo(HEADER + 50, 0);
+  });
+
   it("scrolls a dialog's own box and leaves the page behind it alone", async () => {
     await page.viewport(393, 700);
     window.scrollTo(0, 0);
