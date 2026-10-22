@@ -15,8 +15,14 @@ const TRIPS: ComboboxItem[] = [
   { id: "t2", name: "Red Sea 2026" },
 ];
 
-function Field({ keepOpenOnSelect = false }: { keepOpenOnSelect?: boolean }) {
-  const [value, setValue] = useState<string | undefined>();
+function Field({
+  keepOpenOnSelect = false,
+  initial,
+}: {
+  keepOpenOnSelect?: boolean;
+  initial?: string;
+}) {
+  const [value, setValue] = useState<string | undefined>(initial);
   return (
     <CreatableCombobox
       aria-label="Trip"
@@ -41,6 +47,24 @@ describe("PickerSheet", () => {
     expect(done()).toBeInTheDocument();
     expect(screen.getByRole("listbox")).toBeInTheDocument();
     expect(box()).toHaveFocus();
+  });
+
+  it("selects a filled field's text once it is up in the sheet", async () => {
+    usePointer("coarse");
+    render(<Field initial="t1" />);
+    const input = box() as HTMLInputElement;
+    let wasInSheet = false;
+    const select = input.select.bind(input);
+    input.select = () => {
+      wasInSheet = done() !== null;
+      select();
+    };
+
+    await userEvent.click(input);
+
+    expect(wasInSheet).toBe(true);
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe("Dahab 2025".length);
   });
 
   it("keeps the dropdown for a mouse", async () => {

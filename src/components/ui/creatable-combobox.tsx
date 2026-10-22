@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -465,6 +465,13 @@ export function CreatableCombobox({
   // Set by a pick that leaves the sheet, whose blur must not commit the text
   // the pick has just replaced - this render's `inputValue` is still the query.
   const pickedRef = useRef(false);
+  // Bumped by a focus that selects the field's text, which waits for the render
+  // that focus causes: on touch that render moves the field into the sheet, and
+  // Safari leaves the selection handles where the field was at `select()`.
+  const [selectRun, setSelectRun] = useState(0);
+  useLayoutEffect(() => {
+    if (selectRun) inputRef.current?.select();
+  }, [selectRun]);
 
   // An append-only field has always worked this way; a single-select opts in.
   const enterOnly = commitOnEnterOnly || keepOpenOnSelect;
@@ -868,7 +875,8 @@ export function CreatableCombobox({
                 // on a phone. `keepOpenOnSelect` stays in the condition because that
                 // field's input is a filter even when the diver has typed into it -
                 // its text is a query, and a query is not a label.
-                if (!keepOpenOnSelect && inputValue) inputRef.current?.select();
+                if (!keepOpenOnSelect && inputValue)
+                  setSelectRun((run) => run + 1);
               }}
               // Focus alone isn't enough: a `focus` event doesn't fire on an input
               // that already has focus, so any path that closes the menu while
