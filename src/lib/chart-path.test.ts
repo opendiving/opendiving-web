@@ -3,7 +3,6 @@ import {
   barPath,
   buildAreaPath,
   segmentByTimeGap,
-  smoothBandPath,
   smoothPath,
 } from "@/lib/chart-path";
 
@@ -62,9 +61,9 @@ describe("smoothPath", () => {
 
   it("never overshoots a local extreme", () => {
     // The whole reason this is monotone cubic and not Catmull-Rom. A dip in a
-    // trend line must not be drawn dipping below its lowest value: on the gas
-    // chart that would render a gas consumption the diver never achieved,
-    // sitting under their actual best dive.
+    // line must not be drawn dipping below its lowest value: on a dive profile
+    // that would render a depth the diver never reached, below the deepest
+    // point of the dive.
     const path = smoothPath([
       { x: 0, y: 100 },
       { x: 10, y: 100 },
@@ -101,36 +100,6 @@ describe("smoothPath", () => {
     ]);
 
     expect(path).not.toMatch(/\d\.\d{3}/);
-  });
-});
-
-describe("smoothBandPath", () => {
-  const upper = [
-    { x: 0, y: 10 },
-    { x: 10, y: 20 },
-    { x: 20, y: 15 },
-  ];
-  const lower = [
-    { x: 0, y: 30 },
-    { x: 10, y: 40 },
-    { x: 20, y: 35 },
-  ];
-
-  it("runs out along the upper edge and back along the lower, closed", () => {
-    const path = smoothBandPath(upper, lower);
-
-    expect(path.startsWith("M0,10")).toBe(true);
-    // The turn at the far end: the last upper point, then across to the last
-    // lower point.
-    expect(path).toContain("20,15 L20,35");
-    expect(path.endsWith("Z")).toBe(true);
-  });
-
-  it("is empty when there is no width to fill", () => {
-    // One shared point is a line, not a band, and an unbalanced pair is a bug in
-    // the caller - either way, better to draw nothing than a torn shape.
-    expect(smoothBandPath([upper[0]], [lower[0]])).toBe("");
-    expect(smoothBandPath(upper, lower.slice(1))).toBe("");
   });
 });
 

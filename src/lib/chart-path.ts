@@ -1,6 +1,6 @@
-// Path geometry shared by the app's hand-rolled SVG charts
-// (`gas-use-chart.tsx`, `dive-profile-chart.tsx`), in a module of its own because
-// a gas chart importing a dive-profile module to draw a filled shape reads as an
+// Path geometry shared by the app's hand-rolled SVG charts (the dive profile,
+// its silhouette, the activity and admin bars), in a module of its own because
+// a bar chart importing a dive-profile module to draw a shape reads as an
 // accident.
 
 export interface Point {
@@ -32,15 +32,15 @@ export function buildAreaPath(points: Point[], baselineY: number): string {
   return `${line} L${points[points.length - 1].x},${baselineY} L${points[0].x},${baselineY} Z`;
 }
 
-// The cubic segments joining `points`, without the leading `M` - the shared
-// middle of `smoothPath` and `smoothBandPath`.
+// The cubic segments joining `points`, without the leading `M` - the body of
+// `smoothPath`.
 //
 // Monotone cubic interpolation (Fritsch-Carlson), specifically, rather than the
 // Catmull-Rom spline that every "smooth line chart" snippet reaches for. The
 // difference is the whole reason smoothing is safe to apply to data at all:
-// Catmull-Rom overshoots around a local extreme, so a dip in a trend line gets
-// drawn dipping *below* its lowest value. On this chart that would render a gas
-// consumption the diver never achieved, sitting under their actual best dive.
+// Catmull-Rom overshoots around a local extreme, so a dip in a line gets drawn
+// dipping *below* its lowest value. On a dive profile that would render a depth
+// the diver never reached, below the deepest point of the dive.
 // Monotone cubic is constructed to never leave the interval between two
 // neighbouring points, so the curve can only ever say what the numbers say.
 //
@@ -122,18 +122,6 @@ export function smoothPath(points: Point[]): string {
   if (points.length === 1) return start;
 
   return `${start} ${curveCommands(points)}`;
-}
-
-// The `d` of a closed band between two curves sharing an x series: out along
-// `upper`, back along `lower`, closed. Both edges are smoothed the same way, so
-// the band hugs the line it surrounds instead of drifting away from it at the
-// bends.
-export function smoothBandPath(upper: Point[], lower: Point[]): string {
-  if (upper.length < 2 || upper.length !== lower.length) return "";
-
-  const back = [...lower].reverse();
-
-  return `${smoothPath(upper)} L${round(back[0].x)},${round(back[0].y)} ${curveCommands(back)} Z`;
 }
 
 // The `d` of a bar with its top two corners rounded and its bottom two square.

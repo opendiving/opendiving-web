@@ -8,14 +8,17 @@ import type {
 } from "@/lib/api/dives";
 import {
   bandRanges,
+  binStart,
+  binSummaries,
+  binUnit,
+  clipOutliers,
   gasAttributionNote,
   gasUseUnavailableReason,
-  rollingMean,
-  rollingStdDev,
+  quantile,
+  quartiles,
   scopeRange,
   summarizeGasUse,
   tankGasUseRows,
-  trendWindow,
 } from "@/lib/dive-gas";
 // `periodRange`/`periodLabel`/`stepPeriod`/`availablePeriods` moved to
 // `chart-period.ts` with their tests; `periodRange` stays imported here because
@@ -906,99 +909,6 @@ describe("gasAttributionNote", () => {
   });
 });
 
-describe("rollingMean", () => {
-  it("averages over a trailing window", () => {
-    expect(rollingMean([10, 20, 30, 40], 2)).toEqual([10, 15, 25, 35]);
-  });
-
-  it("uses a shorter window before the series is long enough", () => {
-    // The line has to start at the first point - beginning it `window` points
-    // in would leave a gap that reads as missing data.
-    expect(rollingMean([10, 20, 30], 5)).toEqual([10, 15, 20]);
-  });
-
-  it("returns nothing for an empty series", () => {
-    expect(rollingMean([], 5)).toEqual([]);
-  });
-
-  it("smooths a spike instead of following it", () => {
-    const smoothed = rollingMean([12, 12, 30, 12, 12], 5);
-
-    expect(Math.max(...smoothed)).toBeLessThan(20);
-  });
-});
-
-describe("trendWindow", () => {
-  // Long enough that the proportional cap never binds - see the short-log
-  // cases below for where it does.
-  const LONG = 300;
-
-  it("smooths harder the more history is on screen", () => {
-    expect(trendWindow("month", LONG)).toBe(5);
-    expect(trendWindow("year", LONG)).toBe(10);
-    expect(trendWindow("all", LONG)).toBe(20);
-  });
-
-  it("narrows the window to a third of the series once that is the tighter bound", () => {
-    // 30 dives at "all" would otherwise average 20 of them into every point,
-    // leaving a line that can only drift toward the overall mean.
-    //
-    // A third is the *upper* bound, not an invariant - the five-dive floor in the
-    // next test overrides it for anything under 15 dives, where a third would be
-    // one or two. The old name for this test ("never smooths over more than a
-    // third") claimed otherwise, and the very next test contradicted it.
-    expect(trendWindow("all", 30)).toBe(10);
-    expect(trendWindow("year", 24)).toBe(8);
-  });
-
-  it("never drops below the five-dive floor", () => {
-    // A third of a short log is one or two dives, which is no smoothing at
-    // all - the trend would just retrace the dots.
-    expect(trendWindow("all", 12)).toBe(5);
-    expect(trendWindow("month", 2)).toBe(5);
-    expect(trendWindow("all", 0)).toBe(5);
-  });
-
-  it("only ever widens the window as the scope widens", () => {
-    // The property the whole thing rests on: switching Month -> Year -> All
-    // must never make the trend twitchier than it already was.
-    for (const count of [0, 2, 12, 24, 30, 60, LONG]) {
-      expect(trendWindow("year", count)).toBeGreaterThanOrEqual(
-        trendWindow("month", count),
-      );
-      expect(trendWindow("all", count)).toBeGreaterThanOrEqual(
-        trendWindow("year", count),
-      );
-    }
-  });
-});
-
-describe("rollingStdDev", () => {
-  it("is zero for a window with nothing to vary", () => {
-    // The first point averages over itself alone, so the band pinches to the
-    // line there rather than starting at some invented width.
-    expect(rollingStdDev([14], 5)).toEqual([0]);
-    expect(rollingStdDev([14, 14, 14], 5)).toEqual([0, 0, 0]);
-  });
-
-  it("measures the spread of the trailing window", () => {
-    // Population form: mean 15, deviations ±5, so 5 - not the 7.07 the sample
-    // form would give.
-    expect(rollingStdDev([10, 20], 2)).toEqual([0, 5]);
-  });
-
-  it("forgets a spike once it leaves the window", () => {
-    const spread = rollingStdDev([12, 12, 30, 12, 12, 12], 3);
-
-    expect(spread[2]).toBeGreaterThan(0);
-    expect(spread[5]).toBe(0);
-  });
-
-  it("returns nothing for an empty series", () => {
-    expect(rollingStdDev([], 5)).toEqual([]);
-  });
-});
-
 describe("bandRanges", () => {
   it("shades alternate months of a year, starting at February", () => {
     const bands = bandRanges(
@@ -1050,8 +960,8 @@ describe("bandRanges", () => {
 });
 
 describe("summarizeGasUse", () => {
-  // Two dives in April 2025 averaging 20, two in October averaging 15, one in
-  // March 2026 at 12.
+  // Two dives in April 2025 with a median of 20, two in October with a median
+  // of 15, one in March 2026 at 12.
   const times = [
     Date.UTC(2025, 3, 10),
     Date.UTC(2025, 3, 12),
@@ -1061,10 +971,11 @@ describe("summarizeGasUse", () => {
   ];
   const rmvs = [18, 22, 14, 16, 12];
 
-  it("averages the whole series for the all scope", () => {
+  it("takes the median of the whole series for the all scope", () => {
     const summary = summarizeGasUse(times, rmvs, "all", times[4]);
 
-    expect(summary).toMatchObject({ dives: 5, average: 16.4, best: 12 });
+    // 16, not the mean's 16.4.
+    expect(summary).toMatchObject({ dives: 5, median: 16, best: 12 });
   });
 
   it("has nothing to compare the all scope against", () => {
@@ -1074,15 +985,15 @@ describe("summarizeGasUse", () => {
     expect(summary?.previousLabel).toBeNull();
   });
 
-  it("averages only the anchored period", () => {
+  it("summarizes only the anchored period", () => {
     const summary = summarizeGasUse(times, rmvs, "month", times[0]);
 
-    expect(summary).toMatchObject({ dives: 2, average: 20, best: 18 });
+    expect(summary).toMatchObject({ dives: 2, median: 20, best: 18 });
   });
 
   it("reports an improvement as a negative change", () => {
-    // October averaged 15 against April's 20. Lower is better, so this is a 25%
-    // improvement and the sign has to say so.
+    // October's median of 15 against April's 20. Lower is better, so this is a
+    // 25% improvement and the sign has to say so.
     const summary = summarizeGasUse(times, rmvs, "month", times[2]);
 
     expect(summary?.changePercent).toBeCloseTo(-25);
@@ -1102,8 +1013,8 @@ describe("summarizeGasUse", () => {
     const summary = summarizeGasUse(times, rmvs, "year", times[4]);
 
     expect(summary?.previousLabel).toBe("2025");
-    // 12 against 2025's average of 17.5.
-    expect(summary?.changePercent).toBeCloseTo(-31.43, 1);
+    // 12 against 2025's median of 17.
+    expect(summary?.changePercent).toBeCloseTo(-29.41, 1);
   });
 
   it("has nothing to compare the earliest period against", () => {
@@ -1170,5 +1081,128 @@ describe("scopeRange", () => {
     expect(Number.isNaN(range.start)).toBe(false);
     expect(Number.isNaN(range.end)).toBe(false);
     expect(range.end).toBeGreaterThan(range.start);
+  });
+});
+
+describe("quantile", () => {
+  it("interpolates between the ranks it falls between", () => {
+    // R-7: the median of an even count is the mean of the middle two, and a
+    // quartile a quarter of the way along an interval reads a quarter of it.
+    expect(quantile([1, 2, 3, 4], 0.5)).toBe(2.5);
+    expect(quantile([10, 20, 30, 40, 50], 0.25)).toBe(20);
+    expect(quantile([3, 1, 2], 0.5)).toBe(2);
+  });
+
+  it("reads the ends as the extremes", () => {
+    expect(quantile([4, 9, 1], 0)).toBe(1);
+    expect(quantile([4, 9, 1], 1)).toBe(9);
+    expect(quantile([7], 0.5)).toBe(7);
+  });
+
+  it("moves a quartile by at most a rank when one dive is wild", () => {
+    const steady = quartiles([12, 12, 13, 13, 14, 14, 15, 15]);
+    const spiked = quartiles([12, 12, 13, 13, 14, 14, 15, 40]);
+
+    expect(spiked.median).toBe(steady.median);
+    expect(spiked.q3).toBe(steady.q3);
+  });
+});
+
+describe("clipOutliers", () => {
+  it("keeps every dive of a series under a hundred", () => {
+    const values = Array.from({ length: 99 }, (_, index) => index);
+    expect(clipOutliers(values)).toBe(values);
+  });
+
+  it("drops one dive in a hundred from each end", () => {
+    const values = Array.from({ length: 250 }, (_, index) => 250 - index);
+    const kept = clipOutliers(values);
+
+    expect(kept).toHaveLength(246);
+    expect(Math.min(...kept)).toBe(3);
+    expect(Math.max(...kept)).toBe(248);
+  });
+});
+
+describe("binUnit", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  it("picks days for a month, weeks for a year and months for a career", () => {
+    expect(binUnit(30 * DAY, 664)).toBe("day");
+    expect(binUnit(365 * DAY, 664)).toBe("week");
+    expect(binUnit(4 * 365 * DAY, 664)).toBe("month");
+    expect(binUnit(12 * 365 * DAY, 664)).toBe("quarter");
+  });
+
+  it("steps up a unit when the axis narrows to a phone", () => {
+    // A year on a 426-unit plot gives a week 8 units, under the floor.
+    expect(binUnit(365 * DAY, 426)).toBe("month");
+  });
+
+  it("never goes finer than a day or coarser than a year", () => {
+    expect(binUnit(DAY, 664)).toBe("day");
+    expect(binUnit(100 * 365 * DAY, 664)).toBe("year");
+  });
+});
+
+describe("binStart", () => {
+  // A Wednesday, late in a quarter, in the dive's own wall clock.
+  const time = Date.UTC(2025, 8, 17, 14, 30);
+
+  it("aligns to the calendar in the wall-clock day", () => {
+    expect(binStart(time, "day")).toBe(Date.UTC(2025, 8, 17));
+    expect(binStart(time, "month")).toBe(Date.UTC(2025, 8, 1));
+    expect(binStart(time, "quarter")).toBe(Date.UTC(2025, 6, 1));
+    expect(binStart(time, "year")).toBe(Date.UTC(2025, 0, 1));
+  });
+
+  it("starts weeks on Monday", () => {
+    expect(binStart(time, "week")).toBe(Date.UTC(2025, 8, 15));
+    // A Sunday belongs to the week that began six days earlier.
+    expect(binStart(Date.UTC(2025, 8, 21), "week")).toBe(Date.UTC(2025, 8, 15));
+    expect(binStart(Date.UTC(2025, 8, 22), "week")).toBe(Date.UTC(2025, 8, 22));
+  });
+});
+
+describe("binSummaries", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  it("groups dives by calendar bin and leaves empty bins out", () => {
+    const times = [
+      Date.UTC(2025, 1, 10, 9),
+      Date.UTC(2025, 1, 10, 14),
+      Date.UTC(2025, 1, 11, 9),
+      Date.UTC(2025, 3, 2, 9),
+    ];
+    const bins = binSummaries(times, [10, 12, 14, 20], "week");
+
+    expect(bins.map((bin) => bin.count)).toEqual([3, 1]);
+    expect(bins[0]).toMatchObject({
+      start: Date.UTC(2025, 1, 10),
+      end: Date.UTC(2025, 1, 17),
+      first: times[0],
+      last: times[2],
+      median: 12,
+    });
+    expect(bins[1].start).toBe(Date.UTC(2025, 2, 31));
+  });
+
+  it("summarizes a bin by its quartiles, not its mean", () => {
+    const [bin] = binSummaries(
+      [0, 1, 2, 3, 4].map((hour) => Date.UTC(2025, 5, 3, hour)),
+      [11, 12, 13, 14, 40],
+      "day",
+    );
+
+    expect(bin).toMatchObject({ q1: 12, median: 13, q3: 14 });
+  });
+
+  it("splits a trip that straddles two bins", () => {
+    const times = [0, 1, 2, 3].map((day) => Date.UTC(2025, 0, 30) + day * DAY);
+    expect(binSummaries(times, [1, 2, 3, 4], "month")).toHaveLength(2);
+  });
+
+  it("is empty for an empty series", () => {
+    expect(binSummaries([], [], "day")).toEqual([]);
   });
 });

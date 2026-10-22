@@ -15,83 +15,186 @@ import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { gasName, hasStagedCylinder, isParallelSet } from "@/lib/dive-mixtures";
 import { primaryRecording } from "@/lib/dive-recordings";
 
-// How many dives the trend line averages over, per scope.
-//
-// A single dive's RMV swings on current, cold, workload and task loading, so
-// the raw points are noise around a signal. How much smoothing that noise needs
-// depends on how much history is on screen, because the question being asked
-// changes with it: a month is one trip and "how did this week go" wants a window
-// short enough to bend inside it, while a career is asking "am I getting better"
-// and a five-dive mean across five hundred dives just redraws the noise at
-// trip scale.
-//
-// Five is roughly a day's diving; ten is roughly a trip; twenty is a couple of
-// them, which is about the resolution a multi-year arc is legible at.
-const TREND_WINDOWS: Record<ChartScope, number> = {
-  month: 5,
-  year: 10,
-  all: 20,
+// A value `p` of the way through `values` (0 is the lowest, 1 the highest),
+// interpolating linearly between the two it falls between - R's default and the
+// one spreadsheets use, so a figure here matches one a diver works out by hand.
+// Sorts its own copy; callers pass raw series.
+export function quantile(values: number[], p: number): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const position = (sorted.length - 1) * p;
+  const below = Math.floor(position);
+  const above = Math.min(sorted.length - 1, below + 1);
+  return sorted[below] + (sorted[above] - sorted[below]) * (position - below);
+}
+
+// Median and the middle half, which is what the chart draws as a box: the
+// quartiles describe where the bulk of a set of dives sits, and unlike a mean and
+// a standard deviation they stay put when one dive comes in at twice everyone
+// else's rate - a misread gauge, or a swim against current, moves a quartile by
+// at most one rank.
+export interface Quartiles {
+  q1: number;
+  median: number;
+  q3: number;
+}
+
+export function quartiles(values: number[]): Quartiles {
+  return {
+    q1: quantile(values, 0.25),
+    median: quantile(values, 0.5),
+    q3: quantile(values, 0.75),
+  };
+}
+
+// The calendar units the chart summarizes dives by, finest first.
+export const BIN_UNITS = ["day", "week", "month", "quarter", "year"] as const;
+
+export type BinUnit = (typeof BIN_UNITS)[number];
+
+// How long each unit runs, near enough to size it on an axis; the bins
+// themselves follow the calendar.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const BIN_UNIT_MS: Record<BinUnit, number> = {
+  day: DAY_MS,
+  week: 7 * DAY_MS,
+  month: 30.44 * DAY_MS,
+  quarter: 91.31 * DAY_MS,
+  year: 365.25 * DAY_MS,
 };
 
-// Never smooth over more than this fraction of the whole series. A window that
-// covers most of a diver's history turns the trend into a cumulative average -
-// a line that only ever drifts toward the overall mean and can't respond to
-// anything - which is the exact failure a new diver looking at "All" would hit
-// first, and the one most likely to be read as "my consumption never changes".
-const MAX_TREND_FRACTION = 3;
+// The narrowest a bin may be, in viewBox units, before the chart steps up to
+// the next unit. Wide enough for a box with a median tick inside it to read as
+// one, and just under the design width's room for a week in a year (664 units
+// over 52 weeks), so a year is read in weeks on a desktop and in months on a
+// phone.
+export const BIN_MIN_WIDTH = 12;
 
-const MIN_TREND_WINDOW = 5;
-
-// The window to smooth with, for a scope and a series of `diveCount` dives.
-export function trendWindow(scope: ChartScope, diveCount: number): number {
-  return Math.max(
-    MIN_TREND_WINDOW,
-    Math.min(TREND_WINDOWS[scope], Math.floor(diveCount / MAX_TREND_FRACTION)),
+// The finest unit whose bins get at least `BIN_MIN_WIDTH` of a `plotWidth`-wide
+// axis spanning `rangeMs`.
+//
+// The unit is chosen by room on the axis rather than by the calendar or by the
+// gaps between dives, and that is the whole design. Each fixed choice fails
+// somewhere: one calendar unit for every scope is a month of nothing but a
+// single box or a career of three hundred slivers; dives grouped by the breaks
+// between them turn a weekend diver's career into a hundred and fifty
+// overlapping marks and an instructor's season into one box with one median;
+// and a fixed trailing window of dives makes ten turns inside one slot of a
+// year's axis and then runs flat for months. Sized to the axis, a week-long
+// trip is one box in a year and seven in a month, a season is twenty-six boxes
+// in a year and six in a career, and the gaps between trips are simply empty
+// bins. It is how a candlestick chart moves from daily to weekly to monthly
+// candles as it zooms out.
+export function binUnit(rangeMs: number, plotWidth: number): BinUnit {
+  return (
+    BIN_UNITS.find(
+      (unit) => (plotWidth * BIN_UNIT_MS[unit]) / rangeMs >= BIN_MIN_WIDTH,
+    ) ?? "year"
   );
 }
 
-// Trailing mean of the last `window` values (fewer at the start of the series,
-// so the line begins at the first point rather than `window` points in - a gap
-// at the left edge reads as missing data).
-export function rollingMean(values: number[], window: number): number[] {
-  return values.map((_, index) => {
-    const slice = values.slice(Math.max(0, index - window + 1), index + 1);
-    return slice.reduce((sum, value) => sum + value, 0) / slice.length;
-  });
+// The start of the bin holding `time`, in the dive's own wall-clock calendar -
+// the chart's timestamps are read back with `getUTC*` only (`diveWallClockTime`).
+// Weeks start on Monday.
+export function binStart(time: number, unit: BinUnit): number {
+  const date = new Date(time);
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+  switch (unit) {
+    case "day":
+      return Date.UTC(year, month, day);
+    case "week":
+      return Date.UTC(year, month, day - ((date.getUTCDay() + 6) % 7));
+    case "month":
+      return Date.UTC(year, month, 1);
+    case "quarter":
+      return Date.UTC(year, month - (month % 3), 1);
+    case "year":
+      return Date.UTC(year, 0, 1);
+  }
 }
 
-// The spread of the same trailing window `rollingMean` averages, as a standard
-// deviation - what the chart draws as a band around the trend line.
-//
-// The band is there because a bare trend line answers "how much" but not "how
-// consistently", and consistency is most of what improving gas consumption
-// actually looks like: a diver whose dives cluster at 16-18 L/min is in better
-// control than one averaging the same figure from 12s and 22s. It also gives the
-// line some body without the dishonesty of filling to the axis - this chart's y
-// axis deliberately doesn't start at zero (see `niceDomain`), so the area under
-// the trend is not a quantity and shading it would encode nothing.
-//
-// Population standard deviation, dividing by `n` rather than `n - 1`: this
-// describes the window it was computed from rather than estimating a wider
-// population from it, and the sample form would divide by zero on the first
-// point, where the window holds one dive.
-export function rollingStdDev(values: number[], window: number): number[] {
-  return values.map((_, index) => {
-    const slice = values.slice(Math.max(0, index - window + 1), index + 1);
-    const mean = slice.reduce((sum, value) => sum + value, 0) / slice.length;
-    const variance =
-      slice.reduce((sum, value) => sum + (value - mean) ** 2, 0) / slice.length;
+// The start of the bin after the one starting at `start`.
+export function binNext(start: number, unit: BinUnit): number {
+  const date = new Date(start);
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+  switch (unit) {
+    case "day":
+      return Date.UTC(year, month, day + 1);
+    case "week":
+      return Date.UTC(year, month, day + 7);
+    case "month":
+      return Date.UTC(year, month + 1, 1);
+    case "quarter":
+      return Date.UTC(year, month + 3, 1);
+    case "year":
+      return Date.UTC(year + 1, 0, 1);
+  }
+}
 
-    return Math.sqrt(variance);
+// One bin with dives in it: its calendar bounds (`[start, end)`), when its
+// first and last dive were, how many, and the quartiles of their RMVs.
+export interface BinSummary extends Quartiles {
+  start: number;
+  end: number;
+  first: number;
+  last: number;
+  count: number;
+}
+
+// The series summarized per `unit`, in order, with empty bins left out.
+// `times` sorted ascending, as the API returns them, with `values` in step.
+export function binSummaries(
+  times: number[],
+  values: number[],
+  unit: BinUnit,
+): BinSummary[] {
+  const bins: { start: number; indices: number[] }[] = [];
+  times.forEach((time, index) => {
+    const start = binStart(time, unit);
+    const current = bins[bins.length - 1];
+    if (current?.start === start) {
+      current.indices.push(index);
+    } else {
+      bins.push({ start, indices: [index] });
+    }
   });
+
+  return bins.map(({ start, indices }) => ({
+    start,
+    end: binNext(start, unit),
+    first: times[indices[0]],
+    last: times[indices[indices.length - 1]],
+    count: indices.length,
+    ...quartiles(indices.map((index) => values[index])),
+  }));
+}
+
+// The fraction of the series an axis is allowed to leave off each end, so one
+// misread gauge at twice everyone else's rate does not set the top of the axis
+// and squash the other two hundred dives into the bottom third of the plot.
+// Dropping one dive in a hundred from each end only ever touches a series of a
+// hundred or more - a shorter one keeps its extremes - and the chart pins what
+// it drops to the edge rather than hiding it.
+export const DOMAIN_CLIP = 0.01;
+
+// The values an axis should be scaled to: the series with its outliers, by the
+// rule above, left out. Whole ranks rather than an interpolated percentile, so
+// a series too short to lose a dive loses none of its range either.
+export function clipOutliers(values: number[]): number[] {
+  const drop = Math.floor(values.length * DOMAIN_CLIP);
+  if (drop === 0) return values;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted.slice(drop, sorted.length - drop);
 }
 
 // The three marks sharing the gas chart's plot, each of which the diver can turn
-// off. The trend and its spread band are one mark, not two: the band is what
-// gives the line body and says how tightly the dives it averages were clustered,
-// so a chart with one and not the other says less than either alone. (The band
-// is still dropped at the "all" scope, where a fortnight of diving is four units
-// wide and it collapses into a smear - see `GasUseChart`.)
+// off. A bin's box and its median tick are one mark, not two: the tick is the
+// figure and the box says how tightly the dives behind it were clustered, so a
+// chart with one and not the other says less than either alone. Likewise the
+// baseline's median line and its middle-half band.
 export const GAS_USE_MARKS = ["dives", "trend", "average"] as const;
 
 export type GasUseMark = (typeof GAS_USE_MARKS)[number];
@@ -125,7 +228,7 @@ export function scopeRange(
 // cluster of dots is impossible to place in the year without tracing down to the
 // axis. Shading is deliberately the mechanism rather than gridlines: a diving
 // season is an *interval*, not an instant, so a band is the honest mark for it -
-// and a chart that already carries dots, a trend, a spread band and a reference
+// and a chart that already carries dots, the bins and the baseline's band and
 // line does not need twelve more lines drawn through it.
 //
 // A month is too short to subdivide usefully, so it gets none. Everything is
@@ -173,12 +276,15 @@ export function bandRanges(
 export interface GasUseSummary {
   // How many dives the figures below are drawn from.
   dives: number;
-  average: number;
+  // The period's median RMV. A median rather than a mean so the headline is
+  // judged against the chart's all-time median baseline like for like, and so
+  // one misread gauge in a period moves it by at most a rank.
+  median: number;
   // Lowest RMV in the period. Lower is better, so this is the best dive, not an
   // outlier to be explained away.
   best: number;
-  // Change in average against the previous period *with dives*, as a percentage
-  // of that period's average - negative being an improvement. Null when there
+  // Change in median against the previous period *with dives*, as a percentage
+  // of that period's median - negative being an improvement. Null when there
   // is nothing to compare against: the "all" scope, or the earliest period.
   changePercent: number | null;
   // What that previous period is called, for the label that carries the number.
@@ -186,8 +292,8 @@ export interface GasUseSummary {
   previousLabel: string | null;
 }
 
-// The figures above the chart: what this period averaged, the best dive in it,
-// and whether that average is going the right way.
+// The figures above the chart: this period's median, the best dive in it, and
+// whether that median is going the right way.
 //
 // The chart shows the shape; this answers "am I improving", which is the
 // question the card exists for and the one a scatter of dots is worst at. It
@@ -213,13 +319,10 @@ export function summarizeGasUse(
 
   if (current.length === 0) return null;
 
-  const mean = (values: number[]) =>
-    values.reduce((sum, value) => sum + value, 0) / values.length;
-
-  const average = mean(current);
+  const median = quantile(current, 0.5);
   const summary: GasUseSummary = {
     dives: current.length,
-    average,
+    median,
     best: Math.min(...current),
     changePercent: null,
     previousLabel: null,
@@ -234,25 +337,25 @@ export function summarizeGasUse(
   const previous = inPeriod(previousRange);
   // `stepPeriod` returned a dive's own timestamp, so the period it sits in has
   // at least that one dive and this cannot divide by zero.
-  const previousAverage = mean(previous);
+  const previousMedian = quantile(previous, 0.5);
 
   return {
     ...summary,
-    changePercent: ((average - previousAverage) / previousAverage) * 100,
+    changePercent: ((median - previousMedian) / previousMedian) * 100,
     previousLabel: periodLabel(previousRange.start, scope),
   };
 }
 
-// How long a break in diving has to be before the trend line stops being drawn
-// across it (see `segmentByTimeGap`). Two months is comfortably longer than the
-// gap between dives on a trip, or between trips in an active season, and
+// How long a break in diving has to be before the line joining one bin's median
+// to the next is drawn dashed across it. Two months is comfortably longer than
+// the gap between dives on a trip, or between trips in an active season, and
 // comfortably shorter than an off-season.
 //
-// The trailing mean itself deliberately still averages across the gap: your gas
-// consumption doesn't reset because you took a winter off. It's only the drawn
-// connector that's a lie - a week in April and a week in October joined by a
-// long flat segment reads as "my consumption was steady all summer" when the
-// truth is "there is no data here".
+// A solid connector across that gap is a lie - a week in April and a week in
+// October joined by a long segment reads as "my consumption was steady all
+// summer" when the truth is "there is no data here". Dashed, it still carries
+// the eye from one trip's figure to the next without claiming the months
+// between.
 export const TREND_GAP_MS = 60 * 24 * 60 * 60 * 1000;
 
 // Total pressure drop across a set of cylinders, in bar, with a row that is missing

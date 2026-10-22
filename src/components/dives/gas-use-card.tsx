@@ -50,7 +50,7 @@ export function GasUseCard() {
   const { points, times, scope, anchor } = view;
 
   // The figures above the chart. Same threshold as the chart's own: with one
-  // dive there is no trend to describe, and an "Average" over a single dive
+  // dive there is no trend to describe, and a "Median" over a single dive
   // sitting above "log at least two dives" would be a contradiction.
   const summary = useMemo(
     () =>
@@ -94,9 +94,9 @@ export function GasUseCard() {
             `dive-gas.ts`). The normalisation belongs in the sentence that has
             room to state it.
 
-            The rolling trend is not named here: the legend already labels it,
-            with the window length this sentence could not state (it varies by
-            scope - see `trendWindow`). */}
+            The trend is not named here: the legend already labels it, with
+            the bin this sentence could not state (it varies by scope - see
+            `binUnit`). */}
         <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           Surface-equivalent gas volume breathed per minute (RMV). Lower is
@@ -121,8 +121,8 @@ function GasUseSummaryRow({
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-start gap-x-6 gap-y-3">
-      <ChartStat label="Average" detail={<Change summary={summary} />}>
-        <Figure value={summary.average} units={units} />
+      <ChartStat label="Median" detail={<Change summary={summary} />}>
+        <Figure value={summary.median} units={units} />
       </ChartStat>
       <ChartStat label="Best dive">
         <Figure value={summary.best} units={units} />
@@ -138,7 +138,7 @@ function GasUseSummaryRow({
 
 // One decimal in metric. The API returns two, which is more resolution than a
 // figure derived from a hand-read pressure gauge honestly has - and these are
-// averages over a whole period, where the second decimal is noise about noise.
+// medians over a whole period, where the second decimal is noise about noise.
 // (The hover card on the chart still shows a single dive's own two, as it always
 // has.)
 //
@@ -165,8 +165,8 @@ function Figure({ value, units }: { value: number; units: UnitSystem }) {
 // Change against the previous period with dives.
 //
 // Deliberately uncolored. The app has no good/bad status tokens, and the two
-// candidates are both already spoken for on this card - coral is the trend line
-// and teal is a dive - so a green/red pair here would either collide with the
+// candidates are both already spoken for on this card - coral is the bins and
+// teal is a dive - so a green/red pair here would either collide with the
 // chart's own meanings or have to be invented for one label. The arrow and the
 // "vs <period>" text carry it instead, which is also what keeps the direction
 // legible to anyone who can't separate the two hues.

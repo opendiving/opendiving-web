@@ -7,14 +7,17 @@ import { ChartHoverCard } from "@/components/charts/chart-hover-card";
 import { ChartYAxis } from "@/components/charts/chart-y-axis";
 import type { DiveGasUsePoint } from "@/lib/api/dive-stats";
 import {
+  type BinUnit,
   type GasUseMark,
   GAS_USE_MARKS,
   TREND_GAP_MS,
   bandRanges,
-  rollingMean,
-  rollingStdDev,
+  binSummaries,
+  binUnit,
+  clipOutliers,
+  quantile,
+  quartiles,
   scopeRange,
-  trendWindow,
 } from "@/lib/dive-gas";
 import { type ChartScope, monthName } from "@/lib/chart-period";
 import {
@@ -26,7 +29,6 @@ import {
   labelCapacity,
   niceDomain,
 } from "@/lib/chart-scale";
-import { segmentByTimeGap, smoothBandPath, smoothPath } from "@/lib/chart-path";
 import {
   type PlotMark,
   nearestByX,
@@ -64,16 +66,16 @@ import {
 // production, which is a miserable bug to acquire for one chart. And this is the
 // same call already made for `VolumeCombobox` and the drag-to-reorder list.
 //
-// Two colors, doing two different jobs. The trend is `--coral` (the primary
-// brand accent, so the line you're meant to read is the one that stands out) and
+// Two colors, doing two different jobs. The bins are `--coral` (the primary
+// brand accent, so the mark you're meant to read is the one that stands out) and
 // the per-dive dots are `--teal`, which sits across the color wheel from it -
-// otherwise the dots and the line they're averaged into are the same mark in the
-// same color, and the eye can't separate the raw data from the smoothing.
+// otherwise the dots and the boxes summarizing them are the same mark in the
+// same color, and the eye can't separate the evidence from the reading.
 //
 // Both rather than `--primary`: coral and teal are deliberately declared once
 // and never redeclared under `.dark` (see `globals.css`), so they hold their
 // contrast in both themes, whereas `--primary` is near-black in light mode and a
-// mid grey in dark - which left the trend line barely visible on a dark card.
+// mid grey in dark, which is barely visible against a dark card.
 
 // How far from a dot a tap still means it, in CSS px - about half a fingertip.
 const TAP_REACH = 24;
@@ -86,6 +88,23 @@ const TAP_REACH = 24;
 // the design width always has.
 const YEAR_LABEL_SPACING = 55;
 const MONTH_LABEL_SPACING = 26;
+
+// The gap either side of a bin's box, in viewBox units, so neighbouring bins
+// read as two boxes rather than one long one.
+const BIN_INSET = 1;
+
+// Fewer dives than this and a bin has no middle half worth drawing - the
+// quartiles of two dives are the two dives - so it gets its median tick alone.
+const BIN_BOX_MIN_DIVES = 3;
+
+// What the legend calls a bin's summary, per unit.
+const BIN_LABELS: Record<BinUnit, string> = {
+  day: "Daily",
+  week: "Weekly",
+  month: "Monthly",
+  quarter: "Quarterly",
+  year: "Yearly",
+};
 
 const MONTH_LABELS = Array.from({ length: 12 }, (_, month) =>
   monthName(month + 1, "short"),
@@ -195,47 +214,43 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // every other dive timestamp in the app. Read back with `getUTC*` only.
   const times = points.map((point) => diveWallClockTime(point.start_time));
   // Converted once, here, and everything below - the domain, the axis ticks, the
-  // trend, the spread band, the reference line - is then in the diver's own units,
-  // so `niceDomain` picks round cuft/min rather than round L/min rescaled.
+  // bins, the baseline - is then in the diver's own units, so `niceDomain` picks
+  // round cuft/min rather than round L/min rescaled.
   const displayRmv = (rmv: number) => toDisplayUnits(rmv, "rmv", units);
   const rmvs = points.map((point) => displayRmv(point.gas_use.rmv));
 
-  // Both derived from the *whole* series, deliberately, and then windowed. The y
-  // axis staying put while you page through years is what makes the periods
+  // Derived from the *whole* series, deliberately, and then windowed. The y axis
+  // staying put while you page through years is what makes the periods
   // comparable at a glance - a per-window domain would rescale on every click
-  // and make a good year look identical to a bad one. Likewise the trailing mean
-  // is computed across the whole history, so the first dive of a year carries
-  // the context of the last few dives of the one before instead of restarting.
-  const domain = niceDomain(rmvs);
-
-  // Smoothed at the resolution the scope is asking about - see `trendWindow`.
-  // Deliberately from the whole series' length, not the visible window's: the
-  // trend itself is computed across all of it (below), so how much room the
-  // rolling mean has to move is a property of the history, not of the year you
-  // happen to be looking at.
-  // Not `window` - that shadows the DOM global, which is a trap to leave lying
-  // around in a component that could one day want to measure something.
-  const windowSize = trendWindow(scope, points.length);
-  const trend = rollingMean(rmvs, windowSize);
-  const spread = rollingStdDev(rmvs, windowSize);
-
-  // The career average, drawn as a reference line. It's what makes a period
-  // readable on its own terms: the stat row above the chart says this year
-  // averaged 16.4, and this line says whether that is good *for this diver*
-  // without them having to page back through the previous years to find out.
-  // Deliberately the whole series and not the visible window - a line at the
-  // mean of what you're already looking at tells you nothing you can't see.
+  // and make a good year look identical to a bad one.
   //
-  // Kept in both systems: metric because the accessible summary formats it through
-  // `displayNumber` exactly as the visible stat above the chart does - and a
-  // hardcoded decimal there would quantize an imperial average to ~5 buckets across
-  // the whole plausible RMV range, which is the collapse `rmv`'s two imperial
-  // decimals exist to prevent - and converted because that is the space the plot is
-  // drawn in. Derived rather than averaged twice: the conversion is a single
-  // multiplication, so the mean of the converted values *is* the converted mean.
-  const meanRmv =
-    points.reduce((sum, point) => sum + point.gas_use.rmv, 0) / points.length;
-  const allTimeMean = displayRmv(meanRmv);
+  // Scaled to the series with its outliers left off (`clipOutliers`); a dive
+  // outside the axis is pinned to its edge and drawn hollow, see below.
+  const domain = niceDomain(clipOutliers(rmvs));
+
+  // The career baseline: the all-time median as a reference line, inside a band
+  // covering the middle half of every dive. It's what makes a period readable on
+  // its own terms: the stat row above the chart says this year averaged 16.4,
+  // and the band says whether that is normal *for this diver* without them
+  // having to page back through the previous years to find out. Deliberately
+  // the whole series and not the visible window - a band around what you're
+  // already looking at tells you nothing you can't see. The median rather than
+  // the mean, and quartiles rather than a standard deviation, so one misread
+  // gauge in a career doesn't move the line every other dive is judged against.
+  //
+  // The median is kept in both systems: metric because the accessible summary
+  // formats it through `displayNumber` exactly as the visible stat above the
+  // chart does - and a hardcoded decimal there would quantize an imperial figure
+  // to ~5 buckets across the whole plausible RMV range, which is the collapse
+  // `rmv`'s two imperial decimals exist to prevent - and converted because that
+  // is the space the plot is drawn in. Ranked once in each: the conversion is a
+  // single multiplication, which keeps the order, so the two rankings land on the
+  // same dive.
+  const medianRmv = quantile(
+    points.map((point) => point.gas_use.rmv),
+    0.5,
+  );
+  const baseline = quartiles(rmvs);
 
   const range = scopeRange(times, anchor, scope);
 
@@ -255,54 +270,38 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
       ({ index }) => times[index] >= range.start && times[index] < range.end,
     );
 
-  // The trend and its spread band never leave the plot, whatever the arithmetic
-  // says. `niceDomain` covers the raw dives, and a window's mean plus a standard
-  // deviation can sit just outside that - which would draw the band over the
-  // axis labels rather than reporting anything.
+  // Nothing drawn leaves the plot, whatever the arithmetic says. The axis is
+  // scaled to the series with its outliers left off, so a dive or a bin's
+  // quartile can sit just outside it - which would draw over the axis labels
+  // rather than reporting anything.
   const clamp = (rmv: number) =>
     Math.min(domain.max, Math.max(domain.min, rmv));
+  const outside = (rmv: number) => rmv < domain.min || rmv > domain.max;
 
   const showTrend = marks.includes("trend");
 
-  // The spread band is drawn at the scopes where a trip has horizontal room to
-  // be a ribbon, and not across a whole career, where it hasn't. A fortnight of
-  // diving is about four units wide out of 664 at "all", so the band collapses
-  // into a vertical smear - and one that says nothing the dots stacked inside it
-  // don't already say more precisely.
-  //
-  // Two values, not one: the band is part of what the trend toggle turns on, so
-  // the legend has to keep describing it while the trend is off - otherwise the
-  // control loses the word "spread" exactly when you're deciding whether to
-  // bring it back.
-  const spreadInScope = scope !== "all";
-  const showSpread = showTrend && spreadInScope;
+  // The trend mark is one idiom at every scope: the dives summarized per
+  // calendar bin as a box - the median as a tick, the middle half as the box -
+  // and a thin line from one bin's median to the next. What changes with the
+  // scope is only the bin, which `binUnit` sizes to the axis: a day in a month,
+  // a week in a year, a month across a career. Summarized over the whole series
+  // and then windowed, so a week straddling New Year is the same box in both
+  // years, and kept inside the plot either way. A bin cut to a sliver by the
+  // window's edge - a week straddling New Year of which one day is in this year
+  // - gets an inset no wider than half of what is left, so its box never has a
+  // negative width.
+  const unit = binUnit(range.end - range.start, plotWidth);
+  const bins = binSummaries(times, rmvs, unit)
+    .filter((bin) => bin.end > range.start && bin.start < range.end)
+    .map((bin) => {
+      const left = Math.max(CHART_PADDING.left, x(bin.start));
+      const right = Math.min(width - CHART_PADDING.right, x(bin.end));
+      const inset = Math.min(BIN_INSET, (right - left) / 2);
+      const x0 = left + inset;
+      const x1 = right - inset;
 
-  // One curve per stretch of diving, not one across the window - see
-  // `segmentByTimeGap`. A stretch containing a single dive yields a bare `M`, which
-  // draws nothing, and no band at all; that dive's dot still renders below.
-  const trendSegments = segmentByTimeGap(
-    visible.map(({ index }) => times[index]),
-    TREND_GAP_MS,
-  ).map((positions) => {
-    const at = positions.map((position) => visible[position].index);
-    const points = at.map((index) => ({
-      x: x(times[index]),
-      y: y(trend[index]),
-    }));
-    const upper = at.map((index) => ({
-      x: x(times[index]),
-      y: y(clamp(trend[index] + spread[index])),
-    }));
-    const lower = at.map((index) => ({
-      x: x(times[index]),
-      y: y(clamp(trend[index] - spread[index])),
-    }));
-
-    return {
-      line: smoothPath(points),
-      band: showSpread ? smoothBandPath(upper, lower) : "",
-    };
-  });
+      return { ...bin, x0, x1, mid: (x0 + x1) / 2 };
+    });
 
   const xTicks = buildXTicks(scope, range, plotWidth);
   const bands = bandRanges(scope, range);
@@ -324,8 +323,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
         </p>
         <GasUseLegend
           marks={marks}
-          windowSize={windowSize}
-          withSpread={spreadInScope}
+          unit={unit}
           onToggle={toggle}
           units={units}
         />
@@ -353,7 +351,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
           viewBox={`0 0 ${width} ${CHART_HEIGHT}`}
           className="w-full h-auto"
           role="group"
-          aria-label={describeSeries(visible.length, meanRmv, units)}
+          aria-label={describeSeries(visible.length, medianRmv, units)}
           {...readout.scrubProps}
         >
           {/* Alternating months (or years) behind the plot - the chart's
@@ -372,10 +370,9 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             />
           ))}
 
-          {/* Dashed gridlines, and only these: with a month band, a spread
-                band, a reference line and a trend all sharing the plot, solid
-                rules across it competed with the data instead of supporting
-                it. */}
+          {/* Dashed gridlines, and only these: with a month band, the
+                baseline band and the bins all sharing the plot, solid rules
+                across it competed with the data instead of supporting it. */}
           <ChartYAxis ticks={axisTicks(domain)} y={y} width={width} />
 
           {xTicks.map(({ label, time }) => (
@@ -393,109 +390,154 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             </text>
           ))}
 
-          {/* The career average. A longer dash than the gridlines and a
+          {/* The career baseline: the middle half of every dive as a band,
+                the median through it. A longer dash than the gridlines and a
                 darker token, so it reads as a statement about the data rather
                 than as part of the scale. */}
           {marks.includes("average") && (
-            <line
-              x1={CHART_PADDING.left}
-              x2={width - CHART_PADDING.right}
-              y1={y(allTimeMean)}
-              y2={y(allTimeMean)}
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeDasharray="7 5"
-              className="text-muted-foreground opacity-70"
-            />
-          )}
-
-          {/* The spread band, then the trend, then the dots on top - back to
-                front. The band is what a bare line was missing: it gives
-                the trend body, and it says how tightly the dives it averages
-                were clustered, which is most of what improving actually looks
-                like. */}
-          {trendSegments
-            .filter((segment) => segment.band)
-            .map((segment, index) => (
-              <path
-                key={index}
-                d={segment.band}
+            <>
+              <rect
+                x={CHART_PADDING.left}
+                y={y(clamp(baseline.q3))}
+                width={plotWidth}
+                height={y(clamp(baseline.q1)) - y(clamp(baseline.q3))}
                 fill="currentColor"
-                stroke="none"
-                className="text-coral opacity-15"
+                className="text-muted-foreground opacity-10"
               />
-            ))}
-
-          {showTrend &&
-            trendSegments.map((segment, index) => (
-              <path
-                key={index}
-                d={segment.line}
-                fill="none"
+              <line
+                x1={CHART_PADDING.left}
+                x2={width - CHART_PADDING.right}
+                y1={y(clamp(baseline.median))}
+                y2={y(clamp(baseline.median))}
                 stroke="currentColor"
                 strokeWidth={1.5}
-                strokeLinecap="round"
-                className="text-coral"
+                strokeDasharray="7 5"
+                className="text-muted-foreground opacity-70"
               />
-            ))}
+            </>
+          )}
 
           {marks.includes("dives") &&
-            visible.map(({ point, index }) => (
-              // A plain SVG `<a>`, not `next/link`: this is inside the SVG
-              // namespace, and an anchor here still gets focus, middle-click and
-              // open-in-new-tab for free. `aria-label` describes the dive - the
-              // tooltip below is a visual affordance and says nothing to a screen
-              // reader.
-              <a
-                key={point.dive_uuid}
-                href={withReturnTo(`/dives/${point.dive_uuid}`)}
-                aria-label={describePoint(point, units)}
-                data-point={index}
-                data-x={x(times[index])}
-                data-y={y(displayRmv(point.gas_use.rmv))}
-                onMouseEnter={() => readout.hover(index)}
-                onMouseLeave={() => readout.hover(null)}
-                // Keyboard focus opens the tooltip too, so tabbing through the
-                // series reads the same as hovering it.
-                onFocus={() => readout.hover(index)}
-                onBlur={() => readout.hover(null)}
-                // A finger's first tap on a dot reads it, the way a hover would;
-                // the card's link, or a second tap, opens the dive.
-                onClick={(event) => {
-                  if (readout.takeFirstTap(index)) event.preventDefault();
-                }}
-              >
-                {/* Faded by default so overlapping dots read as density rather than
-                a solid band, and lit up when it's the one being described. */}
-                <circle
-                  cx={x(times[index])}
-                  cy={y(displayRmv(point.gas_use.rmv))}
-                  r={hovered === index ? 5 : scope === "all" ? 2.5 : 3.5}
-                  fill="currentColor"
-                  className={cn(
-                    "text-teal transition-all",
-                    hovered === index ? "opacity-100" : "opacity-45",
-                  )}
-                />
-                {/* An invisible, larger hit target. A 2.5-unit dot is a ~4px target
+            visible.map(({ point, index }) => {
+              const rmv = displayRmv(point.gas_use.rmv);
+              const cx = x(times[index]);
+              const cy = y(clamp(rmv));
+              return (
+                // A plain SVG `<a>`, not `next/link`: this is inside the SVG
+                // namespace, and an anchor here still gets focus, middle-click and
+                // open-in-new-tab for free. `aria-label` describes the dive - the
+                // tooltip below is a visual affordance and says nothing to a screen
+                // reader.
+                <a
+                  key={point.dive_uuid}
+                  href={withReturnTo(`/dives/${point.dive_uuid}`)}
+                  aria-label={describePoint(point, units)}
+                  data-point={index}
+                  data-x={cx}
+                  data-y={cy}
+                  onMouseEnter={() => readout.hover(index)}
+                  onMouseLeave={() => readout.hover(null)}
+                  // Keyboard focus opens the tooltip too, so tabbing through the
+                  // series reads the same as hovering it.
+                  onFocus={() => readout.hover(index)}
+                  onBlur={() => readout.hover(null)}
+                  // A finger's first tap on a dot reads it, the way a hover would;
+                  // the card's link, or a second tap, opens the dive.
+                  onClick={(event) => {
+                    if (readout.takeFirstTap(index)) event.preventDefault();
+                  }}
+                >
+                  {/* Faded by default so overlapping dots read as density rather than
+                a solid band, and lit up when it's the one being described: under
+                the boxes the dots are the evidence and the box is the reading. A
+                dive off the axis is pinned to its edge and drawn hollow, so it is
+                still there to hover without having set the scale for every other
+                dive. */}
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={hovered === index ? 5 : scope === "all" ? 2.5 : 3.5}
+                    fill={outside(rmv) ? "none" : "currentColor"}
+                    stroke={outside(rmv) ? "currentColor" : "none"}
+                    strokeWidth={1.5}
+                    className={cn(
+                      "text-teal transition-all",
+                      hovered === index ? "opacity-100" : "opacity-30",
+                    )}
+                  />
+                  {/* An invisible, larger hit target. A 2.5-unit dot is a ~4px target
                 on screen, which is a fiddly thing to hover deliberately.
                 `transparent` rather than `none` - `fill="none"` takes no
                 pointer events at all, which is the opposite of the point. */}
-                <circle
-                  cx={x(times[index])}
-                  cy={y(displayRmv(point.gas_use.rmv))}
-                  r={7}
-                  fill="transparent"
-                />
-              </a>
-            ))}
+                  <circle cx={cx} cy={cy} r={7} fill="transparent" />
+                </a>
+              );
+            })}
+
+          {/* The bins, over the dots: the reading sits on top of its evidence,
+                and the box is translucent enough for the dots to show through.
+                None of it takes the pointer, so the dots underneath stay
+                hoverable; the dots carry the accessible names, so this layer
+                has nothing to say twice. */}
+          {showTrend && (
+            <g aria-hidden className="pointer-events-none text-coral">
+              {bins.slice(1).map((bin, index) => {
+                const previous = bins[index];
+                return (
+                  <line
+                    key={bin.start}
+                    x1={previous.mid}
+                    y1={y(clamp(previous.median))}
+                    x2={bin.mid}
+                    y2={y(clamp(bin.median))}
+                    stroke="currentColor"
+                    strokeWidth={1.25}
+                    // Dashed where the break in diving is long enough that a
+                    // solid join would claim a steady season nobody dived.
+                    strokeDasharray={
+                      bin.first - previous.last > TREND_GAP_MS
+                        ? "3 4"
+                        : undefined
+                    }
+                    className="opacity-60"
+                  />
+                );
+              })}
+              {bins.map((bin) => (
+                <g key={bin.start}>
+                  {bin.count >= BIN_BOX_MIN_DIVES && (
+                    <rect
+                      x={bin.x0}
+                      y={y(clamp(bin.q3))}
+                      width={bin.x1 - bin.x0}
+                      height={Math.max(1, y(clamp(bin.q1)) - y(clamp(bin.q3)))}
+                      rx={1.5}
+                      fill="currentColor"
+                      stroke="currentColor"
+                      strokeWidth={1}
+                      className="opacity-25"
+                    />
+                  )}
+                  <line
+                    x1={bin.x0}
+                    x2={bin.x1}
+                    y1={y(clamp(bin.median))}
+                    y2={y(clamp(bin.median))}
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                  />
+                </g>
+              ))}
+            </g>
+          )}
         </svg>
 
         {hoveredPoint && (
           <GasUseTooltip
             point={hoveredPoint}
             cx={x(times[hoveredIndex])}
-            cy={y(displayRmv(hoveredPoint.gas_use.rmv))}
+            cy={y(clamp(displayRmv(hoveredPoint.gas_use.rmv)))}
             chartWidth={width}
             units={units}
             openHref={
@@ -507,13 +549,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
         )}
       </div>
 
-      <GasUseLegend
-        marks={marks}
-        windowSize={windowSize}
-        withSpread={spreadInScope}
-        onToggle={toggle}
-        units={units}
-      />
+      <GasUseLegend marks={marks} unit={unit} onToggle={toggle} units={units} />
     </div>
   );
 }
@@ -529,17 +565,14 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
 // would say the same three words twice.
 function GasUseLegend({
   marks,
-  windowSize,
-  withSpread,
+  unit,
   onToggle,
   units,
 }: {
   marks: readonly GasUseMark[];
-  windowSize: number;
-  // Whether the spread band is part of the trend *at this scope* - not whether
-  // it's currently drawn. The legend describes what the toggle turns on, so it
-  // has to keep saying "and spread" while the trend is off.
-  withSpread: boolean;
+  // The bin the trend mark summarizes by *at this scope* - named whether or not
+  // the mark is drawn, since the legend describes what the toggle turns on.
+  unit: BinUnit;
   onToggle: (mark: GasUseMark) => void;
   units: UnitSystem;
 }) {
@@ -560,17 +593,15 @@ function GasUseLegend({
         Dive ({unitLabel("rmv", units)})
       </MarkToggle>
       <MarkToggle mark="trend" marks={marks} onToggle={onToggle}>
-        {/* The trend and its band are one mark, so they get one swatch - and one
-            toggle: a line through the middle of the shading it sits in. */}
+        {/* The box and its median tick are one mark, so they get one swatch -
+            and one toggle: a line through the middle of the shading it sits in. */}
         <span aria-hidden className="relative inline-block h-2.5 w-4">
-          {withSpread && (
-            <span
-              className={cn(
-                "absolute inset-0 rounded-sm bg-current opacity-15",
-                marks.includes("trend") && "text-coral",
-              )}
-            />
-          )}
+          <span
+            className={cn(
+              "absolute inset-0 rounded-sm bg-current opacity-25",
+              marks.includes("trend") && "text-coral",
+            )}
+          />
           <span
             className={cn(
               "absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-current",
@@ -578,15 +609,14 @@ function GasUseLegend({
             )}
           />
         </span>
-        {windowSize}-dive trend
-        {withSpread && " and spread"}
+        {BIN_LABELS[unit]} median and middle half
       </MarkToggle>
       <MarkToggle mark="average" marks={marks} onToggle={onToggle}>
-        <span
-          aria-hidden
-          className="inline-block h-0 w-4 border-t border-dashed border-current opacity-70"
-        />
-        All-time average
+        <span aria-hidden className="relative inline-block h-2.5 w-4">
+          <span className="absolute inset-0 rounded-sm bg-current opacity-10" />
+          <span className="absolute inset-x-0 top-1/2 h-0 border-t border-dashed border-current opacity-70" />
+        </span>
+        All-time median and middle half
       </MarkToggle>
     </div>
   );
@@ -596,7 +626,7 @@ function GasUseLegend({
 //
 // `aria-pressed` rather than a checkbox: these change the picture in place, and
 // the pressed state is what a screen reader needs to hear. The label stays the
-// mark's own name in both states - "Show all-time average" on a control that is
+// mark's own name in both states - "Show all-time median" on a control that is
 // currently showing it describes what the button does rather than what it is,
 // and `aria-pressed` already carries the rest.
 //
@@ -636,14 +666,14 @@ function MarkToggle({
 // many dives are plotted, and the one figure the whole chart is read against.
 function describeSeries(
   dives: number,
-  meanRmv: number,
+  medianRmv: number,
   units: UnitSystem,
 ): string {
-  // Metric in, and through the same formatter the visible "Average" stat uses, so
+  // Metric in, and through the same formatter the visible "Median" stat uses, so
   // the two cannot disagree: one decimal in L/min, two in cuft/min. Spelled out
   // rather than abbreviated, because "cuft/min" read aloud is not a unit.
-  return `Gas consumption over ${dives} dives, against an all-time average of ${displayNumber(
-    meanRmv,
+  return `Gas consumption over ${dives} dives, against an all-time median of ${displayNumber(
+    medianRmv,
     "rmv",
     units,
     { decimals: 1 },

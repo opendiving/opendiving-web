@@ -98,10 +98,10 @@ describe("GasUseChart point descriptions", () => {
   });
 
   // The chart's own accessible name, which is the one figure the whole plot is read
-  // against. It has to carry the same precision as the visible "Average" stat above
+  // against. It has to carry the same precision as the visible "Median" stat above
   // it: a cubic foot is 28 litres, so one decimal would quantize every plausible RMV
   // into about five buckets.
-  it("gives the summary the same precision as the visible average", () => {
+  it("gives the summary the same precision as the visible median", () => {
     auth.units = "imperial";
     render(
       <GasUseChart
@@ -111,9 +111,9 @@ describe("GasUseChart point descriptions", () => {
       />,
     );
 
-    // 10.31 and 12.4 L/min average 11.355, which is 0.40 cuft/min - not "0.4".
+    // The median of 10.31 and 12.4 L/min is 11.355, which is 0.40 cuft/min - not "0.4".
     expect(
-      screen.getByLabelText(/all-time average of 0.40 cubic feet per minute\./),
+      screen.getByLabelText(/all-time median of 0.40 cubic feet per minute\./),
     ).toBeTruthy();
   });
 
@@ -168,5 +168,34 @@ describe("GasUseChart point descriptions", () => {
     expect(
       screen.getByText(/20.87 m average · 1520.7 L used/),
     ).toBeInTheDocument();
+  });
+});
+
+describe("GasUseChart bins", () => {
+  it("never draws a box with a negative width at the window's edge", () => {
+    // At "all" the window starts at the first dive, so the first bin is cut to
+    // whatever of it the dives occupy: three dives on the last two days of a
+    // month, in a four-year career read in month bins, leave it under a unit
+    // wide - narrower than the inset either side of a box.
+    const dives = [
+      "2022-01-30T09:00:00+02:00",
+      "2022-01-30T14:00:00+02:00",
+      "2022-01-31T09:00:00+02:00",
+      "2024-06-10T09:00:00+02:00",
+      "2026-01-15T09:00:00+02:00",
+    ];
+    const { container } = render(
+      <GasUseChart
+        points={dives.map((start_time, index) =>
+          point({ dive_uuid: `d${index}`, dive_number: index + 1, start_time }),
+        )}
+        scope="all"
+        anchor={Date.parse(dives[0])}
+      />,
+    );
+
+    const boxes = [...container.querySelectorAll("g.pointer-events-none rect")];
+    expect(boxes).toHaveLength(1);
+    expect(Number(boxes[0].getAttribute("width"))).toBeGreaterThanOrEqual(0);
   });
 });
