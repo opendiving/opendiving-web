@@ -3,8 +3,16 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import type { Dive } from "@/lib/api/dives";
 import { dive as baseDive } from "@/test/dive-fixtures";
+import type { Contact } from "@/lib/api/contacts";
 import type { TripPart } from "@/lib/api/trips";
 import userEvent from "@testing-library/user-event";
+import { act } from "react";
+import {
+  SectionIndexNav,
+  SectionIndexProvider,
+  useSectionIndex,
+} from "@/components/ui/section-index";
+import { scrollPast } from "@/test/intersection";
 import { TripDiveSections } from "./trip-dive-sections";
 
 // Which part a dive lands in is `tripDiveSections`', tested beside it. What a
@@ -53,23 +61,36 @@ const renderSections = (
     hasMore = false,
     candidateCount = 0,
     onAdd = vi.fn(async () => true),
+    contacts = {},
   }: {
     hasMore?: boolean;
     candidateCount?: number;
     onAdd?: (...args: unknown[]) => Promise<boolean>;
+    contacts?: Record<string, Contact>;
   } = {},
 ) =>
   render(
     <TripDiveSections
       dives={dives}
       hasMore={hasMore}
+      onLoadMore={() => {}}
       loadFailed={false}
       parts={parts}
+      contacts={contacts}
       candidateCount={candidateCount}
       newDiveHref="/dives/new?trip_uuid=trip-1"
       onAdd={onAdd}
     />,
   );
+
+const contact = (uuid: string, name: string): Contact => ({
+  uuid,
+  name,
+  roles: ["accommodation"],
+  notes: "",
+  user_uuid: "user-1",
+  created_at: "2026-01-01T00:00:00Z",
+});
 
 // The cards' text, which is the link's: a card's dive uuid.
 const cardTexts = () =>
@@ -94,6 +115,46 @@ describe("TripDiveSections", () => {
     ]);
     expect(screen.getByText("Apr 3 - Apr 8, 2026")).toBeInTheDocument();
     expect(screen.queryByText("Dives in This Trip")).not.toBeInTheDocument();
+  });
+
+  it("follows a part's dates with where the diver stayed, which a part with no place shows alone", () => {
+    renderSections(
+      [
+        dive("transit", "2026-04-11T09:00:00Z"),
+        dive("dahab", "2026-04-04T09:00:00Z"),
+      ],
+      [
+        { ...PARTS[0], accommodation_uuid: "hotel" },
+        { ...PARTS[1], accommodation_uuid: "camp" },
+      ],
+      {
+        contacts: {
+          hotel: contact("hotel", "Coral Coast"),
+          camp: contact("camp", "Bedouin Camp"),
+        },
+      },
+    );
+
+    expect(
+      within(sectionCardOf("dahab")).getByText(/Apr 3 - Apr 8, 2026/),
+    ).toHaveTextContent("Apr 3 - Apr 8, 2026 · Stayed at Coral Coast");
+    expect(
+      within(sectionCardOf("transit")).getByText(/Bedouin Camp/),
+    ).toHaveTextContent(/^Stayed at Bedouin Camp$/);
+  });
+
+  it("leaves out a stay whose contact it has not read", () => {
+    renderSections(
+      [
+        dive("transit", "2026-04-11T09:00:00Z"),
+        dive("dahab", "2026-04-04T09:00:00Z"),
+      ],
+      [{ ...PARTS[0], accommodation_uuid: "hotel" }, PARTS[1]],
+    );
+
+    expect(
+      within(sectionCardOf("dahab")).getByText(/Apr 3 - Apr 8, 2026/),
+    ).toHaveTextContent(/^Apr 3 - Apr 8, 2026$/);
   });
 
   it("puts a run of dives no part covers in a card of its own, headed by its first and last days", () => {
@@ -160,6 +221,25 @@ describe("TripDiveSections", () => {
     expect(screen.getByText("dahab")).toBeInTheDocument();
   });
 
+  it("scrolls back to the top of its card on a click while its heading is stuck", async () => {
+    const user = userEvent.setup();
+    renderSections([
+      dive("transit", "2026-04-11T09:00:00Z"),
+      dive("dahab", "2026-04-04T09:00:00Z"),
+    ]);
+    const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
+    scrollIntoView.mockClear();
+    act(() => scrollPast(sectionCardOf("dahab")));
+
+    const toggle = screen.getByRole("button", { name: "Dahab" });
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(scrollIntoView).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "start" }),
+    );
+  });
+
   it("folds the card of the dives no part covers as a part's folds", async () => {
     const user = userEvent.setup();
     renderSections([
@@ -210,7 +290,9 @@ describe("TripDiveSections", () => {
       <TripDiveSections
         dives={[both[1]]}
         hasMore={false}
+        onLoadMore={() => {}}
         loadFailed={false}
+        contacts={{}}
         parts={PARTS}
         candidateCount={0}
         newDiveHref="/dives/new?trip_uuid=trip-1"
@@ -241,7 +323,7 @@ describe("TripDiveSections", () => {
   describe("with one part", () => {
     const only = [PARTS[0]];
 
-    it("keeps the one card of every dive where the part holds them all", () => {
+    it("draws the part's card where the part holds every dive", () => {
       renderSections(
         [
           dive("late", "2026-04-07T09:00:00Z"),
@@ -253,7 +335,8 @@ describe("TripDiveSections", () => {
         screen
           .getAllByRole("heading", { level: 2 })
           .map((heading) => heading.textContent),
-      ).toEqual(["Dives in This Trip"]);
+      ).toEqual(["Dahab"]);
+      expect(screen.getByText("Apr 3 - Apr 8, 2026")).toBeInTheDocument();
       expect(cardTexts()).toEqual(["late", "early"]);
     });
 
@@ -271,38 +354,28 @@ describe("TripDiveSections", () => {
       expect(screen.queryByText("Dives in This Trip")).not.toBeInTheDocument();
     });
 
-    it("offers to log a dive while it holds none", () => {
+    it("says so in the part's card while it holds none", () => {
       renderSections([], only);
-      expect(
-        screen.getByRole("link", { name: "Log a dive for this trip" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("No dives logged for this part yet"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("brings the part's card back once a later page holds a dive outside it", () => {
-      const loaded = [dive("dahab", "2026-04-04T09:00:00Z")];
-      const { rerender } = renderSections(loaded, only, { hasMore: true });
-      expect(screen.getByText("Dives in This Trip")).toBeInTheDocument();
-
-      rerender(
-        <TripDiveSections
-          dives={[...loaded, dive("before", "2026-04-01T09:00:00Z")]}
-          hasMore={false}
-          loadFailed={false}
-          parts={only}
-          candidateCount={0}
-          newDiveHref="/dives/new?trip_uuid=trip-1"
-          onAdd={vi.fn(async () => true)}
-        />,
-      );
       expect(
         screen.getByRole("heading", { level: 2, name: "Dahab" }),
       ).toBeInTheDocument();
+      expect(
+        screen.getByText("No dives logged for this part yet"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Dives in This Trip")).not.toBeInTheDocument();
     });
 
-    it("offers the trip's candidates rather than a part no card names", async () => {
+    it("draws the part's card from the first page, before the list ends", () => {
+      renderSections([dive("dahab", "2026-04-04T09:00:00Z")], only, {
+        hasMore: true,
+      });
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Dahab" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Dives in This Trip")).not.toBeInTheDocument();
+    });
+
+    it("offers the part's candidates, which are every one the trip has", async () => {
       const onAdd = vi.fn(async () => false);
       renderSections(
         [
@@ -317,11 +390,16 @@ describe("TripDiveSections", () => {
       );
       expect(
         screen.getAllByRole("menuitem").map((item) => item.textContent),
-      ).toEqual(["Add this dive", "Add all 4 unassigned dives"]);
+      ).toEqual(["Add this dive", "Add all 4 dives from this part"]);
       await userEvent.click(
-        screen.getByRole("menuitem", { name: "Add all 4 unassigned dives" }),
+        screen.getByRole("menuitem", {
+          name: "Add all 4 dives from this part",
+        }),
       );
-      expect(onAdd).toHaveBeenCalledWith({}, 4);
+      expect(onAdd).toHaveBeenCalledWith(
+        { part: { start_date: "2026-04-03", end_date: "2026-04-08" } },
+        4,
+      );
     });
 
     it("moves focus to the card's menu once the dive it added turns ordinary", async () => {
@@ -340,7 +418,9 @@ describe("TripDiveSections", () => {
           <TripDiveSections
             dives={[dive("dahab", "2026-04-04T09:00:00Z")]}
             hasMore={false}
+            onLoadMore={() => {}}
             loadFailed={false}
+            contacts={{}}
             parts={only}
             candidateCount={0}
             newDiveHref="/dives/new?trip_uuid=trip-1"
@@ -379,7 +459,9 @@ describe("TripDiveSections", () => {
               dive("early", "2026-04-04T09:00:00Z"),
             ]}
             hasMore={false}
+            onLoadMore={() => {}}
             loadFailed={false}
+            contacts={{}}
             parts={[{ ...PARTS[0], candidate_count: 0 }]}
             candidateCount={0}
             newDiveHref="/dives/new?trip_uuid=trip-1"
@@ -390,9 +472,13 @@ describe("TripDiveSections", () => {
         screen.getAllByRole("button", { name: "Add to trip: dive #400" })[1],
       );
       await userEvent.click(
-        screen.getByRole("menuitem", { name: "Add all 2 unassigned dives" }),
+        screen.getByRole("menuitem", {
+          name: "Add all 2 dives from this part",
+        }),
       );
 
+      // The part's card is the only one, so it does not fold, and has no
+      // heading control to go to.
       await waitFor(() =>
         expect(
           screen.getByRole("button", { name: "Actions for early" }),
@@ -525,7 +611,9 @@ describe("TripDiveSections", () => {
           <TripDiveSections
             dives={[dive("transit", "2026-04-11T09:00:00Z")]}
             hasMore={false}
+            onLoadMore={() => {}}
             loadFailed={false}
+            contacts={{}}
             parts={counted}
             candidateCount={0}
             newDiveHref="/dives/new?trip_uuid=trip-1"
@@ -577,7 +665,9 @@ describe("TripDiveSections", () => {
           <TripDiveSections
             dives={[listed[1], dive("dahab", "2026-04-04T09:00:00Z")]}
             hasMore={false}
+            onLoadMore={() => {}}
             loadFailed={false}
+            contacts={{}}
             parts={[{ ...PARTS[0], candidate_count: 0 }, counted[1]]}
             candidateCount={0}
             newDiveHref="/dives/new?trip_uuid=trip-1"
@@ -622,7 +712,9 @@ describe("TripDiveSections", () => {
         <TripDiveSections
           dives={loaded}
           hasMore={false}
+          onLoadMore={() => {}}
           loadFailed={false}
+          contacts={{}}
           parts={[toEnd, ...PARTS]}
           candidateCount={0}
           newDiveHref="/dives/new?trip_uuid=trip-1"
@@ -630,6 +722,186 @@ describe("TripDiveSections", () => {
         />,
       );
       expect(headings()).toEqual(["Apr 10 - Apr 12, 2026", "Dahab", "Cairo"]);
+    });
+  });
+
+  describe("in the page's index", () => {
+    function InPage({
+      dives,
+      parts = PARTS,
+      hasMore = false,
+      onLoadMore = () => {},
+    }: {
+      dives: Dive[];
+      parts?: TripPart[];
+      hasMore?: boolean;
+      onLoadMore?: () => void;
+    }) {
+      const index = useSectionIndex();
+      return (
+        <SectionIndexProvider index={index}>
+          <SectionIndexNav />
+          <TripDiveSections
+            dives={dives}
+            hasMore={hasMore}
+            onLoadMore={onLoadMore}
+            loadFailed={false}
+            parts={parts}
+            contacts={{}}
+            candidateCount={0}
+            newDiveHref="/dives/new?trip_uuid=trip-1"
+            onAdd={vi.fn(async () => true)}
+          />
+        </SectionIndexProvider>
+      );
+    }
+    const index = () =>
+      within(screen.getByRole("navigation", { name: "Sections" }));
+
+    it("lists the cards by their titles, in page order", () => {
+      render(
+        <InPage
+          dives={[
+            dive("transit", "2026-04-11T09:00:00Z"),
+            dive("gap", "2026-04-09T09:00:00Z"),
+            dive("dahab", "2026-04-04T09:00:00Z"),
+          ]}
+        />,
+      );
+
+      expect(
+        index()
+          .getAllByRole("button")
+          .map((entry) => entry.textContent),
+      ).toEqual(["Apr 10 - Apr 12, 2026", "Not in Any Part", "Dahab"]);
+    });
+
+    it("unfolds a folded card it jumps to, and puts focus on its heading", async () => {
+      const user = userEvent.setup();
+      render(
+        <InPage
+          dives={[
+            dive("transit", "2026-04-11T09:00:00Z"),
+            dive("dahab", "2026-04-04T09:00:00Z"),
+          ]}
+        />,
+      );
+      const toggle = within(sectionCardOf("dahab")).getByRole("button", {
+        name: "Dahab",
+      });
+      await user.click(toggle);
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+      await user.click(index().getByRole("button", { name: "Dahab" }));
+
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByText("dahab")).toBeInTheDocument();
+      expect(toggle).toHaveFocus();
+    });
+
+    it("offers the index from a stuck heading", async () => {
+      const user = userEvent.setup();
+      render(
+        <InPage
+          dives={[
+            dive("transit", "2026-04-11T09:00:00Z"),
+            dive("dahab", "2026-04-04T09:00:00Z"),
+          ]}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: "Sections" }),
+      ).not.toBeInTheDocument();
+
+      act(() => scrollPast(sectionCardOf("dahab")));
+      await user.click(screen.getByRole("button", { name: "Sections" }));
+
+      expect(
+        screen.getAllByRole("navigation", { name: "Sections" }),
+      ).toHaveLength(2);
+    });
+
+    describe("while pages remain", () => {
+      // The later part's dive has loaded; Dahab's, older, have not.
+      const firstPage = [dive("transit", "2026-04-11T09:00:00Z")];
+      const allPages = [...firstPage, dive("dahab", "2026-04-04T09:00:00Z")];
+
+      it("lists a part none of whose dives has loaded, below the cards", () => {
+        render(<InPage dives={firstPage} hasMore />);
+
+        expect(
+          screen.queryByRole("heading", { level: 2, name: "Dahab" }),
+        ).not.toBeInTheDocument();
+        expect(
+          index()
+            .getAllByRole("button")
+            .map((entry) => entry.textContent),
+        ).toEqual(["Apr 10 - Apr 12, 2026", "Dahab"]);
+      });
+
+      it("loads the list on from a jump to it, and lands on its card once drawn", async () => {
+        const user = userEvent.setup();
+        const onLoadMore = vi.fn();
+        const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
+        const { rerender } = render(
+          <InPage dives={firstPage} hasMore onLoadMore={onLoadMore} />,
+        );
+
+        await user.click(index().getByRole("button", { name: "Dahab" }));
+        expect(onLoadMore).toHaveBeenCalledTimes(1);
+
+        // A page that still leaves it out asks for the next.
+        rerender(
+          <InPage
+            dives={[...firstPage, dive("gap", "2026-04-09T09:00:00Z")]}
+            hasMore
+            onLoadMore={onLoadMore}
+          />,
+        );
+        expect(onLoadMore).toHaveBeenCalledTimes(2);
+
+        scrollIntoView.mockClear();
+        rerender(<InPage dives={allPages} onLoadMore={onLoadMore} />);
+
+        const card = sectionCardOf("dahab");
+        expect(
+          within(card).getByRole("button", { name: "Dahab" }),
+        ).toHaveFocus();
+        expect(scrollIntoView.mock.contexts).toContain(card);
+        expect(onLoadMore).toHaveBeenCalledTimes(2);
+      });
+
+      it("lets the jump go once the reader scrolls", async () => {
+        const user = userEvent.setup();
+        const onLoadMore = vi.fn();
+        const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
+        const { rerender } = render(
+          <InPage dives={firstPage} hasMore onLoadMore={onLoadMore} />,
+        );
+        await user.click(index().getByRole("button", { name: "Dahab" }));
+
+        window.dispatchEvent(new WheelEvent("wheel"));
+        scrollIntoView.mockClear();
+        rerender(<InPage dives={allPages} onLoadMore={onLoadMore} />);
+
+        expect(scrollIntoView).not.toHaveBeenCalled();
+        expect(
+          within(sectionCardOf("dahab")).getByRole("button", { name: "Dahab" }),
+        ).not.toHaveFocus();
+      });
+    });
+
+    it("lists nothing for a trip of one card", () => {
+      render(
+        <InPage
+          dives={[dive("dahab", "2026-04-04T09:00:00Z")]}
+          parts={[PARTS[0]]}
+        />,
+      );
+
+      expect(
+        screen.queryByRole("navigation", { name: "Sections" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import type { Contact } from "@/lib/api/contacts";
 import type { Dive } from "@/lib/api/dives";
 import type { TripDiveAddScope, TripPart } from "@/lib/api/trips";
 import { formatDiveDays, tripDiveSections } from "@/lib/trip-dive-sections";
@@ -17,6 +18,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BackdropCardList } from "@/components/ui/backdrop-card";
+import {
+  READER_INPUT,
+  SectionIndexTrigger,
+  SectionSentinel,
+  scrollToSection,
+  useSection,
+  useSectionIndexShown,
+  useSectionToCome,
+  type SectionIcon,
+} from "@/components/ui/section-index";
 import { DiveCard } from "@/components/dives/dive-card";
 import {
   TripDiveAddButton,
@@ -34,8 +45,13 @@ interface TripDiveSectionsProps {
   dives: Dive[] | null;
   // More pages to come, so a part with nothing loaded yet may still fill.
   hasMore: boolean;
+  // Loads the next page, for a jump to a part none of whose dives has loaded.
+  onLoadMore: () => void;
   loadFailed: boolean;
   parts: TripPart[];
+  // Contacts by uuid, for the names of the places the parts say the diver
+  // stayed at; one not read yet, or deleted since, leaves its name out.
+  contacts: Readonly<Record<string, Contact>>;
   // Every candidate of the trip, loaded or not, as the trip read counts them.
   candidateCount: number;
   newDiveHref: string;
@@ -78,91 +94,149 @@ function DiveList({
   );
 }
 
-function DivesCard({
-  icon,
-  title,
-  description,
-  children,
+// A part is headed by its place, or by its dates where it has none.
+const partTitle = (part: TripPart) =>
+  part.location?.name ?? formatTripPartDates(part) ?? "No place recorded";
+
+// A part none of whose dives has loaded while pages remain, so it has no card
+// yet: the index lists it below the cards, and a jump to it loads the list on
+// until its card is drawn.
+function PartToCome({
+  partIndex,
+  part,
+  onReach,
 }: {
-  icon: ReactNode;
-  title: ReactNode;
-  description?: ReactNode;
-  children: ReactNode;
+  partIndex: number;
+  part: TripPart;
+  onReach: (partIndex: number) => void;
 }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle as="h2" className="flex items-center gap-2">
-          {icon}
-          {title}
-        </CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
+  const anchorRef = useSectionToCome({
+    key: `part-${partIndex}`,
+    label: partTitle(part),
+    icon: MapPin,
+    onReach: () => onReach(partIndex),
+  });
+  return <div ref={anchorRef} aria-hidden="true" />;
 }
 
-// A part's card, or the card of a run of dives no part covers. It folds to its
-// header where another card on the page holds dives too: the only one that does
-// would fold to nothing worth seeing. The title is the toggle, so the whole
-// heading line is the target and the heading keeps its name for a screen
-// reader. A folded card unmounts its dives, maps and all.
+// A card of the trip's dives: a part's, a run of dives no part covers, or every
+// dive the trip has. Its heading sticks under the site header while the card
+// scrolls past, as the dive form's sections do, and the page's index lists it.
+//
+// It folds to its header where another card on the page holds dives too: the
+// only one that does would fold to nothing worth seeing. The title is the
+// toggle, so the whole heading line is the target and the heading keeps its name
+// for a screen reader. A folded card unmounts its dives, maps and all.
 function SectionCard({
+  sectionKey,
   partIndex,
-  icon,
+  icon: Icon,
   title,
   description,
   foldable,
   children,
 }: {
+  sectionKey: string;
   partIndex?: number;
-  icon: ReactNode;
-  title: ReactNode;
+  icon: SectionIcon;
+  title: string;
   description?: ReactNode;
   foldable: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(true);
   const contentId = useId();
+  const { cardRef, headingRef, sentinelRef, stuck } = useSection({
+    key: sectionKey,
+    label: title,
+    icon: Icon,
+    onExpand: () => setOpen(true),
+  });
+  const indexShown = useSectionIndexShown();
   // A card that stops folding shows its dives, however it was left.
   const shown = open || !foldable;
+  // Where the index is not beside the cards, the stuck heading carries it.
+  const sectionsTrigger = shown && stuck && indexShown;
   const heading = (
     <>
       {/* Each icon in a box one title line tall - the title is `leading-none` -
           so a name that wraps leaves both on its first line. */}
-      <span className="flex h-[1em] shrink-0 items-center">{icon}</span>
+      <span className="flex h-[1em] shrink-0 items-center">
+        <Icon aria-hidden="true" className="h-5 w-5" />
+      </span>
       <span className="min-w-0 flex-1">{title}</span>
     </>
   );
   return (
-    <Card data-trip-part={partIndex}>
-      <CardHeader>
-        <CardTitle as="h2">
-          {foldable ? (
-            <button
-              type="button"
-              aria-expanded={open}
-              aria-controls={contentId}
-              data-fold-toggle=""
-              onClick={() => setOpen(!open)}
-              className="relative flex w-full items-start gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {heading}
-              <span className="flex h-[1em] shrink-0 items-center">
-                <ChevronDown
-                  aria-hidden="true"
+    // Focusable so a jump from the index can land the keyboard on a card whose
+    // heading has no control of its own.
+    <Card
+      ref={cardRef}
+      tabIndex={-1}
+      data-trip-part={partIndex}
+      className="relative outline-none"
+    >
+      <SectionSentinel ref={sentinelRef} />
+      {/* Squared off at the foot while dives show, so they cannot show through
+          the stuck heading's corners as they scroll under it. */}
+      <CardHeader
+        className={cn(
+          "sticky top-[var(--header-height)] z-10 rounded-t-lg bg-card",
+          !shown && "rounded-b-lg",
+          shown && stuck && "shadow-[inset_0_-1px_0_hsl(var(--border))]",
+        )}
+      >
+        <div className="flex items-start gap-2">
+          <CardTitle as="h2" className="min-w-0 grow">
+            {foldable ? (
+              <button
+                ref={headingRef}
+                type="button"
+                aria-expanded={open}
+                aria-controls={contentId}
+                data-fold-toggle=""
+                onClick={() => {
+                  // A stuck heading is a way back to the top of its card, which
+                  // folding would throw away by moving everything below it.
+                  if (open && stuck) {
+                    if (cardRef.current) scrollToSection(cardRef.current);
+                    return;
+                  }
+                  setOpen(!open);
+                }}
+                className="relative flex w-full items-start gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {heading}
+                {/* Stuck, a tap on the heading scrolls rather than folds, so the
+                    chevron says nothing there; on a narrow screen the sections
+                    control takes its place rather than widening the heading. */}
+                <span
                   className={cn(
-                    "h-5 w-5 text-muted-foreground transition-transform",
-                    !open && "-rotate-90",
+                    "flex h-[1em] shrink-0 items-center",
+                    sectionsTrigger && "max-lg:hidden",
                   )}
-                />
-              </span>
-            </button>
-          ) : (
-            <span className="flex items-start gap-2">{heading}</span>
+                >
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={cn(
+                      "h-5 w-5 text-muted-foreground transition-transform",
+                      !open && "-rotate-90",
+                    )}
+                  />
+                </span>
+              </button>
+            ) : (
+              <span className="flex items-start gap-2">{heading}</span>
+            )}
+          </CardTitle>
+          {/* One title line tall, as the chevron's box is, so the control sits on
+              the first line of a name that wraps. */}
+          {sectionsTrigger && (
+            <div className="-mr-1 flex h-6 items-center max-sm:h-[1.125rem] lg:hidden">
+              <SectionIndexTrigger />
+            </div>
           )}
-        </CardTitle>
+        </div>
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent id={contentId} hidden={!shown}>
@@ -175,13 +249,15 @@ function SectionCard({
 // The trip's dives, a card for each of its parts headed by the part's place and
 // dates, holding the dives made on it. The dives no part's dates cover sit
 // between those cards, where their days put them, in a card of each run headed
-// by its first and last days. A trip with no parts, or one part holding every
-// dive, keeps the one card of every dive.
+// by its first and last days. A trip with no parts keeps the one card of every
+// dive.
 export function TripDiveSections({
   dives,
   hasMore,
+  onLoadMore,
   loadFailed,
   parts,
+  contacts,
   candidateCount,
   newDiveHref,
   onAdd,
@@ -191,6 +267,10 @@ export function TripDiveSections({
   // One add at a time: every Add control waits while one is in flight.
   const [isAdding, setIsAdding] = useState(false);
   const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+  // The part with no card yet that a jump from the index is loading the list
+  // on for, and what calls that off.
+  const reachingRef = useRef<number | null>(null);
+  const stopReachingRef = useRef(() => {});
 
   // Run after the render that shows the add's outcome, so the elements named
   // are the ones on screen now rather than the ones the add was made from. A
@@ -220,6 +300,43 @@ export function TripDiveSections({
         ?.querySelector<HTMLElement>('button[aria-haspopup="menu"]');
     target?.focus();
   }, [focusTarget]);
+
+  // The reader scrolling or pressing anything meanwhile calls the jump off, so a
+  // page landing later does not carry them away.
+  const reach = (partIndex: number) => {
+    stopReachingRef.current();
+    const stop = () => {
+      reachingRef.current = null;
+      for (const type of READER_INPUT)
+        window.removeEventListener(type, stop, true);
+    };
+    for (const type of READER_INPUT)
+      window.addEventListener(type, stop, { capture: true, passive: true });
+    reachingRef.current = partIndex;
+    stopReachingRef.current = stop;
+    onLoadMore();
+  };
+  useEffect(() => () => stopReachingRef.current(), []);
+  // Each page that lands either draws the part's card, which the jump then lands
+  // on, or asks for the next one.
+  useEffect(() => {
+    const partIndex = reachingRef.current;
+    if (partIndex === null) return;
+    const card = containerRef.current?.querySelector<HTMLElement>(
+      `[data-trip-part="${partIndex}"]`,
+    );
+    if (card) {
+      stopReachingRef.current();
+      scrollToSection(card);
+      (card.querySelector<HTMLElement>("[data-fold-toggle]") ?? card).focus({
+        preventScroll: true,
+      });
+    } else if (hasMore) {
+      onLoadMore();
+    } else {
+      stopReachingRef.current();
+    }
+  }, [dives, hasMore, onLoadMore]);
 
   const add = async (
     dive: Dive,
@@ -271,15 +388,17 @@ export function TripDiveSections({
     />
   );
   const allDivesCard = (children: ReactNode) => (
-    <DivesCard
-      icon={<DiveIcon className="h-5 w-5" />}
+    <SectionCard
+      sectionKey="all"
+      icon={DiveIcon}
       title="Dives in This Trip"
       // Not "logged as part of this trip": a part is a noun here now, and that
       // sentence reads as a claim about which stretch a dive was on.
       description="Every dive logged on this trip"
+      foldable={false}
     >
       {children}
-    </DivesCard>
+    </SectionCard>
   );
 
   if (loadFailed) {
@@ -292,15 +411,25 @@ export function TripDiveSections({
   if (dives === null) {
     return allDivesCard(<BackdropCardList placeholders={SKELETON_COUNT} />);
   }
-  // One part every dive was made on would only repeat over them the place and
-  // dates the trip's information card lists, so they keep the one card a trip
-  // with no parts has. Judged on the pages loaded so far: a dive outside the
-  // part on a later page brings the part's card back once it loads.
+  // A part's card is the one place its accommodation is named, so a trip of one
+  // part holding every dive has it too, though its place and dates repeat the
+  // hero's line above.
   const sections = tripDiveSections(dives, parts, { complete: !hasMore });
-  const oneCard =
-    parts.length === 0 ||
-    (parts.length === 1 &&
-      sections.every((section) => section.kind === "part"));
+  const oneCard = parts.length === 0;
+  // The parts with no card yet, in the order their cards will come: where the
+  // loaded dives would put them were the list complete.
+  const drawn = new Set(
+    sections.flatMap((section) =>
+      section.kind === "part" ? [section.partIndex] : [],
+    ),
+  );
+  const toCome = hasMore
+    ? tripDiveSections(dives, parts).flatMap((section) =>
+        section.kind === "part" && !drawn.has(section.partIndex)
+          ? [section]
+          : [],
+      )
+    : [];
   const foldable =
     sections.filter((section) => section.dives.length > 0).length > 1;
 
@@ -332,8 +461,7 @@ export function TripDiveSections({
   }
 
   if (oneCard) {
-    // With no part's card, a candidate's Add control names the trip, whose
-    // candidates are its one part's.
+    // With no part's card, a candidate's Add control names the trip.
     return (
       <div ref={containerRef}>
         {allDivesCard(
@@ -347,52 +475,81 @@ export function TripDiveSections({
   }
 
   return (
-    <div ref={containerRef} className="space-y-6 max-sm:space-y-2.5">
-      {sections.map((section) => {
-        if (section.kind === "loose") {
+    <div ref={containerRef}>
+      <div className="space-y-6 max-sm:space-y-2.5">
+        {sections.map((section) => {
+          if (section.kind === "loose") {
+            return (
+              <SectionCard
+                key={`loose-${section.dives[0].uuid}`}
+                sectionKey={`loose-${section.dives[0].uuid}`}
+                icon={MapPinOff}
+                title="Not in Any Part"
+                description={formatDiveDays(section.dives)}
+                foldable={foldable}
+              >
+                <DiveList
+                  dives={section.dives}
+                  addControl={(dive) => addButton(dive, null, null)}
+                />
+              </SectionCard>
+            );
+          }
+          const { part } = section;
+          const dates = formatTripPartDates(part);
+          const place = part.location?.name;
+          const accommodation = part.accommodation_uuid
+            ? contacts[part.accommodation_uuid]?.name
+            : undefined;
+          const when = place ? dates : undefined;
           return (
             <SectionCard
-              key={`loose-${section.dives[0].uuid}`}
-              icon={<MapPinOff className="h-5 w-5" />}
-              title="Not in Any Part"
-              description={formatDiveDays(section.dives)}
+              key={`part-${section.partIndex}`}
+              sectionKey={`part-${section.partIndex}`}
+              partIndex={section.partIndex}
+              icon={MapPin}
+              title={partTitle(part)}
+              description={
+                (when || accommodation) && (
+                  <>
+                    {when}
+                    {when && accommodation && " · "}
+                    {accommodation && (
+                      <>
+                        <span className="sr-only">Stayed at </span>
+                        {accommodation}
+                      </>
+                    )}
+                  </>
+                )
+              }
               foldable={foldable}
             >
-              <DiveList
-                dives={section.dives}
-                addControl={(dive) => addButton(dive, null, null)}
-              />
+              {section.dives.length > 0 ? (
+                <DiveList
+                  dives={section.dives}
+                  addControl={(dive) =>
+                    addButton(dive, part, section.partIndex)
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={DiveIcon}
+                  title="No dives logged for this part yet"
+                />
+              )}
             </SectionCard>
           );
-        }
-        const { part } = section;
-        // A part with no place is headed by its dates alone, as the trip's
-        // information card lists it by them.
-        const dates = formatTripPartDates(part);
-        const place = part.location?.name;
-        return (
-          <SectionCard
-            key={`part-${section.partIndex}`}
-            partIndex={section.partIndex}
-            icon={<MapPin className="h-5 w-5" />}
-            title={place ?? dates ?? "No place recorded"}
-            description={place ? dates : undefined}
-            foldable={foldable}
-          >
-            {section.dives.length > 0 ? (
-              <DiveList
-                dives={section.dives}
-                addControl={(dive) => addButton(dive, part, section.partIndex)}
-              />
-            ) : (
-              <EmptyState
-                icon={DiveIcon}
-                title="No dives logged for this part yet"
-              />
-            )}
-          </SectionCard>
-        );
-      })}
+        })}
+      </div>
+      {toCome.map(({ part, partIndex }) => (
+        <PartToCome
+          key={partIndex}
+          partIndex={partIndex}
+          part={part}
+          onReach={reach}
+        />
+      ))}
     </div>
   );
 }
