@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { Dive } from "@/lib/api/dives";
 import type { TripDiveAddScope, TripPart } from "@/lib/api/trips";
-import { tripDiveSections } from "@/lib/trip-dive-sections";
+import { formatDiveDays, tripDiveSections } from "@/lib/trip-dive-sections";
 import { formatTripPartDates } from "@/lib/trip-parts";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import {
@@ -23,7 +23,7 @@ import {
   type TripDiveAddExtent,
 } from "@/components/trips/trip-dive-add-button";
 import { DiveIcon } from "@/components/logo";
-import { ChevronDown, MapPin, Plus } from "lucide-react";
+import { ChevronDown, MapPin, MapPinOff, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SKELETON_COUNT = 5;
@@ -49,11 +49,12 @@ interface TripDiveSectionsProps {
 // API marks by giving it no trip.
 const isCandidate = (dive: Dive) => dive.trip_uuid == null;
 
-// Where focus goes once an add has landed: the card that turned ordinary - its
-// menu, which now stands where the Add control did - or, for more than one
-// dive, the heading of the part the add was made from. An add made outside any
-// part's card has no heading to go to, and keeps to the card.
-type FocusTarget = { diveUuid: string | null; partIndex: number | null };
+// Where focus goes once an add has landed: for more than one dive, the heading
+// of the part the add was made from, and otherwise the card it was made from -
+// its menu, which now stands where the Add control did. An add made outside any
+// part's card, or in one that does not fold and so has no toggle to go to,
+// keeps to the card.
+type FocusTarget = { diveUuid: string; partIndex: number | null };
 
 function DiveList({
   dives,
@@ -102,55 +103,70 @@ function DivesCard({
   );
 }
 
-// A part's card, folding to its header. The title is the toggle, so the whole
+// A part's card, or the card of a run of dives no part covers. It folds to its
+// header where another card on the page holds dives too: the only one that does
+// would fold to nothing worth seeing. The title is the toggle, so the whole
 // heading line is the target and the heading keeps its name for a screen
 // reader. A folded card unmounts its dives, maps and all.
-function PartCard({
+function SectionCard({
   partIndex,
+  icon,
   title,
   description,
+  foldable,
   children,
 }: {
-  partIndex: number;
+  partIndex?: number;
+  icon: ReactNode;
   title: ReactNode;
   description?: ReactNode;
+  foldable: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(true);
   const contentId = useId();
+  // A card that stops folding shows its dives, however it was left.
+  const shown = open || !foldable;
+  const heading = (
+    <>
+      {/* Each icon in a box one title line tall - the title is `leading-none` -
+          so a name that wraps leaves both on its first line. */}
+      <span className="flex h-[1em] shrink-0 items-center">{icon}</span>
+      <span className="min-w-0 flex-1">{title}</span>
+    </>
+  );
   return (
     <Card data-trip-part={partIndex}>
       <CardHeader>
         <CardTitle as="h2">
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={contentId}
-            onClick={() => setOpen(!open)}
-            className="relative flex w-full items-start gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {/* Each icon in a box one title line tall - the title is
-                `leading-none` - so a name that wraps leaves both on its first
-                line. */}
-            <span className="flex h-[1em] shrink-0 items-center">
-              <MapPin className="h-5 w-5" />
-            </span>
-            <span className="min-w-0 flex-1">{title}</span>
-            <span className="flex h-[1em] shrink-0 items-center">
-              <ChevronDown
-                aria-hidden="true"
-                className={cn(
-                  "h-5 w-5 text-muted-foreground transition-transform",
-                  !open && "-rotate-90",
-                )}
-              />
-            </span>
-          </button>
+          {foldable ? (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={contentId}
+              data-fold-toggle=""
+              onClick={() => setOpen(!open)}
+              className="relative flex w-full items-start gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {heading}
+              <span className="flex h-[1em] shrink-0 items-center">
+                <ChevronDown
+                  aria-hidden="true"
+                  className={cn(
+                    "h-5 w-5 text-muted-foreground transition-transform",
+                    !open && "-rotate-90",
+                  )}
+                />
+              </span>
+            </button>
+          ) : (
+            <span className="flex items-start gap-2">{heading}</span>
+          )}
         </CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
-      <CardContent id={contentId} hidden={!open}>
-        {open && children}
+      <CardContent id={contentId} hidden={!shown}>
+        {shown && children}
       </CardContent>
     </Card>
   );
@@ -158,8 +174,9 @@ function PartCard({
 
 // The trip's dives, a card for each of its parts headed by the part's place and
 // dates, holding the dives made on it. The dives no part's dates cover sit
-// between those cards, where their days put them. A trip with no parts, or one
-// part holding every dive, keeps the one card of every dive.
+// between those cards, where their days put them, in a card of each run headed
+// by its first and last days. A trip with no parts, or one part holding every
+// dive, keeps the one card of every dive.
 export function TripDiveSections({
   dives,
   hasMore,
@@ -183,22 +200,24 @@ export function TripDiveSections({
     const container = containerRef.current;
     if (!container) return;
     const { diveUuid, partIndex } = focusTarget;
-    // The card's own link leads to the dive's page; its menu is the one
-    // `aria-haspopup` button on the card once the Add control is gone.
-    const card = diveUuid
-      ? container
-          .querySelector(
-            `a[href="/dives/${diveUuid}"], a[href^="/dives/${diveUuid}?"]`,
-          )
-          ?.closest("li")
-      : null;
-    const target =
-      card?.querySelector<HTMLElement>('button[aria-haspopup="menu"]') ??
-      (partIndex === null
+    // Marked rather than matched by `aria-expanded`, which every dive card's
+    // menu trigger carries too.
+    const toggle =
+      partIndex === null
         ? null
         : container.querySelector<HTMLElement>(
-            `[data-trip-part="${partIndex}"] button[aria-expanded]`,
-          ));
+            `[data-trip-part="${partIndex}"] [data-fold-toggle]`,
+          );
+    // The card's own link leads to the dive's page; its menu is the one
+    // `aria-haspopup` button on the card once the Add control is gone.
+    const target =
+      toggle ??
+      container
+        .querySelector(
+          `a[href="/dives/${diveUuid}"], a[href^="/dives/${diveUuid}?"]`,
+        )
+        ?.closest("li")
+        ?.querySelector<HTMLElement>('button[aria-haspopup="menu"]');
     target?.focus();
   }, [focusTarget]);
 
@@ -229,8 +248,8 @@ export function TripDiveSections({
       const added = await onAdd(scope, expected);
       if (added) {
         setFocusTarget({
-          diveUuid: extent === "dive" || partIndex === null ? dive.uuid : null,
-          partIndex,
+          diveUuid: dive.uuid,
+          partIndex: extent === "dive" ? null : partIndex,
         });
       }
     } finally {
@@ -282,6 +301,8 @@ export function TripDiveSections({
     parts.length === 0 ||
     (parts.length === 1 &&
       sections.every((section) => section.kind === "part"));
+  const foldable =
+    sections.filter((section) => section.dives.length > 0).length > 1;
 
   if (oneCard && dives.length === 0) {
     return (
@@ -330,14 +351,18 @@ export function TripDiveSections({
       {sections.map((section) => {
         if (section.kind === "loose") {
           return (
-            <DiveList
+            <SectionCard
               key={`loose-${section.dives[0].uuid}`}
-              // Inset as a card's content is - its border and its padding - so
-              // these cards line up with the ones inside the part cards.
-              className="border border-transparent px-(--card-pad)"
-              dives={section.dives}
-              addControl={(dive) => addButton(dive, null, null)}
-            />
+              icon={<MapPinOff className="h-5 w-5" />}
+              title="Not in Any Part"
+              description={formatDiveDays(section.dives)}
+              foldable={foldable}
+            >
+              <DiveList
+                dives={section.dives}
+                addControl={(dive) => addButton(dive, null, null)}
+              />
+            </SectionCard>
           );
         }
         const { part } = section;
@@ -346,11 +371,13 @@ export function TripDiveSections({
         const dates = formatTripPartDates(part);
         const place = part.location?.name;
         return (
-          <PartCard
+          <SectionCard
             key={`part-${section.partIndex}`}
             partIndex={section.partIndex}
+            icon={<MapPin className="h-5 w-5" />}
             title={place ?? dates ?? "No place recorded"}
             description={place ? dates : undefined}
+            foldable={foldable}
           >
             {section.dives.length > 0 ? (
               <DiveList
@@ -363,7 +390,7 @@ export function TripDiveSections({
                 title="No dives logged for this part yet"
               />
             )}
-          </PartCard>
+          </SectionCard>
         );
       })}
     </div>

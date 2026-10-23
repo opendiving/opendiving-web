@@ -4,7 +4,7 @@
 
 import type { Dive } from "@/lib/api/dives";
 import type { TripPart } from "@/lib/api/trips";
-import { splitStartTime } from "@/lib/date-time";
+import { formatTripDateRange, splitStartTime } from "@/lib/date-time";
 
 export type TripDiveSection =
   | { kind: "part"; part: TripPart; partIndex: number; dives: Dive[] }
@@ -66,6 +66,17 @@ export function tripPartForDay(parts: TripPart[], day: string): number {
 
 function diveDay(dive: Dive): string {
   return splitStartTime(dive.start_time).localDateTime.slice(0, 10);
+}
+
+/**
+ * The wall-clock days a run of dives spans, its first to its last, formatted
+ * as a part's dates are - one day where they all share it.
+ */
+export function formatDiveDays(dives: Dive[]): string | undefined {
+  const days = dives.map(diveDay).sort();
+  const first = days[0];
+  const last = days[days.length - 1];
+  return formatTripDateRange(first, last === first ? undefined : last);
 }
 
 /**
