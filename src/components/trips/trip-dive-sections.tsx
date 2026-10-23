@@ -157,8 +157,8 @@ function PartCard({
 
 // The trip's dives, a card for each of its parts headed by the part's place and
 // dates, holding the dives made on it. The dives no part's dates cover sit
-// between those cards, where their days put them. A trip with no parts keeps
-// the one card of every dive.
+// between those cards, where their days put them. A trip with no parts, or one
+// part holding every dive, keeps the one card of every dive.
 export function TripDiveSections({
   dives,
   hasMore,
@@ -272,7 +272,17 @@ export function TripDiveSections({
   if (dives === null) {
     return allDivesCard(<BackdropCardList placeholders={SKELETON_COUNT} />);
   }
-  if (parts.length === 0 && dives.length === 0) {
+  // One part every dive was made on would only repeat over them the place and
+  // dates the trip's information card lists, so they keep the one card a trip
+  // with no parts has. Judged on the pages loaded so far: a dive outside the
+  // part on a later page brings the part's card back once it loads.
+  const sections = tripDiveSections(dives, parts, { complete: !hasMore });
+  const oneCard =
+    parts.length === 0 ||
+    (parts.length === 1 &&
+      sections.every((section) => section.kind === "part"));
+
+  if (oneCard && dives.length === 0) {
     return (
       <Card>
         <CardHeader className="p-0">
@@ -299,18 +309,24 @@ export function TripDiveSections({
     );
   }
 
-  if (parts.length === 0) {
-    return allDivesCard(
-      <DiveList
-        dives={dives}
-        addControl={(dive) => addButton(dive, null, null)}
-      />,
+  if (oneCard) {
+    // With no part's card, a candidate's Add control names the trip, whose
+    // candidates are its one part's.
+    return (
+      <div ref={containerRef}>
+        {allDivesCard(
+          <DiveList
+            dives={dives}
+            addControl={(dive) => addButton(dive, null, null)}
+          />,
+        )}
+      </div>
     );
   }
 
   return (
     <div ref={containerRef} className="space-y-6 max-sm:space-y-2.5">
-      {tripDiveSections(dives, parts, { complete: !hasMore }).map((section) => {
+      {sections.map((section) => {
         if (section.kind === "loose") {
           return (
             <DiveList
