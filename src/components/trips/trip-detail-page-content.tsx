@@ -18,23 +18,26 @@ import {
   DeleteMenuItem,
   ItemActionsMenu,
 } from "@/components/ui/item-actions-menu";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripHero } from "@/components/trips/trip-hero";
 import { TripDiveSections } from "@/components/trips/trip-dive-sections";
+import { TripInformationCard } from "@/components/trips/trip-information-card";
+import {
+  SectionIndexNav,
+  SectionIndexProvider,
+  useSectionIndex,
+} from "@/components/ui/section-index";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { useToast } from "@/components/ui/use-toast";
-import { formatTripPartDates } from "@/lib/trip-parts";
 import {
   HERO_BODY,
   HERO_CONTROL,
   MapHeroPageSkeleton,
   PAGE_COLUMN,
 } from "@/components/ui/map-hero";
-import { PeopleList } from "@/components/people/people-list";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { BedDouble, Edit, Plus, Calendar, Luggage, MapPin } from "lucide-react";
+import { Edit, Plus, Luggage } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { getApiErrorStatus } from "@/lib/api/error";
@@ -62,6 +65,7 @@ export function TripDetailPageContent() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const back = useReturnTo({ href: "/trips", label: "Back to trips" });
   const withReturnTo = useWithReturnTo();
+  const sectionIndex = useSectionIndex();
 
   const {
     resource: trip,
@@ -252,139 +256,59 @@ export function TripDetailPageContent() {
         }
       />
 
-      <div className={HERO_BODY}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5">
-          <div className="lg:col-span-2">
-            <TripDiveSections
-              dives={
-                isLoadingDives && tripDives.length === 0 ? null : tripDives
-              }
-              hasMore={hasMore}
-              // Once a row is on screen, a failed page is the trigger's to
-              // retry rather than the whole column's to replace.
-              loadFailed={loadFailed && tripDives.length === 0}
-              parts={tripParts}
-              candidateCount={trip.candidate_count}
-              newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
-              onAdd={addDives}
-            />
-            <LoadMoreTrigger
-              hasMore={hasMore}
-              isLoading={isLoadingMore}
-              hasFailed={loadFailed}
-              loadedCount={tripDives.length}
-              totalCount={totalCount}
-              itemsPerPage={itemsPerPage}
-              itemLabel="dives"
-              onLoadMore={loadMore}
-            />
-          </div>
+      <SectionIndexProvider index={sectionIndex}>
+        <div className={HERO_BODY}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5">
+            <div className="lg:col-span-2">
+              <TripDiveSections
+                dives={
+                  isLoadingDives && tripDives.length === 0 ? null : tripDives
+                }
+                hasMore={hasMore}
+                // Once a row is on screen, a failed page is the trigger's to
+                // retry rather than the whole column's to replace.
+                loadFailed={loadFailed && tripDives.length === 0}
+                parts={tripParts}
+                contacts={contacts}
+                candidateCount={trip.candidate_count}
+                newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
+                onAdd={addDives}
+              />
+              <LoadMoreTrigger
+                hasMore={hasMore}
+                isLoading={isLoadingMore}
+                hasFailed={loadFailed}
+                loadedCount={tripDives.length}
+                totalCount={totalCount}
+                itemsPerPage={itemsPerPage}
+                itemLabel="dives"
+                onLoadMore={loadMore}
+              />
+            </div>
 
-          {/* The trip's dates are on the hero's line. A trip with nothing more
-              to say draws no card - there would be nothing in it but its
-              heading. */}
-          <div className="space-y-6 max-sm:space-y-2.5">
-            {(tripParts.length > 0 ||
-              hasPeople ||
-              diveCenterNames.length > 0 ||
-              trip.notes) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle as="h2" className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Trip Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {tripParts.length > 0 && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">
-                        {tripParts.length > 1 ? "Parts" : "Part"}
-                      </div>
-                      {/* One row per part, in the order the diver arranged them,
-                      rather than the capped joined line the header and the trip
-                      cards show: this is the one surface with room to name every
-                      place and put the part's own dates beneath each. A part
-                      with no place is still a row - it is a stretch of the trip,
-                      and dropping it would renumber the rest. */}
-                      <ul className="space-y-1.5">
-                        {tripParts.map((part, index) => {
-                          const dates = formatTripPartDates(part);
-                          const accommodation = part.accommodation_uuid
-                            ? contacts[part.accommodation_uuid]
-                            : undefined;
-                          return (
-                            <li
-                              key={index}
-                              className="flex items-start gap-2 text-sm"
-                            >
-                              <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                              <span className="min-w-0">
-                                <span className="block">
-                                  {part.location?.name ?? (
-                                    <span className="text-muted-foreground">
-                                      No place recorded
-                                    </span>
-                                  )}
-                                </span>
-                                {accommodation && (
-                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <BedDouble className="h-3.5 w-3.5 shrink-0" />
-                                    <span className="sr-only">Stayed at </span>
-                                    {accommodation.name}
-                                  </span>
-                                )}
-                                {dates && (
-                                  <span className="block text-xs text-muted-foreground">
-                                    {dates}
-                                  </span>
-                                )}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  )}
-
-                  {hasPeople && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">
-                        People
-                      </div>
-                      <PeopleList people={tripPeople} resolved={people} />
-                    </div>
-                  )}
-
-                  {/* What the contacts here are, and not who the diver was with:
-                  that is the People list above. */}
-                  {diveCenterNames.length > 0 && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">
-                        Dive centers
-                      </div>
-                      <div className="text-sm">
-                        {diveCenterNames.join(", ")}
-                      </div>
-                    </div>
-                  )}
-
-                  {trip.notes && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">
-                        Notes
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap">
-                        {trip.notes}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+            {/* From `lg` up the index of the trip's cards and its information
+                card stay beside the dives together, held to the viewport's height
+                and scrolling on their own past it - with a few pixels to spare for
+                the card's shadow, which the scroll box would otherwise clip. Below
+                that the stuck headings carry the index. The trip's dates are on
+                the hero's line, and a trip with nothing more to say draws no
+                information card: there would be nothing in it but its heading. */}
+            <div>
+              <div className="space-y-6 max-sm:space-y-2.5 lg:sticky lg:top-[calc(var(--header-height)+--spacing(5))] lg:-m-1 lg:max-h-[calc(100dvh-var(--header-height)-3rem)] lg:overflow-y-auto lg:p-1">
+                <SectionIndexNav className="hidden lg:block" />
+                {(hasPeople || diveCenterNames.length > 0 || trip.notes) && (
+                  <TripInformationCard
+                    people={tripPeople}
+                    resolvedPeople={people}
+                    diveCenterNames={diveCenterNames}
+                    notes={trip.notes}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </SectionIndexProvider>
     </div>
   );
 }

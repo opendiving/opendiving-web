@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import type { Contact } from "@/lib/api/contacts";
 import type { Dive } from "@/lib/api/dives";
 import type { TripDiveAddScope, TripPart } from "@/lib/api/trips";
 import { formatDiveDays, tripDiveSections } from "@/lib/trip-dive-sections";
@@ -17,6 +18,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BackdropCardList } from "@/components/ui/backdrop-card";
+import {
+  SectionIndexTrigger,
+  SectionSentinel,
+  scrollToSection,
+  useSection,
+  useSectionIndexShown,
+  type SectionIcon,
+} from "@/components/ui/section-index";
 import { DiveCard } from "@/components/dives/dive-card";
 import {
   TripDiveAddButton,
@@ -36,6 +45,9 @@ interface TripDiveSectionsProps {
   hasMore: boolean;
   loadFailed: boolean;
   parts: TripPart[];
+  // Contacts by uuid, for the names of the places the parts say the diver
+  // stayed at; one not read yet, or deleted since, leaves its name out.
+  contacts: Readonly<Record<string, Contact>>;
   // Every candidate of the trip, loaded or not, as the trip read counts them.
   candidateCount: number;
   newDiveHref: string;
@@ -78,91 +90,124 @@ function DiveList({
   );
 }
 
-function DivesCard({
-  icon,
-  title,
-  description,
-  children,
-}: {
-  icon: ReactNode;
-  title: ReactNode;
-  description?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle as="h2" className="flex items-center gap-2">
-          {icon}
-          {title}
-        </CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
-// A part's card, or the card of a run of dives no part covers. It folds to its
-// header where another card on the page holds dives too: the only one that does
-// would fold to nothing worth seeing. The title is the toggle, so the whole
-// heading line is the target and the heading keeps its name for a screen
-// reader. A folded card unmounts its dives, maps and all.
+// A card of the trip's dives: a part's, a run of dives no part covers, or every
+// dive the trip has. Its heading sticks under the site header while the card
+// scrolls past, as the dive form's sections do, and the page's index lists it.
+//
+// It folds to its header where another card on the page holds dives too: the
+// only one that does would fold to nothing worth seeing. The title is the
+// toggle, so the whole heading line is the target and the heading keeps its name
+// for a screen reader. A folded card unmounts its dives, maps and all.
 function SectionCard({
+  sectionKey,
   partIndex,
-  icon,
+  icon: Icon,
   title,
   description,
   foldable,
   children,
 }: {
+  sectionKey: string;
   partIndex?: number;
-  icon: ReactNode;
-  title: ReactNode;
+  icon: SectionIcon;
+  title: string;
   description?: ReactNode;
   foldable: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(true);
   const contentId = useId();
+  const { cardRef, headingRef, sentinelRef, stuck } = useSection({
+    key: sectionKey,
+    label: title,
+    icon: Icon,
+    onExpand: () => setOpen(true),
+  });
+  const indexShown = useSectionIndexShown();
   // A card that stops folding shows its dives, however it was left.
   const shown = open || !foldable;
+  // Where the index is not beside the cards, the stuck heading carries it.
+  const sectionsTrigger = shown && stuck && indexShown;
   const heading = (
     <>
       {/* Each icon in a box one title line tall - the title is `leading-none` -
           so a name that wraps leaves both on its first line. */}
-      <span className="flex h-[1em] shrink-0 items-center">{icon}</span>
+      <span className="flex h-[1em] shrink-0 items-center">
+        <Icon aria-hidden="true" className="h-5 w-5" />
+      </span>
       <span className="min-w-0 flex-1">{title}</span>
     </>
   );
   return (
-    <Card data-trip-part={partIndex}>
-      <CardHeader>
-        <CardTitle as="h2">
-          {foldable ? (
-            <button
-              type="button"
-              aria-expanded={open}
-              aria-controls={contentId}
-              data-fold-toggle=""
-              onClick={() => setOpen(!open)}
-              className="relative flex w-full items-start gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {heading}
-              <span className="flex h-[1em] shrink-0 items-center">
-                <ChevronDown
-                  aria-hidden="true"
+    // Focusable so a jump from the index can land the keyboard on a card whose
+    // heading has no control of its own.
+    <Card
+      ref={cardRef}
+      tabIndex={-1}
+      data-trip-part={partIndex}
+      className="relative outline-none"
+    >
+      <SectionSentinel ref={sentinelRef} />
+      {/* Squared off at the foot while dives show, so they cannot show through
+          the stuck heading's corners as they scroll under it. */}
+      <CardHeader
+        className={cn(
+          "sticky top-[var(--header-height)] z-10 rounded-t-lg bg-card",
+          !shown && "rounded-b-lg",
+          shown && stuck && "shadow-[inset_0_-1px_0_hsl(var(--border))]",
+        )}
+      >
+        <div className="flex items-start gap-2">
+          <CardTitle as="h2" className="min-w-0 grow">
+            {foldable ? (
+              <button
+                ref={headingRef}
+                type="button"
+                aria-expanded={open}
+                aria-controls={contentId}
+                data-fold-toggle=""
+                onClick={() => {
+                  // A stuck heading is a way back to the top of its card, which
+                  // folding would throw away by moving everything below it.
+                  if (open && stuck) {
+                    if (cardRef.current) scrollToSection(cardRef.current);
+                    return;
+                  }
+                  setOpen(!open);
+                }}
+                className="relative flex w-full items-start gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {heading}
+                {/* Stuck, a tap on the heading scrolls rather than folds, so the
+                    chevron says nothing there; on a narrow screen the sections
+                    control takes its place rather than widening the heading. */}
+                <span
                   className={cn(
-                    "h-5 w-5 text-muted-foreground transition-transform",
-                    !open && "-rotate-90",
+                    "flex h-[1em] shrink-0 items-center",
+                    sectionsTrigger && "max-lg:hidden",
                   )}
-                />
-              </span>
-            </button>
-          ) : (
-            <span className="flex items-start gap-2">{heading}</span>
+                >
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={cn(
+                      "h-5 w-5 text-muted-foreground transition-transform",
+                      !open && "-rotate-90",
+                    )}
+                  />
+                </span>
+              </button>
+            ) : (
+              <span className="flex items-start gap-2">{heading}</span>
+            )}
+          </CardTitle>
+          {/* One title line tall, as the chevron's box is, so the control sits on
+              the first line of a name that wraps. */}
+          {sectionsTrigger && (
+            <div className="-mr-1 flex h-6 items-center max-sm:h-[1.125rem] lg:hidden">
+              <SectionIndexTrigger />
+            </div>
           )}
-        </CardTitle>
+        </div>
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent id={contentId} hidden={!shown}>
@@ -182,6 +227,7 @@ export function TripDiveSections({
   hasMore,
   loadFailed,
   parts,
+  contacts,
   candidateCount,
   newDiveHref,
   onAdd,
@@ -271,15 +317,17 @@ export function TripDiveSections({
     />
   );
   const allDivesCard = (children: ReactNode) => (
-    <DivesCard
-      icon={<DiveIcon className="h-5 w-5" />}
+    <SectionCard
+      sectionKey="all"
+      icon={DiveIcon}
       title="Dives in This Trip"
       // Not "logged as part of this trip": a part is a noun here now, and that
       // sentence reads as a claim about which stretch a dive was on.
       description="Every dive logged on this trip"
+      foldable={false}
     >
       {children}
-    </DivesCard>
+    </SectionCard>
   );
 
   if (loadFailed) {
@@ -353,7 +401,8 @@ export function TripDiveSections({
           return (
             <SectionCard
               key={`loose-${section.dives[0].uuid}`}
-              icon={<MapPinOff className="h-5 w-5" />}
+              sectionKey={`loose-${section.dives[0].uuid}`}
+              icon={MapPinOff}
               title="Not in Any Part"
               description={formatDiveDays(section.dives)}
               foldable={foldable}
@@ -366,17 +415,34 @@ export function TripDiveSections({
           );
         }
         const { part } = section;
-        // A part with no place is headed by its dates alone, as the trip's
-        // information card lists it by them.
+        // A part with no place is headed by its dates alone.
         const dates = formatTripPartDates(part);
         const place = part.location?.name;
+        const accommodation = part.accommodation_uuid
+          ? contacts[part.accommodation_uuid]?.name
+          : undefined;
+        const when = place ? dates : undefined;
         return (
           <SectionCard
             key={`part-${section.partIndex}`}
+            sectionKey={`part-${section.partIndex}`}
             partIndex={section.partIndex}
-            icon={<MapPin className="h-5 w-5" />}
+            icon={MapPin}
             title={place ?? dates ?? "No place recorded"}
-            description={place ? dates : undefined}
+            description={
+              (when || accommodation) && (
+                <>
+                  {when}
+                  {when && accommodation && " · "}
+                  {accommodation && (
+                    <>
+                      <span className="sr-only">Stayed at </span>
+                      {accommodation}
+                    </>
+                  )}
+                </>
+              )
+            }
             foldable={foldable}
           >
             {section.dives.length > 0 ? (

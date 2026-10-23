@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import {
   CARD_SECTION_CONTENT,
@@ -9,12 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DiveSectionIcon } from "@/components/dives/dive-section-icon";
 import {
-  DiveFormSectionsTrigger,
+  DIVE_SECTION_ICONS,
+  DiveSectionIcon,
+} from "@/components/dives/dive-section-icon";
+import {
+  SectionIndexTrigger,
+  SectionSentinel,
   scrollToSection,
-  useDiveFormSectionRegistry,
-} from "@/components/dives/dive-form-sections";
+  useSection,
+  useSectionIndexShown,
+} from "@/components/ui/section-index";
 import type { DiveFormFieldGroup } from "@/lib/dive-form-fields";
 import { cn } from "@/lib/utils";
 
@@ -52,76 +57,26 @@ export function DiveFormSection(props: DiveFormSectionProps) {
   const { title, empty = false, children } = props;
   const open = props.onOpenChange === undefined || props.open;
   const contentId = useId();
-  const cardRef = useRef<HTMLDivElement>(null);
-  const headingRef = useRef<HTMLButtonElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const [stuck, setStuck] = useState(false);
-  const [passed, setPassed] = useState(false);
-
-  // The sentinel sits one header-height above the card, so it leaves the top of the
-  // viewport exactly when the card's top passes under the site header - the moment
-  // the heading starts sticking. Leaving at the bottom is not that, hence the side.
-  //
-  // The section index reads the same sentinel one step more generously: a jump
-  // lands a card exactly on that line, where the heading is not yet stuck and a
-  // tap on it still collapses, but the reader is plainly in that section. The
-  // sentinel is a pixel tall and sits inside the card's 1px border, so with the
-  // card's top on the line its bottom edge is 2px below the viewport's top; a root
-  // shrunk by 3px counts it gone there and not a pixel higher, an edge touching
-  // the root's still being an intersection. "At or above", where `stuck` is "above".
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const above = (entry: IntersectionObserverEntry) =>
-      !entry.isIntersecting &&
-      entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0);
-    const stuckObserver = new IntersectionObserver(([entry]) =>
-      setStuck(above(entry)),
-    );
-    const passedObserver = new IntersectionObserver(
-      ([entry]) => setPassed(above(entry)),
-      { rootMargin: "-3px 0px 0px 0px" },
-    );
-    stuckObserver.observe(sentinel);
-    passedObserver.observe(sentinel);
-    return () => {
-      stuckObserver.disconnect();
-      passedObserver.disconnect();
-    };
-  }, []);
-
-  // The form's section index lists what reports here, and reads the sentinel's
-  // answer to tell which section the reader is in.
-  const registry = useDiveFormSectionRegistry();
-  useEffect(() => {
-    const card = cardRef.current;
-    if (!registry || !card) return;
-    registry.register(title, {
-      element: card,
-      focus: () => (headingRef.current ?? card).focus({ preventScroll: true }),
-    });
-    return () => registry.unregister(title);
-  }, [registry, title]);
-  useEffect(() => {
-    registry?.setPassed(title, passed);
-  }, [registry, title, passed]);
+  const { cardRef, headingRef, sentinelRef, stuck } = useSection({
+    key: title,
+    label: title,
+    icon: DIVE_SECTION_ICONS[title],
+    onExpand: () => props.onOpenChange?.(true),
+  });
+  const indexShown = useSectionIndexShown();
 
   const shown = open && !empty;
   // Where the index is not beside the form, the stuck heading carries it: the
   // reader is a long way from the top, which is where the page's own controls are.
-  const sectionsTrigger = shown && stuck && (
-    <DiveFormSectionsTrigger className="lg:hidden" />
+  const sectionsTrigger = shown && stuck && indexShown && (
+    <SectionIndexTrigger className="lg:hidden" />
   );
 
   return (
     // Focusable so a jump from the index can land the keyboard on a card whose
     // heading has no control of its own.
     <Card ref={cardRef} tabIndex={-1} className="relative outline-none">
-      <div
-        ref={sentinelRef}
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-(--header-height) h-px w-px"
-      />
+      <SectionSentinel ref={sentinelRef} />
       {/* Squared off at the foot while content shows, so content scrolling under the
           stuck heading cannot show through its corners. A card that is all heading
           never sticks and takes no rule. */}

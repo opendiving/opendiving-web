@@ -85,6 +85,8 @@ export function reveal() {
           isIntersecting: true,
           intersectionRatio: 1,
           target: element,
+          boundingClientRect: { top: 100, bottom: 140 } as DOMRectReadOnly,
+          rootBounds: { top: 0, bottom: 799 } as DOMRectReadOnly,
         } as IntersectionObserverEntry,
       ],
       observer,

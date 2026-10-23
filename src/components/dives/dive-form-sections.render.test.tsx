@@ -2,11 +2,11 @@ import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useDiveFormSections } from "./dive-form-sections";
 import {
-  DiveFormSectionIndex,
-  DiveFormSectionsProvider,
-  useDiveFormSections,
-} from "./dive-form-sections";
+  SectionIndexNav,
+  SectionIndexProvider,
+} from "@/components/ui/section-index";
 import { DiveFormSection } from "./dive-form-section";
 import { DIVE_SECTION_ICONS } from "./dive-section-icon";
 import {
@@ -21,8 +21,8 @@ import { scrollPast } from "@/test/intersection";
 function Harness({ groups }: { groups: readonly DiveFormFieldGroup[] }) {
   const sections = useDiveFormSections();
   return (
-    <DiveFormSectionsProvider sections={sections}>
-      <DiveFormSectionIndex />
+    <SectionIndexProvider index={sections.index}>
+      <SectionIndexNav />
       {groups.map((group) =>
         group === "Import" ? (
           <DiveFormSection
@@ -43,7 +43,7 @@ function Harness({ groups }: { groups: readonly DiveFormFieldGroup[] }) {
           </DiveFormSection>
         ),
       )}
-    </DiveFormSectionsProvider>
+    </SectionIndexProvider>
   );
 }
 
@@ -62,7 +62,7 @@ function cardOf(heading: HTMLElement) {
   return heading.closest<HTMLElement>('[tabindex="-1"]')!;
 }
 
-describe("DiveFormSectionIndex", () => {
+describe("the dive form's section index", () => {
   it("lists the sections on the page, in form order, and follows them", () => {
     const { rerender } = render(
       <Harness groups={["Notes", "Import", "Dive info"]} />,

@@ -292,13 +292,14 @@ describe("TripDetailPage", () => {
     ).toBeNull();
   });
 
-  it("puts a part's accommodation under its place", async () => {
+  it("hands the dives column the contacts its parts stayed at, and lists no part itself", async () => {
     render(<TripDetailPage />);
 
-    const dahab = (await screen.findByText("Dahab")).closest("li")!;
-    expect(await within(dahab).findByText("Coral Hotel")).toBeInTheDocument();
-    const sharm = screen.getByText("Sharm").closest("li")!;
-    expect(within(sharm).queryByText("Coral Hotel")).toBeNull();
+    await waitFor(() =>
+      expect(sectionsProps().contacts.coral?.name).toBe("Coral Hotel"),
+    );
+    expect(screen.queryByText("Dahab")).toBeNull();
+    expect(screen.queryByText("Coral Hotel")).toBeNull();
   });
 
   it("names the dive centers the trip read carries, in its order", async () => {
@@ -317,7 +318,7 @@ describe("TripDetailPage", () => {
     });
     render(<TripDetailPage />);
 
-    await screen.findByText("Coral Hotel");
+    await waitFor(() => expect(sectionsProps().contacts.coral).toBeDefined());
     expect(screen.queryByText("Dive centers")).toBeNull();
   });
 

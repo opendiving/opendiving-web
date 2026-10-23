@@ -13,11 +13,11 @@ import {
   DiveFormValues,
 } from "@/components/dives/dive-form-fields";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
+import { useDiveFormSections } from "@/components/dives/dive-form-sections";
 import {
-  DiveFormSectionIndex,
-  DiveFormSectionsProvider,
-  useDiveFormSections,
-} from "@/components/dives/dive-form-sections";
+  SectionIndexNav,
+  SectionIndexProvider,
+} from "@/components/ui/section-index";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveSiteSummary, Recording } from "@/lib/api/dives";
 import type { DiveFileListProps } from "@/components/dives/use-pending-dive-files";
@@ -169,7 +169,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
       control={form.control}
       isAutofilled={visibility.isAutofilled}
     >
-      <DiveFormSectionsProvider sections={sections}>
+      <SectionIndexProvider index={sections.index}>
         <Form {...form}>
           <div className="relative">
             {/* The section index, in the room beside the form's column from `lg`
@@ -178,7 +178,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
                 form in the order, where a keyboard reaches a table of contents
                 before the pages it lists. Below `lg` a stuck heading carries it. */}
             <div className="absolute inset-y-0 left-full ml-6 hidden w-36 lg:block">
-              <DiveFormSectionIndex className="sticky top-[calc(var(--header-height)+--spacing(6))]" />
+              <SectionIndexNav className="sticky top-[calc(var(--header-height)+--spacing(6))]" />
             </div>
             <form
               // The browser doesn't cancel this submit on its own - see
@@ -234,7 +234,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
             </form>
           </div>
         </Form>
-      </DiveFormSectionsProvider>
+      </SectionIndexProvider>
     </AutofilledMarks>
   );
 }

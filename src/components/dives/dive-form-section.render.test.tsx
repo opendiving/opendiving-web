@@ -3,10 +3,8 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveFormSection } from "./dive-form-section";
-import {
-  DiveFormSectionsProvider,
-  useDiveFormSections,
-} from "./dive-form-sections";
+import { useDiveFormSections } from "./dive-form-sections";
+import { SectionIndexProvider } from "@/components/ui/section-index";
 import { scrollPast } from "@/test/intersection";
 
 // Whether a heading is stuck is the observer's answer, so `scrollPast` stands in
@@ -22,16 +20,19 @@ function renderSection() {
   return onOpenChange;
 }
 
-// A section inside a dive form, which is what gives its stuck heading the
-// sections control.
+// Sections inside a dive form, which is what gives a stuck heading the sections
+// control - an index of more than one.
 function InForm() {
   const sections = useDiveFormSections();
   return (
-    <DiveFormSectionsProvider sections={sections}>
+    <SectionIndexProvider index={sections.index}>
       <DiveFormSection title="Gear" open onOpenChange={() => {}}>
         <p>Fields</p>
       </DiveFormSection>
-    </DiveFormSectionsProvider>
+      <DiveFormSection title="Notes" open onOpenChange={() => {}}>
+        <p>Notes fields</p>
+      </DiveFormSection>
+    </SectionIndexProvider>
   );
 }
 
@@ -73,12 +74,46 @@ describe("DiveFormSection", () => {
       screen.queryByRole("button", { name: "Sections" }),
     ).not.toBeInTheDocument();
 
-    act(() => scrollPast());
+    act(() =>
+      scrollPast(
+        screen
+          .getByRole("heading", { name: "Gear" })
+          .closest<HTMLElement>('[tabindex="-1"]')!,
+      ),
+    );
     await userEvent.click(screen.getByRole("button", { name: "Sections" }));
 
     const index = screen.getByRole("navigation", { name: "Sections" });
     expect(
-      within(index).getByRole("button", { name: "Gear" }),
-    ).toBeInTheDocument();
+      within(index)
+        .getAllByRole("button")
+        .map((entry) => entry.textContent),
+    ).toEqual(["Gear", "Notes"]);
+  });
+
+  it("offers no sections control where the form has only the one", () => {
+    function Alone() {
+      const sections = useDiveFormSections();
+      return (
+        <SectionIndexProvider index={sections.index}>
+          <DiveFormSection title="Gear" open onOpenChange={() => {}}>
+            <p>Fields</p>
+          </DiveFormSection>
+        </SectionIndexProvider>
+      );
+    }
+    render(<Alone />);
+
+    act(() => scrollPast());
+
+    expect(
+      screen.queryByRole("button", { name: "Sections" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gear" })).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("button", { name: "Gear" })
+        .querySelector("svg.lucide-chevron-down"),
+    ).not.toHaveClass("max-lg:hidden");
   });
 });

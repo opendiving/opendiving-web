@@ -91,6 +91,20 @@ describe("TripDetailPageContent", () => {
     );
   });
 
+  it("leaves the trip's parts to the cards of its dives", () => {
+    stable.trip = {
+      ...trip("Boat left at 7."),
+      parts: [{ location: { name: "Dahab" }, start_date: "2026-04-03" }],
+    };
+    render(<TripDetailPageContent />);
+
+    expect(
+      screen.getByRole("heading", { name: "Trip Information" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Part")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dahab")).not.toBeInTheDocument();
+  });
+
   it("draws no card for a trip with nothing to say", () => {
     stable.trip = trip("");
     render(<TripDetailPageContent />);
