@@ -144,6 +144,7 @@ function SectionCard({
               type="button"
               aria-expanded={open}
               aria-controls={contentId}
+              data-fold-toggle=""
               onClick={() => setOpen(!open)}
               className="relative flex w-full items-start gap-2 rounded-sm text-left touch:tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
@@ -199,11 +200,13 @@ export function TripDiveSections({
     const container = containerRef.current;
     if (!container) return;
     const { diveUuid, partIndex } = focusTarget;
+    // Marked rather than matched by `aria-expanded`, which every dive card's
+    // menu trigger carries too.
     const toggle =
       partIndex === null
         ? null
         : container.querySelector<HTMLElement>(
-            `[data-trip-part="${partIndex}"] button[aria-expanded]`,
+            `[data-trip-part="${partIndex}"] [data-fold-toggle]`,
           );
     // The card's own link leads to the dive's page; its menu is the one
     // `aria-haspopup` button on the card once the Add control is gone.

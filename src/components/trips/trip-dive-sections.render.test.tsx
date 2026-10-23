@@ -17,13 +17,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 // The card's link and, as the real card has, either the control it is handed
-// or its menu in the corner.
+// or its menu in the corner - a Radix trigger, so `aria-expanded` too.
 vi.mock("@/components/dives/dive-card", () => ({
   DiveCard: ({ dive, addToTrip }: { dive: Dive; addToTrip?: ReactNode }) => (
     <li data-candidate={addToTrip ? "" : undefined}>
       <a href={`/dives/${dive.uuid}`}>{dive.uuid}</a>
       {addToTrip ?? (
-        <button type="button" aria-haspopup="menu">
+        <button type="button" aria-haspopup="menu" aria-expanded="false">
           Actions for {dive.uuid}
         </button>
       )}
@@ -567,14 +567,15 @@ describe("TripDiveSections", () => {
         landed();
         return true;
       });
-      const { rerender } = renderSections([listed[2]], counted, {
+      // Below a dive of the trip's, whose card has a menu of its own.
+      const { rerender } = renderSections(listed.slice(1), counted, {
         candidateCount: 4,
         onAdd,
       });
       landed = () =>
         rerender(
           <TripDiveSections
-            dives={[dive("dahab", "2026-04-04T09:00:00Z")]}
+            dives={[listed[1], dive("dahab", "2026-04-04T09:00:00Z")]}
             hasMore={false}
             loadFailed={false}
             parts={[{ ...PARTS[0], candidate_count: 0 }, counted[1]]}
