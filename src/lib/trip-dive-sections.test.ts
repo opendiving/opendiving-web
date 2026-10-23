@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { dive as baseDive } from "@/test/dive-fixtures";
 import type { TripPart } from "@/lib/api/trips";
-import { tripDiveSections, tripPartForDay } from "./trip-dive-sections";
+import {
+  formatDiveDays,
+  tripDiveSections,
+  tripPartForDay,
+} from "./trip-dive-sections";
 
 const dive = (uuid: string, start_time: string) =>
   baseDive({ uuid, start_time });
@@ -230,5 +234,35 @@ describe("tripPartForDay", () => {
       { start_date: "2026-04-08", end_date: "2026-04-12" },
     ];
     expect(tripPartForDay(parts, "2026-04-08")).toBe(0);
+  });
+});
+
+describe("formatDiveDays", () => {
+  it("spans the dives' first day to their last, on their own wall clocks", () => {
+    // The newest is the 15th in UTC and the 14th where it was made.
+    const dives = [
+      dive("late", "2026-04-14T23:30:00-03:00"),
+      dive("mid", "2026-04-11T09:00:00+02:00"),
+      dive("early", "2026-04-09"),
+    ];
+    expect(formatDiveDays(dives)).toBe("Apr 9 - Apr 14, 2026");
+  });
+
+  it("names the one day dives all made on it share", () => {
+    expect(
+      formatDiveDays([
+        dive("second", "2026-04-09T15:00:00+02:00"),
+        dive("first", "2026-04-09T09:00:00+02:00"),
+      ]),
+    ).toBe("Apr 9, 2026");
+  });
+
+  it("keeps the year on both ends of a run over New Year", () => {
+    expect(
+      formatDiveDays([
+        dive("new", "2027-01-02T09:00:00+07:00"),
+        dive("old", "2026-12-30T09:00:00+07:00"),
+      ]),
+    ).toBe("Dec 30, 2026 - Jan 2, 2027");
   });
 });
