@@ -152,7 +152,7 @@ Roadmap items, roughly in priority order — contributions welcome:
   [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware support.
 - **Statistics** — depth/time records, dives per year, sites map.
 - **Sharing** — public link to a dive or trip.
-- **iOS companion app** — parked until the server story is done
+- **iOS companion app** — in development, not yet installable
   ([opendiving-ios](https://github.com/opendiving/opendiving-ios)).
 
 ## How it compares
@@ -285,7 +285,7 @@ made. Security problems go through [SECURITY.md](SECURITY.md) rather than the is
 | -------------------------------------------------------------- | ------------------------------------------------------- |
 | [opendiving](https://github.com/opendiving/opendiving)         | The product: install bundle, operator docs, the release |
 | [opendiving-api](https://github.com/opendiving/opendiving-api) | FastAPI backend (Postgres, Redis, dive-file parsing)    |
-| [opendiving-ios](https://github.com/opendiving/opendiving-ios) | SwiftUI app (early scaffold, parked)                    |
+| [opendiving-ios](https://github.com/opendiving/opendiving-ios) | SwiftUI app (in development, not yet installable)       |
 
 ## License
 

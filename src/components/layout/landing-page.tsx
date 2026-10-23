@@ -21,7 +21,7 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // Every claim on this page has to be true of the software as it stands, because
 // the page is served by whoever is running the instance and they are the ones it
 // makes a liar of. That rules out visitor counts (there is no central service to
-// count), app-store badges (there are no apps), and a community feature set
+// count), app-store badges (no app can be installed yet), and a community feature set
 // (the one thing shared is a check-in page, for a day, through a link its own
 // diver makes). What is left is what the log actually does, plus
 // what it deliberately doesn't - the "no mobile apps" and "still to come" lines
@@ -186,9 +186,9 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
               stated outright; the links now sit inline at the weight they
               deserve, and the prominent one lives in "Run Your Own" below. */}
           <p className="mt-16 mx-auto max-w-xl text-center text-sm text-muted-foreground">
-            There are no mobile apps — the iOS companion is parked until the
-            server side is finished, and this web app is built to work on a
-            phone in the meantime. The{" "}
+            There are no mobile apps — the iOS companion is in development and
+            not yet installable, and this web app is built to work on a phone in
+            the meantime. The{" "}
             <a
               href={SOURCE_URL}
               target="_blank"

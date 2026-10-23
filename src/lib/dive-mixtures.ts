@@ -15,9 +15,10 @@
 // input is *live form state* - the O₂ the diver is halfway through typing, which has
 // not been saved and may never be - so an API round trip could not answer the
 // question being asked, and a second server-side implementation would exist only to
-// duplicate this one. Lift it to the API the moment a non-browser consumer needs the
-// same labels (an export renderer, a mobile client, a notification job); until then
-// one implementation, here.
+// duplicate this one. The MOD rule does have a second implementation, in the iOS app:
+// `GasMath.mod(oxygen:ppO2:)` in opendiving-ios's OpenDivingKit, so a change to it here
+// is owed there too. Lifting it to the API, for both to read, waits on a consumer that
+// cannot carry its own copy (an export renderer, a notification job).
 
 import type { GasRole, TankUsage } from "@/lib/api/dives";
 import type { TankGas } from "@/components/icons/tank-icon";

@@ -32,9 +32,10 @@ function daysBetween(from: string, to: string): number {
  * start and last part dated to its end meet in the middle. A part with no dates
  * covers no day. Ties go to the first part in the diver's order.
  *
- * `opendiving-api` mirrors this rule in `part_for_day` (`crud_dives.py`), for
- * the per-part `candidate_count` on a trip read and the part scope of
- * `POST /trip/{uuid}/dives`, so a change here is owed there.
+ * The rule has three copies: this one, `opendiving-api`'s `part_for_day`
+ * (`crud_dives.py`), for the per-part `candidate_count` on a trip read and the
+ * part scope of `POST /trip/{uuid}/dives`, and opendiving-ios's
+ * `TripText.partForDay(_:day:)` in OpenDivingKit. A change here is owed in both.
  */
 export function tripPartForDay(parts: TripPart[], day: string): number {
   let best = -1;

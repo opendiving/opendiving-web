@@ -3574,12 +3574,13 @@ This page is the unauthenticated view of somebody's server, so a claim not check
 repository or the running instance makes a liar of the self-hoster. The coloured band carries the
 vendor-shutdown argument (Movescount, Deepblu, Diveboard) and three facts (licence, no trackers,
 export formats) in full `text-primary-foreground`, never `/70`: 4.90:1 against 3.4:1 on `bg-primary`
-in dark mode, the `--coral-solid` constraint. No store badges; prose says no mobile apps exist. The
-hero sells the log, not the deployment: most visitors are divers, not self-hosters. `<h1>` "The
-Ultimate Diving App" stays by the owner's call; `app/page.tsx`'s `title` changes with it or not at
-all. Data ownership lives in the `#features` card "Yours to Keep", the band (as the export) and
-`#self-hosting`. Nav is Features, Self-hosting and `Source`. The footer's "Open source diving
-platform for the global diving community" states audience, not traction; leave it.
+in dark mode, the `--coral-solid` constraint. No store badges; prose says no mobile app can be
+installed yet. The hero sells the log, not the deployment: most visitors are divers, not
+self-hosters. `<h1>` "The Ultimate Diving App" stays by the owner's call; `app/page.tsx`'s `title`
+changes with it or not at all. Data ownership lives in the `#features` card "Yours to Keep", the
+band (as the export) and `#self-hosting`. Nav is Features, Self-hosting and `Source`. The footer's
+"Open source diving platform for the global diving community" states audience, not traction; leave
+it.
 
 ## `scroll-padding-top` on `html`, because the sticky header eats anchor targets
 
