@@ -40,8 +40,9 @@ interface SectionHandle {
   // Puts the keyboard where the jump landed: on the section's heading where it
   // has a control, else on the card itself.
   focus: () => void;
-  // Unfolds a section a jump lands on folded.
-  expand: () => void;
+  // Puts the section's content on the page for a jump: unfolds a folded one, or
+  // sets loading one that is not drawn yet.
+  reveal: () => void;
 }
 
 interface SectionRecord extends SectionHandle {
@@ -66,7 +67,7 @@ interface SectionIndexState {
   entries: readonly SectionIndexEntry[];
   /** The section the viewport is in. */
   active: string | undefined;
-  /** Unfolds the section if it is folded and scrolls its card under the site header. */
+  /** Puts the section's content on the page and scrolls its card under the site header. */
   jump: (key: string) => void;
 }
 
@@ -80,8 +81,8 @@ export interface SectionIndex {
 const RegistryContext = createContext<SectionRegistry | null>(null);
 const IndexContext = createContext<SectionIndexState | null>(null);
 
-// What says the reader has taken the scroll over from a jump.
-const READER_INPUT = ["wheel", "touchstart", "pointerdown", "keydown"];
+/** What says the reader has taken the scroll over from a jump. */
+export const READER_INPUT = ["wheel", "touchstart", "pointerdown", "keydown"];
 // How long a card holds still before the scroll carrying it counts as over, and
 // how long one the page will not bring any closer is waited on - a page of the
 // list above it can still be loading.
@@ -212,7 +213,7 @@ export function useSectionIndex(order?: readonly string[]): SectionIndex {
     (key: string) => {
       const record = records.get(key);
       if (!record) return;
-      record.expand();
+      record.reveal();
       scrollToSection(record.element);
       record.focus();
     },
@@ -330,7 +331,7 @@ export function useSection({
         element: card,
         focus: () =>
           (headingRef.current ?? card).focus({ preventScroll: true }),
-        expand: () => onExpandRef.current?.(),
+        reveal: () => onExpandRef.current?.(),
       },
       passedRef.current,
     );
@@ -342,6 +343,53 @@ export function useSection({
   }, [registry, key, passed, listed]);
 
   return { cardRef, headingRef, sentinelRef, stuck };
+}
+
+interface UseSectionToComeOptions {
+  key: string;
+  label: string;
+  icon: SectionIcon;
+  // Starts bringing the section onto the page, for a jump to it.
+  onReach: () => void;
+}
+
+/**
+ * A section the page has not drawn yet - its content is on a page of a list
+ * still to load - listed where it will be. The anchor it returns goes on an empty
+ * element where the section will appear, which a jump scrolls to while `onReach`
+ * loads the list on and lands on the section once it is drawn. The drawn section
+ * takes over the key.
+ */
+export function useSectionToCome({
+  key,
+  label,
+  icon,
+  onReach,
+}: UseSectionToComeOptions) {
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const onReachRef = useRef(onReach);
+  useEffect(() => {
+    onReachRef.current = onReach;
+  });
+  const registry = useContext(RegistryContext);
+  useEffect(() => {
+    const anchor = anchorRef.current;
+    if (!registry || !anchor) return;
+    registry.register(
+      key,
+      {
+        label,
+        icon,
+        element: anchor,
+        // Nothing to focus until the section is drawn.
+        focus: () => {},
+        reveal: () => onReachRef.current(),
+      },
+      false,
+    );
+    return () => registry.unregister(key);
+  }, [registry, key, label, icon]);
+  return anchorRef;
 }
 
 /** What `useSection` watches, placed as the card's first child. */

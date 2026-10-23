@@ -265,6 +265,7 @@ export function TripDetailPageContent() {
                   isLoadingDives && tripDives.length === 0 ? null : tripDives
                 }
                 hasMore={hasMore}
+                onLoadMore={loadMore}
                 // Once a row is on screen, a failed page is the trigger's to
                 // retry rather than the whole column's to replace.
                 loadFailed={loadFailed && tripDives.length === 0}

@@ -19,11 +19,13 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BackdropCardList } from "@/components/ui/backdrop-card";
 import {
+  READER_INPUT,
   SectionIndexTrigger,
   SectionSentinel,
   scrollToSection,
   useSection,
   useSectionIndexShown,
+  useSectionToCome,
   type SectionIcon,
 } from "@/components/ui/section-index";
 import { DiveCard } from "@/components/dives/dive-card";
@@ -43,6 +45,8 @@ interface TripDiveSectionsProps {
   dives: Dive[] | null;
   // More pages to come, so a part with nothing loaded yet may still fill.
   hasMore: boolean;
+  // Loads the next page, for a jump to a part none of whose dives has loaded.
+  onLoadMore: () => void;
   loadFailed: boolean;
   parts: TripPart[];
   // Contacts by uuid, for the names of the places the parts say the diver
@@ -88,6 +92,31 @@ function DiveList({
       ))}
     </BackdropCardList>
   );
+}
+
+// A part is headed by its place, or by its dates where it has none.
+const partTitle = (part: TripPart) =>
+  part.location?.name ?? formatTripPartDates(part) ?? "No place recorded";
+
+// A part none of whose dives has loaded while pages remain, so it has no card
+// yet: the index lists it below the cards, and a jump to it loads the list on
+// until its card is drawn.
+function PartToCome({
+  partIndex,
+  part,
+  onReach,
+}: {
+  partIndex: number;
+  part: TripPart;
+  onReach: (partIndex: number) => void;
+}) {
+  const anchorRef = useSectionToCome({
+    key: `part-${partIndex}`,
+    label: partTitle(part),
+    icon: MapPin,
+    onReach: () => onReach(partIndex),
+  });
+  return <div ref={anchorRef} aria-hidden="true" />;
 }
 
 // A card of the trip's dives: a part's, a run of dives no part covers, or every
@@ -225,6 +254,7 @@ function SectionCard({
 export function TripDiveSections({
   dives,
   hasMore,
+  onLoadMore,
   loadFailed,
   parts,
   contacts,
@@ -237,6 +267,10 @@ export function TripDiveSections({
   // One add at a time: every Add control waits while one is in flight.
   const [isAdding, setIsAdding] = useState(false);
   const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+  // The part with no card yet that a jump from the index is loading the list
+  // on for, and what calls that off.
+  const reachingRef = useRef<number | null>(null);
+  const stopReachingRef = useRef(() => {});
 
   // Run after the render that shows the add's outcome, so the elements named
   // are the ones on screen now rather than the ones the add was made from. A
@@ -266,6 +300,43 @@ export function TripDiveSections({
         ?.querySelector<HTMLElement>('button[aria-haspopup="menu"]');
     target?.focus();
   }, [focusTarget]);
+
+  // The reader scrolling or pressing anything meanwhile calls the jump off, so a
+  // page landing later does not carry them away.
+  const reach = (partIndex: number) => {
+    stopReachingRef.current();
+    const stop = () => {
+      reachingRef.current = null;
+      for (const type of READER_INPUT)
+        window.removeEventListener(type, stop, true);
+    };
+    for (const type of READER_INPUT)
+      window.addEventListener(type, stop, { capture: true, passive: true });
+    reachingRef.current = partIndex;
+    stopReachingRef.current = stop;
+    onLoadMore();
+  };
+  useEffect(() => () => stopReachingRef.current(), []);
+  // Each page that lands either draws the part's card, which the jump then lands
+  // on, or asks for the next one.
+  useEffect(() => {
+    const partIndex = reachingRef.current;
+    if (partIndex === null) return;
+    const card = containerRef.current?.querySelector<HTMLElement>(
+      `[data-trip-part="${partIndex}"]`,
+    );
+    if (card) {
+      stopReachingRef.current();
+      scrollToSection(card);
+      (card.querySelector<HTMLElement>("[data-fold-toggle]") ?? card).focus({
+        preventScroll: true,
+      });
+    } else if (hasMore) {
+      onLoadMore();
+    } else {
+      stopReachingRef.current();
+    }
+  }, [dives, hasMore, onLoadMore]);
 
   const add = async (
     dive: Dive,
@@ -345,6 +416,20 @@ export function TripDiveSections({
   // hero's line above.
   const sections = tripDiveSections(dives, parts, { complete: !hasMore });
   const oneCard = parts.length === 0;
+  // The parts with no card yet, in the order their cards will come: where the
+  // loaded dives would put them were the list complete.
+  const drawn = new Set(
+    sections.flatMap((section) =>
+      section.kind === "part" ? [section.partIndex] : [],
+    ),
+  );
+  const toCome = hasMore
+    ? tripDiveSections(dives, parts).flatMap((section) =>
+        section.kind === "part" && !drawn.has(section.partIndex)
+          ? [section]
+          : [],
+      )
+    : [];
   const foldable =
     sections.filter((section) => section.dives.length > 0).length > 1;
 
@@ -390,70 +475,81 @@ export function TripDiveSections({
   }
 
   return (
-    <div ref={containerRef} className="space-y-6 max-sm:space-y-2.5">
-      {sections.map((section) => {
-        if (section.kind === "loose") {
+    <div ref={containerRef}>
+      <div className="space-y-6 max-sm:space-y-2.5">
+        {sections.map((section) => {
+          if (section.kind === "loose") {
+            return (
+              <SectionCard
+                key={`loose-${section.dives[0].uuid}`}
+                sectionKey={`loose-${section.dives[0].uuid}`}
+                icon={MapPinOff}
+                title="Not in Any Part"
+                description={formatDiveDays(section.dives)}
+                foldable={foldable}
+              >
+                <DiveList
+                  dives={section.dives}
+                  addControl={(dive) => addButton(dive, null, null)}
+                />
+              </SectionCard>
+            );
+          }
+          const { part } = section;
+          const dates = formatTripPartDates(part);
+          const place = part.location?.name;
+          const accommodation = part.accommodation_uuid
+            ? contacts[part.accommodation_uuid]?.name
+            : undefined;
+          const when = place ? dates : undefined;
           return (
             <SectionCard
-              key={`loose-${section.dives[0].uuid}`}
-              sectionKey={`loose-${section.dives[0].uuid}`}
-              icon={MapPinOff}
-              title="Not in Any Part"
-              description={formatDiveDays(section.dives)}
+              key={`part-${section.partIndex}`}
+              sectionKey={`part-${section.partIndex}`}
+              partIndex={section.partIndex}
+              icon={MapPin}
+              title={partTitle(part)}
+              description={
+                (when || accommodation) && (
+                  <>
+                    {when}
+                    {when && accommodation && " · "}
+                    {accommodation && (
+                      <>
+                        <span className="sr-only">Stayed at </span>
+                        {accommodation}
+                      </>
+                    )}
+                  </>
+                )
+              }
               foldable={foldable}
             >
-              <DiveList
-                dives={section.dives}
-                addControl={(dive) => addButton(dive, null, null)}
-              />
+              {section.dives.length > 0 ? (
+                <DiveList
+                  dives={section.dives}
+                  addControl={(dive) =>
+                    addButton(dive, part, section.partIndex)
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={DiveIcon}
+                  title="No dives logged for this part yet"
+                />
+              )}
             </SectionCard>
           );
-        }
-        const { part } = section;
-        // A part with no place is headed by its dates alone.
-        const dates = formatTripPartDates(part);
-        const place = part.location?.name;
-        const accommodation = part.accommodation_uuid
-          ? contacts[part.accommodation_uuid]?.name
-          : undefined;
-        const when = place ? dates : undefined;
-        return (
-          <SectionCard
-            key={`part-${section.partIndex}`}
-            sectionKey={`part-${section.partIndex}`}
-            partIndex={section.partIndex}
-            icon={MapPin}
-            title={place ?? dates ?? "No place recorded"}
-            description={
-              (when || accommodation) && (
-                <>
-                  {when}
-                  {when && accommodation && " · "}
-                  {accommodation && (
-                    <>
-                      <span className="sr-only">Stayed at </span>
-                      {accommodation}
-                    </>
-                  )}
-                </>
-              )
-            }
-            foldable={foldable}
-          >
-            {section.dives.length > 0 ? (
-              <DiveList
-                dives={section.dives}
-                addControl={(dive) => addButton(dive, part, section.partIndex)}
-              />
-            ) : (
-              <EmptyState
-                icon={DiveIcon}
-                title="No dives logged for this part yet"
-              />
-            )}
-          </SectionCard>
-        );
-      })}
+        })}
+      </div>
+      {toCome.map(({ part, partIndex }) => (
+        <PartToCome
+          key={partIndex}
+          partIndex={partIndex}
+          part={part}
+          onReach={reach}
+        />
+      ))}
     </div>
   );
 }
