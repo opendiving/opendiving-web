@@ -321,7 +321,7 @@ describe("TripDiveSections", () => {
   describe("with one part", () => {
     const only = [PARTS[0]];
 
-    it("keeps the one card of every dive where the part holds them all", () => {
+    it("draws the part's card where the part holds every dive", () => {
       renderSections(
         [
           dive("late", "2026-04-07T09:00:00Z"),
@@ -333,7 +333,8 @@ describe("TripDiveSections", () => {
         screen
           .getAllByRole("heading", { level: 2 })
           .map((heading) => heading.textContent),
-      ).toEqual(["Dives in This Trip"]);
+      ).toEqual(["Dahab"]);
+      expect(screen.getByText("Apr 3 - Apr 8, 2026")).toBeInTheDocument();
       expect(cardTexts()).toEqual(["late", "early"]);
     });
 
@@ -351,39 +352,28 @@ describe("TripDiveSections", () => {
       expect(screen.queryByText("Dives in This Trip")).not.toBeInTheDocument();
     });
 
-    it("offers to log a dive while it holds none", () => {
+    it("says so in the part's card while it holds none", () => {
       renderSections([], only);
-      expect(
-        screen.getByRole("link", { name: "Log a dive for this trip" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("No dives logged for this part yet"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("brings the part's card back once a later page holds a dive outside it", () => {
-      const loaded = [dive("dahab", "2026-04-04T09:00:00Z")];
-      const { rerender } = renderSections(loaded, only, { hasMore: true });
-      expect(screen.getByText("Dives in This Trip")).toBeInTheDocument();
-
-      rerender(
-        <TripDiveSections
-          dives={[...loaded, dive("before", "2026-04-01T09:00:00Z")]}
-          hasMore={false}
-          loadFailed={false}
-          contacts={{}}
-          parts={only}
-          candidateCount={0}
-          newDiveHref="/dives/new?trip_uuid=trip-1"
-          onAdd={vi.fn(async () => true)}
-        />,
-      );
       expect(
         screen.getByRole("heading", { level: 2, name: "Dahab" }),
       ).toBeInTheDocument();
+      expect(
+        screen.getByText("No dives logged for this part yet"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Dives in This Trip")).not.toBeInTheDocument();
     });
 
-    it("offers the trip's candidates rather than a part no card names", async () => {
+    it("draws the part's card from the first page, before the list ends", () => {
+      renderSections([dive("dahab", "2026-04-04T09:00:00Z")], only, {
+        hasMore: true,
+      });
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Dahab" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Dives in This Trip")).not.toBeInTheDocument();
+    });
+
+    it("offers the part's candidates, which are every one the trip has", async () => {
       const onAdd = vi.fn(async () => false);
       renderSections(
         [
@@ -398,11 +388,16 @@ describe("TripDiveSections", () => {
       );
       expect(
         screen.getAllByRole("menuitem").map((item) => item.textContent),
-      ).toEqual(["Add this dive", "Add all 4 unassigned dives"]);
+      ).toEqual(["Add this dive", "Add all 4 dives from this part"]);
       await userEvent.click(
-        screen.getByRole("menuitem", { name: "Add all 4 unassigned dives" }),
+        screen.getByRole("menuitem", {
+          name: "Add all 4 dives from this part",
+        }),
       );
-      expect(onAdd).toHaveBeenCalledWith({}, 4);
+      expect(onAdd).toHaveBeenCalledWith(
+        { part: { start_date: "2026-04-03", end_date: "2026-04-08" } },
+        4,
+      );
     });
 
     it("moves focus to the card's menu once the dive it added turns ordinary", async () => {
@@ -473,9 +468,13 @@ describe("TripDiveSections", () => {
         screen.getAllByRole("button", { name: "Add to trip: dive #400" })[1],
       );
       await userEvent.click(
-        screen.getByRole("menuitem", { name: "Add all 2 unassigned dives" }),
+        screen.getByRole("menuitem", {
+          name: "Add all 2 dives from this part",
+        }),
       );
 
+      // The part's card is the only one, so it does not fold, and has no
+      // heading control to go to.
       await waitFor(() =>
         expect(
           screen.getByRole("button", { name: "Actions for early" }),

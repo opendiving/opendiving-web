@@ -220,8 +220,8 @@ function SectionCard({
 // The trip's dives, a card for each of its parts headed by the part's place and
 // dates, holding the dives made on it. The dives no part's dates cover sit
 // between those cards, where their days put them, in a card of each run headed
-// by its first and last days. A trip with no parts, or one part holding every
-// dive, keeps the one card of every dive.
+// by its first and last days. A trip with no parts keeps the one card of every
+// dive.
 export function TripDiveSections({
   dives,
   hasMore,
@@ -340,15 +340,11 @@ export function TripDiveSections({
   if (dives === null) {
     return allDivesCard(<BackdropCardList placeholders={SKELETON_COUNT} />);
   }
-  // One part every dive was made on would only repeat over them the place and
-  // dates the trip's information card lists, so they keep the one card a trip
-  // with no parts has. Judged on the pages loaded so far: a dive outside the
-  // part on a later page brings the part's card back once it loads.
+  // A part's card is the one place its accommodation is named, so a trip of one
+  // part holding every dive has it too, though its place and dates repeat the
+  // hero's line above.
   const sections = tripDiveSections(dives, parts, { complete: !hasMore });
-  const oneCard =
-    parts.length === 0 ||
-    (parts.length === 1 &&
-      sections.every((section) => section.kind === "part"));
+  const oneCard = parts.length === 0;
   const foldable =
     sections.filter((section) => section.dives.length > 0).length > 1;
 
@@ -380,8 +376,7 @@ export function TripDiveSections({
   }
 
   if (oneCard) {
-    // With no part's card, a candidate's Add control names the trip, whose
-    // candidates are its one part's.
+    // With no part's card, a candidate's Add control names the trip.
     return (
       <div ref={containerRef}>
         {allDivesCard(
