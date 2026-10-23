@@ -51,7 +51,8 @@ const isCandidate = (dive: Dive) => dive.trip_uuid == null;
 
 // Where focus goes once an add has landed: the card that turned ordinary - its
 // menu, which now stands where the Add control did - or, for more than one
-// dive, the heading of the part the add was made from.
+// dive, the heading of the part the add was made from. An add made outside any
+// part's card has no heading to go to, and keeps to the card.
 type FocusTarget = { diveUuid: string | null; partIndex: number | null };
 
 function DiveList({
@@ -228,7 +229,7 @@ export function TripDiveSections({
       const added = await onAdd(scope, expected);
       if (added) {
         setFocusTarget({
-          diveUuid: extent === "dive" ? dive.uuid : null,
+          diveUuid: extent === "dive" || partIndex === null ? dive.uuid : null,
           partIndex,
         });
       }

@@ -276,6 +276,49 @@ describe("TripDiveSections", () => {
         ).toHaveFocus(),
       );
     });
+
+    it("keeps focus on the card it added from after adding every candidate", async () => {
+      let landed: () => void = () => {};
+      const onAdd = vi.fn(async () => {
+        landed();
+        return true;
+      });
+      const { rerender } = renderSections(
+        [
+          dive("late", "2026-04-07T09:00:00Z", null),
+          dive("early", "2026-04-04T09:00:00Z", null),
+        ],
+        [{ ...PARTS[0], candidate_count: 2 }],
+        { candidateCount: 2, onAdd },
+      );
+      landed = () =>
+        rerender(
+          <TripDiveSections
+            dives={[
+              dive("late", "2026-04-07T09:00:00Z"),
+              dive("early", "2026-04-04T09:00:00Z"),
+            ]}
+            hasMore={false}
+            loadFailed={false}
+            parts={[{ ...PARTS[0], candidate_count: 0 }]}
+            candidateCount={0}
+            newDiveHref="/dives/new?trip_uuid=trip-1"
+            onAdd={onAdd}
+          />,
+        );
+      await userEvent.click(
+        screen.getAllByRole("button", { name: "Add to trip: dive #400" })[1],
+      );
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: "Add all 2 unassigned dives" }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Actions for early" }),
+        ).toHaveFocus(),
+      );
+    });
   });
 
   describe("with candidates", () => {
