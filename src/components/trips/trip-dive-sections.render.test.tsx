@@ -158,6 +158,169 @@ describe("TripDiveSections", () => {
     );
   });
 
+  describe("with one part", () => {
+    const only = [PARTS[0]];
+
+    it("keeps the one card of every dive where the part holds them all", () => {
+      renderSections(
+        [
+          dive("late", "2026-04-07T09:00:00Z"),
+          dive("early", "2026-04-04T09:00:00Z"),
+        ],
+        only,
+      );
+      expect(
+        screen
+          .getAllByRole("heading", { level: 2 })
+          .map((heading) => heading.textContent),
+      ).toEqual(["Dives in This Trip"]);
+      expect(cardTexts()).toEqual(["late", "early"]);
+    });
+
+    it("draws the part's card where a dive falls outside it", () => {
+      renderSections(
+        [
+          dive("dahab", "2026-04-04T09:00:00Z"),
+          dive("before", "2026-04-01T09:00:00Z"),
+        ],
+        only,
+      );
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Dahab" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Dives in This Trip")).not.toBeInTheDocument();
+    });
+
+    it("offers to log a dive while it holds none", () => {
+      renderSections([], only);
+      expect(
+        screen.getByRole("link", { name: "Log a dive for this trip" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("No dives logged for this part yet"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("brings the part's card back once a later page holds a dive outside it", () => {
+      const loaded = [dive("dahab", "2026-04-04T09:00:00Z")];
+      const { rerender } = renderSections(loaded, only, { hasMore: true });
+      expect(screen.getByText("Dives in This Trip")).toBeInTheDocument();
+
+      rerender(
+        <TripDiveSections
+          dives={[...loaded, dive("before", "2026-04-01T09:00:00Z")]}
+          hasMore={false}
+          loadFailed={false}
+          parts={only}
+          candidateCount={0}
+          newDiveHref="/dives/new?trip_uuid=trip-1"
+          onAdd={vi.fn(async () => true)}
+        />,
+      );
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Dahab" }),
+      ).toBeInTheDocument();
+    });
+
+    it("offers the trip's candidates rather than a part no card names", async () => {
+      const onAdd = vi.fn(async () => false);
+      renderSections(
+        [
+          dive("own", "2026-04-05T09:00:00Z"),
+          dive("dahab", "2026-04-04T09:00:00Z", null),
+        ],
+        [{ ...PARTS[0], candidate_count: 4 }],
+        { candidateCount: 4, onAdd },
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add to trip: dive #400" }),
+      );
+      expect(
+        screen.getAllByRole("menuitem").map((item) => item.textContent),
+      ).toEqual(["Add this dive", "Add all 4 unassigned dives"]);
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: "Add all 4 unassigned dives" }),
+      );
+      expect(onAdd).toHaveBeenCalledWith({}, 4);
+    });
+
+    it("moves focus to the card's menu once the dive it added turns ordinary", async () => {
+      let landed: () => void = () => {};
+      const onAdd = vi.fn(async () => {
+        landed();
+        return true;
+      });
+      const { rerender } = renderSections(
+        [dive("dahab", "2026-04-04T09:00:00Z", null)],
+        only,
+        { candidateCount: 1, onAdd },
+      );
+      landed = () =>
+        rerender(
+          <TripDiveSections
+            dives={[dive("dahab", "2026-04-04T09:00:00Z")]}
+            hasMore={false}
+            loadFailed={false}
+            parts={only}
+            candidateCount={0}
+            newDiveHref="/dives/new?trip_uuid=trip-1"
+            onAdd={onAdd}
+          />,
+        );
+      screen.getByRole("button", { name: "Add to trip: dive #400" }).focus();
+      await userEvent.keyboard("{Enter}");
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Actions for dahab" }),
+        ).toHaveFocus(),
+      );
+    });
+
+    it("keeps focus on the card it added from after adding every candidate", async () => {
+      let landed: () => void = () => {};
+      const onAdd = vi.fn(async () => {
+        landed();
+        return true;
+      });
+      const { rerender } = renderSections(
+        [
+          dive("late", "2026-04-07T09:00:00Z", null),
+          dive("early", "2026-04-04T09:00:00Z", null),
+        ],
+        [{ ...PARTS[0], candidate_count: 2 }],
+        { candidateCount: 2, onAdd },
+      );
+      landed = () =>
+        rerender(
+          <TripDiveSections
+            dives={[
+              dive("late", "2026-04-07T09:00:00Z"),
+              dive("early", "2026-04-04T09:00:00Z"),
+            ]}
+            hasMore={false}
+            loadFailed={false}
+            parts={[{ ...PARTS[0], candidate_count: 0 }]}
+            candidateCount={0}
+            newDiveHref="/dives/new?trip_uuid=trip-1"
+            onAdd={onAdd}
+          />,
+        );
+      await userEvent.click(
+        screen.getAllByRole("button", { name: "Add to trip: dive #400" })[1],
+      );
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: "Add all 2 unassigned dives" }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Actions for early" }),
+        ).toHaveFocus(),
+      );
+    });
+  });
+
   describe("with candidates", () => {
     // Dahab holds four candidates and the trip nine, the rest on parts not
     // loaded here.
