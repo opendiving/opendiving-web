@@ -212,7 +212,31 @@ describe.each([
     // And the one use that shows your entries to somebody else, which the closure
     // below would otherwise deny.
     expect(uses).toMatch(/whoever holds a check-in link you made/i);
+    // And the retry records the app's creates leave behind.
+    expect(uses).toMatch(/Create things once:.*retry records/i);
     expect(screen.getByText(/And nothing else\./)).toBeInTheDocument();
+  });
+
+  // §7 counts the §2.2 records that expire on their own timer, a number that
+  // moves with §2.2's list but carries no list of its own to count against.
+  it("§7 counts the records in section 2.2 that expire on their own, and names each", async () => {
+    await renderPage({ google });
+
+    const expiring = screen.getByText(
+      /records in section 2\.2 expire on their own/,
+    );
+    expect(expiring).toHaveTextContent(
+      /^Three of the records in section 2\.2 expire on their own/,
+    );
+    const named = [...expiring.querySelectorAll("strong")].map(
+      (strong) => strong.textContent,
+    );
+    expect(named).toEqual([
+      "signed-in device’s session",
+      "account security events",
+      "retry record",
+    ]);
+    expect(expiring).toHaveTextContent(/about three\s+months/);
   });
 
   // Terms §5 promises any feature that shows entries to someone else a section of
@@ -748,7 +772,10 @@ describe("the map tiles", () => {
       /map pictures?|tiles this copy draws/i,
     );
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Four things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Five things sit outside those buttons/);
+    expect(rights).toHaveTextContent(
+      /two records in section 2\.2 are in neither, the account security events and the retry records/,
+    );
     expect(rights).toHaveTextContent(
       /The email address you sign in with, your username and the list of signed-in devices are in Settings but are not part of the export/,
     );
@@ -777,7 +804,7 @@ describe("the map tiles", () => {
 
     // §6.2: outside the export, and outside the deletion, because not yours.
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Five things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Six things sit outside those buttons/);
     expect(rights).toHaveTextContent(
       /The email address you sign in with, your username and the list of signed-in devices are in Settings but are not part of the export/,
     );
@@ -1140,6 +1167,40 @@ describe("the operator block", () => {
     await renderPage({ google: false, projectOperated: true });
 
     expect(screen.getByText(pointer)).toBeInTheDocument();
+  });
+});
+
+// The session's two windows and the grace on a spent cookie are API settings, so the
+// page quotes their defaults as "about" and says the operator can change them; what
+// is pinned is that each is quoted at all, which is what the next change to either
+// would otherwise leave stale.
+describe("the session's window and its rotation", () => {
+  it("§10.1 gives a browser about a week and the OpenDiving app about three months", async () => {
+    await renderPage({ google: false });
+
+    const window = screen.getByText(/It is single-use: each time it is spent/);
+    expect(window).toHaveTextContent(
+      /until about a week goes by without you using the app/,
+    );
+    expect(window).toHaveTextContent(
+      /The OpenDiving app on a phone asks for a longer window when it signs in, and stays signed in until about three months go by/,
+    );
+    expect(window).toHaveTextContent(/a browser is never given that one/);
+  });
+
+  it("answers a spent cookie presented again within about a minute as a retry, in §5 and §10.1", async () => {
+    await renderPage({ google: false });
+
+    expect(
+      screen.getByText(/The cookie that keeps you signed in is spent/),
+    ).toHaveTextContent(
+      /presented again within about a minute is answered as the retry it almost always is .* and past that it is treated as a stolen session/,
+    );
+    expect(
+      screen.getByText(/A spent cookie turning up again/),
+    ).toHaveTextContent(
+      /within about a minute is answered as the retry it almost always is, and past that is treated as a stolen session/,
+    );
   });
 });
 

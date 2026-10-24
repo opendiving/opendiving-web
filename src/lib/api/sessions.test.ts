@@ -19,6 +19,7 @@ const SESSION = {
   ip: "203.0.113.7",
   user_agent:
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+  idle_timeout: "standard",
   current: true,
 };
 

@@ -4983,12 +4983,13 @@ confirmation fires before the request, so the dialog never knows how many rows t
 
 ## Every closed list on the privacy page has a pin
 
-`app/privacy/page.test.tsx` pins every section whose prose closes a list: §2.2 ("Five things … all
-five") by list length plus the word in both places; §3, numberless, by both §2.2 records and the
-daily totals appearing among its purposes with "And nothing else." intact; §6.2's ordinals ("The
-first four", "The last two") by adding up to its list, plus the export carve-out; §6.1 by the entry
-that Settings signs a device out; §7's retention periods as figures, being API constants rather than
-operator settings.
+`app/privacy/page.test.tsx` pins every section whose prose closes a list: §2.2's opening count ("…
+things are recorded … and all …") by list length plus the word in both places; §3, numberless, by
+the §2.2 records and the daily totals appearing among its purposes with "And nothing else." intact;
+§6.2's ordinals ("The first four", "The last two") by adding up to its list, plus the export
+carve-out; §6.1 by the entry that Settings signs a device out; §7's count of the §2.2 records that
+expire on their own by the records it names in bold; §7's retention periods as figures, being API
+constants rather than operator settings.
 
 §2.2's account-security-events list has no pin: its authority is the API's `AuthEventType` enum,
 unreadable from here, so the entry claims completeness and the enum is what to re-read. An operator

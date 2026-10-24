@@ -4,9 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { SessionsCard } from "./sessions-card";
 
 // What only a render can reach: that the current row is marked and offers nothing
-// to revoke, that the two revoke paths are both gated on a confirmation, and that
-// the card removes itself where the API has no such routes. The three calls under
-// it are pinned in `lib/api/sessions.test.ts`, and the device labelling in
+// to revoke, that a session on the extended window is marked too, that the two
+// revoke paths are both gated on a confirmation, and that the card removes itself
+// where the API has no such routes. The three calls under it are pinned in `lib/api/sessions.test.ts`, and the device labelling in
 // `lib/passkey-name.test.ts`.
 //
 // `vi.hoisted` because `vi.mock` is lifted above every other statement in the
@@ -46,6 +46,7 @@ const thisDevice = () => ({
   last_used_at: "2026-08-29T14:12:00Z",
   ip: "203.0.113.7",
   user_agent: CHROME_MAC,
+  idle_timeout: "standard",
   current: true,
 });
 
@@ -55,6 +56,7 @@ const otherDevice = () => ({
   last_used_at: "2026-08-28T02:14:00Z",
   ip: "198.51.100.22",
   user_agent: FIREFOX_LINUX,
+  idle_timeout: "standard",
   current: false,
 });
 
@@ -64,6 +66,7 @@ const unlabelled = () => ({
   last_used_at: "2026-08-27T11:05:00Z",
   ip: "192.0.2.9",
   user_agent: "",
+  idle_timeout: "standard",
   current: false,
 });
 
@@ -131,6 +134,31 @@ describe("SessionsCard", () => {
     expect(
       screen.getByRole("button", { name: "Sign out Firefox on Linux" }),
     ).toBeInTheDocument();
+  });
+
+  // `extended` is the OpenDiving app's window, months where a browser's is a week,
+  // so a diver weighing a row they do not recognise is told it lingers.
+  it("marks a session on the extended window, and only that one", async () => {
+    mocks.getSessions.mockImplementation(async () => [
+      thisDevice(),
+      { ...otherDevice(), idle_timeout: "extended" },
+    ]);
+    render(<SessionsCard />);
+    await screen.findByText("Chrome on macOS");
+
+    expect(
+      within(row("Firefox on Linux")).getByText("Stays signed in longer"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Sign out Firefox on Linux" }),
+    ).toBeInTheDocument();
+  });
+
+  it("marks nothing on a session on the standard window", async () => {
+    render(<SessionsCard />);
+    await screen.findByText("Chrome on macOS");
+
+    expect(screen.queryByText("Stays signed in longer")).toBeNull();
   });
 
   // The API orders by last use, so a device used since this one comes back above it.

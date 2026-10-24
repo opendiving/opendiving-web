@@ -9,22 +9,28 @@ import { apiClient, type MessageResponse } from "./client";
  * row from calling the same browser two different things. It is the empty string
  * where the client sent no header at all.
  *
- * There is deliberately no expiry field. The window is a sliding one driven by
- * the operator's own refresh-token setting, so a date computed from it would
- * restate a setting as a fact; the privacy page says "about a week" for the same
- * reason. There is no revoked field either, because the list only ever contains
- * live rows.
+ * There is deliberately no expiry field. The window slides with use and its
+ * length is an operator setting, so a date computed from it would restate a
+ * setting as a fact; the privacy page says "about a week" and "about three
+ * months" for the same reason. `idle_timeout` says which of the two windows the
+ * session runs on instead: `extended` is what the OpenDiving app asks for at
+ * sign-in, and no browser ever gets it. There is no revoked field either,
+ * because the list only ever contains live rows.
  *
  * `current` is resolved from the requesting access token rather than from the
  * row, so it is the one field that varies by *credential* rather than by account
  * - which is why this response is never cached anywhere.
  */
+/** Which inactivity window a session runs on; see `UserSession`. */
+export type IdleTimeout = "standard" | "extended";
+
 export interface UserSession {
   uuid: string;
   created_at: string;
   last_used_at: string;
   ip: string;
   user_agent: string;
+  idle_timeout: IdleTimeout;
   current: boolean;
 }
 
