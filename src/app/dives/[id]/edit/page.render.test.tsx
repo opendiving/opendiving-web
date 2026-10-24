@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import EditDivePage from "./page";
 import { divesAPI, type Dive } from "@/lib/api/dives";
-import { diveConditions } from "@/test/dive-fixtures";
+import { conditionsLookup, diveConditions } from "@/test/dive-fixtures";
 
 // The seam here is one of the moments a value arrives from outside the diver's
 // typing: the edit form's own load. A dive that records notes has to show its
@@ -53,6 +53,7 @@ vi.mock("@/lib/api/dives", async (importOriginal) => {
       getDive: vi.fn(),
       updateDive: vi.fn(),
       deleteDiveFile: vi.fn(),
+      lookupConditions: vi.fn(),
     },
   };
 });
@@ -154,6 +155,10 @@ beforeEach(() => {
   vi.mocked(divesAPI.getDive).mockResolvedValue(storedDive());
   vi.mocked(divesAPI.updateDive).mockResolvedValue({ message: "ok" });
   vi.mocked(divesAPI.deleteDiveFile).mockResolvedValue({ message: "ok" });
+  // An instance that fetches no conditions, unless a test says otherwise.
+  vi.mocked(divesAPI.lookupConditions).mockRejectedValue({
+    response: { status: 404 },
+  });
   vi.mocked(authAPI.updateProfile).mockResolvedValue({ message: "ok" });
   vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([]);
   vi.mocked(tripsAPI.lookupTrips).mockResolvedValue(emptyPage());
@@ -277,6 +282,87 @@ describe("a dive whose conditions a weather service filled", () => {
     expect(
       screen.getByRole("link", { name: "Weather data by Open-Meteo.com" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("a dive's conditions while the form is open", () => {
+  it("fills an empty field on open, and saves it blank for the API to fill", async () => {
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ weather: "clear", waves: "calm" }),
+    );
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        waves: "rough",
+        entry_latitude: 28.5721,
+        entry_longitude: 34.5412,
+      }),
+    );
+    render(<EditDivePage />);
+
+    const weather = await screen.findByLabelText(/^weather/i);
+    await waitFor(() => expect(weather).toHaveValue("clear"));
+    expect(screen.getByLabelText(/^waves/i)).toHaveValue("rough");
+    expect(divesAPI.lookupConditions).toHaveBeenCalledWith({
+      start_time: "2026-07-01T09:30:00+02:00",
+      latitude: 28.5721,
+      longitude: 34.5412,
+    });
+
+    await saveChanges();
+    await waitFor(() => expect(divesAPI.updateDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.updateDive).mock.calls[0][1]).toMatchObject({
+      weather: null,
+      waves: "rough",
+    });
+  });
+
+  it("asks nothing while the stored fill describes the dive, and replaces it once the start time moves", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        air_temperature: 30,
+        weather: "clear",
+        waves: "rough",
+        conditions: diveConditions({
+          filled: { air_temperature: 30, weather: "clear", waves: "slight" },
+        }),
+      }),
+    );
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ air_temperature: 25, weather: "overcast" }),
+    );
+    render(<EditDivePage />);
+    const weather = await screen.findByLabelText(/^weather/i);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(divesAPI.lookupConditions).not.toHaveBeenCalled();
+
+    await userEvent.selectOptions(screen.getByLabelText("UTC offset"), "180");
+
+    await waitFor(() => expect(weather).toHaveValue("overcast"));
+    expect(
+      screen.getByRole("spinbutton", { name: /^air temperature/i }),
+    ).toHaveValue(25);
+    // The diver's, since it no longer holds what the fetch wrote.
+    expect(screen.getByLabelText(/^waves/i)).toHaveValue("rough");
+  });
+
+  it("empties a fetched field the new start time answers nothing for", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        weather: "clear",
+        conditions: diveConditions({
+          filled: { air_temperature: null, weather: "clear", waves: null },
+        }),
+      }),
+    );
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(conditionsLookup());
+    render(<EditDivePage />);
+    const weather = await screen.findByLabelText(/^weather/i);
+    expect(weather).toHaveValue("clear");
+
+    await userEvent.selectOptions(screen.getByLabelText("UTC offset"), "180");
+
+    await waitFor(() => expect(weather).toHaveValue(""));
+    expect(screen.queryByRole("link", { name: /open-meteo/i })).toBeNull();
   });
 });
 

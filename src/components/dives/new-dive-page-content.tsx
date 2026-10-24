@@ -23,6 +23,7 @@ import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { usePendingDiveFiles } from "@/components/dives/use-pending-dive-files";
 import { carriedVessel } from "@/lib/tank-vessel";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
+import { useDiveConditionsFill } from "@/hooks/useDiveConditionsFill";
 import { useDiveSitePrefill } from "@/hooks/useDiveSitePrefill";
 import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
 import { DiveForm } from "@/components/dives/dive-form";
@@ -108,6 +109,12 @@ function NewDiveForm() {
     enabled: prefillSettled,
   });
   useDivePickPrefill({ form, visibility, lastDivePeople });
+  // After the last dive's prefill too, for the same reason as the site's.
+  const conditions = useDiveConditionsFill({
+    form,
+    visibility,
+    enabled: prefillSettled,
+  });
 
   // The moment a value arrives from outside the diver's typing at mount: a trip,
   // dive site or course a page passed in the URL. A diver who clicked "Log a dive
@@ -382,7 +389,9 @@ function NewDiveForm() {
     try {
       setIsSubmitting(true);
 
-      const created = await divesAPI.createDive(buildDiveCreate(data));
+      const created = await divesAPI.createDive(
+        buildDiveCreate(conditions.withhold(data)),
+      );
 
       // The files wait for the dive, since `/dive/parse` stores nothing.
       await files.save(created.uuid, {
@@ -443,6 +452,7 @@ function NewDiveForm() {
           submitLabel="Log dive"
           fileList={files.fileList}
           diveNumberNotice={diveNumberNotice}
+          fetched={conditions.marks}
         />
       </div>
     </div>

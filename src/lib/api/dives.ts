@@ -518,6 +518,29 @@ export interface DiveConditions {
   };
 }
 
+/** What `lookupConditions` asks about: the dive form's inputs to a fetch. */
+export interface ConditionsLookupQuery {
+  start_time: string;
+  dive_site_uuid?: string;
+  // The dive's own entry fix, which wins over the site's pin.
+  latitude?: number;
+  longitude?: number;
+  water_type?: string;
+}
+
+/**
+ * What a fetch for those inputs would write into the dive's fields, each null
+ * where it would write nothing - every one of them when the inputs cannot be
+ * answered at all.
+ */
+export interface ConditionsLookup {
+  provider: string;
+  attribution: string;
+  at: string | null;
+  utc_offset_minutes: number | null;
+  filled: DiveConditions["filled"];
+}
+
 export interface Dive {
   uuid: string;
   dive_number: number;
@@ -1539,6 +1562,21 @@ export const divesAPI = {
       {
         params: { start_time: startTime },
       },
+    );
+    return response.data;
+  },
+
+  /**
+   * What the API's conditions fetch would fill for these inputs, without a stored
+   * dive - the dive form's preview. Writes nothing; a 404 means this instance does
+   * not fetch conditions (or predates the route).
+   */
+  async lookupConditions(
+    query: ConditionsLookupQuery,
+  ): Promise<ConditionsLookup> {
+    const response = await apiClient.get<ConditionsLookup>(
+      `/dive-conditions/lookup`,
+      { params: query },
     );
     return response.data;
   },

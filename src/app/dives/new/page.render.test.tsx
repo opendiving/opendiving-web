@@ -34,6 +34,7 @@ import {
   DIVE_FORM_FIELDS,
 } from "@/lib/dive-form-fields";
 import { clearEntryUnits } from "@/lib/entry-units";
+import { conditionsLookup } from "@/test/dive-fixtures";
 
 // Whole-page flows run close to both defaults on CI, where coverage instruments
 // every render of the full form: 5s a test, and 1s for a `waitFor` to see the
@@ -114,6 +115,7 @@ vi.mock("@/lib/api/dives", async (importOriginal) => {
       createDive: vi.fn(),
       getNextDiveNumber: vi.fn(),
       parseDiveFile: vi.fn(),
+      lookupConditions: vi.fn(),
     },
   };
 });
@@ -357,6 +359,10 @@ beforeEach(() => {
     is_taken: false,
   });
   vi.mocked(divesAPI.createDive).mockResolvedValue(storedDive());
+  // An instance that fetches no conditions, unless a test says otherwise.
+  vi.mocked(divesAPI.lookupConditions).mockRejectedValue({
+    response: { status: 404 },
+  });
   vi.mocked(tripsAPI.lookupTrips).mockResolvedValue(emptyPage());
   vi.mocked(tripsAPI.lookupTripsByUuid).mockImplementation(async (uuids) =>
     uuids.map((uuid) => ({ uuid, name: "Red Sea Week" })),
@@ -3486,4 +3492,63 @@ describe("the primary site's water, altitude and entry", () => {
       expect(sent.dive_site_uuids).toEqual(["site-lake"]);
     },
   );
+});
+
+describe("the day's conditions", () => {
+  it("fills them once the last dive's prefill lands, and logs them blank for the API to fill", async () => {
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ air_temperature: 27.5, weather: "clear" }),
+    );
+    render(<NewDivePage />);
+
+    const weather = await screen.findByLabelText(/^weather/i);
+    await waitFor(() => expect(weather).toHaveValue("clear"));
+    expect(weather).toHaveAccessibleName(/filled in from weather data/);
+    expect(
+      screen.getByRole("spinbutton", { name: /^air temperature/i }),
+    ).toHaveValue(27.5);
+    expect(screen.getByLabelText(/^waves/i)).toHaveValue("");
+    expect(
+      screen.getByRole("link", { name: "Weather data by Open-Meteo.com" }),
+    ).toBeInTheDocument();
+
+    fillRequiredFields();
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    const sent = vi.mocked(divesAPI.createDive).mock.calls[0][0];
+    expect(sent.weather).toBeUndefined();
+    expect(sent.air_temperature).toBeNull();
+  });
+
+  it("follows the start time, but keeps a value the diver picked", async () => {
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ air_temperature: 27.5, weather: "clear" }),
+    );
+    render(<NewDivePage />);
+    const weather = await screen.findByLabelText(/^weather/i);
+    await waitFor(() => expect(weather).toHaveValue("clear"));
+
+    await userEvent.selectOptions(weather, "rain");
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ air_temperature: 31, weather: "overcast" }),
+    );
+    await userEvent.selectOptions(screen.getByLabelText("UTC offset"), "-600");
+
+    const air = screen.getByRole("spinbutton", { name: /^air temperature/i });
+    await waitFor(() => expect(air).toHaveValue(31));
+    expect(weather).toHaveValue("rain");
+    expect(
+      vi.mocked(divesAPI.lookupConditions).mock.lastCall?.[0].start_time,
+    ).toMatch(/-10:00$/);
+  });
+
+  it("leaves the form alone on an instance that fetches none", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/^weather/i);
+    await waitFor(() => expect(divesAPI.lookupConditions).toHaveBeenCalled());
+
+    expect(screen.getByLabelText(/^weather/i)).toHaveValue("");
+    expect(screen.queryByRole("link", { name: /open-meteo/i })).toBeNull();
+  });
 });

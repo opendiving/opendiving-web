@@ -20,6 +20,7 @@ import {
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { usePendingDiveFiles } from "@/components/dives/use-pending-dive-files";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
+import { useDiveConditionsFill } from "@/hooks/useDiveConditionsFill";
 import { DiveForm } from "@/components/dives/dive-form";
 import { fetchedMarks } from "@/lib/dive-conditions";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
@@ -83,6 +84,16 @@ export function EditDivePageContent() {
     redirectTo: "/dives",
     onLoaded: resetFromDive,
   });
+  const conditions = useDiveConditionsFill({
+    form,
+    visibility,
+    enabled: !!dive,
+    stored: dive ? fetchedMarks(dive) : undefined,
+    position:
+      dive?.entry_latitude != null && dive.entry_longitude != null
+        ? { latitude: dive.entry_latitude, longitude: dive.entry_longitude }
+        : null,
+  });
   useDocumentTitle(
     dive ? `Edit Dive #${dive.dive_number}` : undefined,
     "Dives",
@@ -103,7 +114,7 @@ export function EditDivePageContent() {
     try {
       setIsSubmitting(true);
 
-      const updateData = buildDiveUpdate(data);
+      const updateData = buildDiveUpdate(conditions.withhold(data));
 
       await divesAPI.updateDive(diveId, updateData);
 
@@ -199,7 +210,7 @@ export function EditDivePageContent() {
           knownDiveSites={dive.dive_sites}
           knownGearItems={dive.gear_items}
           knownSpecies={dive.sightings}
-          fetched={fetchedMarks(dive)}
+          fetched={conditions.marks}
         />
       </div>
     </div>
