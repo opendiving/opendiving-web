@@ -113,7 +113,9 @@ export function DiveFormActions({
             {draft.status === "saved" ? "Saved" : "Save as draft"}
           </Button>
         )}
-        <Button type="submit" disabled={waiting}>
+        {/* Not while a draft save is in flight either: logging the form then would
+            race the save, and leave the draft it makes behind the dive. */}
+        <Button type="submit" disabled={waiting || draft?.status === "saving"}>
           {waiting && waitingLabel ? (
             <>
               <ButtonSpinner className="mr-2" />

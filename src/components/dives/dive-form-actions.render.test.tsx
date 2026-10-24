@@ -85,4 +85,28 @@ describe("DiveFormActions", () => {
       expect(root).not.toHaveAttribute("data-visual-viewport-short");
     });
   });
+
+  // Logging while the save is in flight would race it: on a fresh form the draft
+  // the save makes would be left behind the dive.
+  it("holds Log dive while a draft save is in flight", () => {
+    const actions = (status: "idle" | "saving" | "saved") => (
+      <DiveFormActions
+        cancelHref="/dives"
+        mode="create"
+        isSubmitting={false}
+        submittingLabel="Logging..."
+        submitLabel="Log dive"
+        draft={{ onSave: () => {}, status }}
+      />
+    );
+    const { rerender } = render(actions("saving"));
+    expect(screen.getByRole("button", { name: "Log dive" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save as draft" }),
+    ).toBeDisabled();
+
+    rerender(actions("saved"));
+    expect(screen.getByRole("button", { name: "Log dive" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Saved" })).toBeEnabled();
+  });
 });

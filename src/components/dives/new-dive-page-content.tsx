@@ -633,6 +633,7 @@ function NewDiveForm({ onDraftParam }: NewDiveFormProps) {
   }
 
   const onSubmit = async (data: DiveCreateInput) => {
+    if (savingDraftRef.current) return;
     try {
       setIsSubmitting(true);
 
