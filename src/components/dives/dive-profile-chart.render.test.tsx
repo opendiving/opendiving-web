@@ -1096,9 +1096,9 @@ describe("DiveProfileChart with every channel switched off", () => {
 describe("DiveProfileChart markers past the end of the recorded profile", () => {
   // The API clamps event times at zero and leaves the high end alone
   // (`shape_events`), so the chart clips. Undrawn, 6 000 s on a 3 000 s dive
-  // lands at 1304 in a 720-unit viewBox; 3 200 s lands at 716, which is inside the
-  // viewBox but in the right-hand axis-label gutter, aligned with no time on the
-  // axis.
+  // lands a whole plot's width past the viewBox; 3 200 s lands just past the
+  // plot's right edge, in the right-hand axis-label gutter or the card's padding,
+  // aligned with no time on the axis.
   const late = longProfile({
     events: [
       { time: 1_500_000, type: "bookmark" },
@@ -1116,7 +1116,7 @@ describe("DiveProfileChart markers past the end of the recorded profile", () => 
 
     expect(ticks).toHaveLength(1);
     expect(Number(ticks[0].getAttribute("x1"))).toBeLessThanOrEqual(
-      720 - 46, // WIDTH - PADDING.right, the plot's right edge
+      plotEdges(container).right,
     );
   });
 
