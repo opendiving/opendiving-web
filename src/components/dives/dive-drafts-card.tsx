@@ -9,7 +9,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { diveDraftsAPI, type DiveDraft } from "@/lib/api/dive-drafts";
 import { diveSitesAPI } from "@/lib/api/dive-sites";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { formatDateTime, formatDiveStartTime } from "@/lib/date-time";
 
 // The API's ceiling on a page. A diver keeps a handful of drafts at most, so one
@@ -79,13 +79,21 @@ export function DiveDraftsCard({ enabled, onVanished }: DiveDraftsCardProps) {
   const confirmDiscard = async () => {
     if (!pendingUuid) return;
     setIsDiscarding(true);
-    try {
-      await diveDraftsAPI.deleteDraft(pendingUuid);
+    const drop = () => {
       const remaining = drafts.filter((draft) => draft.uuid !== pendingUuid);
       if (remaining.length === 0) onVanished?.();
       setDrafts(remaining);
       setPendingUuid(null);
+    };
+    try {
+      await diveDraftsAPI.deleteDraft(pendingUuid);
+      drop();
     } catch (error) {
+      // Logged or discarded on another device meanwhile: gone, as asked.
+      if (getApiErrorStatus(error) === 404) {
+        drop();
+        return;
+      }
       toast({
         title: "Error",
         description: getApiErrorMessage(

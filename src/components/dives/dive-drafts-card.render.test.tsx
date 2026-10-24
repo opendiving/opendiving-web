@@ -110,4 +110,28 @@ describe("DiveDraftsCard", () => {
     await waitFor(() => expect(container).toBeEmptyDOMElement());
     expect(onVanished).toHaveBeenCalled();
   });
+
+  it("drops a draft that was already gone when discarded", async () => {
+    vi.mocked(diveDraftsAPI.getDrafts).mockResolvedValue(
+      page([draft("draft-1"), draft("draft-2")]),
+    );
+    vi.mocked(diveDraftsAPI.deleteDraft).mockRejectedValue({
+      response: { status: 404 },
+    });
+    render(<DiveDraftsCard enabled />);
+
+    await userEvent.click(
+      (await screen.findAllByRole("button", { name: /Discard/ }))[0],
+    );
+    await userEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Discard",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByRole("listitem")).toHaveLength(1),
+    );
+    expect(toast).not.toHaveBeenCalled();
+  });
 });
