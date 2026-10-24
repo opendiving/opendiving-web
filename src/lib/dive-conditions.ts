@@ -31,9 +31,9 @@ export function fetchedFields(
 }
 
 /**
- * The fields a weather service filled on the stored dive, each with the value it
- * wrote, and the credit its licence asks for wherever one is shown - what a form
- * editing the dive marks.
+ * The fields a weather service filled, on the stored dive or in a form's preview,
+ * each with the value it wrote, and the credit its licence asks for wherever one is
+ * shown - what a dive form marks.
  */
 export interface FetchedMarks {
   values: Readonly<Record<string, unknown>>;

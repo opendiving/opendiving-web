@@ -57,7 +57,7 @@ export interface DiveFormProps<TFieldValues extends DiveFormValues> {
   knownSpecies?: SpeciesSummary[];
   // Note shown under the dive number - see `DiveFormFields`.
   diveNumberNotice?: { forValue: number; message: string } | null;
-  // The stored dive's fields a weather service filled, when editing.
+  // The fields a weather service filled or the form previews - `useDiveConditionsFill`.
   fetched?: FetchedMarks;
 }
 
