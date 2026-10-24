@@ -1349,7 +1349,8 @@ export default async function PrivacyPage() {
                 <li>
                   <strong>Portability:</strong> Export your data in a common
                   format &mdash; and read it back into another copy of this app,
-                  which is the half that makes the format worth having
+                  which is the half that makes the format worth having. Your
+                  dive drafts ride in the full archive but are not read back
                 </li>
                 <li>
                   <strong>Objection:</strong> Object to certain processing of

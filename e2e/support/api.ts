@@ -177,6 +177,8 @@ function respond(method: string, path: string): unknown | undefined {
   // What each card's and page head's map asks before drawing anything.
   if (path === "/config") return CONFIG;
   if (path === "/dives/numbering") return NUMBERING;
+  // The Dives page's drafts card, which draws nothing for an account with none.
+  if (path === "/dive-drafts") return page1([]);
   if (path === "/dives") return page1([DIVE_A, DIVE_B]);
   if (path === "/gear-items") return page1([GEAR_ITEM]);
   // What a gear picker lists, a tank's cylinder picker included.
