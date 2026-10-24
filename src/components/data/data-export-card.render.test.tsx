@@ -101,7 +101,9 @@ describe("DataExportCard", () => {
   it("says the drafts are in the archive and not in the DiveJSON", () => {
     render(<DataExportCard username="alex" />);
 
-    expect(screen.getByText(/Your whole logbook in one file/)).toHaveTextContent(
+    expect(
+      screen.getByText(/Your whole logbook in one file/),
+    ).toHaveTextContent(
       /Everything in the account except your dive drafts and the uploaded files/,
     );
     expect(screen.getByText(/Everything, as a zip/)).toHaveTextContent(

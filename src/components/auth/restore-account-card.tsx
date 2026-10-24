@@ -71,8 +71,9 @@ export function RestoreAccountCard() {
           was deleted, and nothing has been erased yet.{" "}
           {purgeOn ? (
             <>
-              Your dives, dive drafts, dive sites, trips, courses, certifications, gear,
-              contacts, people and tags are erased for good on{" "}
+              Your dives, dive drafts, dive sites, trips, courses,
+              certifications, gear, contacts, people and tags are erased for
+              good on{" "}
               <span className="font-medium text-foreground">
                 {formatPurgeDay(purgeOn)}
               </span>

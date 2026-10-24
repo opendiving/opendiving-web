@@ -70,9 +70,9 @@ describe("DeleteAccountCard", () => {
     );
 
     await openDialog();
-    expect(screen.getByText(/This erases your whole logbook/)).toHaveTextContent(
-      /every dive and its profile, your dive drafts,/,
-    );
+    expect(
+      screen.getByText(/This erases your whole logbook/),
+    ).toHaveTextContent(/every dive and its profile, your dive drafts,/);
   });
 
   it("keeps the confirm button blocked until the username is typed back", async () => {

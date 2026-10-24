@@ -369,11 +369,10 @@ export default async function TermsPage() {
               </h2>
               <p className="text-foreground mb-4">
                 What you enter into this copy &mdash; dives, dive drafts, sites,
-                trips, gear,
-                courses, certifications, contacts, people, tags, your check-in
-                details, notes, and the files you import &mdash; is yours, and
-                you are responsible for it. You agree not to use this copy to
-                hold or send:
+                trips, gear, courses, certifications, contacts, people, tags,
+                your check-in details, notes, and the files you import &mdash;
+                is yours, and you are responsible for it. You agree not to use
+                this copy to hold or send:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>

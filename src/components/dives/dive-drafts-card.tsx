@@ -4,12 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { FilePen, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { diveDraftsAPI, type DiveDraft } from "@/lib/api/dive-drafts";

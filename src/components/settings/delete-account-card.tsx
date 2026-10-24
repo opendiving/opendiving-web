@@ -170,11 +170,11 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
           <h3 className="font-medium text-foreground mb-2">Delete Account</h3>
           <p className="text-sm text-muted-foreground mb-3">
             Deleting locks you out straight away, on this device and every other
-            one. Your dives, dive drafts, dive sites, trips, courses, certifications, gear,
-            contacts, people, tags and profile are then erased for good once
-            this instance&apos;s grace period runs out. We&apos;ll email you the
-            exact date; nothing is erased before it, and signing in again before
-            then brings the account back.
+            one. Your dives, dive drafts, dive sites, trips, courses,
+            certifications, gear, contacts, people, tags and profile are then
+            erased for good once this instance&apos;s grace period runs out.
+            We&apos;ll email you the exact date; nothing is erased before it,
+            and signing in again before then brings the account back.
           </p>
           <Button variant="destructive" size="sm" onClick={openConfirm}>
             Delete my account

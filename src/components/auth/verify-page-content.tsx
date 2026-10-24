@@ -229,8 +229,8 @@ function VerifyStatus({
                   {purgeOn ? (
                     <>
                       Restoring signs you in and brings back your dives, dive
-                      drafts, dive sites, trips, courses, certifications, gear, contacts,
-                      people and tags. After{" "}
+                      drafts, dive sites, trips, courses, certifications, gear,
+                      contacts, people and tags. After{" "}
                       <span className="font-medium text-foreground">
                         {formatPurgeDay(purgeOn)}
                       </span>{" "}

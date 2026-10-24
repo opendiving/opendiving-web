@@ -255,10 +255,10 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   <strong>Dive Drafts:</strong> A dive you save before logging
-                  it, here or in the OpenDiving app &mdash; whatever of the
-                  dive log above it holds so far, and on the app the gear set
-                  you loaded and the items you ticked off it. A draft is kept
-                  until you log it, which makes it a dive, or discard it
+                  it, here or in the OpenDiving app &mdash; whatever of the dive
+                  log above it holds so far, and on the app the gear set you
+                  loaded and the items you ticked off it. A draft is kept until
+                  you log it, which makes it a dive, or discard it
                 </li>
                 <li>
                   <strong>Dive-Computer Files:</strong> When you fill a dive in
@@ -537,12 +537,12 @@ export default async function PrivacyPage() {
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
                   <strong>Provide the Service:</strong> Store your dives, dive
-                  drafts, sites, trips, gear, courses, certifications, contacts, people, tags
-                  and check-in details, show them back to you, show you the
-                  current username of an account you linked a person to, show
-                  your check-in page to whoever holds a check-in link you made,
-                  and, where this copy is invite-only, show your name to whoever
-                  opens your invite link
+                  drafts, sites, trips, gear, courses, certifications, contacts,
+                  people, tags and check-in details, show them back to you, show
+                  you the current username of an account you linked a person to,
+                  show your check-in page to whoever holds a check-in link you
+                  made, and, where this copy is invite-only, show your name to
+                  whoever opens your invite link
                 </li>
                 <li>
                   <strong>Account Management:</strong> Sign you in, keep you
@@ -1593,10 +1593,9 @@ export default async function PrivacyPage() {
                 <li>
                   The deletion is not a flag or an archive: the account row and
                   everything hanging off it &mdash; dives, dive drafts, sites,
-                  trips, gear,
-                  courses, certifications, contacts, people, tags &mdash; are
-                  destroyed, and the files you uploaded are unlinked from disk
-                  with them
+                  trips, gear, courses, certifications, contacts, people, tags
+                  &mdash; are destroyed, and the files you uploaded are unlinked
+                  from disk with them
                 </li>
                 <li>
                   Any invitations you sent go with it, used or not, and so does

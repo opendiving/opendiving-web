@@ -84,9 +84,9 @@ function GoodbyeContent({ purgeAfter }: { purgeAfter: string | null }) {
                 purgeOn ? (
                   <>
                     You&apos;re signed out everywhere, and nothing has been
-                    erased yet. Your dives, dive drafts, dive sites, trips, courses,
-                    certifications, gear, contacts, people and tags will be
-                    permanently erased on{" "}
+                    erased yet. Your dives, dive drafts, dive sites, trips,
+                    courses, certifications, gear, contacts, people and tags
+                    will be permanently erased on{" "}
                     <span className="font-medium text-foreground">
                       {formatPurgeDay(purgeOn)}
                     </span>

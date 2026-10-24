@@ -115,9 +115,7 @@ export function DivesPageContent() {
         onFiltersOpened={() => setWantsTags(true)}
         tags={tags ?? undefined}
         headingRef={headingRef}
-        drafts={
-          <DiveDraftsCard enabled={!!user} onVanished={focusHeading} />
-        }
+        drafts={<DiveDraftsCard enabled={!!user} onVanished={focusHeading} />}
         numbering={
           <DiveNumberingCard
             enabled={!!user}
