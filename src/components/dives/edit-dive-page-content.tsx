@@ -89,6 +89,7 @@ export function EditDivePageContent() {
     visibility,
     enabled: !!dive,
     stored: dive ? fetchedMarks(dive) : undefined,
+    fetchedOnOpen: dive?.conditions != null,
     position:
       dive?.entry_latitude != null && dive.entry_longitude != null
         ? { latitude: dive.entry_latitude, longitude: dive.entry_longitude }

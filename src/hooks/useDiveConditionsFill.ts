@@ -48,6 +48,12 @@ export interface UseDiveConditionsFillOptions<
   enabled: boolean;
   /** The edit form's stored fill, which describes the inputs the dive opened with. */
   stored?: FetchedMarks;
+  /**
+   * Whether the edited dive has a fetch of its own. The worker never asks again for
+   * the inputs it answered, so at those inputs the fetch is the whole answer: a field
+   * it left empty stays empty after a save, and is not previewed.
+   */
+  fetchedOnOpen?: boolean;
   /** The dive's own entry fix, which a fetch places the dive at over its site's pin. */
   position?: { latitude: number; longitude: number } | null;
 }
@@ -72,18 +78,19 @@ export interface DiveConditionsFill {
  * A field is filled while it is empty, and refilled - or emptied, where the new
  * inputs answer nothing - while it still holds the value a fetch put there and the
  * inputs have moved since. A value the diver typed or picked is never replaced, and
- * a hidden field is left alone. On the edit form the stored fill describes the
- * inputs the dive opened with, so until they change only empty fields are asked
- * about.
+ * a hidden field is left alone. On the edit form a stored fetch is the answer for
+ * the inputs the dive opened with, and nothing is asked about them.
  *
  * A preview only: what it writes is withheld on submit (`withhold`), and the
- * API's worker writes the same values after the save.
+ * API's worker writes the same values after the save - which is why it only ever
+ * shows what that worker would write.
  */
 export function useDiveConditionsFill<TFieldValues extends FieldValues>({
   form,
   visibility,
   enabled,
   stored,
+  fetchedOnOpen = false,
   position,
 }: UseDiveConditionsFillOptions<TFieldValues>): DiveConditionsFill {
   const { control, getValues } = form;
@@ -127,6 +134,7 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
   const ownedRef = useRef<Owned>({});
   const attributionRef = useRef("");
   const describedRef = useRef<string | null | undefined>(undefined);
+  const openedRef = useRef<{ inputs: string; fill: Owned } | null>(null);
   // Bumped per request, so a reply for earlier inputs never lands.
   const requestRef = useRef(0);
   const visibilityRef = useRef(visibility);
@@ -156,7 +164,17 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
       }
       ownedRef.current = seeded;
       attributionRef.current = stored?.attribution ?? "";
+      openedRef.current = { inputs, fill: seeded };
     }
+
+    // What these inputs answer without asking: nothing where the API would have
+    // nothing to say, and the dive's own fetch at the inputs it describes.
+    const opened = openedRef.current;
+    const known: ConditionsLookup["filled"] | null = !answerable
+      ? NOTHING_FILLED
+      : fetchedOnOpen && opened?.inputs === inputs
+        ? ({ ...NOTHING_FILLED, ...opened.fill } as ConditionsLookup["filled"])
+        : null;
 
     const fillable = (field: FetchedField) => {
       if (!visibilityRef.current.isVisible(field)) return false;
@@ -166,15 +184,20 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
         inputs !== describedRef.current && value === ownedRef.current[field]
       );
     };
-    // Unanswerable inputs only ever empty a field a fetch filled.
-    const due = (field: FetchedField) =>
-      fillable(field) && (answerable || isNonEmptyFieldValue(holds(field)));
+    const due = (field: FetchedField) => {
+      if (!fillable(field)) return false;
+      if (known === null) return true;
+      const value = holds(field);
+      return isNonEmptyFieldValue(value)
+        ? value !== known[field]
+        : known[field] != null;
+    };
     if (!FETCHED_FIELDS.some(due)) return;
 
     const timer = setTimeout(async () => {
-      let filled: ConditionsLookup["filled"] = NOTHING_FILLED;
+      let filled = known ?? NOTHING_FILLED;
       try {
-        if (answerable) {
+        if (known === null) {
           const answer = await divesAPI.lookupConditions(query);
           filled = answer.filled;
           attributionRef.current = answer.attribution;
@@ -212,8 +235,8 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
     }, LOOKUP_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-    // `query` and `answerable` are `inputs` parsed, and `stored` is read once, when
-    // the form opens.
+    // `query` and `answerable` are `inputs` parsed, and `stored` and `fetchedOnOpen`
+    // are read once, when the form opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, inputs, holds]);
 

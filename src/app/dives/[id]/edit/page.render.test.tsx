@@ -347,6 +347,35 @@ describe("a dive's conditions while the form is open", () => {
     expect(screen.getByLabelText(/^waves/i)).toHaveValue("rough");
   });
 
+  it("previews nothing the dive's own fetch left empty, at the inputs it answered", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        entry_latitude: 28.5721,
+        entry_longitude: 34.5412,
+        // Filled by the fetch, then emptied by the diver: the worker never refills it.
+        conditions: diveConditions({
+          filled: { air_temperature: null, weather: "clear", waves: null },
+        }),
+      }),
+    );
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ weather: "overcast" }),
+    );
+    render(<EditDivePage />);
+    const weather = await screen.findByLabelText(/^weather/i);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(divesAPI.lookupConditions).not.toHaveBeenCalled();
+    expect(weather).toHaveValue("");
+
+    const offset = screen.getByLabelText("UTC offset");
+    await userEvent.selectOptions(offset, "180");
+    await waitFor(() => expect(weather).toHaveValue("overcast"));
+    await userEvent.selectOptions(offset, "120");
+
+    await waitFor(() => expect(weather).toHaveValue(""));
+    expect(divesAPI.lookupConditions).toHaveBeenCalledTimes(1);
+  });
+
   it("empties a fetched field the new start time cannot be answered for, without asking", async () => {
     vi.mocked(divesAPI.getDive).mockResolvedValue(
       storedDive({
