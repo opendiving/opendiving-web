@@ -193,6 +193,28 @@ describe("the Environment dialog on a dive with fetched conditions", () => {
     expect(screen.queryByText(/Open-Meteo/)).toBeNull();
   });
 
+  // The API keeps a fill it is sent a blank for, so the field would come back
+  // fetched after the save.
+  it("keeps the mark and the credit on a field the diver empties", async () => {
+    renderEnvironment(
+      storedDive({
+        air_temperature: 38.1,
+        conditions: diveConditions({
+          filled: { air_temperature: 38.1, weather: null, waves: null },
+        }),
+      }),
+    );
+
+    await userEvent.clear(
+      screen.getByRole("spinbutton", { name: /air temperature/i }),
+    );
+
+    expect(marked()).toHaveLength(1);
+    expect(
+      screen.getByRole("link", { name: "Weather data by Open-Meteo.com" }),
+    ).toBeInTheDocument();
+  });
+
   it("marks nothing on a dive with no conditions", () => {
     renderEnvironment(storedDive({ weather: "clear", conditions: null }));
 

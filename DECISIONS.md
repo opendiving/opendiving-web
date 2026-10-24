@@ -4379,7 +4379,7 @@ hedges in prose ("where this copy is invite-only"); the check-in links and linki
 unconditional because every copy offers them. §4.8's join-link paragraph alone comes and goes, with
 `join_links`: a copy without join links says nothing of them. `page.test.tsx` asserts §4.8 to §4.10
 always present and §4.11 present only when configured. `git grep '4\.11'` misses the page's and
-`lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.(9|1[01])'`.
+`lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.(9|1[012])'`.
 
 ## The ICO's `localStorage` suggestion, read and answered rather than passed over
 

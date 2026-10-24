@@ -10,6 +10,7 @@ import {
 import { FormLabelMarkContext } from "@/components/ui/form";
 import { Attribution } from "@/components/attribution";
 import { FETCHED_MARK_TITLE, type FetchedMarks } from "@/lib/dive-conditions";
+import { isNonEmptyFieldValue } from "@/lib/dive-form-fields";
 
 interface AutofilledMarksValue {
   control: unknown;
@@ -38,6 +39,11 @@ export function FetchedMark() {
   );
 }
 
+// Whether a field still stands as the fetch wrote it once saved: an emptied field
+// does, since the API keeps a fill it is sent a blank for.
+const keepsFetched = (value: unknown, written: unknown) =>
+  value === written || !isNonEmptyFieldValue(value);
+
 // Watches the one field it marks, so the dot goes the moment the diver picks
 // another value - which is what saving it would do to the stored mark.
 function FetchedFormMark({
@@ -50,7 +56,7 @@ function FetchedFormMark({
   written: unknown;
 }) {
   const value = useWatch({ control: marks.control as Control, name });
-  if (value === written) return <FetchedMark />;
+  if (keepsFetched(value, written)) return <FetchedMark />;
   return marks.isAutofilled(name) ? <AutofilledDot /> : null;
 }
 
@@ -98,7 +104,11 @@ function FetchedSourceLine({
 }) {
   const names = Object.keys(fetched.values);
   const values = useWatch({ control, name: names }) as unknown[];
-  if (!names.some((name, index) => values[index] === fetched.values[name])) {
+  if (
+    !names.some((name, index) =>
+      keepsFetched(values[index], fetched.values[name]),
+    )
+  ) {
     return null;
   }
   return (
