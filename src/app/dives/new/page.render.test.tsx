@@ -3495,6 +3495,13 @@ describe("the primary site's water, altitude and entry", () => {
 });
 
 describe("the day's conditions", () => {
+  beforeEach(() => {
+    stable.searchParams = new URLSearchParams("dive_site_uuid=site-reef");
+    vi.mocked(diveSitesAPI.lookupDiveSitesByUuid).mockResolvedValue([
+      { uuid: "site-reef", name: "Tiger Reef" },
+    ]);
+  });
+
   it("fills them once the last dive's prefill lands, and logs them blank for the API to fill", async () => {
     vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
       conditionsLookup({ air_temperature: 27.5, weather: "clear" }),
@@ -3541,6 +3548,32 @@ describe("the day's conditions", () => {
     expect(
       vi.mocked(divesAPI.lookupConditions).mock.lastCall?.[0].start_time,
     ).toMatch(/-10:00$/);
+  });
+
+  it("asks nothing while no site places the dive, and empties what it filled once the site goes", async () => {
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ weather: "clear" }),
+    );
+    render(<NewDivePage />);
+    const weather = await screen.findByLabelText(/^weather/i);
+    await waitFor(() => expect(weather).toHaveValue("clear"));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Tiger Reef" }),
+    );
+
+    await waitFor(() => expect(weather).toHaveValue(""));
+    expect(divesAPI.lookupConditions).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("link", { name: /open-meteo/i })).toBeNull();
+  });
+
+  it("asks nothing for a form with no site", async () => {
+    stable.searchParams = new URLSearchParams();
+    render(<NewDivePage />);
+    await screen.findByLabelText(/^weather/i);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(divesAPI.lookupConditions).not.toHaveBeenCalled();
   });
 
   it("leaves the form alone on an instance that fetches none", async () => {

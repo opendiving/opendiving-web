@@ -7,8 +7,13 @@ import {
   type Path,
   type UseFormReturn,
 } from "react-hook-form";
-import { divesAPI, type ConditionsLookupQuery } from "@/lib/api/dives";
+import {
+  divesAPI,
+  type ConditionsLookup,
+  type ConditionsLookupQuery,
+} from "@/lib/api/dives";
 import { getApiErrorStatus } from "@/lib/api/error";
+import { isDateOnlyStartTime } from "@/lib/date-time";
 import {
   FETCHED_FIELDS,
   type FetchedField,
@@ -26,6 +31,12 @@ import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 const LOOKUP_DEBOUNCE_MS = 400;
 
 type Owned = Partial<Record<FetchedField, number | string>>;
+
+const NOTHING_FILLED = {
+  air_temperature: null,
+  weather: null,
+  waves: null,
+} as const;
 
 /** What `useDiveConditionsFill` takes. */
 export interface UseDiveConditionsFillOptions<
@@ -101,6 +112,12 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
         }
       : null;
   const inputs = query ? JSON.stringify(query) : null;
+  // What the API would answer with nothing for, so it is not asked: no place to
+  // ask about, or no hour of the day.
+  const answerable =
+    !!query &&
+    (query.dive_site_uuid !== undefined || query.latitude !== undefined) &&
+    !isDateOnlyStartTime(query.start_time);
 
   // Null until a lookup lands, and the stored fill is what the form marks until then.
   const [answered, setAnswered] = useState<{
@@ -108,6 +125,7 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
   } | null>(null);
   // The value a fetch put in each field, and the inputs those values describe.
   const ownedRef = useRef<Owned>({});
+  const attributionRef = useRef("");
   const describedRef = useRef<string | null | undefined>(undefined);
   // Bumped per request, so a reply for earlier inputs never lands.
   const requestRef = useRef(0);
@@ -137,6 +155,7 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
         }
       }
       ownedRef.current = seeded;
+      attributionRef.current = stored?.attribution ?? "";
     }
 
     const fillable = (field: FetchedField) => {
@@ -147,12 +166,19 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
         inputs !== describedRef.current && value === ownedRef.current[field]
       );
     };
-    if (!FETCHED_FIELDS.some(fillable)) return;
+    // Unanswerable inputs only ever empty a field a fetch filled.
+    const due = (field: FetchedField) =>
+      fillable(field) && (answerable || isNonEmptyFieldValue(holds(field)));
+    if (!FETCHED_FIELDS.some(due)) return;
 
     const timer = setTimeout(async () => {
-      let answer;
+      let filled: ConditionsLookup["filled"] = NOTHING_FILLED;
       try {
-        answer = await divesAPI.lookupConditions(query);
+        if (answerable) {
+          const answer = await divesAPI.lookupConditions(query);
+          filled = answer.filled;
+          attributionRef.current = answer.attribution;
+        }
       } catch (error) {
         // Non-fatal, and the fields keep what they hold. A 404 is an instance that
         // does not fetch conditions, which is not worth a line in the console.
@@ -167,7 +193,7 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
       const owned: Owned = { ...ownedRef.current };
       for (const field of FETCHED_FIELDS) {
         if (!fillable(field)) continue;
-        const value = answer.filled[field];
+        const value = filled[field];
         visibilityRef.current.overwrite(
           field,
           value ?? EMPTY_DIVE_FORM_VALUES[field],
@@ -180,13 +206,14 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
       setAnswered({
         marks:
           Object.keys(owned).length > 0
-            ? { values: owned, attribution: answer.attribution }
+            ? { values: owned, attribution: attributionRef.current }
             : undefined,
       });
     }, LOOKUP_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-    // `query` is `inputs` parsed, and `stored` is read once, when the form opens.
+    // `query` and `answerable` are `inputs` parsed, and `stored` is read once, when
+    // the form opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, inputs, holds]);
 

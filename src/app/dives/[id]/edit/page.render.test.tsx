@@ -322,6 +322,8 @@ describe("a dive's conditions while the form is open", () => {
         air_temperature: 30,
         weather: "clear",
         waves: "rough",
+        entry_latitude: 28.5721,
+        entry_longitude: 34.5412,
         conditions: diveConditions({
           filled: { air_temperature: 30, weather: "clear", waves: "slight" },
         }),
@@ -345,7 +347,7 @@ describe("a dive's conditions while the form is open", () => {
     expect(screen.getByLabelText(/^waves/i)).toHaveValue("rough");
   });
 
-  it("empties a fetched field the new start time answers nothing for", async () => {
+  it("empties a fetched field the new start time cannot be answered for, without asking", async () => {
     vi.mocked(divesAPI.getDive).mockResolvedValue(
       storedDive({
         weather: "clear",
@@ -362,6 +364,7 @@ describe("a dive's conditions while the form is open", () => {
     await userEvent.selectOptions(screen.getByLabelText("UTC offset"), "180");
 
     await waitFor(() => expect(weather).toHaveValue(""));
+    expect(divesAPI.lookupConditions).not.toHaveBeenCalled();
     expect(screen.queryByRole("link", { name: /open-meteo/i })).toBeNull();
   });
 });
