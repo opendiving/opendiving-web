@@ -4371,14 +4371,15 @@ person, §4.11 Google sign-in — so a reword at the right number falsifies a pi
 privacy page is worse than a vague one.
 
 Conditional sections sit last. §4.11 exists only when `GOOGLE_CLIENT_ID` is set, so its absence
-leaves no gap. The invitations disclosure is unconditional — `REGISTRATION_MODE` flips with a
-restart, and a section that came and went would change under a reader for no stated reason — so it
-holds a fixed number and hedges in prose ("where this copy is invite-only"); the check-in links and
-linking sections are unconditional because every copy offers them. §4.8's join-link paragraph alone
-comes and goes, with `join_links`: a copy without join links says nothing of them. `page.test.tsx`
-asserts §4.8 to §4.10 always present and §4.11 present only when configured. `git grep '4\.11'`
-misses the page's and `lib/google-oauth.test.ts`'s regex literals; use
-`git grep -n -E '4\\?\.(9|1[01])'`.
+leaves no gap. The weather service's section follows it, present only where `/config` says the
+instance fetches dive conditions, and numbered 4.12 or 4.11 by whether Google's is there. The
+invitations disclosure is unconditional — `REGISTRATION_MODE` flips with a restart, and a section
+that came and went would change under a reader for no stated reason — so it holds a fixed number and
+hedges in prose ("where this copy is invite-only"); the check-in links and linking sections are
+unconditional because every copy offers them. §4.8's join-link paragraph alone comes and goes, with
+`join_links`: a copy without join links says nothing of them. `page.test.tsx` asserts §4.8 to §4.10
+always present and §4.11 present only when configured. `git grep '4\.11'` misses the page's and
+`lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.(9|1[012])'`.
 
 ## The ICO's `localStorage` suggestion, read and answered rather than passed over
 

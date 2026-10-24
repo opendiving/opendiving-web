@@ -40,11 +40,13 @@ async function renderPage({
   projectOperated = false,
   joinLinks = false,
   mapTiles = false,
+  diveConditions = false,
 }: {
   google: boolean;
   projectOperated?: boolean;
   joinLinks?: boolean;
   mapTiles?: boolean;
+  diveConditions?: boolean;
 }) {
   runtimeConfig.mockReturnValue({
     googleClientId: google ? "abc.apps.googleusercontent.com" : undefined,
@@ -53,6 +55,7 @@ async function renderPage({
     projectOperated,
     joinLinks,
     mapTiles,
+    diveConditions,
   });
   render(await PrivacyPage());
 }
@@ -919,6 +922,45 @@ describe("the Google half of the page", () => {
       ).toBeInTheDocument();
     },
   );
+});
+
+// The weather service is conditional like Google, and sits after it, so it takes
+// whichever number follows the last section this copy has.
+describe("the weather service", () => {
+  it("is not named where this copy fetches no conditions", async () => {
+    await renderPage({ google: true });
+
+    expect(screen.queryByText(/Weather at Your Dives/)).toBeNull();
+    expect(screen.queryByText(/Open-Meteo/)).toBeNull();
+  });
+
+  it.each([
+    [false, "4.11"],
+    [true, "4.12"],
+  ])(
+    "has a section of its own where it is asked, Google %s, numbered %s",
+    async (google, number) => {
+      await renderPage({ google, diveConditions: true });
+
+      expect(
+        screen.getByText(`${number} Weather at Your Dives`),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("says what is sent and what is not", async () => {
+    await renderPage({ google: false, diveConditions: true });
+
+    const heading = screen.getByText(/Weather at Your Dives/);
+    const sent = heading.nextElementSibling?.textContent ?? "";
+    expect(sent).toMatch(/rounded to about a kilometre/);
+    expect(sent).toMatch(/at most three days and never an hour/);
+    expect(sent).toMatch(/Nothing identifying you or the dive/);
+    expect(sent).toMatch(/cached/);
+    expect(
+      document.querySelector('a[href="https://open-meteo.com/"]'),
+    ).not.toBeNull();
+  });
 });
 
 // The operator block, and the invariant that matters more than anything in it: a copy

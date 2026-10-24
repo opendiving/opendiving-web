@@ -26,7 +26,12 @@ function answers(body: unknown, { ok = true, status = 200 } = {}) {
   });
 }
 
-const NONE = { projectOperated: false, joinLinks: false, mapTiles: false };
+const NONE = {
+  projectOperated: false,
+  joinLinks: false,
+  mapTiles: false,
+  diveConditions: false,
+};
 
 describe("readLegalPageConfig", () => {
   it("is true for each field only where the API said so", async () => {
@@ -35,11 +40,13 @@ describe("readLegalPageConfig", () => {
       project_operated: true,
       join_links: true,
       map_tiles: true,
+      dive_conditions: true,
     });
     await expect(readLegalPageConfig()).resolves.toEqual({
       projectOperated: true,
       joinLinks: true,
       mapTiles: true,
+      diveConditions: true,
     });
 
     answers({ project_operated: false, join_links: true, map_tiles: false });
@@ -47,6 +54,7 @@ describe("readLegalPageConfig", () => {
       projectOperated: false,
       joinLinks: true,
       mapTiles: false,
+      diveConditions: false,
     });
 
     answers({ project_operated: false, join_links: false, map_tiles: true });
@@ -54,6 +62,15 @@ describe("readLegalPageConfig", () => {
       projectOperated: false,
       joinLinks: false,
       mapTiles: true,
+      diveConditions: false,
+    });
+
+    answers({ project_operated: false, dive_conditions: true });
+    await expect(readLegalPageConfig()).resolves.toEqual({
+      projectOperated: false,
+      joinLinks: false,
+      mapTiles: false,
+      diveConditions: true,
     });
   });
 
@@ -67,12 +84,18 @@ describe("readLegalPageConfig", () => {
         project_operated: false,
         join_links: false,
         map_tiles: false,
+        dive_conditions: false,
       },
     ],
     ["the fields are absent", { registration_mode: "open" }],
     [
       "the fields are strings",
-      { project_operated: "true", join_links: "true", map_tiles: "true" },
+      {
+        project_operated: "true",
+        join_links: "true",
+        map_tiles: "true",
+        dive_conditions: "true",
+      },
     ],
   ])("is false for every field when %s", async (_label, body) => {
     answers(body);

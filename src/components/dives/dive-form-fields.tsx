@@ -85,6 +85,7 @@ import type {
 } from "@/lib/dive-form-fields";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveFormSection } from "@/components/dives/dive-form-section";
+import { FetchedSource } from "@/components/dives/autofilled-marks";
 
 // Freediving and snorkeling stay in the vocabulary, which a stored dive can hold,
 // but the form does not offer them yet.
@@ -725,6 +726,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 />
               )}
             </div>
+            <FetchedSource control={control} />
           </>,
         )}
 

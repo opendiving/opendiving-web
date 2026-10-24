@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveSectionDialog } from "./dive-section-dialog";
 import { divesAPI, type Dive } from "@/lib/api/dives";
+import { diveConditions } from "@/test/dive-fixtures";
 
 // The seam is the PATCH body: a card's dialog sends its section and nothing else,
 // whatever the rest of the dive holds. `user` is returned by identity - see the note
@@ -130,5 +131,94 @@ describe("a card's edit dialog", () => {
     ).toBeInTheDocument();
     expect(onSaved).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("the Environment dialog on a dive with fetched conditions", () => {
+  const filled = () =>
+    storedDive({
+      air_temperature: 38.1,
+      weather: "clear",
+      conditions: diveConditions({
+        filled: { air_temperature: 38.1, weather: "clear", waves: null },
+      }),
+    });
+
+  const renderEnvironment = (dive: Dive) =>
+    render(
+      <DiveSectionDialog
+        open
+        onOpenChange={vi.fn()}
+        dive={dive}
+        section="Environment"
+        onSaved={vi.fn()}
+      />,
+    );
+
+  const marked = () =>
+    [...document.querySelectorAll('[title^="Filled in from weather data"]')]
+      .map((mark) => mark.closest("label")?.childNodes[0]?.textContent ?? "")
+      .map((text) => text.trim());
+
+  it("marks the fetched fields and credits the service", () => {
+    renderEnvironment(filled());
+
+    expect(marked()).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^Weather/),
+        expect.stringMatching(/^Air temperature/),
+      ]),
+    );
+    expect(marked()).toHaveLength(2);
+    expect(
+      screen.getByRole("link", { name: "Weather data by Open-Meteo.com" }),
+    ).toBeInTheDocument();
+  });
+
+  it("takes the mark off a field the diver changes, and the credit with the last", async () => {
+    renderEnvironment(
+      storedDive({
+        air_temperature: 38.1,
+        conditions: diveConditions({
+          filled: { air_temperature: 38.1, weather: null, waves: null },
+        }),
+      }),
+    );
+
+    const air = screen.getByRole("spinbutton", { name: /air temperature/i });
+    await userEvent.clear(air);
+    await userEvent.type(air, "30");
+
+    expect(marked()).toHaveLength(0);
+    expect(screen.queryByText(/Open-Meteo/)).toBeNull();
+  });
+
+  // The API keeps a fill it is sent a blank for, so the field would come back
+  // fetched after the save.
+  it("keeps the mark and the credit on a field the diver empties", async () => {
+    renderEnvironment(
+      storedDive({
+        air_temperature: 38.1,
+        conditions: diveConditions({
+          filled: { air_temperature: 38.1, weather: null, waves: null },
+        }),
+      }),
+    );
+
+    await userEvent.clear(
+      screen.getByRole("spinbutton", { name: /air temperature/i }),
+    );
+
+    expect(marked()).toHaveLength(1);
+    expect(
+      screen.getByRole("link", { name: "Weather data by Open-Meteo.com" }),
+    ).toBeInTheDocument();
+  });
+
+  it("marks nothing on a dive with no conditions", () => {
+    renderEnvironment(storedDive({ weather: "clear", conditions: null }));
+
+    expect(marked()).toHaveLength(0);
+    expect(screen.queryByText(/Open-Meteo/)).toBeNull();
   });
 });

@@ -162,6 +162,7 @@ describe("SettingsNav", () => {
       project_operated: true,
       join_links: false,
       map_tiles: false,
+      dive_conditions: false,
     };
     render(<SettingsNav />);
 
@@ -182,6 +183,7 @@ describe("SettingsNav", () => {
       project_operated: false,
       join_links: false,
       map_tiles: false,
+      dive_conditions: false,
     };
     render(<SettingsNav />);
 

@@ -29,12 +29,15 @@ export interface LegalPageConfig {
   joinLinks: boolean;
   /** Whether this instance's server draws the map tiles its cards and page heads show. */
   mapTiles: boolean;
+  /** Whether this instance fetches dives' surface conditions from a weather service. */
+  diveConditions: boolean;
 }
 
 const NONE: LegalPageConfig = {
   projectOperated: false,
   joinLinks: false,
   mapTiles: false,
+  diveConditions: false,
 };
 
 /**
@@ -46,7 +49,8 @@ const NONE: LegalPageConfig = {
  * gets the wrong answer in that direction is a project-run one that reads like any other
  * instance, which costs nothing. Wrong in the other direction is a self-hoster's privacy
  * policy naming a person who has never touched their machine, describing join links
- * nobody set up, or saying their server draws maps it cannot.
+ * nobody set up, or saying their server draws maps or asks a weather service when it
+ * does not.
  *
  * That is also what keeps a self-hosted copy whose API is down rendering its legal pages
  * unchanged rather than failing: there is no error path out of here, only `false`.
@@ -75,7 +79,7 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
     if (!response.ok) {
       console.warn(
         `[instance-config] GET /config answered ${response.status}; ` +
-          `reading this instance as not project-operated, without join links or map tiles.`,
+          `reading this instance as not project-operated, without join links, map tiles or surface conditions.`,
       );
       return NONE;
     }
@@ -85,11 +89,12 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
       projectOperated: config.project_operated === true,
       joinLinks: config.join_links === true,
       mapTiles: config.map_tiles === true,
+      diveConditions: config.dive_conditions === true,
     };
   } catch (error: unknown) {
     console.warn(
       "[instance-config] Couldn't read this instance's configuration; " +
-        "reading it as not project-operated, without join links or map tiles.",
+        "reading it as not project-operated, without join links, map tiles or surface conditions.",
       error,
     );
     return NONE;

@@ -41,6 +41,12 @@ export interface InstanceConfig {
    * server, to say who fetches the basemap for those maps.
    */
   map_tiles: boolean;
+  /**
+   * Whether this instance fetches dives' surface conditions from a weather
+   * service. `/privacy` reads it from the server, to disclose that service only
+   * where it is asked.
+   */
+  dive_conditions: boolean;
 }
 
 /** One live join link: the slug its address carries, and the name it is shown by. */
@@ -80,7 +86,8 @@ export const JOIN_CHANNEL_SLUG = /^[a-z0-9-]{1,32}$/;
  * Anonymous by design, and not a leak: the landing page discloses the first two
  * anyway, the mode by which form it then shows and the operator by how that form
  * reads, and `/privacy` discloses `join_links` by whether its join-link paragraph
- * is there and `map_tiles` by whether a card shows a map at all.
+ * is there, `map_tiles` by whether a card shows a map at all and `dive_conditions`
+ * by whether a dive page credits a weather service.
  */
 export const configAPI = {
   /**

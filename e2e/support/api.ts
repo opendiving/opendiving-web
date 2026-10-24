@@ -105,6 +105,7 @@ const CONFIG: InstanceConfig = {
   project_operated: false,
   join_links: false,
   map_tiles: false,
+  dive_conditions: false,
 };
 
 const CHECKIN_DETAILS: CheckinDetails = {

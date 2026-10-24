@@ -24,6 +24,8 @@ import {
 } from "@/lib/validations/dive";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveFormFields } from "@/components/dives/dive-form-fields";
+import { AutofilledMarks } from "@/components/dives/autofilled-marks";
+import { fetchedMarks } from "@/lib/dive-conditions";
 import { diveTitleText } from "@/components/dives/dive-title";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { Button } from "@/components/ui/button";
@@ -51,6 +53,7 @@ export type DiveCardSection = Exclude<
 >;
 
 const NO_GROUPS: ReadonlySet<DiveFormFieldGroup> = new Set();
+const NEVER_AUTOFILLED = () => false;
 
 // The section's fields of the dive, cylinder columns aside: those are parts of
 // `mixtures`, which is the field.
@@ -155,6 +158,7 @@ function DiveSectionForm({
     fillsDefaults: false,
   });
   const { reveal, revealNonEmpty } = visibility;
+  const [fetched] = useState(() => fetchedMarks(dive));
 
   // Every field of the section, hidden on the form or not: the diver opened this
   // card to edit it, and a field of it missing here would be missing from the one
@@ -203,43 +207,51 @@ function DiveSectionForm({
   };
 
   return (
-    <Form {...form}>
-      <form noValidate onSubmit={handleSubmitEvent} className="space-y-6">
-        <DiveFormFields
-          control={form.control}
-          mode="edit"
-          visibility={visibility}
-          mixtureFieldArray={mixtureFieldArray}
-          knownDiveSites={dive.dive_sites}
-          knownGearItems={dive.gear_items}
-          knownSpecies={dive.sightings}
-          onSpeciesPendingChange={setIsResolvingSpecies}
-          collapsedGroups={NO_GROUPS}
-          onGroupOpenChange={() => {}}
-          only={section}
-        />
+    <AutofilledMarks
+      control={form.control}
+      // The fetched marks alone: the form's own carry a legend on the Edit page,
+      // which this dialog has no room for.
+      isAutofilled={NEVER_AUTOFILLED}
+      fetched={fetched}
+    >
+      <Form {...form}>
+        <form noValidate onSubmit={handleSubmitEvent} className="space-y-6">
+          <DiveFormFields
+            control={form.control}
+            mode="edit"
+            visibility={visibility}
+            mixtureFieldArray={mixtureFieldArray}
+            knownDiveSites={dive.dive_sites}
+            knownGearItems={dive.gear_items}
+            knownSpecies={dive.sightings}
+            onSpeciesPendingChange={setIsResolvingSpecies}
+            collapsedGroups={NO_GROUPS}
+            onGroupOpenChange={() => {}}
+            only={section}
+          />
 
-        <FormApiError error={apiError} />
+          <FormApiError error={apiError} />
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting || isResolvingSpecies}>
-            {isSubmitting || isResolvingSpecies ? (
-              <>
-                <ButtonSpinner className="mr-2" />
-                {isSubmitting ? "Saving..." : "Adding species..."}
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Save changes
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </form>
-    </Form>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting || isResolvingSpecies}>
+              {isSubmitting || isResolvingSpecies ? (
+                <>
+                  <ButtonSpinner className="mr-2" />
+                  {isSubmitting ? "Saving..." : "Adding species..."}
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </Form>
+    </AutofilledMarks>
   );
 }
