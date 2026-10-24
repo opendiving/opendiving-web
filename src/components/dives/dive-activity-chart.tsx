@@ -50,12 +50,12 @@ const BAR_RADIUS = 3;
 // one per evenly spaced slot, so the only thing that matters is the arithmetic -
 // how wide a label is against the plot it has to divide.
 //
-// A four-digit year at `fontSize={11}` is about 27 units wide, so 33 fits
-// twenty-one of them across the design width's 705-unit plot. A three-letter month is at
-// most 22 ("May"), and 26 still labels all twelve on a 375 px phone. A one- or
-// two-digit day is about 13, and 21 labels every day of a month at the design
-// width rather than counting down from the 31st in twos, which is how a thinned
-// day axis reads.
+// A four-digit year at `fontSize={11}` is about 27 units wide, so 33 fits twenty
+// of them across the design width's plot, whatever the count axis's labels take.
+// A three-letter month is at most 22 ("May"), and 26 still labels all twelve on
+// a 375 px phone. A one- or two-digit day is about 13, and 21 labels every day of
+// a month at the design width rather than counting down from the 31st in twos,
+// which is how a thinned day axis reads.
 const X_LABEL_SPACING: Record<ChartScope, number> = {
   all: 33,
   year: 26,
