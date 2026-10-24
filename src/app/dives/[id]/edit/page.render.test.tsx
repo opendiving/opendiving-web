@@ -376,6 +376,32 @@ describe("a dive's conditions while the form is open", () => {
     expect(divesAPI.lookupConditions).toHaveBeenCalledTimes(1);
   });
 
+  it("takes another site for no move while the entry fix places the dive", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        entry_latitude: 28.5721,
+        entry_longitude: 34.5412,
+        dive_sites: [{ uuid: "site-1", name: "Tiger Reef" }],
+        conditions: diveConditions({
+          filled: { air_temperature: null, weather: "clear", waves: null },
+        }),
+      }),
+    );
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ weather: "overcast" }),
+    );
+    render(<EditDivePage />);
+    const weather = await screen.findByLabelText(/^weather/i);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Tiger Reef" }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(divesAPI.lookupConditions).not.toHaveBeenCalled();
+    expect(weather).toHaveValue("");
+  });
+
   it("empties a fetched field the new start time cannot be answered for, without asking", async () => {
     vi.mocked(divesAPI.getDive).mockResolvedValue(
       storedDive({
