@@ -650,8 +650,9 @@ export interface EntryFix {
 
 /**
  * The dive's entry fix once a form's files are saved: the first file that has one,
- * of the stored files left after `removed` (recordings by ordinal, files as listed)
- * and then the `pending` ones in pick order - the API's rule, recalculated on every
+ * in attach order across every recording - the stored files left after `removed`
+ * by `attach_order`, then the `pending` ones in pick order, which the save attaches
+ * last whichever recording each joins. The API's rule, recalculated on every
  * attach and delete. With no file attached or deleted the save recalculates
  * nothing, and the dive keeps `stored`, which a merge or a logbook document may
  * have given it though no file has it.
@@ -669,9 +670,9 @@ export function entryFixAfterSave({
 }): EntryFix | null {
   if (removed.length === 0 && pending.length === 0) return stored;
 
-  const storedFiles = [...recordings]
-    .sort((first, second) => first.ordinal - second.ordinal)
-    .flatMap((recording) => recording.files);
+  const storedFiles = recordings
+    .flatMap((recording) => recording.files)
+    .sort((first, second) => first.attach_order - second.attach_order);
   const struck = new Set(removed);
   for (const file of storedFiles) {
     if (struck.has(file.uuid)) continue;

@@ -1097,6 +1097,9 @@ export interface DiveFileInfo {
   // fix is the first of its files' that has one (`entryFixAfterSave`).
   entry_latitude?: number | null;
   entry_longitude?: number | null;
+  // This file's rank among all of the dive's files in attach order, 0 first -
+  // across recordings, so it, not the recording, is what orders the fixes.
+  attach_order: number;
 }
 
 export interface DiveCreate {

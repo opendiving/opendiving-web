@@ -25,6 +25,7 @@ function file(overrides: Partial<DiveFileInfo> = {}): DiveFileInfo {
     content_type: "application/octet-stream",
     byte_size: 4096,
     parser_key: "fit",
+    attach_order: 0,
     ...overrides,
   };
 }
@@ -756,19 +757,29 @@ describe("sameDevice", () => {
 describe("entryFixAfterSave", () => {
   const BLUE_HOLE = { latitude: 28.5721, longitude: 34.5412 };
   const CANYON = { latitude: 28.5523, longitude: 34.5205 };
-  const fixed = (uuid: string, fix: { latitude: number; longitude: number }) =>
+  const fixed = (
+    uuid: string,
+    attachOrder: number,
+    fix: { latitude: number; longitude: number },
+  ) =>
     file({
       uuid,
+      attach_order: attachOrder,
       entry_latitude: fix.latitude,
       entry_longitude: fix.longitude,
     });
 
-  it("takes the first file with a fix, recordings by ordinal", () => {
+  it("takes the first file with a fix in attach order, whatever its recording", () => {
     expect(
       entryFixAfterSave({
         recordings: [
-          recording({ uuid: "r2", ordinal: 1, files: [fixed("b", CANYON)] }),
-          recording({ files: [file({ uuid: "a" })] }),
+          recording({
+            files: [
+              file({ uuid: "a", attach_order: 0 }),
+              fixed("c", 2, BLUE_HOLE),
+            ],
+          }),
+          recording({ uuid: "r2", ordinal: 1, files: [fixed("b", 1, CANYON)] }),
         ],
         pending: [{ entry: BLUE_HOLE }],
       }),
@@ -777,7 +788,7 @@ describe("entryFixAfterSave", () => {
 
   it("passes over the files struck off, to the next stored one and then the picked ones", () => {
     const recordings = [
-      recording({ files: [fixed("a", BLUE_HOLE), fixed("b", CANYON)] }),
+      recording({ files: [fixed("a", 0, BLUE_HOLE), fixed("b", 1, CANYON)] }),
     ];
     expect(entryFixAfterSave({ recordings, removed: ["a"] })).toEqual(CANYON);
     expect(
@@ -792,7 +803,7 @@ describe("entryFixAfterSave", () => {
   it("has none where no file left has one", () => {
     expect(
       entryFixAfterSave({
-        recordings: [recording({ files: [fixed("a", BLUE_HOLE)] })],
+        recordings: [recording({ files: [fixed("a", 0, BLUE_HOLE)] })],
         removed: ["a"],
         stored: BLUE_HOLE,
       }),
