@@ -120,8 +120,8 @@ function FetchedSourceLine({
 
 /**
  * The weather service's credit, as visible text under a form's fields while any of
- * them still holds the value it filled in - the licence asks for it beside the
- * data wherever the data is shown.
+ * them would still hold the value it filled in once saved (`keepsFetched`) - the
+ * licence asks for it beside the data wherever the data is shown.
  */
 export function FetchedSource<TFieldValues extends FieldValues>({
   control,
@@ -144,8 +144,8 @@ const renderMark = (name: string) => <AutofilledMark name={name} />;
 /**
  * Puts a teal dot after the label of every field in `control`'s form that
  * `isAutofilled` says the form changed on its own and the diver has not since,
- * and after every field still holding the value `fetched` says a weather service
- * wrote into the stored dive.
+ * and after every field that would still hold the value `fetched` says a weather
+ * service wrote into the stored dive once saved (`keepsFetched`).
  */
 export function AutofilledMarks<TFieldValues extends object>({
   control,
