@@ -63,6 +63,18 @@ async function openDialog() {
 }
 
 describe("DeleteAccountCard", () => {
+  it("counts the dive drafts in both lists of what is erased", async () => {
+    render(<DeleteAccountCard username="alex" />);
+    expect(screen.getByText(/Deleting locks you out/)).toHaveTextContent(
+      /Your dives, dive drafts, dive sites/,
+    );
+
+    await openDialog();
+    expect(
+      screen.getByText(/This erases your whole logbook/),
+    ).toHaveTextContent(/every dive and its profile, your dive drafts,/);
+  });
+
   it("keeps the confirm button blocked until the username is typed back", async () => {
     render(<DeleteAccountCard username="alex" />);
     await openDialog();

@@ -41,6 +41,10 @@ import { tankVolume } from "@/lib/tank-vessel";
 // this one predicate serves both fields below.
 const isRealDateTime = (val: string) => !Number.isNaN(new Date(val).getTime());
 
+/** Whether a start time is one a new dive may carry: a real date-time with an offset. */
+export const isOffsetStartTime = (val: string) =>
+  parseUtcOffsetMinutes(val) !== null && isRealDateTime(val);
+
 // A *new* dive must carry an offset, matching the API's `DiveCreate`: there is
 // nothing to preserve, and the form defaults the field to the browser's own
 // offset, so an offsetless value here could only be a mistake.
@@ -87,6 +91,9 @@ const updatedDateTimeField = () =>
 // minutes, never 1:30. The seconds half stays strict so a mistyped ":75" is still
 // caught rather than silently rolling over.
 const DURATION_REGEX = /^\d{1,3}(?::[0-5]\d)?$/;
+
+/** Whether a dive-time box holds a value `parseFormDuration` can read. */
+export const isFormDuration = (value: string) => DURATION_REGEX.test(value);
 
 const durationField = (
   message = "Dive time must be minutes or MM:SS, e.g. 45 or 67:30",

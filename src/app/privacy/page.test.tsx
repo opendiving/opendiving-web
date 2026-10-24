@@ -217,6 +217,30 @@ describe.each([
     expect(screen.getByText(/And nothing else\./)).toBeInTheDocument();
   });
 
+  // A dive draft is the diver's own entry, so every list of what the account holds
+  // and what deleting it destroys names one.
+  it("§2.1, §3 and §7 name the dive drafts, and §6.2 says they are not read back", async () => {
+    await renderPage({ google });
+
+    expect(
+      listAfterHeading(/2\.1 Information You Provide Directly/).some((entry) =>
+        entry.startsWith("Dive Drafts:"),
+      ),
+    ).toBe(true);
+    expect(listAfterHeading(/3\. How We Use Your Information/)[0]).toMatch(
+      /^Provide the Service: Store your dives, dive\s+drafts,/,
+    );
+    expect(screen.getByText(/everything hanging off it/)).toHaveTextContent(
+      /dives, dive drafts, sites/,
+    );
+    // The import leaves the archive's drafts alone, so the read-back is narrowed.
+    expect(
+      listAfterHeading(/6\.2 Data Rights/).find((entry) =>
+        entry.startsWith("Portability:"),
+      ),
+    ).toMatch(/dive drafts ride in the full archive but are not read back/);
+  });
+
   // §7 counts the §2.2 records that expire on their own timer, a number that
   // moves with §2.2's list but carries no list of its own to count against.
   it("§7 counts the records in section 2.2 that expire on their own, and names each", async () => {

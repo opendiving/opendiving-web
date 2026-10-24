@@ -9,6 +9,7 @@ import { divesAPI, Dive } from "@/lib/api/dives";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveCard } from "@/components/dives/dive-card";
 import { DiveNumberingCard } from "@/components/dives/dive-numbering-card";
+import { DiveDraftsCard } from "@/components/dives/dive-drafts-card";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import {
   hasDiveFilters,
@@ -114,6 +115,7 @@ export function DivesPageContent() {
         onFiltersOpened={() => setWantsTags(true)}
         tags={tags ?? undefined}
         headingRef={headingRef}
+        drafts={<DiveDraftsCard enabled={!!user} onVanished={focusHeading} />}
         numbering={
           <DiveNumberingCard
             enabled={!!user}

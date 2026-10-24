@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { Plus, Save } from "lucide-react";
+import { Check, FilePen, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { FormApiError } from "@/components/ui/form-api-error";
@@ -26,6 +26,21 @@ export interface DiveFormActionsProps {
   // The form-level refusal, shown above the buttons wherever the row is - pinned
   // to the foot of the screen or in its place at the end of the form.
   error?: string | null;
+  // The create form's draft buttons - see `DiveFormDraftActions`.
+  draft?: DiveFormDraftActions;
+}
+
+/**
+ * *Save as draft* and, once the form saves into a draft, *Discard draft*. A save
+ * is a plain button rather than a submit: a draft is unfinished by definition, so
+ * nothing validates it.
+ */
+export interface DiveFormDraftActions {
+  onSave: () => void;
+  // "saved" for a moment after each save lands.
+  status: "idle" | "saving" | "saved";
+  // Present while the form saves into a draft.
+  onDiscard?: () => void;
 }
 
 // Shared "Cancel" / "Save" button row used by both the create and edit dive forms.
@@ -41,6 +56,7 @@ export function DiveFormActions({
   isBusy = false,
   busyLabel,
   error = null,
+  draft,
 }: DiveFormActionsProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   // Stuck, the row's bottom edge is the viewport's.
@@ -65,11 +81,41 @@ export function DiveFormActions({
       className="z-20 space-y-2 pt-3"
     >
       <FormApiError error={error} />
-      <div className="flex justify-end gap-4">
+      <div className="flex flex-wrap justify-end gap-4 max-sm:gap-2">
         <Button type="button" variant="outline" asChild>
           <Link href={cancelHref}>Cancel</Link>
         </Button>
-        <Button type="submit" disabled={waiting}>
+        {draft?.onDiscard && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={draft.onDiscard}
+            disabled={waiting || draft.status === "saving"}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Discard draft
+          </Button>
+        )}
+        {draft && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={draft.onSave}
+            disabled={waiting || draft.status === "saving"}
+          >
+            {draft.status === "saving" ? (
+              <ButtonSpinner className="mr-2" />
+            ) : draft.status === "saved" ? (
+              <Check className="h-4 w-4 mr-2" />
+            ) : (
+              <FilePen className="h-4 w-4 mr-2" />
+            )}
+            {draft.status === "saved" ? "Saved" : "Save as draft"}
+          </Button>
+        )}
+        {/* Not while a draft save is in flight either: logging the form then would
+            race the save, and leave the draft it makes behind the dive. */}
+        <Button type="submit" disabled={waiting || draft?.status === "saving"}>
           {waiting && waitingLabel ? (
             <>
               <ButtonSpinner className="mr-2" />

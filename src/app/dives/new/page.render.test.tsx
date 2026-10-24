@@ -244,6 +244,16 @@ vi.mock("@/lib/api/people", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/api/dive-drafts", () => ({
+  diveDraftsAPI: {
+    getDraft: vi.fn(),
+    createDraft: vi.fn(),
+    updateDraft: vi.fn(),
+    deleteDraft: vi.fn(),
+    logDraft: vi.fn(),
+  },
+}));
+
 // The tag picker completes from one read of the diver's whole list.
 vi.mock("@/lib/api/tags", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/tags")>();
@@ -260,6 +270,7 @@ const { tripsAPI } = await import("@/lib/api/trips");
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const gear = await import("@/lib/api/gear");
 const { speciesAPI } = await import("@/lib/api/species");
+const { diveDraftsAPI } = await import("@/lib/api/dive-drafts");
 
 const emptyPage = <T,>() => ({
   data: [] as T[],
@@ -3611,5 +3622,285 @@ describe("the day's conditions", () => {
 
     expect(screen.getByLabelText(/^weather/i)).toHaveValue("");
     expect(screen.queryByRole("link", { name: /open-meteo/i })).toBeNull();
+  });
+});
+
+describe("drafts", () => {
+  const DRAFT_VALUES = {
+    dive_number: null,
+    start_time: "2026-07-01T09:30:00+02:00",
+    submerged_time: null,
+    max_depth: 21.5,
+    avg_depth: null,
+    bottom_temperature: null,
+    visibility: null,
+    weight: null,
+    water_type: null,
+    altitude: null,
+    type: null,
+    rating: null,
+    air_temperature: null,
+    current: null,
+    waves: null,
+    weather: null,
+    entry_type: null,
+    boat_name: null,
+    notes: "Drafted on the boat",
+    trip_uuid: null,
+    course_uuid: null,
+    contact_uuid: null,
+    mixtures: null,
+    dive_site_uuids: null,
+    gear_item_uuids: null,
+    sightings: null,
+    people: null,
+    tags: null,
+  };
+  const storedDraft = (uuid = "draft-1") => ({
+    uuid,
+    created_at: "2026-10-20T08:00:00Z",
+    updated_at: "2026-10-20T08:00:00Z",
+    gear_set_uuid: null,
+    values: DRAFT_VALUES,
+  });
+  const saveAsDraft = () =>
+    userEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/dives/new");
+    vi.mocked(diveDraftsAPI.createDraft).mockResolvedValue(storedDraft());
+    vi.mocked(diveDraftsAPI.updateDraft).mockResolvedValue({
+      message: "Dive draft updated",
+    });
+    vi.mocked(diveDraftsAPI.getDraft).mockResolvedValue(storedDraft());
+    vi.mocked(diveDraftsAPI.logDraft).mockResolvedValue(storedDive());
+  });
+
+  it("saves a half-filled form, nothing required present, and stays on it", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/dive time/i);
+    fireEvent.change(screen.getByLabelText(/maximum depth/i), {
+      target: { value: "18" },
+    });
+
+    await saveAsDraft();
+
+    await waitFor(() => expect(diveDraftsAPI.createDraft).toHaveBeenCalled());
+    const sent = vi.mocked(diveDraftsAPI.createDraft).mock.calls[0][0];
+    expect(sent.max_depth).toBe(18);
+    expect(sent).not.toHaveProperty("submerged_time");
+    expect(divesAPI.createDive).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole("button", { name: /^saved$/i }),
+    ).toBeInTheDocument();
+    expect(window.location.search).toBe("?draft=draft-1");
+    expect(stable.router.push).not.toHaveBeenCalled();
+  });
+
+  it("updates the same draft on a second save rather than making another", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/dive time/i);
+
+    await saveAsDraft();
+    await waitFor(() =>
+      expect(diveDraftsAPI.createDraft).toHaveBeenCalledTimes(1),
+    );
+    fireEvent.change(screen.getByLabelText(/maximum depth/i), {
+      target: { value: "18" },
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: /save as draft|saved/i }),
+    );
+
+    await waitFor(() =>
+      expect(diveDraftsAPI.updateDraft).toHaveBeenCalledWith(
+        "draft-1",
+        expect.objectContaining({ max_depth: 18 }),
+      ),
+    );
+    expect(diveDraftsAPI.createDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a file picked before the first save", async () => {
+    vi.mocked(divesAPI.parseDiveFile).mockResolvedValue({
+      start_time: null,
+      mixtures: [],
+      file_token: "token",
+    } as unknown as Awaited<ReturnType<typeof divesAPI.parseDiveFile>>);
+    const { rerender } = render(<NewDivePage />);
+    await screen.findByLabelText(/dive time/i);
+    importFile();
+    expect(await screen.findByText("dive.fit")).toBeInTheDocument();
+
+    await saveAsDraft();
+
+    await waitFor(() => expect(diveDraftsAPI.createDraft).toHaveBeenCalled());
+    // The search params catch up with the URL the save wrote, and the form stays.
+    stable.searchParams = new URLSearchParams("draft=draft-1");
+    rerender(<NewDivePage />);
+    expect(screen.getByText("dive.fit")).toBeInTheDocument();
+    expect(diveDraftsAPI.getDraft).not.toHaveBeenCalled();
+  });
+
+  it("stores no weather value the form only previewed", async () => {
+    stable.searchParams = new URLSearchParams("dive_site_uuid=site-reef");
+    vi.mocked(diveSitesAPI.lookupDiveSitesByUuid).mockResolvedValue([
+      { uuid: "site-reef", name: "Tiger Reef" },
+    ]);
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ air_temperature: 27.5, weather: "clear" }),
+    );
+    render(<NewDivePage />);
+    const weather = await screen.findByLabelText(/^weather/i);
+    await waitFor(() => expect(weather).toHaveValue("clear"));
+
+    await saveAsDraft();
+
+    await waitFor(() => expect(diveDraftsAPI.createDraft).toHaveBeenCalled());
+    const sent = vi.mocked(diveDraftsAPI.createDraft).mock.calls[0][0];
+    expect(sent).not.toHaveProperty("weather");
+    expect(sent).not.toHaveProperty("air_temperature");
+    expect(sent.dive_site_uuids).toEqual(["site-reef"]);
+  });
+
+  describe("a form opened over one", () => {
+    beforeEach(() => {
+      stable.searchParams = new URLSearchParams("draft=draft-1");
+      window.history.replaceState(null, "", "/dives/new?draft=draft-1");
+    });
+
+    it("fills from the draft and takes nothing from the last dive", async () => {
+      vi.mocked(divesAPI.getDives).mockResolvedValue({
+        ...emptyPage<Dive>(),
+        data: [storedDive()],
+        total_count: 1,
+      });
+      vi.mocked(divesAPI.getDive).mockResolvedValue(
+        storedDive({ weight: 6, boat_name: "Last Boat" }),
+      );
+      render(<NewDivePage />);
+
+      const depth = await screen.findByRole("spinbutton", {
+        name: /maximum depth/i,
+      });
+      expect(depth).toHaveValue(21.5);
+      expect(screen.getByLabelText(/^notes/i)).toHaveValue(
+        "Drafted on the boat",
+      );
+      expect(diveDraftsAPI.getDraft).toHaveBeenCalledWith("draft-1");
+      expect(divesAPI.getDives).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole("heading", { name: "Log New Dive" }),
+      ).toBeInTheDocument();
+    });
+
+    it("logs the dive through the draft's own route", async () => {
+      render(<NewDivePage />);
+      await screen.findByRole("spinbutton", { name: /maximum depth/i });
+      // A draft holding no number takes the one its date suggests.
+      await waitFor(() =>
+        expect(
+          screen.getByRole("spinbutton", { name: /dive number/i }),
+        ).toHaveValue(42),
+      );
+      fillRequiredFields();
+
+      await logDive();
+
+      await waitFor(() =>
+        expect(diveDraftsAPI.logDraft).toHaveBeenCalledWith(
+          "draft-1",
+          expect.objectContaining({ max_depth: 21.5, submerged_time: 2700 }),
+        ),
+      );
+      expect(divesAPI.createDive).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(stable.router.push).toHaveBeenCalledWith(
+          expect.stringMatching(/^\/dives\/dive-1/),
+        ),
+      );
+    });
+
+    it("saves into the draft it opened over", async () => {
+      render(<NewDivePage />);
+      await screen.findByRole("spinbutton", { name: /maximum depth/i });
+
+      await saveAsDraft();
+
+      await waitFor(() =>
+        expect(diveDraftsAPI.updateDraft).toHaveBeenCalledWith(
+          "draft-1",
+          expect.objectContaining({ notes: "Drafted on the boat" }),
+        ),
+      );
+      expect(diveDraftsAPI.createDraft).not.toHaveBeenCalled();
+    });
+
+    it("discards the draft and returns to the Dives page", async () => {
+      vi.mocked(diveDraftsAPI.deleteDraft).mockResolvedValue({
+        message: "Dive draft deleted",
+      });
+      render(<NewDivePage />);
+      await screen.findByRole("spinbutton", { name: /maximum depth/i });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /discard draft/i }),
+      );
+      await userEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Discard",
+        }),
+      );
+
+      await waitFor(() =>
+        expect(diveDraftsAPI.deleteDraft).toHaveBeenCalledWith("draft-1"),
+      );
+      expect(stable.router.push).toHaveBeenCalledWith("/dives");
+    });
+
+    it("says so when the draft is gone, and offers the plain form", async () => {
+      vi.mocked(diveDraftsAPI.getDraft).mockRejectedValue({
+        response: { status: 404 },
+      });
+      const { rerender } = render(<NewDivePage />);
+
+      expect(
+        await screen.findByText(/This draft is no longer here/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /log a new dive/i }),
+      ).toHaveAttribute("href", "/dives/new");
+
+      // Following it changes only the search params, and mounts the plain form.
+      stable.searchParams = new URLSearchParams();
+      rerender(<NewDivePage />);
+      expect(await screen.findByLabelText(/dive time/i)).toBeInTheDocument();
+      expect(screen.queryByText(/This draft is no longer here/)).toBeNull();
+      await waitFor(() => expect(divesAPI.getDives).toHaveBeenCalled());
+    });
+
+    it("logs a new dive once the draft went while the form was open", async () => {
+      vi.mocked(diveDraftsAPI.logDraft).mockRejectedValue({
+        response: { status: 404 },
+      });
+      render(<NewDivePage />);
+      await screen.findByRole("spinbutton", { name: /maximum depth/i });
+      // A draft holding no number takes the one its date suggests.
+      await waitFor(() =>
+        expect(
+          screen.getByRole("spinbutton", { name: /dive number/i }),
+        ).toHaveValue(42),
+      );
+      fillRequiredFields();
+
+      await logDive();
+      await waitFor(() => expect(window.location.search).toBe(""));
+      expect(stable.toast.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Draft no longer here" }),
+      );
+
+      await logDive();
+      await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    });
   });
 });
