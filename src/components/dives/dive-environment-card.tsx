@@ -14,6 +14,7 @@ import { Attribution } from "@/components/attribution";
 import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import { FetchedMark } from "@/components/dives/autofilled-marks";
+import { TideDiagram } from "@/components/dives/tide-diagram";
 import { useUnits } from "@/hooks/useUnits";
 import { formatClockAtOffset } from "@/lib/date-time";
 import {
@@ -136,7 +137,13 @@ export function DiveEnvironmentCard({
       value: formatDepth(sea.wave_height, units, { decimals: 1 }),
     });
   }
-  if (conditions && sea?.tide_state != null) {
+  // Drawn where the dive has a turn on both sides of it, and otherwise as the
+  // figures there are, since one turn gives a curve nothing to span.
+  const tide =
+    conditions && sea?.previous_extreme && sea.next_extreme
+      ? { previous: sea.previous_extreme, next: sea.next_extreme }
+      : null;
+  if (!tide && conditions && sea?.tide_state != null) {
     fetchedOnly.push({
       key: "tide",
       label: "Tide",
@@ -146,7 +153,7 @@ export function DiveEnvironmentCard({
   // At the record's own offset, which is the dive's where the dive has one and
   // the place's on that date where it does not - either way the clock the dive's
   // start time is read on.
-  if (conditions) {
+  if (!tide && conditions) {
     for (const [extreme, when] of [
       [sea?.previous_extreme, "Last"],
       [sea?.next_extreme, "Next"],
@@ -162,19 +169,32 @@ export function DiveEnvironmentCard({
 
   const showsFetched =
     conditions != null &&
-    (fetchedOnly.length > 0 || Object.keys(fetched).length > 0);
+    (fetchedOnly.length > 0 || tide != null || Object.keys(fetched).length > 0);
   const all = [...figures, ...fetchedOnly];
-  if (all.length === 0) return null;
+  if (all.length === 0 && !tide) return null;
 
   return (
     <Card>
       <DiveCardHeader group="Environment" title="Environment" onEdit={onEdit} />
       <CardContent className={CARD_SECTION_CONTENT}>
-        <CardFigures className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]">
-          {all.map(({ key, label, value }) => (
-            <CardFigure key={key} label={label} value={value} />
-          ))}
-        </CardFigures>
+        {all.length > 0 && (
+          <CardFigures className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]">
+            {all.map(({ key, label, value }) => (
+              <CardFigure key={key} label={label} value={value} />
+            ))}
+          </CardFigures>
+        )}
+        {conditions && tide && (
+          <TideDiagram
+            className={all.length > 0 ? "mt-3" : undefined}
+            previous={tide.previous}
+            next={tide.next}
+            start={conditions.at}
+            duration={dive.submerged_time}
+            state={sea?.tide_state ?? null}
+            utcOffsetMinutes={conditions.utc_offset_minutes}
+          />
+        )}
         {showsFetched && (
           <p className="mt-3 text-xs text-muted-foreground">
             <Attribution value={conditions.attribution} />
