@@ -2,17 +2,46 @@
 // `dive-profile-chart.tsx`). Its own module because a depth axis has nothing to do
 // with gas use, and importing a gas module to scale meters reads as an accident.
 
-// The viewBox frame Home's two trend charts and the admin's daily bars share, so
-// their plots line up down a page rather than being a few units out. Not pixels:
-// the SVG scales to its container, so these are only ever ratios to each other.
-// This is the design width; a phone draws into a narrower one (see
+// The viewBox frame Home's two trend charts and the admin's daily bars share. Not
+// pixels: the SVG scales to its container, so these are only ever ratios to each
+// other. This is the design width; a phone draws into a narrower one (see
 // `useChartWidth`). The profile chart has its own, with a second axis on the
 // right.
+//
+// No horizontal padding: the plot runs to the viewBox's right edge, and on the
+// left stops just past its y labels (`plotLeft`), so the chart fills its card out
+// to the card's own padding. A dot or a label at either end overhangs into that
+// padding, which is why these SVGs are `overflow-visible`.
 export const CHART_WIDTH = 720;
 export const CHART_HEIGHT = 240;
-export const CHART_PADDING = { top: 12, right: 14, bottom: 28, left: 42 };
+export const CHART_PADDING = { top: 12, bottom: 28 };
 export const CHART_PLOT_HEIGHT =
   CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+
+// Between a y label's right end and the plot.
+export const Y_LABEL_GAP = 8;
+
+// The advance of a y label's characters at `fontSize={11}` in Inter, in viewBox
+// units, rounded up so the widest label never starts left of the viewBox. An
+// estimate rather than a measurement because the plot's left edge has to be
+// known on the server, where nothing can be measured.
+const Y_LABEL_DIGIT = 7;
+const Y_LABEL_POINT = 3.5;
+
+// Where the plot starts for a y axis labelled `ticks`: the widest label sits flush
+// with the viewBox's left edge, `Y_LABEL_GAP` short of the plot.
+export function plotLeft(ticks: number[]): number {
+  const widest = Math.max(
+    0,
+    ...ticks.map((tick) =>
+      [...String(tick)].reduce(
+        (sum, char) => sum + (char === "." ? Y_LABEL_POINT : Y_LABEL_DIGIT),
+        0,
+      ),
+    ),
+  );
+  return widest + Y_LABEL_GAP;
+}
 
 export interface Domain {
   min: number;

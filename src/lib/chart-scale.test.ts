@@ -7,6 +7,7 @@ import {
   fittedChartWidth,
   labelCapacity,
   niceDomain,
+  plotLeft,
   stepCount,
 } from "@/lib/chart-scale";
 
@@ -167,5 +168,17 @@ describe("labelCapacity", () => {
 
   it("never offers fewer than one", () => {
     expect(labelCapacity(10, 33)).toBe(1);
+  });
+});
+
+describe("plotLeft", () => {
+  it("makes room for the widest label, not the last one", () => {
+    expect(plotLeft([8, 10, 12, 14])).toBe(plotLeft([10]));
+    expect(plotLeft([0, 5])).toBeLessThan(plotLeft([0, 50]));
+  });
+
+  it("counts a decimal point as narrower than a digit", () => {
+    expect(plotLeft([12.5])).toBeGreaterThan(plotLeft([12]));
+    expect(plotLeft([12.5])).toBeLessThan(plotLeft([1250]));
   });
 });

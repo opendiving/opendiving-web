@@ -64,8 +64,8 @@ const BIN_UNIT_MS: Record<BinUnit, number> = {
 
 // The narrowest a bin may be, in viewBox units, before the chart steps up to
 // the next unit. Wide enough for a box with a median tick inside it to read as
-// one, and just under the design width's room for a week in a year (664 units
-// over 52 weeks), so a year is read in weeks on a desktop and in months on a
+// one, and just under the design width's room for a week in a year (about 700
+// units over 52 weeks), so a year is read in weeks on a desktop and in months on a
 // phone.
 export const BIN_MIN_WIDTH = 12;
 

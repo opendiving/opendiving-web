@@ -12,6 +12,7 @@ import {
   axisTicks,
   countDomain,
   labelCapacity,
+  plotLeft,
 } from "@/lib/chart-scale";
 import { cn } from "@/lib/utils";
 import { useChartReadout } from "@/hooks/useChartReadout";
@@ -20,7 +21,7 @@ import { dayLabel, type Series } from "@/components/admin/daily-stats";
 
 // Hand-rolled SVG for the reason every chart in this app is: a `<style>`-injecting
 // charting library breaks the nonce CSP in production. The geometry is the dive
-// activity chart's - the shared `CHART_PADDING` frame and the count axis - with
+// activity chart's - the shared frame and the count axis - with
 // one slot per day of a month and either a stack of segments or a pair of bars
 // in each.
 
@@ -52,26 +53,6 @@ export function DailyBarChart({
   emptyMessage,
 }: DailyBarChartProps) {
   const [chartRef, width] = useChartWidth(CHART_WIDTH);
-  // The day under the pointer or finger, by the slots the columns are cut into.
-  const readout = useChartReadout<number>((event) => {
-    const { x } = viewBoxPoint(
-      event.currentTarget.getBoundingClientRect(),
-      width,
-      event.clientX,
-      event.clientY,
-    );
-    const day = Math.floor(
-      ((x - CHART_PADDING.left) /
-        (width - CHART_PADDING.left - CHART_PADDING.right)) *
-        days.length,
-    );
-    return Math.min(days.length - 1, Math.max(0, day));
-  });
-  const hovered =
-    readout.value !== null && readout.value < days.length
-      ? readout.value
-      : null;
-
   const dayTotal = (index: number) =>
     series.reduce((sum, one) => sum + one.values[index], 0);
   const ceiling = Math.max(
@@ -87,11 +68,30 @@ export function DailyBarChart({
   // An empty month still gets its axes: a grid with nothing on it is the answer
   // "nobody came", and the frame stays the size it will be once somebody does.
   const domain = countDomain(ceiling);
-  const plotWidth = width - CHART_PADDING.left - CHART_PADDING.right;
+  const ticks = axisTicks(domain);
+  const left = plotLeft(ticks);
+  const plotWidth = width - left;
+
+  // The day under the pointer or finger, by the slots the columns are cut into.
+  const readout = useChartReadout<number>((event) => {
+    const { x } = viewBoxPoint(
+      event.currentTarget.getBoundingClientRect(),
+      width,
+      event.clientX,
+      event.clientY,
+    );
+    const day = Math.floor(((x - left) / plotWidth) * days.length);
+    return Math.min(days.length - 1, Math.max(0, day));
+  });
+  const hovered =
+    readout.value !== null && readout.value < days.length
+      ? readout.value
+      : null;
+
   const slot = plotWidth / Math.max(1, days.length);
   const barWidth = slot * BAR_FILL;
   const baseline = CHART_PADDING.top + CHART_PLOT_HEIGHT;
-  const slotStart = (index: number) => CHART_PADDING.left + index * slot;
+  const slotStart = (index: number) => left + index * slot;
   const height = (count: number) => (count / domain.max) * CHART_PLOT_HEIGHT;
 
   // Thinned from the first of the month, which is where the eye starts reading
@@ -104,12 +104,12 @@ export function DailyBarChart({
   const marks = (index: number) => {
     if (layout === "grouped") {
       const each = barWidth / series.length;
-      const left = slotStart(index) + (slot - barWidth) / 2;
+      const start = slotStart(index) + (slot - barWidth) / 2;
       return series.map((one, position) => ({
         key: one.key,
         colour: one.colour,
         d: barPath(
-          left + position * each,
+          start + position * each,
           baseline - height(one.values[index]),
           each,
           height(one.values[index]),
@@ -155,14 +155,15 @@ export function DailyBarChart({
       <div ref={chartRef} className="relative">
         <svg
           viewBox={`0 0 ${width} ${CHART_HEIGHT}`}
-          className="w-full h-auto"
+          className="w-full h-auto overflow-visible"
           role="img"
           aria-label={description}
           {...readout.scrubProps}
         >
           <ChartYAxis
-            ticks={axisTicks(domain)}
+            ticks={ticks}
             y={(tick) => baseline - height(tick)}
+            left={left}
             width={width}
           />
 

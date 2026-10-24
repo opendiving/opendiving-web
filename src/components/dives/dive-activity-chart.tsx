@@ -12,6 +12,7 @@ import {
   axisTicks,
   countDomain,
   labelCapacity,
+  plotLeft,
 } from "@/lib/chart-scale";
 import type { ChartScope } from "@/lib/chart-period";
 import type { ActivityBar } from "@/lib/dive-activity";
@@ -49,8 +50,8 @@ const BAR_RADIUS = 3;
 // one per evenly spaced slot, so the only thing that matters is the arithmetic -
 // how wide a label is against the plot it has to divide.
 //
-// A four-digit year at `fontSize={11}` is about 27 units wide, so 33 fits twenty
-// of them across the design width's 664-unit plot. A three-letter month is at
+// A four-digit year at `fontSize={11}` is about 27 units wide, so 33 fits
+// twenty-one of them across the design width's 705-unit plot. A three-letter month is at
 // most 22 ("May"), and 26 still labels all twelve on a 375 px phone. A one- or
 // two-digit day is about 13, and 21 labels every day of a month at the design
 // width rather than counting down from the 31st in twos, which is how a thinned
@@ -88,6 +89,10 @@ export function DiveActivityChart({
   // describes cannot disagree. A finger picks the column under it, by the same
   // slots the hover targets below are cut into.
   const [chartRef, width] = useChartWidth(CHART_WIDTH);
+  const domain = countDomain(ceiling);
+  const ticks = axisTicks(domain);
+  const left = plotLeft(ticks);
+  const plotWidth = width - left;
   const readout = useChartReadout<number>((event) => {
     const { x } = viewBoxPoint(
       event.currentTarget.getBoundingClientRect(),
@@ -95,11 +100,7 @@ export function DiveActivityChart({
       event.clientX,
       event.clientY,
     );
-    const column = Math.floor(
-      ((x - CHART_PADDING.left) /
-        (width - CHART_PADDING.left - CHART_PADDING.right)) *
-        bars.length,
-    );
+    const column = Math.floor(((x - left) / plotWidth) * bars.length);
     return Math.min(bars.length - 1, Math.max(0, column));
   });
   // A finger's pick outlives the bars it was made on, when the period changes.
@@ -127,13 +128,11 @@ export function DiveActivityChart({
     );
   }
 
-  const domain = countDomain(ceiling);
-
-  const slot = (width - CHART_PADDING.left - CHART_PADDING.right) / bars.length;
+  const slot = plotWidth / bars.length;
   const barWidth = Math.min(slot * BAR_FILL, MAX_BAR_WIDTH);
   const baseline = CHART_PADDING.top + CHART_PLOT_HEIGHT;
 
-  const slotStart = (index: number) => CHART_PADDING.left + index * slot;
+  const slotStart = (index: number) => left + index * slot;
   const center = (index: number) => slotStart(index) + slot / 2;
   const height = (dives: number) => (dives / domain.max) * CHART_PLOT_HEIGHT;
 
@@ -141,11 +140,7 @@ export function DiveActivityChart({
   // it's the one the eye goes to, and dropping it to keep 1998's would be the
   // wrong half of the axis to preserve.
   const labelStride = Math.ceil(
-    bars.length /
-      labelCapacity(
-        width - CHART_PADDING.left - CHART_PADDING.right,
-        X_LABEL_SPACING[scope],
-      ),
+    bars.length / labelCapacity(plotWidth, X_LABEL_SPACING[scope]),
   );
   const labelled = (index: number) =>
     (bars.length - 1 - index) % labelStride === 0;
@@ -158,7 +153,7 @@ export function DiveActivityChart({
       <div ref={chartRef} className="relative">
         <svg
           viewBox={`0 0 ${width} ${CHART_HEIGHT}`}
-          className="w-full h-auto"
+          className="w-full h-auto overflow-visible"
           // `img`, not the gas chart's `group`: there is nothing focusable
           // inside this one. The bars aren't links - a month is not a page -
           // so the summary below plus the visually hidden list after it carry
@@ -168,8 +163,9 @@ export function DiveActivityChart({
           {...readout.scrubProps}
         >
           <ChartYAxis
-            ticks={axisTicks(domain)}
+            ticks={ticks}
             y={(tick) => baseline - height(tick)}
+            left={left}
             width={width}
           />
 
