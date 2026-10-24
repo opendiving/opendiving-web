@@ -346,3 +346,13 @@ describe("the invite link", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("§5", () => {
+  it("counts the dive drafts among what the diver enters", async () => {
+    await renderPage(false);
+
+    expect(screen.getByText(/What you enter into this copy/)).toHaveTextContent(
+      /dives, dive drafts, sites/,
+    );
+  });
+});

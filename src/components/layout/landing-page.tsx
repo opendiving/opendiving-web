@@ -101,7 +101,7 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
                 your computer with the full profile, gear and certification
                 cards alongside them — and an export button that hands
                 everything back in open formats, which this app can read
-                straight back in.
+                straight back in, bar any dive still saved as a draft.
               </p>
             </div>
 

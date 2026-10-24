@@ -41,6 +41,8 @@ export interface DivesPageFrameProps {
    * in date order, so leaving it out is the page's own first render.
    */
   numbering?: ReactNode;
+  /** The drafts card, above the numbering. It too draws nothing while there are none. */
+  drafts?: ReactNode;
   /**
    * Attached to the page's `h1`, which is `tabIndex={-1}` so it can be given
    * focus when something between it and the list removes itself.
@@ -75,6 +77,7 @@ export function DivesPageFrame({
   itemsPerPage,
   cards = [],
   numbering,
+  drafts,
   headingRef,
   isLoadingMore = false,
   loadFailed = false,
@@ -123,6 +126,7 @@ export function DivesPageFrame({
       />
 
       <div className={cn(HERO_BODY, "space-y-6 max-sm:space-y-2.5")}>
+        {drafts}
         {numbering}
 
         <Card>

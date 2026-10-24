@@ -52,6 +52,7 @@ describe("the restore offer", () => {
     expect(pageText()).toContain("diver@example.com");
     expect(pageText()).toContain("September");
     expect(pageText()).toContain("2026");
+    expect(pageText()).toContain("Your dives, dive drafts, dive sites");
   });
 
   // The API leaves `purge_after` out for a row flagged with no clock to count from.
@@ -62,6 +63,7 @@ describe("the restore offer", () => {
     render(<RestoreAccountCard />);
 
     expect(pageText()).not.toContain("Invalid Date");
+    expect(pageText()).toContain("Your dives, dive drafts, dive sites");
     expect(restoreButton()).toBeVisible();
   });
 

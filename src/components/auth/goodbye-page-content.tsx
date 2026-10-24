@@ -72,7 +72,7 @@ function GoodbyeContent({ purgeAfter }: { purgeAfter: string | null }) {
             icon={Trash2}
             iconClassName="text-muted-foreground"
             title="Your account has been deleted"
-            description="The date it was due to be erased on has passed, so your dives, dive sites, trips, courses, certifications, gear, contacts, people and tags are no longer recoverable."
+            description="The date it was due to be erased on has passed, so your dives, dive drafts, dive sites, trips, courses, certifications, gear, contacts, people and tags are no longer recoverable."
           />
         ) : (
           <>
@@ -84,7 +84,7 @@ function GoodbyeContent({ purgeAfter }: { purgeAfter: string | null }) {
                 purgeOn ? (
                   <>
                     You&apos;re signed out everywhere, and nothing has been
-                    erased yet. Your dives, dive sites, trips, courses,
+                    erased yet. Your dives, dive drafts, dive sites, trips, courses,
                     certifications, gear, contacts, people and tags will be
                     permanently erased on{" "}
                     <span className="font-medium text-foreground">

@@ -254,6 +254,13 @@ export default async function PrivacyPage() {
                   notes
                 </li>
                 <li>
+                  <strong>Dive Drafts:</strong> A dive you save before logging
+                  it, here or in the OpenDiving app &mdash; whatever of the
+                  dive log above it holds so far, and on the app the gear set
+                  you loaded and the items you ticked off it. A draft is kept
+                  until you log it, which makes it a dive, or discard it
+                </li>
+                <li>
                   <strong>Dive-Computer Files:</strong> When you fill a dive in
                   from a dive-computer file, that file itself is kept alongside
                   the dive &mdash; on the recording it came from, under the
@@ -529,8 +536,8 @@ export default async function PrivacyPage() {
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
-                  <strong>Provide the Service:</strong> Store your dives, sites,
-                  trips, gear, courses, certifications, contacts, people, tags
+                  <strong>Provide the Service:</strong> Store your dives, dive
+                  drafts, sites, trips, gear, courses, certifications, contacts, people, tags
                   and check-in details, show them back to you, show you the
                   current username of an account you linked a person to, show
                   your check-in page to whoever holds a check-in link you made,
@@ -1585,7 +1592,8 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   The deletion is not a flag or an archive: the account row and
-                  everything hanging off it &mdash; dives, sites, trips, gear,
+                  everything hanging off it &mdash; dives, dive drafts, sites,
+                  trips, gear,
                   courses, certifications, contacts, people, tags &mdash; are
                   destroyed, and the files you uploaded are unlinked from disk
                   with them

@@ -34,14 +34,15 @@ interface ExportRow {
 
 // One sentence per row, and each says what is *in* the file rather than what the format
 // is - a diver choosing between four downloads is asking "which one has my stuff in
-// it". Two of them can answer "all of it", and the difference between those two is the
-// only thing this copy has to get across: DiveJSON holds everything the account has as
-// data, the archive holds that plus the files that were uploaded into it. Which is also
+// it". Two of them come close to "all of it", and the difference between those two is the
+// only thing this copy has to get across: DiveJSON holds the logbook - everything the
+// account has as data but its dive drafts - and the archive holds that plus the drafts and
+// the files that were uploaded into it. Which is also
 // why the archive is the row that mentions the certification scans and the portrait -
 // the one thing here worth knowing *before* the file lands in a downloads folder, not
 // after.
 //
-// DiveJSON leads because it is the complete one and the app's own format; the two lossy
+// DiveJSON leads because it is the complete logbook and the app's own format; the two lossy
 // rows below it are for handing to something else.
 //
 // Three of the four also come *back* - DiveJSON, UDDF and the archive, through the Import
@@ -60,7 +61,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileJson,
     title: "DiveJSON",
     description:
-      "Your whole logbook in one file: every dive with every recording that made it — each one's device, its files and its full sample profile — plus cylinders, sites, trips, courses, marine life, gear with its service history, your c-card records, your contacts, the people you dive with and your tags. Everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is the one that comes back with nothing lost.",
+      "Your whole logbook in one file: every dive with every recording that made it — each one's device, its files and its full sample profile — plus cylinders, sites, trips, courses, marine life, gear with its service history, your c-card records, your contacts, the people you dive with and your tags. Everything in the account except your dive drafts and the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is the one that comes back with nothing lost.",
   },
   {
     format: "uddf",
@@ -81,7 +82,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileArchive,
     title: "Full archive",
     description:
-      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you uploaded — each under the recording it belongs to — and every certification card image you uploaded. This is the one to keep as a backup — it is also the only download that can put those files back, since an import can restore only the bytes it actually carries. Your portrait is in it too, and importing the archive offers it back beside yours. The card scans and the portrait are personal documents, so treat the file as one.",
+      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you uploaded — each under the recording it belongs to — every certification card image you uploaded, and your dive drafts, which an import leaves out. This is the one to keep as a backup — it is also the only download that can put those files back, since an import can restore only the bytes it actually carries. Your portrait is in it too, and importing the archive offers it back beside yours. The card scans and the portrait are personal documents, so treat the file as one.",
   },
 ];
 
@@ -95,7 +96,8 @@ interface DataExportCardProps {
 // The product's promise is that nothing in an account is reachable only through this
 // app, and this card is the half that can be checked by pressing a button. The Import
 // page is the other half - a copy nothing can read back is a copy in name only - and
-// the two together are what make the round trip a claim rather than an intention.
+// the two together are what make the round trip a claim rather than an intention - for
+// everything but the dive drafts, which the archive carries and an import leaves out.
 //
 // Downloads go through the API client and a synthetic click rather than a plain
 // `<a href>` - the endpoints need an `Authorization` header, which a link cannot send

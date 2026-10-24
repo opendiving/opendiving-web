@@ -12,7 +12,10 @@ import {
   DiveFormFields,
   DiveFormValues,
 } from "@/components/dives/dive-form-fields";
-import { DiveFormActions } from "@/components/dives/dive-form-actions";
+import {
+  DiveFormActions,
+  type DiveFormDraftActions,
+} from "@/components/dives/dive-form-actions";
 import { useDiveFormSections } from "@/components/dives/dive-form-sections";
 import {
   SectionIndexNav,
@@ -59,6 +62,8 @@ export interface DiveFormProps<TFieldValues extends DiveFormValues> {
   diveNumberNotice?: { forValue: number; message: string } | null;
   // The fields a weather service filled or the form previews - `useDiveConditionsFill`.
   fetched?: FetchedMarks;
+  // The create form's draft buttons, beside the submit.
+  draft?: DiveFormDraftActions;
 }
 
 // The dive form shared by the create and edit dive pages: the file import and the
@@ -83,6 +88,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
   knownSpecies,
   diveNumberNotice,
   fetched,
+  draft,
 }: DiveFormProps<TFieldValues>) {
   // Owned here rather than in `DiveFormFields` because the button that has to
   // wait for it is this component's, not that one's. A species picked but not
@@ -235,6 +241,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
                 isBusy={isResolvingSpecies}
                 busyLabel="Adding species..."
                 error={blockedSubmit}
+                draft={draft}
               />
             </form>
           </div>

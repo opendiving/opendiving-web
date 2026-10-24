@@ -96,6 +96,19 @@ describe("DataExportCard", () => {
     );
   });
 
+  // The drafts ride only in the archive, and the import leaves them out - so the
+  // DiveJSON row no longer holds "everything", and the archive row says both.
+  it("says the drafts are in the archive and not in the DiveJSON", () => {
+    render(<DataExportCard username="alex" />);
+
+    expect(screen.getByText(/Your whole logbook in one file/)).toHaveTextContent(
+      /Everything in the account except your dive drafts and the uploaded files/,
+    );
+    expect(screen.getByText(/Everything, as a zip/)).toHaveTextContent(
+      /your dive drafts, which an import leaves out/,
+    );
+  });
+
   it.each([
     // The label is the row's title and the format is the URL segment, which is exactly
     // the pairing a fourth row could get wrong without any type disagreeing.

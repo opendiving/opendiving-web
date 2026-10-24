@@ -229,7 +229,7 @@ function VerifyStatus({
                   {purgeOn ? (
                     <>
                       Restoring signs you in and brings back your dives, dive
-                      sites, trips, courses, certifications, gear, contacts,
+                      drafts, dive sites, trips, courses, certifications, gear, contacts,
                       people and tags. After{" "}
                       <span className="font-medium text-foreground">
                         {formatPurgeDay(purgeOn)}
@@ -237,7 +237,7 @@ function VerifyStatus({
                       nothing can be restored.
                     </>
                   ) : (
-                    "Restoring signs you in and brings back your dives, dive sites, trips, courses, certifications, gear, contacts, people and tags. Once the erasure date passes, nothing can be restored."
+                    "Restoring signs you in and brings back your dives, dive drafts, dive sites, trips, courses, certifications, gear, contacts, people and tags. Once the erasure date passes, nothing can be restored."
                   )}
                 </>
               }

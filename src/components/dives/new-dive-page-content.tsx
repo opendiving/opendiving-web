@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,6 +9,13 @@ import { useReturnTo } from "@/hooks/useReturnTo";
 import { withReturnTo } from "@/lib/return-to";
 import { useSuggestedDiveNumber } from "@/hooks/useSuggestedDiveNumber";
 import { divesAPI } from "@/lib/api/dives";
+import { diveDraftsAPI } from "@/lib/api/dive-drafts";
+import { gearAPI, type GearItemInfo } from "@/lib/api/gear";
+import {
+  buildDiveDraftValues,
+  draftToFormValues,
+  draftVesselUuids,
+} from "@/lib/dive-drafts";
 import { coursesAPI, type CourseLookupItem } from "@/lib/api/courses";
 import { tripsAPI, type TripLookupItem } from "@/lib/api/trips";
 import { mergePeople } from "@/lib/people";
@@ -30,11 +37,38 @@ import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
 import { DiveForm } from "@/components/dives/dive-form";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
 import { DiveIcon } from "@/components/logo";
-import { FORM_BODY, FORM_COLUMN, PlainHero } from "@/components/ui/map-hero";
+import {
+  FORM_BODY,
+  FORM_COLUMN,
+  PAGE_COLUMN,
+  PlainHero,
+} from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
+import { FormPageSkeleton } from "@/components/ui/page-skeleton";
+import { NotFoundState } from "@/components/ui/not-found-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DISCARD_DRAFT_CONFIRMATION } from "@/components/dives/dive-drafts-card";
+import type { DiveFormDraftActions } from "@/components/dives/dive-form-actions";
 import { useToast } from "@/components/ui/use-toast";
 import { nowStartTime } from "@/lib/date-time";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
+
+// How long Save as draft says Saved before it is a button again.
+const SAVED_FOR_MS = 2000;
+
+// The query string with the draft set, or cleared, without a navigation: a
+// save never remounts the form, whose files picked so far live outside its values.
+function replaceDraftParam(draftUuid: string | null) {
+  const params = new URLSearchParams(window.location.search);
+  if (draftUuid) params.set("draft", draftUuid);
+  else params.delete("draft");
+  const query = params.toString();
+  window.history.replaceState(
+    null,
+    "",
+    `${window.location.pathname}${query ? `?${query}` : ""}`,
+  );
+}
 
 // Each "Log a dive" starts a new form from the last dive and whatever the URL
 // names. The router keeps this route mounted under `<Activity>` after the diver
@@ -42,11 +76,16 @@ import { getApiErrorMessage } from "@/lib/api/error";
 // - a site's values on a dive logged for a trip, and the prefill giving up on the
 // dirty form before the trip lands. `bfcacheId` changes on every push or replace
 // but not on back/forward, which still restores the draft; it stays put across a
-// search-param-only change, hence the parameters in the key.
+// search-param-only change, hence the parameters in the key - all but `draft`,
+// which the first Save as draft writes into the URL of the form it saved, and
+// which must not remount it. A visit that arrives with `?draft=` is a push, and
+// mounts fresh anyway.
 export function NewDivePageContent() {
   const { bfcacheId } = useRouter();
   const searchParams = useSearchParams();
-  return <NewDiveForm key={`${bfcacheId}?${searchParams.toString()}`} />;
+  const params = new URLSearchParams(searchParams.toString());
+  params.delete("draft");
+  return <NewDiveForm key={`${bfcacheId}?${params.toString()}`} />;
 }
 
 function NewDiveForm() {
@@ -68,9 +107,34 @@ function NewDiveForm() {
   // Allow pre-selecting a trip/dive site/course via ?trip_uuid=... /
   // ?dive_site_uuid=... / ?course_uuid=..., e.g. when logging a dive from a
   // trip's, dive site's or course's detail page.
-  const initialTripId = searchParams.get("trip_uuid") ?? undefined;
-  const initialDiveSiteId = searchParams.get("dive_site_uuid") ?? undefined;
-  const initialCourseId = searchParams.get("course_uuid") ?? undefined;
+  //
+  // A form opened over a draft (`?draft=`) takes none of them, nor anything from
+  // the last dive: the draft is the form's state. Read once, at mount - the URL
+  // gains a `draft` later when a fresh form is first saved as one, and that form
+  // already holds its state.
+  const [openedDraftUuid] = useState(() => searchParams.get("draft"));
+  const fromUrl = (name: string) =>
+    openedDraftUuid ? undefined : (searchParams.get(name) ?? undefined);
+  const initialTripId = fromUrl("trip_uuid");
+  const initialDiveSiteId = fromUrl("dive_site_uuid");
+  const initialCourseId = fromUrl("course_uuid");
+
+  // The draft this form saves into and logs from: the one it opened over, or the
+  // one its first Save as draft made. A ref for the handlers, which must not make
+  // a second draft while the first save is in flight; state for the buttons.
+  const draftUuidRef = useRef<string | null>(openedDraftUuid);
+  const [draftUuid, setDraftUuid] = useState<string | null>(openedDraftUuid);
+  const [draftLoad, setDraftLoad] = useState<
+    "none" | "loading" | "loaded" | "gone" | "failed"
+  >(openedDraftUuid ? "loading" : "none");
+  // Whether the draft held a dive number, which then stays rather than following
+  // the date.
+  const [draftNumbered, setDraftNumbered] = useState(false);
+  const [draftStatus, setDraftStatus] =
+    useState<DiveFormDraftActions["status"]>("idle");
+  const savingDraftRef = useRef(false);
+  const [isDiscardOpen, setIsDiscardOpen] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
 
   // Back/Cancel return to wherever this form was opened from - the trip or dive
   // site being logged against, an explicit `?from=`, or the dive list.
@@ -136,7 +200,8 @@ function NewDiveForm() {
   // hook. It stops as soon as the diver edits the field themselves.
   const numberSuggestion = useSuggestedDiveNumber(
     form,
-    Boolean(user),
+    Boolean(user) &&
+      (draftLoad === "none" || (draftLoad === "loaded" && !draftNumbered)),
     (before, after) => visibility.noteAutofill("dive_number", before, after),
   );
 
@@ -169,7 +234,7 @@ function NewDiveForm() {
   // has to be a value, not an object.
   const userUuid = user?.uuid;
   useEffect(() => {
-    if (!userUuid) return;
+    if (!userUuid || openedDraftUuid) return;
 
     let cancelled = false;
 
@@ -372,6 +437,7 @@ function NewDiveForm() {
     };
   }, [
     userUuid,
+    openedDraftUuid,
     form,
     prefill,
     autofill,
@@ -379,6 +445,128 @@ function NewDiveForm() {
     initialDiveSiteId,
     initialCourseId,
   ]);
+
+  // The draft the form opened over, filled in as an edit load is: every value it
+  // holds, a hidden field holding one put on screen. The conditions preview and
+  // the site's values start after it, as they start after the last dive's
+  // prefill on a fresh form.
+  useEffect(() => {
+    if (!userUuid || !openedDraftUuid) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const draft = await diveDraftsAPI.getDraft(openedDraftUuid);
+        // The vessels its tanks link, for the tank picker's label and capacity;
+        // one that does not resolve leaves its tank linked by uuid alone.
+        const vessels = (
+          await Promise.allSettled(
+            draftVesselUuids(draft.values).map((uuid) =>
+              gearAPI.getGearItem(uuid),
+            ),
+          )
+        )
+          .filter((result) => result.status === "fulfilled")
+          .map((result) => result.value as GearItemInfo);
+        if (cancelled) return;
+        const values = draftToFormValues(draft.values, vessels);
+        form.reset(values);
+        revealNonEmpty(values);
+        setDraftNumbered(values.dive_number !== undefined);
+        setDraftLoad("loaded");
+        setPrefillSettled(true);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Failed to load the dive draft:", error);
+        setDraftLoad(getApiErrorStatus(error) === 404 ? "gone" : "failed");
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [userUuid, openedDraftUuid, form, revealNonEmpty]);
+
+  useEffect(() => {
+    if (draftStatus !== "saved") return;
+    const timer = setTimeout(() => setDraftStatus("idle"), SAVED_FOR_MS);
+    return () => clearTimeout(timer);
+  }, [draftStatus]);
+
+  // A draft logged or discarded elsewhere - on the phone, say - while this form
+  // was open over it. The form keeps what it holds and from here logs a new dive.
+  const forgetDraft = useCallback(() => {
+    draftUuidRef.current = null;
+    setDraftUuid(null);
+    replaceDraftParam(null);
+    toast({
+      title: "Draft no longer here",
+      description:
+        "This draft was logged or discarded somewhere else. The form now logs a new dive.",
+      variant: "destructive",
+    });
+  }, [toast]);
+
+  // Whatever the form holds, valid or not, through `withhold` as Log dive sends
+  // it, so a previewed weather value is never stored as the diver's.
+  const saveDraft = async () => {
+    if (savingDraftRef.current) return;
+    savingDraftRef.current = true;
+    setDraftStatus("saving");
+    const values = buildDiveDraftValues(conditions.withhold(form.getValues()));
+    const current = draftUuidRef.current;
+    try {
+      if (current) {
+        await diveDraftsAPI.updateDraft(current, values);
+      } else {
+        const created = await diveDraftsAPI.createDraft(values);
+        draftUuidRef.current = created.uuid;
+        setDraftUuid(created.uuid);
+        replaceDraftParam(created.uuid);
+      }
+      setDraftStatus("saved");
+    } catch (error) {
+      setDraftStatus("idle");
+      if (current && getApiErrorStatus(error) === 404) {
+        forgetDraft();
+        return;
+      }
+      console.error("Failed to save the dive draft:", error);
+      toast({
+        title: "Error",
+        description: getApiErrorMessage(
+          error,
+          "Failed to save the draft. Please try again.",
+        ),
+        variant: "destructive",
+      });
+    } finally {
+      savingDraftRef.current = false;
+    }
+  };
+
+  const discardDraft = async () => {
+    const current = draftUuidRef.current;
+    if (!current) return;
+    setIsDiscarding(true);
+    try {
+      await diveDraftsAPI.deleteDraft(current);
+    } catch (error) {
+      // Already gone is what the diver asked for.
+      if (getApiErrorStatus(error) !== 404) {
+        setIsDiscarding(false);
+        toast({
+          title: "Error",
+          description: getApiErrorMessage(
+            error,
+            "Failed to discard the draft. Please try again.",
+          ),
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    router.push("/dives");
+  };
 
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
@@ -388,13 +576,51 @@ function NewDiveForm() {
     return null; // Will redirect to signin
   }
 
+  if (draftLoad === "loading") {
+    return (
+      <FormPageSkeleton
+        backHref={returnTo.href}
+        backLabel={returnTo.label}
+        fields={8}
+      />
+    );
+  }
+
+  if (draftLoad === "gone" || draftLoad === "failed") {
+    return (
+      <div className={PAGE_COLUMN}>
+        <NotFoundState
+          message={
+            draftLoad === "gone"
+              ? "This draft is no longer here - it was logged or discarded, perhaps on another device."
+              : "Couldn't load this draft. Please try again."
+          }
+          backHref="/dives/new"
+          backLabel="Log a new dive"
+        />
+      </div>
+    );
+  }
+
   const onSubmit = async (data: DiveCreateInput) => {
     try {
       setIsSubmitting(true);
 
-      const created = await divesAPI.createDive(
-        buildDiveCreate(conditions.withhold(data)),
-      );
+      const body = buildDiveCreate(conditions.withhold(data));
+      const fromDraft = draftUuidRef.current;
+      let created;
+      if (fromDraft) {
+        // One request: the dive is created and the draft gone together.
+        try {
+          created = await diveDraftsAPI.logDraft(fromDraft, body);
+        } catch (error) {
+          if (getApiErrorStatus(error) !== 404) throw error;
+          forgetDraft();
+          return;
+        }
+      } else {
+        created = await divesAPI.createDive(body);
+      }
 
       // The files wait for the dive, since `/dive/parse` stores nothing.
       await files.save(created.uuid, {
@@ -456,8 +682,23 @@ function NewDiveForm() {
           fileList={files.fileList}
           diveNumberNotice={diveNumberNotice}
           fetched={conditions.marks}
+          draft={{
+            onSave: saveDraft,
+            status: draftStatus,
+            onDiscard: draftUuid ? () => setIsDiscardOpen(true) : undefined,
+          }}
         />
       </div>
+
+      <ConfirmDialog
+        open={isDiscardOpen}
+        onOpenChange={setIsDiscardOpen}
+        title="Discard draft"
+        description={DISCARD_DRAFT_CONFIRMATION}
+        confirmText="Discard"
+        isLoading={isDiscarding}
+        onConfirm={discardDraft}
+      />
     </div>
   );
 }
