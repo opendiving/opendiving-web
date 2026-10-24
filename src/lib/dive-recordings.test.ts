@@ -6,6 +6,7 @@ import {
   deleteRecordingConfirmation,
   diveFileRows,
   diveRecordings,
+  entryFixAfterSave,
   noFileKeptSentence,
   primaryRecording,
   recordingDeviceLabel,
@@ -749,5 +750,57 @@ describe("sameDevice", () => {
         { model: "Suunto D5", serial: "1" },
       ),
     ).toBe(false);
+  });
+});
+
+describe("entryFixAfterSave", () => {
+  const BLUE_HOLE = { latitude: 28.5721, longitude: 34.5412 };
+  const CANYON = { latitude: 28.5523, longitude: 34.5205 };
+  const fixed = (uuid: string, fix: { latitude: number; longitude: number }) =>
+    file({
+      uuid,
+      entry_latitude: fix.latitude,
+      entry_longitude: fix.longitude,
+    });
+
+  it("takes the first file with a fix, recordings by ordinal", () => {
+    expect(
+      entryFixAfterSave({
+        recordings: [
+          recording({ uuid: "r2", ordinal: 1, files: [fixed("b", CANYON)] }),
+          recording({ files: [file({ uuid: "a" })] }),
+        ],
+        pending: [{ entry: BLUE_HOLE }],
+      }),
+    ).toEqual(CANYON);
+  });
+
+  it("passes over the files struck off, to the next stored one and then the picked ones", () => {
+    const recordings = [
+      recording({ files: [fixed("a", BLUE_HOLE), fixed("b", CANYON)] }),
+    ];
+    expect(entryFixAfterSave({ recordings, removed: ["a"] })).toEqual(CANYON);
+    expect(
+      entryFixAfterSave({
+        recordings,
+        removed: ["a", "b"],
+        pending: [{ entry: null }, { entry: BLUE_HOLE }],
+      }),
+    ).toEqual(BLUE_HOLE);
+  });
+
+  it("has none where no file left has one", () => {
+    expect(
+      entryFixAfterSave({
+        recordings: [recording({ files: [fixed("a", BLUE_HOLE)] })],
+        removed: ["a"],
+        stored: BLUE_HOLE,
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps a logbook's fix on a dive that never had files", () => {
+    expect(entryFixAfterSave({ stored: BLUE_HOLE })).toEqual(BLUE_HOLE);
+    expect(entryFixAfterSave({})).toBeNull();
   });
 });

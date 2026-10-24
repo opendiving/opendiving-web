@@ -24,6 +24,7 @@ import { usePendingDiveFiles } from "@/components/dives/use-pending-dive-files";
 import { carriedVessel } from "@/lib/tank-vessel";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { useDiveConditionsFill } from "@/hooks/useDiveConditionsFill";
+import { entryFixAfterSave } from "@/lib/dive-recordings";
 import { useDiveSitePrefill } from "@/hooks/useDiveSitePrefill";
 import { useDivePickPrefill } from "@/hooks/useDivePickPrefill";
 import { DiveForm } from "@/components/dives/dive-form";
@@ -110,13 +111,12 @@ function NewDiveForm() {
   });
   useDivePickPrefill({ form, visibility, lastDivePeople });
   // After the last dive's prefill too, for the same reason as the site's. At the
-  // first picked file's entry fix where one has it, which is where the save leaves
-  // the dive: attaching that file writes its fix onto the dive.
+  // entry fix the picked files give the saved dive.
   const conditions = useDiveConditionsFill({
     form,
     visibility,
     enabled: prefillSettled,
-    position: files.fileList.pending.find((file) => file.entry)?.entry,
+    position: entryFixAfterSave({ pending: files.fileList.pending }),
   });
 
   // The moment a value arrives from outside the diver's typing at mount: a trip,

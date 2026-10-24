@@ -1093,6 +1093,10 @@ export interface DiveFileInfo {
   // import's label, which de-snakes an id it has no label for.
   parser_key: string;
   updated_at?: string | null;
+  // Where this file places the dive's entry, both or neither. The dive's own entry
+  // fix is the first of its files' that has one (`entryFixAfterSave`).
+  entry_latitude?: number | null;
+  entry_longitude?: number | null;
 }
 
 export interface DiveCreate {

@@ -21,6 +21,7 @@ import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { usePendingDiveFiles } from "@/components/dives/use-pending-dive-files";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { useDiveConditionsFill } from "@/hooks/useDiveConditionsFill";
+import { entryFixAfterSave } from "@/lib/dive-recordings";
 import { DiveForm } from "@/components/dives/dive-form";
 import { fetchedMarks } from "@/lib/dive-conditions";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
@@ -85,15 +86,16 @@ export function EditDivePageContent() {
     onLoaded: resetFromDive,
   });
   const files = usePendingDiveFiles(dive?.recordings);
-  // Where the save leaves the dive's entry fix: a file attached to a dive with no
-  // recordings becomes its first, and writes its own fix over the stored one.
-  const pendingFiles = files.fileList.pending;
-  const savedPosition =
-    (dive?.recordings ?? []).length === 0 && pendingFiles.length > 0
-      ? (pendingFiles.find((file) => file.entry)?.entry ?? null)
-      : dive?.entry_latitude != null && dive.entry_longitude != null
+  // At the entry fix the save leaves, with the files struck off and picked here.
+  const savedPosition = entryFixAfterSave({
+    recordings: dive?.recordings,
+    removed: files.fileList.removedStored,
+    pending: files.fileList.pending,
+    stored:
+      dive?.entry_latitude != null && dive.entry_longitude != null
         ? { latitude: dive.entry_latitude, longitude: dive.entry_longitude }
-        : null;
+        : null,
+  });
   const conditions = useDiveConditionsFill({
     form,
     visibility,

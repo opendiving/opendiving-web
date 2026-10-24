@@ -641,3 +641,42 @@ export function diveFileRows(recordings: Recording[]): DiveFileRow[] {
 export function canMergeDive(dive: Dive): boolean {
   return diveRecordings(dive).length > 0;
 }
+
+/** A dive's entry fix: where its first fixed file places the descent. */
+export interface EntryFix {
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * The dive's entry fix once a form's files are saved: the first file that has one,
+ * of the stored files left after `removed` (recordings by ordinal, files as listed)
+ * and then the `pending` ones in pick order - the API's rule, recalculated on every
+ * attach and delete. A dive that never had files keeps `stored`, the fix a logbook
+ * document gave it.
+ */
+export function entryFixAfterSave({
+  recordings = [],
+  removed = [],
+  pending = [],
+  stored = null,
+}: {
+  recordings?: readonly Recording[];
+  removed?: readonly string[];
+  pending?: readonly { entry: EntryFix | null }[];
+  stored?: EntryFix | null;
+}): EntryFix | null {
+  const storedFiles = [...recordings]
+    .sort((first, second) => first.ordinal - second.ordinal)
+    .flatMap((recording) => recording.files);
+  if (storedFiles.length === 0 && pending.length === 0) return stored;
+
+  const struck = new Set(removed);
+  for (const file of storedFiles) {
+    if (struck.has(file.uuid)) continue;
+    if (file.entry_latitude != null && file.entry_longitude != null) {
+      return { latitude: file.entry_latitude, longitude: file.entry_longitude };
+    }
+  }
+  return pending.find((file) => file.entry)?.entry ?? null;
+}
