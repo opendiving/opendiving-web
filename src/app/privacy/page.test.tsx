@@ -1201,6 +1201,12 @@ describe("the session's window and its rotation", () => {
     ).toHaveTextContent(
       /within about a minute is answered as the retry it almost always is, and past that is treated as a stolen session/,
     );
+    // What the server keeps to answer that retry with, and for how long.
+    expect(
+      screen.getByText(/A spent cookie turning up again/),
+    ).toHaveTextContent(
+      /For that minute this server keeps the cookie it issued in the spent one’s place, with the token that goes with it, to hand to the retry, and then discards it — nothing of it is written to the database\./,
+    );
   });
 });
 
