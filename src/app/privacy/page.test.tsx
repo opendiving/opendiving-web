@@ -178,8 +178,8 @@ describe.each([
   ["with Google sign-in configured", true],
   ["without Google sign-in", false],
 ])("the page's other closed lists %s", (_label, google) => {
-  // §2.2 opens by counting itself, twice in one sentence: "Five things are
-  // recorded ... and all five are ordinary machinery".
+  // §2.2 opens by counting itself, twice in one sentence: "Six things are
+  // recorded ... and all six are ordinary machinery".
   it("§2.2 counts the things it says are recorded automatically", async () => {
     await renderPage({ google });
 

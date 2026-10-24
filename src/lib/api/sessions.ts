@@ -1,5 +1,8 @@
 import { apiClient, type MessageResponse } from "./client";
 
+/** Which inactivity window a session runs on; see `UserSession`. */
+export type IdleTimeout = "standard" | "extended";
+
 /**
  * One device signed in to the account, as `GET /user/sessions` lists it.
  *
@@ -21,9 +24,6 @@ import { apiClient, type MessageResponse } from "./client";
  * row, so it is the one field that varies by *credential* rather than by account
  * - which is why this response is never cached anywhere.
  */
-/** Which inactivity window a session runs on; see `UserSession`. */
-export type IdleTimeout = "standard" | "extended";
-
 export interface UserSession {
   uuid: string;
   created_at: string;
