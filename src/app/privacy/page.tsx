@@ -1736,7 +1736,10 @@ export default async function PrivacyPage() {
                 asks this server for sends it to the sign-in page. A spent
                 cookie turning up again within about a minute is answered as the
                 retry it almost always is, and past that is treated as a stolen
-                session.
+                session. For that minute this server keeps the cookie it issued
+                in the spent one&rsquo;s place, with the token that goes with
+                it, to hand to the retry, and then discards it &mdash; nothing
+                of it is written to the database.
               </p>
               <p className="text-foreground mb-4">
                 The token that actually authorises each request is deliberately
