@@ -169,6 +169,9 @@ export function SessionsCard() {
                   {session.current && (
                     <Badge variant="secondary">This device</Badge>
                   )}
+                  {session.idle_timeout === "extended" && (
+                    <Badge variant="outline">Stays signed in longer</Badge>
+                  )}
                 </div>
                 {/* With the time of day, unlike a passkey's added-date. The hour
                     a session was last used is the whole question for a diver

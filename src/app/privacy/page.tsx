@@ -349,11 +349,11 @@ export default async function PrivacyPage() {
                 2.2 Automatically Collected Information
               </h3>
               <p className="text-foreground mb-4">
-                Five things are recorded without you asking for them, and all
-                five are ordinary machinery. Two of them &mdash; signed-in
-                devices and account security events &mdash; are also counted,
-                into daily totals that name nobody, which the end of this
-                section describes:
+                Six things are recorded without you asking for them, and all six
+                are ordinary machinery. Two of them &mdash; signed-in devices
+                and account security events &mdash; are also counted, into daily
+                totals that name nobody, which the end of this section
+                describes:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
@@ -370,11 +370,14 @@ export default async function PrivacyPage() {
                   <strong>Signed-in devices:</strong> Each time you sign in,
                   this copy writes down the session &mdash; the IP address the
                   sign-in came from, your browser&rsquo;s user agent as it sent
-                  it, and when the session was made and last used. That record
-                  is what makes the list in Settings possible, and it is the
-                  only reason signing another device out can work at all. It is
-                  also counted into the day&rsquo;s total of active accounts,
-                  below. It holds nothing from the sign-in cookie itself
+                  it, when the session was made and last used, and how long it
+                  stays signed in while unused &mdash; a browser&rsquo;s window
+                  or the OpenDiving app&rsquo;s longer one, which section 10.1
+                  describes. That record is what makes the list in Settings
+                  possible, and it is the only reason signing another device out
+                  can work at all. It is also counted into the day&rsquo;s total
+                  of active accounts, below. It holds nothing from the sign-in
+                  cookie itself
                 </li>
                 <li>
                   <strong>Account security events:</strong> A record of things
@@ -430,15 +433,28 @@ export default async function PrivacyPage() {
                   like &ldquo;Chrome on macOS&rdquo; &mdash; is saved with it,
                   so a list of passkeys tells you which is which
                 </li>
+                <li>
+                  <strong>Retry records:</strong> When the OpenDiving app on a
+                  phone creates something &mdash; a dive, a dive site, a person
+                  &mdash; it sends a one-off key with the request, so that
+                  sending it again after a reply was lost on a bad connection
+                  cannot create it twice. For each key this copy keeps the
+                  account it came from, the key, which kind of thing was being
+                  created, a digest of what was sent from which the request
+                  cannot be read back, the outcome, the identifier of the record
+                  it made, and when. Nothing of the record itself is copied into
+                  it. A browser sends no such key, so using this site adds none.
+                  Section 7 says how long they are kept
+                </li>
               </ul>
               <p className="text-foreground mb-4">
                 What is kept in your browser is a separate matter, and section
                 10 lists all of it. No usage data about <em>you</em> is
                 collected: nothing here measures which pages you visit, which
-                dives you open, or how long you spend, and none of the five
-                above is compared or profiled. The security record names things
-                that happened to your account &mdash; not what you were doing in
-                the app.
+                dives you open, or how long you spend, and none of the six above
+                is compared or profiled. The security record names things that
+                happened to your account &mdash; not what you were doing in the
+                app.
               </p>
               <p className="text-foreground mb-4">
                 What is counted is a set of <strong>daily totals</strong>, each
@@ -562,6 +578,11 @@ export default async function PrivacyPage() {
                   so whoever runs this copy can look into a break-in or a burst
                   of sign-in attempts. Both expire on a schedule &mdash; section
                   7
+                </li>
+                <li>
+                  <strong>Create things once:</strong> Keep the retry records
+                  from section 2.2, so that something the OpenDiving app sends
+                  again after a lost reply is created once rather than twice
                 </li>
                 <li>
                   <strong>Count how this copy is used:</strong> Keep the daily
@@ -1215,12 +1236,14 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   <strong>Single-use sessions:</strong> The cookie that keeps
-                  you signed in is spent and replaced on every use, and re-using
-                  a spent one is treated as a stolen session rather than a
-                  mistake. Each session is also a record on the server rather
-                  than only a token in your browser, which is what lets you see
-                  the devices signed in to your account and sign one of them out
-                  from another &mdash; section 6.1
+                  you signed in is spent and replaced on every use. A spent one
+                  presented again within about a minute is answered as the retry
+                  it almost always is &mdash; a reply lost on a bad connection
+                  &mdash; and past that it is treated as a stolen session rather
+                  than a mistake. Each session is also a record on the server
+                  rather than only a token in your browser, which is what lets
+                  you see the devices signed in to your account and sign one of
+                  them out from another &mdash; section 6.1
                 </li>
                 <li>
                   <strong>Nothing sensitive in browser storage:</strong> The
@@ -1334,7 +1357,7 @@ export default async function PrivacyPage() {
                 The first four need no request: access, correction, deletion and
                 portability are all buttons in Settings or on the Export page,
                 and they act immediately rather than being forwarded to
-                somebody. {mapTiles ? "Five" : "Four"} things sit outside those
+                somebody. {mapTiles ? "Six" : "Five"} things sit outside those
                 buttons, and naming them is better than letting that sentence
                 read wider than it is. The email address you sign in with, your
                 username and the list of signed-in devices are in Settings but
@@ -1351,12 +1374,12 @@ export default async function PrivacyPage() {
                     for 30 days after.
                   </>
                 )}{" "}
-                And the record of account security events in section 2.2 is in
-                neither: nothing in the app shows it to you and no button copies
-                it, so a copy of that one has to be asked for like the rights
-                below. The last two, that request, and anything else go to
-                whoever runs this copy &mdash; section 13 says how to reach
-                them.
+                And two records in section 2.2 are in neither, the account
+                security events and the retry records: nothing in the app shows
+                them to you and no button copies them, so a copy of either has
+                to be asked for like the rights below. The last two, that
+                request, and anything else go to whoever runs this copy &mdash;
+                section 13 says how to reach them.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1483,8 +1506,8 @@ export default async function PrivacyPage() {
                 discarded your older dives would be the wrong product.
               </p>
               <p className="text-foreground mb-4">
-                Two of the records in section 2.2 expire on their own, whether
-                or not you delete anything, because neither is anything you
+                Three of the records in section 2.2 expire on their own, whether
+                or not you delete anything, because none is anything you
                 entered. A <strong>signed-in device&rsquo;s session</strong> is
                 deleted after it stops being able to sign you in: one that went
                 unused long enough to lapse goes within the hour, and one that
@@ -1498,7 +1521,12 @@ export default async function PrivacyPage() {
                 existed, after 7 days. That shorter one is deliberately the same
                 short life the sign-in link&rsquo;s own record already has: an
                 address someone typed into this copy and never came back to
-                should not outlive it here.
+                should not outlive it here. A <strong>retry record</strong> is
+                deleted by an hourly sweep once it is as old as the longest an
+                OpenDiving app&rsquo;s session can sit unused &mdash; about
+                three months, the window section 10.1 describes &mdash; so that
+                something the app sends again days after a lost reply still
+                finds it.
               </p>
               <p className="text-foreground mb-4">
                 Two more expire on their own where this copy is invite-only, and
@@ -1576,13 +1604,13 @@ export default async function PrivacyPage() {
                   shows no username
                 </li>
                 <li>
-                  Your sessions and your account security events go with it. The
-                  entries made before the account existed have nothing linking
-                  them to it, so they are found by the email address instead
-                  &mdash; the same way the sign-in records already are. The one
-                  gap that cannot close: entries left under an address you later
-                  moved off are not named by the deletion, and expire on their
-                  own 7-day schedule instead
+                  Your sessions, your retry records and your account security
+                  events go with it. The entries made before the account existed
+                  have nothing linking them to it, so they are found by the
+                  email address instead &mdash; the same way the sign-in records
+                  already are. The one gap that cannot close: entries left under
+                  an address you later moved off are not named by the deletion,
+                  and expire on their own 7-day schedule instead
                 </li>
               </ul>
               <p className="text-foreground mb-4">
@@ -1688,9 +1716,12 @@ export default async function PrivacyPage() {
                 in on this browser until about a week goes by without you using
                 the app, not for a week from when you signed in. So a browser
                 you keep using stays signed in for as long as nothing ends its
-                session, and the next paragraph is what can. &ldquo;About a
-                week&rdquo; is the standard setting, and the operator of this
-                copy can change it.
+                session, and the next paragraph is what can. The OpenDiving app
+                on a phone asks for a longer window when it signs in, and stays
+                signed in until about three months go by without it being used;
+                a browser is never given that one. &ldquo;About a week&rdquo;
+                and &ldquo;about three months&rdquo; are the standard settings,
+                and the operator of this copy can change either.
               </p>
               <p className="text-foreground mb-4">
                 It is cleared when you sign out and when your account is
@@ -1703,8 +1734,9 @@ export default async function PrivacyPage() {
                 out at once: the short-lived token described below stops being
                 accepted from the same instant, so the next thing that browser
                 asks this server for sends it to the sign-in page. A spent
-                cookie turning up again is treated as a stolen session rather
-                than as a retry.
+                cookie turning up again within about a minute is answered as the
+                retry it almost always is, and past that is treated as a stolen
+                session.
               </p>
               <p className="text-foreground mb-4">
                 The token that actually authorises each request is deliberately
