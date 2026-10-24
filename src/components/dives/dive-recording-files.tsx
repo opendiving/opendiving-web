@@ -11,6 +11,7 @@ import {
   diveFileRows,
   UNNAMED_DEVICE_LABEL,
   type DiveFileRow,
+  type EntryFix,
   type RecordingConfirmation,
 } from "@/lib/dive-recordings";
 import { formatFileSize } from "@/lib/format";
@@ -31,6 +32,8 @@ export interface PendingDiveFile {
   token: string;
   /** What the parse said recorded it, already rendered. */
   deviceLabel: string | null;
+  /** Where the parse placed the dive's entry - see `entryFixAfterSave`. */
+  entry: EntryFix | null;
 }
 
 interface DiveRecordingFilesProps {

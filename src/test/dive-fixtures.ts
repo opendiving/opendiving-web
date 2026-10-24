@@ -1,4 +1,4 @@
-import type { Dive, DiveConditions } from "@/lib/api/dives";
+import type { ConditionsLookup, Dive, DiveConditions } from "@/lib/api/dives";
 import type { ImportDiveReport } from "@/lib/api/logbook-import";
 
 // A hand-logged dive with every required member and nothing else, so a test
@@ -60,6 +60,20 @@ export function diveConditions(
     },
     filled: { air_temperature: 38.1, weather: "clear", waves: "slight" },
     ...overrides,
+  };
+}
+
+// What the dive form's preview lookup answers, filling what `filled` names.
+export function conditionsLookup(
+  filled: Partial<ConditionsLookup["filled"]> = {},
+): ConditionsLookup {
+  const { attribution, at, utc_offset_minutes } = diveConditions();
+  return {
+    provider: "open-meteo",
+    attribution,
+    at,
+    utc_offset_minutes,
+    filled: { air_temperature: null, weather: null, waves: null, ...filled },
   };
 }
 

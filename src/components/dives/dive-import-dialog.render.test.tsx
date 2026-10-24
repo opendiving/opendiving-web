@@ -51,6 +51,7 @@ const storedDive: Dive = {
           content_type: "application/octet-stream",
           byte_size: 4096,
           parser_key: "fit",
+          attach_order: 0,
         },
       ],
     },

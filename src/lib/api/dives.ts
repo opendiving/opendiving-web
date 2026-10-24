@@ -518,6 +518,29 @@ export interface DiveConditions {
   };
 }
 
+/** What `lookupConditions` asks about: the dive form's inputs to a fetch. */
+export interface ConditionsLookupQuery {
+  start_time: string;
+  dive_site_uuid?: string;
+  // The dive's own entry fix, which wins over the site's pin.
+  latitude?: number;
+  longitude?: number;
+  water_type?: string;
+}
+
+/**
+ * What a fetch for those inputs would write into the dive's fields, each null
+ * where it would write nothing - every one of them when the inputs cannot be
+ * answered at all.
+ */
+export interface ConditionsLookup {
+  provider: string;
+  attribution: string;
+  at: string | null;
+  utc_offset_minutes: number | null;
+  filled: DiveConditions["filled"];
+}
+
 export interface Dive {
   uuid: string;
   dive_number: number;
@@ -1070,6 +1093,13 @@ export interface DiveFileInfo {
   // import's label, which de-snakes an id it has no label for.
   parser_key: string;
   updated_at?: string | null;
+  // Where this file places the dive's entry, both or neither. The dive's own entry
+  // fix is the first of its files' that has one (`entryFixAfterSave`).
+  entry_latitude?: number | null;
+  entry_longitude?: number | null;
+  // This file's rank among all of the dive's files in attach order, 0 first -
+  // across recordings, so it, not the recording, is what orders the fixes.
+  attach_order: number;
 }
 
 export interface DiveCreate {
@@ -1394,6 +1424,10 @@ export interface ParsedDive {
   otu_start: number | null;
   otu_end: number | null;
   surface_pressure_bar: number | null;
+  // Where the dive began, as the file's receiver fixed it. Not a form field either:
+  // the API writes it onto the dive when the file is attached.
+  entry_latitude?: number | null;
+  entry_longitude?: number | null;
   // What recorded the file, on the same all-nullable terms as everything else
   // here, and neither a form field nor a server-side write: it is reported so a
   // caller holding two files of one dive can say which computer each came off.
@@ -1539,6 +1573,21 @@ export const divesAPI = {
       {
         params: { start_time: startTime },
       },
+    );
+    return response.data;
+  },
+
+  /**
+   * What the API's conditions fetch would fill for these inputs, without a stored
+   * dive - the dive form's preview. Writes nothing; a 404 means this instance does
+   * not fetch conditions (or predates the route).
+   */
+  async lookupConditions(
+    query: ConditionsLookupQuery,
+  ): Promise<ConditionsLookup> {
+    const response = await apiClient.get<ConditionsLookup>(
+      `/dive-conditions/lookup`,
+      { params: query },
     );
     return response.data;
   },
