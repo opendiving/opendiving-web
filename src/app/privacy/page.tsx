@@ -1743,10 +1743,10 @@ export default async function PrivacyPage() {
               </p>
               <p className="text-foreground mb-4">
                 The token that actually authorises each request is deliberately
-                not stored anywhere. It is held in the tab&rsquo;s memory, dies
-                when you close the tab, and is worked out again from the cookie
-                above the next time you open the app. That is the reason the
-                rest of this list is so short.
+                never written to your browser&rsquo;s storage. It is held in the
+                tab&rsquo;s memory, dies when you close the tab, and is worked
+                out again from the cookie above the next time you open the app.
+                That is the reason the rest of this list is so short.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
