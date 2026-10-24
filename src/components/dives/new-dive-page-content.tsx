@@ -76,19 +76,49 @@ function replaceDraftParam(draftUuid: string | null) {
 // - a site's values on a dive logged for a trip, and the prefill giving up on the
 // dirty form before the trip lands. `bfcacheId` changes on every push or replace
 // but not on back/forward, which still restores the draft; it stays put across a
-// search-param-only change, hence the parameters in the key - all but `draft`,
-// which the first Save as draft writes into the URL of the form it saved, and
-// which must not remount it. A visit that arrives with `?draft=` is a push, and
-// mounts fresh anyway.
+// search-param-only change, hence the parameters in the key. `draft` is the one
+// exception: the form writes it itself - its first Save as draft names the draft
+// it made, and a draft gone elsewhere is cleared - and that change must not
+// remount it. Every other change of `draft` does, a link to the plain form
+// included, so the key carries a count of those rather than the param.
 export function NewDivePageContent() {
   const { bfcacheId } = useRouter();
   const searchParams = useSearchParams();
   const params = new URLSearchParams(searchParams.toString());
+  const draft = params.get("draft");
   params.delete("draft");
-  return <NewDiveForm key={`${bfcacheId}?${params.toString()}`} />;
+
+  // The `draft` the form last wrote, until the URL catches up with it.
+  const [announced, setAnnounced] = useState<{ draft: string | null } | null>(
+    null,
+  );
+  const [keyed, setKeyed] = useState({ draft, remounts: 0 });
+  if (draft !== keyed.draft) {
+    const ownWrite = announced !== null && announced.draft === draft;
+    setKeyed({
+      draft,
+      remounts: ownWrite ? keyed.remounts : keyed.remounts + 1,
+    });
+    if (announced !== null) setAnnounced(null);
+  }
+
+  return (
+    <NewDiveForm
+      key={`${bfcacheId}?${params.toString()}#${keyed.remounts}`}
+      onDraftParam={(next) => {
+        setAnnounced({ draft: next });
+        replaceDraftParam(next);
+      }}
+    />
+  );
 }
 
-function NewDiveForm() {
+interface NewDiveFormProps {
+  /** Sets or clears `?draft=` without a navigation or a remount. */
+  onDraftParam: (draftUuid: string | null) => void;
+}
+
+function NewDiveForm({ onDraftParam }: NewDiveFormProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -497,14 +527,14 @@ function NewDiveForm() {
   const forgetDraft = useCallback(() => {
     draftUuidRef.current = null;
     setDraftUuid(null);
-    replaceDraftParam(null);
+    onDraftParam(null);
     toast({
       title: "Draft no longer here",
       description:
         "This draft was logged or discarded somewhere else. The form now logs a new dive.",
       variant: "destructive",
     });
-  }, [toast]);
+  }, [toast, onDraftParam]);
 
   // Whatever the form holds, valid or not, through `withhold` as Log dive sends
   // it, so a previewed weather value is never stored as the diver's.
@@ -521,7 +551,7 @@ function NewDiveForm() {
         const created = await diveDraftsAPI.createDraft(values);
         draftUuidRef.current = created.uuid;
         setDraftUuid(created.uuid);
-        replaceDraftParam(created.uuid);
+        onDraftParam(created.uuid);
       }
       setDraftStatus("saved");
     } catch (error) {

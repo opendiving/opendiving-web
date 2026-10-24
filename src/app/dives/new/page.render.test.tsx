@@ -3727,7 +3727,7 @@ describe("drafts", () => {
       mixtures: [],
       file_token: "token",
     } as unknown as Awaited<ReturnType<typeof divesAPI.parseDiveFile>>);
-    render(<NewDivePage />);
+    const { rerender } = render(<NewDivePage />);
     await screen.findByLabelText(/dive time/i);
     importFile();
     expect(await screen.findByText("dive.fit")).toBeInTheDocument();
@@ -3735,7 +3735,11 @@ describe("drafts", () => {
     await saveAsDraft();
 
     await waitFor(() => expect(diveDraftsAPI.createDraft).toHaveBeenCalled());
+    // The search params catch up with the URL the save wrote, and the form stays.
+    stable.searchParams = new URLSearchParams("draft=draft-1");
+    rerender(<NewDivePage />);
     expect(screen.getByText("dive.fit")).toBeInTheDocument();
+    expect(diveDraftsAPI.getDraft).not.toHaveBeenCalled();
   });
 
   it("stores no weather value the form only previewed", async () => {
@@ -3858,7 +3862,7 @@ describe("drafts", () => {
       vi.mocked(diveDraftsAPI.getDraft).mockRejectedValue({
         response: { status: 404 },
       });
-      render(<NewDivePage />);
+      const { rerender } = render(<NewDivePage />);
 
       expect(
         await screen.findByText(/This draft is no longer here/),
@@ -3866,6 +3870,13 @@ describe("drafts", () => {
       expect(
         screen.getByRole("link", { name: /log a new dive/i }),
       ).toHaveAttribute("href", "/dives/new");
+
+      // Following it changes only the search params, and mounts the plain form.
+      stable.searchParams = new URLSearchParams();
+      rerender(<NewDivePage />);
+      expect(await screen.findByLabelText(/dive time/i)).toBeInTheDocument();
+      expect(screen.queryByText(/This draft is no longer here/)).toBeNull();
+      await waitFor(() => expect(divesAPI.getDives).toHaveBeenCalled());
     });
 
     it("logs a new dive once the draft went while the form was open", async () => {
