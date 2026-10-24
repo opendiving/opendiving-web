@@ -453,6 +453,71 @@ export interface SightingWrite {
   notes?: string;
 }
 
+export type TideState = "high" | "low" | "rising" | "falling";
+
+/** A turn of the tide, as a model's hourly sea level places it. */
+export interface ConditionsExtreme {
+  kind: "high" | "low";
+  // Spelled at the record's `utc_offset_minutes`.
+  at: string;
+  // Metres above the model's own mean sea level, not a chart datum.
+  height: number;
+}
+
+/** The surface weather at the dive's hour, in SI units: °C, m/s, degrees. */
+export interface ConditionsWeather {
+  model: string;
+  air_temperature?: number | null;
+  relative_humidity?: number | null;
+  wind_speed?: number | null;
+  // Where the wind blows from.
+  wind_direction?: number | null;
+  wind_gusts?: number | null;
+  cloud_cover?: number | null;
+  precipitation?: number | null;
+  pressure?: number | null;
+  weather_code?: number | null;
+}
+
+/** The sea state and the tide at the dive's hour, in metres and °C. */
+export interface ConditionsSea {
+  model: string;
+  sea_level_height?: number | null;
+  tide_state?: TideState | null;
+  previous_extreme?: ConditionsExtreme | null;
+  next_extreme?: ConditionsExtreme | null;
+  sea_surface_temperature?: number | null;
+  wave_height?: number | null;
+  wave_period?: number | null;
+  swell_wave_height?: number | null;
+}
+
+/**
+ * A dive's surface conditions as a weather service answered them, which the API's
+ * worker fetches on its own after the dive is saved.
+ */
+export interface DiveConditions {
+  provider: string;
+  fetched_at: string;
+  // The instant described. It and every instant inside are spelled at
+  // `utc_offset_minutes`, which is the only offset a dive whose own is unknown has.
+  at: string;
+  utc_offset_minutes: number;
+  position: { latitude: number; longitude: number };
+  // The source line the data's licence asks for beside it, as markdown links.
+  attribution: string;
+  weather?: ConditionsWeather | null;
+  sea?: ConditionsSea | null;
+  // The value the fetch wrote into each of the dive's own fields, null where it
+  // wrote nothing. A field holding its written value is the fetch's until the
+  // diver replaces it; read it through `fetchedFields` (`lib/dive-conditions.ts`).
+  filled: {
+    air_temperature: number | null;
+    weather: string | null;
+    waves: string | null;
+  };
+}
+
 export interface Dive {
   uuid: string;
   dive_number: number;
@@ -568,6 +633,9 @@ export interface Dive {
   // `gasUseUnavailableReason()` (`lib/dive-gas.ts`) to explain a missing value
   // to the user rather than showing nothing.
   gas_use?: DiveGasUse | null;
+  // Optional for the same reason as `gas_use`: a detail-response field the list
+  // never sends. Null where nothing was fetched for the dive.
+  conditions?: DiveConditions | null;
   // What was spotted on the dive, in the order the diver listed them.
   //
   // Optional because the API sends it on the detail response only: embedding it

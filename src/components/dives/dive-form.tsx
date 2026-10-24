@@ -29,6 +29,7 @@ import {
 } from "@/lib/dive-form-fields";
 import { describeBlockedSubmit } from "@/lib/form-validity";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
+import type { FetchedMarks } from "@/lib/dive-conditions";
 
 export interface DiveFormProps<TFieldValues extends DiveFormValues> {
   form: UseFormReturn<TFieldValues>;
@@ -56,6 +57,8 @@ export interface DiveFormProps<TFieldValues extends DiveFormValues> {
   knownSpecies?: SpeciesSummary[];
   // Note shown under the dive number - see `DiveFormFields`.
   diveNumberNotice?: { forValue: number; message: string } | null;
+  // The stored dive's fields a weather service filled, when editing.
+  fetched?: FetchedMarks;
 }
 
 // The dive form shared by the create and edit dive pages: the file import and the
@@ -79,6 +82,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
   knownGearItems,
   knownSpecies,
   diveNumberNotice,
+  fetched,
 }: DiveFormProps<TFieldValues>) {
   // Owned here rather than in `DiveFormFields` because the button that has to
   // wait for it is this component's, not that one's. A species picked but not
@@ -168,6 +172,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
     <AutofilledMarks
       control={form.control}
       isAutofilled={visibility.isAutofilled}
+      fetched={fetched}
     >
       <SectionIndexProvider index={sections.index}>
         <Form {...form}>

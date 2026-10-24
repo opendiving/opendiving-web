@@ -21,6 +21,7 @@ import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { usePendingDiveFiles } from "@/components/dives/use-pending-dive-files";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveForm } from "@/components/dives/dive-form";
+import { fetchedMarks } from "@/lib/dive-conditions";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
 import { DiveIcon } from "@/components/logo";
 import {
@@ -198,6 +199,7 @@ export function EditDivePageContent() {
           knownDiveSites={dive.dive_sites}
           knownGearItems={dive.gear_items}
           knownSpecies={dive.sightings}
+          fetched={fetchedMarks(dive)}
         />
       </div>
     </div>

@@ -370,6 +370,23 @@ export function formatDiveTimeOnly(
   });
 }
 
+// An instant's clock time at a given offset, "09:30" - for a time that belongs to
+// a record carrying its own offset rather than to the viewer's zone, such as a
+// tide turning at a dive whose conditions were resolved at +03:00.
+export function formatClockAtOffset(
+  instant: string,
+  offsetMinutes: number,
+): string {
+  return new Date(
+    new Date(instant).getTime() + offsetMinutes * 60_000,
+  ).toLocaleTimeString("en-US", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+}
+
 // A dive's start as one line: the date, the wall-clock time it was entered in,
 // and the offset that clock was on - "Sunday, April 4, 2021 at 10:04
 // (UTC+02:00)". For where two dives have to be told apart by when they started

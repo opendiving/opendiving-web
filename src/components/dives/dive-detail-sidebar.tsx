@@ -1,15 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  CURRENT_LABELS,
-  Dive,
-  ENTRY_TYPE_LABELS,
-  WATER_TYPE_LABELS,
-  WAVES_LABELS,
-  WEATHER_LABELS,
-} from "@/lib/api/dives";
+import { Dive, ENTRY_TYPE_LABELS } from "@/lib/api/dives";
 import { labelOrFallback } from "@/lib/api/labels";
 import { Trip } from "@/lib/api/trips";
 import { Course } from "@/lib/api/courses";
@@ -26,13 +18,12 @@ import { PeopleList } from "@/components/people/people-list";
 import { fixPoint } from "@/components/dives/dive-map-locations";
 import { Building2, Globe, GraduationCap, Luggage, Phone } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
-import { CardFigure, CardFigures } from "@/components/dives/card-figure";
+import { DiveEnvironmentCard } from "@/components/dives/dive-environment-card";
 import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import type { DiveCardSection } from "@/components/dives/dive-section-dialog";
 import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
-import { formatAltitude, formatTemperature } from "@/lib/units";
 
 interface DiveDetailSidebarProps {
   dive: Dive;
@@ -81,15 +72,6 @@ export function DiveDetailSidebar({
   const hasPeople = divePeople.some(
     (reference) => people[reference.person_uuid],
   );
-  // The water's temperature and the visibility are the hero's, among the
-  // dive's figures.
-  const hasEnvironmentInfo =
-    dive.air_temperature != null ||
-    dive.water_type != null ||
-    dive.altitude != null ||
-    dive.current != null ||
-    dive.waves != null ||
-    dive.weather != null;
   const contactPlace = formatContactAddress({
     city: contact?.address?.city,
     region: contact?.address?.region,
@@ -319,55 +301,10 @@ export function DiveDetailSidebar({
         </Card>
       )}
 
-      {hasEnvironmentInfo && (
-        <Card>
-          <DiveCardHeader
-            group="Environment"
-            title="Environment"
-            onEdit={onEdit && (() => onEdit("Environment"))}
-          />
-          <CardContent className={CARD_SECTION_CONTENT}>
-            <CardFigures className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]">
-              {dive.air_temperature != null && (
-                <CardFigure
-                  label="Air temperature"
-                  value={formatTemperature(dive.air_temperature, units)}
-                />
-              )}
-              {dive.water_type != null && (
-                <CardFigure
-                  label="Water type"
-                  value={labelOrFallback(WATER_TYPE_LABELS, dive.water_type)}
-                />
-              )}
-              {dive.altitude != null && (
-                <CardFigure
-                  label="Altitude"
-                  value={formatAltitude(dive.altitude, units)}
-                />
-              )}
-              {dive.current != null && (
-                <CardFigure
-                  label="Current"
-                  value={labelOrFallback(CURRENT_LABELS, dive.current)}
-                />
-              )}
-              {dive.waves != null && (
-                <CardFigure
-                  label="Waves"
-                  value={labelOrFallback(WAVES_LABELS, dive.waves)}
-                />
-              )}
-              {dive.weather != null && (
-                <CardFigure
-                  label="Weather"
-                  value={labelOrFallback(WEATHER_LABELS, dive.weather)}
-                />
-              )}
-            </CardFigures>
-          </CardContent>
-        </Card>
-      )}
+      <DiveEnvironmentCard
+        dive={dive}
+        onEdit={onEdit && (() => onEdit("Environment"))}
+      />
 
       {/* What recorded this dive, and what the account still holds from each */}
       <DiveRecordingsCard

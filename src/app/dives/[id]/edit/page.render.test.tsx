@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import EditDivePage from "./page";
 import { divesAPI, type Dive } from "@/lib/api/dives";
+import { diveConditions } from "@/test/dive-fixtures";
 
 // The seam here is one of the moments a value arrives from outside the diver's
 // typing: the edit form's own load. A dive that records notes has to show its
@@ -252,6 +253,30 @@ describe("a dive's classification and conditions", () => {
       tags: ["night"],
       type: "closed_circuit",
     });
+  });
+});
+
+describe("a dive whose conditions a weather service filled", () => {
+  it("marks the fields still holding the fetched value, and credits the service", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        weather: "clear",
+        waves: "rough",
+        conditions: diveConditions({
+          filled: { air_temperature: null, weather: "clear", waves: "slight" },
+        }),
+      }),
+    );
+    render(<EditDivePage />);
+
+    const weather = await screen.findByLabelText(/^weather/i);
+    expect(weather).toHaveValue("clear");
+    expect(weather).toHaveAccessibleName(/filled in from weather data/);
+    // Replaced since the fetch wrote it, so the diver's.
+    expect(screen.getByLabelText(/^waves/i)).toHaveAccessibleName("Waves");
+    expect(
+      screen.getByRole("link", { name: "Weather data by Open-Meteo.com" }),
+    ).toBeInTheDocument();
   });
 });
 

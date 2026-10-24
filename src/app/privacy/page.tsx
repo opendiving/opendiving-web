@@ -46,7 +46,8 @@ export default async function PrivacyPage() {
   // that has set up no join link carries no word about them, and so do the map
   // tiles: a copy whose server draws none says its cards and page heads show no
   // map.
-  const { projectOperated, joinLinks, mapTiles } = await readLegalPageConfig();
+  const { projectOperated, joinLinks, mapTiles, diveConditions } =
+    await readLegalPageConfig();
 
   return (
     <div className={PAGE_COLUMN}>
@@ -1148,6 +1149,50 @@ export default async function PrivacyPage() {
                     An operator who would rather not offer this at all can leave
                     Google sign-in unconfigured, and then none of this &mdash;
                     including this section &mdash; exists on their copy at all.
+                  </p>
+                </>
+              )}
+
+              {/* Conditional like Google's, and after it, so its number is the
+                  next one whichever of the two this copy has. */}
+              {diveConditions && (
+                <>
+                  <h3 className="text-xl font-semibold text-foreground mb-3">
+                    4.{googleClientId ? 12 : 11} Weather at Your Dives
+                  </h3>
+                  <p className="text-foreground mb-4">
+                    This copy of OpenDiving fills in the weather for the dives
+                    you log. Some time after you save a dive that has a place
+                    &mdash; a dive site&rsquo;s pin, or a position your dive
+                    computer recorded &mdash; our servers ask{" "}
+                    <a
+                      href="https://open-meteo.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:text-muted-foreground"
+                    >
+                      Open-Meteo
+                    </a>
+                    , a public weather service, what the weather was there and,
+                    for a dive in the sea, the waves and the tide. What is sent
+                    is the position rounded to about a kilometre and the dates
+                    around the dive, at most three days and never an hour.
+                    Nothing identifying you or the dive goes with it, and it is
+                    sent by our servers rather than by your browser, so
+                    Open-Meteo never sees your IP address. Answers are cached,
+                    so a second dive at the same place on the same days sends
+                    nothing more.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    The answer fills a dive&rsquo;s air temperature, weather and
+                    waves only where you left them empty, and the dive page
+                    marks each one it filled. Choosing another value replaces
+                    it, and the value you chose is never overwritten.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    An operator who would rather not use this leaves it switched
+                    off, and then nothing is sent and this section does not
+                    exist on their copy.
                   </p>
                 </>
               )}

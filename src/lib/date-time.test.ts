@@ -21,6 +21,7 @@ import {
   parseUtcOffsetMinutes,
   todayIsoDate,
   splitStartTime,
+  formatClockAtOffset,
 } from "./date-time";
 
 describe("formatDateTimeForForm", () => {
@@ -528,5 +529,17 @@ describe("daysBetweenIsoDates", () => {
     // holds regardless of the machine's timezone.
     expect(daysBetweenIsoDates("2026-08-10", "2026-08-20")).toBe(10);
     expect(daysBetweenIsoDates("2026-01-01", "2026-01-02")).toBe(1);
+  });
+});
+
+describe("formatClockAtOffset", () => {
+  it("reads an instant's clock at the offset given, not the one it was written at", () => {
+    expect(formatClockAtOffset("2026-09-15T06:30:00+00:00", 180)).toBe("09:30");
+    expect(formatClockAtOffset("2026-09-15T09:30:00+03:00", 180)).toBe("09:30");
+    expect(formatClockAtOffset("2026-01-15T08:00:00Z", 120)).toBe("10:00");
+  });
+
+  it("carries across midnight and a negative offset", () => {
+    expect(formatClockAtOffset("2026-09-15T02:15:00Z", -300)).toBe("21:15");
   });
 });
