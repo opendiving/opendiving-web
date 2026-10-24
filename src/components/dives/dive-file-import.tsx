@@ -441,6 +441,13 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       file,
       token: parsed.file_token,
       deviceLabel: recordingDeviceLabel(parsed.device),
+      entry:
+        parsed.entry_latitude != null && parsed.entry_longitude != null
+          ? {
+              latitude: parsed.entry_latitude,
+              longitude: parsed.entry_longitude,
+            }
+          : null,
     });
     // Kept rather than replaced. Only a prefill has anything to report, so
     // every file after the first answers `null` - and assigning that would wipe

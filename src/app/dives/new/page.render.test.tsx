@@ -3567,6 +3567,34 @@ describe("the day's conditions", () => {
     expect(screen.queryByRole("link", { name: /open-meteo/i })).toBeNull();
   });
 
+  it("asks at an imported file's entry fix, which the save writes onto the dive", async () => {
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ weather: "clear" }),
+    );
+    vi.mocked(divesAPI.parseDiveFile).mockResolvedValue({
+      start_time: null,
+      mixtures: [],
+      entry_latitude: 28.4374,
+      entry_longitude: 34.5487,
+      file_token: "token",
+    } as unknown as Awaited<ReturnType<typeof divesAPI.parseDiveFile>>);
+    render(<NewDivePage />);
+    const weather = await screen.findByLabelText(/^weather/i);
+    await waitFor(() => expect(weather).toHaveValue("clear"));
+
+    importFile();
+
+    await waitFor(() =>
+      expect(divesAPI.lookupConditions).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          dive_site_uuid: "site-reef",
+          latitude: 28.4374,
+          longitude: 34.5487,
+        }),
+      ),
+    );
+  });
+
   it("asks nothing for a form with no site", async () => {
     stable.searchParams = new URLSearchParams();
     render(<NewDivePage />);

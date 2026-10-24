@@ -109,11 +109,14 @@ function NewDiveForm() {
     enabled: prefillSettled,
   });
   useDivePickPrefill({ form, visibility, lastDivePeople });
-  // After the last dive's prefill too, for the same reason as the site's.
+  // After the last dive's prefill too, for the same reason as the site's. At the
+  // first picked file's entry fix where one has it, which is where the save leaves
+  // the dive: attaching that file writes its fix onto the dive.
   const conditions = useDiveConditionsFill({
     form,
     visibility,
     enabled: prefillSettled,
+    position: files.fileList.pending.find((file) => file.entry)?.entry,
   });
 
   // The moment a value arrives from outside the diver's typing at mount: a trip,

@@ -1417,6 +1417,10 @@ export interface ParsedDive {
   otu_start: number | null;
   otu_end: number | null;
   surface_pressure_bar: number | null;
+  // Where the dive began, as the file's receiver fixed it. Not a form field either:
+  // the API writes it onto the dive when the file is attached.
+  entry_latitude?: number | null;
+  entry_longitude?: number | null;
   // What recorded the file, on the same all-nullable terms as everything else
   // here, and neither a form field nor a server-side write: it is reported so a
   // caller holding two files of one dive can say which computer each came off.

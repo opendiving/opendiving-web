@@ -36,6 +36,7 @@ function pending(overrides: Partial<PendingDiveFile> = {}): PendingDiveFile {
     file: new File(["x"], "picked.fit"),
     token: "tok",
     deviceLabel: "Suunto Ocean",
+    entry: null,
     ...overrides,
   };
 }

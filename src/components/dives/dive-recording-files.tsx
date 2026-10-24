@@ -31,6 +31,8 @@ export interface PendingDiveFile {
   token: string;
   /** What the parse said recorded it, already rendered. */
   deviceLabel: string | null;
+  /** Where the parse placed the dive's entry, which attaching writes onto the dive. */
+  entry: { latitude: number; longitude: number } | null;
 }
 
 interface DiveRecordingFilesProps {
