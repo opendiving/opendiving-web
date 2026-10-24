@@ -28,6 +28,7 @@ import {
   axisTicks,
   labelCapacity,
   niceDomain,
+  plotLeft,
 } from "@/lib/chart-scale";
 import {
   type PlotMark,
@@ -161,7 +162,6 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
     return nearestWithin(marks, at, TAP_REACH * at.scale)?.value ?? null;
   });
   const hovered = readout.value;
-  const plotWidth = width - CHART_PADDING.left - CHART_PADDING.right;
 
   // Which marks the diver picked in *this* visit, and null until they pick -
   // which is what leaves room for the remembered selection underneath. Exactly
@@ -227,6 +227,9 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // Scaled to the series with its outliers left off (`clipOutliers`); a dive
   // outside the axis is pinned to its edge and drawn hollow, see below.
   const domain = niceDomain(clipOutliers(rmvs));
+  const ticks = axisTicks(domain);
+  const left = plotLeft(ticks);
+  const plotWidth = width - left;
 
   // The career baseline: the all-time median as a reference line, inside a band
   // covering the middle half of every dive. It's what makes a period readable on
@@ -258,8 +261,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // you only dived in April should show one cluster on the left, not April
   // stretched across the full width as though it were the whole year.
   const x = (time: number) =>
-    CHART_PADDING.left +
-    ((time - range.start) / (range.end - range.start || 1)) * plotWidth;
+    left + ((time - range.start) / (range.end - range.start || 1)) * plotWidth;
   const y = (rmv: number) =>
     CHART_PADDING.top +
     (1 - (rmv - domain.min) / (domain.max - domain.min)) * CHART_PLOT_HEIGHT;
@@ -294,11 +296,11 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   const bins = binSummaries(times, rmvs, unit)
     .filter((bin) => bin.end > range.start && bin.start < range.end)
     .map((bin) => {
-      const left = Math.max(CHART_PADDING.left, x(bin.start));
-      const right = Math.min(width - CHART_PADDING.right, x(bin.end));
-      const inset = Math.min(BIN_INSET, (right - left) / 2);
-      const x0 = left + inset;
-      const x1 = right - inset;
+      const start = Math.max(left, x(bin.start));
+      const end = Math.min(width, x(bin.end));
+      const inset = Math.min(BIN_INSET, (end - start) / 2);
+      const x0 = start + inset;
+      const x1 = end - inset;
 
       return { ...bin, x0, x1, mid: (x0 + x1) / 2 };
     });
@@ -349,7 +351,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
               it is a picture, with nothing interactive inside it. */}
         <svg
           viewBox={`0 0 ${width} ${CHART_HEIGHT}`}
-          className="w-full h-auto"
+          className="w-full h-auto overflow-visible"
           role="group"
           aria-label={describeSeries(visible.length, medianRmv, units)}
           {...readout.scrubProps}
@@ -373,7 +375,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
           {/* Dashed gridlines, and only these: with a month band, the
                 baseline band and the bins all sharing the plot, solid rules
                 across it competed with the data instead of supporting it. */}
-          <ChartYAxis ticks={axisTicks(domain)} y={y} width={width} />
+          <ChartYAxis ticks={ticks} y={y} left={left} width={width} />
 
           {xTicks.map(({ label, time }) => (
             <text
@@ -397,7 +399,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
           {marks.includes("average") && (
             <>
               <rect
-                x={CHART_PADDING.left}
+                x={left}
                 y={y(clamp(baseline.q3))}
                 width={plotWidth}
                 height={y(clamp(baseline.q1)) - y(clamp(baseline.q3))}
@@ -405,8 +407,8 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
                 className="text-muted-foreground opacity-10"
               />
               <line
-                x1={CHART_PADDING.left}
-                x2={width - CHART_PADDING.right}
+                x1={left}
+                x2={width}
                 y1={y(clamp(baseline.median))}
                 y2={y(clamp(baseline.median))}
                 stroke="currentColor"

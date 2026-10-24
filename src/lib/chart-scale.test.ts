@@ -6,7 +6,9 @@ import {
   countDomain,
   fittedChartWidth,
   labelCapacity,
+  labelWidth,
   niceDomain,
+  plotLeft,
   stepCount,
 } from "@/lib/chart-scale";
 
@@ -167,5 +169,30 @@ describe("labelCapacity", () => {
 
   it("never offers fewer than one", () => {
     expect(labelCapacity(10, 33)).toBe(1);
+  });
+});
+
+describe("plotLeft", () => {
+  it("makes room for the widest label, not the last one", () => {
+    expect(plotLeft([8, 10, 12, 14])).toBe(plotLeft([10]));
+    expect(plotLeft([0, 5])).toBeLessThan(plotLeft([0, 50]));
+  });
+
+  it("counts a decimal point as narrower than a digit", () => {
+    expect(plotLeft([12.5])).toBeGreaterThan(plotLeft([12]));
+    expect(plotLeft([12.5])).toBeLessThan(plotLeft([1250]));
+  });
+});
+
+describe("labelWidth", () => {
+  it("scales with the type size", () => {
+    expect(labelWidth("200%", 10)).toBeCloseTo((labelWidth("200%") * 10) / 11);
+  });
+
+  it("is never narrower than Inter draws it", () => {
+    // Measured in the browser at `fontSize={11}`.
+    expect(labelWidth("40")).toBeGreaterThanOrEqual(14.04);
+    expect(labelWidth("1.6 bar")).toBeGreaterThanOrEqual(34.43);
+    expect(labelWidth("200%")).toBeGreaterThanOrEqual(31.39);
   });
 });

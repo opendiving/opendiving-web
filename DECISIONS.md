@@ -2262,11 +2262,11 @@ The API's `shape_events` clamps an event's time at zero and leaves the high end 
 (`dive_end_time`) rather than at the recording's last sample, so a low-pressure alarm logged at the
 surface sits past it too. Clipping to the visible end is the chart's job.
 
-Unclipped, a marker at 6 000 s on a 3 000 s dive lands outside the viewBox and one at 3 200 s inside
-it, in the axis-label gutter aligned with no time — while `describeProfile` names both. One filtered
-list feeds the glyphs, the crosshair and the summary, so they cannot disagree. Markers past the
-domain are dropped, not clamped to the last second (clamping invents a time), and not left to SVG
-clipping, which hides what leaves the viewBox and draws what merely leaves the plot.
+Unclipped, a marker past the dive's end lands in the axis-label gutter or the card's padding, which
+the `overflow-visible` SVG draws into, aligned with no time — while `describeProfile` names it. One
+filtered list feeds the glyphs, the crosshair and the summary, so they cannot disagree. Markers past
+the domain are dropped, not clamped to the last second (clamping invents a time), and not left to
+the SVG's edge, which clips nothing.
 
 ## A dive-wide bar/min is not a rate, so multi-tank `sac_bar_per_min` is null
 

@@ -441,9 +441,13 @@ export function temperatureDomain(
 }
 
 // What follows the number on a panel row's top tick - the separator and the unit
-// both, so "40 min" and "100%" each get the spacing that quantity is written
+// both, so "1.6 bar" and "100%" each get the spacing that quantity is written
 // with. Read off the channels themselves rather than written out again, so a row
 // cannot come to disagree with the curves in it.
+//
+// Minutes get none. The legend already names a no-deco limit and a time to
+// surface, and the widest label in the left gutter sets where the whole plot
+// starts, so " min" would cost every row its width.
 export function axisUnitSuffix(
   axis: ProfileAxisKey,
   units: UnitSystem,
@@ -453,7 +457,8 @@ export function axisUnitSuffix(
   );
   if (!key) return "";
 
-  return `${channelSeparator(key)}${displayChannel(PROFILE_CHANNELS[key], units).unit}`;
+  const { unit } = displayChannel(PROFILE_CHANNELS[key], units);
+  return unit === "min" ? "" : `${channelSeparator(key)}${unit}`;
 }
 
 /** The axis a channel is scaled against. */
