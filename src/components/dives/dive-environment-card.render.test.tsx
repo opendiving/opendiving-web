@@ -30,6 +30,8 @@ const filledDive = (overrides: Partial<Dive> = {}) =>
 const figure = (label: string | RegExp) =>
   screen.getByText(label).closest("div")!;
 
+const tideDiagram = () => screen.getByRole("img", { name: /^Tide:/ });
+
 const isMarked = (label: string | RegExp) =>
   figure(label).querySelector('[title^="Filled in from weather data"]') !==
   null;
@@ -45,19 +47,39 @@ describe("DiveEnvironmentCard, with fetched conditions", () => {
     expect(screen.getByText("21 km/h")).toBeInTheDocument();
     expect(figure("Sea temperature")).toHaveTextContent("27.7°C");
     expect(figure("Wave height")).toHaveTextContent("0.6 m");
-    expect(figure("Tide")).toHaveTextContent("High");
+    expect(tideDiagram()).toBeInTheDocument();
   });
 
-  // Each extreme at the record's offset, whatever offset the instant was written
+  // Each turn at the record's offset, whatever offset the instant was written
   // at: 06:30 UTC is 09:30 at +03:00.
-  it("spells the tide's times at the record's offset", () => {
+  it("draws the tide between its turns, at the record's offset", () => {
     render(<DiveEnvironmentCard dive={filledDive()} />);
 
-    expect(figure("Last high")).toHaveTextContent("09:30");
-    expect(figure("Next low")).toHaveTextContent("15:00");
+    expect(tideDiagram()).toHaveAccessibleName(
+      "Tide: high water at 09:30, low water at 15:00; " +
+        "the dive began at 10:00, at high water",
+    );
+    expect(tideDiagram()).toHaveTextContent("High 09:30");
+    expect(tideDiagram()).toHaveTextContent("Low 15:00");
+    expect(screen.queryByText(/^(Last|Next) /)).toBeNull();
   });
 
-  // A dive whose own offset is unknown takes the one the record resolved.
+  // The curve runs on past each turn by a quarter of the 5.5 h between them, so
+  // 8.25 h are drawn from 08:07:30: the turns sit a sixth in from either end, and
+  // the dive's 10:00 is 1.875 h along, just past the top of the high.
+  it("marks the dive where it falls between the turns", () => {
+    render(<DiveEnvironmentCard dive={filledDive()} />);
+
+    const start = screen.getByTestId("tide-dive-start");
+    expect(start.style.left).toBe("22.73%");
+    expect(start.style.top).toBe("11.62%");
+    expect(screen.getByText("09:30").parentElement!.style.left).toBe("16.67%");
+    expect(screen.getByText("15:00").parentElement!.style.left).toBe("83.33%");
+    expect(screen.getByTestId("tide-dive-span")).toBeInTheDocument();
+  });
+
+  // A dive whose own offset is unknown takes the one the record resolved, and
+  // one turn gives a curve nothing to span, so it stays the figures.
   it("spells them at the record's offset for a dive with none of its own", () => {
     render(
       <DiveEnvironmentCard
@@ -81,6 +103,7 @@ describe("DiveEnvironmentCard, with fetched conditions", () => {
 
     expect(figure("Next high")).toHaveTextContent("11:20");
     expect(figure("Tide")).toHaveTextContent("Rising");
+    expect(screen.queryByRole("img", { name: /^Tide:/ })).toBeNull();
   });
 
   it("shows the wind in mph and the waves in feet on an imperial account", () => {
