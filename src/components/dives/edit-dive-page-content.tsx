@@ -84,16 +84,23 @@ export function EditDivePageContent() {
     redirectTo: "/dives",
     onLoaded: resetFromDive,
   });
+  const files = usePendingDiveFiles(dive?.recordings);
+  // Where the save leaves the dive's entry fix: a file attached to a dive with no
+  // recordings becomes its first, and writes its own fix over the stored one.
+  const pendingFiles = files.fileList.pending;
+  const savedPosition =
+    (dive?.recordings ?? []).length === 0 && pendingFiles.length > 0
+      ? (pendingFiles.find((file) => file.entry)?.entry ?? null)
+      : dive?.entry_latitude != null && dive.entry_longitude != null
+        ? { latitude: dive.entry_latitude, longitude: dive.entry_longitude }
+        : null;
   const conditions = useDiveConditionsFill({
     form,
     visibility,
     enabled: !!dive,
     stored: dive ? fetchedMarks(dive) : undefined,
     fetchedOnOpen: dive?.conditions != null,
-    position:
-      dive?.entry_latitude != null && dive.entry_longitude != null
-        ? { latitude: dive.entry_latitude, longitude: dive.entry_longitude }
-        : null,
+    position: savedPosition,
   });
   useDocumentTitle(
     dive ? `Edit Dive #${dive.dive_number}` : undefined,
@@ -106,8 +113,6 @@ export function EditDivePageContent() {
     href: `/dives/${diveId}`,
     label: "Back to dive",
   });
-
-  const files = usePendingDiveFiles(dive?.recordings);
 
   const onSubmit = async (data: DiveUpdateInput) => {
     if (!user || !diveId) return;

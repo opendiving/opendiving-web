@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import EditDivePage from "./page";
 import { divesAPI, type Dive } from "@/lib/api/dives";
@@ -54,6 +60,7 @@ vi.mock("@/lib/api/dives", async (importOriginal) => {
       updateDive: vi.fn(),
       deleteDiveFile: vi.fn(),
       lookupConditions: vi.fn(),
+      parseDiveFile: vi.fn(),
     },
   };
 });
@@ -376,7 +383,7 @@ describe("a dive's conditions while the form is open", () => {
     expect(divesAPI.lookupConditions).toHaveBeenCalledTimes(1);
   });
 
-  it("takes another site for no move while the entry fix places the dive", async () => {
+  it("previews no field the dive's fetch left empty after a site change, which the save may not fill", async () => {
     vi.mocked(divesAPI.getDive).mockResolvedValue(
       storedDive({
         entry_latitude: 28.5721,
@@ -400,6 +407,77 @@ describe("a dive's conditions while the form is open", () => {
 
     expect(divesAPI.lookupConditions).not.toHaveBeenCalled();
     expect(weather).toHaveValue("");
+  });
+
+  it("asks again for the fields its fetch filled when the site changes", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        waves: "slight",
+        entry_latitude: 28.5721,
+        entry_longitude: 34.5412,
+        dive_sites: [{ uuid: "site-1", name: "Tiger Reef" }],
+        conditions: diveConditions({
+          filled: { air_temperature: null, weather: null, waves: "slight" },
+        }),
+      }),
+    );
+    // A fresh-water site in its place: no sea, so no waves.
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(conditionsLookup());
+    render(<EditDivePage />);
+    const waves = await screen.findByLabelText(/^waves/i);
+    expect(waves).toHaveValue("slight");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Tiger Reef" }),
+    );
+
+    await waitFor(() => expect(waves).toHaveValue(""));
+    expect(divesAPI.lookupConditions).toHaveBeenCalledWith({
+      start_time: "2026-07-01T09:30:00+02:00",
+      latitude: 28.5721,
+      longitude: 34.5412,
+    });
+  });
+
+  it("asks at the fix a file attached to a dive with no recordings will write", async () => {
+    vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
+      conditionsLookup({ weather: "clear" }),
+    );
+    vi.mocked(divesAPI.parseDiveFile).mockResolvedValue({
+      start_time: null,
+      mixtures: [],
+      entry_latitude: 27.9158,
+      entry_longitude: 34.3299,
+      file_token: "token",
+    } as unknown as Awaited<ReturnType<typeof divesAPI.parseDiveFile>>);
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        weather: "overcast",
+        entry_latitude: 28.5721,
+        entry_longitude: 34.5412,
+      }),
+    );
+    render(<EditDivePage />);
+    await waitFor(() => expect(divesAPI.lookupConditions).toHaveBeenCalled());
+
+    fireEvent.change(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      {
+        target: {
+          files: [
+            new File(["{}"], "dive.fit", { type: "application/octet-stream" }),
+          ],
+        },
+      },
+    );
+
+    await waitFor(() =>
+      expect(divesAPI.lookupConditions).toHaveBeenLastCalledWith({
+        start_time: "2026-07-01T09:30:00+02:00",
+        latitude: 27.9158,
+        longitude: 34.3299,
+      }),
+    );
   });
 
   it("empties a fetched field the new start time cannot be answered for, without asking", async () => {

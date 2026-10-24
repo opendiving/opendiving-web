@@ -49,9 +49,9 @@ export interface UseDiveConditionsFillOptions<
   /** The edit form's stored fill, which describes the inputs the dive opened with. */
   stored?: FetchedMarks;
   /**
-   * Whether the edited dive has a fetch of its own. The worker never asks again for
-   * the inputs it answered, so at those inputs the fetch is the whole answer: a field
-   * it left empty stays empty after a save, and is not previewed.
+   * Whether the edited dive has a fetch of its own, which the worker answers again
+   * only when the inputs it read change - so a field that fetch left empty may stay
+   * empty after a save.
    */
   fetchedOnOpen?: boolean;
   /** The dive's own entry fix, which a fetch places the dive at over its site's pin. */
@@ -78,15 +78,16 @@ export interface DiveConditionsFill {
  * A field is filled while it is empty, and refilled - or emptied, where the new
  * inputs answer nothing - while it still holds the value a fetch put there and the
  * inputs have moved since. A value the diver typed or picked is never replaced, and
- * a hidden field is left alone. On the edit form a stored fetch is the answer for
- * as long as the worker's own inputs (`workerInputs`) stay as the dive opened
- * with, and nothing is asked about them.
+ * a hidden field is left alone.
  *
  * A preview only: what it writes is withheld on submit (`withhold`), and the
- * API's worker writes the same values after the save. Two moves the form cannot
- * tell from the worker's are read as moved and previewed though the worker
- * answers nothing new: another site whose pin rounds to the same place, and a
- * water type set to the one the site already gives.
+ * API's worker writes the same values after the save. So it shows only what that
+ * worker is sure to write. A field the dive's own fetch filled is, at whatever the
+ * inputs become. An empty one on a dive with a fetch is only once the start time
+ * moves: of everything the worker reads, that is the one change the form can be
+ * sure of, and a site or water type that changes nothing the worker reads would
+ * leave the field empty after the save. The cost is an empty field not previewed
+ * after a move the worker does answer, which the save then fills.
  */
 export function useDiveConditionsFill<TFieldValues extends FieldValues>({
   form,
@@ -122,15 +123,6 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
         }
       : null;
   const inputs = query ? JSON.stringify(query) : null;
-  // What the worker answers a stored dive again on a change of: the place is the
-  // entry fix where there is one, and the site only where there is not.
-  const workerInputs = query
-    ? JSON.stringify([
-        query.start_time,
-        position ? null : (query.dive_site_uuid ?? null),
-        query.water_type ?? null,
-      ])
-    : null;
   // What the API would answer with nothing for, so it is not asked: no place to
   // ask about, or no hour of the day.
   const answerable =
@@ -146,7 +138,7 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
   const ownedRef = useRef<Owned>({});
   const attributionRef = useRef("");
   const describedRef = useRef<string | null | undefined>(undefined);
-  const openedRef = useRef<{ workerInputs: string; fill: Owned } | null>(null);
+  const openedRef = useRef<{ startTime: string; fill: Owned } | null>(null);
   // Bumped per request, so a reply for earlier inputs never lands.
   const requestRef = useRef(0);
   const visibilityRef = useRef(visibility);
@@ -162,7 +154,7 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
   useEffect(() => {
     if (!enabled) return;
     const request = ++requestRef.current;
-    if (!query || !inputs || !workerInputs) return;
+    if (!query || !inputs) return;
 
     // The first inputs the form holds a start time for are the ones it opened with.
     if (describedRef.current === undefined) {
@@ -176,40 +168,35 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
       }
       ownedRef.current = seeded;
       attributionRef.current = stored?.attribution ?? "";
-      openedRef.current = { workerInputs, fill: seeded };
+      openedRef.current = { startTime: query.start_time, fill: seeded };
     }
 
-    // What these inputs answer without asking: nothing where the API would have
-    // nothing to say, and the dive's own fetch at the inputs it describes.
+    // Whether the save has the worker write this field (see the hook's comment).
     const opened = openedRef.current;
-    const known: ConditionsLookup["filled"] | null = !answerable
-      ? NOTHING_FILLED
-      : fetchedOnOpen && opened?.workerInputs === workerInputs
-        ? ({ ...NOTHING_FILLED, ...opened.fill } as ConditionsLookup["filled"])
-        : null;
+    const written = (field: FetchedField) =>
+      !fetchedOnOpen ||
+      opened?.startTime !== query.start_time ||
+      (opened !== null && field in opened.fill);
 
     const fillable = (field: FetchedField) => {
       if (!visibilityRef.current.isVisible(field)) return false;
       const value = holds(field);
-      if (!isNonEmptyFieldValue(value)) return true;
+      if (!isNonEmptyFieldValue(value)) return written(field);
       return (
         inputs !== describedRef.current && value === ownedRef.current[field]
       );
     };
-    const due = (field: FetchedField) => {
-      if (!fillable(field)) return false;
-      if (known === null) return true;
-      const value = holds(field);
-      return isNonEmptyFieldValue(value)
-        ? value !== known[field]
-        : known[field] != null;
-    };
-    if (!FETCHED_FIELDS.some(due)) return;
+    const due = FETCHED_FIELDS.filter(fillable);
+    // Only a field the save writes is worth asking about; the rest are emptied.
+    const asks = answerable && due.some(written);
+    if (!asks && !due.some((field) => isNonEmptyFieldValue(holds(field)))) {
+      return;
+    }
 
     const timer = setTimeout(async () => {
-      let filled = known ?? NOTHING_FILLED;
+      let filled: ConditionsLookup["filled"] = NOTHING_FILLED;
       try {
-        if (known === null) {
+        if (asks) {
           const answer = await divesAPI.lookupConditions(query);
           filled = answer.filled;
           attributionRef.current = answer.attribution;
@@ -228,7 +215,7 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
       const owned: Owned = { ...ownedRef.current };
       for (const field of FETCHED_FIELDS) {
         if (!fillable(field)) continue;
-        const value = filled[field];
+        const value = written(field) ? filled[field] : null;
         visibilityRef.current.overwrite(
           field,
           value ?? EMPTY_DIVE_FORM_VALUES[field],
@@ -247,8 +234,8 @@ export function useDiveConditionsFill<TFieldValues extends FieldValues>({
     }, LOOKUP_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-    // `query`, `answerable` and `workerInputs` are `inputs` parsed, and `stored` and `fetchedOnOpen`
-    // are read once, when the form opens.
+    // `query` and `answerable` are `inputs` parsed, and `stored` and
+    // `fetchedOnOpen` are read once, when the form opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, inputs, holds]);
 
