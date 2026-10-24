@@ -799,8 +799,15 @@ describe("entryFixAfterSave", () => {
     ).toBeNull();
   });
 
-  it("keeps a logbook's fix on a dive that never had files", () => {
+  it("keeps the dive's own fix while no file is attached or deleted", () => {
     expect(entryFixAfterSave({ stored: BLUE_HOLE })).toEqual(BLUE_HOLE);
+    // A merge or a logbook document gave it, and no file has it.
+    expect(
+      entryFixAfterSave({
+        recordings: [recording({ files: [file({ uuid: "a" })] })],
+        stored: BLUE_HOLE,
+      }),
+    ).toEqual(BLUE_HOLE);
     expect(entryFixAfterSave({})).toBeNull();
   });
 });
