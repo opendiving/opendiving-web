@@ -1275,10 +1275,13 @@ describe("channelsOnAxis", () => {
 
 describe("axisUnitSuffix", () => {
   it("carries the separator as well as the unit", () => {
-    expect(axisUnitSuffix("no_deco", "metric")).toBe(" min");
-    expect(axisUnitSuffix("time_to_surface", "metric")).toBe(" min");
     expect(axisUnitSuffix("ppo2", "metric")).toBe(" bar");
     expect(axisUnitSuffix("percent", "metric")).toBe("%");
+  });
+
+  it("leaves minutes bare", () => {
+    expect(axisUnitSuffix("no_deco", "metric")).toBe("");
+    expect(axisUnitSuffix("time_to_surface", "imperial")).toBe("");
   });
 
   it("follows the diver's system where the axis has one", () => {

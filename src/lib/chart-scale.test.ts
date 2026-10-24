@@ -6,6 +6,7 @@ import {
   countDomain,
   fittedChartWidth,
   labelCapacity,
+  labelWidth,
   niceDomain,
   plotLeft,
   stepCount,
@@ -180,5 +181,18 @@ describe("plotLeft", () => {
   it("counts a decimal point as narrower than a digit", () => {
     expect(plotLeft([12.5])).toBeGreaterThan(plotLeft([12]));
     expect(plotLeft([12.5])).toBeLessThan(plotLeft([1250]));
+  });
+});
+
+describe("labelWidth", () => {
+  it("scales with the type size", () => {
+    expect(labelWidth("200%", 10)).toBeCloseTo((labelWidth("200%") * 10) / 11);
+  });
+
+  it("is never narrower than Inter draws it", () => {
+    // Measured in the browser at `fontSize={11}`.
+    expect(labelWidth("40")).toBeGreaterThanOrEqual(14.04);
+    expect(labelWidth("1.6 bar")).toBeGreaterThanOrEqual(34.43);
+    expect(labelWidth("200%")).toBeGreaterThanOrEqual(31.39);
   });
 });

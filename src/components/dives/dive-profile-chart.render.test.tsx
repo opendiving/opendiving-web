@@ -219,6 +219,15 @@ const rightAxisTicks = (root: HTMLElement) =>
     .filter(outsideThePanel)
     .map((tick) => tick.textContent);
 
+// The plot's horizontal extent in viewBox units, read off the hit target laid
+// over it: each edge's gutter is sized to the labels drawn in it.
+function plotEdges(root: HTMLElement) {
+  const target = root.querySelector('rect[fill="transparent"]');
+  const left = Number(target?.getAttribute("x"));
+  const width = Number(target?.getAttribute("width"));
+  return { left, width, right: left + width };
+}
+
 // The deco panel's rows that are actually on screen, by the axis each carries.
 const panelRows = (root: HTMLElement) =>
   [...root.querySelectorAll("[data-deco-panel]")].map((row) =>
@@ -279,11 +288,12 @@ describe("DiveProfileChart on the millisecond axis", () => {
   it("draws a sample at the sub-second offset its export states", () => {
     const { container } = render(<DiveProfileChart profile={suuntoOcean} />);
 
-    // 160 ms of a 4 000 020 ms profile over the 630-unit plot, past the 44-unit
-    // left padding - a hair right of the axis, and not on it.
+    // 160 ms of a 4 000 020 ms profile along the plot - a hair right of the
+    // axis, and not on it.
+    const plot = plotEdges(container);
     const x = firstFillX(container, DEPTH_FILL);
-    expect(x).toBeGreaterThan(44);
-    expect(x).toBeCloseTo(44 + (160 / 4_000_020) * 630, 6);
+    expect(x).toBeGreaterThan(plot.left);
+    expect(x).toBeCloseTo(plot.left + (160 / 4_000_020) * plot.width, 6);
   });
 
   it("labels the elapsed axis in minutes and seconds", () => {
@@ -845,10 +855,10 @@ describe("DiveProfileChart depth fill across a dropout", () => {
       })
       .sort((first, second) => first[0] - second[0]);
 
-    // 900 s and 2 400 s on a 3 000 s dive over the 630-unit plot, offset by the
-    // 44-unit left padding: 233 and 548.
-    expect(spans[0][1]).toBeCloseTo(233, 0);
-    expect(spans[1][0]).toBeCloseTo(548, 0);
+    // 900 s and 2 400 s on a 3 000 s dive.
+    const plot = plotEdges(container);
+    expect(spans[0][1]).toBeCloseTo(plot.left + 0.3 * plot.width, 0);
+    expect(spans[1][0]).toBeCloseTo(plot.left + 0.8 * plot.width, 0);
   });
 
   it("still draws one fill for a series with no dropout in it", () => {
@@ -1181,14 +1191,13 @@ describe("DiveProfileChart ending at the dive's end", () => {
     [...root.querySelectorAll("text[text-anchor='middle']")].map(
       (label) => label.textContent,
     );
-  const PLOT_RIGHT = 720 - 46; // WIDTH - PADDING.right
 
   it("draws nothing right of the plot, and depth reaches its edge", () => {
     const { container } = render(<DiveProfileChart profile={dive} />);
     const xs = curveXs(container);
 
     expect(xs.length).toBeGreaterThan(0);
-    expect(Math.max(...xs)).toBeCloseTo(PLOT_RIGHT, 6);
+    expect(Math.max(...xs)).toBeCloseTo(plotEdges(container).right, 6);
   });
 
   it("stops temperature at its last sample before the end, on the dive's axis", () => {
@@ -1199,8 +1208,12 @@ describe("DiveProfileChart ending at the dive's end", () => {
       ),
     );
 
-    // 2 550 000 ms of a 3 000 000 ms axis over the 630-unit plot.
-    expect(Math.max(...xs)).toBeCloseTo(44 + (2_550_000 / 3_000_000) * 630, 1);
+    // 2 550 000 ms of a 3 000 000 ms axis.
+    const plot = plotEdges(container);
+    expect(Math.max(...xs)).toBeCloseTo(
+      plot.left + (2_550_000 / 3_000_000) * plot.width,
+      1,
+    );
   });
 
   it("fits the temperature axis without the surface stretch", () => {
@@ -1751,13 +1764,14 @@ describe("DiveProfileChart deco readouts", () => {
     const { container } = render(<DiveProfileChart profile={everyChannel()} />);
 
     // The top tick of a row carries the unit; the bottom one is a bare number,
-    // because two units on one 46-unit scale is noise.
+    // because two units on one 46-unit scale is noise. Minutes carry none - see
+    // `axisUnitSuffix`.
     const topTick = (axis: string) =>
       container.querySelector(`[data-deco-panel="${axis}"] text`)
         ?.textContent ?? "";
 
-    expect(topTick("no_deco")).toMatch(/ min$/);
-    expect(topTick("time_to_surface")).toMatch(/ min$/);
+    expect(topTick("no_deco")).toMatch(/^\d+$/);
+    expect(topTick("time_to_surface")).toMatch(/^\d+$/);
     expect(topTick("ppo2")).toMatch(/ bar$/);
     expect(topTick("percent")).toMatch(/%$/);
   });

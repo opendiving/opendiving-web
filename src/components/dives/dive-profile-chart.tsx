@@ -21,6 +21,7 @@ import {
   alignedDomain,
   axisTicks,
   labelCapacity,
+  labelWidth,
   niceDomain,
   stepCount,
   type Domain,
@@ -109,9 +110,13 @@ import type { UnitSystem } from "@/lib/units";
 // draws into a narrower one (see `useChartWidth`), and the depth plot's height
 // follows it down - see `plotHeightFor`.
 const WIDTH = 720;
-// Wider on both sides than the gas chart: depth is on the left and temperature
-// and pressure share the right, so both margins carry axis labels.
-const PADDING = { top: 14, right: 46, bottom: 28, left: 44 };
+const PADDING = { top: 14, bottom: 28 };
+// Between an edge's numbers and the plot. Each edge's gutter is as wide as its
+// widest number plus this, and no wider - none at all on an edge with no scale -
+// so the plot fills the card out to the card's own padding. A label or a dot at
+// either end overhangs into that padding, which is why the SVG is
+// `overflow-visible`.
+const AXIS_LABEL_GAP = 6;
 
 const PLOT_HEIGHT = 238;
 // The shortest the depth plot gets on a phone: enough for five labelled depth
@@ -142,6 +147,8 @@ const STACKED_LABEL_OFFSET = 6;
 // edges are untouched by anything the diver switches on down here, and every
 // curve on the chart is drawn against numbers that belong to it.
 const PANEL_HEIGHT = 46;
+// Its two numbers a size under the depth plot's, as quieter scales.
+const PANEL_LABEL_SIZE = 10;
 // The labels either side of a gap each sit centred on their own rule, so the gap
 // has to hold half of each: 11- and 10-unit type is about 1.2 em tall, 12.6 units
 // between them, and 16 leaves a few units of air.
@@ -339,7 +346,6 @@ export function DiveProfileChart({
   // A unit per pixel in full screen wherever that is wider than the design
   // width, so a desktop screen gets a longer plot rather than outsized labels.
   const width = box ? Math.max(fittedWidth, box.width) : fittedWidth;
-  const plotWidth = width - PADDING.left - PADDING.right;
   // The inline plot's height as full screen opened, which an empty box keeps on
   // the card meanwhile so the page behind does not reflow.
   const inlineRef = useRef<HTMLDivElement>(null);
@@ -413,8 +419,6 @@ export function DiveProfileChart({
 
   // The axis's span: the dive's end, or the recording's where there is none.
   const duration = profile.duration;
-  const x = (at: number) =>
-    PADDING.left + (duration > 0 ? at / duration : 0) * plotWidth;
 
   // Markers that land inside the plot, which is this chart's job rather than the
   // API's: its `shape_events` clamps the low side at zero and leaves the high side
@@ -425,10 +429,10 @@ export function DiveProfileChart({
   // `cutAtDiveEnd`) and the recording's last sample otherwise.
   //
   // Dropped rather than clamped to the plot's last instant, which would invent a
-  // time to keep a marker on screen, and rather than left to the SVG's own clipping,
-  // which is not clipping at all: `x(time)` past `duration` lands in the
-  // right-hand axis-label gutter first (aligned with no time on the axis) and only
-  // leaves the viewBox further out.
+  // time to keep a marker on screen, and rather than left to the SVG's edge, which
+  // clips nothing: `x(time)` past `duration` lands in the right-hand axis-label
+  // gutter (aligned with no time on the axis), or in the card's padding, which the
+  // `overflow-visible` SVG draws into.
   //
   // One filtered list feeds all three consumers - the glyphs, the crosshair and
   // `describeProfile` - so the picture and the accessible summary cannot disagree
@@ -859,6 +863,44 @@ export function DiveProfileChart({
     ? shownChannel(placement.underRight)
     : null;
 
+  // The deco panel's rows, with the two numbers each is labelled with: the
+  // domain's own ends, taken through `axisTicks` rather than read off `domain`
+  // directly, since that is where the fractional-step rounding lives - without
+  // it a ppO₂ row is labelled `1.4000000000000001`. The upper one carries the
+  // unit.
+  const panelRows = placement.panels.flatMap((axis) => {
+    const row = shown.find((channel) => channel.axis === axis);
+    if (!row) return [];
+    const ticks = axisTicks(row.domain);
+    const bounds = [ticks[ticks.length - 1], ticks[0]];
+    const suffix = axisUnitSuffix(axis, units);
+    const labels = bounds.map((tick, position) =>
+      position === 0 ? `${tick}${suffix}` : String(tick),
+    );
+    return [{ axis, row, bounds, labels }];
+  });
+
+  // Each edge's gutter, from the numbers drawn in it - see `AXIS_LABEL_GAP`.
+  const gutter = (widths: number[]) =>
+    widths.length ? Math.max(...widths) + AXIS_LABEL_GAP : 0;
+  const tickWidths = (channel: PositionedChannel | null) =>
+    channel
+      ? axisTicks(channel.domain).map((tick) => labelWidth(String(tick)))
+      : [];
+  const left = gutter([
+    ...tickWidths(leftChannel),
+    ...panelRows.flatMap(({ labels }) =>
+      labels.map((label) => labelWidth(label, PANEL_LABEL_SIZE)),
+    ),
+  ]);
+  const right = gutter([
+    ...tickWidths(rightChannel),
+    ...tickWidths(underRightChannel),
+  ]);
+  const plotWidth = width - left - right;
+  const x = (at: number) =>
+    left + (duration > 0 ? at / duration : 0) * plotWidth;
+
   // The water column: one filled region per run of consecutive depth samples,
   // from the surface down to the curve.
   //
@@ -974,7 +1016,10 @@ export function DiveProfileChart({
     <div ref={chartRef} className={cn("relative", fullscreen && "h-full")}>
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className={fullscreen ? "h-full w-full" : "w-full h-auto"}
+        className={cn(
+          "overflow-visible",
+          fullscreen ? "h-full w-full" : "w-full h-auto",
+        )}
         role="img"
         {...readout.scrubProps}
         // Only what's on screen. A summary naming a temperature range the
@@ -1014,15 +1059,15 @@ export function DiveProfileChart({
             for the same reason and an extra one - its readout dots sit on its
             edges, and a clip would cut them in half.
 
-            Not left to the SVG's own edge, which is not clipping at all: it
-            hides what leaves the viewBox and happily draws what merely leaves a
-            plot. That distinction is already recorded, under *"Markers are
+            Not left to the SVG's own edge, which is not clipping at all: the
+            SVG is `overflow-visible`, and draws whatever leaves a plot. That
+            distinction is already recorded, under *"Markers are
             clipped to the plot"*. */}
         <defs aria-hidden>
           {placement.panels.map((axis, index) => (
             <clipPath key={axis} id={`${clipPrefix}-panel-${index}`}>
               <rect
-                x={PADDING.left}
+                x={left}
                 y={panelTop(index)}
                 width={plotWidth}
                 height={PANEL_HEIGHT}
@@ -1047,8 +1092,8 @@ export function DiveProfileChart({
               key={tick}
               aria-hidden
               className="text-border"
-              x1={PADDING.left}
-              x2={width - PADDING.right}
+              x1={left}
+              x2={width - right}
               y1={leftChannel.y(tick)}
               y2={leftChannel.y(tick)}
               stroke="currentColor"
@@ -1064,7 +1109,7 @@ export function DiveProfileChart({
             <text
               key={tick}
               aria-hidden
-              x={PADDING.left - 6}
+              x={left - AXIS_LABEL_GAP}
               y={leftChannel.y(tick)}
               textAnchor="end"
               dominantBaseline="middle"
@@ -1083,7 +1128,7 @@ export function DiveProfileChart({
             <text
               key={tick}
               aria-hidden
-              x={width - PADDING.right + 6}
+              x={width - right + AXIS_LABEL_GAP}
               y={
                 rightChannel.y(tick) -
                 (underRightChannel ? STACKED_LABEL_OFFSET : 0)
@@ -1106,7 +1151,7 @@ export function DiveProfileChart({
               key={tick}
               aria-hidden
               data-under-right
-              x={width - PADDING.right + 6}
+              x={width - right + AXIS_LABEL_GAP}
               y={underRightChannel.y(tick) + STACKED_LABEL_OFFSET}
               textAnchor="start"
               dominantBaseline="middle"
@@ -1126,48 +1171,36 @@ export function DiveProfileChart({
             can share one of these rows, so numbers in any one of them would be
             claiming the scale for that curve. The depth plot's coloured-edge
             rule holds where it was written, on an edge one channel owns. */}
-        {placement.panels.map((axis) => {
-          const row = shown.find((channel) => channel.axis === axis);
-          if (!row) return null;
-          const suffix = axisUnitSuffix(axis, units);
-          // The domain's own ends, taken through `axisTicks` rather than
-          // read off `domain` directly: that is where the fractional-step
-          // rounding lives, and without it a ppO₂ row is labelled
-          // `1.4000000000000001`.
-          const ticks = axisTicks(row.domain);
-          const bounds = [ticks[ticks.length - 1], ticks[0]];
-
-          return (
-            <g key={axis} data-deco-panel={axis} aria-hidden>
-              {bounds.map((tick) => (
-                <line
-                  key={tick}
-                  className="text-border"
-                  x1={PADDING.left}
-                  x2={width - PADDING.right}
-                  y1={row.y(tick)}
-                  y2={row.y(tick)}
-                  stroke="currentColor"
-                  strokeWidth={1}
-                />
-              ))}
-              {bounds.map((tick, position) => (
-                <text
-                  key={tick}
-                  x={PADDING.left - 6}
-                  y={row.y(tick)}
-                  textAnchor="end"
-                  dominantBaseline="middle"
-                  fontSize={10}
-                  fill="currentColor"
-                  className="text-muted-foreground"
-                >
-                  {position === 0 ? `${tick}${suffix}` : tick}
-                </text>
-              ))}
-            </g>
-          );
-        })}
+        {panelRows.map(({ axis, row, bounds, labels }) => (
+          <g key={axis} data-deco-panel={axis} aria-hidden>
+            {bounds.map((tick) => (
+              <line
+                key={tick}
+                className="text-border"
+                x1={left}
+                x2={width - right}
+                y1={row.y(tick)}
+                y2={row.y(tick)}
+                stroke="currentColor"
+                strokeWidth={1}
+              />
+            ))}
+            {bounds.map((tick, position) => (
+              <text
+                key={tick}
+                x={left - AXIS_LABEL_GAP}
+                y={row.y(tick)}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fontSize={PANEL_LABEL_SIZE}
+                fill="currentColor"
+                className="text-muted-foreground"
+              >
+                {labels[position]}
+              </text>
+            ))}
+          </g>
+        ))}
 
         {elapsedTicks(
           duration,
@@ -1315,7 +1348,7 @@ export function DiveProfileChart({
             `aria-label` above carries the summary instead. */}
         <rect
           ref={hitRef}
-          x={PADDING.left}
+          x={left}
           y={PADDING.top}
           width={plotWidth}
           height={chartFoot - PADDING.top}

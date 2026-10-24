@@ -21,26 +21,38 @@ export const CHART_PLOT_HEIGHT =
 // Between a y label's right end and the plot.
 export const Y_LABEL_GAP = 8;
 
-// The advance of a y label's characters at `fontSize={11}` in Inter, in viewBox
-// units, rounded up so the widest label never starts left of the viewBox. An
-// estimate rather than a measurement because the plot's left edge has to be
-// known on the server, where nothing can be measured.
-const Y_LABEL_DIGIT = 7;
-const Y_LABEL_POINT = 3.5;
+// The advance of an axis label's characters in 11-unit Inter, in viewBox units,
+// measured and rounded up, so the widest label never starts outside the viewBox.
+// An estimate rather than a measurement because a plot's edges have to be known
+// on the server, where nothing can be measured. A unit's letters get a lowercase
+// letter's average.
+const LABEL_ADVANCE: Record<string, number> = {
+  ".": 3.2,
+  "-": 5.1,
+  " ": 2.8,
+  "%": 10.8,
+};
+const LABEL_DIGIT = 7.1;
+const LABEL_LETTER = 7;
+
+// How wide `text` draws at `fontSize`, in viewBox units - see `LABEL_ADVANCE`.
+export function labelWidth(text: string, fontSize = 11): number {
+  const advance = [...text].reduce(
+    (sum, char) =>
+      sum +
+      (LABEL_ADVANCE[char] ??
+        (/[0-9]/.test(char) ? LABEL_DIGIT : LABEL_LETTER)),
+    0,
+  );
+  return (advance * fontSize) / 11;
+}
 
 // Where the plot starts for a y axis labelled `ticks`: the widest label sits flush
 // with the viewBox's left edge, `Y_LABEL_GAP` short of the plot.
 export function plotLeft(ticks: number[]): number {
-  const widest = Math.max(
-    0,
-    ...ticks.map((tick) =>
-      [...String(tick)].reduce(
-        (sum, char) => sum + (char === "." ? Y_LABEL_POINT : Y_LABEL_DIGIT),
-        0,
-      ),
-    ),
+  return (
+    Math.max(0, ...ticks.map((tick) => labelWidth(String(tick)))) + Y_LABEL_GAP
   );
-  return widest + Y_LABEL_GAP;
 }
 
 export interface Domain {
