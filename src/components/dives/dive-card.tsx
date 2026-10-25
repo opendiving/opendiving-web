@@ -26,13 +26,13 @@ import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatDepth, formatTemperature } from "@/lib/units";
 import { Edit } from "lucide-react";
 
-// The profile's band at the foot of the backdrop, just clear of the name: the
-// `h-14` below.
+// The profile's band at the foot of the backdrop, just clear of the details'
+// glass: the `h-14` below.
 const SILHOUETTE_HEIGHT = 56;
 const SILHOUETTE_GAP = 4;
 // The chips' row, over the band's foot: a chip at its widest breakpoint and the
-// `bottom-1` it stands on. Lower than the profile's band, which covers it where
-// a dive has both.
+// gap it stands on above the glass. Lower than the profile's band, which covers
+// it where a dive has both.
 const CHIPS_HEIGHT = 26;
 
 interface DiveCardProps {
@@ -148,8 +148,9 @@ export function DiveCard({
         // the card's link, so their hints are reachable, and only as wide as
         // they are - up to the card's width - so the link still takes a click
         // beside them. Not for a finger, whose tap on a card means the dive.
+        // Up past the details' `p-3`, clear of their glass.
         <div className="relative z-10 h-0 touch:pointer-events-none">
-          <div className="absolute bottom-1 left-0 max-w-full">{chips}</div>
+          <div className="absolute bottom-4 left-0 max-w-full">{chips}</div>
         </div>
       )}
       <Link

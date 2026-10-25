@@ -212,8 +212,8 @@ export interface MapBackdropProps {
   coveredBottom: number;
   coveredTop?: number;
   // Laid out as a detail page's hero: a canvas `HERO_CANVAS_WIDTH` wide centred
-  // in the frame, its sides dissolving into the page, and the basemap's credit
-  // left to the hero, which carries it on its details.
+  // in the frame, its sides and its foot dissolving into the page, and the
+  // basemap's credit left to the hero, which carries it on its details.
   hero?: boolean;
   // What shows with no map: the map's water, faded as a map is.
   water: ReactNode;
@@ -229,8 +229,8 @@ export interface MapBackdropProps {
  * A card's or a page head's map: the tiles of this instance's map that cover
  * its frame, fitted for that frame - the places' extents over the frame and the
  * pins inside the band between the credit and what covers the frame's foot,
- * the zoom floored to the tiles' - with the pins drawn over them and the
- * caller's fade laid on top.
+ * the zoom floored to the tiles' - with the pins drawn over them and, on a
+ * hero, the caller's fade laid on top.
  *
  * Nothing is asked for while this instance draws no tiles, or before it has
  * said whether it does; a frame whose tiles the page already holds shows them
@@ -435,9 +435,10 @@ export function MapBackdrop({
           )}
         </div>
       )}
-      {/* Laid over the map rather than masking it, into the caller's colour -
-          a card's hover included: a gradient mask draws in visible strips. */}
-      {shown && (
+      {/* A hero's foot, laid over the map rather than masking it, into the
+          caller's colour: a gradient mask draws in visible strips. A card's
+          details sit on glass of their own instead. */}
+      {hero && shown && (
         <div
           aria-hidden
           data-backdrop-fade

@@ -71,16 +71,19 @@ export function BackdropCardList({
 // A record with no map to show: the map's open water, where this instance draws
 // no map of it - nowhere on a map yet, no map renderer, or a tile that could not
 // be had - on a card and on a hero alike.
-// Faded as a map is, and the record's icon centred in what the details leave of
-// it: the colour the map names a sea in, muted as the map's own colours are so
-// it sits in the water rather than on it, and below whatever covers the top.
+// Faded as a map is on a hero, and the record's icon centred in what the
+// details leave of it: the colour the map names a sea in, muted as the map's
+// own colours are so it sits in the water rather than on it, and below whatever
+// covers the top.
 export function UnplacedBackdrop({
   coveredBottom,
   coveredTop = 0,
+  hero = false,
   icon: Icon,
 }: {
   coveredBottom: number;
   coveredTop?: number;
+  hero?: boolean;
   icon: ComponentType<{ className?: string }>;
 }) {
   return (
@@ -89,13 +92,15 @@ export function UnplacedBackdrop({
       className="absolute inset-0 rounded-[inherit] bg-map-water"
     >
       {/* The map's own fade, in the same colour space as its. */}
-      <div
-        className="absolute inset-0 rounded-[inherit]"
-        style={{
-          background:
-            "linear-gradient(to bottom, transparent, var(--backdrop-fade))",
-        }}
-      />
+      {hero && (
+        <div
+          className="absolute inset-0 rounded-[inherit]"
+          style={{
+            background:
+              "linear-gradient(to bottom, transparent, var(--backdrop-fade))",
+          }}
+        />
+      )}
       <div
         className="absolute inset-x-0 flex items-center justify-center"
         style={{ top: coveredTop, bottom: coveredBottom }}
@@ -180,17 +185,17 @@ export function BackdropCard({
         // `justify-end` for a card stretched taller than its content by a
         // grid row: the details stay at its foot, under the menu's corner.
         "relative isolate flex flex-col justify-end rounded-lg border transition-colors",
-        // The backdrop's fade meets the card's colour, and the text's and the
-        // menu's glows are drawn in it.
+        // The details' glass is tinted the card's colour, and the menu's glow
+        // is drawn in it.
         LIST_CARD_SURFACE,
         LIST_CARD_HOVER,
         "[--backdrop-fade:var(--backdrop-card)]",
-        // A fixed band of backdrop above the name, with the details over its
-        // faded foot: however tall they grow, the backdrop shows as much of
-        // itself, at every width. The details' own top padding is part of the
-        // band, so what they measure starts at the name. A shape replaces the
-        // band, and only details taller than it stretch the card past it.
-        shape ?? "pt-33",
+        // A fixed band of backdrop above the details, which lie over the rest
+        // of it behind glass: however tall they grow, the backdrop shows as
+        // much of itself, at every width. What they measure starts at the
+        // glass's top edge. A shape replaces the band, and only details taller
+        // than it stretch the card past it.
+        shape ?? "pt-30",
         muted && "border-dashed",
       )}
     >
@@ -229,16 +234,29 @@ export function BackdropCard({
       {/* Above the backdrop by a flex item's z-index rather than by
           `relative`, which would make this the box the link's overlay
           stretches over and leave the backdrop outside it. Under the menu and
-          the credit, which are lifted higher. Every line glows in the card's
-          own colour. */}
-      <div
-        ref={detailsRef}
-        className={cn(
-          "z-[1] px-3 pb-3 glow-text",
-          muted && "text-muted-foreground [&_a]:text-muted-foreground",
-        )}
-      >
-        {children}
+          the credit, which are lifted higher. */}
+      <div ref={detailsRef} className="z-[1] grid">
+        {/* The glass is a layer of its own, sharing the details' one grid
+            cell: a `backdrop-filter` makes its element the box absolute
+            descendants are placed against, as `relative` would. Its top edge
+            is soft, the glass coming in over the padding above the name, so
+            the name itself sits on all of it. */}
+        <div
+          aria-hidden
+          className="[grid-area:1/1] -mt-3 rounded-b-[calc(var(--radius)-1px)] bg-(--backdrop-card)/55 backdrop-blur-lg backdrop-saturate-150 transition-colors [mask-image:linear-gradient(transparent,#000_1.5rem)]"
+        />
+        {/* A stacking context of its own, or the glass - which is one -
+            paints over its text whatever the order. The glass is what lifts
+            the text off the backdrop, so the glows its icons carry are drawn
+            in nothing here. */}
+        <div
+          className={cn(
+            "[grid-area:1/1] isolate p-3 [--backdrop-fade:transparent]",
+            muted && "text-muted-foreground [&_a]:text-muted-foreground",
+          )}
+        >
+          {children}
+        </div>
       </div>
     </li>
   );

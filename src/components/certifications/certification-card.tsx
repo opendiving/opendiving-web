@@ -43,8 +43,8 @@ export const CERTIFICATION_CARD_GRID =
 // widens its column rather than running into the next one.
 const FIGURE_COLUMNS = "auto-cols-[minmax(7.5rem,auto)]";
 
-// The card's front behind its details, faded into the card's colour as a
-// species' photo is. The map's water and an icon where there is no picture to
+// The card's front behind its details, as a species' photo is. The map's
+// water and an icon where there is no picture to
 // show: no front stored, a PDF, which is never drawn, or a fetch that failed.
 // Nothing while the picture is on its way, so a card that has one does not
 // flash an icon first. Decorative: the name over it says what it is.
@@ -90,13 +90,6 @@ function CertificationBackdrop({
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- see CertificationCardImage */}
       <img src={url} alt="" className="size-full object-cover" />
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to bottom, transparent, var(--backdrop-fade))",
-        }}
-      />
     </div>
   );
 }

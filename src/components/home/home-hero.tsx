@@ -150,6 +150,7 @@ export function HomeHero({
             <UnplacedBackdrop
               coveredBottom={covered.bottom}
               coveredTop={covered.top}
+              hero
               icon={Globe}
             />
           }

@@ -105,7 +105,7 @@ describe("CertificationCard", () => {
     const item = container.querySelector("li");
 
     expect(item).toHaveClass("aspect-[1013/638]");
-    expect(item).not.toHaveClass("pt-33");
+    expect(item).not.toHaveClass("pt-30");
   });
 
   it("names its agency under the level, the diver's own for another one", () => {
