@@ -190,12 +190,13 @@ export function BackdropCard({
         LIST_CARD_SURFACE,
         LIST_CARD_HOVER,
         "[--backdrop-fade:var(--backdrop-card)]",
-        // A fixed band of backdrop above the details, which lie over the rest
-        // of it behind glass: however tall they grow, the backdrop shows as
-        // much of itself, at every width. What they measure starts at the
-        // glass's top edge. A shape replaces the band, and only details taller
-        // than it stretch the card past it.
-        shape ?? "pt-30",
+        // A fixed band of backdrop above the name, with the details over its
+        // foot behind glass: however tall they grow, the backdrop shows as
+        // much of itself, at every width. The details' own top padding is part
+        // of the band, so what they measure starts at the name. A shape
+        // replaces the band, and only details taller than it stretch the card
+        // past it.
+        shape ?? "pt-33",
         muted && "border-dashed",
       )}
     >
@@ -239,8 +240,8 @@ export function BackdropCard({
         {/* The glass is a layer of its own, sharing the details' one grid
             cell: a `backdrop-filter` makes its element the box absolute
             descendants are placed against, as `relative` would. Its top edge
-            is soft, the glass coming in from well above the details and whole
-            by the foot of the name. */}
+            is soft, the glass coming in from well above the name and whole
+            just under it. */}
         <div
           aria-hidden
           className="[grid-area:1/1] -mt-12 rounded-b-[calc(var(--radius)-1px)] bg-(--backdrop-card)/55 backdrop-blur-[2px] backdrop-saturate-150 transition-colors [mask-image:linear-gradient(transparent,#000_5rem)]"
@@ -250,7 +251,7 @@ export function BackdropCard({
             card's own colour, for a backdrop the glass leaves bright or busy. */}
         <div
           className={cn(
-            "[grid-area:1/1] isolate px-3 glow-text",
+            "[grid-area:1/1] isolate px-3 pb-3 glow-text",
             muted && "text-muted-foreground [&_a]:text-muted-foreground",
           )}
         >
