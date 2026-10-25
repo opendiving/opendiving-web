@@ -239,11 +239,11 @@ export function BackdropCard({
         {/* The glass is a layer of its own, sharing the details' one grid
             cell: a `backdrop-filter` makes its element the box absolute
             descendants are placed against, as `relative` would. Its top edge
-            is soft, the glass coming in over the padding above the name, so
-            the name itself sits on all of it. */}
+            is soft, the glass coming in from above the details and whole by
+            the name. */}
         <div
           aria-hidden
-          className="[grid-area:1/1] -mt-3 rounded-b-[calc(var(--radius)-1px)] bg-(--backdrop-card)/55 backdrop-blur-lg backdrop-saturate-150 transition-colors [mask-image:linear-gradient(transparent,#000_1.5rem)]"
+          className="[grid-area:1/1] -mt-4 rounded-b-[calc(var(--radius)-1px)] bg-(--backdrop-card)/45 backdrop-blur-md backdrop-saturate-150 transition-colors [mask-image:linear-gradient(transparent,#000_2.25rem)]"
         />
         {/* A stacking context of its own, or the glass - which is one -
             paints over its text whatever the order. The glass is what lifts
