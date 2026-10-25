@@ -48,6 +48,7 @@ export function TripHero({
             <UnplacedBackdrop
               coveredBottom={covered.bottom}
               coveredTop={covered.top}
+              hero
               icon={Luggage}
             />
           }

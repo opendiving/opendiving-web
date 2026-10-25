@@ -18,15 +18,16 @@
   }
 }
 
-/* Lifts text, or an icon, off whatever a map backdrop shows beneath it, with a
-   glow in the colour the backdrop fades to. Two close layers: more of them, or
-   wider ones, drew each layer's edge as a visible ring - `drop-shadow`s chain,
-   each blurring the last one's 8-bit output. The icon's is a filter because
-   `text-shadow` stops at an SVG. */
+/* Lifts text, or an icon, off whatever a backdrop shows beneath it, with a
+   glow in `--backdrop-fade`: the colour a hero's map fades to, and a card's
+   glass is tinted. The icon's is a filter because `text-shadow` stops at an
+   SVG, and keeps to two close layers: more of them, or wider ones, drew each
+   layer's edge as a visible ring - `drop-shadow`s chain, each blurring the
+   last one's 8-bit output. The text's `text-shadow` layers do not chain. */
 @utility glow-text {
   text-shadow:
-    0 0 2px var(--backdrop-fade),
-    0 0 5px var(--backdrop-fade);
+    0 0 1px var(--backdrop-fade),
+    0 0 8px var(--backdrop-fade);
 }
 
 @utility glow-icon {

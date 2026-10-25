@@ -82,6 +82,7 @@ export function DiveSiteHero({
             <UnplacedBackdrop
               coveredBottom={covered.bottom}
               coveredTop={covered.top}
+              hero
               icon={DiveSiteIcon}
             />
           }
