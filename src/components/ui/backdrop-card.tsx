@@ -185,8 +185,8 @@ export function BackdropCard({
         // `justify-end` for a card stretched taller than its content by a
         // grid row: the details stay at its foot, under the menu's corner.
         "relative isolate flex flex-col justify-end rounded-lg border transition-colors",
-        // The details' glass is tinted the card's colour, and the menu's glow
-        // is drawn in it.
+        // The details' glass is tinted the card's colour, and the text's and
+        // the menu's glows are drawn in it.
         LIST_CARD_SURFACE,
         LIST_CARD_HOVER,
         "[--backdrop-fade:var(--backdrop-card)]",
@@ -239,19 +239,18 @@ export function BackdropCard({
         {/* The glass is a layer of its own, sharing the details' one grid
             cell: a `backdrop-filter` makes its element the box absolute
             descendants are placed against, as `relative` would. Its top edge
-            is soft, the glass coming in from above the details and whole by
-            the name. */}
+            is soft, the glass coming in from well above the details and whole
+            by the foot of the name. */}
         <div
           aria-hidden
           className="[grid-area:1/1] -mt-12 rounded-b-[calc(var(--radius)-1px)] bg-(--backdrop-card)/55 backdrop-blur-[2px] backdrop-saturate-150 transition-colors [mask-image:linear-gradient(transparent,#000_5rem)]"
         />
         {/* A stacking context of its own, or the glass - which is one -
-            paints over its text whatever the order. The glass is what lifts
-            the text off the backdrop, so the glows its icons carry are drawn
-            in nothing here. */}
+            paints over its text whatever the order. Every line glows in the
+            card's own colour, for a backdrop the glass leaves bright or busy. */}
         <div
           className={cn(
-            "[grid-area:1/1] isolate p-3 [--backdrop-fade:transparent]",
+            "[grid-area:1/1] isolate px-3 glow-text",
             muted && "text-muted-foreground [&_a]:text-muted-foreground",
           )}
         >

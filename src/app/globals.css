@@ -25,8 +25,8 @@
    `text-shadow` stops at an SVG. */
 @utility glow-text {
   text-shadow:
-    0 0 2px var(--backdrop-fade),
-    0 0 5px var(--backdrop-fade);
+    0 0 1px var(--backdrop-fade),
+    0 0 8px var(--backdrop-fade);
 }
 
 @utility glow-icon {
