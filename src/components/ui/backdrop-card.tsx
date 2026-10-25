@@ -243,7 +243,7 @@ export function BackdropCard({
             the name. */}
         <div
           aria-hidden
-          className="[grid-area:1/1] -mt-4 rounded-b-[calc(var(--radius)-1px)] bg-(--backdrop-card)/45 backdrop-blur-md backdrop-saturate-150 transition-colors [mask-image:linear-gradient(transparent,#000_2.25rem)]"
+          className="[grid-area:1/1] -mt-12 rounded-b-[calc(var(--radius)-1px)] bg-(--backdrop-card)/55 backdrop-blur-[2px] backdrop-saturate-150 transition-colors [mask-image:linear-gradient(transparent,#000_5rem)]"
         />
         {/* A stacking context of its own, or the glass - which is one -
             paints over its text whatever the order. The glass is what lifts
