@@ -152,11 +152,46 @@ describe("UnitNumberInput in imperial", () => {
 });
 
 describe("UnitNumberInput in metric", () => {
-  // Metric is the pass-through case, and it has to stay one: a value imported at
-  // three decimals is legible as the three decimals it is until the diver edits it.
+  // Metric is never rounded: a value imported at three decimals is legible as the
+  // three decimals it is until the diver edits it.
   it("shows the stored value untouched", () => {
     render(<Harness dimension="depth" units="metric" initial={18.288} />);
     expect(box().value).toBe("18.288");
+  });
+
+  it("shows an exporter's float noise as the number it is", () => {
+    render(<Harness dimension="depth" units="metric" initial={21.8000011} />);
+    expect(box().value).toBe("21.8");
+  });
+
+  it("shows an integer and an empty value as they are", () => {
+    const { unmount } = render(
+      <Harness dimension="depth" units="metric" initial={30} />,
+    );
+    expect(box().value).toBe("30");
+    unmount();
+
+    render(<Harness dimension="depth" units="metric" initial={null} />);
+    expect(box().value).toBe("");
+  });
+
+  // Display only: nothing reaches the form until the diver types, and then it is
+  // what they typed.
+  it("commits nothing for a value it only trimmed", async () => {
+    const onCommit = vi.fn();
+    render(
+      <Harness
+        dimension="depth"
+        units="metric"
+        initial={21.8000011}
+        onCommit={onCommit}
+      />,
+    );
+
+    await userEvent.click(box());
+    await userEvent.tab();
+
+    expect(onCommit).not.toHaveBeenCalled();
   });
 
   it("keeps the caller's bounds and placeholder", () => {

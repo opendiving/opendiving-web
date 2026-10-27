@@ -29,6 +29,7 @@ import {
   toMetricUnits,
   unitLabel,
   unitWord,
+  withoutFloatNoise,
   type EntryDimension,
 } from "./units";
 
@@ -61,6 +62,32 @@ describe("roundTo", () => {
   // The corpus's float noise, which is the reason display goes through this at all.
   it("collapses float noise", () => {
     expect(roundTo(28.000000000000004, 2)).toBe(28);
+  });
+});
+
+describe("withoutFloatNoise", () => {
+  // Neither is `Math.fround` of its decimal: both sit an ulp or so off it.
+  it("drops an exporter's single-precision noise", () => {
+    expect(withoutFloatNoise(21.8000011)).toBe("21.8");
+    expect(withoutFloatNoise(2.70000029)).toBe("2.7");
+    expect(withoutFloatNoise(9.8000011)).toBe("9.8");
+  });
+
+  it("drops double-precision noise", () => {
+    expect(withoutFloatNoise(0.1 + 0.2)).toBe("0.3");
+    expect(withoutFloatNoise(28.000000000000004)).toBe("28");
+  });
+
+  it("keeps the decimals a value was genuinely recorded at", () => {
+    expect(withoutFloatNoise(21.815)).toBe("21.815");
+    expect(withoutFloatNoise(18.288)).toBe("18.288");
+    expect(withoutFloatNoise(-1.5)).toBe("-1.5");
+  });
+
+  it("leaves whole numbers whole", () => {
+    expect(withoutFloatNoise(0)).toBe("0");
+    expect(withoutFloatNoise(30)).toBe("30");
+    expect(withoutFloatNoise(20000001)).toBe("20000001");
   });
 });
 

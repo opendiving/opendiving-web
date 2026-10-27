@@ -339,6 +339,28 @@ function trimmed(value: number): string {
   return String(roundTo(value, METRIC_DECIMALS));
 }
 
+// The fewest decimals that land within two single-precision ulps of `value`.
+//
+// Exporters that hold a figure as a float32 print it to more digits than it has,
+// and often a unit or two off the nearest float to the decimal: Shearwater writes
+// 21.8 as "21.8000011" and UDDF 2.7 as "2.70000029", neither of which is
+// `Math.fround` of the decimal, so a float32 round-trip test would keep them.
+// A tolerance of 2^-22 relative is two ulps at the bottom of a binade and one at
+// the top, so it absorbs that noise and the double kind ("0.30000000000000004")
+// while any decimal recorded at seven significant digits or fewer - "21.815",
+// "18.288" - is further than that from every shorter one and keeps its digits.
+// Only fractional digits are dropped, never the integer part.
+const FLOAT32_NOISE = 2 ** -22;
+
+export function withoutFloatNoise(value: number): string {
+  const tolerance = Math.abs(value) * FLOAT32_NOISE;
+  for (let decimals = 0; decimals <= 15; decimals++) {
+    const candidate = Number(value.toFixed(decimals));
+    if (Math.abs(candidate - value) <= tolerance) return String(candidate);
+  }
+  return String(value);
+}
+
 /** The value `metric` is displayed as in `units` - unconverted in metric mode. */
 export function toDisplayUnits(
   metric: number,
