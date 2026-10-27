@@ -65,6 +65,12 @@ describe("importSourceLabel", () => {
     expect(importSourceLabel("zip")).toBe("Zip");
   });
 
+  it("names a stored file no reader of this build reads", () => {
+    expect(importSourceLabel("divejson_import")).toBe(
+      "Dive computer original (.bin)",
+    );
+  });
+
   it("de-snakes a format this build has never heard of", () => {
     // Not defensiveness: the API derives its format list from its pinned
     // converter on every call, and that pin moves by dependency bump with no

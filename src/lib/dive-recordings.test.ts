@@ -239,6 +239,16 @@ describe("diveFileRows", () => {
     expect(row.kind === "file" && row.formatLabel).toBe("Suunto app JSON");
   });
 
+  it("labels a file no reader of this build reads as the dive computer's original", () => {
+    const [row] = diveFileRows([
+      recording({ files: [file({ parser_key: "divejson_import" })] }),
+    ]);
+
+    expect(row.kind === "file" && row.formatLabel).toBe(
+      "Dive computer original (.bin)",
+    );
+  });
+
   it("falls back to a word for a recording whose source named no computer", () => {
     // Asserted here as well as in `recordingDeviceLabel` because this is the
     // value the rows actually carry: `null`, for the component to substitute.

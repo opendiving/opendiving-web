@@ -148,8 +148,10 @@ Roadmap items, roughly in priority order — contributions welcome:
   log, not only a format adapter, and until there is one, Shearwater Cloud's UDDF export of the same
   dives is the route that works. UDDF, Subsurface, FIT and Suunto's own two — the app's JSON and
   DM5's XML — already import and fill the dive form, both through the DiveJSON converter, and a new
-  format is a reader there, for both, rather than a change here. Longer term,
-  [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware support.
+  format is a reader there, for both, rather than a change here. The iOS app downloads from
+  Shearwater and Suunto Ocean computers over Bluetooth, through
+  [libdivecomputer](https://www.libdivecomputer.org/), and the logbook import takes what it brings,
+  keeping each dive's original download beside it.
 - **Statistics** — depth/time records, dives per year, sites map.
 - **Sharing** — public link to a dive or trip.
 - **iOS companion app** — in development, not yet installable
@@ -167,7 +169,8 @@ Honest answers to "why not X":
 - **[Submersion](https://submersion.app/) / [Bubbletrail](https://bubbletrail.app/)** — excellent
   newer open-source _apps_: local-first, on-device databases, Bluetooth downloads. OpenDiving is the
   server-shaped alternative: one instance behind every browser and every family member, with an API
-  — and yours to run on the household server if that is where you want it.
+  — and yours to run on the household server if that is where you want it. Its own iOS app downloads
+  over Bluetooth too, and hands the dives to that server rather than keeping them.
 - **Vendor clouds (Shearwater, Garmin, Suunto, Oceanic+)** — where dives are born, not where they
   should live. OpenDiving imports their exports — any number at once, each file of one dive kept on
   the recording it came from — so switching computers never splits your history, and a dive logged
