@@ -11,6 +11,7 @@ import {
   toCommittedMetric,
   type EntryDimension,
   type UnitSystem,
+  withoutFloatNoise,
 } from "@/lib/units";
 
 export interface UnitNumberInputProps extends Omit<
@@ -141,13 +142,14 @@ export const UnitNumberInput = React.forwardRef<
     draft ??
     (isEmpty
       ? ""
-      : // Metric passes straight through, exactly as this box has always
-        // rendered it: a value imported at three decimals stays legible as the
-        // three decimals it is until the diver edits it. Imperial is a converted
-        // number and has to be rounded to be typeable at all.
+      : // Metric is not rounded: a value imported at three decimals stays
+        // legible as the three decimals it is. Only an exporter's float noise is
+        // dropped ("21.8000011" shows as 21.8), and only from the box - the form
+        // keeps the figure it was given until the diver edits it. Imperial is a
+        // converted number and has to be rounded to be typeable at all.
         units === "imperial"
         ? displayNumber(value as number, dimension, units)
-        : String(value));
+        : withoutFloatNoise(value as number));
 
   const placeholder =
     placeholderValue == null
