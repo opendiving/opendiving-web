@@ -749,9 +749,9 @@ describe("a dive whose depth carries more precision than a step would allow", ()
     const box = await screen.findByRole("spinbutton", {
       name: /^average depth/i,
     });
-    // Shown at its own precision, which is the pass-through metric entry has
-    // always been - the step was the only thing standing between that and a save.
-    expect(box).toHaveValue(IMPORTED_AVG_DEPTH);
+    // Shown without the float noise, and saved with it: the box trims only
+    // what it displays, so an untouched value goes back exactly as it came.
+    expect(box).toHaveValue(2.7);
     expect((box as HTMLInputElement).validity.stepMismatch).toBe(false);
 
     await saveChanges();
