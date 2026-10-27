@@ -82,8 +82,8 @@ export function ImportDropZone({
       </button>
       <p className="text-sm text-muted-foreground">
         Dive-computer exports, several at once and in any mix; a zip of them; a
-        logbook in DiveJSON, UDDF or Subsurface form; an OpenDiving export
-        archive.
+        logbook in DiveJSON, UDDF or Subsurface form, or a Shearwater Cloud
+        database; an OpenDiving export archive.
       </p>
       <input
         ref={inputRef}

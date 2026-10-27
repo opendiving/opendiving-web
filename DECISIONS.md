@@ -4713,15 +4713,15 @@ of one), and off clears nothing.
 hand, like `GAS_ROLES`, `WATER_TYPES` and `GEAR_TYPES`: declaration order is the picker's order, the
 API's `extra="forbid"` rejects an invented member on save, and the narrow union type-checks
 `TANK_USAGE_LABELS[usage]`. Only the diver sets it. No format the dive form's file import parses
-records whether cylinders were breathed alternately or staged (Suunto XML/JSON, FIT, UDDF, `.ssrf`),
-so `ParsedDiveMixture` has no `usage` field. DiveJSON's `cylinders[].usage`
-(`"parallel"`/`"staged"`) round-trips through logbook import, restoring the diver's own flag.
-`mergeMixture` (`lib/dive-import.ts`) still names `usage` explicitly, form-then-nothing: it builds
-its result field by field and silently drops any it omits. The new-dive form carries it over from
-the last dive, with `role` and gas fractions. `TANK_USAGE_LABELS` (`lib/dive-mixtures.ts`) is one
-word per flag; `TANK_USAGE_OPTION_LABELS` in `mixture-fields.tsx` is longer ("Parallel (sidemount /
-independent)") because the form is where the diver chooses it, and the flag changes what the API
-computes; the tank card only quotes the choice back.
+records whether cylinders were breathed alternately or staged (Suunto XML/JSON, FIT, UDDF, `.ssrf`,
+Shearwater Cloud database/XML), so `ParsedDiveMixture` has no `usage` field. DiveJSON's
+`cylinders[].usage` (`"parallel"`/`"staged"`) round-trips through logbook import, restoring the
+diver's own flag. `mergeMixture` (`lib/dive-import.ts`) still names `usage` explicitly,
+form-then-nothing: it builds its result field by field and silently drops any it omits. The new-dive
+form carries it over from the last dive, with `role` and gas fractions. `TANK_USAGE_LABELS`
+(`lib/dive-mixtures.ts`) is one word per flag; `TANK_USAGE_OPTION_LABELS` in `mixture-fields.tsx` is
+longer ("Parallel (sidemount / independent)") because the form is where the diver chooses it, and
+the flag changes what the API computes; the tank card only quotes the choice back.
 
 ## `gasUseUnavailableReason` nudges toward Parallel, and where the nudge sits is the whole design
 

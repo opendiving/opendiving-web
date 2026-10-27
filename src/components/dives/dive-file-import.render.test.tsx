@@ -164,7 +164,7 @@ describe("DiveFileImport", () => {
     // `.zip` and a DiveJSON document, so the picker does not offer them.
     const offered = fileInput().accept.split(",");
     expect(new Set(offered)).toEqual(
-      new Set([".uddf", ".ssrf", ".fit", ".json", ".xml"]),
+      new Set([".uddf", ".ssrf", ".fit", ".json", ".xml", ".db"]),
     );
   });
 

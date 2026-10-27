@@ -18,7 +18,13 @@ import type { RecordingDevice } from "./dives";
  * dive form reads through the same converter.
  */
 export type ImportSourceFormat =
-  "uddf" | "ssrf" | "fit" | "suunto_json" | "suunto_xml";
+  | "uddf"
+  | "ssrf"
+  | "fit"
+  | "suunto_json"
+  | "suunto_xml"
+  | "shearwater_db"
+  | "shearwater_xml";
 
 /**
  * Which file extensions offer each converted format in the dive form's picker.
@@ -30,9 +36,10 @@ export type ImportSourceFormat =
  *
  * Each entry mirrors that adapter's own `suffixes` in the converter, which is
  * why a UDDF file named `.xml` is not offered and `.json` - the Suunto app's
- * export, and broad - is. `.xml` is offered for Suunto's DM5 export and is
- * broad in the same way, which is now two of the five: an extension this list
- * claims is one several unrelated formats also use.
+ * export, and broad - is. `.xml` is offered for Suunto's DM5 export and
+ * Shearwater Cloud's XML, and `.db` for Shearwater Cloud's database, which any
+ * SQLite file wears; that makes four of the seven whose extension is one
+ * several unrelated formats also use.
  *
  * That is survivable because acceptance itself is decided API-side by sniffing
  * the bytes; this list only decides what the dialog greys out. A `.xml` the
@@ -49,6 +56,8 @@ export const LOGBOOK_IMPORT_SOURCE_EXTENSIONS: Record<
   fit: [".fit"],
   suunto_json: [".json"],
   suunto_xml: [".xml"],
+  shearwater_db: [".db"],
+  shearwater_xml: [".xml"],
 };
 
 /** What to call each converted format on screen. */
@@ -61,6 +70,8 @@ const IMPORT_SOURCE_LABELS: Record<ImportSourceFormat, string> = {
   // export in the loose sense, and the two are different readers offered side
   // by side in the same picker.
   suunto_xml: "Suunto DM5 XML",
+  shearwater_db: "Shearwater Cloud database",
+  shearwater_xml: "Shearwater Cloud XML",
 };
 
 /**
@@ -98,7 +109,7 @@ const STORED_FILE_LABELS: Record<typeof UNREAD_FILE_PARSER_KEY, string> = {
  * The fallback is the whole point rather than defensiveness: the API's format
  * list is derived from its pinned converter on every call, that pin moves by
  * dependency bump alone, and a `Record` lookup would render `undefined` in the
- * import report the day a new reader ships. A de-snaked "Shearwater db" is
+ * import report the day a new reader ships. A de-snaked "Kraken binary" is
  * worse than a label and far better than a blank.
  *
  * **It has already happened once, which is the argument for keeping it.** The
