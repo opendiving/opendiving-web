@@ -12,7 +12,11 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { Dive, DiveFileInfo, divesAPI, Recording } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { importSourceLabel } from "@/lib/api/logbook-import";
+import {
+  importSourceLabel,
+  UNREAD_FILE_NOTE,
+  UNREAD_FILE_PARSER_KEY,
+} from "@/lib/api/logbook-import";
 import {
   deleteRecordingConfirmation,
   diveRecordings,
@@ -253,6 +257,11 @@ export function DiveRecordingsCard({
                               {importSourceLabel(file.parser_key)} &middot;{" "}
                               {formatFileSize(file.byte_size)}
                             </div>
+                            {file.parser_key === UNREAD_FILE_PARSER_KEY && (
+                              <div className="text-xs text-muted-foreground">
+                                {UNREAD_FILE_NOTE}
+                              </div>
+                            )}
                           </div>
                         </div>
                         {/* Named by the file rather than by the verb: a dive

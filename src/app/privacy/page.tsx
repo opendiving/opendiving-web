@@ -270,7 +270,9 @@ export default async function PrivacyPage() {
                   on the dive it becomes, under the filename it arrived with. A
                   logbook of several dives, and a DiveJSON document, leave no
                   file here, and importing a full archive puts back the files it
-                  carries
+                  carries. A dive the OpenDiving app downloads from a dive
+                  computer over Bluetooth keeps the computer&rsquo;s original
+                  download the same way, on the dive it becomes
                 </li>
                 <li>
                   <strong>Equipment Data:</strong> Diving equipment details and

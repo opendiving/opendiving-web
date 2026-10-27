@@ -304,6 +304,42 @@ describe("DiveRecordingsCard", () => {
     );
 
     expect(screen.getByText(/^UDDF ·/)).toBeVisible();
+    expect(screen.queryByText(/does not read this file/)).toBeNull();
+  });
+
+  it("names a file no reader of this build reads, and says it is kept unread", () => {
+    render(
+      <DiveRecordingsCard
+        dive={dive({
+          recordings: [
+            recording({
+              files: [
+                file({
+                  original_filename:
+                    "shearwater-perdix-3_D9772626_2026-10-25T0914.bin",
+                  parser_key: "divejson_import",
+                }),
+              ],
+            }),
+          ],
+        })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(/^Dive computer original \(\.bin\) ·/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Kept as downloaded. OpenDiving does not read this file.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", {
+        name: "Download shearwater-perdix-3_D9772626_2026-10-25T0914.bin",
+      }),
+    ).toBeEnabled();
   });
 
   it("leaves removing a file to the edit dialog its pencil opens", async () => {

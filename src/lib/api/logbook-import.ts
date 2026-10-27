@@ -77,6 +77,22 @@ const IMPORT_CONTAINER_LABELS: Record<"divejson" | "archive" | "zip", string> =
   };
 
 /**
+ * The `parser_key` of a file the API keeps but no reader of this build reads:
+ * restored from an archive whose document named no format the API reads. The
+ * iOS app's dive-computer downloads are the files that arrive this way, which is
+ * why the label names them; any other file under the key wears the same one.
+ */
+export const UNREAD_FILE_PARSER_KEY = "divejson_import";
+
+/** Said beside an unread file wherever there is room for a sentence. */
+export const UNREAD_FILE_NOTE =
+  "Kept as downloaded. OpenDiving does not read this file.";
+
+const STORED_FILE_LABELS: Record<typeof UNREAD_FILE_PARSER_KEY, string> = {
+  [UNREAD_FILE_PARSER_KEY]: "Dive computer original (.bin)",
+};
+
+/**
  * A source format's display name, tolerating one this build has never heard of.
  *
  * The fallback is the whole point rather than defensiveness: the API's format
@@ -93,7 +109,11 @@ const IMPORT_CONTAINER_LABELS: Record<"divejson" | "archive" | "zip", string> =
  */
 export function importSourceLabel(format: string): string {
   return labelOrFallback(
-    { ...IMPORT_SOURCE_LABELS, ...IMPORT_CONTAINER_LABELS },
+    {
+      ...IMPORT_SOURCE_LABELS,
+      ...IMPORT_CONTAINER_LABELS,
+      ...STORED_FILE_LABELS,
+    },
     format,
   );
 }
