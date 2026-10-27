@@ -29,6 +29,8 @@ describe("DIVE_COMPUTER_FILE_ACCEPT", () => {
       fit: [".fit"],
       suunto_json: [".json"],
       suunto_xml: [".xml"],
+      shearwater_db: [".db"],
+      shearwater_xml: [".xml"],
     } satisfies Record<ImportSourceFormat, readonly string[]>;
 
     expect(LOGBOOK_IMPORT_SOURCE_EXTENSIONS).toEqual(extensionsByFormat);
@@ -37,6 +39,8 @@ describe("DIVE_COMPUTER_FILE_ACCEPT", () => {
       ".ssrf",
       ".fit",
       ".json",
+      ".xml",
+      ".db",
       ".xml",
     ]);
   });
@@ -55,6 +59,10 @@ describe("importSourceLabel", () => {
     expect(importSourceLabel("fit")).toBe("FIT");
     expect(importSourceLabel("suunto_xml")).toBe("Suunto DM5 XML");
     expect(importSourceLabel("suunto_json")).toBe("Suunto app JSON");
+    expect(importSourceLabel("shearwater_db")).toBe(
+      "Shearwater Cloud database",
+    );
+    expect(importSourceLabel("shearwater_xml")).toBe("Shearwater Cloud XML");
   });
 
   it("names what an import reports beside the converter's formats", () => {

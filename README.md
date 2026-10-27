@@ -14,8 +14,9 @@ history go with them. OpenDiving is built on a different premise: the app is AGP
 sits in a plain Postgres database, and every dive-computer file you upload stays with the recording
 it came from, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee behind
 the rest — anyone can run this software, one click hands the whole log back in open formats, and it
-reads a logbook back in from DiveJSON, UDDF, Subsurface, FIT, or a Suunto app or DM5 export, so no
-shutdown, acquisition, or paywall can ever take your logbook with it.
+reads a logbook back in from DiveJSON, UDDF, Subsurface, FIT, a Suunto app or DM5 export, or a
+Shearwater Cloud database or XML export, so no shutdown, acquisition, or paywall can ever take your
+logbook with it.
 
 **This repository is the web app — one component of the stack.** The project itself, and everything
 about running it, lives at **[opendiving/opendiving](https://github.com/opendiving/opendiving)**:
@@ -111,20 +112,21 @@ one.
   reads straight back in. One **Import** page takes any number of files at once, in any mix: the
   **DiveJSON** document and the **archive**, and — through the
   [DiveJSON converter](https://github.com/divejson/divejson-py) — **UDDF**, a **Subsurface** `.ssrf`
-  save file, **FIT**, a **Suunto app** export and a **Suunto DM5** `.xml`, or a `.zip` of any of
-  them, which is how a watch's account export arrives. Drop a folder and the app sorts it: a
-  computer's two exports of one dive become one dive with both files, and a converted file that is
-  one dive is kept on the dive it becomes, as it is when uploaded to a dive; a logbook of several
-  dives, or a DiveJSON document, arrives without its file. Move a logbook between instances, restore
-  one from a backup, or bring years of history out of something else. You see what each file was
-  read as and a row for every dive it becomes — new, already present, brought back from deletion,
-  gaining a file, or skipped and why — before a single row is written, and under each dive what its
-  files did not record, what the import worked out, and which of the dive's values it left out.
-  Records you already have are matched rather than duplicated, and a dive you deleted returns under
-  its own identity. The archive additionally restores the dive-computer files and c-card scans,
-  which the bare document names by digest but does not carry. The check-in details a logbook
-  carries, and an archive's portrait, are shown beside yours in the preview, and only what you
-  choose there is saved.
+  save file, **FIT**, a **Suunto app** export, a **Suunto DM5** `.xml`, and **Shearwater Cloud**'s
+  whole-database `.db` and one-dive `.xml` exports, or a `.zip` of any of them, which is how a
+  watch's account export arrives. Drop a folder and the app sorts it: a computer's two exports of
+  one dive become one dive with both files, and a converted file that is one dive is kept on the
+  dive it becomes, as it is when uploaded to a dive; a logbook of several dives, or a DiveJSON
+  document, arrives without its file. Move a logbook between instances, restore one from a backup,
+  or bring years of history out of something else. You see what each file was read as and a row for
+  every dive it becomes — new, already present, brought back from deletion, gaining a file, or
+  skipped and why — before a single row is written, and under each dive what its files did not
+  record, what the import worked out, and which of the dive's values it left out. Records you
+  already have are matched rather than duplicated, and a dive you deleted returns under its own
+  identity. The archive additionally restores the dive-computer files and c-card scans, which the
+  bare document names by digest but does not carry. The check-in details a logbook carries, and an
+  archive's portrait, are shown beside yours in the preview, and only what you choose there is
+  saved.
 - **Year in review** — each January, an email with the year before in figures: dives and time
   underwater, the deepest and longest, dive sites, and species with the ones you saw for the first
   time.
@@ -143,15 +145,13 @@ one.
 
 Roadmap items, roughly in priority order — contributions welcome:
 
-- **More importers** — Shearwater Cloud's whole-database export, which keeps each dive's samples in
-  the computer's own binary log rather than in readable rows: reading it takes a decoder for that
-  log, not only a format adapter, and until there is one, Shearwater Cloud's UDDF export of the same
-  dives is the route that works. UDDF, Subsurface, FIT and Suunto's own two — the app's JSON and
-  DM5's XML — already import and fill the dive form, both through the DiveJSON converter, and a new
-  format is a reader there, for both, rather than a change here. The iOS app downloads from
-  Shearwater and Suunto Ocean computers over Bluetooth, through
-  [libdivecomputer](https://www.libdivecomputer.org/), and the logbook import takes what it brings,
-  keeping each dive's original download beside it.
+- **More importers** — UDDF, Subsurface, FIT, Suunto's own two — the app's JSON and DM5's XML — and
+  Shearwater Cloud's two — its whole-database export and its one-dive XML — already import and fill
+  the dive form, both through the DiveJSON converter (a Shearwater Cloud database of several dives
+  goes through the Import page, the form taking one dive), and a new format is a reader there, for
+  both, rather than a change here. The iOS app downloads from Shearwater and Suunto Ocean computers
+  over Bluetooth, through [libdivecomputer](https://www.libdivecomputer.org/), and the logbook
+  import takes what it brings, keeping each dive's original download beside it.
 - **Statistics** — depth/time records, dives per year, sites map.
 - **Sharing** — public link to a dive or trip.
 - **iOS companion app** — in development, not yet installable

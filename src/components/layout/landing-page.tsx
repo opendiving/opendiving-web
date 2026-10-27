@@ -264,8 +264,9 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
                       same converter; the import takes any number of these at
                       once and pairs a computer's two exports of one dive. */}
                   <li>
-                    • FIT, Suunto&apos;s app and DM5 exports, UDDF and
-                    Subsurface, as many files at once as you have
+                    • FIT, Suunto&apos;s app and DM5 exports, Shearwater
+                    Cloud&apos;s database and XML, UDDF and Subsurface, as many
+                    files at once as you have
                   </li>
                   <li>
                     • Full depth, temperature and pressure profile, with the
@@ -310,7 +311,8 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
                       it. */}
                   <li>
                     • DiveJSON, UDDF, Subsurface, FIT, Suunto&apos;s app and DM5
-                    exports, and the full archive read back in
+                    exports, Shearwater Cloud&apos;s database and XML, and the
+                    full archive read back in
                   </li>
                   <li>• No trackers and no analytics</li>
                   <li>• Passwordless sign-in; no passwords stored</li>
@@ -345,11 +347,11 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
             every dive-computer file you upload alongside the recording it came
             from, hands the whole log back in open formats on one click, reads a
             logbook back in — its own DiveJSON, UDDF, a Subsurface save file, a
-            FIT, or a Suunto app or DM5 export — and is AGPL licensed so anyone
-            can keep running it. There is no company here whose shutdown takes
-            your logbook with it — and if the instance you are on ever goes
-            away, your export still opens in something else, or moves into a
-            copy of this one.
+            FIT, a Suunto app or DM5 export, or a Shearwater Cloud database or
+            XML — and is AGPL licensed so anyone can keep running it. There is
+            no company here whose shutdown takes your logbook with it — and if
+            the instance you are on ever goes away, your export still opens in
+            something else, or moves into a copy of this one.
           </p>
           <div className="mt-10 grid gap-4 text-sm font-medium sm:grid-cols-3">
             <div>AGPL-3.0, server side included</div>
