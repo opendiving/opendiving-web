@@ -877,8 +877,8 @@ export interface DiveProfileInfo {
   // at a call site.
   provenance: DiveProfileProvenance;
   // Which curves the profile carries, in the order a chart stacks them: any of
-  // "depth", "ceiling", "temperature", "pressure", "ndl", "tts", "ppo2", "cns",
-  // "gradient_factor", "surface_gradient_factor".
+  // "depth", "ceiling", "temperature", "pressure", "heart_rate", "ndl", "tts",
+  // "ppo2", "cns", "gradient_factor", "surface_gradient_factor".
   channels: string[];
   // How many event markers the profile carries. Deliberately a count rather
   // than an entry in `channels`: an event is not a curve with an axis, and
@@ -896,6 +896,12 @@ export interface DiveProfileInfo {
   max_temperature?: number | null;
   min_pressure?: number | null;
   max_pressure?: number | null;
+  // Whole beats per minute: the highest reading, and the mean the API takes as
+  // it stores the series - which the capped series the chart draws cannot
+  // reproduce, so it is read from here rather than computed. Null on a profile
+  // with no heart rate.
+  max_heart_rate?: number | null;
+  average_heart_rate?: number | null;
   updated_at?: string | null;
 }
 
@@ -1029,10 +1035,14 @@ export interface DiveProfile {
   // Plural, unlike the three channels above, because this one is genuinely
   // multi-tank: one entry per cylinder the device reported.
   pressures: DiveProfilePressureSeries[];
-  // The device's own decompression arithmetic, and **declared in the format's
-  // order rather than at the end** - DiveJSON §6.4 puts `pressures` between
-  // `temperature` and `ndl`, and the API serializes this object's members in
-  // that order.
+  // The diver's heart rate in whole beats per minute, as the wrist sensor or a
+  // strap read it. A measurement, like the channels above: a dropout is a gap in
+  // `times`, never a zero.
+  heart_rate?: DiveProfileSeries | null;
+  // From here on, the device's own decompression arithmetic, **declared in the
+  // format's order rather than at the end** - DiveJSON §6.4 puts `pressures` and
+  // `heart_rate` between `temperature` and `ndl`, and the API serializes this
+  // object's members in that order.
   //
   // Nothing in this app derives any of these from depth and a gas fraction.
   // Each depends on the model the device ran, its settings and the diver's

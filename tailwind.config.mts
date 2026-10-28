@@ -36,8 +36,10 @@ const config: Config = {
         },
         pressure: "hsl(var(--pressure))",
         ceiling: "hsl(var(--ceiling))",
-        // The deco panel's channels, one accent each - see the block on these in
-        // `globals.css` for the hues and the contrast they were measured at.
+        // The channels under the depth plot, one accent each - see the blocks on
+        // these in `globals.css` for the hues and the contrast they were measured
+        // at.
+        "heart-rate": "hsl(var(--heart-rate))",
         ndl: "hsl(var(--ndl))",
         tts: "hsl(var(--tts))",
         ppo2: "hsl(var(--ppo2))",

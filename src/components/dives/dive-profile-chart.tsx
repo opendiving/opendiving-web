@@ -100,7 +100,7 @@ import type { UnitSystem } from "@/lib/units";
 // cross-referenced, because this comment is what stops the next person reaching
 // for Recharts.
 //
-// Ten channels, ten colors, all of them theme-stable tokens declared once in
+// One colour per channel, every one a theme-stable token declared once in
 // `globals.css` and never redeclared under `.dark` (see the note on `--pressure`
 // there). `--primary` would not do: it is near-black in light mode and a mid
 // grey in dark, which is barely visible against a dark card.
@@ -139,7 +139,7 @@ const ELAPSED_LABEL_SPACING = 44;
 // 11-unit type is about 8 units of ink, so 12 between centres leaves air.
 const STACKED_LABEL_OFFSET = 6;
 
-// The deco panel: one short plot per scale the depth plot's two edges cannot
+// The panel: one short plot per scale the depth plot's two edges cannot
 // carry, stacked under it and sharing its elapsed-time axis. See
 // `profileScalePlacement` for why the split is forced rather than chosen.
 //
@@ -155,7 +155,7 @@ const PANEL_LABEL_SIZE = 10;
 const PANEL_GAP = 16;
 
 // The vertical layout for a depth plot `plotHeight` tall: where it ends, where
-// each deco panel row starts, and where the drawing and the viewBox stop. The
+// each panel row starts, and where the drawing and the viewBox stop. The
 // last two grow with the panel count - with no panel the viewBox is the depth
 // plot and its padding.
 function verticalLayout(plotHeight: number) {
@@ -242,7 +242,7 @@ interface PlottedChannel {
   // two cylinders are two lines and one channel.
   channelKey: ProfileChannelKey;
   // Which scale it is drawn against, which also decides *where* it is drawn -
-  // the depth plot for the first three, a row of the deco panel for the rest.
+  // the depth plot for the first three, a row of the panel for the rest.
   axis: ProfileAxisKey;
   label: string;
   series: ChannelSeries;
@@ -251,7 +251,7 @@ interface PlottedChannel {
   // recomputing one and hoping it matches. It wouldn't, for pressure: every
   // cylinder shares one domain across all of them.
   //
-  // **Null on a deco channel, where it cannot be known yet**: a panel row's scale
+  // **Null on a panel channel, where it cannot be known yet**: a panel row's scale
   // is taken over the channels on that row that are *shown*, and nothing here has
   // seen the selection. See the positioning step for why that differs from
   // `depthDomain`'s rule.
@@ -277,13 +277,13 @@ interface PlottedChannel {
 
 // The same channel once the selection is known, and therefore once there is a
 // scale and a rect to map it into. Neither `y` nor a concrete `domain` can sit on
-// `PlottedChannel`: a deco channel's row, and the numbers down the side of it,
-// both depend on which *other* deco channels are switched on, and `channels` is
+// `PlottedChannel`: a panel channel's row, and the numbers down the side of it,
+// both depend on which *other* panel channels are switched on, and `channels` is
 // built before any of that is decided.
 type PositionedChannel = Omit<PlottedChannel, "domain"> & {
   domain: Domain;
   y: (value: number) => number;
-  // Which row of the deco panel this line is drawn in, or -1 for the depth plot.
+  // Which row of the panel this line is drawn in, or -1 for the depth plot.
   // Kept rather than recomputed at each of the three places that need it, one of
   // which is the clip that holds a curve inside its row - see `panelClip`.
   panelIndex: number;
@@ -574,7 +574,7 @@ export function DiveProfileChart({
       }
     }
 
-    // The deco panel's channels, one axis at a time. Nothing here is special-
+    // The panel's channels, one axis at a time. Nothing here is special-
     // cased per channel: they differ from the four above only in sharing an axis
     // with whichever siblings are scaled against the same quantity, so the loop
     // is over the axes and the channels fall out of `channelsOnAxis`.
@@ -724,9 +724,9 @@ export function DiveProfileChart({
     );
 
   // Where this selection's scales land: which channel labels each edge of the
-  // depth plot, and which rows the deco panel grows. Derived from the keys alone
-  // (`profileScalePlacement`) so the rule can be swept over every one of the
-  // 1 024 selections in a unit test rather than sampled by rendering.
+  // depth plot, and which rows the panel under it grows. Derived from the keys
+  // alone (`profileScalePlacement`) so the rule can be swept over every
+  // selection in a unit test rather than sampled by rendering.
   const placement = profileScalePlacement(
     availableChannels.filter((key) => visible.includes(key)),
   );
@@ -863,7 +863,7 @@ export function DiveProfileChart({
     ? shownChannel(placement.underRight)
     : null;
 
-  // The deco panel's rows, with the two numbers each is labelled with: the
+  // The panel's rows, with the two numbers each is labelled with: the
   // domain's own ends, taken through `axisTicks` rather than read off `domain`
   // directly, since that is where the fractional-step rounding lives - without
   // it a ppO₂ row is labelled `1.4000000000000001`. The upper one carries the
@@ -1163,7 +1163,7 @@ export function DiveProfileChart({
             </text>
           ))}
 
-        {/* The deco panel's rows: two rules and two numbers each, the
+        {/* The panel's rows: two rules and two numbers each, the
             upper one carrying the unit. Deliberately thinner than the depth
             plot's axis - `axisTicks` would put four or five labels in 46
             units, where 11-unit type collides with itself - and deliberately
@@ -1172,7 +1172,7 @@ export function DiveProfileChart({
             claiming the scale for that curve. The depth plot's coloured-edge
             rule holds where it was written, on an edge one channel owns. */}
         {panelRows.map(({ axis, row, bounds, labels }) => (
-          <g key={axis} data-deco-panel={axis} aria-hidden>
+          <g key={axis} data-panel={axis} aria-hidden>
             {bounds.map((tick) => (
               <line
                 key={tick}
@@ -1308,7 +1308,7 @@ export function DiveProfileChart({
             />
           ))}
 
-        {/* Through the deco panel as well as the depth plot: it is one
+        {/* Through the panel as well as the depth plot: it is one
             instant of one dive, and a crosshair that stopped at the depth
             plot's baseline would leave the diver reading a panel dot with no
             line to place it on. */}
@@ -1485,7 +1485,7 @@ interface Readout {
   key: string;
   label: string;
   channel: (typeof PROFILE_CHANNELS)[keyof typeof PROFILE_CHANNELS];
-  // The graph the reading is drawn on: the deco panel row, or -1 for the depth
+  // The graph the reading is drawn on: the panel row, or -1 for the depth
   // plot. The card groups its readings by it.
   panelIndex: number;
   // What the line reads at the crosshair, or null where it recorded nothing
@@ -1937,7 +1937,7 @@ function groupByPanel(readouts: Readout[]): Readout[][] {
 // first thing on this chart you could turn off from outside its legend.
 //
 // Folded behind an icon button on the card's title row rather than laid out
-// under the plot: ten channels and the markers wrap to three lines on a phone,
+// under the plot: the channels and the markers wrap to three lines on a phone,
 // and the plot's coloured axes and the crosshair's coloured readings already say
 // which curve is which.
 function LegendMenu({
@@ -1995,7 +1995,7 @@ function LegendToggles({
   units: UnitSystem;
 }) {
   // One group per graph, as the crosshair's readout is grouped: the depth plot
-  // with the markers that stand on its baseline, then each deco panel row.
+  // with the markers that stand on its baseline, then each panel row.
   const onGraph = (key: ProfileViewKey) =>
     key === "events" ? null : channelAxis(key);
   const groups = [
@@ -2145,10 +2145,10 @@ function describeProfile({
   // moment the dive came closest to an obligation - the same call the API makes
   // in choosing which extreme to store. Every other single-extreme channel -
   // depth, the ceiling, time to surface, ppO₂ and the three percentages - names
-  // its maximum, and temperature and tank pressure are the two ranges, because
-  // there both ends are a fact about the dive.
+  // its maximum, and temperature, tank pressure and heart rate are the ranges,
+  // because there both ends are a fact about the dive.
   //
-  // Driven by `PROFILE_CHANNEL_KEYS` rather than by ten `if`s, so the sentence
+  // Driven by `PROFILE_CHANNEL_KEYS` rather than by an `if` per channel, so the sentence
   // keeps the legend's order and a channel added to that list cannot be silently
   // left out of what a screen reader hears.
   const phrase = (key: ProfileChannelKey, values: number[]): string | null => {
@@ -2167,6 +2167,8 @@ function describeProfile({
         return `temperature ${low} to ${high} ${word(key)}`;
       case "pressure":
         return `tank pressure ${high} down to ${low} ${word(key)}`;
+      case "heart_rate":
+        return `heart rate ${low} to ${high} ${word(key)}`;
       case "ndl":
         return `no-decompression time down to ${low} ${word(key)}`;
       case "tts":

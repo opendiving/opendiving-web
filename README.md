@@ -5,9 +5,9 @@ out, everything in one click. Yours to self-host.**
 
 OpenDiving is an open-source logbook for scuba divers — recreational and technical: log dives with
 multi-tank gas mixtures (nitrox and trimix), import dives straight from your dive computer's export
-file — full depth/temperature/tank-pressure profile, deco ceiling, the readouts the computer itself
-computed and dive events included — group them into trips, and keep your gear service history and
-c-cards in one place.
+file — full depth/temperature/tank-pressure profile, heart rate, deco ceiling, the readouts the
+computer itself computed and dive events included — group them into trips, and keep your gear
+service history and c-cards in one place.
 
 Cloud dive logs come and go — Movescount, Deepblu, Diveboard — and when they go, years of dive
 history go with them. OpenDiving is built on a different premise: the app is AGPL-licensed, the data
@@ -50,10 +50,11 @@ one.
   off two computers has two recordings, and one computer's JSON beside its FIT is two files of one
   recording, each filling what the other left blank. The per-sample **dive profile** is extracted
   and charted per recording, with a switcher when there is more than one: depth, temperature, tank
-  pressure and the deco ceiling on the depth plot, the six readouts the computer itself computed —
-  **no-deco time, time to surface, ppO₂, CNS and both gradient factors** — on a panel under it, and
-  the device's own event markers along the axis. A computer that chopped one dive into two logs them
-  as two dives, and **Merge** folds them back into one.
+  pressure and the deco ceiling on the depth plot; on a panel under it the **heart rate** the wrist
+  sensor or strap measured, then the six readouts the computer itself computed — **no-deco time,
+  time to surface, ppO₂, CNS and both gradient factors**; and the device's own event markers along
+  the axis. The dive page states the heart rate's maximum and average. A computer that chopped one
+  dive into two logs them as two dives, and **Merge** folds them back into one.
 - **Air consumption** — SAC and RMV are derived automatically, including a **per-tank breakdown**
   across recorded gas switches on multi-tank dives, with a consumption trend chart on the Home page.
 - **Trips** — group dives into a liveaboard or a holiday week, a part at a time: each part carries

@@ -251,7 +251,11 @@ export default async function PrivacyPage() {
                   the kind of dive it was, conditions, the boat you dived from,
                   gas mixes, species seen, each with a count and a note, your
                   own rating of the dive, the tags you file it under, and your
-                  notes
+                  notes; and, where your dive computer measured it, your heart
+                  rate through the dive, with its highest and average figures.
+                  Your heart rate is data about your health: it is stored with
+                  the dive, shown to you alone, and included when you export
+                  your logbook
                 </li>
                 <li>
                   <strong>Dive Drafts:</strong> A dive you save before logging
@@ -272,7 +276,9 @@ export default async function PrivacyPage() {
                   file here, and importing a full archive puts back the files it
                   carries. A dive the OpenDiving app downloads from a dive
                   computer over Bluetooth keeps the computer&rsquo;s original
-                  download the same way, on the dive it becomes
+                  download the same way, on the dive it becomes. A file from a
+                  computer with a wrist sensor or a heart-rate strap switched on
+                  carries your heart rate, which is read into the dive log above
                 </li>
                 <li>
                   <strong>Equipment Data:</strong> Diving equipment details and
@@ -1891,7 +1897,7 @@ export default async function PrivacyPage() {
                   your settings
                 </li>
                 <li>
-                  <StorageKey name="opendiving:dive-profile-series-v4" />{" "}
+                  <StorageKey name="opendiving:dive-profile-series-v5" />{" "}
                   &mdash; which lines you last had showing on a dive profile
                   chart. Kept until you change them
                 </li>

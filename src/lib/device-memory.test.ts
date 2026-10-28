@@ -61,12 +61,13 @@ describe("setOptOut", () => {
     store.setItem("theme", "dark");
     store.setItem("opendiving:entry-units", '{"depth":"imperial"}');
     store.setItem("opendiving:gas-use-view", '{"scope":"year","anchor":null}');
-    // Three orphans left behind by key bumps and one by a deleted feature, none
+    // Four orphans left behind by key bumps and one by a deleted feature, none
     // of which has a literal anywhere in this tree - the case that forced
     // prefix clearing rather than a list.
     store.setItem("opendiving:dive-profile-series", "[]");
     store.setItem("opendiving:dive-profile-series-v2", "[]");
     store.setItem("opendiving:dive-profile-series-v3", "[]");
+    store.setItem("opendiving:dive-profile-series-v4", "[]");
     store.setItem("opendiving:last-auth-method", "google");
     // And one nobody has invented yet, which is the point of the prefix rule.
     store.setItem("opendiving:never-existed", "x");
@@ -86,6 +87,7 @@ describe("setOptOut", () => {
       "opendiving:dive-profile-series",
       "opendiving:dive-profile-series-v2",
       "opendiving:dive-profile-series-v3",
+      "opendiving:dive-profile-series-v4",
       "opendiving:last-auth-method",
       "opendiving:never-existed",
     ]) {

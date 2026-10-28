@@ -1684,9 +1684,9 @@ as inert as a `setTimeout` constant is a measurement error first.
 
 Every mark on both charts is toggled from its legend entry, which names it and carries its swatch.
 Entries are `<button aria-pressed>`, not checkboxes; the label stays the mark's name in both states,
-and a hidden mark's swatch turns muted. The profile's ten channels and markers would wrap to three
-lines on a phone, so its legend is a menu on the card's title row, grouped by graph. Hiding
-everything is allowed and replaces the plot with a one-line message.
+and a hidden mark's swatch turns muted. The profile's channels and markers would wrap to three lines
+on a phone, so its legend is a menu on the card's title row, grouped by graph. Hiding everything is
+allowed and replaces the plot with a one-line message.
 
 The profile chart toggles by channel, not plotted line: both pressure lines share `--pressure`, and
 "tank pressure" survives across dives where "gas 2" does not.
@@ -2440,8 +2440,8 @@ left, right edge empty; mirroring it invites reading two scales. Invariant: the 
 labelled whenever anything is plotted, the right exactly when a second scale is on.
 
 `DiveProfileChart vertical axes` sweeps every non-empty selection, computing the expected right edge
-with `distinctScales`; see "The deco readouts have a panel, because the depth plot has two edges and
-they need four" for what "the plot" means. Switching the last channel off keeps the plot: same box,
+with `distinctScales`; see "Heart rate and the deco readouts have a panel, because the depth plot
+has two edges" for what "the plot" means. Switching the last channel off keeps the plot: same box,
 time axis and markers, the sentence over the middle with `pointer-events-none`, neither edge
 labelled. A `??` chain that runs out is a case, not an absence.
 
@@ -6311,15 +6311,16 @@ in the card that is also a destination says so. Wikidata gets no line: its half 
 CC0 asks for nothing, and the picker's second credit exists only for search results naming upstream
 Wikidata rows the catalog never stored.
 
-## The deco readouts have a panel, because the depth plot has two edges and they need four
+## Heart rate and the deco readouts have a panel, because the depth plot has two edges
 
-The six deco channels carry four scales the depth plot's two edges cannot hold, so a second plot
-beneath it shares the time axis, one row per scale: NDL, TTS, ppO₂, and percent for CNS and both
-gradient factors. A row exists only while a channel on it is shown. No curve is drawn against
-nothing. `profileScalePlacement` in `lib/dive-profile.ts` is a pure function over channel keys, so a
-test sweeps its 1 024 cells.
+Heart rate and the six deco channels carry five scales the depth plot's two edges cannot hold, so a
+second plot beneath it shares the time axis, one row per scale: heart rate, NDL, TTS, ppO₂, and
+percent for CNS and both gradient factors. Heart rate is first, the one measurement among them, and
+its row is fitted to the readings with no bound. A row exists only while a channel on it is shown.
+No curve is drawn against nothing. `profileScalePlacement` in `lib/dive-profile.ts` is a pure
+function over channel keys, so a test sweeps every selection.
 
-Rejected: the six on the depth plot (ppO₂ on the pressure axis is a flat line; `ProfileAxisKey`
+Rejected: the deco six on the depth plot (ppO₂ on the pressure axis is a flat line; `ProfileAxisKey`
 names the quantity, not the unit); a row per channel, splitting the gradient-factor pair a diver
 reads together; normalising onto 0–100.
 
@@ -6329,15 +6330,15 @@ scaled from its shown channels only, unlike `depthDomain`: a hidden `gf99` of 12
 
 ## Hiding a deco channel hides it everywhere, and that was the question worth asking
 
-The crosshair does not quote a channel the diver has switched off, even though with ten toggles and
-two labelled edges the crosshair is where an NDL is actually read. `shownValues` and `eventsShown`
-keep their guards and `shown` stays the filter; the deco channels widen the vocabulary `shown` draws
-from without changing what `shown` means. "The markers have a legend switch, and it is not a fifth
-channel" and "Markers are clipped to the plot" record why: a thing drawn in one view and named in
-another is the two views disagreeing about what the chart contains. The variant that sounds like a
-compromise — crosshair reads everything, accessible summary names only what is shown — is that
-disagreement by name. Reversing the rule is its own change and its own entry, not a side effect of
-adding channels.
+The crosshair does not quote a channel the diver has switched off, even though with a toggle per
+channel and two labelled edges the crosshair is where an NDL is actually read. `shownValues` and
+`eventsShown` keep their guards and `shown` stays the filter; the deco channels widen the vocabulary
+`shown` draws from without changing what `shown` means. "The markers have a legend switch, and it is
+not a fifth channel" and "Markers are clipped to the plot" record why: a thing drawn in one view and
+named in another is the two views disagreeing about what the chart contains. The variant that sounds
+like a compromise — crosshair reads everything, accessible summary names only what is shown — is
+that disagreement by name. Reversing the rule is its own change and its own entry, not a side effect
+of adding channels.
 
 ## The chart's `scale` is not the API's constant for `ndl` and `tts`
 
@@ -6351,25 +6352,27 @@ an elapsed-time axis labelled `18:00` is two quantities in one notation. `scale`
 both cases on the field, because "these two lists are a pair" is the kind of sentence a reader
 trusts.
 
-## The six deco channels have no `Dimension`, and `CHANNEL_DIMENSION` carries the exception, not `units.ts`
+## Heart rate and the deco channels have no `Dimension`, and `CHANNEL_DIMENSION` carries the exception, not `units.ts`
 
 `lib/units.ts` deliberately omits ppO₂, CNS and duration from `Dimension` (the same in both unit
-systems), and gradient factors are percentages, so six of ten channels have nothing to look up.
-`CHANNEL_DIMENSION` therefore holds `Dimension | InvariantUnit`, where the object carries what a
-dimension answers and `unit` does not: the spoken word for the accessible summary, and the separator
-(`23.4%` attaches as `21.6°C` does; `1.32 bar` and `18 min` do not). `typeof entry === "string"` is
-the discriminant, narrowed at each of the four readers rather than through a `dimensionOrNull`
-helper, since three of the four want the other branch and would follow it with a cast.
+systems), gradient factors are percentages and a beat per minute is one in both systems, so every
+channel off the depth plot has nothing to look up. `CHANNEL_DIMENSION` therefore holds
+`Dimension | InvariantUnit`, where the object carries what a dimension answers and `unit` does not:
+the spoken word for the accessible summary, and the separator (`23.4%` attaches as `21.6°C` does;
+`1.32 bar` and `18 min` do not). `typeof entry === "string"` is the discriminant, narrowed at each
+of the four readers rather than through a `dimensionOrNull` helper, since three of the four want the
+other branch and would follow it with a cast.
 
 Rejected: unit-invariant dimensions in `units.ts`. That puts `toImperial: (x) => x` four times into
 the one module whose job is that a conversion exists; the exception belongs in the chart that has
 it.
 
-## Ten channels, ten accents, and what has to be separable is what shares a row
+## An accent per channel, and what has to be separable is what shares a row
 
-Six chart tokens in `globals.css` — `--ndl`, `--tts`, `--ppo2`, `--cns`, `--gradient-factor`,
-`--surface-gradient-factor` — are declared once, never under `.dark`, like `--pressure` and
-`--ceiling`. Each clears WCAG's 3:1 against both cards; the measured figures are on the block.
+The panel's chart tokens in `globals.css` — `--heart-rate`, `--ndl`, `--tts`, `--ppo2`, `--cns`,
+`--gradient-factor`, `--surface-gradient-factor` — are declared once, never under `.dark`, like
+`--pressure` and `--ceiling`. Each clears WCAG's 3:1 against both cards; the measured figures are on
+the block.
 
 Separation matters within a panel row: percent holds three curves, 90 degrees apart or more. Across
 rows they need not be (`--surface-gradient-factor` at 230 is 25 degrees from `--ppo2` at 205), the
@@ -6378,7 +6381,7 @@ does least.
 
 The two gradient factors are not one hue at two lightnesses: olives far enough apart put the lighter
 at 1.97:1 on the light card. The panel's curves are solid: the ceiling's dash marks the one
-depth-plot line never measured, and every panel curve is the device's own arithmetic.
+depth-plot line never measured, and no panel row puts a measured curve beside a computed one.
 
 ## A profile event can arrive with no type, and `other` is not on the wire
 
@@ -6410,11 +6413,11 @@ The device's model name beats the family (`Suunto Fused RGBM 2` over `RGBM`), as
 Gradient factors attach to the model, both halves or neither. Conservatism is its own clause on the
 device's scale; `0` is a setting (`== null`) and a positive value keeps its sign.
 
-## `-v4`: adding a series key bumps `DIVE_PROFILE_SERIES_KEY`, and a bump has three followers
+## `-v5`: adding a series key bumps `DIVE_PROFILE_SERIES_KEY`, and a bump has three followers
 
-`DIVE_PROFILE_SERIES_KEY` is `-v4`, under the rule that adding a key to a `parseSeriesVisibility`
-list needs a bump and removing one does not: an older selection would restore with the six deco
-channels off, as if the diver had chosen that, hiding the feature from exactly the people who used
+`DIVE_PROFILE_SERIES_KEY` is `-v5`, under the rule that adding a key to a `parseSeriesVisibility`
+list needs a bump and removing one does not: an older selection would restore with the newest
+channel off, as if the diver had chosen that, hiding the feature from exactly the people who used
 the chart before.
 
 A bump has three followers:
@@ -6424,8 +6427,8 @@ A bump has three followers:
 - The orphan comment in `device-memory.ts` and its mirror in this file, which count the superseded
   series keys.
 - `device-memory.test.ts`'s prefix-clearing fixture, whose comment counts the same set in other
-  words ("Two orphans left behind by key bumps and one by a deleted feature") and whose seeded store
-  holds the retired keys; a sweep for the first sentence misses it.
+  words ("Four orphans left behind by key bumps and one by a deleted feature") and whose seeded
+  store holds the retired keys; a sweep for the first sentence misses it.
 
 ## The percent axis stops at 200 %, and the curve that overruns it is drawn leaving the row
 

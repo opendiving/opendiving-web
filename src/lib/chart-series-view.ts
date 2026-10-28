@@ -9,7 +9,7 @@
 //
 // Generic over the series keys because two charts want it and their keys have
 // nothing in common: the profile chart plots depth, the deco ceiling,
-// temperature, tank pressure and the six channels a computer's own
+// temperature, tank pressure, heart rate and the six channels a computer's own
 // decompression arithmetic produces; the gas chart plots dives/trend/average.
 // What is shared is the shape - a set of keys, re-validated on the way in
 // against the ones the chart actually has.
@@ -38,7 +38,7 @@
 //
 // **The general rule: adding a key to a `parseSeriesVisibility` list needs a key
 // bump; removing one does not.**
-export const DIVE_PROFILE_SERIES_KEY = "opendiving:dive-profile-series-v4";
+export const DIVE_PROFILE_SERIES_KEY = "opendiving:dive-profile-series-v5";
 export const GAS_USE_SERIES_KEY = "opendiving:gas-use-series";
 
 // The stored entry, raw and unparsed.

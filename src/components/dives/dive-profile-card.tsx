@@ -86,13 +86,24 @@ function describeProfileContents(
       `a deco ceiling to ${formatDepth(info.max_ceiling, units, { decimals: 1 })}`,
     );
   }
+  // The two figures a diver asks of a heart-rate trace, which the chart answers
+  // only on hover. The average is the API's, taken as it stored the series, which
+  // the capped points the chart draws cannot reproduce.
+  const heartRate = [
+    info.max_heart_rate != null && `peaking at ${info.max_heart_rate} bpm`,
+    info.average_heart_rate != null &&
+      `averaging ${info.average_heart_rate} bpm`,
+  ].filter(Boolean);
+  if (heartRate.length > 0) {
+    parts.push(`a heart rate ${heartRate.join(" and ")}`);
+  }
 
   return `${parts.join(", ")}.`;
 }
 
-// The dive's recorded curves - depth, temperature and tank pressure, the deco
-// ceiling, and the six readouts its computer worked out for itself - on the dive
-// detail page.
+// The dive's recorded curves - depth, temperature, tank pressure and heart rate,
+// the deco ceiling, and the six readouts its computer worked out for itself - on
+// the dive detail page.
 //
 // Renders nothing when the dive has no profile - the same call as
 // `DiveRecordingsCard`, and the opposite of `GasUseCard`: a dive logged by hand

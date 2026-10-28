@@ -129,6 +129,54 @@ describe("DiveProfileCard", () => {
     ).toBeTruthy();
   });
 
+  it("states the heart rate's maximum and average where the profile has them", () => {
+    render(
+      <DiveProfileCard
+        dive={dive({
+          recordings: [
+            recording({
+              profile: {
+                ...profileInfo("p1"),
+                channels: ["depth", "heart_rate"],
+                max_heart_rate: 107,
+                average_heart_rate: 77,
+              },
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "314 depth samples recorded by the dive computer, a heart rate peaking at 107 bpm and averaging 77 bpm.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing of a heart rate the profile does not carry", () => {
+    render(
+      <DiveProfileCard
+        dive={dive({
+          recordings: [
+            recording({
+              profile: {
+                ...profileInfo("p1"),
+                max_heart_rate: null,
+                average_heart_rate: null,
+              },
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByText("314 depth samples recorded by the dive computer."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/heart rate/)).not.toBeInTheDocument();
+  });
+
   it("offers no switcher on a dive one computer recorded", () => {
     // One button labelled with the only device there is says nothing and takes
     // a row of the card to say it.
