@@ -99,6 +99,27 @@ describe("SessionsCard", () => {
     );
   });
 
+  // jsdom has no layout, so this pins the structure that keeps the button at the
+  // row's right edge on a phone when the IP is a long IPv6 address: a row that
+  // never wraps, a text block that takes the room and shrinks, and a button that
+  // does not.
+  it("keeps the sign-out button beside the text rather than wrapping under it", async () => {
+    render(<SessionsCard />);
+    await screen.findByText("Firefox on Linux");
+
+    const button = screen.getByRole("button", {
+      name: "Sign out Firefox on Linux",
+    });
+    const line = button.parentElement as HTMLElement;
+    expect(line).toHaveClass("flex");
+    expect(line).not.toHaveClass("flex-wrap");
+    expect(button).toHaveClass("shrink-0");
+
+    const text = button.previousElementSibling as HTMLElement;
+    expect(text).toHaveTextContent("Firefox on Linux");
+    expect(text).toHaveClass("min-w-0", "flex-1");
+  });
+
   // A client that sent no User-Agent at all still gets a row, because a session
   // nobody can see is a session nobody can revoke.
   it("still names and offers a row whose user agent is empty", async () => {

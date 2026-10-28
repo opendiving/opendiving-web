@@ -103,6 +103,24 @@ describe("PasskeysCard", () => {
     expect(within(row("YubiKey")).queryByText("Synced")).toBeNull();
   });
 
+  // The sessions card's layout test, for the same row: the buttons stay at the
+  // right edge while the text block shrinks.
+  it("keeps the passkey's buttons beside the text rather than wrapping under it", async () => {
+    render(<PasskeysCard />);
+    await screen.findByText("iPhone");
+
+    const actions = screen.getByRole("button", { name: "Rename iPhone" })
+      .parentElement as HTMLElement;
+    expect(actions).toHaveClass("shrink-0");
+    const line = actions.parentElement as HTMLElement;
+    expect(line).toHaveClass("flex");
+    expect(line).not.toHaveClass("flex-wrap");
+
+    const text = actions.previousElementSibling as HTMLElement;
+    expect(text).toHaveTextContent("iPhone");
+    expect(text).toHaveClass("min-w-0", "flex-1");
+  });
+
   it("renames a passkey in place", async () => {
     const user = userEvent.setup();
     render(<PasskeysCard />);

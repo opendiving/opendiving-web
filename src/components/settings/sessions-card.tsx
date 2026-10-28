@@ -159,11 +159,13 @@ export function SessionsCard() {
           const device = deviceNameForUserAgent(session.user_agent);
 
           return (
+            // No `flex-wrap` on the row: wrapped, the button drops onto a line
+            // of its own at the left. The text block takes the room and wraps.
             <div
               key={session.uuid}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+              className="flex items-center gap-3 rounded-lg border p-3"
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium break-words">{device}</span>
                   {session.current && (
@@ -177,7 +179,7 @@ export function SessionsCard() {
                     a session was last used is the whole question for a diver
                     deciding whether they recognise it - "last night at 02:14"
                     means something a bare date does not. */}
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs break-words text-muted-foreground">
                   {session.ip} · Last used{" "}
                   {formatDateTime(session.last_used_at)}
                 </p>
@@ -191,6 +193,7 @@ export function SessionsCard() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="shrink-0"
                     disabled={deletingId === session.uuid}
                     onClick={() => requestDelete(session.uuid)}
                   >
