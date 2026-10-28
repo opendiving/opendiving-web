@@ -6427,8 +6427,8 @@ A bump has three followers:
 - The orphan comment in `device-memory.ts` and its mirror in this file, which count the superseded
   series keys.
 - `device-memory.test.ts`'s prefix-clearing fixture, whose comment counts the same set in other
-  words ("Two orphans left behind by key bumps and one by a deleted feature") and whose seeded store
-  holds the retired keys; a sweep for the first sentence misses it.
+  words ("Four orphans left behind by key bumps and one by a deleted feature") and whose seeded
+  store holds the retired keys; a sweep for the first sentence misses it.
 
 ## The percent axis stops at 200 %, and the curve that overruns it is drawn leaving the row
 
