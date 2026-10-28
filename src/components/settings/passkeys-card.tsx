@@ -218,9 +218,10 @@ export function PasskeysCard() {
         )}
 
         {passkeys.map((passkey) => (
+          // Not `flex-wrap`, for the reason the sessions card's rows give.
           <div
             key={passkey.uuid}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+            className="flex items-center gap-3 rounded-lg border p-3"
           >
             {edited?.uuid === passkey.uuid ? (
               <>
@@ -245,7 +246,7 @@ export function PasskeysCard() {
                     if (event.key === "Escape") setEdited(null);
                   }}
                 />
-                <div className="flex gap-1">
+                <div className="flex shrink-0 gap-1">
                   <IconTooltip label="Save name">
                     <Button
                       variant="ghost"
@@ -274,7 +275,7 @@ export function PasskeysCard() {
               </>
             ) : (
               <>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium break-words">
                       {passkey.name}
@@ -295,7 +296,7 @@ export function PasskeysCard() {
                       : "Never used"}
                   </p>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex shrink-0 gap-1">
                   <IconTooltip label={`Rename ${passkey.name}`}>
                     <Button
                       variant="ghost"
