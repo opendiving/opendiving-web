@@ -325,7 +325,7 @@ export default async function PrivacyPage() {
                 is fetched by this server and stored here as your avatar &mdash;
                 once, when the account is made, and never again afterwards. That
                 only happens on instances with Google sign-in turned on; section
-                4.11 describes it if this one does.
+                4.12 describes it if this one does.
               </p>
               <p className="text-foreground mb-4">
                 Two more addresses can reach this copy before any account
@@ -397,22 +397,23 @@ export default async function PrivacyPage() {
                   verified sign-in being offered a new account to make, or a
                   deleted one to bring back; an account created or restored; a
                   second way of signing in attached to an existing account; a
-                  passkey added or removed; a passkey reporting a use count that
-                  suggests it has been copied; an email address change asked for
-                  or completed; an account asked to be deleted; a sign-out; one
-                  device signed out, or every other one at once; and a spent
-                  sign-in cookie turning up again. Each entry holds what
-                  happened and when, the IP address and user agent it came from,
-                  which way of signing in it was about &mdash; email, Google or
-                  a passkey &mdash; where that applies, and the account it was
+                  passkey added or removed; an API key made or revoked; a
+                  passkey reporting a use count that suggests it has been
+                  copied; an email address change asked for or completed; an
+                  account asked to be deleted; a sign-out; one device signed
+                  out, or every other one at once; and a spent sign-in cookie
+                  turning up again. Each entry holds what happened and when, the
+                  IP address and user agent it came from, which way into the
+                  account it was about &mdash; email, Google, a passkey or an
+                  API key &mdash; where that applies, and the account it was
                   about, or, for something that happened before any account
                   existed, the email address that was typed. An invitation sent
                   is the one entry that carries both, because both are the point
                   of it: the account that sent the invitation, and the address
-                  it went to. Never a link, a code or a token itself, only the
-                  fact that one was issued or used. Nothing in the app shows
-                  these to you; they are there for whoever runs this copy to
-                  look into a break-in or a burst of sign-in attempts, and
+                  it went to. Never a link, a code, a token or a key itself,
+                  only the fact that one was issued or used. Nothing in the app
+                  shows these to you; they are there for whoever runs this copy
+                  to look into a break-in or a burst of sign-in attempts, and
                   section 6.2 says what that means for asking for a copy. The
                   successful sign-ins among them are also counted into the
                   day&rsquo;s total of accounts that signed in, below
@@ -426,15 +427,15 @@ export default async function PrivacyPage() {
                   invitation was requested for, and by account id for things you
                   can only do signed in, such as exporting your data, importing
                   a logbook, changing your username or email, linking a person
-                  to an account, registering a passkey, inviting somebody, and
-                  looking up place and species names. Each counter is a number
-                  and expires by itself: after 15 minutes on the sign-in and
-                  account paths, after an hour on the support form, the
-                  invite-request form, exports, logbook imports, and the place-
-                  and species-name lookups. Other counters exist that hold no
-                  identifier at all &mdash; they cap how often this server as a
-                  whole may call an outside provider, and are keyed on the
-                  provider, not on anyone
+                  to an account, registering a passkey, making an API key,
+                  inviting somebody, and looking up place and species names.
+                  Each counter is a number and expires by itself: after 15
+                  minutes on the sign-in and account paths, after an hour on the
+                  support form, the invite-request form, exports, logbook
+                  imports, and the place- and species-name lookups. Other
+                  counters exist that hold no identifier at all &mdash; they cap
+                  how often this server as a whole may call an outside provider,
+                  and are keyed on the provider, not on anyone
                 </li>
                 <li>
                   <strong>Passkey labels:</strong> If you register a passkey, a
@@ -452,7 +453,9 @@ export default async function PrivacyPage() {
                   created, a digest of what was sent from which the request
                   cannot be read back, the outcome, the identifier of the record
                   it made, and when. Nothing of the record itself is copied into
-                  it. A browser sends no such key, so using this site adds none.
+                  it. A tool of your own calling this copy with an API key, as
+                  section 4.11 describes, may send one too and leaves the same
+                  record. A browser sends none, so using this site adds none.
                   Section 7 says how long they are kept
                 </li>
               </ul>
@@ -540,11 +543,13 @@ export default async function PrivacyPage() {
                 <li>
                   <strong>Provide the Service:</strong> Store your dives, dive
                   drafts, sites, trips, gear, courses, certifications, contacts,
-                  people, tags and check-in details, show them back to you, show
-                  you the current username of an account you linked a person to,
-                  show your check-in page to whoever holds a check-in link you
-                  made, and, where this copy is invite-only, show your name to
-                  whoever opens your invite link
+                  people, tags and check-in details, show them back to you,
+                  answer a tool you gave an API key as it would answer you,
+                  within what that key allows, show you the current username of
+                  an account you linked a person to, show your check-in page to
+                  whoever holds a check-in link you made, and, where this copy
+                  is invite-only, show your name to whoever opens your invite
+                  link
                 </li>
                 <li>
                   <strong>Account Management:</strong> Sign you in, keep you
@@ -554,14 +559,15 @@ export default async function PrivacyPage() {
                   <strong>Email:</strong> Send you a sign-in link and code,
                   confirm an address change, confirm a deletion, tell an address
                   that it has been invited here, tell you when a passkey is
-                  added to or removed from your account, tell your old address
-                  when your email address is changed, remind you when gear you
-                  have set a service schedule on comes due and when a
-                  certification or one of your insurance policies nears or
-                  passes its expiry date, and send you your year of diving in
-                  figures each January. If you use the support form, deliver
-                  what you wrote to whoever runs this copy. Section 6.3 lists
-                  all of these and says which arrive without you asking
+                  added to or removed from your account and when an API key is
+                  made or revoked on it, tell your old address when your email
+                  address is changed, remind you when gear you have set a
+                  service schedule on comes due and when a certification or one
+                  of your insurance policies nears or passes its expiry date,
+                  and send you your year of diving in figures each January. If
+                  you use the support form, deliver what you wrote to whoever
+                  runs this copy. Section 6.3 lists all of these and says which
+                  arrive without you asking
                 </li>
                 <li>
                   <strong>Decide who may create an account:</strong> Where this
@@ -590,8 +596,9 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   <strong>Create things once:</strong> Keep the retry records
-                  from section 2.2, so that something the OpenDiving app sends
-                  again after a lost reply is created once rather than twice
+                  from section 2.2, so that something the OpenDiving app, or a
+                  tool of yours, sends again after a lost reply is created once
+                  rather than twice
                 </li>
                 <li>
                   <strong>Count how this copy is used:</strong> Keep the daily
@@ -627,10 +634,13 @@ export default async function PrivacyPage() {
                 public, because there is nothing for such a setting to do. The
                 exceptions are ones you make yourself: a check-in link shows
                 your check-in page to whoever holds it, for a day, and section
-                4.9 says exactly what that shows; and, where this copy is
+                4.9 says exactly what that shows; where this copy is
                 invite-only, an invite link shows your name &mdash; and nothing
                 you entered &mdash; to whoever opens it, until you reset or
-                remove it, as section 4.8 says.
+                remove it, as section 4.8 says; and an API key you make lets
+                whatever holds it read your account as you &mdash; and change
+                it, if you let it &mdash; until it expires or you revoke it, as
+                section 4.11 says.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1007,7 +1017,7 @@ export default async function PrivacyPage() {
               )}
 
               {/* Unconditional for the reason §4.8 is: every diver on every copy can
-                make one, so Google stays last and takes the number after §4.10. */}
+                make one, so Google stays after every unconditional section. */}
               <h3 className="text-xl font-semibold text-foreground mb-3">
                 4.9 Check-in Links
               </h3>
@@ -1059,7 +1069,7 @@ export default async function PrivacyPage() {
               </p>
 
               {/* Unconditional too: every diver on every copy can link a person,
-                so Google stays last and takes the number after this one. */}
+                so Google stays after it. */}
               <h3 className="text-xl font-semibold text-foreground mb-3">
                 4.10 Linking a Person to an Account
               </h3>
@@ -1121,10 +1131,57 @@ export default async function PrivacyPage() {
                 kept of them stays yours.
               </p>
 
+              {/* Unconditional as well: every account on every copy can make a
+                key, so Google takes the number after this one. */}
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                4.11 API Keys
+              </h3>
+              <p className="text-foreground mb-4">
+                In Settings, under Authentication, you can make an API key: a
+                secret that lets a script or a program of your own use this
+                copy&rsquo;s API as you &mdash; to read your dives into a
+                spreadsheet, say, or to log them from another tool. A key
+                reaches your own account and no one else&rsquo;s, nothing about
+                you is shown to anybody by making one, and this section is the
+                whole of it.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What a key can do:</strong> what its scope allows. A
+                read-only key can read whatever your account can and change
+                nothing; a read-and-write key can also add, change and delete
+                what you could in the app. Neither can make, list or revoke API
+                keys, passkeys or signed-in devices, make a check-in link or an
+                invite link, change the email address you sign in with, or
+                delete your account &mdash; those need you signed in, in a
+                browser or the OpenDiving app &mdash; and neither reaches
+                anything only whoever runs this copy can. Whoever holds a key
+                can use it from anywhere, so treat it like a password: anyone
+                you give it to can pass it on.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>For how long:</strong> until the expiry you chose when
+                you made it &mdash; 30 days, 90 days, a year, or never &mdash;
+                or until you revoke it on the API keys card, which stops it on
+                its very next request. Signing out, or signing other devices
+                out, leaves every key working. Asking to delete your account
+                stops all of them.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What this copy keeps:</strong> a fingerprint of the key
+                rather than the key itself, which is why it is shown to you
+                once, when you make it, and never again; its first twelve
+                characters, so the card and the emails can tell your keys apart
+                without holding one; and the name you gave it, its scope, and
+                when it was made, last used and expires. Making or revoking a
+                key emails you and is one of the account security events in
+                section 2.2; using one records nothing beyond its last-used
+                date. Section 7 says when a key is deleted.
+              </p>
+
               {googleClientId && (
                 <>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
-                    4.11 Signing In with Google
+                    4.12 Signing In with Google
                   </h3>
                   <p className="text-foreground mb-4">
                     This copy of OpenDiving offers &ldquo;Continue with
@@ -1188,7 +1245,7 @@ export default async function PrivacyPage() {
               {diveConditions && (
                 <>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
-                    4.{googleClientId ? 12 : 11} Weather at Your Dives
+                    4.{googleClientId ? 13 : 12} Weather at Your Dives
                   </h3>
                   <p className="text-foreground mb-4">
                     This copy of OpenDiving fills in the weather for the dives
@@ -1241,7 +1298,9 @@ export default async function PrivacyPage() {
                   field anywhere, and no password is stored, because none is
                   ever set. You sign in with a link or a code sent to your
                   email, with a passkey, or &mdash; where an instance offers it
-                  &mdash; with Google
+                  &mdash; with Google. A tool of your own uses an API key
+                  instead, which signs nothing in and is shown to you once
+                  &mdash; section 4.11
                 </li>
                 <li>
                   <strong>Single-use sessions:</strong> The cookie that keeps
@@ -1306,6 +1365,10 @@ export default async function PrivacyPage() {
                   them out
                 </li>
                 <li>
+                  Make an API key for a tool of your own, see what each one may
+                  do and when it was last used, and revoke it
+                </li>
+                <li>
                   Where this copy is invite-only, invite someone, make, reset or
                   remove your invite link, see the invitations you have sent and
                   who joined through your link, and take back one that has not
@@ -1325,9 +1388,10 @@ export default async function PrivacyPage() {
                 absence is the point: nothing is public or shared, so there is
                 nothing to switch off. The exceptions are a check-in link you
                 made, which Revoke on your check-in page switches off at once
-                &mdash; section 4.9 &mdash; and, where this copy is invite-only,
-                your invite link, which Remove on the Invitations card switches
-                off at once &mdash; section 4.8.
+                &mdash; section 4.9; where this copy is invite-only, your invite
+                link, which Remove on the Invitations card switches off at once
+                &mdash; section 4.8; and an API key you made, which Revoke on
+                the API keys card switches off at once &mdash; section 4.11.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1367,13 +1431,13 @@ export default async function PrivacyPage() {
                 The first four need no request: access, correction, deletion and
                 portability are all buttons in Settings or on the Export page,
                 and they act immediately rather than being forwarded to
-                somebody. {mapTiles ? "Six" : "Five"} things sit outside those
+                somebody. {mapTiles ? "Seven" : "Six"} things sit outside those
                 buttons, and naming them is better than letting that sentence
                 read wider than it is. The email address you sign in with, your
-                username and the list of signed-in devices are in Settings but
-                are not part of the export: they are your account on this copy
-                rather than your logbook, and the username only names the file
-                you download.
+                username, the list of signed-in devices and your API keys are in
+                Settings but are not part of the export: they are your account
+                on this copy rather than your logbook, and the username only
+                names the file you download.
                 {mapTiles && (
                   <>
                     {" "}
@@ -1440,13 +1504,13 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 Being sent to your own address is not the same as being sent
                 because <em>you</em> acted, and this page will not blur the two.
-                Deleting your account, and adding or removing a passkey, each
-                email your account&rsquo;s address on the strength of a live
-                session and nothing more &mdash; no re-checking that it is
-                really you. So if somebody else had hold of your session, the
-                message still arrives at you, about something you did not do.
-                That is precisely why the notices in the next group exist and
-                cannot be switched off.
+                Deleting your account, adding or removing a passkey, and making
+                or revoking an API key each email your account&rsquo;s address
+                on the strength of a live session and nothing more &mdash; no
+                re-checking that it is really you. So if somebody else had hold
+                of your session, the message still arrives at you, about
+                something you did not do. That is precisely why the notices in
+                the next group exist and cannot be switched off.
               </p>
               <p className="text-foreground mb-4">
                 <strong>
@@ -1454,7 +1518,8 @@ export default async function PrivacyPage() {
                   &mdash; whether or not it was you who changed it:
                 </strong>{" "}
                 when a passkey is added to your account, and when one is
-                removed. And when your email address is changed, a note goes to
+                removed; when an API key is made for it, and when one is
+                revoked. And when your email address is changed, a note goes to
                 the <em>old</em> address naming the new one. That last one
                 exists precisely so that the owner of an address finds out even
                 if they were not the person who changed it, which is why it
@@ -1564,6 +1629,12 @@ export default async function PrivacyPage() {
                 the start, so it is never swept either, and goes when either
                 account does.
               </p>
+              <p className="text-foreground mb-4">
+                An <strong>API key</strong> is not swept either. It is kept,
+                expired or not, until you revoke it or your account goes; an
+                expired one stays on the API keys card, marked, so that removing
+                it is yours to do.
+              </p>
               {mapTiles && (
                 <p className="text-foreground mb-4">
                   The <strong>map tiles</strong> this copy draws, which section
@@ -1614,13 +1685,14 @@ export default async function PrivacyPage() {
                   shows no username
                 </li>
                 <li>
-                  Your sessions, your retry records and your account security
-                  events go with it. The entries made before the account existed
-                  have nothing linking them to it, so they are found by the
-                  email address instead &mdash; the same way the sign-in records
-                  already are. The one gap that cannot close: entries left under
-                  an address you later moved off are not named by the deletion,
-                  and expire on their own 7-day schedule instead
+                  Your sessions, your API keys, your retry records and your
+                  account security events go with it. The entries made before
+                  the account existed have nothing linking them to it, so they
+                  are found by the email address instead &mdash; the same way
+                  the sign-in records already are. The one gap that cannot
+                  close: entries left under an address you later moved off are
+                  not named by the deletion, and expire on their own 7-day
+                  schedule instead
                 </li>
               </ul>
               <p className="text-foreground mb-4">
@@ -1949,7 +2021,7 @@ export default async function PrivacyPage() {
                   site, and Google sets nothing in your browser under this
                   address. Signing in with Google takes you to Google, where
                   whatever it stores is its own on its own address &mdash;
-                  section 4.11 has the detail.
+                  section 4.12 has the detail.
                 </p>
               )}
               <p className="text-foreground mb-4">

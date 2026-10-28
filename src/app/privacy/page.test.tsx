@@ -15,7 +15,7 @@ import { PROJECT_OPERATOR } from "@/lib/operator";
 // this block is what holds that - a sentence claiming no control exists is the
 // specific thing this section must not say.
 //
-// This is also where the section's conditional half is pinned. §4.11 and the Google
+// This is also where the section's conditional half is pinned. §4.12 and the Google
 // storage key exist only where an instance has Google sign-in configured, so every
 // count here has two correct answers rather than one, and an instance that has not
 // turned Google on must not read as though it had.
@@ -341,6 +341,54 @@ describe.each([
     expect(listAfterHeading(/6\.1 Account Control/).join(" ")).toMatch(
       /sign any of them out/i,
     );
+  });
+
+  // API keys are a credential a tool holds, so every closed list of the ways to act
+  // on the account, the things Settings does, what it holds outside the export, the
+  // security notices and the security events has to name them.
+  it("gives API keys a section of their own, and names them in every list they join", async () => {
+    await renderPage({ google });
+
+    const heading = screen.getByText(/4\.11 API Keys/);
+    expect(heading.tagName).toBe("H3");
+    const section: string[] = [];
+    for (
+      let node = heading.nextElementSibling;
+      node && node.tagName === "P";
+      node = node.nextElementSibling
+    ) {
+      section.push(node.textContent ?? "");
+    }
+    const text = section.join(" ");
+    expect(text).toMatch(/What a key can do:/);
+    expect(text).toMatch(/For how long:.*leaves every key working/);
+    expect(text).toMatch(/What this copy keeps:\s*a fingerprint of the key/);
+
+    expect(
+      screen.getByText(/no setting that makes any of it public/),
+    ).toHaveTextContent(/an API key you make.*section 4\.11/);
+    expect(listAfterHeading(/6\.1 Account Control/).join(" ")).toMatch(
+      /Make an API key.*and revoke it/,
+    );
+    expect(screen.getByText(/nothing to switch off/)).toHaveTextContent(
+      /API keys card switches off at once/,
+    );
+    expect(screen.getByText(/The first \w+ need no request/)).toHaveTextContent(
+      /signed-in devices and your API keys are in\s+Settings but are not part of the export/,
+    );
+    expect(
+      screen.getByText(/Security notices, which arrive/).closest("p"),
+    ).toHaveTextContent(
+      /when an API key is made for it, and when one is revoked/,
+    );
+    expect(
+      listAfterHeading(/2\.2 Automatically Collected Information/).find(
+        (entry) => entry.startsWith("Account security events:"),
+      ),
+    ).toMatch(/an API key made or revoked/);
+    expect(
+      screen.getByText(/is not swept either/).closest("p"),
+    ).toHaveTextContent(/API key.*until you revoke it or your account goes/);
   });
 
   // §6.2 splits its rights into two groups by ordinal - "The first four",
@@ -796,12 +844,12 @@ describe("the map tiles", () => {
       /map pictures?|tiles this copy draws/i,
     );
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Five things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Six things sit outside those buttons/);
     expect(rights).toHaveTextContent(
       /two records in section 2\.2 are in neither, the account security events and the retry records/,
     );
     expect(rights).toHaveTextContent(
-      /The email address you sign in with, your username and the list of signed-in devices are in Settings but are not part of the export/,
+      /The email address you sign in with, your username, the list of signed-in devices and your API keys are in Settings but are not part of the export/,
     );
   });
 
@@ -828,9 +876,9 @@ describe("the map tiles", () => {
 
     // §6.2: outside the export, and outside the deletion, because not yours.
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Six things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Seven things sit outside those buttons/);
     expect(rights).toHaveTextContent(
-      /The email address you sign in with, your username and the list of signed-in devices are in Settings but are not part of the export/,
+      /The email address you sign in with, your username, the list of signed-in devices and your API keys are in Settings but are not part of the export/,
     );
     expect(rights).toHaveTextContent(
       /Nor are the map tiles section 4\.4 says this copy draws, and deleting your account leaves them too: they are not yours/,
@@ -914,9 +962,10 @@ describe("the Google half of the page", () => {
   // section arrives before Google: after a shift the old ones would pass while
   // pinning nothing, since a query for Google under its old number finds nothing
   // whether or not the page is right. What is pinned is the set: §4.8 is the
-  // invitations section, §4.9 the check-in links and §4.10 linking a person, all
-  // always here, and Google is §4.11 and is here only when it is configured.
-  it("ends section 4 at 4.10 with no gap when Google is unconfigured", async () => {
+  // invitations section, §4.9 the check-in links, §4.10 linking a person and §4.11
+  // API keys, all always here, and Google is §4.12 and is here only when it is
+  // configured.
+  it("ends section 4 at 4.11 with no gap when Google is unconfigured", async () => {
     await renderPage({ google: false });
 
     expect(screen.getByText(/4\.7 Legal Requirements/)).toBeInTheDocument();
@@ -927,15 +976,16 @@ describe("the Google half of the page", () => {
     expect(
       screen.getByText(/4\.10 Linking a Person to an Account/),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/4\.11 Signing In with Google/)).toBeNull();
-    expect(screen.queryByText(/^4\.1[1-9] /)).toBeNull();
+    expect(screen.getByText(/4\.11 API Keys/)).toBeInTheDocument();
+    expect(screen.queryByText(/4\.12 Signing In with Google/)).toBeNull();
+    expect(screen.queryByText(/^4\.1[2-9] /)).toBeNull();
     expect(document.querySelector('a[href*="policies.google.com"]')).toBeNull();
     expect(storageEntries().some((entry) => entry.includes("google"))).toBe(
       false,
     );
   });
 
-  it("numbers Google 4.11, after the linking section, where it is configured", async () => {
+  it("numbers Google 4.12, after the API keys section, where it is configured", async () => {
     await renderPage({ google: true });
 
     expect(
@@ -945,10 +995,11 @@ describe("the Google half of the page", () => {
     expect(
       screen.getByText(/4\.10 Linking a Person to an Account/),
     ).toBeInTheDocument();
+    expect(screen.getByText(/4\.11 API Keys/)).toBeInTheDocument();
     expect(
-      screen.getByText(/4\.11 Signing In with Google/),
+      screen.getByText(/4\.12 Signing In with Google/),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/4\.10 Signing In with Google/)).toBeNull();
+    expect(screen.queryByText(/4\.11 Signing In with Google/)).toBeNull();
   });
 
   // §10.4 names one outside party acting on its own account, not two: Google sets
@@ -986,8 +1037,8 @@ describe("the weather service", () => {
   });
 
   it.each([
-    [false, "4.11"],
-    [true, "4.12"],
+    [false, "4.12"],
+    [true, "4.13"],
   ])(
     "has a section of its own where it is asked, Google %s, numbered %s",
     async (google, number) => {

@@ -287,7 +287,9 @@ export default async function TermsPage() {
                   in with a link or a code sent to your email, with a passkey,
                   or &mdash; where this copy offers it &mdash; with Google. So
                   whoever can read that mailbox, use that passkey, or get into
-                  that Google account can sign in as you
+                  that Google account can sign in as you. Keep any API key you
+                  make the same way: whoever holds one can act as you, within
+                  what that key allows, until it expires or you revoke it
                 </li>
                 <li>
                   Tell the operator of this copy promptly if you think someone

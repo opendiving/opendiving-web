@@ -4303,7 +4303,7 @@ page, where `app/privacy/page.test.tsx` pins it, not here.
 `components/layout/landing-page.tsx` makes the claim and it holds: the software ships no tracking or
 analytics technology — not disabled, absent, with no such dependency in the build. Sign-in and map
 functionality that contacts a third party is function, not tracking, and each is disclosed on
-`/privacy` rather than denied; Google sign-in on a Google-enabled instance is disclosed in §4.11.
+`/privacy` rather than denied; Google sign-in on a Google-enabled instance is disclosed in §4.12.
 §2.2's daily totals leave it standing: the operator's bookkeeping, counted on the server and naming
 nobody.
 
@@ -4367,19 +4367,20 @@ passes. A shorter list is not a stronger guarantee.
 
 This file pins privacy sections by number and by quoted content — §4.4 map tiles, §4.5 geocoder,
 §4.6 species cache, §4.7 Legal Requirements, §4.8 invitations, §4.9 check-in links, §4.10 linking a
-person, §4.11 Google sign-in — so a reword at the right number falsifies a pin silently. A stale
-privacy page is worse than a vague one.
+person, §4.11 API keys, §4.12 Google sign-in — so a reword at the right number falsifies a pin
+silently. A stale privacy page is worse than a vague one.
 
-Conditional sections sit last. §4.11 exists only when `GOOGLE_CLIENT_ID` is set, so its absence
+Conditional sections sit last. §4.12 exists only when `GOOGLE_CLIENT_ID` is set, so its absence
 leaves no gap. The weather service's section follows it, present only where `/config` says the
-instance fetches dive conditions, and numbered 4.12 or 4.11 by whether Google's is there. The
+instance fetches dive conditions, and numbered 4.13 or 4.12 by whether Google's is there. The
 invitations disclosure is unconditional — `REGISTRATION_MODE` flips with a restart, and a section
 that came and went would change under a reader for no stated reason — so it holds a fixed number and
-hedges in prose ("where this copy is invite-only"); the check-in links and linking sections are
-unconditional because every copy offers them. §4.8's join-link paragraph alone comes and goes, with
-`join_links`: a copy without join links says nothing of them. `page.test.tsx` asserts §4.8 to §4.10
-always present and §4.11 present only when configured. `git grep '4\.11'` misses the page's and
-`lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.(9|1[012])'`.
+hedges in prose ("where this copy is invite-only"); the check-in links, linking and API keys
+sections are unconditional because every copy offers them. §4.8's join-link paragraph alone comes
+and goes, with `join_links`: a copy without join links says nothing of them. `page.test.tsx` asserts
+§4.8 to §4.11 always present and §4.12 present only when configured. `git grep '4\.12'` misses the
+page's and `lib/google-oauth.test.ts`'s regex literals; use
+`git grep -n -E '4\\?\.(9|1[0123])|4\.\{'`, which also finds the weather heading's computed number.
 
 ## The ICO's `localStorage` suggestion, read and answered rather than passed over
 
