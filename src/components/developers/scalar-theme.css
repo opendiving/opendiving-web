@@ -66,3 +66,21 @@
 .od-api-reference {
   --scalar-custom-header-height: var(--header-height);
 }
+
+/* Scalar's sections pad 90px, and a menu jump stands one off everything sticky
+   above it, the app's header included, which `html`'s scroll-padding already
+   clears. Here they take the app's spacing, leave the gutters to the page's
+   column, and keep only Scalar's own bar, below its `lg`, in the margin. Its
+   scoped rules match at two classes and are unlayered: three wins in any
+   stylesheet order. */
+.od-api-reference .references-rendered .section {
+  padding: 1.5rem 0;
+  scroll-margin-top: calc(var(--refs-viewport-offset) - var(--header-height));
+}
+
+/* Scalar's own `lg`, where its sidebar appears: the settings menu's gap from it. */
+@media (width >= 1000px) {
+  .od-api-reference .references-rendered .section {
+    padding-left: 1.5rem;
+  }
+}
