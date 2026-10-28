@@ -124,6 +124,24 @@ describe("ApiKeysCard", () => {
     expect(within(row("laptop")).queryByText("Expired")).toBeNull();
   });
 
+  // jsdom has no layout, so this pins the structure that keeps the revoke button
+  // at the row's right edge on a phone: a row that never wraps, a text block that
+  // takes the room and shrinks, and a button that does not.
+  it("keeps the revoke button beside the text rather than wrapping under it", async () => {
+    render(<ApiKeysCard />);
+    await screen.findByText("laptop");
+
+    const button = screen.getByRole("button", { name: "Revoke laptop" });
+    const line = button.parentElement as HTMLElement;
+    expect(line).toHaveClass("flex");
+    expect(line).not.toHaveClass("flex-wrap");
+    expect(button).toHaveClass("shrink-0");
+
+    const text = button.previousElementSibling as HTMLElement;
+    expect(text).toHaveTextContent("laptop");
+    expect(text).toHaveClass("min-w-0", "flex-1");
+  });
+
   // A year, so "never" is a choice; read-only, so writing is too.
   it("opens the form defaulting to read only and a year", async () => {
     const user = userEvent.setup();
