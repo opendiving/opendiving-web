@@ -6,6 +6,7 @@ import {
   type ProfileChannelKey,
   axisDomain,
   axisUnitSuffix,
+  channelAxis,
   channelWord,
   channelsOnAxis,
   cutAtDiveEnd,
@@ -35,7 +36,7 @@ import {
   PROFILE_CHANNELS,
 } from "@/lib/dive-profile";
 import { segmentByTimeGap } from "@/lib/chart-path";
-import { niceDomain } from "@/lib/chart-scale";
+import { axisTicks, niceDomain } from "@/lib/chart-scale";
 
 // Every time in this file is on the profile's own axis, milliseconds - so a
 // 10-second cadence is `10_000` apart, as the API serves it.
@@ -428,6 +429,51 @@ describe("axisDomain", () => {
     axisDomain("percent", values);
 
     expect(values).toEqual([0, 170, SUUNTO_GF99_PEAK]);
+  });
+});
+
+describe("the heart-rate channel", () => {
+  // A Suunto Ocean's wrist sensor on a 48 m dive: 57 to 107 bpm, a reading a
+  // second.
+  const readings = [57, 72, 88, 107];
+
+  it("fits its row to the readings, with nothing above them setting the scale", () => {
+    const domain = axisDomain("heart_rate", readings);
+
+    expect(domain).toEqual(niceDomain(readings));
+    const ticks = axisTicks(domain);
+    expect(ticks[ticks.length - 1]).toBe(110);
+    // Not anchored at zero: no diver reads 0 beats, and a zero floor would draw
+    // the whole dive in the top half of the row.
+    expect(domain.min).toBeGreaterThan(0);
+  });
+
+  it("labels its top tick with the unit, the same in both systems", () => {
+    expect(axisUnitSuffix("heart_rate", "metric")).toBe(" bpm");
+    expect(axisUnitSuffix("heart_rate", "imperial")).toBe(" bpm");
+  });
+
+  it("is read whole, and unconverted in either system", () => {
+    const hr = profile({
+      heart_rate: { times: [0, 1_000, 2_000], values: [57, 92, 107] },
+    });
+
+    for (const units of ["metric", "imperial"] as const) {
+      const series = toChannelSeries(hr, "heart_rate", units);
+      expect(series?.values).toEqual([57, 92, 107]);
+      expect(series && formatChannelValue(107, series.channel)).toBe("107 bpm");
+    }
+    expect(channelWord("heart_rate", "imperial")).toBe("beats per minute");
+  });
+
+  it("has a row of its own, stacked first", () => {
+    expect(channelAxis("heart_rate")).toBe("heart_rate");
+    expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "heart_rate")).toEqual([
+      "heart_rate",
+    ]);
+    expect(
+      profileScalePlacement(["depth", "heart_rate", "ndl"]).panels,
+    ).toEqual(["heart_rate", "no_deco"]);
   });
 });
 
@@ -1286,16 +1332,17 @@ describe("axisUnitSuffix", () => {
 
   it("follows the diver's system where the axis has one", () => {
     expect(axisUnitSuffix("depth", "imperial")).toBe(" ft");
-    // And does not where it doesn't - the deco panel reads the same either way.
+    // And does not where it doesn't - the panel reads the same either way.
     expect(axisUnitSuffix("percent", "imperial")).toBe("%");
   });
 });
 
 describe("profileScalePlacement", () => {
-  // Every one of the 1 024 selections of the ten channels. Swept as a pure
-  // function rather than by rendering, which is the whole reason the rule lives
-  // here: the combination that breaks a ten-input rule is never the obvious one,
-  // and 1 024 renders is not a test anybody would keep.
+  // Every selection of the channels, 2 to the power of their count. Swept as a
+  // pure function rather than by rendering, which is the whole reason the rule
+  // lives here: the combination that breaks a rule with an input per channel is
+  // never the obvious one, and that many renders is not a test anybody would
+  // keep.
   const EVERY_SELECTION = Array.from(
     { length: 2 ** PROFILE_CHANNEL_KEYS.length },
     (_, mask) => PROFILE_CHANNEL_KEYS.filter((_, index) => mask & (1 << index)),
@@ -1337,7 +1384,7 @@ describe("profileScalePlacement", () => {
   );
 
   it.each(EVERY_SELECTION.map((keys) => [keys.join(" + ") || "nothing", keys]))(
-    "gives every deco channel a panel row for %s",
+    "gives every channel off the depth plot a panel row for %s",
     (_, keys) => {
       const shown = keys as readonly ProfileChannelKey[];
       const placement = profileScalePlacement(shown);
@@ -1399,21 +1446,21 @@ describe("profileScalePlacement", () => {
     });
   });
 
-  it("leaves the depth plot's edges alone when only deco channels are on", () => {
+  it("leaves the depth plot's edges alone when only panel channels are on", () => {
     // The panel rows are their own plots with their own left edges, so nothing
     // the diver switches on down there can claim an edge up here.
-    expect(profileScalePlacement(["ndl", "cns"])).toEqual({
+    expect(profileScalePlacement(["ndl", "cns", "heart_rate"])).toEqual({
       left: null,
       right: null,
       underRight: null,
-      panels: ["no_deco", "percent"],
+      panels: ["heart_rate", "no_deco", "percent"],
     });
   });
 
   it("stacks the rows in one order however the selection was made", () => {
-    expect(profileScalePlacement(["cns", "ppo2", "tts", "ndl"]).panels).toEqual(
-      ["no_deco", "time_to_surface", "ppo2", "percent"],
-    );
+    expect(
+      profileScalePlacement(["cns", "ppo2", "tts", "ndl", "heart_rate"]).panels,
+    ).toEqual(["heart_rate", "no_deco", "time_to_surface", "ppo2", "percent"]);
   });
 
   it("grows no row for an axis nothing is on", () => {

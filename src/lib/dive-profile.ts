@@ -52,11 +52,15 @@ export type ProfileChannelKey =
   | "ceiling"
   | "temperature"
   | "pressure"
+  // What the diver's wrist sensor or strap read, in whole beats per minute: a
+  // measurement like the four above, drawn under the depth plot only because
+  // that plot's edges are taken.
+  | "heart_rate"
   // The six the device's own decompression arithmetic produces. They are
   // channels on exactly the terms the first four are - a domain, a scale, a
   // unit and a toggle - and they are drawn away from the depth plot only
-  // because the plot has two edges and these carry four more scales between
-  // them. See `CHANNEL_AXIS`.
+  // because the plot has two edges and these carry four scales of their own
+  // between them. See `CHANNEL_AXIS`.
   | "ndl"
   | "tts"
   | "ppo2"
@@ -148,9 +152,10 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
     // moved as the diver's tissues loaded, and a solid line would present the
     // two as the same kind of fact.
     //
-    // The deco panel's six channels are computed too and are drawn solid, which
-    // is not an exception to that rule but the absence of the case it answers:
-    // every curve in that panel is the device's own arithmetic, so a dash there
+    // The rows under the depth plot are drawn solid, which is not an exception
+    // to that rule but the absence of the case it answers: no row there puts a
+    // measured curve beside a computed one - heart rate has a row of its own,
+    // and every curve on the others is the device's own arithmetic - so a dash
     // would distinguish nothing from nothing.
     dashed: true,
     // A break in this series is a stretch of dive with no decompression
@@ -177,6 +182,18 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
     colorClass: "text-pressure",
     inverted: false,
     dashed: false,
+    gapsAreMeaningful: false,
+  },
+  heart_rate: {
+    key: "heart_rate",
+    label: "Heart rate",
+    unit: "bpm",
+    scale: 1, // whole beats per minute
+    decimals: 0,
+    colorClass: "text-heart-rate",
+    inverted: false,
+    dashed: false,
+    // A dropout is a stretch the sensor lost contact, not a fact about the dive.
     gapsAreMeaningful: false,
   },
   // The six below are the device's own decompression arithmetic. None of them is
@@ -269,6 +286,7 @@ export const PROFILE_CHANNEL_KEYS: readonly ProfileChannelKey[] = [
   "ceiling",
   "temperature",
   "pressure",
+  "heart_rate",
   "ndl",
   "tts",
   "ppo2",
@@ -311,6 +329,7 @@ export type ProfileAxisKey =
   | "depth"
   | "temperature"
   | "pressure"
+  | "heart_rate"
   | "no_deco"
   | "time_to_surface"
   | "ppo2"
@@ -321,6 +340,7 @@ const CHANNEL_AXIS: Record<ProfileChannelKey, ProfileAxisKey> = {
   ceiling: "depth",
   temperature: "temperature",
   pressure: "pressure",
+  heart_rate: "heart_rate",
   // Minutes both, and still two rows: a no-deco limit runs to 99 while time to
   // surface is a few minutes on most dives, so on one scale it is a flat line.
   ndl: "no_deco",
@@ -331,15 +351,18 @@ const CHANNEL_AXIS: Record<ProfileChannelKey, ProfileAxisKey> = {
   surface_gradient_factor: "percent",
 };
 
-// The axes the depth plot itself can carry, and the axes that go into the deco
-// panel underneath it - in the order their rows stack.
+// The axes that go into the panel underneath the depth plot, in the order their
+// rows stack - every axis but the three the plot itself carries.
 //
 // **The split is forced, not stylistic.** The depth plot has two edges and holds
-// at most three scales; the ten channels carry seven axes between them. So four of
-// them are housed where a labelled scale can be given them, and the panel is one
-// row per axis so that every curve on the chart is drawn against numbers that
-// belong to it.
+// at most three scales, and they are taken. So every other axis is housed where a
+// labelled scale can be given it, and the panel is one row per axis so that every
+// curve on the chart is drawn against numbers that belong to it.
+//
+// Heart rate first: it is the one measurement among them, and the rows below it
+// are the computer's arithmetic.
 export const PANEL_AXES: readonly ProfileAxisKey[] = [
+  "heart_rate",
   "no_deco",
   "time_to_surface",
   "ppo2",
@@ -377,6 +400,9 @@ const AXIS_BOUND: Record<ProfileAxisKey, number | null> = {
   depth: null,
   temperature: null,
   pressure: null,
+  // A sensor reads a heart rate in a band an axis fits well, and cannot be wrong
+  // by the orders of magnitude the percent bound exists for.
+  heart_rate: null,
   no_deco: null,
   time_to_surface: null,
   ppo2: null,
@@ -477,12 +503,12 @@ export function channelsOnAxis(
 
 /**
  * Where a selection's scales go: which channel labels the depth plot's left edge,
- * which labels its right, and which rows the deco panel grows.
+ * which labels its right, and which rows the panel under it grows.
  *
  * A pure function over channel keys rather than logic inside the component,
- * because the rule has ten inputs and the combination that breaks it is never the
- * obvious one - `lib/dive-profile.test.ts` sweeps every one of the 1 024
- * selections, which no sequence of renders could afford to.
+ * because the rule has one input per channel and the combination that breaks it
+ * is never the obvious one - `lib/dive-profile.test.ts` sweeps every selection,
+ * which no sequence of renders could afford to.
  *
  * **Sides are fixed while there are two scales to tell apart**: meters on the
  * left, temperature on the right, and pressure taking whichever of the two the
@@ -576,11 +602,12 @@ interface InvariantUnit {
 // reason. A shaded deco region drawn against a curve converted by any other factor
 // would drift off the water it bounds.
 //
-// **The six deco channels have no dimension, and inventing one would have been
-// the wrong half of the choice.** `lib/units.ts` names ppO₂, CNS and duration as
-// deliberately absent from `Dimension` - a bar is a bar and a percent is a
-// percent in both systems, and a minute is not a length - and the gradient
-// factors are percentages too. Adding unit-invariant dimensions there would put
+// **Heart rate and the six deco channels have no dimension, and inventing one
+// would have been the wrong half of the choice.** `lib/units.ts` names ppO₂, CNS
+// and duration as deliberately absent from `Dimension` - a bar is a bar and a
+// percent is a percent in both systems, and a minute is not a length - the
+// gradient factors are percentages too, and a beat per minute reads the same in
+// either system. Adding unit-invariant dimensions there would put
 // identity conversions in the one module whose entire job is that a conversion
 // exists, so the widening happens here instead, where the exception is local to
 // the chart that has it.
@@ -590,6 +617,7 @@ const CHANNEL_DIMENSION: Record<ProfileChannelKey, Dimension | InvariantUnit> =
     ceiling: "depth",
     temperature: "temperature",
     pressure: "pressure",
+    heart_rate: { word: "beats per minute", separator: " " },
     ndl: { word: "minutes", separator: " " },
     tts: { word: "minutes", separator: " " },
     ppo2: { word: "bar", separator: " " },

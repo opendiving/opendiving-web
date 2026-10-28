@@ -128,6 +128,11 @@ function everyChannel(overrides: Partial<DiveProfile> = {}): DiveProfile {
         values: [2000, 1850, 1700, 1560, 1420, 1280, 1140, 1000, 880, 800, 760],
       },
     ],
+    // Whole beats per minute, the API's scale of 1.
+    heart_rate: {
+      times,
+      values: [72, 85, 92, 98, 101, 104, 107, 100, 90, 80, 75],
+    },
     // The six the computer worked out for itself, on depth's own clock and at
     // the API's own scales: seconds, hundredths of a bar, tenths of a percent
     // and whole percent.
@@ -175,6 +180,7 @@ const CHANNEL_BUTTONS = {
   ceiling: /^Deco ceiling/,
   temperature: /^Temperature/,
   pressure: /^Tank pressure/,
+  heart_rate: /^Heart rate/,
   ndl: /^No-deco time/,
   tts: /^Time to surface/,
   ppo2: /^ppO₂/,
@@ -186,8 +192,8 @@ const CHANNEL_BUTTONS = {
 type ChannelKey = keyof typeof CHANNEL_BUTTONS;
 const CHANNEL_KEYS = Object.keys(CHANNEL_BUTTONS) as ChannelKey[];
 
-// The four that can claim an edge of the depth plot. The other six are drawn in
-// the deco panel below it, which has a scale of its own per row and takes no
+// The four that can claim an edge of the depth plot. The rest are drawn in the
+// panel below it, which has a scale of its own per row and takes no
 // edge from this plot at all.
 const DEPTH_PLOT_KEYS: readonly ChannelKey[] = [
   "depth",
@@ -196,7 +202,7 @@ const DEPTH_PLOT_KEYS: readonly ChannelKey[] = [
   "pressure",
 ];
 
-// Every non-empty selection of the ten, as [label, keys] rows for `it.each`. The
+// Every non-empty selection of the channels, as [label, keys] rows for `it.each`. The
 // empty one is the "all hidden" state and has a test of its own below.
 const EVERY_SELECTION = Array.from(
   { length: 2 ** CHANNEL_KEYS.length },
@@ -207,9 +213,9 @@ const EVERY_SELECTION = Array.from(
 
 // The numbers running down either edge of the **depth plot**. The elapsed-time
 // ticks anchor `middle`, so the anchors are exactly the vertical axes - and the
-// deco panel's rows carry their own left-hand numbers, which are a different
+// panel's rows carry their own left-hand numbers, which are a different
 // question and are excluded here rather than being allowed to answer this one.
-const outsideThePanel = (tick: Element) => !tick.closest("[data-deco-panel]");
+const outsideThePanel = (tick: Element) => !tick.closest("[data-panel]");
 const leftAxisTicks = (root: HTMLElement) =>
   [...root.querySelectorAll("text[text-anchor='end']")]
     .filter(outsideThePanel)
@@ -228,10 +234,10 @@ function plotEdges(root: HTMLElement) {
   return { left, width, right: left + width };
 }
 
-// The deco panel's rows that are actually on screen, by the axis each carries.
+// The panel's rows that are actually on screen, by the axis each carries.
 const panelRows = (root: HTMLElement) =>
-  [...root.querySelectorAll("[data-deco-panel]")].map((row) =>
-    row.getAttribute("data-deco-panel"),
+  [...root.querySelectorAll("[data-panel]")].map((row) =>
+    row.getAttribute("data-panel"),
   );
 
 // The chart remembers which channels were last plotted, so the tests below that
@@ -808,7 +814,7 @@ describe("DiveProfileChart with a ceiling too sparse to plot", () => {
 
 // How many distinct scales a selection puts on the **depth plot**. Depth and the
 // ceiling share one domain by construction; temperature and pressure each have
-// their own, and the six deco channels put none there at all - so this is the
+// their own, and the channels in the panel put none there at all - so this is the
 // number of edges that should end up labelled, and the plot has two.
 function distinctScales(keys: readonly ChannelKey[]): number {
   return new Set(
@@ -874,13 +880,13 @@ describe("DiveProfileChart vertical axes", () => {
   // The reported bug was one cell of this table: with depth and the ceiling both
   // switched off, the left-hand labels vanished and the plot was left with a blank
   // margin and gridlines running out of it. Swept over every non-empty selection
-  // of the ten channels rather than pinned at that one, because "which channel
+  // of the channels rather than pinned at that one, because "which channel
   // labels which edge" is a rule whose failing combination was not the obvious
-  // one - and the six that take no edge are swept too, since "this selection
+  // one - and the ones that take no edge are swept too, since "this selection
   // leaves both edges alone" is as much a cell of the table as the other kind.
   //
   // Seeded through the remembered selection rather than by clicking, which is the
-  // same path a returning diver takes and needs no 1 023 click sequences.
+  // same path a returning diver takes and needs no click sequence per cell.
   it.each(EVERY_SELECTION)(
     "reads %s off the left edge, and the right only for a second scale",
     (_, keys) => {
@@ -905,7 +911,7 @@ describe("DiveProfileChart vertical axes", () => {
   it.each(EVERY_SELECTION)(
     "gives %s a labelled scale wherever it is drawn",
     (_, keys) => {
-      // No curve is drawn against nothing. A deco channel the diver switched on
+      // No curve is drawn against nothing. A panel channel the diver switched on
       // is in a panel row, and that row carries its own numbers - which is the
       // half of the rule the depth plot's two edges could never have satisfied.
       window.localStorage.setItem(
@@ -918,6 +924,7 @@ describe("DiveProfileChart vertical axes", () => {
       );
 
       const expectedRows = [
+        keys.includes("heart_rate") ? "heart_rate" : null,
         keys.includes("ndl") ? "no_deco" : null,
         keys.includes("tts") ? "time_to_surface" : null,
         keys.includes("ppo2") ? "ppo2" : null,
@@ -930,7 +937,7 @@ describe("DiveProfileChart vertical axes", () => {
 
       expect(panelRows(container)).toEqual(expectedRows);
       for (const axis of expectedRows) {
-        const row = container.querySelector(`[data-deco-panel="${axis}"]`);
+        const row = container.querySelector(`[data-panel="${axis}"]`);
         expect(
           row?.querySelectorAll("text[text-anchor='end']").length,
         ).toBeGreaterThan(0);
@@ -1565,6 +1572,7 @@ describe("DiveProfileChart legend menu", () => {
 
     expect(groups).toEqual([
       ["Depth", "Deco ceiling", "Temperature", "Tank pressure", "Markers"],
+      ["Heart rate"],
       ["No-deco time"],
       ["Time to surface"],
       ["ppO₂"],
@@ -1695,6 +1703,7 @@ describe("DiveProfileChart deco readouts", () => {
 
     // Minutes rather than the seconds the wire carries, two decimals of bar for
     // a ppO₂, and a percent sign attached the way a degree is.
+    expect(readoutText()).toMatch(/92 bpm Heart rate/);
     expect(readoutText()).toMatch(/30 min No-deco time/);
     expect(readoutText()).toMatch(/0 min Time to surface/);
     expect(readoutText()).toMatch(/1\.10 bar ppO₂/);
@@ -1715,12 +1724,13 @@ describe("DiveProfileChart deco readouts", () => {
       else groups[groups.length - 1] += `${cell.textContent} `;
     }
 
-    expect(groups).toHaveLength(5);
+    expect(groups).toHaveLength(6);
     expect(groups[0]).toMatch(/Depth.*Temperature.*Tank pressure/);
-    expect(groups[1]).toMatch(/No-deco time/);
-    expect(groups[2]).toMatch(/Time to surface/);
-    expect(groups[3]).toMatch(/ppO₂/);
-    expect(groups[4]).toMatch(/CNS.*Surface gradient factor.*Gradient factor/);
+    expect(groups[1]).toMatch(/Heart rate/);
+    expect(groups[2]).toMatch(/No-deco time/);
+    expect(groups[3]).toMatch(/Time to surface/);
+    expect(groups[4]).toMatch(/ppO₂/);
+    expect(groups[5]).toMatch(/CNS.*Surface gradient factor.*Gradient factor/);
   });
 
   it("stops quoting a channel the diver switched off", () => {
@@ -1738,7 +1748,7 @@ describe("DiveProfileChart deco readouts", () => {
     expect(readoutText()).toMatch(/Time to surface/);
   });
 
-  it("names the shown deco channels in the accessible summary, and only those", () => {
+  it("names the shown panel channels in the accessible summary, and only those", () => {
     render(<DiveProfileChart profile={everyChannel()} />);
 
     const summary = () =>
@@ -1767,8 +1777,7 @@ describe("DiveProfileChart deco readouts", () => {
     // because two units on one 46-unit scale is noise. Minutes carry none - see
     // `axisUnitSuffix`.
     const topTick = (axis: string) =>
-      container.querySelector(`[data-deco-panel="${axis}"] text`)
-        ?.textContent ?? "";
+      container.querySelector(`[data-panel="${axis}"] text`)?.textContent ?? "";
 
     expect(topTick("no_deco")).toMatch(/^\d+$/);
     expect(topTick("time_to_surface")).toMatch(/^\d+$/);
@@ -1853,7 +1862,7 @@ describe("DiveProfileChart with a marker carrying no type", () => {
   });
 });
 
-describe("DiveProfileChart deco panel scales", () => {
+describe("DiveProfileChart panel scales", () => {
   // A gradient factor five orders of magnitude over a CNS clock, which is not a
   // made-up shape: a Suunto Ocean's `gf99` reaches five figures on a
   // decompression ascent, and the API stores it as the device wrote it.
@@ -1863,8 +1872,7 @@ describe("DiveProfileChart deco panel scales", () => {
   });
 
   const topTick = (container: HTMLElement, axis: string) =>
-    container.querySelector(`[data-deco-panel="${axis}"] text`)?.textContent ??
-    "";
+    container.querySelector(`[data-panel="${axis}"] text`)?.textContent ?? "";
 
   it("takes a row's scale from the channels on it that are shown", () => {
     // Unlike the depth axis, which is computed from the ceiling whether or not
@@ -1934,7 +1942,7 @@ describe("DiveProfileChart with a gradient factor past the percent axis's bound"
   const OVERRUNNING_SAMPLES = 5;
 
   const percentRow = (container: HTMLElement) =>
-    container.querySelector('[data-deco-panel="percent"]');
+    container.querySelector('[data-panel="percent"]');
 
   // The row's two rules, top first - `bounds` draws them in that order. Every
   // assertion about leaving the row is measured against these rather than against
@@ -2069,6 +2077,101 @@ describe("DiveProfileChart over a gap in one channel", () => {
     expect(
       container.querySelectorAll("circle[class*='text-pressure']"),
     ).toHaveLength(0);
+  });
+});
+
+describe("DiveProfileChart heart rate", () => {
+  // A reading a second, as a wrist sensor writes them, with the strap losing
+  // contact for 40 s a minute in. The reading at 60 s is the one to quote.
+  const second = (index: number) => index * 1_000;
+  const wrist = profile({
+    heart_rate: {
+      times: [
+        ...Array.from({ length: 61 }, (_, index) => second(index)),
+        ...Array.from({ length: 201 }, (_, index) => second(100 + index)),
+      ],
+      values: [
+        ...Array.from({ length: 60 }, () => 80),
+        91,
+        ...Array.from({ length: 201 }, () => 85),
+      ],
+    },
+  });
+
+  it("quotes the reading 2 s back, and a dash inside the dropout", () => {
+    render(<DiveProfileChart profile={wrist} />);
+
+    hoverAt(62 / 300);
+    expect(readoutText()).toMatch(/91 bpm Heart rate/);
+
+    hoverAt(80 / 300);
+    expect(readoutText()).toMatch(/— Heart rate/);
+  });
+
+  it("labels its row's top tick with the readings' ceiling and the unit", () => {
+    const { container } = render(<DiveProfileChart profile={everyChannel()} />);
+
+    // 72 to 107 bpm, so the row tops out at 110 and nothing above the readings
+    // sets its scale.
+    expect(
+      container.querySelector('[data-panel="heart_rate"] text')?.textContent,
+    ).toBe("110 bpm");
+    // First of the rows under the depth plot: the one measurement among them.
+    expect(panelRows(container)[0]).toBe("heart_rate");
+  });
+
+  it("takes its row away when switched off, and moves no other scale", () => {
+    const { container } = render(<DiveProfileChart profile={everyChannel()} />);
+    const scales = () =>
+      Object.fromEntries(
+        [...container.querySelectorAll("[data-panel]")].map((row) => [
+          row.getAttribute("data-panel"),
+          [...row.querySelectorAll("text")].map((tick) => tick.textContent),
+        ]),
+      );
+    const before = scales();
+    const edges = [leftAxisTicks(container), rightAxisTicks(container)];
+
+    fireEvent.click(
+      screen.getByRole("button", { name: CHANNEL_BUTTONS.heart_rate }),
+    );
+
+    const { heart_rate: removed, ...rest } = before;
+    expect(removed).toBeDefined();
+    expect(scales()).toEqual(rest);
+    expect([leftAxisTicks(container), rightAxisTicks(container)]).toEqual(
+      edges,
+    );
+  });
+
+  it.each(["metric", "imperial"] as const)(
+    "lists it in the legend with its unit, in %s",
+    (units) => {
+      auth.units = units;
+      render(<DiveProfileChart profile={wrist} />);
+
+      expect(
+        screen.getByRole("button", { name: "Heart rate (bpm)" }),
+      ).toBeTruthy();
+    },
+  );
+
+  it("is on by default, like every other channel", () => {
+    render(<DiveProfileChart profile={wrist} />);
+
+    expect(
+      screen
+        .getByRole("button", { name: CHANNEL_BUTTONS.heart_rate })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("states its range in the accessible summary", () => {
+    render(<DiveProfileChart profile={wrist} />);
+
+    expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(
+      /heart rate 80 to 91 beats per minute/,
+    );
   });
 });
 
