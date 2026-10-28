@@ -214,7 +214,7 @@
     {
       // TypeScript 7 is the native port and ships no JavaScript compiler API, which both
       // typescript-eslint and `next build`'s type check load. Raise this once
-      // typescript-eslint supports it (typescript-eslint/typescript-eslint#10940).
+      // typescript-eslint supports it - tracked in #546.
       "matchManagers": ["npm"],
       "matchPackageNames": ["typescript"],
       "allowedVersions": "<7",
