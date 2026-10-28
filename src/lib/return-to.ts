@@ -42,6 +42,7 @@ const SECTIONS: Record<string, { index: string; item: string }> = {
   support: { index: "support", item: "support" },
   privacy: { index: "privacy policy", item: "privacy policy" },
   terms: { index: "terms of service", item: "terms of service" },
+  developers: { index: "API reference", item: "API reference" },
 };
 
 export function labelForPath(path: string): string {

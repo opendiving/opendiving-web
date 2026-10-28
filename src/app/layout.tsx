@@ -15,7 +15,8 @@ import { publicConfig, runtimeConfig } from "@/lib/runtime-config";
 import { SITE_DESCRIPTION } from "@/lib/site-description";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+// `--font-inter` is for what cannot take the class: the API reference's Scalar theme.
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 // The wordmark's face, and nothing else's. Outfit's O, i-dots and single-storey g are
 // drawn from one circle, so the name reads as part of the three-bubble mark; Inter's O
 // is a squarer superellipse. SIL Open Font Licence.
@@ -89,7 +90,9 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} ${outfit.variable}`}>
+      <body
+        className={`${inter.className} ${inter.variable} ${outfit.variable}`}
+      >
         <NonceProvider nonce={nonce}>
           {/* Rendered rather than imported, and rendered here rather than
               anywhere narrower: evaluating that module is what arms the

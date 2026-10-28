@@ -1,0 +1,68 @@
+/* Scalar in the app's palette and type. Unlayered, so it wins over Scalar's own
+   `@layer scalar-theme`. The app's tokens already switch under `.dark`, so one rule
+   covers both modes; Scalar's `.light-mode`/`.dark-mode` body class is the selector
+   because its modals render outside the reference's own element. */
+:is(.light-mode, .dark-mode) {
+  --scalar-font: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --scalar-font-code:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --scalar-radius: calc(var(--radius) - 4px);
+  --scalar-radius-lg: calc(var(--radius) - 2px);
+  --scalar-radius-xl: var(--radius);
+  --scalar-text-decoration: underline;
+  --scalar-text-decoration-hover: underline;
+
+  --scalar-background-1: hsl(var(--background));
+  --scalar-background-2: hsl(var(--muted));
+  --scalar-background-3: hsl(var(--accent));
+  --scalar-background-accent: hsl(var(--coral) / 0.12);
+
+  --scalar-color-1: hsl(var(--foreground));
+  --scalar-color-2: hsl(var(--muted-foreground));
+  --scalar-color-3: hsl(var(--muted-foreground) / 0.8);
+  --scalar-color-accent: hsl(var(--coral));
+  --scalar-border-color: hsl(var(--border));
+
+  --scalar-color-green: hsl(var(--success));
+  --scalar-color-red: hsl(var(--destructive));
+  --scalar-color-yellow: hsl(var(--warning));
+  --scalar-color-orange: hsl(var(--coral));
+  --scalar-color-blue: hsl(var(--ppo2));
+  --scalar-color-purple: hsl(var(--cns));
+  --scalar-color-query: hsl(var(--teal));
+  --scalar-color-alert: hsl(var(--warning));
+  --scalar-color-danger: hsl(var(--destructive));
+  --scalar-background-alert: hsl(var(--warning) / 0.1);
+  --scalar-background-danger: hsl(var(--destructive) / 0.1);
+
+  --scalar-link-color: hsl(var(--foreground));
+  --scalar-link-color-hover: hsl(var(--coral));
+
+  --scalar-button-1: hsl(var(--primary));
+  --scalar-button-1-hover: hsl(var(--primary) / 0.9);
+  --scalar-button-1-color: hsl(var(--primary-foreground));
+
+  --scalar-tooltip-background: hsl(var(--tooltip));
+  --scalar-tooltip-color: hsl(var(--tooltip-foreground));
+
+  --scalar-sidebar-background-1: hsl(var(--background));
+  --scalar-sidebar-color-1: hsl(var(--foreground));
+  --scalar-sidebar-color-2: hsl(var(--muted-foreground));
+  --scalar-sidebar-border-color: hsl(var(--border));
+  --scalar-sidebar-item-hover-background: hsl(var(--muted));
+  --scalar-sidebar-item-hover-color: hsl(var(--foreground));
+  --scalar-sidebar-item-active-background: hsl(var(--muted));
+  --scalar-sidebar-color-active: hsl(var(--foreground));
+  --scalar-sidebar-indent-border: hsl(var(--border));
+  --scalar-sidebar-indent-border-hover: hsl(var(--border));
+  --scalar-sidebar-indent-border-active: hsl(var(--coral));
+  --scalar-sidebar-search-background: hsl(var(--muted));
+  --scalar-sidebar-search-color: hsl(var(--muted-foreground));
+  --scalar-sidebar-search-border-color: hsl(var(--border));
+}
+
+/* The app's header is sticky above the reference, so Scalar's sticky sidebar and
+   its scroll offsets start below it. */
+.od-api-reference {
+  --scalar-custom-header-height: var(--header-height);
+}

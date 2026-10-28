@@ -357,8 +357,8 @@ dynamic (`ƒ`); accepted. Node server only (`output: "standalone"`): a static ex
 - `eslint.config.mjs` sets `"react/no-danger": "error"`; `dangerouslySetInnerHTML` needs a sanitizer
   plus disable.
 - `style-src-attr` is plain `'unsafe-inline'`: third-party inline `style` attributes carry no nonce
-  and execute no script. `style-src` is nonce-only in production; dev needs `'unsafe-inline'` for
-  Fast Refresh.
+  and execute no script. `style-src` is the nonce plus the two Scalar stylesheet hashes in
+  `lib/api-reference-csp.ts` in production; dev needs `'unsafe-inline'` for Fast Refresh.
 - Radix scroll locks (`react-remove-scroll` -> `react-style-singleton`) inject a raw-DOM `<style>`
   with `get-nonce`'s nonce, so `src/components/nonce-provider.tsx` calls `setNonce(nonce)` in
   render, before descendants' effects.
