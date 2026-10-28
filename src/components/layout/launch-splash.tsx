@@ -26,6 +26,8 @@ const FADE_LEAD = 0.75;
 const MIN_VISIBLE_MS = 1000;
 const LANDING_PATHS = ["/", "/join"];
 const FADE_OUT_MS = 300;
+// The `touch` variant in `globals.css`, which shows the splash.
+const COARSE_POINTER = "(hover: none) and (pointer: coarse)";
 
 // Hermite tangents keep position and speed continuous through each slot, so the
 // bubbles glide past the mark rather than ticking between its circles. The top slot's
@@ -96,6 +98,10 @@ function shownAt() {
  * product's pitch to a visitor rather than the app starting. Decided by the path the
  * document loaded on, so a signed-in diver redirected from there to `/home` does not
  * get it late.
+ *
+ * Only on a touch device, where the app is opened like an installed one. With a mouse the
+ * header skeleton shows instead. Hidden by CSS rather than by a hook, since the splash is
+ * server-rendered and the server cannot tell.
  */
 export function LaunchSplash({ nonce }: { nonce?: string }) {
   const { isLoading } = useAuth();
@@ -136,7 +142,7 @@ function Splash({ leaving }: { leaving: boolean }) {
 
   useEffect(() => {
     const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) return;
+    if (reduceMotion || !matchMedia(COARSE_POINTER).matches) return;
 
     let frame = 0;
     let start: number | undefined;
@@ -162,7 +168,7 @@ function Splash({ leaving }: { leaving: boolean }) {
       id="launch-splash"
       role="status"
       aria-label="Loading OpenDiving"
-      className="fixed inset-0 z-[100] grid place-items-center bg-coral text-coral-foreground transition-opacity ease-out motion-reduce:transition-none data-[leaving]:pointer-events-none data-[leaving]:opacity-0"
+      className="fixed inset-0 z-[100] hidden place-items-center touch:grid bg-coral text-coral-foreground transition-opacity ease-out motion-reduce:transition-none data-[leaving]:pointer-events-none data-[leaving]:opacity-0"
       style={
         {
           "--mark": "min(22vmin, 160px)",
