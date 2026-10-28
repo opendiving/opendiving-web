@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ApiKeysCard } from "@/components/settings/api-keys-card";
 import { PasskeysCard } from "@/components/settings/passkeys-card";
 import { SessionsCard } from "@/components/settings/sessions-card";
 import { pageTitle } from "@/lib/page-title";
@@ -16,6 +17,7 @@ export default function AuthenticationSettingsPage() {
     <>
       <PasskeysCard />
       <SessionsCard />
+      <ApiKeysCard />
     </>
   );
 }
