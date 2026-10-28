@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import Link from "next/link";
 import { KeySquare, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -190,7 +191,11 @@ export function ApiKeysCard() {
           Let a script or a tool of your own use your account through the API. A
           key&apos;s secret is shown once, when you create it. Signing other
           devices out leaves keys working &mdash; each one is revoked here, on
-          its own.
+          its own. The{" "}
+          <Link href="/developers" className="underline hover:text-foreground">
+            API reference
+          </Link>{" "}
+          lists every route a key can call.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

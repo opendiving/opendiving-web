@@ -110,6 +110,16 @@ describe("ApiKeysCard", () => {
     expect(nightly).toHaveTextContent("No expiry");
   });
 
+  it("points at the API reference", async () => {
+    render(<ApiKeysCard />);
+    await screen.findByText("laptop");
+
+    expect(screen.getByRole("link", { name: "API reference" })).toHaveAttribute(
+      "href",
+      "/developers",
+    );
+  });
+
   // An expired key stays listed until revoked - it still counts toward the cap -
   // so the row has to say why it no longer works.
   it("badges only the keys that have expired", async () => {

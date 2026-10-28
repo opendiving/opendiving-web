@@ -99,6 +99,14 @@ export function Footer() {
                   </a>
                 </li>
                 <li>
+                  <Link
+                    href="/developers"
+                    className="hover:text-foreground touch:block touch:py-3"
+                  >
+                    API Reference
+                  </Link>
+                </li>
+                <li>
                   <a
                     href="https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md"
                     target="_blank"

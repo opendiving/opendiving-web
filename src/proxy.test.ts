@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { API_REFERENCE_STYLE_HASHES } from "@/lib/api-reference-csp";
 import { config } from "./proxy";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -248,6 +249,18 @@ describe("Content-Security-Policy", () => {
     ],
   ])("names no basemap host in img-src (%s)", async (_case, env) => {
     expect(await directive("img-src", env)).toBe("img-src 'self' data: blob:");
+  });
+
+  // On every path, not only `/developers`: a client navigation there keeps the
+  // policy of whichever document it started from.
+  it("allows Scalar's two stylesheets alongside the nonce in production", async () => {
+    const styleSrc = await directive("style-src", { NODE_ENV: "production" });
+
+    expect(styleSrc).toMatch(/^style-src 'self' 'nonce-[^']+'/);
+    for (const hash of API_REFERENCE_STYLE_HASHES) {
+      expect(styleSrc).toContain(hash);
+    }
+    expect(styleSrc).not.toContain("'unsafe-inline'");
   });
 
   // The empty-source filtering that `cspList` does is easy to lose when a

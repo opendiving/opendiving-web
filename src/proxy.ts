@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiCspSource } from "@/lib/api-base";
+import { API_REFERENCE_STYLE_HASHES } from "@/lib/api-reference-csp";
 import { basemapOrigins } from "@/lib/basemap";
 import { runtimeConfig } from "@/lib/runtime-config";
 
@@ -145,10 +146,18 @@ export function proxy(request: NextRequest) {
     // relaxation - `style-src-elem`/`style-src` (actual `<style>` blocks,
     // where CSS-exfiltration attacks are more feasible) remain nonce-only
     // in production.
-    // No host source: nothing third-party is loaded as a stylesheet.
+    // No host source: nothing third-party is loaded as a stylesheet. The hashes are
+    // the two stylesheets Scalar injects on `/developers` without a nonce (see
+    // `lib/api-reference-csp.ts`), and are on every page's policy because a client
+    // navigation to `/developers` keeps the policy of the document it started from.
     isDev
       ? "style-src 'self' 'unsafe-inline'"
-      : `style-src 'self' 'nonce-${nonce}'`,
+      : cspList(
+          "style-src",
+          "'self'",
+          `'nonce-${nonce}'`,
+          ...API_REFERENCE_STYLE_HASHES,
+        ),
     "style-src-attr 'unsafe-inline'",
     // `blob:` - certification card images and both of a diver's pictures are
     // private, so on the diver's own pages they're fetched with an `Authorization`
