@@ -64,5 +64,5 @@
 /* The app's header is sticky above the reference, so Scalar's sticky sidebar and
    its scroll offsets start below it. */
 .od-api-reference {
-  --scalar-custom-header-height: 4.5rem;
+  --scalar-custom-header-height: var(--header-height);
 }

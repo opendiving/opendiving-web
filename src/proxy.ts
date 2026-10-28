@@ -144,8 +144,8 @@ export function proxy(request: NextRequest) {
     // element a third-party library renders. CSS-attribute injection can't
     // execute script in any modern browser, so this is a deliberate, narrow
     // relaxation - `style-src-elem`/`style-src` (actual `<style>` blocks,
-    // where CSS-exfiltration attacks are more feasible) remain nonce-only
-    // in production.
+    // where CSS-exfiltration attacks are more feasible) take only the nonce
+    // or one of the listed hashes in production.
     // No host source: nothing third-party is loaded as a stylesheet. The hashes are
     // the two stylesheets Scalar injects on `/developers` without a nonce (see
     // `lib/api-reference-csp.ts`), and are on every page's policy because a client
