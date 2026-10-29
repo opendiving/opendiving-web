@@ -282,6 +282,28 @@ describe("proxyToApi", () => {
     );
   });
 
+  // Starlette's slash redirect is absolute, built from the `Host` it was dialled on.
+  it.each([
+    [`${INTERNAL}/api/v1/config`, "/api/v1/config"],
+    [`${INTERNAL}/api/v1/dive?page=2#top`, "/api/v1/dive?page=2#top"],
+    ["//api.test:8000/api/v1/config", "/api/v1/config"],
+    ["/api/v1/config", "/api/v1/config"],
+    [
+      "https://accounts.google.com/o/oauth2",
+      "https://accounts.google.com/o/oauth2",
+    ],
+    ["http://api.test:9000/elsewhere", "http://api.test:9000/elsewhere"],
+  ])("keeps the internal origin out of Location %s", async (location, sent) => {
+    fetchMock(new Response(null, { status: 307, headers: { location } }));
+
+    const response = await proxyToApi(
+      new NextRequest("http://web.test/api/v1/config%2F"),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(sent);
+  });
+
   it("drops a response's content-encoding, which fetch has already decoded away", async () => {
     fetchMock(
       new Response("plain", {

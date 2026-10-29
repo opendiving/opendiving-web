@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { API_REFERENCE_STYLE_HASHES } from "@/lib/api-reference-csp";
 import { config } from "./proxy";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -299,5 +300,26 @@ describe("matcher", () => {
       expect(entry).not.toHaveProperty("missing");
       expect(entry).not.toHaveProperty("has");
     }
+  });
+
+  // The API proxy is skipped so its bodies stream unbuffered; anything else under
+  // `/api` is the not-found page, scripts and all, and needs the policy.
+  it.each([
+    ["/api/v1/dive", false],
+    ["/api/v1/auth/email/verify/check", false],
+    ["/api/v1", true],
+    ["/api", true],
+    ["/api/foo", true],
+    ["/api-docs", true],
+    ["/home", true],
+    ["/_next/static/chunks/main.js", false],
+    ["/healthz", false],
+  ])("%s runs the middleware: %s", (pathname, expected) => {
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        url: `http://dives.example.com${pathname}`,
+      }),
+    ).toBe(expected);
   });
 });
