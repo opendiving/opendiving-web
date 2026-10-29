@@ -93,9 +93,9 @@ export function destinationForOutcome(
   }
 }
 
-// Anything a browser could read as *another* origin - `//evil.example`, an
-// absolute URL, or the backslash variants some parsers normalise to `//`.
-const OTHER_ORIGIN_PREFIX_REGEX = /^\/[/\\]/;
+// A placeholder origin to parse against: `.invalid` is reserved and never resolves, so
+// only a value that names some other host can come out with a different origin.
+const PARSE_BASE = "https://x.invalid";
 
 // Characters the WHATWG URL parser discards *before* it parses, which is what
 // lets them hide a leading `//` from a naive prefix check: it strips ASCII tab,
@@ -121,13 +121,26 @@ function isStrippedByUrlParser(value: string): boolean {
 // Only same-origin, path-relative destinations are ever honoured. Anything else
 // is rejected outright rather than patched up, so a hand-crafted `?next=` can't
 // turn our own sign-in page into an open redirect.
+//
+// Judged by what the URL parser makes of the value, not by its spelling: `//host`
+// and `/\host` name another origin outright, and dot segments - `/.//host`,
+// `/a/..//host`, `%2e` spellings - collapse to a pathname of `//host`, which reads
+// as another origin the moment anything resolves that path again. Next's
+// hard-navigation fallback does exactly that. What comes back is the parser's own
+// normalised path, so no caller ever holds the spelling that was checked.
 export function sanitizeRedirectPath(
   value: string | null | undefined,
 ): string | null {
   if (!value || !value.startsWith("/")) return null;
   if (isStrippedByUrlParser(value)) return null;
-  if (OTHER_ORIGIN_PREFIX_REGEX.test(value)) return null;
-  return value;
+  let url: URL;
+  try {
+    url = new URL(value, PARSE_BASE);
+  } catch {
+    return null;
+  }
+  if (url.origin !== PARSE_BASE || url.pathname.startsWith("//")) return null;
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 // Builds the sign-in URL for a signed-out visitor who was trying to reach

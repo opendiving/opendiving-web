@@ -84,6 +84,34 @@ describe("sanitizeRedirectPath", () => {
     expect(sanitizeRedirectPath(" /dives")).toBeNull();
   });
 
+  // Each spelling passes a check on the raw string and normalises to a pathname of
+  // `//evil.example` - which Next's hard-navigation fallback hands to
+  // `location.assign`, where it is another origin. Asserted against the parser, as
+  // above, so the payload list cannot quietly stop being a list of real ones.
+  it.each([
+    "/.//evil.example",
+    "/..//evil.example",
+    "/./\\evil.example",
+    "/a/..//evil.example",
+    "/%2e//evil.example",
+    "/%2e%2e//evil.example",
+    "/%2E/%2e%2E//evil.example",
+    "/a/%2e%2e//evil.example",
+  ])("rejects %s, whose dot segments collapse to //", (crafted) => {
+    expect(new URL(crafted, "https://opendiving.app/").pathname).toMatch(
+      /^\/\/evil\.example/,
+    );
+    expect(sanitizeRedirectPath(crafted)).toBeNull();
+  });
+
+  it("hands back the normalised path rather than the spelling it was given", () => {
+    expect(sanitizeRedirectPath("/dives/./abc/../def?x=1#y")).toBe(
+      "/dives/def?x=1#y",
+    );
+    expect(sanitizeRedirectPath("/a/..//dives")).toBeNull();
+    expect(sanitizeRedirectPath("/dives//abc")).toBe("/dives//abc");
+  });
+
   it("still keeps ordinary paths with query strings and fragments", () => {
     expect(sanitizeRedirectPath("/dives/abc?page=2#top")).toBe(
       "/dives/abc?page=2#top",

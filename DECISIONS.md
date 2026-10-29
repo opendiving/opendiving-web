@@ -1232,9 +1232,11 @@ a signed-out visitor can do.
 ## The destination round-trips through `lib/auth-redirect.ts`
 
 `useAuthGuard` redirects with `router.replace` to `signInHref(...)`, `/signin?next=<encoded path>`.
-`sanitizeRedirectPath` rejects anything but a plain `/`-relative path (absolute URLs, `//host`,
-`/\host`), in and out, since the value sits in storage between. The guard reads `window.location`,
-not `useSearchParams()`, which would force a `Suspense` boundary onto every page calling it.
+`sanitizeRedirectPath` rejects anything but a plain `/`-relative path, in and out, since the value
+sits in storage between. It judges the parsed URL, not the spelling: a different origin (`//host`,
+`/\host`) or a normalised pathname starting `//` (`/.//host`, `/a/..//host`, `%2e` forms) is
+refused, and what passes comes back normalised. The guard reads `window.location`, not
+`useSearchParams()`, which would force a `Suspense` boundary onto every page calling it.
 
 The magic link returns on `/auth/verify` with no destination, so `AuthForm` calls
 `rememberPostAuthRedirect` on every link request (resends included) and `/auth/verify` calls
