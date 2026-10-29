@@ -86,9 +86,29 @@ function UsageDetails({ usage }: { usage: StorageUsage }) {
   const limit =
     usage.limit_bytes === null ? null : formatFileSize(usage.limit_bytes);
   const kinds = [
-    { label: "Dive-computer files", bytes: usage.dive_files_bytes },
-    { label: "Certification cards", bytes: usage.certification_files_bytes },
-    { label: "Profile picture and portrait", bytes: usage.pictures_bytes },
+    {
+      label: "Dive-computer files",
+      bytes: usage.dive_files_bytes,
+      attached: attachedTo(
+        usage.dive_files_count,
+        usage.dives_with_files_count,
+        "dive",
+      ),
+    },
+    {
+      label: "Certification cards",
+      bytes: usage.certification_files_bytes,
+      attached: attachedTo(
+        usage.certification_files_count,
+        usage.certifications_with_files_count,
+        "certification",
+      ),
+    },
+    {
+      label: "Profile picture and portrait",
+      bytes: usage.pictures_bytes,
+      attached: null,
+    },
   ];
 
   return (
@@ -121,12 +141,19 @@ function UsageDetails({ usage }: { usage: StorageUsage }) {
       )}
 
       <dl className="divide-y rounded-lg border text-sm">
-        {kinds.map(({ label, bytes }) => (
+        {kinds.map(({ label, bytes, attached }) => (
           <div
             key={label}
             className="flex items-center justify-between gap-3 px-3 py-2"
           >
-            <dt className="text-muted-foreground">{label}</dt>
+            <dt>
+              <span>{label}</span>
+              {attached && (
+                <span className="block text-xs text-muted-foreground">
+                  {attached}
+                </span>
+              )}
+            </dt>
             <dd className="font-medium tabular-nums">
               {formatFileSize(bytes)}
             </dd>
@@ -138,9 +165,18 @@ function UsageDetails({ usage }: { usage: StorageUsage }) {
           comparing the two would otherwise read the difference as an error. */}
       <p className="text-sm text-muted-foreground">
         Dive-computer files are stored compressed, so they count for less here
-        than the sizes listed on your dives. A file uploaded before compression
-        was introduced counts at its full size.
+        than the sizes listed on your dives.
       </p>
     </div>
   );
+}
+
+// "12 files on 9 dives", or nothing when there are no files.
+function attachedTo(
+  files: number,
+  owners: number,
+  owner: string,
+): string | null {
+  if (files === 0) return null;
+  return `${files} ${files === 1 ? "file" : "files"} on ${owners} ${owner}${owners === 1 ? "" : "s"}`;
 }
