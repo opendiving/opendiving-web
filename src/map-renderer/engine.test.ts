@@ -2,6 +2,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { basemapOrigins } from "@/lib/basemap";
 import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
 import { createEngine, PIXEL_RATIO, type NativeModule } from "./engine";
 import { parsePayload } from "./payload";
@@ -90,6 +91,7 @@ const config = readRendererConfig({ SITE_URL: "https://dives.example.com" });
 const resources = createResources({
   siteUrl: config.siteUrl,
   publicDir: path.resolve("public"),
+  origins: basemapOrigins(config.basemap),
 });
 
 // The tile over Dahab at the deepest zoom a map is fitted at.
@@ -191,16 +193,18 @@ describe("the engine", () => {
 
   it("is not ready while its basemap cannot load", async () => {
     const { native } = fakeNative();
+    const unreachable = readRendererConfig({
+      SITE_URL: "https://dives.example.com",
+      MAP_STYLE_URL: "https://maps.example.invalid/style.json",
+      MAP_ATTRIBUTION: "© Nobody",
+    });
     const engine = createEngine({
       native,
-      config: readRendererConfig({
-        SITE_URL: "https://dives.example.com",
-        MAP_STYLE_URL: "https://maps.example.invalid/style.json",
-        MAP_ATTRIBUTION: "© Nobody",
-      }),
+      config: unreachable,
       resources: createResources({
         siteUrl: config.siteUrl,
         publicDir: path.resolve("public"),
+        origins: basemapOrigins(unreachable.basemap),
         fetch: async () => new Response("Down", { status: 502 }),
       }),
       log: () => {},

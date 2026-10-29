@@ -2,6 +2,12 @@
 // and the bounded cache that keeps the next tile of the same coast off the
 // network.
 //
+// Only from the origins the browser may fetch the same basemap from: this
+// instance's own and those `basemapOrigins` names for the CSP's `connect-src`.
+// The URLs come from documents the basemap host serves - a style, TileJSON's
+// `tiles`, a redirect - so without that list a host that turned hostile could
+// point the renderer at anything on its network.
+//
 // Requests to the basemap carry the headers the instance's own pages send when a
 // browser fetches the same tiles - `Origin` and `Referer` naming its `SITE_URL` -
 // so a keyed provider restricted to the instance's domain accepts this as it
@@ -19,8 +25,11 @@ export const USER_AGENT =
 export const CACHE_BYTES = 32 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 15_000;
 // Larger than any tile, glyph range or sprite sheet; a provider sending more is
-// broken, and holding it would be the cache's whole budget.
+// broken, and holding it would be the cache's whole budget. Counted as the body
+// arrives, so a body that never ends costs this much memory and no more.
 const MAX_RESOURCE_BYTES = 16 * 1024 * 1024;
+// Each hop is checked against the origins like the first request.
+const MAX_REDIRECTS = 5;
 
 /**
  * A resource that could not be had. Fails the whole render, which is the point:
@@ -33,8 +42,11 @@ export interface ResourceOptions {
   siteUrl: string;
   /** The image's `public/`, which `${SITE_URL}/basemap/…` is read from. */
   publicDir: string;
+  /** The basemap's origins, as `basemapOrigins` derives them for the CSP. */
+  origins: string[];
   cacheBytes?: number;
   timeoutMs?: number;
+  maxBytes?: number;
   fetch?: typeof fetch;
 }
 
@@ -67,11 +79,14 @@ export function describe(url: string): string {
 export function createResources({
   siteUrl,
   publicDir,
+  origins,
   cacheBytes = CACHE_BYTES,
   timeoutMs = REQUEST_TIMEOUT_MS,
+  maxBytes = MAX_RESOURCE_BYTES,
   fetch: fetchImpl = fetch,
 }: ResourceOptions): Resources {
   const site = new URL(siteUrl);
+  const allowed = new Set([site.origin, ...origins]);
   const headers = {
     Origin: site.origin,
     // What `Referrer-Policy: strict-origin-when-cross-origin` lets a page send
@@ -127,35 +142,103 @@ export function createResources({
     }
   }
 
-  async function fetchRemote(url: URL): Promise<Buffer | null> {
-    let response: Response;
-    try {
-      response = await fetchImpl(url, {
-        headers: url.protocol === "data:" ? undefined : headers,
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-    } catch (error) {
-      throw new ResourceError(
-        `Could not fetch ${describe(url.href)}: ${(error as Error).message}`,
-      );
+  function isAllowed(url: URL): boolean {
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      allowed.has(url.origin)
+    );
+  }
+
+  // Redirects are followed by hand, so every hop answers to the same list as
+  // the first request rather than `fetch` going wherever it is told.
+  async function fetchRemote(start: URL): Promise<Buffer | null> {
+    const signal = AbortSignal.timeout(timeoutMs);
+    let url = start;
+    for (let hops = 0; ; hops++) {
+      let response: Response;
+      try {
+        response = await fetchImpl(url, {
+          headers: url.protocol === "data:" ? undefined : headers,
+          redirect: "manual",
+          signal,
+        });
+      } catch (error) {
+        throw new ResourceError(
+          `Could not fetch ${describe(url.href)}: ${(error as Error).message}`,
+        );
+      }
+      if (response.status === 204 || response.status === 404) {
+        await response.body?.cancel();
+        return null;
+      }
+      const location = response.headers.get("location");
+      if (response.status >= 300 && response.status < 400 && location) {
+        await response.body?.cancel();
+        let next: URL;
+        try {
+          next = new URL(location, url);
+        } catch {
+          throw new ResourceError(
+            `${describe(url.href)} redirected to a malformed URL`,
+          );
+        }
+        if (!isAllowed(next)) {
+          throw new ResourceError(
+            `${describe(url.href)} redirected to ${describe(next.href)}, ` +
+              `which is not one of the basemap's origins`,
+          );
+        }
+        if (hops === MAX_REDIRECTS) {
+          throw new ResourceError(
+            `Too many redirects from ${describe(start.href)}`,
+          );
+        }
+        url = next;
+        continue;
+      }
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new ResourceError(
+          `${response.status} ${response.statusText} from ${describe(url.href)}`,
+        );
+      }
+      return readBody(url, response);
     }
-    if (response.status === 204 || response.status === 404) {
+  }
+
+  async function readBody(url: URL, response: Response): Promise<Buffer> {
+    const tooLarge = () =>
+      new ResourceError(
+        `${describe(url.href)} sent more than ${maxBytes} bytes`,
+      );
+    // `Number(null)` is 0 and a garbled value is NaN, both of which pass and
+    // are counted below instead.
+    if (Number(response.headers.get("content-length")) > maxBytes) {
       await response.body?.cancel();
-      return null;
+      throw tooLarge();
     }
-    if (!response.ok) {
-      await response.body?.cancel();
-      throw new ResourceError(
-        `${response.status} ${response.statusText} from ${describe(url.href)}`,
-      );
+    if (!response.body) return Buffer.alloc(0);
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch (error) {
+        throw new ResourceError(
+          `Could not read ${describe(url.href)}: ${(error as Error).message}`,
+        );
+      }
+      if (chunk.done) return Buffer.concat(chunks, total);
+      total += chunk.value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw tooLarge();
+      }
+      chunks.push(chunk.value);
     }
-    const data = Buffer.from(await response.arrayBuffer());
-    if (data.length > MAX_RESOURCE_BYTES) {
-      throw new ResourceError(
-        `${describe(url.href)} sent ${data.length} bytes, past the limit`,
-      );
-    }
-    return data;
   }
 
   async function load(key: string): Promise<Buffer | null> {
@@ -168,8 +251,12 @@ export function createResources({
     if (url.origin === site.origin && url.pathname.startsWith("/basemap/")) {
       return readLocal(url.pathname);
     }
-    if (!["http:", "https:", "data:"].includes(url.protocol)) {
-      throw new ResourceError(`Cannot request ${describe(key)}`);
+    if (url.protocol === "data:") return fetchRemote(url);
+    if (!isAllowed(url)) {
+      throw new ResourceError(
+        `Cannot request ${describe(key)}, which is not on this instance or ` +
+          `one of the basemap's origins`,
+      );
     }
     return fetchRemote(url);
   }
