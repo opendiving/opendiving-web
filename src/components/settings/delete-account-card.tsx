@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { exportAPI } from "@/lib/api/export";
 import { usersAPI } from "@/lib/api/users";
+import { announceSignedOut } from "@/lib/auth-broadcast";
 import { downloadBlob } from "@/lib/download";
 import { hardNavigate } from "@/lib/navigation";
 
@@ -136,6 +137,7 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
       // token is gone, the refresh cookie is deleted, and `/goodbye` has no session to
       // ask. It is a date, not an identity - the page itself is the disclosure, not
       // the parameter.
+      announceSignedOut();
       hardNavigate(`/goodbye?purge_after=${encodeURIComponent(purge_after)}`);
     } catch (error) {
       setIsDeleting(false);

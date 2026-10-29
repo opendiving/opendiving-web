@@ -23,6 +23,7 @@ import {
   clearAccessToken,
   refreshAccessToken,
 } from "@/lib/api/client";
+import { announceSignedOut, onSignedOutElsewhere } from "@/lib/auth-broadcast";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
 import { clearEntryUnits } from "@/lib/entry-units";
 import { hardNavigate } from "@/lib/navigation";
@@ -160,6 +161,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     initAuth();
   }, []);
+
+  // Another tab signed out or deleted the account, which ended this tab's session
+  // too. Left for the landing page with a page load, as `signOut` below leaves, and
+  // for the same reasons; only a tab that is showing a session has one to drop, so a
+  // signed-out tab mid-way through the sign-in form is left alone.
+  const signedIn = user !== null;
+  useEffect(() => {
+    if (!signedIn) return;
+    return onSignedOutElsewhere(() => hardNavigate("/"));
+  }, [signedIn]);
 
   // Clear the (now stale) user when a token refresh fails elsewhere in the
   // app (see client.ts). Existing per-page "redirect if unauthenticated"
@@ -355,6 +366,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // an explicit sign-out forgets the psi choice. A reload is not one of these,
     // since the access token is re-derived from the cookie.
     clearEntryUnits();
+    announceSignedOut();
     hardNavigate("/");
   }, []);
 

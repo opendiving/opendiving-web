@@ -1,10 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authAPI } from "@/lib/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLinkToken } from "@/hooks/useLinkToken";
 import { Button } from "@/components/ui/button";
 import { StandaloneShell } from "@/components/layout/standalone-shell";
 import {
@@ -63,10 +64,9 @@ const LINK_FAILED = "This sign-in link is invalid or has expired.";
 const RESTORE_FAILED = "Couldn't restore your account. Please try again.";
 
 function VerifyMagicLinkContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { verifyEmailLink, restoreAccount } = useAuth();
-  const token = searchParams.get("token");
+  const token = useLinkToken();
   const [state, setState] = useState<VerifyState>(token ? "checking" : "error");
   const [error, setError] = useState<string | null>(
     token ? null : "This sign-in link is missing its token.",
