@@ -448,9 +448,9 @@ describe("the heart-rate channel", () => {
     expect(domain.min).toBeGreaterThan(0);
   });
 
-  it("labels its top tick with the unit, the same in both systems", () => {
-    expect(axisUnitSuffix("heart_rate", "metric")).toBe(" bpm");
-    expect(axisUnitSuffix("heart_rate", "imperial")).toBe(" bpm");
+  it("labels its top tick bare, the same in both systems", () => {
+    expect(axisUnitSuffix("heart_rate", "metric")).toBe("");
+    expect(axisUnitSuffix("heart_rate", "imperial")).toBe("");
   });
 
   it("is read whole, and unconverted in either system", () => {
@@ -967,27 +967,27 @@ describe("elapsedTicks", () => {
 
   it("gives round minutes for a short dive", () => {
     // 12 minutes -> every 2.
-    expect(elapsedTicks(12 * MINUTE)).toEqual(
+    expect(elapsedTicks(0, 12 * MINUTE)).toEqual(
       [0, 2, 4, 6, 8, 10, 12].map((minutes) => minutes * MINUTE),
     );
   });
 
   it("gives round minutes for a typical dive", () => {
     // 50 minutes -> a 10-minute step, not 8m20s.
-    expect(elapsedTicks(50 * MINUTE)).toEqual(
+    expect(elapsedTicks(0, 50 * MINUTE)).toEqual(
       [0, 10, 20, 30, 40, 50].map((minutes) => minutes * MINUTE),
     );
   });
 
   it("gives round minutes for a long dive", () => {
     // 3 hours -> half-hourly.
-    expect(elapsedTicks(180 * MINUTE)).toEqual(
+    expect(elapsedTicks(0, 180 * MINUTE)).toEqual(
       [0, 30, 60, 90, 120, 150, 180].map((minutes) => minutes * MINUTE),
     );
   });
 
   it("never runs past the end of the dive", () => {
-    const ticks = elapsedTicks(2_781_000);
+    const ticks = elapsedTicks(0, 2_781_000);
     expect(Math.max(...ticks)).toBeLessThanOrEqual(2_781_000);
   });
 
@@ -995,19 +995,32 @@ describe("elapsedTicks", () => {
     for (const duration of [
       720_000, 2_781_000, 3_000_000, 4_401_160, 10_800_000,
     ]) {
-      for (const tick of elapsedTicks(duration)) {
+      for (const tick of elapsedTicks(0, duration)) {
         expect(tick % MINUTE).toBe(0);
       }
     }
   });
 
   it("survives a zero-length profile", () => {
-    expect(elapsedTicks(0)).toEqual([0]);
+    expect(elapsedTicks(0, 0)).toEqual([0]);
+  });
+
+  it("labels a zoomed stretch on its own round instants", () => {
+    // 12:20 to 23:50 -> every 2 minutes, from the first even minute in it.
+    expect(elapsedTicks(740_000, 1_430_000)).toEqual(
+      [14, 16, 18, 20, 22].map((minutes) => minutes * MINUTE),
+    );
+  });
+
+  it("steps in seconds across a minute or two", () => {
+    expect(elapsedTicks(600_000, 660_000)).toEqual(
+      [0, 10, 20, 30, 40, 50, 60].map((seconds) => 600_000 + seconds * 1_000),
+    );
   });
 
   it("holds a short axis's target past the longest candidate step", () => {
     // Twelve hours on a phone's four: the two-hour step would draw seven.
-    expect(elapsedTicks(720 * MINUTE, 4)).toEqual(
+    expect(elapsedTicks(0, 720 * MINUTE, 4)).toEqual(
       [0, 240, 480, 720].map((minutes) => minutes * MINUTE),
     );
   });
