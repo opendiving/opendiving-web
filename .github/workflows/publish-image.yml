@@ -505,7 +505,12 @@ jobs:
   # The secret belongs to the `production` environment, not to the repository: a repository
   # secret is readable by any workflow on any pushed branch, and the environment's
   # deployment-branch policy is what limits these hooks to `main`. The `if:` below says the
-  # same thing for this workflow; the policy says it for every other one.
+  # same thing for this workflow; the policy says it for every other one. Naming the
+  # environment here does neither: GitHub creates a missing one with no policy, and a
+  # repository secret still resolves inside it. So the setup is by hand, and in this order -
+  # the environment with a `main`-only policy, the secret in it, and only then the repository
+  # copy deleted, since a `deploy` that finds no secret at all goes green having deployed
+  # nothing.
   deploy:
     needs: merge
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

@@ -67,6 +67,9 @@
   // transitive tree too: Renovate runs npm with `--before` that many days back whenever it
   // regenerates `package-lock.json`, `lockFileMaintenance` included. Vulnerability fixes are
   // the one exception, and say so below.
+  //
+  // The api repo's copy has neither this nor an exact Trivy version yet. That is drift, to be
+  // closed there, and not a difference this file means to keep.
   "minimumReleaseAge": "3 days",
 
   // Rebase only on a conflict, not every time `main` moves. A Monday batch gets merged one PR

@@ -467,8 +467,9 @@ Both name a version so the command means the same thing next month; move it when
 rejects an option the config has started to use.
 
 The first catches a misspelled option; the second prints every dependency each manager found, which
-is the only way to see that a custom manager's regex still matches. Run them in a checkout, not a
-worktree — the container needs the files, and `--dry-run=extract` writes nothing and needs no token.
+is the only way to see that something read from outside a manifest — the Trivy `version:` input — is
+still being watched. Run them in a checkout, not a worktree — the container needs the files, and
+`--dry-run=extract` writes nothing and needs no token.
 
 **What none of this watches**, stated so it is not mistaken for coverage:
 
