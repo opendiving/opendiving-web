@@ -2,6 +2,7 @@
 
 import {
   Fragment,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -11,7 +12,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { Maximize, Minimize, SlidersHorizontal } from "lucide-react";
+import { Maximize, Minimize, SlidersHorizontal, ZoomOut } from "lucide-react";
 import type {
   DiveProfile,
   DiveProfileEvent,
@@ -85,8 +86,9 @@ import {
 } from "@/components/ui/popover";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { DiveProfileFullscreen } from "@/components/dives/dive-profile-fullscreen";
-import { useChartReadout } from "@/hooks/useChartReadout";
+import { type ChartReadout, useChartReadout } from "@/hooks/useChartReadout";
 import { useChartWidth } from "@/hooks/useChartWidth";
+import { useChartZoom } from "@/hooks/useChartZoom";
 import { type ElementSize, useElementSize } from "@/hooks/useElementSize";
 import { useFullscreen } from "@/hooks/useFullscreen";
 import { useUnits } from "@/hooks/useUnits";
@@ -217,6 +219,19 @@ const EVENT_GLYPH_RADIUS = 4;
 // Between the top of the tick and the centre of the glyph, so the two read as
 // one mark rather than as a shape resting on a line.
 const EVENT_GLYPH_GAP = 2;
+
+// The shortest stretch of a dive the plot zooms in to, in milliseconds.
+const MIN_VIEW_MS = 60_000;
+
+// How near the crosshair, in CSS px, a finger on a zoomed plot has to land to
+// drag the crosshair rather than the plot: about a fingertip either side.
+const CROSSHAIR_GRAB_PX = 24;
+
+// The plot's hit target, from the `<svg>` it is in. Found from the element under
+// the finger rather than held in a ref, because the plot is drawn twice for a
+// moment as full screen closes, and a shared ref ends on the copy that went.
+const plotBox = (svg: Element) =>
+  svg.querySelector("[data-hit]")?.getBoundingClientRect() ?? null;
 
 // How many markers the chart's accessible summary names before it starts
 // counting - see `describeProfile`.
@@ -365,18 +380,60 @@ export function DiveProfileChart({
   // Milliseconds on the profile's axis, like every time below.
   //
   // A finger's x goes through the same hit target as a mouse's, so the two land
-  // on the same instant.
-  const hitRef = useRef<SVGRectElement>(null);
+  // on the same instant - of the stretch on screen, once zoomed.
+  const zoom = useChartZoom(profile.duration, MIN_VIEW_MS, plotBox);
+  const { view } = zoom;
+  const span = view.end - view.start;
   const timeAt = (box: DOMRect, clientX: number) =>
     Math.min(
-      profile.duration,
-      Math.max(0, ((clientX - box.left) / box.width) * profile.duration),
+      view.end,
+      Math.max(
+        view.start,
+        view.start + ((clientX - box.left) / box.width) * span,
+      ),
     );
-  const readout = useChartReadout<number>((event) => {
-    const hit = hitRef.current;
-    return hit ? timeAt(hit.getBoundingClientRect(), event.clientX) : null;
-  });
-  const hoveredMs = readout.value;
+  const readout: ChartReadout<number> = useChartReadout<number>(
+    (event) => {
+      const box = plotBox(event.currentTarget);
+      return box ? timeAt(box, event.clientX) : null;
+    },
+    // Zoomed, a finger drags the plot unless it lands on the crosshair.
+    {
+      from: (event): boolean => {
+        if (!zoom.zoomed) return false;
+        const box = plotBox(event.currentTarget);
+        if (!box || hoveredMs === null) return true;
+        const crosshairX =
+          box.left + ((hoveredMs - view.start) / span) * box.width;
+        return Math.abs(event.clientX - crosshairX) > CROSSHAIR_GRAB_PX;
+      },
+      by: (dx, event) => {
+        const box = plotBox(event.currentTarget);
+        if (box && box.width > 0) zoom.panBy((-dx / box.width) * span);
+      },
+    },
+  );
+  // The crosshair while it is on screen. Panned off the plot it is still the
+  // readout's, and comes back with the stretch it is in.
+  const hoveredMs: number | null =
+    readout.value !== null &&
+    readout.value >= view.start &&
+    readout.value <= view.end
+      ? readout.value
+      : null;
+  const holdPage = readout.scrubProps.ref;
+  const zoomRef = zoom.ref;
+  const svgRef = useCallback(
+    (element: Element | null) => {
+      const releaseHold = holdPage(element);
+      const releaseZoom = zoomRef(element);
+      return () => {
+        releaseHold?.();
+        releaseZoom?.();
+      };
+    },
+    [holdPage, zoomRef],
+  );
 
   // What the diver picked in *this* visit, and null until they pick - which is
   // what leaves room for the remembered selection underneath. Channels and the
@@ -899,7 +956,9 @@ export function DiveProfileChart({
   ]);
   const plotWidth = width - left - right;
   const x = (at: number) =>
-    left + (duration > 0 ? at / duration : 0) * plotWidth;
+    left + (span > 0 ? (at - view.start) / span : 0) * plotWidth;
+  // Zoomed in, the curves and markers run on past both ends of the plot.
+  const plotClip = zoom.zoomed ? `url(#${clipPrefix}-plot)` : undefined;
 
   // The water column: one filled region per run of consecutive depth samples,
   // from the surface down to the curve.
@@ -949,11 +1008,7 @@ export function DiveProfileChart({
   const hoveredEvent =
     hoveredMs === null || !eventsShown
       ? null
-      : nearestEvent(
-          events,
-          hoveredMs,
-          (duration / plotWidth) * EVENT_HOVER_UNITS,
-        );
+      : nearestEvent(events, hoveredMs, (span / plotWidth) * EVENT_HOVER_UNITS);
 
   // One binary search per channel, not one shared index lookup: the channels are
   // independently sampled, so each has its own nearest sample to the cursor's
@@ -1004,8 +1059,14 @@ export function DiveProfileChart({
   // depth plot, and pulled back to the row's top edge it would claim the curve is
   // up there, which is exactly the reading the bound exists to avoid making. The
   // curve says it left, and the card says what it left with.
+  // Nor does one from just past the end of a zoomed view.
   const dots = readouts.flatMap(({ key, channel, sample }) =>
-    sample && !sample.offScale ? [{ key, channel, ...sample }] : [],
+    sample &&
+    !sample.offScale &&
+    sample.at >= view.start &&
+    sample.at <= view.end
+      ? [{ key, channel, ...sample }]
+      : [],
   );
 
   // Sized to exactly the chart, and what the tooltip's percentage offsets and
@@ -1022,6 +1083,7 @@ export function DiveProfileChart({
         )}
         role="img"
         {...readout.scrubProps}
+        ref={svgRef}
         // Only what's on screen. A summary naming a temperature range the
         // diver has hidden describes a chart nobody is looking at.
         aria-label={describeProfile({
@@ -1064,6 +1126,9 @@ export function DiveProfileChart({
             distinction is already recorded, under *"Markers are
             clipped to the plot"*. */}
         <defs aria-hidden>
+          <clipPath id={`${clipPrefix}-plot`}>
+            <rect x={left} y={0} width={plotWidth} height={height} />
+          </clipPath>
           {placement.panels.map((axis, index) => (
             <clipPath key={axis} id={`${clipPrefix}-panel-${index}`}>
               <rect
@@ -1203,7 +1268,8 @@ export function DiveProfileChart({
         ))}
 
         {elapsedTicks(
-          duration,
+          view.start,
+          view.end,
           Math.min(
             ELAPSED_TICK_TARGET,
             labelCapacity(plotWidth, ELAPSED_LABEL_SPACING),
@@ -1229,84 +1295,86 @@ export function DiveProfileChart({
             else is a bare line on top - below the 3:1 the lines clear, by
             choice (see DECISIONS.md, the profile chart's section). One per
             run, so the fill breaks wherever the recording does. */}
-        {depthAreas.map((area, index) => (
-          <path
-            key={index}
-            d={area}
-            fill="currentColor"
-            className={`${PROFILE_CHANNELS.depth.colorClass} opacity-15`}
-          />
-        ))}
+        <g clipPath={plotClip}>
+          {depthAreas.map((area, index) => (
+            <path
+              key={index}
+              d={area}
+              fill="currentColor"
+              className={`${PROFILE_CHANNELS.depth.colorClass} opacity-15`}
+            />
+          ))}
 
-        {/* Over the depth fill, not under it: the ceiling zone is a subset
+          {/* Over the depth fill, not under it: the ceiling zone is a subset
             of the water column by construction - a ceiling is always
             shallower than the depth it was computed at - so underneath it
             would be invisible. Denser than depth's 15% for the same reason it
             is red: this is the one region on the chart that is a rule rather
             than a reading. */}
-        {ceilingAreas.map((area, index) => (
-          <path
-            key={index}
-            d={area}
-            fill="currentColor"
-            className={`${PROFILE_CHANNELS.ceiling.colorClass} opacity-25`}
-          />
-        ))}
-
-        {shown
-          .filter((channel) => channel.channelKey !== "depth")
-          .map((channel) => (
-            <g
-              key={channel.key}
-              className={channel.series.channel.colorClass}
-              clipPath={
-                channel.panelIndex >= 0
-                  ? `url(#${clipPrefix}-panel-${channel.panelIndex})`
-                  : undefined
-              }
-            >
-              {channel.segments.map((segment, index) => (
-                <polyline
-                  key={index}
-                  points={segment
-                    .map(
-                      (position) =>
-                        `${x(channel.series.t[position])},${channel.y(channel.series.values[position])}`,
-                    )
-                    .join(" ")}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  // From the channel rather than from this line's key, so the
-                  // legend swatch below can read the same flag - see `dashed`
-                  // on `ProfileChannel` for why the dash is load-bearing.
-                  strokeDasharray={
-                    channel.series.channel.dashed ? "5 3" : undefined
-                  }
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              ))}
-            </g>
+          {ceilingAreas.map((area, index) => (
+            <path
+              key={index}
+              d={area}
+              fill="currentColor"
+              className={`${PROFILE_CHANNELS.ceiling.colorClass} opacity-25`}
+            />
           ))}
 
-        {/* Event markers, on the axis rather than on the depth curve, and
+          {shown
+            .filter((channel) => channel.channelKey !== "depth")
+            .map((channel) => (
+              <g
+                key={channel.key}
+                className={channel.series.channel.colorClass}
+                clipPath={
+                  channel.panelIndex >= 0
+                    ? `url(#${clipPrefix}-panel-${channel.panelIndex})`
+                    : undefined
+                }
+              >
+                {channel.segments.map((segment, index) => (
+                  <polyline
+                    key={index}
+                    points={segment
+                      .map(
+                        (position) =>
+                          `${x(channel.series.t[position])},${channel.y(channel.series.values[position])}`,
+                      )
+                      .join(" ")}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    // From the channel rather than from this line's key, so the
+                    // legend swatch below can read the same flag - see `dashed`
+                    // on `ProfileChannel` for why the dash is load-bearing.
+                    strokeDasharray={
+                      channel.series.channel.dashed ? "5 3" : undefined
+                    }
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                ))}
+              </g>
+            ))}
+
+          {/* Event markers, on the axis rather than on the depth curve, and
             behind a switch of their own in the legend. They are still not a
             channel - no axis, no unit, nothing to scale - and the switch does
             not make them one; what it grants is that a dive with a dozen of
             them can be read without them, which "annotations are cheap enough
             to always draw" was the wrong answer to. See `PROFILE_VIEW_KEYS`
             for why they are a separate list rather than one more channel. */}
-        {eventsShown &&
-          events.map((event, index) => (
-            <EventMarker
-              key={`${event.time}-${event.type}-${index}`}
-              event={event}
-              cx={x(event.time)}
-              baseline={plotBottom}
-              hovered={event === hoveredEvent}
-            />
-          ))}
+          {eventsShown &&
+            events.map((event, index) => (
+              <EventMarker
+                key={`${event.time}-${event.type}-${index}`}
+                event={event}
+                cx={x(event.time)}
+                baseline={plotBottom}
+                hovered={event === hoveredEvent}
+              />
+            ))}
+        </g>
 
         {/* Through the panel as well as the depth plot: it is one
             instant of one dive, and a crosshair that stopped at the depth
@@ -1347,7 +1415,7 @@ export function DiveProfileChart({
             equivalent here without inventing a focus model for a polyline. The
             `aria-label` above carries the summary instead. */}
         <rect
-          ref={hitRef}
+          data-hit
           x={left}
           y={PADDING.top}
           width={plotWidth}
@@ -1418,6 +1486,19 @@ export function DiveProfileChart({
   // The channel menu, and beside it the way into full screen or back out.
   const controls = (inFullscreen: boolean) => (
     <div className="flex items-center">
+      {zoom.zoomed && (
+        <IconTooltip label="Zoom out">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            onClick={zoom.reset}
+          >
+            <ZoomOut className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </IconTooltip>
+      )}
       <LegendMenu
         available={available}
         visible={visible}

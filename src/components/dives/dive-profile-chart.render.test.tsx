@@ -2108,14 +2108,14 @@ describe("DiveProfileChart heart rate", () => {
     expect(readoutText()).toMatch(/— Heart rate/);
   });
 
-  it("labels its row's top tick with the readings' ceiling and the unit", () => {
+  it("labels its row's top tick with the readings' ceiling", () => {
     const { container } = render(<DiveProfileChart profile={everyChannel()} />);
 
     // 72 to 107 bpm, so the row tops out at 110 and nothing above the readings
     // sets its scale.
     expect(
       container.querySelector('[data-panel="heart_rate"] text')?.textContent,
-    ).toBe("110 bpm");
+    ).toBe("110");
     // First of the rows under the depth plot: the one measurement among them.
     expect(panelRows(container)[0]).toBe("heart_rate");
   });

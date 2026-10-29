@@ -28,6 +28,17 @@ interface Readout<T> {
   pinned: boolean;
 }
 
+/**
+ * For a chart that zooms: where a finger's drag moves the view rather than the
+ * readout, and how. A tap there still reads out.
+ */
+export interface ChartReadoutPan {
+  /** Whether a finger landing as `event` drags the view. */
+  from: (event: ReactPointerEvent<Element>) => boolean;
+  /** Moves the view by the finger's sideways travel since its last move, in CSS px. */
+  by: (dx: number, event: ReactPointerEvent<Element>) => void;
+}
+
 /** What `useChartReadout` returns: the value a chart reads out, and how it is chosen. */
 export interface ChartReadout<T> {
   /** What the chart is reading out, or null for nothing. */
@@ -65,6 +76,9 @@ export interface ChartReadout<T> {
  * `pick` turns a finger's position into a value - an index, an instant - or null
  * where the chart has nothing to say. It is asked on every move while scrubbing.
  *
+ * `pan` is for a chart that zooms, and takes pinches from the page as well - see
+ * `useChartZoom`. A drag from where it says moves the view instead of scrubbing.
+ *
  * The browser follows a tap with mouse events at the same point, which reach
  * `hover` too - in whole pixels, so on a continuous axis they can name a
  * neighbour of what the tap pinned. Nothing a mouse says just after a finger
@@ -81,6 +95,7 @@ export function useChartReadout<T>(
     event: ReactPointerEvent<Element>,
     gesture: ReadoutGesture,
   ) => T | null,
+  pan?: ChartReadoutPan,
 ): ChartReadout<T> {
   const [readout, setReadout] = useState<Readout<T> | null>(null);
   // Where a press keeps a pinned readout: the frame around the plot a finger
@@ -90,7 +105,10 @@ export function useChartReadout<T>(
   const press = useRef<{
     id: number;
     x: number;
-    scrubbing: boolean;
+    // Past the tap slop, so a drag rather than a tap.
+    moved: boolean;
+    // Whether the drag moves the view rather than the readout.
+    pans: boolean;
     // What was pinned when it went down, so a tap can tell a first look from a
     // second.
     before: T | null;
@@ -98,14 +116,14 @@ export function useChartReadout<T>(
   const lastTap = useRef<{ at: number; before: T | null } | null>(null);
   const lifted = useRef(-Infinity);
 
-  // Once a finger is scrubbing, the page stays put however its path drifts up or
+  // Once a finger is dragging, the page stays put however its path drifts up or
   // down. `touch-action` is settled when the finger lands, and Safari will still
   // turn a later vertical drift into a scroll that cancels the scrub. Native and
   // non-passive because React's touch listeners are passive and cannot cancel.
   const holdPage = useCallback((element: Element | null) => {
     if (!element) return;
     const hold = (event: Event) => {
-      if (press.current?.scrubbing) event.preventDefault();
+      if (press.current?.moved) event.preventDefault();
     };
     element.addEventListener("touchmove", hold, { passive: false });
     return () => element.removeEventListener("touchmove", hold);
@@ -141,13 +159,13 @@ export function useChartReadout<T>(
     hover,
     scrubProps: {
       ref: holdPage,
-      // A vertical swipe scrolls the page and a pinch zooms it; a sideways one
-      // is left to the chart. A long press reads out like a tap, so it must not
+      // A vertical swipe scrolls the page and a pinch zooms it - or the chart,
+      // where it zooms; a sideways one is left to the chart. A long press reads out like a tap, so it must not
       // select the plot's labels or raise the system's callout either. A style
       // rather than a class, so spreading these cannot replace the plot's own
       // `className`.
       style: {
-        touchAction: "pan-y pinch-zoom",
+        touchAction: pan ? "pan-y" : "pan-y pinch-zoom",
         userSelect: "none",
         WebkitUserSelect: "none",
         WebkitTouchCallout: "none",
@@ -165,20 +183,23 @@ export function useChartReadout<T>(
         press.current = {
           id: event.pointerId,
           x: event.clientX,
-          scrubbing: false,
+          moved: false,
+          pans: pan?.from(event) ?? false,
           before: readout?.pinned ? readout.value : null,
         };
       },
       onPointerMove: (event) => {
         const current = press.current;
         if (!current || event.pointerId !== current.id) return;
-        if (
-          !current.scrubbing &&
-          Math.abs(event.clientX - current.x) < TAP_SLOP
-        ) {
+        if (!current.moved && Math.abs(event.clientX - current.x) < TAP_SLOP) {
           return;
         }
-        current.scrubbing = true;
+        current.moved = true;
+        if (current.pans) {
+          pan?.by(event.clientX - current.x, event);
+          current.x = event.clientX;
+          return;
+        }
         pin(event, "scrub");
       },
       onPointerUp: (event) => {
@@ -186,7 +207,7 @@ export function useChartReadout<T>(
         if (!current || event.pointerId !== current.id) return;
         press.current = null;
         lifted.current = performance.now();
-        if (current.scrubbing) return;
+        if (current.moved) return;
         lastTap.current = { at: lifted.current, before: current.before };
         pin(event, "tap");
       },

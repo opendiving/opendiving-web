@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { useState } from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { DiveProfileChart } from "./dive-profile-chart";
 import type { DiveProfile } from "@/lib/api/dives";
@@ -13,6 +14,7 @@ import {
   fingerDown,
   fingerMove,
   fingerUp,
+  pinch,
   pressElsewhere,
   tap,
 } from "@/test/touch";
@@ -223,5 +225,90 @@ describe("the dive profile chart's crosshair on a dive that ended early", () => 
     expect(hover((box) => box.left + box.width * 0.4)?.textContent).toMatch(
       /^(19:5\d|20:0\d) elapsed/,
     );
+  });
+});
+
+describe("the dive profile chart zoomed by a pinch", () => {
+  // With the card's title-row slot, so the full-screen button is there to press.
+  function Card() {
+    const [slot, setSlot] = useState<HTMLElement | null>(null);
+    return (
+      <div style={{ width: WIDTHS.phone }}>
+        <div ref={setSlot} />
+        <DiveProfileChart profile={PROFILE} menuContainer={slot} />
+      </div>
+    );
+  }
+
+  function renderCard() {
+    const { container } = render(<Card />);
+    const svg = () => container.querySelector("svg[role=img]") as Element;
+    // A point on the plot, as a fraction of the width - of the dive until the
+    // plot is zoomed, and of the stretch on screen after.
+    const at = (fraction: number) => {
+      const box = (
+        svg().querySelector("[data-hit]") as Element
+      ).getBoundingClientRect();
+      return {
+        x: box.left + box.width * fraction,
+        y: box.top + box.height / 3,
+      };
+    };
+    const card = () => container.querySelector('[role="presentation"]');
+    // Twice as close, about the middle: 12:30 to 37:30 of the 50-minute dive.
+    const zoomIn = () => pinch(svg(), [at(0.4), at(0.6)], [at(0.3), at(0.7)]);
+    return { svg, at, card, zoomIn };
+  }
+
+  it("spreads the stretch between the fingers across the plot", () => {
+    const { svg, at, card, zoomIn } = renderCard();
+    zoomIn();
+
+    tap(svg(), at(0));
+    expect(card()).toHaveTextContent("12:30 elapsed");
+  });
+
+  it("drags the plot under a finger that lands away from the crosshair", () => {
+    const { svg, at, card, zoomIn } = renderCard();
+    zoomIn();
+
+    fingerDown(svg(), at(0.2));
+    fingerMove(svg(), at(0.4));
+    fingerUp(svg(), at(0.4));
+    // Moved, not read out: five minutes earlier is now at the left edge.
+    expect(card()).toBeNull();
+
+    tap(svg(), at(0));
+    expect(card()).toHaveTextContent("7:30 elapsed");
+  });
+
+  it("drags the crosshair under a finger that lands on it", () => {
+    const { svg, at, card, zoomIn } = renderCard();
+    zoomIn();
+    tap(svg(), at(0.5));
+    expect(card()).toHaveTextContent("25:00 elapsed");
+
+    fingerDown(svg(), at(0.5));
+    fingerMove(svg(), at(0.7));
+    expect(card()).toHaveTextContent("30:00 elapsed");
+  });
+
+  it("zooms back out from the button on the title row", () => {
+    const { svg, at, card, zoomIn } = renderCard();
+    zoomIn();
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    tap(svg(), at(0));
+    expect(card()).toHaveTextContent("0:00 elapsed");
+  });
+
+  it("still scrubs under a finger after full screen closes", () => {
+    const { svg, at, card } = renderCard();
+    fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Exit full screen" }));
+
+    fingerDown(svg(), at(0.2));
+    fingerMove(svg(), at(0.6));
+    expect(card()).toHaveTextContent("30:00 elapsed");
   });
 });
