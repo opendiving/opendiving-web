@@ -64,8 +64,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # `upgrade` as well as `install`, because a rebuild has to collect the Ubuntu
-# security updates published since `ubuntu:24.04` was last cut - which is also
-# why Publish Image never takes this stage from its build cache.
+# security updates published since `ubuntu:24.04` was last cut, so this stage
+# must never come from a build cache. Publish Image uses none at all.
 #
 # What MapLibre Native links against, and the X server it draws through: its
 # Linux binary renders with GLX, so even a renderer with no screen needs one,

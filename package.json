@@ -82,6 +82,7 @@
     "@typescript-eslint/parser": "^8.70.0",
     "@vitest/browser-playwright": "^5.0.0",
     "@vitest/coverage-v8": "^5.0.0",
+    "axe-core": "^4.13.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.0.0",
     "eslint-config-next": "^16.3.0",
@@ -95,6 +96,6 @@
     "vitest": "^5.0.0"
   },
   "allowScripts": {
-    "@maplibre/maplibre-gl-native": true
+    "@maplibre/maplibre-gl-native@6.4.1": true
   }
 }

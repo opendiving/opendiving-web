@@ -292,6 +292,9 @@ jobs:
           - platform: linux/arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    env:
+      # Where the smoke and measure scripts come from - see the checkout that fills it.
+      SCRIPTS: ${{ needs.prepare.outputs.version != '' && '.' || 'workflow-sha' }}
 
     steps:
       # `linux/amd64` is not a legal artifact name, and the matrix index is legal but
@@ -313,11 +316,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Needed for the `type=gha` cache below - the default docker driver cannot export
-      # to it.
       - name: Set up Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
+      # No build cache, in either direction. A `type=gha` cache is written by anything that
+      # runs on `main`, unreviewed dependency code in the other workflows included, so a layer
+      # planted there would ship in `:edge` and be deployed. DECISIONS.md, "Publish Image
+      # builds without a cache", has what it saved and what a cache would have to be instead.
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -329,16 +334,6 @@ jobs:
           # digest. Tagging happens once, in `merge`, on the manifest list - tagging here
           # would leave each architecture briefly overwriting the other's tag.
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          # Scoped per platform: one shared scope has the two jobs evicting each other's
-          # layers on every build, which costs more than the cache saves.
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
-          # The runtime stage is never taken from the cache, because it is where the
-          # Ubuntu packages are installed and upgraded: a cached copy would hand every
-          # build - a CVE rebuild included - the packages of whichever build first ran
-          # it. The stages that build the app stay cached; this one only copies their
-          # output over a fresh `apt-get`.
-          no-cache-filters: runner
           # Buildx would otherwise push a provenance attestation alongside the image,
           # which renders on the GHCR package page as an extra `unknown/unknown` entry
           # next to the two real architectures. Drop the `false` if the attestation is
@@ -348,29 +343,46 @@ jobs:
           # relative `/api/v1` and forwards it from its own route handler, which is what
           # lets one image run on any domain. See the Dockerfile.
 
+      # The scripts below run on this runner, where the login above has left a token that can
+      # push to the package; the image they start runs in a container, and they do not. A
+      # release build runs its own copies, so a CVE rebuild checks an old release with the
+      # script it shipped with - a `v*` tag can only be pushed by someone who could already run
+      # anything in this workflow. Anything else a dispatch can name, a branch or a fork's pull
+      # request, runs the copies from the commit this workflow was read from. Checked out after
+      # the build because the build context is the workspace, and a second tree inside it would
+      # be copied into the builder.
+      - name: Check out this workflow's own scripts
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: workflow-sha
+          persist-credentials: false
+
       # Both programs the image carries, started from the bytes just pushed, before anything
       # is tagged or deployed: the web server serves a page, and the map renderer draws a
       # tile on a style that needs no network. A failure here stops `merge`, and with it
       # `deploy`. See the script for what each check is.
       #
-      # Skipped where the checked-out ref has no script: a CVE rebuild of a release cut before
-      # it, whose image has no map renderer to check either, and which must still republish.
+      # Skipped where the built ref has no script: a CVE rebuild of a release cut before it,
+      # whose image has no map renderer to check either, and which must still republish.
       - name: Smoke-test the image
         if: hashFiles('scripts/smoke-test-image.sh') != ''
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
-        run: scripts/smoke-test-image.sh "${IMAGE}@${DIGEST}"
+        run: |
+          "$SCRIPTS/scripts/smoke-test-image.sh" "${IMAGE}@${DIGEST}"
 
       # The figures the flagship's renderer plan is chosen by, on the architecture it runs.
       # Only when asked: it takes minutes, and it makes a handful of renders' worth of
-      # requests to OpenFreeMap - see the script's header.
+      # requests to OpenFreeMap - see the script's header. The `.` is the built checkout, whose
+      # styles the script serves the renderer wherever the script itself came from.
       - name: Measure the map renderer
         if: inputs.measure && matrix.platform == 'linux/amd64'
         # `bash` named, for its `pipefail`: the default shell would report the `tee`.
         shell: bash
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
-        run: node scripts/measure-map-renderer.mjs "${IMAGE}@${DIGEST}" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: node "$SCRIPTS/scripts/measure-map-renderer.mjs" "${IMAGE}@${DIGEST}" . | tee -a "$GITHUB_STEP_SUMMARY"
 
       # An empty file named after the digest, because that is all the merge step needs and
       # an artifact cannot carry a bare string. The name is the digest without its
@@ -495,10 +507,21 @@ jobs:
   # red for everyone who cannot hold the secret is a build people learn to ignore, which costs
   # more than the deploy it is failing to report. A secret that is set but holds no hook is the
   # other case and fails loudly - that is a typo, not a fork.
+  #
+  # The secret belongs to the `production` environment, not to the repository: a repository
+  # secret is readable by any workflow on any pushed branch, and the environment's
+  # deployment-branch policy is what limits these hooks to `main`. The `if:` below says the
+  # same thing for this workflow; the policy says it for every other one. Naming the
+  # environment here does neither: GitHub creates a missing one with no policy, and a
+  # repository secret still resolves inside it. So the setup is by hand, and in this order -
+  # the environment with a `main`-only policy, the secret in it, and only then the repository
+  # copy deleted, since a `deploy` that finds no secret at all goes green having deployed
+  # nothing.
   deploy:
     needs: merge
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: production
     # Nothing here reads the repository or the registry; it makes one outbound call. A
     # job-level block replaces the workflow-level one rather than adding to it, so this drops
     # the `packages: write` the build jobs need.
