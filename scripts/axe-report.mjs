@@ -28,7 +28,9 @@ try {
   // The app's CSP admits only scripts carrying its nonce, which an injected
   // axe does not.
   const page = await (await browser.newContext({ bypassCSP: true })).newPage();
-  await page.goto(url, { waitUntil: "load" });
+  // Not `load`: the page renders its content once the session check settles,
+  // and at `load` `<main>` is still empty.
+  await page.goto(url, { waitUntil: "networkidle" });
   await page.addScriptTag({
     path: createRequire(import.meta.url).resolve("axe-core/axe.min.js"),
   });

@@ -59,8 +59,8 @@ out and let Prettier wrap it to 100 columns; there is no need to match the surro
 hand.
 
 A separate code-quality workflow also runs `tsc --strict` and an axe accessibility scan of the
-running app. The scan is a report; the strict type check and the Prettier check above are not —
-keep both clean.
+running app. The scan is a report; the strict type check and the Prettier check above are not — keep
+both clean.
 
 ## How the code is laid out
 

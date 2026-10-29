@@ -2024,9 +2024,9 @@ own and `.prettierignore` handles `.next/` and `coverage/`. The `*.md` override 
 width, so the two `DECISIONS.md` files look alike.
 
 `code-quality.yml` runs `npm run format:check` rather than repeating the globs; see "The Prettier
-check fails the build, and the other advisory steps stay advisory" for its failure mode. Prettier
-also rewrites `*emphasis*` to `_emphasis_` and `*` bullets to `-`; `git blame` on a reflowed line
-points at the reflow, so blame its parent or use `git log -L`.
+check fails the build, and the axe scan stays a report" for its failure mode. Prettier also rewrites
+`*emphasis*` to `_emphasis_` and `*` bullets to `-`; `git blame` on a reflowed line points at the
+reflow, so blame its parent or use `git log -L`.
 
 ## Breathing-gas maths lives in `lib/dive-mixtures.ts`, client-side, and is only ever a label
 
@@ -2161,7 +2161,7 @@ list; see _"One switch against every remembered preference on this device"_.
 `--pressure`: a per-theme pair is tuned twice and drifts. Computed contrast is 4.3:1 against the
 light card and 3.8:1 against the dark 13% one, clearing the 3:1 for a graphical object. The web
 `accessibility-check` job would not catch a failure here: it runs axe against the landing page only,
-with `|| true`. Not `--destructive`, a pair tuned for text and labels on a fill.
+as a report. Not `--destructive`, a pair tuned for text and labels on a fill.
 
 Hue 0 sits close to `--coral`'s 16; amber would buy separation, but red is what every dive computer
 uses for a ceiling. Lightness and saturation separate them (pale salmon at 66% against saturated red
@@ -3557,6 +3557,17 @@ token). The release is published, not drafted: `opendiving/opendiving`'s coordin
 components before itself, its release being the hand-finished one; going live before the product's
 guard is the accepted cost.
 
+## Publish Image builds without a cache
+
+A `type=gha` cache in `main`'s scope can be written by any step of any run on `main`, whatever its
+token, and by a dispatch building any ref, so a layer planted by unreviewed dependency code would
+ship in `:edge` and be deployed. What it saved, `npm ci` on an unchanged lockfile, took about as
+long again to export. Rejected: `type=registry` on GHCR, which only this workflow can write but
+which puts a `buildcache-*` tag at the head of the public package page and an untagged version under
+it per build. A returning cache needs a store only this workflow writes, and
+`no-cache-filters: runner`. For the same reason the smoke and measure scripts, which run on the host
+beside the registry login, come from `github.workflow_sha` and never from `ref`.
+
 ## The install lives in the product repository, and this README points at it
 
 An install is one compose file naming both `web` and `api`, so neither component repository can hold
@@ -3616,9 +3627,9 @@ scrolls itself.
 Both declare `contents: read` at workflow level, as `publish-image.yml` and `pr-title.yml` do.
 Without a `permissions:` block a run inherits the repository default, read-write on every scope
 unless narrowed, and nothing here writes. `actions/checkout` also leaves `GITHUB_TOKEN` in
-`.git/config` unless told not to, and every job runs third-party code there, `code-quality.yml`
-sharpest with `npx --yes` fetching `depcheck`, `@next/bundle-analyzer`, `madge` and `@axe-core/cli`
-unpinned. `persist-credentials: false` on every checkout costs nothing, no job using git afterwards;
+`.git/config` unless told not to, and every job runs third-party code there. A read-only token does
+not stop a step writing the Actions cache, which is why nothing that builds the image reads one.
+`persist-credentials: false` on every checkout costs nothing, no job using git afterwards;
 `fetch-depth: 0` on `code-quality` is independent and stays. A writing step asks on its own job,
 restating `contents: read` beside what it needs, since a job-level block replaces the workflow's;
 `pr-title.yml` shows it, `permissions: {}` at the top and the labelling job asking for two scopes.
@@ -3656,23 +3667,21 @@ differ; base64 contains no `'`.
 
 ## A pin is a promise to renew, and `.github/renovate.json5` is the renewer
 
-`.github/renovate.json5` is the renewer. Renovate, not Dependabot, which cannot read `.nvmrc`, group
-across ecosystems, or match `customManagers`. The regex `customManagers` entry covers the four
-`npx --yes <tool>@<version>` pins in `code-quality.yml` (`depcheck`, `@next/bundle-analyzer`,
-`madge`, `@axe-core/cli`), seen by no other manager.
+Renovate, not Dependabot, which cannot read `.nvmrc`, group across ecosystems, or see a workflow's
+`with:` inputs, where `setup-trivy` takes its version. No version is proposed before it is three
+days old, and npm gets that cutoff as `--before` whenever Renovate regenerates the lockfile;
+vulnerability fixes are exempt, Renovate's default kept on purpose.
 
 `pinDigests: false` is load-bearing: the `Dockerfile` floats on its base tags so a Publish Image
-re-run at an old `v` tag collects patched packages, where a digest pin, or
-`helpers:pinGitHubActionDigests`, rebuilds the vulnerable base and reports success. First-party
-actions pin a major tag, third-party a SHA; Renovate renews both.
+re-run at an old `v` tag collects patched packages, which a digest pin would not. First-party
+actions pin a major tag, third-party a SHA.
 
-Node waits on `dependencyDashboardApproval` (`.nvmrc`, `engines.node`, `Dockerfile` grouped): the
-`24.x` in `with:` strings in `ci.yml` and `code-quality.yml` is invisible to the `github-actions`
-manager, so an automatic bump ships a runtime CI does not test, and odd majors are not LTS
-(`engines.node`: `>=24 <25`).
+Node waits on `dependencyDashboardApproval`: the `24.x` in `ci.yml` and `code-quality.yml` is
+invisible to the `github-actions` manager, and odd majors are not LTS.
 
-`aquasecurity/trivy` (`setup-trivy`'s `version:` input, `currentValue: latest`) is disabled by name:
-a number there freezes the scanner's advisory knowledge.
+Trivy is pinned: its database is pulled per run, so the binary's age limits only what it parses, and
+`latest` runs whatever was published a minute ago. CI fetches nothing with `npx --yes`, which no
+manifest pins.
 
 ## The scan that matters runs on a schedule, and both jobs use Trivy, not `npm audit`
 
@@ -4179,15 +4188,15 @@ check stale and the PR hanging. `label` re-runs harmlessly and is skipped on for
 `code-quality.yml` — step names and `node-version:` inputs — is unreachable by the `github-actions`
 manager.
 
-## The Prettier check fails the build, and the other advisory steps stay advisory
+## The Prettier check fails the build, and the axe scan stays a report
 
 `code-quality.yml`'s Prettier step carries no `continue-on-error`: it gates with ESLint,
 `tsc --strict` and `npm run build`, because the tool that reports formatting also fixes it —
-`npm run format` is the entire remedy. The advisory steps stay so on their merits: depcheck reports
-`postcss` and `@tailwindcss/postcss` unused because `postcss.config.js` names rather than imports
-them; the bundle-analyzer call is a no-op library import; axe has untriaged findings; a
-`madge --circular` cycle is a design problem, not a keystroke to undo. It runs first, so a
-formatting failure hides the checks below it — accepted over `if: always()` plumbing.
+`npm run format` is the entire remedy. `scripts/axe-report.mjs` stays a report because axe has
+untriaged findings; it fails only when it cannot scan. Prettier runs first, so a formatting failure
+hides the checks below it — accepted over `if: always()` plumbing. No depcheck, madge or bundle
+analyzer: depcheck reports only `postcss.config.js`'s named-not-imported plugins, madge resolves no
+`@/` import without `--ts-config`, and `@next/bundle-analyzer` has no executable.
 
 The gate depends on `.prettierrc.json`'s `proseWrap: "preserve"` for `AGENTS.md` (see "The Prettier
 override is load-bearing"); if that override goes, this step returns to advisory in the same change.
@@ -4490,12 +4499,11 @@ correct — it depends on the page's tree. The columns are group labels over lin
 `CardTitle` (`ui/card.tsx`) takes `as` (`"h2" | "h3" | "h4"`, default `h3`), tag only;
 `support/page.tsx` passes `as="h2"` because its cards are top-level sections.
 
-CI misses both: `code-quality.yml` passes `--include="main"`, the footer is `<main>`'s sibling, and
-`heading-order` is `best-practice`, outside `--tags`. `@axe-core/cli` pins a ChromeDriver major;
-drive the vendored `axe-core` through `playwright-core` — launch as `scripts/screenshots.mjs` does,
-`addScriptTag` `require.resolve("axe-core/axe.min.js")`, `window.axe.run(document, {})` with no
-`runOnly`, `page.emulateMedia({ colorScheme })` per theme. In a worktree, drop `NEXT_PUBLIC_API_URL`
-from the copied `.env` (CORS) and rewrite the magic link's port.
+CI misses both: `scripts/axe-report.mjs` scans `<main>`, the footer is its sibling, and
+`heading-order` is `best-practice`, outside the tags it runs. Sweep with that script's setup instead
+— `window.axe.run(document, {})` with no `runOnly`, `page.emulateMedia({ colorScheme })` per theme.
+In a worktree, drop `NEXT_PUBLIC_API_URL` from the copied `.env` (CORS) and rewrite the magic link's
+port.
 
 ## The chrome-free routes share `standalone-shell.tsx`, which carries their one `<main>`
 
@@ -5293,8 +5301,8 @@ half.
 `StatusMessage` minus its chrome. One component, not a copy per form (the dialogs on
 `useDialogApiError` plus the two cards), because the markup drifts back to the conditional form. The
 `accessibility-check` job cannot catch this: axe is a static snapshot analyzer, the job scans one
-unauthenticated URL, and the step ends in `|| true`. The guard is a render test asserting the region
-exists before the message, as `dive-file-import.render.test.tsx` does.
+unauthenticated URL, and it only reports. The guard is a render test asserting the region exists
+before the message, as `dive-file-import.render.test.tsx` does.
 
 ## Species photos are a plain `<img>` at the API, which is why the base URL had to be exported
 
@@ -6230,7 +6238,8 @@ Render ignores a moved tag; the job calls a [Deploy Hook](https://render.com/doc
 `imgURL` naming the digest read off `:sha-`. `RENDER_DEPLOY_HOOKS` is comma-separated, one hook per
 service; absent it passes with a notice, set-but-empty fails. Each hook is `::add-mask::`ed
 (substrings are not), and whitespace is stripped with `tr -d ' \t\r'`, not `[:space:]`, which eats
-the separators.
+the separators. The secret lives in the `production` environment, whose deployment-branch policy
+admits only `main`; a repository secret is readable from any pushed branch.
 
 ## `code-quality.yml` carries no commented-out steps: Renovate skips them and git keeps the text
 
