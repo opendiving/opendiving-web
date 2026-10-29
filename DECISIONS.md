@@ -3566,7 +3566,8 @@ long again to export. Rejected: `type=registry` on GHCR, which only this workflo
 which puts a `buildcache-*` tag at the head of the public package page and an untagged version under
 it per build. A returning cache needs a store only this workflow writes, and
 `no-cache-filters: runner`. For the same reason the smoke and measure scripts, which run on the host
-beside the registry login, come from `github.workflow_sha` and never from `ref`.
+beside the registry login, come from `github.workflow_sha` unless the build is a release; the
+measure script still serves the built tree's styles.
 
 ## The install lives in the product repository, and this README points at it
 

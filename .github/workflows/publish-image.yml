@@ -292,6 +292,9 @@ jobs:
           - platform: linux/arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    env:
+      # Where the smoke and measure scripts come from - see the checkout that fills it.
+      SCRIPTS: ${{ needs.prepare.outputs.version != '' && '.' || 'workflow-sha' }}
 
     steps:
       # `linux/amd64` is not a legal artifact name, and the matrix index is legal but
@@ -341,10 +344,13 @@ jobs:
           # lets one image run on any domain. See the Dockerfile.
 
       # The scripts below run on this runner, where the login above has left a token that can
-      # push to the package, so they come from the commit this workflow was read from and never
-      # from `ref`, which a dispatch can point at any branch. The image they start runs in a
-      # container; the scripts do not. Checked out after the build because the build context
-      # is the workspace, and a second tree inside it would be copied into the builder.
+      # push to the package; the image they start runs in a container, and they do not. A
+      # release build runs its own copies, so a CVE rebuild checks an old release with the
+      # script it shipped with - a `v*` tag can only be pushed by someone who could already run
+      # anything in this workflow. Anything else a dispatch can name, a branch or a fork's pull
+      # request, runs the copies from the commit this workflow was read from. Checked out after
+      # the build because the build context is the workspace, and a second tree inside it would
+      # be copied into the builder.
       - name: Check out this workflow's own scripts
         uses: actions/checkout@v7
         with:
@@ -358,25 +364,25 @@ jobs:
       # `deploy`. See the script for what each check is.
       #
       # Skipped where the built ref has no script: a CVE rebuild of a release cut before it,
-      # whose image has no map renderer to check either, and which must still republish. A
-      # rebuild of a release this script has outgrown is dispatched with "Use workflow from"
-      # set to that release's tag, which runs the script it shipped with.
+      # whose image has no map renderer to check either, and which must still republish.
       - name: Smoke-test the image
         if: hashFiles('scripts/smoke-test-image.sh') != ''
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
-        run: workflow-sha/scripts/smoke-test-image.sh "${IMAGE}@${DIGEST}"
+        run: |
+          "$SCRIPTS/scripts/smoke-test-image.sh" "${IMAGE}@${DIGEST}"
 
       # The figures the flagship's renderer plan is chosen by, on the architecture it runs.
       # Only when asked: it takes minutes, and it makes a handful of renders' worth of
-      # requests to OpenFreeMap - see the script's header.
+      # requests to OpenFreeMap - see the script's header. The `.` is the built checkout, whose
+      # styles the script serves the renderer wherever the script itself came from.
       - name: Measure the map renderer
         if: inputs.measure && matrix.platform == 'linux/amd64'
         # `bash` named, for its `pipefail`: the default shell would report the `tee`.
         shell: bash
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
-        run: node workflow-sha/scripts/measure-map-renderer.mjs "${IMAGE}@${DIGEST}" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: node "$SCRIPTS/scripts/measure-map-renderer.mjs" "${IMAGE}@${DIGEST}" . | tee -a "$GITHUB_STEP_SUMMARY"
 
       # An empty file named after the digest, because that is all the merge step needs and
       # an artifact cannot carry a bare string. The name is the digest without its

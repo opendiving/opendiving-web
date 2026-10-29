@@ -5,7 +5,11 @@
 // API's deadline covers at the slowest of them, what the renderer's container
 // holds after 200 tiles, what the web server holds, and how big the image is.
 //
-//   node scripts/measure-map-renderer.mjs ghcr.io/opendiving/opendiving-web@sha256:...
+//   node scripts/measure-map-renderer.mjs ghcr.io/opendiving/opendiving-web@sha256:... [tree]
+//
+// `tree` is the checkout the image was built from, whose vendored styles it
+// serves the renderer; it defaults to the one this script sits in, and differs
+// only when Publish Image runs this copy against an image built from another.
 //
 // Publish Image runs it on its amd64 runner when dispatched with `measure`;
 // figures from anywhere else - an arm64 laptop, amd64 under emulation - say
@@ -30,7 +34,7 @@ import { fileURLToPath } from "node:url";
 
 const IMAGE = process.argv[2];
 if (!IMAGE) {
-  console.error("usage: node scripts/measure-map-renderer.mjs <image>");
+  console.error("usage: node scripts/measure-map-renderer.mjs <image> [tree]");
   process.exit(2);
 }
 const RENDERS = Number(process.env.MEASURE_RENDERS || 200);
@@ -39,7 +43,10 @@ const RENDERS = Number(process.env.MEASURE_RENDERS || 200);
 const DEADLINE_MS = 90_000;
 const QUEUE_FLOOR = 24;
 const LIMITS = ["--cpus=0.5", "--memory=512m"];
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.resolve(
+  process.argv[3] ??
+    path.join(path.dirname(fileURLToPath(import.meta.url)), ".."),
+);
 const UPSTREAM = "https://tiles.openfreemap.org";
 const RENDERER = ["node", "map-renderer/index.mjs"];
 // The vendored styles' TileJSON, its vector tiles, the Natural Earth underlay and
