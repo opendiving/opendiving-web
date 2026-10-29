@@ -9,10 +9,9 @@ on:
 # All three jobs only read: they check out, install, run npm scripts and upload reports as
 # artifacts, and `dependency-review` reads the dependency review API, which `contents: read`
 # also covers. That is what checkout needs and the whole of what they need, and saying so
-# keeps the token off whatever the repository default happens to grant. This
-# workflow has more reason to care than most: on top of the dependency tree it executes
-# while linting, building and testing, four of its steps are `npx --yes` fetching a tool
-# at run time, so the code running beside that token is not the code the lockfile pinned.
+# keeps the token off whatever the repository default happens to grant. Every package these
+# jobs run comes from `package-lock.json`, never from an `npx --yes` fetch at run time, so the
+# code running beside that token is the code the lockfile pinned and nothing newer.
 # `persist-credentials: false` on each checkout is the other half - without it the token
 # is left behind in `.git/config`, in the same workspace all of that runs in.
 #
@@ -46,10 +45,8 @@ jobs:
       # `format:check` in package.json are the same check; with the file list copied
       # into both, extending one silently leaves the other behind.
       #
-      # It fails the job, joining ESLint, `tsc --strict` and the `npm run build` inside
-      # the bundle-size step. Of the advisory checks this job had, depcheck and madge
-      # remain - both `|| true`, where this one was `continue-on-error`. Formatting was
-      # the one worth promoting: the tool that reports the problem also fixes it, so
+      # It fails the job, joining ESLint, `tsc --strict` and `npm run build`. Formatting was
+      # worth making a gate because the tool that reports the problem also fixes it, so
       # `npm run format` and a push is the whole remedy and no finding is ever arguable.
       # The cost is that this runs first, so the steps below it do not report until it
       # is green.
@@ -64,16 +61,8 @@ jobs:
       - name: TypeScript strict check
         run: npx tsc --noEmit --strict
 
-      - name: Check for unused dependencies
-        run: npx --yes depcheck@1.4.7 --ignores="@types/*,eslint-config-*" || true
-
-      - name: Bundle size analysis
-        run: |
-          npm run build
-          npx --yes @next/bundle-analyzer@16.4.3 || true
-
-      - name: Check for circular dependencies
-        run: npx --yes madge@8.0.0 --circular --extensions ts,tsx,js,jsx src/ || true
+      - name: Build application
+        run: npm run build
 
       - name: Upload ESLint report
         uses: actions/upload-artifact@v7
@@ -171,14 +160,11 @@ jobs:
         run: |
           timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
 
+      # A report, not a gate: the script exits non-zero only when it could not scan, so a
+      # page with violations stays green and a broken scan goes red. It drives the runner
+      # image's Google Chrome, so no browser is downloaded.
       - name: Run accessibility tests with axe
-        run: |
-          npx --yes @axe-core/cli@4.14.0 http://localhost:3000 \
-            --include="main" \
-            --exclude="iframe" \
-            --tags="wcag2a,wcag2aa,wcag21aa" \
-            --reporter=json \
-            --output-file=accessibility-report.json || true
+        run: node scripts/axe-report.mjs http://localhost:3000 accessibility-report.json
 
       - name: Upload accessibility report
         uses: actions/upload-artifact@v7

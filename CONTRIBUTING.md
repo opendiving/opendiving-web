@@ -58,9 +58,9 @@ one you will be appending to — is formatted like everything else. Write the se
 out and let Prettier wrap it to 100 columns; there is no need to match the surrounding lines by
 hand.
 
-A separate code-quality workflow also runs `tsc --strict`, a dependency and circular-import check,
-and an axe accessibility scan of the running app. Most of those are advisory; the strict type check
-and the Prettier check above are not — keep both clean.
+A separate code-quality workflow also runs `tsc --strict` and an axe accessibility scan of the
+running app. The scan is a report; the strict type check and the Prettier check above are not —
+keep both clean.
 
 ## How the code is laid out
 
@@ -359,8 +359,8 @@ for the other. What they raise it _for_ is one of two responses, so start with t
 **Rebuilding a published version.** A published version is never repointed — a bad release gets a
 successor, not a rewrite — and a CVE in the base image is the one sanctioned exception. It works
 because the `Dockerfile` floats on `ubuntu:24.04` and on `node:24-bookworm-slim`, which it copies
-Node out of, rather than on digests, and because Publish Image never takes the stage that runs
-`apt-get upgrade` from its build cache: the build resolves a patched Node and the Ubuntu packages
+Node out of, rather than on digests, and because Publish Image builds without a cache, so the stage
+that runs `apt-get upgrade` always runs: the build resolves a patched Node and the Ubuntu packages
 published since the base was cut. Run **Publish Image** by hand with `ref` set to the `v` tag, and
 tick **Also push :latest** if that version is still the newest. One run recomputes the version's
 whole alias set, which is the point: a hand-picked subset would leave everyone following `latest` or
@@ -423,11 +423,11 @@ allow-list in that job — which is the point at which a new licence gets looked
 absorbed. Both are a gate on the diff; neither says anything about what is already installed.
 
 **Version bumps.** `.github/renovate.json5` is the other half: it watches `package.json` and
-`package-lock.json`, the `Dockerfile`'s Node tag, `.nvmrc`, every pinned GitHub Action, and the four
-`npx --yes <tool>@<version>` pins in `code-quality.yml` that belong to no ecosystem and would
-otherwise never move at all. Routine updates arrive in one batch on Monday morning; a
-vulnerability-driven one ignores the schedule and is titled `fix(deps):`, so it lands in the Fixes
-section of the release notes rather than among the chores.
+`package-lock.json`, the `Dockerfile`'s Node tag, `.nvmrc`, every pinned GitHub Action, and the
+Trivy version `vulnerability-scan.yml` installs. Routine updates arrive in one batch on Monday
+morning, and only for versions published at least three days earlier; a vulnerability-driven one
+ignores both, and is titled `fix(deps):`, so it lands in the Fixes section of the release notes
+rather than among the chores.
 
 > **Renovate is running, and the
 > [Dependency Dashboard](https://github.com/opendiving/opendiving-web/issues/190) issue is where it
@@ -451,14 +451,20 @@ Two holds sit beside it, both for the map renderer's MapLibre Native, whose inst
 prebuilt binary and never builds one. Its binaries cover Node 20, 22 and 24, so the Node group
 offers nothing from 25 up — on any other ABI every `npm ci` here fails — and they are built for
 Ubuntu 24.04 alone, so Renovate does not offer a newer Ubuntu at all. Both are lifted by hand in
-`.github/renovate.json5` once the package ships binaries for the next one.
+`.github/renovate.json5` once the package ships binaries for the next one. A bump of the package
+itself does arrive as a PR, and fails CI until someone moves its `allowScripts` pin in
+`package.json` and records the new binary's hashes in `scripts/build-map-renderer.mjs`, whose
+comment says how — that failure is the review step, not a fault.
 
 To check what Renovate would actually do before trusting a change to that file:
 
 ```bash
-npx --yes --package renovate -- renovate-config-validator .github/renovate.json5
-docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/renovatebot/renovate --platform=local --dry-run=extract
+npx --yes --package renovate@44.181.7 -- renovate-config-validator .github/renovate.json5
+docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/renovatebot/renovate:44.181.7 --platform=local --dry-run=extract
 ```
+
+Both name a version so the command means the same thing next month; move it when the validator
+rejects an option the config has started to use.
 
 The first catches a misspelled option; the second prints every dependency each manager found, which
 is the only way to see that a custom manager's regex still matches. Run them in a checkout, not a
