@@ -471,9 +471,10 @@ export function temperatureDomain(
 // with. Read off the channels themselves rather than written out again, so a row
 // cannot come to disagree with the curves in it.
 //
-// Minutes get none. The legend already names a no-deco limit and a time to
-// surface, and the widest label in the left gutter sets where the whole plot
-// starts, so " min" would cost every row its width.
+// Minutes and beats per minute get none. The legend already names a no-deco
+// limit, a time to surface and a heart rate, and the widest label in the left
+// gutter sets where the whole plot starts, so " min" or " bpm" would cost every
+// row its width.
 export function axisUnitSuffix(
   axis: ProfileAxisKey,
   units: UnitSystem,
@@ -484,7 +485,9 @@ export function axisUnitSuffix(
   if (!key) return "";
 
   const { unit } = displayChannel(PROFILE_CHANNELS[key], units);
-  return unit === "min" ? "" : `${channelSeparator(key)}${unit}`;
+  return unit === "min" || unit === "bpm"
+    ? ""
+    : `${channelSeparator(key)}${unit}`;
 }
 
 /** The axis a channel is scaled against. */
@@ -1201,34 +1204,43 @@ export function drawnSampleIndexAt(
   return -1;
 }
 
-// Candidate x-axis steps, on the millisecond axis. Minute-shaped throughout:
+// Candidate x-axis steps, on the millisecond axis. Clock-shaped throughout:
 // `axisTicks` would happily hand back a 250-second step, and nobody reads a dive
-// profile in units of 4 minutes 10 seconds.
-const ELAPSED_STEPS_MS = [1, 2, 5, 10, 15, 30, 60, 120].map(
-  (minutes) => minutes * 60 * MILLISECONDS_PER_SECOND,
-);
+// profile in units of 4 minutes 10 seconds. The seconds are for a plot zoomed in
+// to a minute or two.
+const ELAPSED_STEPS_MS = [
+  ...[10, 15, 30].map((seconds) => seconds * MILLISECONDS_PER_SECOND),
+  ...[1, 2, 5, 10, 15, 30, 60, 120].map(
+    (minutes) => minutes * 60 * MILLISECONDS_PER_SECOND,
+  ),
+];
 
 // How many elapsed-time steps the axis aims for at the chart's design width.
 export const ELAPSED_TICK_TARGET = 6;
 
-// The elapsed-time gridlines for a profile spanning `durationMs`, in
-// milliseconds, starting at 0 and never running past the end of the dive.
+// The elapsed-time gridlines for the stretch of a profile from `startMs` to
+// `endMs`, in milliseconds: whole multiples of the step, never outside it.
 export function elapsedTicks(
-  durationMs: number,
+  startMs: number,
+  endMs: number,
   targetTicks = ELAPSED_TICK_TARGET,
 ): number[] {
-  if (durationMs <= 0) return [0];
+  const span = endMs - startMs;
+  if (span <= 0) return [startMs];
 
   let step =
-    ELAPSED_STEPS_MS.find(
-      (candidate) => durationMs / candidate <= targetTicks,
-    ) ?? ELAPSED_STEPS_MS[ELAPSED_STEPS_MS.length - 1];
+    ELAPSED_STEPS_MS.find((candidate) => span / candidate <= targetTicks) ??
+    ELAPSED_STEPS_MS[ELAPSED_STEPS_MS.length - 1];
   // Past the last candidate, a recording long enough to outrun it - or a phone
   // asking for fewer ticks - keeps doubling it, so the target still holds.
-  while (durationMs / step > targetTicks) step *= 2;
+  while (span / step > targetTicks) step *= 2;
 
   const ticks: number[] = [];
-  for (let time = 0; time <= durationMs; time += step) {
+  for (
+    let time = Math.ceil(startMs / step) * step;
+    time <= endMs;
+    time += step
+  ) {
     ticks.push(time);
   }
   return ticks;

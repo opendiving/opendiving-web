@@ -1103,6 +1103,9 @@ leaves vertical swipes and pinches to the page. The readout stays after the fing
 nothing is left hovering, and clears on a press outside the chart. Mouse events the browser sends
 after a tap are ignored for a second: in whole pixels they name a neighbour on a continuous axis.
 
+The dive profile zooms, so it keeps pinches for itself (`touch-action: pan-y`) and, zoomed, a drag
+pans the plot unless it starts on the crosshair; a tap still reads out.
+
 A gas dot is a link, so a first tap reads it and the card offers Open dive; a second tap opens it.
 The dot pinned is the one the tap's `click` lands on, since the browser aims it at the nearest link
 under the fingertip.

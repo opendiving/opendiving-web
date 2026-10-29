@@ -36,3 +36,26 @@ export function tap(target: Element, at: { x: number; y: number }) {
 export function pressElsewhere() {
   fireEvent.pointerDown(document.body, { ...FINGER, pointerId: 8 });
 }
+
+const THUMB = { pointerType: "touch", isPrimary: false, pointerId: 9 };
+
+/**
+ * Two fingers on `target` moving from one pair of points to another and
+ * lifting - the first is the primary finger the other helpers move.
+ */
+export function pinch(
+  target: Element,
+  from: [{ x: number; y: number }, { x: number; y: number }],
+  to: [{ x: number; y: number }, { x: number; y: number }],
+) {
+  const at = ({ x, y }: { x: number; y: number }) => ({
+    clientX: x,
+    clientY: y,
+  });
+  fireEvent.pointerDown(target, { ...FINGER, ...at(from[0]) });
+  fireEvent.pointerDown(target, { ...THUMB, ...at(from[1]) });
+  fireEvent.pointerMove(target, { ...FINGER, ...at(to[0]) });
+  fireEvent.pointerMove(target, { ...THUMB, ...at(to[1]) });
+  fireEvent.pointerUp(target, { ...THUMB, ...at(to[1]) });
+  fireEvent.pointerUp(target, { ...FINGER, ...at(to[0]) });
+}
