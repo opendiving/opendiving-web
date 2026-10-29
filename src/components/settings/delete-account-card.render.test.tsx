@@ -26,6 +26,10 @@ vi.mock("@/lib/navigation", () => ({
   hardNavigate: vi.fn(),
 }));
 
+vi.mock("@/lib/auth-broadcast", () => ({
+  announceSignedOut: vi.fn(),
+}));
+
 const toast = vi.fn();
 vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast }),
@@ -35,17 +39,20 @@ const { usersAPI } = await import("@/lib/api/users");
 const { exportAPI } = await import("@/lib/api/export");
 const { downloadBlob } = await import("@/lib/download");
 const { hardNavigate } = await import("@/lib/navigation");
+const { announceSignedOut } = await import("@/lib/auth-broadcast");
 
 const deleteAccount = vi.mocked(usersAPI.deleteAccount);
 const download = vi.mocked(exportAPI.download);
 const save = vi.mocked(downloadBlob);
 const leave = vi.mocked(hardNavigate);
+const announce = vi.mocked(announceSignedOut);
 
 beforeEach(() => {
   deleteAccount.mockReset();
   download.mockReset();
   save.mockReset();
   leave.mockReset();
+  announce.mockReset();
   toast.mockReset();
   deleteAccount.mockResolvedValue({
     message: "User deleted",
@@ -112,6 +119,8 @@ describe("DeleteAccountCard", () => {
     expect(leave).toHaveBeenCalledWith(
       "/goodbye?purge_after=2026-09-04T10%3A00%3A00Z",
     );
+    // The account is dark in every tab, so every other tab leaves too.
+    expect(announce).toHaveBeenCalledTimes(1);
   });
 
   it("reports a delete that failed and stays put", async () => {
@@ -128,6 +137,7 @@ describe("DeleteAccountCard", () => {
       ),
     );
     expect(leave).not.toHaveBeenCalled();
+    expect(announce).not.toHaveBeenCalled();
     // Re-armed rather than stuck in its loading state: the account is still there,
     // and so is the decision.
     expect(confirmButton()).toBeEnabled();

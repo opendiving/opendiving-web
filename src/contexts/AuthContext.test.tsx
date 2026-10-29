@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/api/client";
@@ -433,6 +433,69 @@ describe("AuthProvider outcomes", () => {
     // A destination left over from an unclicked magic link would otherwise sit
     // in `localStorage` for a day, readable after the diver has gone.
     expect(rememberPostAuthRedirect).toHaveBeenCalledWith(undefined);
+  });
+});
+
+// Every other tab of this browser is showing a session the server has just ended.
+// The broadcast module is left real, and a second channel of the same name stands
+// in for the other tab.
+describe("AuthProvider across tabs", () => {
+  let otherTab: BroadcastChannel | undefined;
+  afterEach(() => otherTab?.close());
+
+  async function signedIn() {
+    refreshAccessToken.mockResolvedValue("token");
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    const hook = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(hook.result.current.isAuthenticated).toBe(true));
+    return hook;
+  }
+
+  it("tells the other tabs once the server confirmed the sign-out", async () => {
+    otherTab = new BroadcastChannel("auth");
+    const heard = vi.fn();
+    otherTab.onmessage = (event) => heard(event.data);
+    const { result } = await signedIn();
+
+    authAPI.signOut.mockResolvedValue(undefined);
+    await act(() => result.current.signOut());
+
+    await waitFor(() => expect(heard).toHaveBeenCalledWith("signed-out"));
+  });
+
+  it("tells them nothing when the sign-out failed", async () => {
+    otherTab = new BroadcastChannel("auth");
+    const heard = vi.fn();
+    otherTab.onmessage = (event) => heard(event.data);
+    const { result } = await signedIn();
+
+    authAPI.signOut.mockRejectedValue(new Error("500"));
+    await expect(act(() => result.current.signOut())).rejects.toThrow("500");
+    await new Promise((done) => setTimeout(done, 20));
+
+    expect(heard).not.toHaveBeenCalled();
+  });
+
+  it("leaves for the landing page when another tab signs out", async () => {
+    await signedIn();
+    otherTab = new BroadcastChannel("auth");
+
+    otherTab.postMessage("signed-out");
+
+    await waitFor(() => expect(hardNavigate).toHaveBeenCalledWith("/"));
+  });
+
+  // Nothing to drop, and somebody may be halfway through the sign-in form.
+  it("leaves a signed-out tab where it is", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    otherTab = new BroadcastChannel("auth");
+
+    otherTab.postMessage("signed-out");
+    await new Promise((done) => setTimeout(done, 20));
+
+    expect(hardNavigate).not.toHaveBeenCalled();
   });
 });
 

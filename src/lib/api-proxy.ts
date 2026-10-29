@@ -132,7 +132,24 @@ function upstreamHeaders(request: NextRequest): Headers {
   return headers;
 }
 
-function downstreamHeaders(upstream: Response): Headers {
+// Starlette builds a redirect's `Location` from the `Host` it was dialled on, which is
+// the internal address: passed through, it would send the browser somewhere it cannot
+// reach and tell it the private API host on the way. One that names that origin is cut
+// to its path, which the browser resolves against this one; any other is the API's to
+// mean and goes through untouched. Resolved against `target` so a relative or
+// scheme-relative value is judged by where it really points.
+function browserFacingLocation(location: string, target: string): string {
+  let resolved: URL;
+  try {
+    resolved = new URL(location, target);
+  } catch {
+    return location;
+  }
+  if (resolved.origin !== new URL(target).origin) return location;
+  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+}
+
+function downstreamHeaders(upstream: Response, target: string): Headers {
   const perConnection = connectionScopedHeaders(upstream.headers);
   // `fetch` decodes a compressed body transparently but leaves the header describing it
   // in place, so forwarding the pair would tell the browser to decode plain bytes - and
@@ -151,7 +168,10 @@ function downstreamHeaders(upstream: Response): Headers {
     // Merged into one comma-joined value by this loop, which is wrong for cookies -
     // `Expires` contains a comma. Re-added individually below.
     if (name === "set-cookie") continue;
-    headers.set(name, value);
+    headers.set(
+      name,
+      name === "location" ? browserFacingLocation(value, target) : value,
+    );
   }
 
   // The refresh-token cookie is the reason this proxy has to exist as more than a URL
@@ -168,7 +188,7 @@ function downstreamHeaders(upstream: Response): Headers {
  *
  * Nothing is buffered in either direction: every upload, a logbook archive included,
  * goes up as a stream and the export archive comes down as one. That holds because
- * `src/proxy.ts`'s matcher excludes `api/` - a request that reaches middleware has its
+ * `src/proxy.ts`'s matcher excludes `api/v1/` - a request that reaches middleware has its
  * body cloned into memory first, capped at Next's 10 MB default, and silently truncated
  * past it.
  *
@@ -235,6 +255,6 @@ export async function proxyToApi(request: NextRequest): Promise<Response> {
   return new Response(bodyless ? null : upstream.body, {
     status: upstream.status,
     statusText: upstream.statusText,
-    headers: downstreamHeaders(upstream),
+    headers: downstreamHeaders(upstream, target),
   });
 }

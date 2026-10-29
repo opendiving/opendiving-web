@@ -10,6 +10,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { basemapOrigins } from "@/lib/basemap";
 import { startDisplay, type Display } from "./display";
 import { createEngine, type NativeModule } from "./engine";
 import { createResources } from "./resources";
@@ -72,7 +73,13 @@ async function main() {
   const nativeVersion: string =
     require("@maplibre/maplibre-gl-native/package.json").version;
 
-  const resources = createResources({ siteUrl: config.siteUrl, publicDir });
+  // The same origins the web's CSP lets a browser fetch this basemap from, by
+  // the same function, so a host the map cannot reach is one the tiles cannot.
+  const resources = createResources({
+    siteUrl: config.siteUrl,
+    publicDir,
+    origins: basemapOrigins(config.basemap),
+  });
   const engine = createEngine({ native, config, resources, log });
   const signature = await rendererSignature({
     sourceDigest: __MAP_RENDERER_SOURCE_DIGEST__,

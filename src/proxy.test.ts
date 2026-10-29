@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { API_REFERENCE_STYLE_HASHES } from "@/lib/api-reference-csp";
 import { config } from "./proxy";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -286,10 +287,9 @@ describe("matcher", () => {
   // one-header way to be served a full HTML document with no CSP, no HSTS and no
   // `X-Robots-Tag`.
   //
-  // Vitest never runs Next's matcher, so this can only be a static assertion about the
-  // exported `config` - which is exactly why it is worth writing down. The guarantee is
-  // four lines away from being handed back, and every other test here calls `proxy()`
-  // directly, so not one of them would notice.
+  // The guarantee is four lines away from being handed back, and the tests above call
+  // `proxy()` directly, so not one of them would notice. Asserted both ways: on the
+  // exported `config`, and through Next's own matcher with the headers that clause read.
   it("gives no request header a way to opt out of the policy", () => {
     expect(config.matcher.length).toBeGreaterThan(0);
 
@@ -299,5 +299,40 @@ describe("matcher", () => {
       expect(entry).not.toHaveProperty("missing");
       expect(entry).not.toHaveProperty("has");
     }
+
+    for (const headers of [
+      { purpose: "prefetch" },
+      { "next-router-prefetch": "1" },
+      { "sec-purpose": "prefetch" },
+    ]) {
+      expect(
+        unstable_doesMiddlewareMatch({
+          config,
+          url: "http://dives.example.com/privacy",
+          headers,
+        }),
+      ).toBe(true);
+    }
+  });
+
+  // The API proxy is skipped so its bodies stream unbuffered; anything else under
+  // `/api` is the not-found page, scripts and all, and needs the policy.
+  it.each([
+    ["/api/v1/dive", false],
+    ["/api/v1/auth/email/verify/check", false],
+    ["/api/v1", true],
+    ["/api", true],
+    ["/api/foo", true],
+    ["/api-docs", true],
+    ["/home", true],
+    ["/_next/static/chunks/main.js", false],
+    ["/healthz", false],
+  ])("%s runs the middleware: %s", (pathname, expected) => {
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        url: `http://dives.example.com${pathname}`,
+      }),
+    ).toBe(expected);
   });
 });

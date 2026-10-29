@@ -340,11 +340,12 @@ Load-bearing in `lib/api-proxy.ts`: `Expect` is dropped (`undici`: `UND_ERR_NOT_
 `Accept-Encoding` is not forwarded nor `Content-Encoding`/`content-length` passed back (`fetch`
 decodes its hop); `Set-Cookie` is re-added via `getSetCookie()` (comma-joining breaks `Expires`); no
 body for `HEAD`/204/205/304; `request.body` streams (`duplex: "half"`) only while `src/proxy.ts`'s
-matcher excludes `api/`, as middleware buffers, truncating at `experimental.proxyClientMaxBodySize`;
-the unreachable-API log omits the `?token=` query; `X-Forwarded-For` passes through unappended (a
-handler cannot see the socket peer). The API trusts it only from `TRUSTED_PROXY_IPS`: omitted,
-callers share one rate-limit bucket; naming a directly exposed container makes every per-IP limit
-forgeable (`.env.example` warns).
+matcher excludes `api/v1/`, as middleware buffers, truncating at
+`experimental.proxyClientMaxBodySize`; a `Location` on the internal origin is cut to its path
+(Starlette builds redirects from the `Host` it was dialled on); the unreachable-API log omits the
+`?token=` query; `X-Forwarded-For` passes through unappended (a handler cannot see the socket peer).
+The API trusts it only from `TRUSTED_PROXY_IPS`: omitted, callers share one rate-limit bucket;
+naming a directly exposed container makes every per-IP limit forgeable (`.env.example` warns).
 
 ## Strict, nonce-based CSP via `src/proxy.ts` - Node server only
 
@@ -1232,9 +1233,11 @@ a signed-out visitor can do.
 ## The destination round-trips through `lib/auth-redirect.ts`
 
 `useAuthGuard` redirects with `router.replace` to `signInHref(...)`, `/signin?next=<encoded path>`.
-`sanitizeRedirectPath` rejects anything but a plain `/`-relative path (absolute URLs, `//host`,
-`/\host`), in and out, since the value sits in storage between. The guard reads `window.location`,
-not `useSearchParams()`, which would force a `Suspense` boundary onto every page calling it.
+`sanitizeRedirectPath` rejects anything but a plain `/`-relative path, in and out, since the value
+sits in storage between. It judges the parsed URL, not the spelling: a different origin (`//host`,
+`/\host`) or a normalised pathname starting `//` (`/.//host`, `/a/..//host`, `%2e` forms) is
+refused, and what passes comes back normalised. The guard reads `window.location`, not
+`useSearchParams()`, which would force a `Suspense` boundary onto every page calling it.
 
 The magic link returns on `/auth/verify` with no destination, so `AuthForm` calls
 `rememberPostAuthRedirect` on every link request (resends included) and `/auth/verify` calls
@@ -3537,7 +3540,7 @@ serves HTTP. It checks neither Postgres nor Redis: the web container talks to ne
 database it never uses must not restart a container that renders fine; the API has its own readiness
 probe. `await connection()`, because a handler with no request-time API is prerendered and served
 from disk, and a health endpoint running none of the app's code is a strange thing to trust. The
-`src/proxy.ts` matcher excludes it, like `api/`: a policy about scripts and styles says nothing
+`src/proxy.ts` matcher excludes it, like `api/v1/`: a policy about scripts and styles says nothing
 about two words of text, and it keeps a fresh nonce off a path hit every thirty seconds. The check
 is a `node -e` one-liner in exec form: the image ships neither `curl` nor `wget`, and with no shell
 involved `process.env.PORT` is read by node at run time, so a moved port works.

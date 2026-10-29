@@ -58,6 +58,16 @@ const nextConfig = {
           },
         ],
       },
+      // The two pages an emailed link lands on with a live token in its query.
+      // `strict-origin-when-cross-origin` still sends the full URL to this origin,
+      // so every chunk and API request the page makes before it strips the token
+      // would carry it in `Referer`. A header rather than route metadata so it
+      // governs from the first byte, ahead of the `<meta>`. Later entries win, so
+      // these stay after the catch-all.
+      ...["/auth/verify", "/settings/confirm-email"].map((source) => ({
+        source,
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      })),
     ];
   },
 };

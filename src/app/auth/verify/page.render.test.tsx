@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -20,9 +21,11 @@ const { router, checkEmailLink, verifyEmailLink, restoreAccount, consume } =
     consume: vi.fn(() => null as string | null),
   }));
 
+// Off the live location, as Next's hook reads it once its router has synced to the
+// page's own `replaceState`.
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
-  useSearchParams: () => new URLSearchParams({ token: "tok" }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 vi.mock("@/lib/api/auth", () => ({ authAPI: { checkEmailLink } }));
 vi.mock("@/contexts/AuthContext", () => ({
@@ -42,6 +45,7 @@ const PENDING = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.history.replaceState(null, "", "/auth/verify?token=tok");
   consume.mockReturnValue(null);
   restoreAccount.mockResolvedValue(undefined);
 });
@@ -138,6 +142,30 @@ describe("the magic-link landing page", () => {
     ).toBeVisible();
     expect(pageText()).toContain("already been permanently deleted");
     expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  // The token leaves the address bar before anyone clicks, and the page must still
+  // hold it for the precheck and the click - through Strict Mode's second effect.
+  it("checks and spends the token it took out of the address bar", async () => {
+    checkEmailLink.mockResolvedValue({
+      valid: true,
+      email: "diver@example.com",
+    });
+    verifyEmailLink.mockResolvedValue({ status: "authenticated" });
+    const user = userEvent.setup();
+
+    render(
+      <StrictMode>
+        <VerifyMagicLinkPage />
+      </StrictMode>,
+    );
+    const button = await screen.findByRole("button", { name: /^sign in$/i });
+    await waitFor(() => expect(window.location.search).toBe(""));
+    await user.click(button);
+
+    expect(checkEmailLink).toHaveBeenCalledTimes(1);
+    expect(checkEmailLink).toHaveBeenCalledWith("tok");
+    await waitFor(() => expect(verifyEmailLink).toHaveBeenCalledWith("tok"));
   });
 
   it("still signs an ordinary link in", async () => {

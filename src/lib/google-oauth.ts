@@ -273,7 +273,12 @@ export function consumeGoogleAttempt(
   if (!state) return null;
 
   const attempts = readAttempts();
-  const attempt = attempts[state];
+  // Own entries only: `?state=__proto__` would otherwise read `Object.prototype`,
+  // whose missing `expiresAt` slips past the expiry check below. Not `Object.hasOwn`,
+  // which the `es2020` lib this compiles against does not declare.
+  const attempt = Object.prototype.hasOwnProperty.call(attempts, state)
+    ? attempts[state]
+    : undefined;
   delete attempts[state];
   writeAttempts(attempts);
 

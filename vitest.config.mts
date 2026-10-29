@@ -27,6 +27,7 @@ const BROWSER_TESTS = "src/**/*.browser.test.{ts,tsx}";
 const NODE_TESTS = [
   "src/map-renderer/**/*.test.ts",
   "src/proxy.test.ts",
+  "src/next-config.test.ts",
   "src/app/robots.test.ts",
   "src/app/layout.test.ts",
   "src/app/healthz/route.test.ts",

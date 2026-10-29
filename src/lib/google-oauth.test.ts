@@ -155,6 +155,17 @@ describe("consuming an attempt", () => {
     expect(consumeGoogleAttempt("not-a-state-we-minted")).toBeNull();
   });
 
+  // Names every object has, own or not - read off the prototype, the first one is
+  // `Object.prototype` itself, which has no `expiresAt` to fail the expiry check on.
+  it.each(["__proto__", "constructor", "toString", "hasOwnProperty"])(
+    "refuses %s, which the attempt map inherits rather than holds",
+    async (state) => {
+      await beginGoogleSignIn({ clientId: CLIENT_ID });
+
+      expect(consumeGoogleAttempt(state)).toBeNull();
+    },
+  );
+
   it("refuses a missing state without touching what is stored", async () => {
     const url = await beginGoogleSignIn({ clientId: CLIENT_ID });
 

@@ -250,6 +250,11 @@ export const config = {
       // with those letters - `/api-docs`, `/apidemo` - which would then be
       // served with no CSP at all, silently.
       //
+      // `api/v1/` and not `api/`: the proxy below `/api/v1/` is excluded only so its
+      // bodies stream unbuffered (`lib/api-proxy.ts`). Every other path under `/api`,
+      // the bare `/api/v1` included, is Next's not-found *page*, scripts and all, and
+      // gets the policy like any other page.
+      //
       // `healthz` is excluded for the same reason the API routes are: it answers a
       // container healthcheck with two words of plain text, and a policy governing
       // scripts and styles has nothing to say about it. Skipping it also keeps the
@@ -273,8 +278,9 @@ export const config = {
       // HSTS and no `X-Robots-Tag`. Cache poisoning was never the risk - these responses
       // are `private, no-cache, no-store, max-age=0, must-revalidate` with no `ETag`, so
       // no shared cache may store the CSP-less document and no 304 path exists - the
-      // header-stripping primitive itself was. Without the clause, no request shape
-      // yields a CSP-less response.
+      // header-stripping primitive itself was. Without the clause, no request header
+      // yields a CSP-less page; only the excluded paths go without one, and none of
+      // them answers with HTML.
       //
       // It never covered the prefetches browsers send on their own, either. `matchHas`
       // (`node_modules/next/dist/shared/lib/router/utils/prepare-destination.js`) looks a
@@ -290,7 +296,8 @@ export const config = {
       // a static shell, and the document that runs those scripts mints its own nonce.
       // See "Cache Components asks for one opt-out, and leaves the nonce CSP alone" in
       // DECISIONS.md; this file is not what the flags change.
-      source: "/((?!api/|_next/static/|_next/image/|favicon.ico$|healthz$).*)",
+      source:
+        "/((?!api/v1/|_next/static/|_next/image/|favicon.ico$|healthz$).*)",
     },
   ],
 };

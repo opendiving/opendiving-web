@@ -1,10 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authAPI } from "@/lib/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLinkToken } from "@/hooks/useLinkToken";
 import { Button } from "@/components/ui/button";
 import { StandaloneShell } from "@/components/layout/standalone-shell";
 import {
@@ -49,10 +50,9 @@ export function ConfirmEmailChangePageContent() {
 type ConfirmState = "checking" | "ready" | "verifying" | "success" | "error";
 
 function ConfirmEmailChangeContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { refreshUser } = useAuth();
-  const token = searchParams.get("token");
+  const token = useLinkToken();
   const [state, setState] = useState<ConfirmState>(
     token ? "checking" : "error",
   );
