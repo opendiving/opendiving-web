@@ -10,6 +10,9 @@ import { apiClient } from "./client";
  *
  * `used_bytes` is the sum of the three parts. `limit_bytes` is `null` when the
  * instance sets no limit, and then nothing is ever refused for space.
+ *
+ * The counts say how many files each kind holds and how many dives or
+ * certifications they hang off.
  */
 export interface StorageUsage {
   used_bytes: number;
@@ -17,6 +20,10 @@ export interface StorageUsage {
   dive_files_bytes: number;
   certification_files_bytes: number;
   pictures_bytes: number;
+  dive_files_count: number;
+  dives_with_files_count: number;
+  certification_files_count: number;
+  certifications_with_files_count: number;
 }
 
 /** The signed-in caller's storage figures. */

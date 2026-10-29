@@ -23,6 +23,10 @@ describe("getUsage", () => {
       dive_files_bytes: 1_000,
       certification_files_bytes: 1_500,
       pictures_bytes: 500,
+      dive_files_count: 2,
+      dives_with_files_count: 1,
+      certification_files_count: 1,
+      certifications_with_files_count: 1,
     };
     get.mockResolvedValue({ data: usage });
 

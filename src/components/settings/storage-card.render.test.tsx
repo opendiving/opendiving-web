@@ -24,6 +24,10 @@ const usage = (overrides: Record<string, number | null> = {}) => ({
   dive_files_bytes: 128 * MB,
   certification_files_bytes: 96 * MB,
   pictures_bytes: 32 * MB,
+  dive_files_count: 12,
+  dives_with_files_count: 9,
+  certification_files_count: 1,
+  certifications_with_files_count: 1,
   ...overrides,
 });
 
@@ -59,7 +63,7 @@ describe("StorageCard", () => {
     await screen.findByRole("meter");
 
     const figureFor = (label: string) =>
-      within(screen.getByText(label).parentElement!).getByRole("definition");
+      within(screen.getByText(label).closest("div")!).getByRole("definition");
     expect(figureFor("Dive-computer files")).toHaveTextContent("128.0 MB");
     expect(figureFor("Certification cards")).toHaveTextContent("96.0 MB");
     expect(figureFor("Profile picture and portrait")).toHaveTextContent(
@@ -67,9 +71,30 @@ describe("StorageCard", () => {
     );
     expect(
       screen.getByText(/Dive-computer files are stored compressed/),
-    ).toHaveTextContent(
-      /before compression was introduced counts at its full size/,
+    ).not.toHaveTextContent(/before compression/);
+  });
+
+  it("says how many files each kind holds and what they are attached to", async () => {
+    render(<StorageCard />);
+    await screen.findByRole("meter");
+
+    expect(screen.getByText("12 files on 9 dives")).toBeInTheDocument();
+    expect(screen.getByText("1 file on 1 certification")).toBeInTheDocument();
+  });
+
+  it("leaves the counts out of a kind with no files", async () => {
+    mocks.getUsage.mockImplementation(async () =>
+      usage({
+        dive_files_count: 0,
+        dives_with_files_count: 0,
+        certification_files_count: 0,
+        certifications_with_files_count: 0,
+      }),
     );
+    render(<StorageCard />);
+    await screen.findByRole("meter");
+
+    expect(screen.queryByText(/ files? on /)).toBeNull();
   });
 
   it("fills the bar and says so once the account is past its limit", async () => {
