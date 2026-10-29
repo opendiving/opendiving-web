@@ -287,10 +287,9 @@ describe("matcher", () => {
   // one-header way to be served a full HTML document with no CSP, no HSTS and no
   // `X-Robots-Tag`.
   //
-  // Vitest never runs Next's matcher, so this can only be a static assertion about the
-  // exported `config` - which is exactly why it is worth writing down. The guarantee is
-  // four lines away from being handed back, and every other test here calls `proxy()`
-  // directly, so not one of them would notice.
+  // The guarantee is four lines away from being handed back, and the tests above call
+  // `proxy()` directly, so not one of them would notice. Asserted both ways: on the
+  // exported `config`, and through Next's own matcher with the headers that clause read.
   it("gives no request header a way to opt out of the policy", () => {
     expect(config.matcher.length).toBeGreaterThan(0);
 
@@ -299,6 +298,20 @@ describe("matcher", () => {
       // conditions on the path, which is what the exclusions in it are for.
       expect(entry).not.toHaveProperty("missing");
       expect(entry).not.toHaveProperty("has");
+    }
+
+    for (const headers of [
+      { purpose: "prefetch" },
+      { "next-router-prefetch": "1" },
+      { "sec-purpose": "prefetch" },
+    ]) {
+      expect(
+        unstable_doesMiddlewareMatch({
+          config,
+          url: "http://dives.example.com/privacy",
+          headers,
+        }),
+      ).toBe(true);
     }
   });
 
