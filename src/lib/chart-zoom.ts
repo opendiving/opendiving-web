@@ -18,9 +18,12 @@ export const fullView = (extent: number): ChartView => ({
 export const isZoomed = (view: ChartView, extent: number) =>
   view.end - view.start < extent;
 
-// Slid back inside the axis wherever it overhangs an end, keeping its span.
+// Slid back inside the axis wherever it overhangs an end, keeping its span, and
+// in whole units: a zoom in and back out by the same factor otherwise lands a
+// float's width inside the axis, and reads as still zoomed.
 function within(start: number, span: number, extent: number): ChartView {
-  const clamped = Math.min(Math.max(0, start), extent - span);
+  span = Math.min(extent, Math.round(span));
+  const clamped = Math.min(Math.max(0, Math.round(start)), extent - span);
   return { start: clamped, end: clamped + span };
 }
 

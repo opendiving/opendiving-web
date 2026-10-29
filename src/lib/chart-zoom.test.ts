@@ -33,6 +33,22 @@ describe("scaleView", () => {
     });
   });
 
+  it("comes back to the whole axis from a zoom in and out by the same factor", () => {
+    for (const anchor of [0, 0.25, 0.3, 0.5, 0.7, 1]) {
+      const zoomedIn = scaleView(
+        fullView(2_781_000),
+        Math.exp(0.5),
+        anchor,
+        anchor,
+        2_781_000,
+        60_000,
+      );
+      expect(
+        scaleView(zoomedIn, Math.exp(-0.5), anchor, anchor, 2_781_000, 60_000),
+      ).toEqual(fullView(2_781_000));
+    }
+  });
+
   it("does not zoom an axis shorter than the minimum span", () => {
     expect(scaleView(fullView(50), 4, 0.5, 0.5, 50, 100)).toEqual(fullView(50));
   });
