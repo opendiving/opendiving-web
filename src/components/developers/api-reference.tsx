@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { ApiReferenceReact } from "@scalar/api-reference-react";
 import "@scalar/api-reference-react/style.css";
 import "./scalar-theme.css";
 
-import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { API_BASE_URL } from "@/lib/api-base";
+import { CredentialFilter } from "./credential-filter";
 import {
-  CREDENTIAL_OPTIONS,
   type Credential,
   filterByCredential,
   namesCredentials,
@@ -43,6 +41,7 @@ export function ApiReference() {
   const documentUrl = `${apiBase.href.replace(/\/$/, "")}/openapi.json`;
 
   const [spec, setSpec] = useState<OpenApiDocument | "failed" | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [credential, setCredential] = useState<Credential | "all">("all");
 
   useEffect(() => {
@@ -92,29 +91,13 @@ export function ApiReference() {
   if (spec === null) return <SectionSpinner />;
 
   return (
-    <div className="od-api-reference">
+    <div ref={containerRef} className="od-api-reference">
       {filterable && (
-        <div className="flex flex-col gap-2 pt-6 sm:flex-row sm:items-center sm:gap-3">
-          <Label htmlFor="api-reference-credential" className="shrink-0">
-            Show routes for
-          </Label>
-          <div className="sm:w-80">
-            <NativeSelect
-              id="api-reference-credential"
-              value={credential}
-              onChange={(event) =>
-                setCredential(event.target.value as Credential | "all")
-              }
-            >
-              <option value="all">Any credential</option>
-              {CREDENTIAL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
-        </div>
+        <CredentialFilter
+          container={containerRef}
+          value={credential}
+          onChange={setCredential}
+        />
       )}
       {/* Keyed on the mode because Scalar reads `forceDarkModeState` once, at mount. */}
       <ApiReferenceReact
