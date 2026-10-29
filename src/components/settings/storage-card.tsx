@@ -147,7 +147,7 @@ function UsageDetails({ usage }: { usage: StorageUsage }) {
             className="flex items-center justify-between gap-3 px-3 py-2"
           >
             <dt>
-              <span className="text-muted-foreground">{label}</span>
+              <span>{label}</span>
               {attached && (
                 <span className="block text-xs text-muted-foreground">
                   {attached}
@@ -165,20 +165,18 @@ function UsageDetails({ usage }: { usage: StorageUsage }) {
           comparing the two would otherwise read the difference as an error. */}
       <p className="text-sm text-muted-foreground">
         Dive-computer files are stored compressed, so they count for less here
-        than the sizes listed on your dives. A file uploaded before compression
-        was introduced counts at its full size.
+        than the sizes listed on your dives.
       </p>
     </div>
   );
 }
 
-// "12 files on 9 dives", or nothing when there are no files or the API predates
-// the counts.
+// "12 files on 9 dives", or nothing when there are no files.
 function attachedTo(
-  files: number | undefined,
-  owners: number | undefined,
+  files: number,
+  owners: number,
   owner: string,
 ): string | null {
-  if (!files || owners === undefined) return null;
+  if (files === 0) return null;
   return `${files} ${files === 1 ? "file" : "files"} on ${owners} ${owner}${owners === 1 ? "" : "s"}`;
 }

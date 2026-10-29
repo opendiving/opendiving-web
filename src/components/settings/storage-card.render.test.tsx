@@ -18,7 +18,7 @@ const GB = 1024 ** 3;
 
 // A factory, so every call hands back a fresh object (see "A shared mock response
 // object hides a render loop" in DECISIONS.md).
-const usage = (overrides: Record<string, number | null | undefined> = {}) => ({
+const usage = (overrides: Record<string, number | null> = {}) => ({
   used_bytes: 256 * MB,
   limit_bytes: GB,
   dive_files_bytes: 128 * MB,
@@ -71,9 +71,7 @@ describe("StorageCard", () => {
     );
     expect(
       screen.getByText(/Dive-computer files are stored compressed/),
-    ).toHaveTextContent(
-      /before compression was introduced counts at its full size/,
-    );
+    ).not.toHaveTextContent(/before compression/);
   });
 
   it("says how many files each kind holds and what they are attached to", async () => {
@@ -84,13 +82,13 @@ describe("StorageCard", () => {
     expect(screen.getByText("1 file on 1 certification")).toBeInTheDocument();
   });
 
-  it("leaves the counts out with no files, or from an API without them", async () => {
+  it("leaves the counts out of a kind with no files", async () => {
     mocks.getUsage.mockImplementation(async () =>
       usage({
         dive_files_count: 0,
         dives_with_files_count: 0,
-        certification_files_count: undefined,
-        certifications_with_files_count: undefined,
+        certification_files_count: 0,
+        certifications_with_files_count: 0,
       }),
     );
     render(<StorageCard />);
