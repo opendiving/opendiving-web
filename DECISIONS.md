@@ -6238,9 +6238,7 @@ Render ignores a moved tag; the job calls a [Deploy Hook](https://render.com/doc
 `imgURL` naming the digest read off `:sha-`. `RENDER_DEPLOY_HOOKS` is comma-separated, one hook per
 service; absent it passes with a notice, set-but-empty fails. Each hook is `::add-mask::`ed
 (substrings are not), and whitespace is stripped with `tr -d ' \t\r'`, not `[:space:]`, which eats
-the separators. The secret belongs in the `production` environment, whose deployment-branch policy
-admits only `main`; a repository secret is readable from any pushed branch. That is a setting, not
-code: the job's comment gives the order to set it up in.
+the separators.
 
 ## `code-quality.yml` carries no commented-out steps: Renovate skips them and git keeps the text
 
