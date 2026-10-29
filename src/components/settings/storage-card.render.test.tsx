@@ -18,12 +18,16 @@ const GB = 1024 ** 3;
 
 // A factory, so every call hands back a fresh object (see "A shared mock response
 // object hides a render loop" in DECISIONS.md).
-const usage = (overrides: Record<string, number | null> = {}) => ({
+const usage = (overrides: Record<string, number | null | undefined> = {}) => ({
   used_bytes: 256 * MB,
   limit_bytes: GB,
   dive_files_bytes: 128 * MB,
   certification_files_bytes: 96 * MB,
   pictures_bytes: 32 * MB,
+  dive_files_count: 12,
+  dives_with_files_count: 9,
+  certification_files_count: 1,
+  certifications_with_files_count: 1,
   ...overrides,
 });
 
@@ -59,7 +63,7 @@ describe("StorageCard", () => {
     await screen.findByRole("meter");
 
     const figureFor = (label: string) =>
-      within(screen.getByText(label).parentElement!).getByRole("definition");
+      within(screen.getByText(label).closest("div")!).getByRole("definition");
     expect(figureFor("Dive-computer files")).toHaveTextContent("128.0 MB");
     expect(figureFor("Certification cards")).toHaveTextContent("96.0 MB");
     expect(figureFor("Profile picture and portrait")).toHaveTextContent(
@@ -70,6 +74,29 @@ describe("StorageCard", () => {
     ).toHaveTextContent(
       /before compression was introduced counts at its full size/,
     );
+  });
+
+  it("says how many files each kind holds and what they are attached to", async () => {
+    render(<StorageCard />);
+    await screen.findByRole("meter");
+
+    expect(screen.getByText("12 files on 9 dives")).toBeInTheDocument();
+    expect(screen.getByText("1 file on 1 certification")).toBeInTheDocument();
+  });
+
+  it("leaves the counts out with no files, or from an API without them", async () => {
+    mocks.getUsage.mockImplementation(async () =>
+      usage({
+        dive_files_count: 0,
+        dives_with_files_count: 0,
+        certification_files_count: undefined,
+        certifications_with_files_count: undefined,
+      }),
+    );
+    render(<StorageCard />);
+    await screen.findByRole("meter");
+
+    expect(screen.queryByText(/ files? on /)).toBeNull();
   });
 
   it("fills the bar and says so once the account is past its limit", async () => {
