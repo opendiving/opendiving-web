@@ -78,10 +78,15 @@
   scroll-margin-top: calc(var(--refs-viewport-offset) - var(--header-height));
 }
 
-/* Scalar's own `lg`, where its sidebar appears: the settings menu's gap from it. */
+/* Scalar's own `lg`, where its sidebar appears: the settings menu's gap from it, and the
+   sidebar's search row starting level with the first section's content. */
 @media (width >= 1000px) {
   .od-api-reference .references-rendered .section {
     padding-left: 1.5rem;
+  }
+
+  .od-api-reference aside.t-doc__sidebar > :first-child {
+    padding-top: 1.5rem;
   }
 }
 
