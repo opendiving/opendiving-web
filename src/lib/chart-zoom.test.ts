@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { fullView, isZoomed, panView, scaleView } from "./chart-zoom";
+import {
+  type ChartView,
+  fullView,
+  isZoomed,
+  panView,
+  scaleView,
+} from "./chart-zoom";
 
 describe("scaleView", () => {
   it("holds the instant under a wheel where it was", () => {
@@ -46,6 +52,22 @@ describe("scaleView", () => {
       expect(
         scaleView(zoomedIn, Math.exp(-0.5), anchor, anchor, 2_781_000, 60_000),
       ).toEqual(fullView(2_781_000));
+    }
+  });
+
+  it("comes back to the whole axis from wheel steps in and out", () => {
+    // A wheel zooms each step on the view the last one left.
+    const step = (view: ChartView, factor: number, anchor: number) =>
+      scaleView(view, factor, anchor, anchor, 3_600_000, 60_000);
+    for (const notches of [1, 2, 5, 8]) {
+      for (const anchor of [0.123, 0.5, 0.9]) {
+        let view = fullView(3_600_000);
+        for (let n = 0; n < notches; n++)
+          view = step(view, Math.exp(0.5), anchor);
+        for (let n = 0; n < notches; n++)
+          view = step(view, Math.exp(-0.5), anchor);
+        expect(view, `${notches} at ${anchor}`).toEqual(fullView(3_600_000));
+      }
     }
   });
 
