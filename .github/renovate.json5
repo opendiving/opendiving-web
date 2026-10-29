@@ -29,9 +29,10 @@
   //     scoped to one ecosystem, which together make the "Node runtime" rule below
   //     inexpressible under it. That rule is not a nicety; its own comment says why an
   //     ungrouped Node bump here is wrong by construction.
-  //   - It has no equivalent of `customManagers`, so the four `npx --yes <tool>@<version>`
-  //     pins in `code-quality.yml` would stay frozen forever. The regex manager at the bottom
-  //     of this file is the only thing in either repository that watches them.
+  //   - It reads a workflow's `uses:` and nothing in its `with:`, so the Trivy version
+  //     `vulnerability-scan.yml` hands `setup-trivy` would stay frozen forever. Renovate's
+  //     github-actions manager reads that input as a dependency of its own
+  //     (`aquasecurity/trivy`, `github-releases`) and renews it like any other pin.
   //   - The api repo already runs Renovate. A second bot on the sibling repo means two
   //     dashboards, two PR-title conventions and two settings pages for one product that
   //     ships as a matched pair.
@@ -59,6 +60,17 @@
   // Vulnerability-driven ones ignore this entirely - see `vulnerabilityAlerts`. Times are
   // UTC; no `timezone` is set because nothing here cares which morning it is.
   "schedule": ["before 9am on monday"],
+
+  // No version is proposed until it has been public for three days - the window in which a
+  // hijacked maintainer account's release is usually spotted and pulled, and in which npm
+  // still lets an author unpublish. It covers every manager here, and for npm it reaches the
+  // transitive tree too: Renovate runs npm with `--before` that many days back whenever it
+  // regenerates `package-lock.json`, `lockFileMaintenance` included. Vulnerability fixes are
+  // the one exception, and say so below.
+  //
+  // The api repo's copy has neither this nor an exact Trivy version yet. That is drift, to be
+  // closed there, and not a difference this file means to keep.
+  "minimumReleaseAge": "3 days",
 
   // Rebase only on a conflict, not every time `main` moves. A Monday batch gets merged one PR
   // at a time, each rebased by hand just before its merge, so rebasing the rest after every
@@ -106,6 +118,12 @@
   "vulnerabilityAlerts": {
     "enabled": true,
     "schedule": ["at any time"],
+    // Nor for the release-age delay above - Renovate's default here, stated because the
+    // trade is deliberate. The version a fix PR proposes is the lowest one an advisory names,
+    // so it has already been looked at by someone other than its author; a fixable HIGH
+    // holds every PR red on the Trivy check until its fix merges; and a person still merges
+    // it.
+    "minimumReleaseAge": null,
     "semanticCommitType": "fix",
     "labels": ["dependencies", "security"],
 
@@ -123,24 +141,6 @@
   // OSV needs nothing switched on anywhere, so the alerting above works from the merge of
   // this file rather than from whenever someone remembers the settings page.
   "osvVulnerabilityAlerts": true,
-
-  // The four version-pinned tools in `code-quality.yml` are fetched at run time with
-  // `npx --yes <tool>@<version>` and belong to no manager: they are not in `package.json`, so
-  // the npm manager never sees them, and the `github-actions` manager reads `uses:` rather
-  // than `run:`. Left alone they are the most reliably stale thing in the repository - a
-  // version somebody typed once, in a step whose output nobody diffs.
-  //
-  // Deliberately narrow. It matches the exact `npx --yes name@version` spelling those four
-  // steps use, with the leading digit on the version so a bare `npx --yes prettier` is left
-  // alone rather than being handed a pin it never asked for.
-  "customManagers": [
-    {
-      "customType": "regex",
-      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
-      "matchStrings": ["npx --yes (?<depName>(?:@[^/\\s]+/)?[a-z0-9][^@\\s]*)@(?<currentValue>[0-9][^\\s\"'\\\\]*)"],
-      "datasourceTemplate": "npm",
-    },
-  ],
 
   "packageRules": [
     {
@@ -189,33 +189,6 @@
       "matchManagers": ["dockerfile"],
       "matchPackageNames": ["ubuntu"],
       "enabled": false,
-    },
-    {
-      // Not the action - `aquasecurity/setup-trivy` keeps its SHA pin renewed like every
-      // other third-party action here. This is its `version:` **input**, which Renovate's
-      // github-actions manager extracts as a dependency of its own
-      // (`aquasecurity/trivy`, `github-releases`, currently `latest`). Left enabled, the one
-      // plausible PR it can open is the one thing `vulnerability-scan.yml` says must never
-      // happen: replacing `latest` with a number freezes the scanner's advisory knowledge
-      // while it goes on reporting zero findings, which is a security check that has become
-      // indistinguishable from good news.
-      //
-      // In practice Renovate has nothing to do with a `currentValue` of `latest` and skips
-      // it. This rule is here because "in practice" is the wrong standard for that failure -
-      // it is silent, and it would arrive as an ordinary green dependency PR. Found by
-      // running `renovate --platform=local --dry-run=extract` against this repository, which
-      // is also the way to check anything else here before trusting it.
-      "matchManagers": ["github-actions"],
-      "matchPackageNames": ["aquasecurity/trivy"],
-      "enabled": false,
-    },
-    {
-      // Every step the regex manager above feeds ends in `|| true` - they are advisory
-      // reports, not gates - so no bump among them can turn a check red, and a PR per tool
-      // per release would be noise with nothing to read. One grouped PR, on the ordinary
-      // Monday schedule.
-      "matchManagers": ["custom.regex"],
-      "groupName": "code-quality tools",
     },
     {
       // TypeScript 7 is the native port and ships no JavaScript compiler API, which both

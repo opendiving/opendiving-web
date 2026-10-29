@@ -23,6 +23,28 @@ const out = path.join(root, "build", "map-renderer");
 // Loaded by the renderer, never bundled: both are native addons.
 const NATIVE = ["@maplibre/maplibre-gl-native", "sharp"];
 
+// The sha256 of MapLibre Native's `mbgl.node` on each platform the image is
+// built for. Its install script downloads the file from a GitHub release and
+// checks nothing, so this is what would notice a replaced one. A bump of the
+// package fails the build until the new version's hashes are here, beside the
+// `allowScripts` pin in `package.json` that moves with them - deliberately, so
+// a new binary is let in by a person rather than by a lockfile. For version V:
+//
+//   curl -fsSL https://github.com/maplibre/maplibre-native/releases/download/node-vV/node-v137-linux-x64-Release.tar.gz |
+//     tar -xzO node-v137/mbgl.node | shasum -a 256
+//
+// and again for `linux-arm64`. Elsewhere - a Mac running `npm run build` - the
+// binary never reaches an image, and is not checked.
+const MAPLIBRE_NATIVE = {
+  version: "6.4.1",
+  sha256: {
+    "linux-x64-node-v137":
+      "b52e834bf5db70b28ddb50664b284675e86a49186ecc711162c4c87873776b9c",
+    "linux-arm64-node-v137":
+      "21325a102054e914dc70e197fcd4fe76cbcf4cf7d95e42962d7c5688ff42335c",
+  },
+};
+
 const options = {
   absWorkingDir: root,
   entryPoints: ["src/map-renderer/main.ts"],
@@ -109,15 +131,40 @@ for (const name of NATIVE) {
 }
 // Its install script is what downloads the binary, and an npm that blocks
 // install scripts leaves a package with nothing in it to load.
+const maplibre = path.join(out, "node_modules/@maplibre/maplibre-gl-native");
+const target = `${process.platform}-${process.arch}-node-v${process.versions.modules}`;
 const binary = path.join(
-  out,
-  "node_modules/@maplibre/maplibre-gl-native/lib",
+  maplibre,
+  "lib",
   `node-v${process.versions.modules}`,
   "mbgl.node",
 );
 if (!existsSync(binary)) {
   throw new Error(
     `MapLibre Native has no binary for this Node (${path.relative(out, binary)}). ` +
-      "Its install script fetches it: check that npm ran it.",
+      "Its install script fetches it, and npm runs that only for the version " +
+      "`allowScripts` in package.json names.",
   );
+}
+if (process.platform === "linux") {
+  const { version } = JSON.parse(
+    readFileSync(path.join(maplibre, "package.json")),
+  );
+  const expected =
+    version === MAPLIBRE_NATIVE.version && MAPLIBRE_NATIVE.sha256[target];
+  if (!expected) {
+    throw new Error(
+      `No recorded sha256 for MapLibre Native ${version} on ${target}: ` +
+        "add it to MAPLIBRE_NATIVE in scripts/build-map-renderer.mjs.",
+    );
+  }
+  const actual = createHash("sha256")
+    .update(readFileSync(binary))
+    .digest("hex");
+  if (actual !== expected) {
+    throw new Error(
+      `MapLibre Native's binary for ${target} hashes to ${actual}, ` +
+        `not the ${expected} recorded for ${version}.`,
+    );
+  }
 }
