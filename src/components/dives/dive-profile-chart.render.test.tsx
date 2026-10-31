@@ -2013,7 +2013,11 @@ describe("DiveProfileChart with a gradient factor past the percent axis's bound"
     const clip = container.querySelector(
       `clipPath[id="${reference.slice(5, -1)}"] rect`,
     );
-    expect(Number(clip?.getAttribute("y"))).toBe(rowRules(container)[0]);
+    // Half a stroke outside each rule, so a reading on the rule is not drawn
+    // half as thick as the same line anywhere else.
+    const [top, bottom] = rowRules(container);
+    expect(Number(clip?.getAttribute("y"))).toBe(top - 0.75);
+    expect(Number(clip?.getAttribute("height"))).toBe(bottom - top + 1.5);
 
     // And not applied to the depth plot, whose domain covers its own curve by
     // construction and whose readout dots sit on its edges - a clip there would
