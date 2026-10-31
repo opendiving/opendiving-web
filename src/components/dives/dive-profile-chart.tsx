@@ -155,6 +155,9 @@ const PANEL_LABEL_SIZE = 10;
 // has to hold half of each: 11- and 10-unit type is about 1.2 em tall, 12.6 units
 // between them, and 16 leaves a few units of air.
 const PANEL_GAP = 16;
+// A channel line's stroke. The panel clip reaches half of it past each rule, so
+// a reading sitting exactly on a row's top or bottom value keeps its full width.
+const LINE_WIDTH = 1.5;
 
 // The vertical layout for a depth plot `plotHeight` tall: where it ends, where
 // each panel row starts, and where the drawing and the viewBox stop. The
@@ -1133,9 +1136,9 @@ export function DiveProfileChart({
             <clipPath key={axis} id={`${clipPrefix}-panel-${index}`}>
               <rect
                 x={left}
-                y={panelTop(index)}
+                y={panelTop(index) - LINE_WIDTH / 2}
                 width={plotWidth}
-                height={PANEL_HEIGHT}
+                height={PANEL_HEIGHT + LINE_WIDTH}
               />
             </clipPath>
           ))}
@@ -1343,7 +1346,7 @@ export function DiveProfileChart({
                       .join(" ")}
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth={1.5}
+                    strokeWidth={LINE_WIDTH}
                     // From the channel rather than from this line's key, so the
                     // legend swatch below can read the same flag - see `dashed`
                     // on `ProfileChannel` for why the dash is load-bearing.
