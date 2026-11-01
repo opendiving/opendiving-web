@@ -407,7 +407,7 @@ export function DiveProfileChart({
   menuContainer,
   scaleWith = NO_PEERS,
 }: DiveProfileChartProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   // Everything below reads this rather than the prop: the recording cut at the
   // dive's end, with `duration` moved to that instant. Cutting the samples
   // before anything derives from them, rather than ending only the x scale, is

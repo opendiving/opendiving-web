@@ -1,7 +1,6 @@
 "use client";
 
 import { unitSystemFor, type UnitSystem } from "@/lib/units";
-
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { nextActiveIndex } from "@/components/ui/creatable-combobox";
@@ -257,7 +256,7 @@ export function VolumeCombobox({
   ...slotProps
 }: VolumeComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   // The diver's own recent volumes, fetched on each open so a dive saved in
   // another tab shows up. The last answer stays on screen while the next loads,
   // and a failed fetch keeps whatever it had - the presets work regardless.

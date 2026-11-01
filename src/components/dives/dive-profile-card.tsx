@@ -124,7 +124,7 @@ function describeProfileContents(
 // they share, so that answer reads the same way off either computer's grid.
 
 export function DiveProfileCard({ dive }: DiveProfileCardProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   // Every charted recording's samples by recording uuid, all fetched together:
   // the shown one is drawn, and the others set its scales alongside it - see
   // `scaleWith`. Null while in flight, for the reasons `ProfileResult` gives.

@@ -14,7 +14,7 @@ import {
 /** Reads unit preferences and saves presets or individual families to the account. */
 export function useUserPreferences() {
   const { user, refreshUser } = useAuth();
-  const preferences = useUnits();
+  const { preferences } = useUnits();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const saving = useRef(false);

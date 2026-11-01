@@ -15,7 +15,7 @@ import {
 import { DiveIcon } from "@/components/logo";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
-import { formatDepth, formatTemperature, formatVisibility } from "@/lib/units";
+
 import type { ReturnTarget } from "@/lib/return-to";
 
 /**
@@ -34,13 +34,12 @@ export function DiveHero({
   back: ReturnTarget;
   actions?: ReactNode;
 }) {
-  const units = useUnits();
+  const { formatDepth, formatTemperature, formatVisibility } = useUnits();
   const locations = diveMapLocations(dive);
   const isPlaced = hasMapPosition(locations);
   const facts = diveFacts(dive);
 
-  const wholeDepth = (meters: number) =>
-    formatDepth(meters, units, { decimals: 0 });
+  const wholeDepth = (meters: number) => formatDepth(meters, { decimals: 0 });
   const figures: MapHeroFigure[] = [
     {
       label: "Dive time",
@@ -55,7 +54,7 @@ export function DiveHero({
   if (dive.bottom_temperature != null) {
     readings.push({
       label: "Water temp",
-      value: formatTemperature(dive.bottom_temperature, units, {
+      value: formatTemperature(dive.bottom_temperature, {
         decimals: 0,
       }),
     });
@@ -63,7 +62,7 @@ export function DiveHero({
   if (dive.visibility != null) {
     readings.push({
       label: "Visibility",
-      value: formatVisibility(dive.visibility, units),
+      value: formatVisibility(dive.visibility),
     });
   }
   if (dive.avg_depth != null && figures.length + readings.length < 4) {

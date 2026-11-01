@@ -1,7 +1,5 @@
 "use client";
 
-import { unitSystemFor } from "@/lib/units";
-
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
@@ -44,7 +42,6 @@ import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { useUnits } from "@/hooks/useUnits";
-import { unitLabel } from "@/lib/units";
 
 interface GearItemDialogProps {
   open: boolean;
@@ -339,7 +336,7 @@ export function GearItemDialog({
 // A cylinder's three facts. Its own component so only a dialog showing them reads the
 // diver's units, which the pressure box converts.
 function CylinderFactFields({ control }: { control: Control<GearItemInput> }) {
-  const units = useUnits();
+  const { preferences: units, unitLabel, unitSystemFor } = useUnits();
   return (
     <>
       <div className="grid grid-cols-2 gap-4">
@@ -365,13 +362,11 @@ function CylinderFactFields({ control }: { control: Control<GearItemInput> }) {
           name="working_pressure"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                Working pressure ({unitLabel("pressure", units)})
-              </FormLabel>
+              <FormLabel>Working pressure ({unitLabel("pressure")})</FormLabel>
               <FormControl>
                 <UnitNumberInput
                   dimension="pressure"
-                  units={unitSystemFor("pressure", units)}
+                  units={unitSystemFor("pressure")}
                   min={0}
                   placeholderValue={232}
                   {...field}

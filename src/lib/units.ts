@@ -4,9 +4,9 @@
 // `UnitNumberInput` is the other edge, and it is built out of what's here.
 //
 // Nothing in this file reaches for React or for context. Components read the
-// preference once through `useUnits` and pass it down, which is what keeps the gas
+// preference through `useUnits`, which binds these helpers for components. The gas
 // maths in `lib/dive-mixtures.ts`, the Zod schemas, `prefillFromLastDive` and the
-// import-apply path unit-blind - they all run on metric values and never learn the
+// import-apply path stay unit-blind - they all run on metric values and never learn the
 // diver's preference at all.
 
 /** The two systems the app renders in. Mirrors the API's `UnitSystem` StrEnum. */

@@ -156,7 +156,7 @@ export function PlaceSearch({
   disabled,
 }: PlaceSearchProps) {
   const searchId = useId();
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   // What each menu row would place. Held in a ref rather than state because
   // nothing renders from it - the combobox hands back an id, and this is what
   // turns that id back into the pick it came from, already tagged.

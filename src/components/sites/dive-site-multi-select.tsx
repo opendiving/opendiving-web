@@ -72,7 +72,7 @@ export function DiveSiteMultiSelect({
         value.length > 1 || !knownSites?.some((site) => site.uuid === uuid),
     ),
   );
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const [showNewDialog, setShowNewDialog] = useState(false);
   // Set by a save in the new-site dialog, so its close doesn't hand focus back
   // to the input - which would reopen the menu `blurOnSelect` just shut.

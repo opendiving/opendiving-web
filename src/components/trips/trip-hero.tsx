@@ -24,7 +24,7 @@ export function TripHero({
 }) {
   const locations = tripPartLocations(trip.parts);
   const facts = tripFacts(trip);
-  const units = useUnits();
+  const { preferences: units } = useUnits();
 
   return (
     <MapHero
