@@ -33,7 +33,7 @@ import {
 import { GAS_ROLES, TANK_USAGE } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 import { CylinderCombobox } from "@/components/dives/cylinder-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import type { GearItemInfo } from "@/lib/api/gear";
 import {
   isVolumeFromVessel,
@@ -205,7 +205,7 @@ function MixtureCylinderPicker({
   index: number;
   count: number;
   until?: string;
-} & FormControlSlotProps) {
+} & FormControlA11yProps) {
   const { getValues, setValue } = useFormContext<MixtureFieldsValues>();
   const gearItemUuid = useWatch({
     control,
@@ -270,7 +270,7 @@ function MixtureVolumeInput({
   value: number | "" | undefined;
   onChange: (value: number | "") => void;
   until?: string;
-} & FormControlSlotProps) {
+} & FormControlA11yProps) {
   const gearItemUuid = useWatch({
     control,
     name: `mixtures.${index}.gear_item_uuid`,

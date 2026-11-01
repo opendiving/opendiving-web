@@ -135,9 +135,8 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
             )
           )}
           <DropdownMenuSeparator />
-          {/* The dialog mounts while this item still has focus - Radix flushes
-              `onSelect` before it closes the menu - and `DialogContent` hands
-              focus back to the Fields button, not to the item, when it closes. */}
+          {/* The dialog opens from a menu item that disappears on selection.
+              DialogContent returns focus to the Fields button when it closes. */}
           <DropdownMenuItem onClick={() => setIsConfigureOpen(true)}>
             <Settings className="mr-2 h-3.5 w-3.5" aria-hidden />
             Configure...

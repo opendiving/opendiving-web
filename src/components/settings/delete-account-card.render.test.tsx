@@ -179,10 +179,8 @@ describe("DeleteAccountCard", () => {
     await waitFor(() => expect(save).toHaveBeenCalled());
     expect(confirmButton()).toBeDisabled();
 
-    // And it does re-arm - a gate that never lifted would pass every assertion above
-    // while making the export a one-way door of its own. Real timers rather than
-    // faked ones: `SAVE_SETTLE_MS` is short, and Radix's dialog does not survive a
-    // faked clock.
+    // Verify the gate re-arms so exporting remains available after the cooldown.
+    // Real timers let the dialog effects and save cooldown advance together.
     await waitFor(() => expect(confirmButton()).toBeEnabled(), {
       timeout: 4_000,
     });

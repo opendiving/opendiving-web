@@ -19,7 +19,7 @@ import {
   RepeatableRow,
   RepeatableRowField,
 } from "@/components/ui/repeatable-row";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import {
   geocodingAPI,
   GeocodeResult,
@@ -175,7 +175,7 @@ function firstMessage(node: unknown): string | undefined {
   return undefined;
 }
 
-export interface TripPartsFieldProps extends FormControlSlotProps {
+export interface TripPartsFieldProps extends FormControlA11yProps {
   // The trip's parts, in the order the diver arranged them.
   value: TripPartFormValue[];
   onChange: (parts: TripPartFormValue[]) => void;

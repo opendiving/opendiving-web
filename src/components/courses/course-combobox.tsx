@@ -5,7 +5,7 @@ import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { CourseDialog } from "@/components/courses/course-dialog";
 import { useLookupLabels } from "@/hooks/useLookupLabels";
@@ -17,7 +17,7 @@ const COURSES_PER_SEARCH = 25;
 const lookupCourses = (uuids: string[]) =>
   coursesAPI.lookupCoursesByUuid(uuids);
 
-export interface CourseComboboxProps extends FormControlSlotProps {
+export interface CourseComboboxProps extends FormControlA11yProps {
   value?: string | null;
   // `null`, not `undefined`, for "no course" - and the distinction is
   // load-bearing on the dive edit form, which builds its PATCH body by skipping

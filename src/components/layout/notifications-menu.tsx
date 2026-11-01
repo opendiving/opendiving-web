@@ -195,7 +195,7 @@ export function NotificationsMenu() {
           ref={panelRef}
           align="end"
           aria-label="Notifications"
-          // Radix focuses the first tabbable descendant, which here is the first
+          // Base UI focuses the first tabbable descendant, which here is the first
           // row's title link, ringed as though it had been asked for. The panel
           // itself holds focus instead; Tab reaches the rows.
           initialFocus={panelRef}

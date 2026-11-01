@@ -44,7 +44,7 @@ vi.mock("@/hooks/useNotifications", () => ({
 
 const FINGER = { pointerType: "touch", pointerId: 7, button: 0 };
 
-// Radix listens for a press outside an open layer from the next tick on.
+// Base UI listens for a press outside an open layer from the next tick on.
 const nextTick = () => act(() => new Promise((done) => setTimeout(done, 0)));
 
 beforeEach(async () => {

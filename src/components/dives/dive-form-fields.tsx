@@ -826,7 +826,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     {/* Weight is the one dimension with a second toggle elsewhere:
                     the gear-set dialog opens from inside this form and enters a
                     weight of its own. Both read the same store, so the two never
-                    disagree, and Radix's modal `aria-hidden` keeps only one of
+                    disagree, and the modal keeps only one of
                     them exposed at a time. The outer `FormField` holds `weight`, so
                     this is the field's body alone. */}
                     <DiveUnitNumberItem

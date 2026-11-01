@@ -30,7 +30,7 @@ interface UserAvatarProps {
  * header. It fetches through the API client and renders from an object URL, the same
  * path certification card images take (`hooks/useAuthedBlobUrl.ts`).
  *
- * There is deliberately no loading state and no `onLoad`/`onError` bookkeeping: Radix
+ * There is deliberately no loading state and no `onLoad`/`onError` bookkeeping: Base UI
  * shows `AvatarFallback` until an `AvatarImage` has actually loaded, so an avatar in
  * flight, an avatar that failed and an account with no avatar all render the same
  * initials, with no layout shift between them and no broken-image glyph ever.

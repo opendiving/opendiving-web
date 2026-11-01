@@ -18,9 +18,8 @@ interface ProgressProps extends Omit<
  * How far along a task is - an upload's bytes sent against its total - which is
  * why its role is `progressbar` and not the `meter` beside it.
  *
- * shadcn's `progress`, drawn as the registry draws it - a full-width indicator
- * moved into place - without the Radix primitive under it, which this repo
- * does not depend on and which would add only the role.
+ * A full-width indicator moves to represent the value. Native progressbar ARIA
+ * attributes supply its accessible value without an additional component.
  */
 export function Progress({
   value,

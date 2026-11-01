@@ -286,7 +286,7 @@ export function GearSetDialog({
                   {/* This dialog keeps a weight toggle of its own even though
                       the dive form has one: standalone on `/gear` it is the only
                       place a gear weight is ever entered. Mounted together the
-                      two names collide, and Radix's modal `aria-hidden` is what
+                      two names collide, and the modal is what
                       keeps only one of them exposed to assistive tech. */}
                   <EntryUnitLabelRow
                     dimension="weight"

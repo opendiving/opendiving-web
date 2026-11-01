@@ -158,7 +158,7 @@ describe("DatePicker text entry", () => {
 
   it("hands focus back to the icon button when Escape closes the grid", async () => {
     // The icon button is the one path that puts focus inside the calendar, so
-    // it is the one close that needs Radix's restore: without it Escape
+    // it is the one close that needs Base UI's restore: without it Escape
     // unmounts the focused day cell and focus falls to the document body.
     render(<Field initial="2024-06-01" />);
 

@@ -81,8 +81,8 @@ export function CheckEmailCard({
   const router = useRouter();
   const codeFieldRef = useRef<HTMLDivElement>(null);
 
-  // Radix's roving focus only decides which box is *tabbable*; nothing points the
-  // caret at box one on its own. Three moments need it there, so they share this.
+  // Starting or restarting entry puts the caret in the first code box.
+  // The initial render and both recovery paths share this focus helper.
   const focusFirstCodeBox = useCallback(() => {
     codeFieldRef.current?.querySelector("input")?.focus();
   }, []);
@@ -102,10 +102,8 @@ export function CheckEmailCard({
     focusFirstCodeBox();
   }, [focusFirstCodeBox]);
 
-  // Puts the caret back in the first box after the value is emptied. Without it
-  // focus stays wherever it was - box six, most likely - and Radix will happily
-  // write the next digit typed there into position six of an otherwise empty
-  // code, which looks like the field is broken.
+  // Clearing the value alone leaves focus in its current box. Restart entry
+  // from the first box so the next digit fills the beginning of the code.
   const restartCodeEntry = () => {
     setCode("");
     focusFirstCodeBox();
@@ -209,7 +207,7 @@ export function CheckEmailCard({
         {/* A `<span>` rather than the `Label` component: the field below is a
             `role="group"` of six inputs, not one control, so there is nothing for
             `htmlFor` to point at. `aria-labelledby` names the group instead, and
-            each box keeps its own "Character N of 6" label from Radix. */}
+            each box keeps the wrapper's own "Character N of 6" label. */}
         <span
           id="signin-code-label"
           className="block text-sm font-medium leading-none"

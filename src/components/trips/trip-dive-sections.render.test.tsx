@@ -25,7 +25,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 // The card's link and, as the real card has, either the control it is handed
-// or its menu in the corner - a Radix trigger, so `aria-expanded` too.
+// or its menu in the corner - a Base UI trigger, so `aria-expanded` too.
 vi.mock("@/components/dives/dive-card", () => ({
   DiveCard: ({ dive, addToTrip }: { dive: Dive; addToTrip?: ReactNode }) => (
     <li data-candidate={addToTrip ? "" : undefined}>

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { DateFieldPopup } from "./date-field-popup";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 
 const DATE_TIME_REGEX = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/;
 
@@ -41,7 +41,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-export interface DateTimePickerProps extends FormControlSlotProps {
+export interface DateTimePickerProps extends FormControlA11yProps {
   /** Value formatted as "YYYY-MM-DD HH:mm:ss" */
   value?: string;
   onChange: (value: string) => void;

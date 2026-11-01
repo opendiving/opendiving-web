@@ -35,7 +35,7 @@ function syncViewportVars() {
   root.style.setProperty(HEIGHT_VAR, `${viewport.height}px`);
   root.style.setProperty(TOP_VAR, `${viewport.offsetTop}px`);
   // `window.scrollY` rather than a second measurement: the page is held still
-  // for as long as anything reads it - by Radix's scroll lock behind a dialog,
+  // for as long as anything reads it - by Base UI's scroll lock behind a dialog,
   // and by the sheet's own touch guard behind a picker sheet.
   root.style.setProperty(
     DOC_TOP_VAR,

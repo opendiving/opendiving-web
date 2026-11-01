@@ -109,12 +109,8 @@ export function DiveFormPresetList({ presets }: { presets: DiveFormPresets }) {
                       aria-label={`New name for "${preset.name}"`}
                       disabled={presets.isWorking}
                       onChange={(event) => setDraftName(event.target.value)}
-                      // No Escape handling, deliberately. Radix's dialog listens
-                      // for it on `document` in the *capture* phase, so it has
-                      // already decided to close before a handler here runs and
-                      // `stopPropagation` is too late to matter - verified by the
-                      // test that tried it. Escape keeps its dialog meaning; the
-                      // cross beside this field is the way out of the rename.
+                      // Escape closes the dialog; the cross beside the field
+                      // cancels only the rename.
                       className="h-8 min-w-0 flex-1"
                     />
                     <IconTooltip

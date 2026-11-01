@@ -128,7 +128,7 @@ describe("an icon button's name under a finger", () => {
         <PopoverContent>Open elsewhere</PopoverContent>
       </Popover>,
     );
-    // Radix listens for a press outside an open panel from the next tick on.
+    // Base UI listens for a press outside an open panel from the next tick on.
     wait(0);
 
     fireEvent.pointerDown(button, { ...FINGER, button: 0 });
@@ -186,7 +186,7 @@ describe("a label's hint under a finger", () => {
       </TextHint>,
     );
     tap(screen.getByText("Pescador Island +1"));
-    // Radix listens for a press outside an open hint from the next tick on.
+    // Base UI listens for a press outside an open hint from the next tick on.
     wait(0);
 
     tap(document.body);

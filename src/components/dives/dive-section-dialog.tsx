@@ -96,7 +96,7 @@ export function DiveSectionDialog({
         className="sm:max-w-2xl"
         // The panel rather than the first field: on a phone a focused box raises
         // the keyboard over a dialog the diver has not read yet, and a combobox
-        // would open its list. Radix's own fallback for a dialog with nothing
+        // would open its list. Base UI's own fallback for a dialog with nothing
         // tabbable, so it is still announced and still traps focus.
         initialFocus={panel}
       >

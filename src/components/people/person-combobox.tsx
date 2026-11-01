@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import type { Person } from "@/lib/api/people";
 import { usePeopleByUuid } from "@/hooks/usePeopleByUuid";
 import { PersonDialog } from "@/components/people/person-dialog";
@@ -11,7 +11,7 @@ import {
   usePersonPicker,
 } from "@/components/people/use-person-picker";
 
-export interface PersonComboboxProps extends FormControlSlotProps {
+export interface PersonComboboxProps extends FormControlA11yProps {
   value?: string | null;
   // `null`, not `undefined`, for "nobody", for the reason `TripCombobox` gives:
   // an edit form sends every field, and a cleared picker has to be a value.

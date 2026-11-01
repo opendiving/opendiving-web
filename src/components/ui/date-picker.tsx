@@ -12,7 +12,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { DateFieldPopup } from "./date-field-popup";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 
 const DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -29,7 +29,7 @@ function parseDate(value?: string): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
-export interface DatePickerProps extends FormControlSlotProps {
+export interface DatePickerProps extends FormControlA11yProps {
   /** Value formatted as "YYYY-MM-DD", or "" for no selection. */
   value?: string;
   onChange: (value: string) => void;

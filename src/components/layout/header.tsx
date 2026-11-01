@@ -296,9 +296,7 @@ export function Header() {
                     <DropdownMenuContent align="start" className="w-48">
                       {moreItems.map((item) => {
                         const Icon = item.icon;
-                        // `lg:hidden` leaves a `display:none` row that
-                        // Radix's focusFirst loop skips: `.focus()` on it does
-                        // not move `document.activeElement`.
+                        // Keyboard navigation skips the rows hidden at `lg`.
                         return (
                           <DropdownMenuItem
                             key={item.href}

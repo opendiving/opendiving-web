@@ -7,7 +7,7 @@ import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { DiveSiteSummary } from "@/lib/api/dives";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
@@ -24,7 +24,7 @@ const SITES_PER_SEARCH = 25;
 const lookupDiveSites = (uuids: string[]) =>
   diveSitesAPI.lookupDiveSitesByUuid(uuids);
 
-export interface DiveSiteMultiSelectProps extends FormControlSlotProps {
+export interface DiveSiteMultiSelectProps extends FormControlA11yProps {
   // Ordered list of selected dive site uuids - the first entry is the primary
   // site (e.g. shown as "Site Name +2" wherever only one site fits).
   value: string[];

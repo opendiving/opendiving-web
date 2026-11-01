@@ -10,7 +10,7 @@ import {
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import { cn } from "@/lib/utils";
 import { NativeSelect } from "@/components/ui/native-select";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import {
   PERSON_ROLES,
   personRoleLabel,
@@ -30,7 +30,7 @@ import {
 // there". `""` because an `<option>` has to carry a string.
 const NO_ROLE = "";
 
-export interface PeopleMultiSelectProps extends FormControlSlotProps {
+export interface PeopleMultiSelectProps extends FormControlA11yProps {
   // The people on the record, in the diver's order, each with their role.
   value: PersonReference[];
   onChange: (people: PersonReference[]) => void;

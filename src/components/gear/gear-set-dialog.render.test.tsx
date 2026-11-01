@@ -349,7 +349,7 @@ describe("the gear set dialog's weight entry units", () => {
     // the dialog and the form behind it showing different units for the same
     // dimension, and each flip clobbering the other's. `within()` rather than a
     // document-wide query because both toggles carry the same accessible name -
-    // Radix's modal `aria-hidden` is what keeps only one exposed to assistive
+    // the modal keeps only one exposed to assistive
     // tech, and Testing Library does not filter on it.
     render(
       <>

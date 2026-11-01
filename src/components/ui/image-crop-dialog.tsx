@@ -60,7 +60,7 @@ interface ImageCropDialogProps {
  * becomes: a card's is drawn onto a canvas and exported, a picture's is sent to the
  * API as numbers beside the file itself.
  *
- * Zoom is a native `<input type="range">` rather than a Radix slider: it is one
+ * Zoom uses a native `<input type="range">`: it is one
  * value with no empty state, and the native control is keyboard- and
  * touch-accessible without adding a dependency for it.
  */

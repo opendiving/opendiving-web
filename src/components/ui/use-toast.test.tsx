@@ -98,7 +98,7 @@ describe("useToast", () => {
 
     act(() => handle.dismiss());
 
-    // Still present so Radix has something to animate out - just not open.
+    // Still present so Base UI has something to animate out - just not open.
     expect(result.current.toasts).toHaveLength(1);
     expect(result.current.toasts[0].open).toBe(false);
 
@@ -108,7 +108,7 @@ describe("useToast", () => {
     expect(result.current.toasts).toHaveLength(0);
   });
 
-  it("dismisses via the onOpenChange Radix calls when it auto-closes", async () => {
+  it("dismisses through the notification's onOpenChange callback", async () => {
     const { result } = renderHook(() => useToast());
 
     act(() => {

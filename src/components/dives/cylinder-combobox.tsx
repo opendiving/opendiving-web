@@ -5,7 +5,7 @@ import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { gearAPI, GearItem, GearItemInfo, gearItemLabel } from "@/lib/api/gear";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 
@@ -27,7 +27,7 @@ function asInfo(item: GearItemInfo | GearItem): GearItemInfo {
   };
 }
 
-export interface CylinderComboboxProps extends FormControlSlotProps {
+export interface CylinderComboboxProps extends FormControlA11yProps {
   /** The linked vessel, or `null` - as the read embeds it, so no record is fetched. */
   value: GearItemInfo | null;
   /** The picked vessel, with its facts, or `null` when the link is cleared. */

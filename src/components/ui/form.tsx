@@ -115,7 +115,7 @@ FormLabel.displayName = "FormLabel";
 
 // FormControl passes these attributes through `render`. Custom fields must forward
 // them to their primary focusable control so labels and validation stay accessible.
-export interface FormControlSlotProps {
+export interface FormControlA11yProps {
   id?: string;
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;

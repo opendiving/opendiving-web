@@ -12,13 +12,9 @@ export interface CheckboxProps extends Omit<
 // is a checkbox, and a setting is a switch" in DECISIONS.md for where the line
 // falls.
 //
-// Deliberately not a Radix primitive like the other `ui/` components. A plain
-// `<input>` keeps native form/keyboard/screen-reader behaviour without adding a
-// dependency, and it is the shorter route to `indeterminate`, which the select-all
-// needs and `role="switch"` cannot express at all.
-//
-// It takes `checked`/`onChange`, not Radix's `checked`/`onCheckedChange` - the two
-// are not drop-in for one another.
+// A native input supplies form, keyboard and screen-reader behavior, including
+// the indeterminate state needed by select-all. It uses standard checked/onChange
+// props, while settings use Switch's checked/onCheckedChange API.
 const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
   ({ className, ...props }, ref) => {
     return (

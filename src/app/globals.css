@@ -605,7 +605,7 @@
      same appearance - gets an arrow. The alternative is patching `cursor-pointer`
      onto components one at a time, which is what was happening.
 
-     Radix's menu and listbox items are unaffected: they carry an explicit
+     Base UI's menu and listbox items are unaffected: they carry an explicit
      `cursor-default` (native OS menus don't use a hand), and a utility always
      outranks this layer. Same for `disabled:cursor-not-allowed` on inputs. */
   button:not(:disabled),

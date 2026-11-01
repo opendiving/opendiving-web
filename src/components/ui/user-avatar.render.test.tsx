@@ -26,7 +26,7 @@ beforeEach(() => {
   URL.createObjectURL = vi.fn(() => "blob:avatar");
   URL.revokeObjectURL = vi.fn();
 
-  // Radix decides between the image and the fallback by constructing its own
+  // Base UI decides between the image and the fallback by constructing its own
   // `window.Image`, pointing it at the src and reading `complete`/`naturalWidth` -
   // both of which jsdom leaves at their unloaded values forever, so without this the
   // `<img>` is never rendered and the "shows the picture" case cannot be observed

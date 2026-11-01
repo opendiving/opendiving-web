@@ -86,7 +86,7 @@ function matchingPresetName(
  * once and are not part of the draft.
  *
  * **A dialog rather than a panel on the card.** Nothing in it is a form control of the
- * dive. Radix portals the content to `document.body`, so the DOM has no nested `<form>`;
+ * dive. Base UI portals the content to `document.body`, so the DOM has no nested `<form>`;
  * the two forms inside it still go through `dialogFormSubmit`, because React bubbles
  * submit events through its own tree and not the DOM's (DECISIONS.md, "A dialog's
  * submit event bubbles into the form that opened it").
@@ -156,7 +156,7 @@ export function DiveFormFieldsDialog({
       }}
     >
       <DialogContent
-        // Radix focuses the first tabbable descendant on open. Focus goes to the
+        // Base UI focuses the first tabbable descendant on open. Focus goes to the
         // container instead so that Enter on a freshly opened dialog does nothing
         // at all - `ConfirmDialog` documents the same move for the same reason -
         // and `focus:outline-none` because this is a focus *holder*, not a control,
