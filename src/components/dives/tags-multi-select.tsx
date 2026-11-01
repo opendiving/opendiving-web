@@ -7,11 +7,11 @@ import {
   CreatableCombobox,
   type ComboboxItem,
 } from "@/components/ui/creatable-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { TAG_NAME_MAX, tagKey } from "@/lib/api/tags";
 import { useTags } from "@/hooks/useTags";
 
-export interface TagsMultiSelectProps extends FormControlSlotProps {
+export interface TagsMultiSelectProps extends FormControlA11yProps {
   /** The dive's or the site's tags by name, in the diver's order. */
   value: string[];
   onChange: (tags: string[]) => void;

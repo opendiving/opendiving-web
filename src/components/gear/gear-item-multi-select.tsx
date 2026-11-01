@@ -7,7 +7,7 @@ import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import { readEach, useLookupLabels } from "@/hooks/useLookupLabels";
@@ -27,7 +27,7 @@ const GEAR_PER_SEARCH = 25;
 
 const readGearItems = readEach((uuid: string) => gearAPI.getGearItem(uuid));
 
-export interface GearItemMultiSelectProps extends FormControlSlotProps {
+export interface GearItemMultiSelectProps extends FormControlA11yProps {
   // Selected gear item uuids, in the order they were added.
   value: string[];
   // Details for the items already in `value`, when the caller has them (the dive

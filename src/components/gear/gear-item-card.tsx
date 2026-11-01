@@ -70,11 +70,11 @@ export function GearItemCard({
       actionsLabel={`Actions for ${label}`}
       actions={
         <>
-          <DropdownMenuItem onSelect={onEdit}>
+          <DropdownMenuItem onClick={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onArchiveToggle} disabled={isArchiving}>
+          <DropdownMenuItem onClick={onArchiveToggle} disabled={isArchiving}>
             {item.is_archived ? (
               <ArchiveRestore className="h-4 w-4 mr-2" />
             ) : (

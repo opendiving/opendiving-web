@@ -199,7 +199,11 @@ export function Header() {
     };
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Element;
-      if (target.closest?.("[data-radix-popper-content-wrapper]")) {
+      if (
+        target.closest?.(
+          '[data-slot="popover-content"], [data-slot="dropdown-menu-content"]',
+        )
+      ) {
         setIsMobileMenuOpen(false);
       }
     };
@@ -287,32 +291,30 @@ export function Header() {
                       }`}
                     >
                       More
-                      <ChevronDown className="ml-1 h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+                      <ChevronDown className="ml-1 h-4 w-4 transition-transform group-data-[popup-open]:rotate-180" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-48">
                       {moreItems.map((item) => {
                         const Icon = item.icon;
-                        // `lg:hidden` leaves a `display:none` row that
-                        // Radix's focusFirst loop skips: `.focus()` on it does
-                        // not move `document.activeElement`.
+                        // Keyboard navigation skips the rows hidden at `lg`.
                         return (
                           <DropdownMenuItem
                             key={item.href}
-                            asChild
                             className={
                               item.tier === "lg" ? "lg:hidden" : undefined
                             }
+                            render={
+                              <Link
+                                href={item.href}
+                                aria-current={
+                                  item === currentItem ? "page" : undefined
+                                }
+                                className="flex items-center"
+                              />
+                            }
                           >
-                            <Link
-                              href={item.href}
-                              aria-current={
-                                item === currentItem ? "page" : undefined
-                              }
-                              className="flex items-center"
-                            >
-                              <Icon className="mr-2 h-4 w-4" />
-                              {item.label}
-                            </Link>
+                            <Icon className="mr-2 h-4 w-4" />
+                            {item.label}
                           </DropdownMenuItem>
                         );
                       })}
@@ -354,37 +356,40 @@ export function Header() {
           <div className="flex flex-shrink-0 items-center space-x-2 max-[370px]:space-x-1 max-[360px]:touch:space-x-0">
             {isAuthenticated && user && (
               <DropdownMenu>
-                {/* The hint wraps the *menu* trigger rather than sitting
-                    inside it: two nested `asChild` slots both reach the same
-                    button, and this order is the one Radix documents. */}
+                {/* The tooltip and menu trigger share the same button. */}
                 <IconTooltip label="Create new">
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="px-3 max-[370px]:px-2 max-[360px]:touch:min-w-10"
-                    >
-                      <Plus className="h-4 w-4 touch:h-5 touch:w-5" />
-                    </Button>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="px-3 max-[370px]:px-2 max-[360px]:touch:min-w-10"
+                      />
+                    }
+                  >
+                    <Plus className="h-4 w-4 touch:h-5 touch:w-5" />
                   </DropdownMenuTrigger>
                 </IconTooltip>
                 <DropdownMenuContent align="end">
                   {CREATE_ACTIONS.map((action) => {
                     const Icon = action.icon;
                     return "href" in action ? (
-                      <DropdownMenuItem key={action.label} asChild>
-                        <Link
-                          href={withReturnTo(action.href)}
-                          className="flex items-center"
-                        >
-                          <Icon className="mr-2 h-4 w-4" />
-                          {action.label}
-                        </Link>
+                      <DropdownMenuItem
+                        key={action.label}
+                        render={
+                          <Link
+                            href={withReturnTo(action.href)}
+                            className="flex items-center"
+                          />
+                        }
+                      >
+                        <Icon className="mr-2 h-4 w-4" />
+                        {action.label}
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem
                         key={action.label}
-                        onSelect={() => openCreate(action.kind)}
+                        onClick={() => openCreate(action.kind)}
                       >
                         <Icon className="mr-2 h-4 w-4" />
                         {action.label}
@@ -392,14 +397,16 @@ export function Header() {
                     );
                   })}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={withReturnTo("/import")}
-                      className="flex items-center"
-                    >
-                      <CloudUpload className="mr-2 h-4 w-4" />
-                      Import dives
-                    </Link>
+                  <DropdownMenuItem
+                    render={
+                      <Link
+                        href={withReturnTo("/import")}
+                        className="flex items-center"
+                      />
+                    }
+                  >
+                    <CloudUpload className="mr-2 h-4 w-4" />
+                    Import dives
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -416,18 +423,20 @@ export function Header() {
                 {/* User dropdown */}
                 <DropdownMenu>
                   <IconTooltip label="Account menu">
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="relative me-3 h-9 w-9 rounded-full p-0 max-[370px]:me-2 md:me-0 max-[360px]:touch:me-0 max-[360px]:touch:min-w-10"
-                      >
-                        <UserAvatar
-                          name={user.name}
-                          avatarSha={user.avatar_sha256}
-                          size={36}
-                          className="h-9 w-9"
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          className="relative me-3 h-9 w-9 rounded-full p-0 max-[370px]:me-2 md:me-0 max-[360px]:touch:me-0 max-[360px]:touch:min-w-10"
                         />
-                      </Button>
+                      }
+                    >
+                      <UserAvatar
+                        name={user.name}
+                        avatarSha={user.avatar_sha256}
+                        size={36}
+                        className="h-9 w-9"
+                      />
                     </DropdownMenuTrigger>
                   </IconTooltip>
                   <DropdownMenuContent align="end" className="w-56">
@@ -438,38 +447,46 @@ export function Header() {
                       @{user.username}
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/checkin" className="flex items-center">
-                        <ClipboardList className="mr-2 h-4 w-4" />
-                        Check-in
-                      </Link>
+                    <DropdownMenuItem
+                      render={
+                        <Link href="/checkin" className="flex items-center" />
+                      }
+                    >
+                      <ClipboardList className="mr-2 h-4 w-4" />
+                      Check-in
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={withReturnTo("/import")}
-                        className="flex items-center"
-                      >
-                        <CloudUpload className="mr-2 h-4 w-4" />
-                        Import
-                      </Link>
+                    <DropdownMenuItem
+                      render={
+                        <Link
+                          href={withReturnTo("/import")}
+                          className="flex items-center"
+                        />
+                      }
+                    >
+                      <CloudUpload className="mr-2 h-4 w-4" />
+                      Import
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/export" className="flex items-center">
-                        <CloudDownload className="mr-2 h-4 w-4" />
-                        Export
-                      </Link>
+                    <DropdownMenuItem
+                      render={
+                        <Link href="/export" className="flex items-center" />
+                      }
+                    >
+                      <CloudDownload className="mr-2 h-4 w-4" />
+                      Export
                     </DropdownMenuItem>
                     {/* Straight to the first section: `/settings` only redirects
                         there, and is kept for the links in the API's emails. */}
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href="/settings/account"
-                        className="flex items-center"
-                      >
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings
-                      </Link>
+                    <DropdownMenuItem
+                      render={
+                        <Link
+                          href="/settings/account"
+                          className="flex items-center"
+                        />
+                      }
+                    >
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <ThemeMenuItems />
@@ -483,11 +500,13 @@ export function Header() {
               </>
             ) : (
               <Button
-                asChild
                 size="sm"
                 className="bg-coral text-primary-foreground hover:bg-coral/90"
+                render={<Link href="/signin" />}
+                nativeButton={false}
+                role="link"
               >
-                <Link href="/signin">Sign in</Link>
+                Sign in
               </Button>
             )}
 

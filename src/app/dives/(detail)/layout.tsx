@@ -266,15 +266,17 @@ export default function DiveDetailLayout({
                   size="sm"
                   className={HERO_CONTROL}
                 >
-                  <DropdownMenuItem asChild>
-                    <Link href={withReturnTo(`/dives/${dive.uuid}/edit`)}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Link>
+                  <DropdownMenuItem
+                    render={
+                      <Link href={withReturnTo(`/dives/${dive.uuid}/edit`)} />
+                    }
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
                   </DropdownMenuItem>
                   {/* Absent on a hand-logged dive, or one with no neighbour. */}
                   {openMerge && (
-                    <DropdownMenuItem onSelect={openMerge}>
+                    <DropdownMenuItem onClick={openMerge}>
                       <Merge className="h-4 w-4 mr-2" />
                       Merge
                     </DropdownMenuItem>

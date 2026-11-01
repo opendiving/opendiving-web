@@ -291,13 +291,15 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Course</FormLabel>
-                <FormControl>
-                  <CourseCombobox
-                    value={field.value}
-                    onChange={field.onChange}
-                    until={until}
-                  />
-                </FormControl>
+                <FormControl
+                  render={
+                    <CourseCombobox
+                      value={field.value}
+                      onChange={field.onChange}
+                      until={until}
+                    />
+                  }
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -319,13 +321,15 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Trip</FormLabel>
-                    <FormControl>
-                      <TripCombobox
-                        value={field.value}
-                        onChange={field.onChange}
-                        until={until}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <TripCombobox
+                          value={field.value}
+                          onChange={field.onChange}
+                          until={until}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -339,17 +343,19 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Dive center</FormLabel>
-                    <FormControl>
-                      <ContactCombobox
-                        value={field.value}
-                        onChange={field.onChange}
-                        until={until}
-                        pinnedUuids={roster.contacts}
-                        initialRoles={DIVE_CENTER}
-                        placeholder="Select a dive center..."
-                        addNewLabel="Add dive center..."
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <ContactCombobox
+                          value={field.value}
+                          onChange={field.onChange}
+                          until={until}
+                          pinnedUuids={roster.contacts}
+                          initialRoles={DIVE_CENTER}
+                          placeholder="Select a dive center..."
+                          addNewLabel="Add dive center..."
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -364,14 +370,16 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Dive site(s)</FormLabel>
-                    <FormControl>
-                      <DiveSiteMultiSelect
-                        value={field.value ?? []}
-                        knownSites={knownDiveSites}
-                        onChange={field.onChange}
-                        until={until}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <DiveSiteMultiSelect
+                          value={field.value ?? []}
+                          knownSites={knownDiveSites}
+                          onChange={field.onChange}
+                          until={until}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -401,17 +409,18 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         <FormLabel>Boat name</FormLabel>
                         <div className="relative">
                           <Ship className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                          <FormControl>
-                            {/* `""` is not recorded, and the submit paths trim it into
-                      the API's `null` - see `boatNameOrNull`. */}
-                            <Input
-                              type="text"
-                              placeholder="e.g. Legend"
-                              className="pl-9"
-                              {...field}
-                              value={field.value ?? ""}
-                            />
-                          </FormControl>
+                          <FormControl
+                            render={
+                              /* `""` is not recorded, and the submit paths trim it into
+                      the API's `null` - see `boatNameOrNull`. */ <Input
+                                type="text"
+                                placeholder="e.g. Legend"
+                                className="pl-9"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            }
+                          />
                         </div>
                         <FormMessage />
                       </FormItem>
@@ -433,15 +442,17 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>People</FormLabel>
-                <FormControl>
-                  <PeopleMultiSelect
-                    value={field.value ?? []}
-                    onChange={field.onChange}
-                    defaultRole="buddy"
-                    until={until}
-                    pinnedUuids={roster.people}
-                  />
-                </FormControl>
+                <FormControl
+                  render={
+                    <PeopleMultiSelect
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      defaultRole="buddy"
+                      until={until}
+                      pinnedUuids={roster.people}
+                    />
+                  }
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -474,12 +485,14 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Start time{requiredMark}</FormLabel>
-                <FormControl>
-                  <DiveStartTimeField
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                </FormControl>
+                <FormControl
+                  render={
+                    <DiveStartTimeField
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  }
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -505,31 +518,33 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   <FormLabel>Dive number{requiredMark}</FormLabel>
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="1"
-                        className="pl-9"
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          // `parseInt(...) || 1` looked equivalent and wasn't: `||`
-                          // treats an emptied box (NaN) and a typed 0 alike, so
-                          // clearing the field instantly rewrote it to 1. That write
-                          // also marked the field dirty, and `useSuggestedDiveNumber`
-                          // reads `isDirty` as its permanent "the diver chose a
-                          // number" latch - so one accidental clear stopped the
-                          // number following the date for the rest of the form's
-                          // life, including after a file import changed the date.
-                          // An emptied box must stay empty and let the schema speak.
-                          const parsed = parseInt(e.target.value, 10);
-                          field.onChange(
-                            Number.isNaN(parsed) ? undefined : parsed,
-                          );
-                        }}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          className="pl-9"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            // `parseInt(...) || 1` looked equivalent and wasn't: `||`
+                            // treats an emptied box (NaN) and a typed 0 alike, so
+                            // clearing the field instantly rewrote it to 1. That write
+                            // also marked the field dirty, and `useSuggestedDiveNumber`
+                            // reads `isDirty` as its permanent "the diver chose a
+                            // number" latch - so one accidental clear stopped the
+                            // number following the date for the rest of the form's
+                            // life, including after a file import changed the date.
+                            // An emptied box must stay empty and let the schema speak.
+                            const parsed = parseInt(e.target.value, 10);
+                            field.onChange(
+                              Number.isNaN(parsed) ? undefined : parsed,
+                            );
+                          }}
+                        />
+                      }
+                    />
                   </div>
                   {diveNumberNotice &&
                   field.value === diveNumberNotice.forValue ? (
@@ -550,14 +565,16 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   <FormLabel>Dive time{requiredMark}</FormLabel>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="e.g. 45 or 67:30"
-                        className="pl-9"
-                        {...field}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input
+                          type="text"
+                          placeholder="e.g. 45 or 67:30"
+                          className="pl-9"
+                          {...field}
+                        />
+                      }
+                    />
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -775,27 +792,29 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Gear</FormLabel>
-                        <FormControl>
-                          <DiveGearField
-                            value={field.value ?? []}
-                            knownItems={knownGearItems}
-                            onChange={field.onChange}
-                            until={until}
-                            weight={weightField.value ?? null}
-                            onWeightChange={weightField.onChange}
-                            // One of the moments a value arrives from outside the
-                            // diver's typing: a set that carries a weight fills the
-                            // box, so the box has to be on screen to be seen and changed.
-                            onSetApplied={(set) => {
-                              const revealed: DiveFormFieldKey[] = [];
-                              if (set.gear_items.length > 0) {
-                                revealed.push("gear_item_uuids");
-                              }
-                              if (set.weight != null) revealed.push("weight");
-                              visibility.reveal(revealed);
-                            }}
-                          />
-                        </FormControl>
+                        <FormControl
+                          render={
+                            <DiveGearField
+                              value={field.value ?? []}
+                              knownItems={knownGearItems}
+                              onChange={field.onChange}
+                              until={until}
+                              weight={weightField.value ?? null}
+                              onWeightChange={weightField.onChange}
+                              // One of the moments a value arrives from outside the
+                              // diver's typing: a set that carries a weight fills the
+                              // box, so the box has to be on screen to be seen and changed.
+                              onSetApplied={(set) => {
+                                const revealed: DiveFormFieldKey[] = [];
+                                if (set.gear_items.length > 0) {
+                                  revealed.push("gear_item_uuids");
+                                }
+                                if (set.weight != null) revealed.push("weight");
+                                visibility.reveal(revealed);
+                              }}
+                            />
+                          }
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -807,7 +826,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     {/* Weight is the one dimension with a second toggle elsewhere:
                     the gear-set dialog opens from inside this form and enters a
                     weight of its own. Both read the same store, so the two never
-                    disagree, and Radix's modal `aria-hidden` keeps only one of
+                    disagree, and the modal keeps only one of
                     them exposed at a time. The outer `FormField` holds `weight`, so
                     this is the field's body alone. */}
                     <DiveUnitNumberItem
@@ -840,16 +859,18 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               // "undefined". Each row shows its own.
               <FormItem>
                 <FormLabel>Species spotted</FormLabel>
-                <FormControl>
-                  <SpeciesMultiSelect
-                    value={field.value ?? []}
-                    knownSpecies={knownSpecies}
-                    diveSiteUuids={diveSiteUuids}
-                    onChange={field.onChange}
-                    errors={sightingErrors(fieldState.error)}
-                    onPendingChange={onSpeciesPendingChange}
-                  />
-                </FormControl>
+                <FormControl
+                  render={
+                    <SpeciesMultiSelect
+                      value={field.value ?? []}
+                      knownSpecies={knownSpecies}
+                      diveSiteUuids={diveSiteUuids}
+                      onChange={field.onChange}
+                      errors={sightingErrors(fieldState.error)}
+                      onPendingChange={onSpeciesPendingChange}
+                    />
+                  }
+                />
               </FormItem>
             )}
           />,
@@ -868,13 +889,15 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel id={ratingLabelId}>Rating</FormLabel>
-                    <FormControl>
-                      <RatingInput
-                        aria-labelledby={ratingLabelId}
-                        value={field.value ?? null}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <RatingInput
+                          aria-labelledby={ratingLabelId}
+                          value={field.value ?? null}
+                          onChange={field.onChange}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -888,12 +911,14 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tags</FormLabel>
-                    <FormControl>
-                      <TagsMultiSelect
-                        value={field.value ?? []}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <TagsMultiSelect
+                          value={field.value ?? []}
+                          onChange={field.onChange}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -907,13 +932,15 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter any additional notes about your dive..."
-                        className="min-h-[100px]"
-                        {...field}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Textarea
+                          placeholder="Enter any additional notes about your dive..."
+                          className="min-h-[100px]"
+                          {...field}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}

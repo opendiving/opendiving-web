@@ -52,7 +52,7 @@ export function TripCard({
       actionsLabel={`Actions for ${trip.name}`}
       actions={
         <>
-          <DropdownMenuItem onSelect={onEdit}>
+          <DropdownMenuItem onClick={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </DropdownMenuItem>

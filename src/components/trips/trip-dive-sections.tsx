@@ -447,11 +447,13 @@ export function TripDiveSections({
             title="No dives logged for this trip yet"
             description="Log a dive and assign it to this trip to see it here."
             action={
-              <Button asChild>
-                <Link href={withReturnTo(newDiveHref)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log a dive for this trip
-                </Link>
+              <Button
+                render={<Link href={withReturnTo(newDiveHref)} />}
+                nativeButton={false}
+                role="link"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Log a dive for this trip
               </Button>
             }
           />

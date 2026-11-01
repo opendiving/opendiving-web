@@ -170,9 +170,11 @@ export function PersonDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Alex M." autoFocus {...field} />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input placeholder="e.g. Alex M." autoFocus {...field} />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -184,15 +186,17 @@ export function PersonDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. alexm"
-                      autoComplete="off"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        placeholder="e.g. alexm"
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        {...field}
+                      />
+                    }
+                  />
                   {/* What the link does and does not do, said where it is made:
                       the privacy page is not where a diver reads it first. */}
                   <FormDescription>
@@ -212,9 +216,11 @@ export function PersonDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" autoComplete="off" {...field} />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input type="email" autoComplete="off" {...field} />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -226,9 +232,11 @@ export function PersonDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
-                    <FormControl>
-                      <Input type="tel" autoComplete="off" {...field} />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input type="tel" autoComplete="off" {...field} />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -241,13 +249,15 @@ export function PersonDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="How you met, what they dive, anything worth remembering..."
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Textarea
+                        placeholder="How you met, what they dive, anything worth remembering..."
+                        className="min-h-[80px]"
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

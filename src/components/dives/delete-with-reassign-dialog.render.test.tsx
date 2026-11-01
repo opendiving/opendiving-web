@@ -90,7 +90,7 @@ describe("DeleteWithReassignDialog", () => {
   });
 
   it("opens without the picker grabbing focus", async () => {
-    // Radix focuses the first tabbable descendant on open, and this dialog's
+    // Base UI focuses the first tabbable descendant on open, and this dialog's
     // only child is a combobox that opens its menu on focus. That menu is
     // absolutely positioned over the footer, so a click aimed at Delete would
     // land on a trip instead, quietly filling in a destination nobody chose -

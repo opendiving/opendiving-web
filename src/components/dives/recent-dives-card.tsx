@@ -164,9 +164,11 @@ export function RecentDivesCard({
                   variant="outline"
                   size="sm"
                   className={CARD_TITLE_ACTION}
-                  asChild
+                  render={<Link href={viewAllHref} />}
+                  nativeButton={false}
+                  role="link"
                 >
-                  <Link href={viewAllHref}>{viewAllLabel}</Link>
+                  {viewAllLabel}
                 </Button>
               )}
             </div>
@@ -187,11 +189,13 @@ export function RecentDivesCard({
             title={emptyTitle}
             description={emptyDescription}
             action={
-              <Button asChild>
-                <Link href={withReturnTo(newDiveHref)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {newDiveLabel}
-                </Link>
+              <Button
+                render={<Link href={withReturnTo(newDiveHref)} />}
+                nativeButton={false}
+                role="link"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {newDiveLabel}
               </Button>
             }
           />

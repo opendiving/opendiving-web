@@ -272,9 +272,9 @@ dive. Without a configured email provider on the API side, the magic link is pri
 
 ## Tech stack
 
-Next.js (App Router) + TypeScript, Tailwind CSS, shadcn/ui with Radix primitives, react-hook-form +
-Zod validation, axios. The dive-profile and consumption charts are hand-rolled SVG — no charting
-library.
+Next.js (App Router) + TypeScript, Tailwind CSS, shadcn/ui with Base UI components,
+react-hook-form + Zod validation, axios. The dive-profile and consumption charts are hand-rolled SVG
+— no charting library.
 
 ## Contributing
 

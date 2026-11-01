@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/picker-sheet";
 import { parseDecimal } from "@/lib/decimal-entry";
 import { cn } from "@/lib/utils";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { useUnits } from "@/hooks/useUnits";
 import type { UnitSystem } from "@/lib/units";
 import { divesAPI } from "@/lib/api/dives";
@@ -199,7 +199,7 @@ function volumeOptionLabel(option: VolumeOption, units: UnitSystem): string {
   return `${option.imperialName} (${option.value} L)`;
 }
 
-export interface VolumeComboboxProps extends FormControlSlotProps {
+export interface VolumeComboboxProps extends FormControlA11yProps {
   /** Litres, or `""` for a cylinder whose size was never recorded. */
   value?: number | "";
   /**

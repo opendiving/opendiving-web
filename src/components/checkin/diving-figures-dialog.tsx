@@ -112,22 +112,24 @@ export function DivingFiguresDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Dives logged</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      step={1}
-                      name={field.name}
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                      value={field.value ?? ""}
-                      onChange={(event) => {
-                        const typed = parseInt(event.target.value, 10);
-                        field.onChange(Number.isNaN(typed) ? null : typed);
-                      }}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={1}
+                        name={field.name}
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                        value={field.value ?? ""}
+                        onChange={(event) => {
+                          const typed = parseInt(event.target.value, 10);
+                          field.onChange(Number.isNaN(typed) ? null : typed);
+                        }}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -142,20 +144,21 @@ export function DivingFiguresDialog({
                       writes it: the number is the diver's own system and nothing
                       else on the row says which. */}
                   <FormLabel>Max depth ({unitLabel("depth", units)})</FormLabel>
-                  <FormControl>
-                    {/* Shows and takes the diver's own units while the value
-                        behind it stays metric, like every other depth box. */}
-                    <UnitNumberInput
-                      dimension="depth"
-                      units={units}
-                      min={0}
-                      value={field.value}
-                      onChange={field.onChange}
-                      name={field.name}
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      /* Shows and takes the diver's own units while the value
+                        behind it stays metric, like every other depth box. */ <UnitNumberInput
+                        dimension="depth"
+                        units={units}
+                        min={0}
+                        value={field.value}
+                        onChange={field.onChange}
+                        name={field.name}
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -167,9 +170,14 @@ export function DivingFiguresDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Last dive</FormLabel>
-                  <FormControl>
-                    <DatePicker value={field.value} onChange={field.onChange} />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <DatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

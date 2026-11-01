@@ -119,11 +119,13 @@ export function SpeciesPageFrame({
                   title="No species yet"
                   description="Record what you saw on a dive and it will appear here."
                   action={
-                    <Button asChild>
-                      <Link href="/dives">
-                        <Fish className="h-4 w-4 mr-2" />
-                        Go to your dives
-                      </Link>
+                    <Button
+                      render={<Link href="/dives" />}
+                      nativeButton={false}
+                      role="link"
+                    >
+                      <Fish className="h-4 w-4 mr-2" />
+                      Go to your dives
                     </Button>
                   }
                 />

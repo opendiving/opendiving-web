@@ -396,18 +396,19 @@ export function CertificationDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Course</FormLabel>
-                  <FormControl>
-                    {/* Opens its own `CourseDialog` on "Add course...", which
+                  <FormControl
+                    render={
+                      /* Opens its own `CourseDialog` on "Add course...", which
                         puts a dialog on top of this one. `dialogFormSubmit`
                         keeps that inner submit out of this form - see
-                        DECISIONS.md. */}
-                    <CourseCombobox
-                      value={field.value}
-                      onChange={field.onChange}
-                      onCourseSelected={prefillFromCourse}
-                      until={until}
-                    />
-                  </FormControl>
+                        DECISIONS.md. */ <CourseCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        onCourseSelected={prefillFromCourse}
+                        until={until}
+                      />
+                    }
+                  />
                   <FormDescription>
                     The training this card came out of, if you logged it.
                     {/* Only true of a create dialog - relinking an existing
@@ -429,13 +430,15 @@ export function CertificationDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Certification *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Advanced Open Water Diver"
-                      autoFocus
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        placeholder="e.g. Advanced Open Water Diver"
+                        autoFocus
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -452,13 +455,15 @@ export function CertificationDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Certification number</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="As printed on the card"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </FormControl>
+                      <FormControl
+                        render={
+                          <Input
+                            placeholder="As printed on the card"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        }
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -493,14 +498,16 @@ export function CertificationDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Specialties covered, restrictions, anything worth remembering..."
-                      className="min-h-[80px]"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Textarea
+                        placeholder="Specialties covered, restrictions, anything worth remembering..."
+                        className="min-h-[80px]"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

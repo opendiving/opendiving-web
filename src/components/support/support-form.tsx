@@ -145,13 +145,15 @@ export function SupportForm({ fallbackEmail }: SupportFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Your name"
-                    autoComplete="name"
-                    {...field}
-                  />
-                </FormControl>
+                <FormControl
+                  render={
+                    <Input
+                      placeholder="Your name"
+                      autoComplete="name"
+                      {...field}
+                    />
+                  }
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -163,14 +165,16 @@ export function SupportForm({ fallbackEmail }: SupportFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input
-                    type="email"
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    {...field}
-                  />
-                </FormControl>
+                <FormControl
+                  render={
+                    <Input
+                      type="email"
+                      placeholder="you@example.com"
+                      autoComplete="email"
+                      {...field}
+                    />
+                  }
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -183,14 +187,12 @@ export function SupportForm({ fallbackEmail }: SupportFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>What's it about?</FormLabel>
-              <FormControl>
-                <NativeSelect {...field}>
-                  {SUPPORT_CATEGORIES.map((category) => (
-                    <option key={category} value={category}>
-                      {SUPPORT_CATEGORY_LABELS[category]}
-                    </option>
-                  ))}
-                </NativeSelect>
+              <FormControl render={<NativeSelect {...field} />}>
+                {SUPPORT_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {SUPPORT_CATEGORY_LABELS[category]}
+                  </option>
+                ))}
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -203,9 +205,11 @@ export function SupportForm({ fallbackEmail }: SupportFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Subject</FormLabel>
-              <FormControl>
-                <Input placeholder="Suunto export won't import" {...field} />
-              </FormControl>
+              <FormControl
+                render={
+                  <Input placeholder="Suunto export won't import" {...field} />
+                }
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -217,14 +221,16 @@ export function SupportForm({ fallbackEmail }: SupportFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Message</FormLabel>
-              <FormControl>
-                <Textarea
-                  rows={8}
-                  placeholder="What happened, what you expected, and - for an import problem - which dive computer and export format."
-                  className="min-h-[160px]"
-                  {...field}
-                />
-              </FormControl>
+              <FormControl
+                render={
+                  <Textarea
+                    rows={8}
+                    placeholder="What happened, what you expected, and - for an import problem - which dive computer and export format."
+                    className="min-h-[160px]"
+                    {...field}
+                  />
+                }
+              />
               <FormMessage />
             </FormItem>
           )}

@@ -240,13 +240,19 @@ export function CourseDetailPageContent() {
                   content width until `lg`, where it becomes a third of it and
                   the pair no longer fits across. */}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                <Button asChild>
-                  <Link
-                    href={withReturnTo(`/dives/new?course_uuid=${course.uuid}`)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Log a dive
-                  </Link>
+                <Button
+                  render={
+                    <Link
+                      href={withReturnTo(
+                        `/dives/new?course_uuid=${course.uuid}`,
+                      )}
+                    />
+                  }
+                  nativeButton={false}
+                  role="link"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Log a dive
                 </Button>
                 <Button
                   variant="outline"

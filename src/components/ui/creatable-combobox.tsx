@@ -4,7 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import {
@@ -267,7 +267,7 @@ export function emptyMenuLabel({
 // doesn't re-run on every render of a remote-mode combobox that passes none.
 const NO_ITEMS: ComboboxItem[] = [];
 
-export interface CreatableComboboxProps extends FormControlSlotProps {
+export interface CreatableComboboxProps extends FormControlA11yProps {
   // The full option list, filtered in the browser as the user types. Omit when
   // passing `onSearch` instead.
   items?: ComboboxItem[];

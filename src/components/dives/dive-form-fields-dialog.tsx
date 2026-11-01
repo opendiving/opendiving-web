@@ -86,7 +86,7 @@ function matchingPresetName(
  * once and are not part of the draft.
  *
  * **A dialog rather than a panel on the card.** Nothing in it is a form control of the
- * dive. Radix portals the content to `document.body`, so the DOM has no nested `<form>`;
+ * dive. Base UI portals the content to `document.body`, so the DOM has no nested `<form>`;
  * the two forms inside it still go through `dialogFormSubmit`, because React bubbles
  * submit events through its own tree and not the DOM's (DECISIONS.md, "A dialog's
  * submit event bubbles into the form that opened it").
@@ -141,30 +141,30 @@ export function DiveFormFieldsDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => (next ? onOpenChange(true) : close(false))}
+      onOpenChange={(next, details) => {
+        const target = details.event.target;
+        if (
+          details.reason === "escape-key" &&
+          target instanceof HTMLElement &&
+          target.getAttribute("aria-expanded") === "true"
+        ) {
+          details.cancel();
+          return;
+        }
+        if (next) onOpenChange(true);
+        else close(false);
+      }}
     >
       <DialogContent
-        // Radix focuses the first tabbable descendant on open. Focus goes to the
+        // Base UI focuses the first tabbable descendant on open. Focus goes to the
         // container instead so that Enter on a freshly opened dialog does nothing
         // at all - `ConfirmDialog` documents the same move for the same reason -
         // and `focus:outline-none` because this is a focus *holder*, not a control,
         // and a ring around the whole dialog reads as an error state.
         className="sm:max-w-2xl focus:outline-none"
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          contentRef.current?.focus();
-        }}
+        initialFocus={contentRef}
         // Escape on an open dropdown - the Save as list - closes the list only,
         // rather than the dialog and the draft with it.
-        onEscapeKeyDown={(event) => {
-          const target = event.target;
-          if (
-            target instanceof HTMLElement &&
-            target.getAttribute("aria-expanded") === "true"
-          ) {
-            event.preventDefault();
-          }
-        }}
         ref={contentRef}
       >
         <DiveFormFieldsDialogBody

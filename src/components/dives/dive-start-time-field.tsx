@@ -11,9 +11,9 @@ import {
   isDateOnlyStartTime,
   splitStartTime,
 } from "@/lib/date-time";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 
-export interface DiveStartTimeFieldProps extends FormControlSlotProps {
+export interface DiveStartTimeFieldProps extends FormControlA11yProps {
   // An ISO 8601 string, e.g. "2021-04-04T10:04:47+02:00" - the same shape as the
   // API's `Dive.start_time` - or `""`/`undefined` while still empty (e.g. the
   // edit form before the dive has loaded).

@@ -60,7 +60,7 @@ interface ImageCropDialogProps {
  * becomes: a card's is drawn onto a canvas and exported, a picture's is sent to the
  * API as numbers beside the file itself.
  *
- * Zoom is a native `<input type="range">` rather than a Radix slider: it is one
+ * Zoom uses a native `<input type="range">`: it is one
  * value with no empty state, and the native control is keyboard- and
  * touch-accessible without adding a dependency for it.
  */
@@ -101,7 +101,7 @@ export function ImageCropDialog({
           the exported crop is computed as 100% of the media, which is the mask and
           the saved picture disagreeing. Fade and slide are kept - a translation
           does not change the reported width or height. */}
-      <DialogContent className="data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100">
+      <DialogContent className="data-[open]:zoom-in-100 data-[ending-style]:zoom-out-100">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

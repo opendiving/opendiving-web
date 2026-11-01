@@ -451,8 +451,8 @@ describe("useKeepFocusedFieldVisible", () => {
   });
 
   it("leaves the scroll alone when the focus is not in a field", async () => {
-    // Radix parks the focus on the dialog itself on open, and a resize then is
-    // the toolbars sliding - not something to move the content for.
+    // A resize while the dialog panel holds focus represents toolbar movement.
+    // It should leave the content's scroll position unchanged.
     const viewport = installViewport(812, 0);
     const { field, revealed, tick, cleanup } = mountField();
     field.blur();

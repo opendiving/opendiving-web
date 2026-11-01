@@ -5,7 +5,7 @@ import type { BaseSyntheticEvent, FormEventHandler } from "react";
 //
 // Every "quick add" dialog (new gear item, new gear set, new dive site, new
 // trip) is rendered *from inside the dive form* - the pickers that open them
-// live in its fields. Radix portals `DialogContent` out to `document.body`, so
+// live in its fields. Base UI portals `DialogContent` out to `document.body`, so
 // there are no nested `<form>` elements in the DOM and it looks safe. But React
 // bubbles events through the **React** tree, not the DOM tree, so the dialog's
 // submit event still lands in the dive form's own `onSubmit`.

@@ -242,13 +242,15 @@ export function GearSetDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Set name *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Sidemount, Warm water rec"
-                      autoFocus={!showTargetPicker}
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        placeholder="e.g. Sidemount, Warm water rec"
+                        autoFocus={!showTargetPicker}
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -260,15 +262,17 @@ export function GearSetDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Gear</FormLabel>
-                  <FormControl>
-                    <GearItemMultiSelect
-                      value={field.value ?? []}
-                      // An edited or duplicated set already carries its members'
-                      // details, so the picker needn't fetch each one back by uuid.
-                      knownItems={source?.gear_items}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <GearItemMultiSelect
+                        value={field.value ?? []}
+                        // An edited or duplicated set already carries its members'
+                        // details, so the picker needn't fetch each one back by uuid.
+                        knownItems={source?.gear_items}
+                        onChange={field.onChange}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -282,7 +286,7 @@ export function GearSetDialog({
                   {/* This dialog keeps a weight toggle of its own even though
                       the dive form has one: standalone on `/gear` it is the only
                       place a gear weight is ever entered. Mounted together the
-                      two names collide, and Radix's modal `aria-hidden` is what
+                      two names collide, and the modal is what
                       keeps only one of them exposed to assistive tech. */}
                   <EntryUnitLabelRow
                     dimension="weight"
@@ -295,18 +299,20 @@ export function GearSetDialog({
                   </EntryUnitLabelRow>
                   <div className="relative">
                     <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                    <FormControl>
-                      <UnitNumberInput
-                        dimension="weight"
-                        units={weightUnits}
-                        min={0}
-                        placeholderValue={6}
-                        className="pl-9"
-                        {...field}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <UnitNumberInput
+                          dimension="weight"
+                          units={weightUnits}
+                          min={0}
+                          placeholderValue={6}
+                          className="pl-9"
+                          {...field}
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      }
+                    />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Optional. Loading this set into a dive fills in this weight.

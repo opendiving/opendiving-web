@@ -83,22 +83,24 @@ export function TrainingFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>{agencyRequired ? "Agency *" : "Agency"}</FormLabel>
-              <FormControl>
-                <NativeSelect
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={(e) => field.onChange(e.target.value || null)}
-                >
-                  {/* First, because it is what a course opens on, and the
+              <FormControl
+                render={
+                  <NativeSelect
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value || null)}
+                  />
+                }
+              >
+                {/* First, because it is what a course opens on, and the
                       state has to be pickable again after an agency has been
                       chosen. */}
-                  {!agencyRequired && <option value="">No agency</option>}
-                  {CERTIFICATION_AGENCIES.map((value) => (
-                    <option key={value} value={value}>
-                      {certificationAgencyLabel(value)}
-                    </option>
-                  ))}
-                </NativeSelect>
+                {!agencyRequired && <option value="">No agency</option>}
+                {CERTIFICATION_AGENCIES.map((value) => (
+                  <option key={value} value={value}>
+                    {certificationAgencyLabel(value)}
+                  </option>
+                ))}
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -117,13 +119,15 @@ export function TrainingFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Agency name *</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="e.g. FFESSM"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
+              <FormControl
+                render={
+                  <Input
+                    placeholder="e.g. FFESSM"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                }
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -141,17 +145,19 @@ export function TrainingFields({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{label}</FormLabel>
-                <FormControl>
-                  <DatePicker
-                    value={field.value ?? ""}
-                    onChange={(value) => {
-                      field.onChange(value);
-                      if (position === 0) onStartChange(value);
-                    }}
-                    rangeEnd={position === 0 ? end : undefined}
-                    rangeStart={position === 1 ? start : undefined}
-                  />
-                </FormControl>
+                <FormControl
+                  render={
+                    <DatePicker
+                      value={field.value ?? ""}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        if (position === 0) onStartChange(value);
+                      }}
+                      rangeEnd={position === 0 ? end : undefined}
+                      rangeStart={position === 1 ? start : undefined}
+                    />
+                  }
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -165,18 +171,19 @@ export function TrainingFields({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Dive center</FormLabel>
-            <FormControl>
-              {/* Its dialog opens over this one, and over the certification
-                  dialog too when a course is being added from there. */}
-              <ContactCombobox
-                value={field.value}
-                onChange={field.onChange}
-                until={until}
-                initialRoles={SCHOOL}
-                placeholder="Select a dive center..."
-                addNewLabel="Add dive center..."
-              />
-            </FormControl>
+            <FormControl
+              render={
+                /* Its dialog opens over this one, and over the certification
+                  dialog too when a course is being added from there. */ <ContactCombobox
+                  value={field.value}
+                  onChange={field.onChange}
+                  until={until}
+                  initialRoles={SCHOOL}
+                  placeholder="Select a dive center..."
+                  addNewLabel="Add dive center..."
+                />
+              }
+            />
             <FormMessage />
           </FormItem>
         )}
@@ -189,17 +196,18 @@ export function TrainingFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Instructor</FormLabel>
-              <FormControl>
-                {/* A person, picked or typed: a name nobody has yet becomes one
-                    on Enter, so naming a new instructor is still one step. */}
-                <PersonCombobox
-                  value={field.value}
-                  onChange={onInstructorChange ?? field.onChange}
-                  until={until}
-                  placeholder="Select an instructor..."
-                  addNewLabel="Add instructor..."
-                />
-              </FormControl>
+              <FormControl
+                render={
+                  /* A person, picked or typed: a name nobody has yet becomes one
+                    on Enter, so naming a new instructor is still one step. */ <PersonCombobox
+                    value={field.value}
+                    onChange={onInstructorChange ?? field.onChange}
+                    until={until}
+                    placeholder="Select an instructor..."
+                    addNewLabel="Add instructor..."
+                  />
+                }
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -211,9 +219,9 @@ export function TrainingFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Instructor number</FormLabel>
-              <FormControl>
-                <Input {...field} value={field.value ?? ""} />
-              </FormControl>
+              <FormControl
+                render={<Input {...field} value={field.value ?? ""} />}
+              />
               <FormMessage />
             </FormItem>
           )}

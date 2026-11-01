@@ -220,13 +220,15 @@ export function ContactDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Name *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Blue Ocean Dive Center"
-                      autoFocus
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        placeholder="e.g. Blue Ocean Dive Center"
+                        autoFocus
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -279,9 +281,11 @@ export function ContactDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
-                    <FormControl>
-                      <Input type="tel" autoComplete="off" {...field} />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input type="tel" autoComplete="off" {...field} />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -293,9 +297,11 @@ export function ContactDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" autoComplete="off" {...field} />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input type="email" autoComplete="off" {...field} />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -308,17 +314,18 @@ export function ContactDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Website</FormLabel>
-                  <FormControl>
-                    {/* Not `type="url"`: the browser would refuse the bare host
+                  <FormControl
+                    render={
+                      /* Not `type="url"`: the browser would refuse the bare host
                         a diver copies off a sign, which is the case the scheme
-                        is added on save for. */}
-                    <Input
-                      inputMode="url"
-                      autoComplete="off"
-                      placeholder="e.g. blueocean.com"
-                      {...field}
-                    />
-                  </FormControl>
+                        is added on save for. */ <Input
+                        inputMode="url"
+                        autoComplete="off"
+                        placeholder="e.g. blueocean.com"
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -340,17 +347,19 @@ export function ContactDialog({
                             part filled in is no address at all. */}
                         {part.name === "country" && addressSummary && " *"}
                       </FormLabel>
-                      <FormControl>
-                        <Input
-                          autoComplete="off"
-                          placeholder={
-                            part.name === "street"
-                              ? "Street, number, building, unit"
-                              : undefined
-                          }
-                          {...field}
-                        />
-                      </FormControl>
+                      <FormControl
+                        render={
+                          <Input
+                            autoComplete="off"
+                            placeholder={
+                              part.name === "street"
+                                ? "Street, number, building, unit"
+                                : undefined
+                            }
+                            {...field}
+                          />
+                        }
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -366,13 +375,15 @@ export function ContactDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Opening hours, who to ask for, what to bring..."
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Textarea
+                        placeholder="Opening hours, who to ask for, what to bring..."
+                        className="min-h-[80px]"
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

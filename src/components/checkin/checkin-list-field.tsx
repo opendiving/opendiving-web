@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef } from "react";
 
 import { DatePicker } from "@/components/ui/date-picker";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
   AddRowButton,
@@ -73,7 +73,7 @@ interface ListShape<T> {
   fullText: string;
 }
 
-export interface ListFieldProps<T> extends FormControlSlotProps {
+export interface ListFieldProps<T> extends FormControlA11yProps {
   value: T[];
   onChange: (rows: T[]) => void;
   errors?: ListFieldErrors;

@@ -9,13 +9,9 @@ import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { IconTooltip } from "@/components/ui/tooltip";
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
+import { DateFieldPopup } from "./date-field-popup";
+import type { FormControlA11yProps } from "@/components/ui/form";
 
 const DATE_TIME_REGEX = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/;
 
@@ -45,7 +41,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-export interface DateTimePickerProps extends FormControlSlotProps {
+export interface DateTimePickerProps extends FormControlA11yProps {
   /** Value formatted as "YYYY-MM-DD HH:mm:ss" */
   value?: string;
   onChange: (value: string) => void;
@@ -302,66 +298,66 @@ function CalendarDateTimePicker({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next, details) => {
+        if (
+          details.reason === "outside-press" &&
+          details.event.target instanceof Node &&
+          anchorRef.current?.contains(details.event.target)
+        )
+          details.cancel();
+        if (!details.isCanceled) setOpen(next);
+      }}
+    >
       {/* Anchored on the whole field rather than on the icon that opens it, so
           the calendar hangs off the field's left edge - see `date-picker.tsx`. */}
-      <PopoverAnchor asChild>
-        {/* The calendar button is layered over the input's right edge rather
-            than sitting beside it, so the field keeps one box on a form row. */}
-        <div ref={anchorRef} className="relative">
-          <Input
-            {...slotProps}
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onFocus={openFromField}
-            // Focus alone isn't enough: a `focus` event doesn't fire on an input
-            // that already has focus, so Escape would leave the calendar
-            // unopenable without clicking away first. `creatable-combobox`
-            // carries the same pair for the same reason.
-            onClick={openFromField}
-            onBlur={handleSettle}
-            // Enter submits the surrounding form, and does it without blurring
-            // first, so the last thing typed has to be committed here or the
-            // form reads the value from before it.
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSettle();
-            }}
-            placeholder={placeholder}
-            disabled={disabled}
-            autoComplete="off"
-            spellCheck={false}
-            className="pr-9"
-          />
-          <IconTooltip label="Choose date and time">
-            <PopoverTrigger asChild>
+      <div ref={anchorRef} className="relative">
+        <Input
+          {...slotProps}
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onFocus={openFromField}
+          // Focus alone isn't enough: a `focus` event doesn't fire on an input
+          // that already has focus, so Escape would leave the calendar
+          // unopenable without clicking away first. `creatable-combobox`
+          // carries the same pair for the same reason.
+          onClick={openFromField}
+          onBlur={handleSettle}
+          // Enter submits the surrounding form, and does it without blurring
+          // first, so the last thing typed has to be committed here or the
+          // form reads the value from before it.
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSettle();
+          }}
+          placeholder={placeholder}
+          disabled={disabled}
+          autoComplete="off"
+          spellCheck={false}
+          className="pr-9"
+        />
+        <IconTooltip label="Choose date and time">
+          <PopoverTrigger
+            render={
               <button
                 type="button"
                 disabled={disabled}
                 onClick={() => setFocusCalendar(true)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-              >
-                <CalendarIcon className="h-4 w-4" />
-              </button>
-            </PopoverTrigger>
-          </IconTooltip>
-        </div>
-      </PopoverAnchor>
-      <PopoverContent
+              />
+            }
+          >
+            <CalendarIcon className="h-4 w-4" />
+          </PopoverTrigger>
+        </IconTooltip>
+      </div>
+      <DateFieldPopup
+        anchor={anchorRef}
         className="w-auto p-0"
-        align="start"
-        // All three as in `date-picker.tsx`, for the reasons given there.
-        onOpenAutoFocus={(event) => {
-          if (!focusCalendar) event.preventDefault();
-        }}
-        onCloseAutoFocus={(event) => {
-          if (!focusCalendar) event.preventDefault();
-        }}
-        onInteractOutside={(event) => {
-          if (anchorRef.current?.contains(event.target as Node)) {
-            event.preventDefault();
-          }
-        }}
+        // The field keeps focus unless the icon opened the calendar grid.
+        initialFocus={focusCalendar}
+        finalFocus={focusCalendar}
       >
         <Calendar
           key={shownMonth}
@@ -406,7 +402,7 @@ function CalendarDateTimePicker({
             aria-label="Seconds"
           />
         </div>
-      </PopoverContent>
+      </DateFieldPopup>
     </Popover>
   );
 }

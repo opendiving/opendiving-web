@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as LabelPrimitive from "@radix-ui/react-label";
-import { Slot } from "@radix-ui/react-slot";
+import { useRender } from "@base-ui/react/use-render";
 import {
   Controller,
   ControllerProps,
@@ -94,8 +93,8 @@ const FormLabelMarkContext = React.createContext<
 >(null);
 
 const FormLabel = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+  React.ElementRef<typeof Label>,
+  React.ComponentPropsWithoutRef<typeof Label>
 >(({ className, children, ...props }, ref) => {
   const { error, formItemId, name } = useFormField();
   const mark = React.useContext(FormLabelMarkContext);
@@ -114,47 +113,34 @@ const FormLabel = React.forwardRef<
 });
 FormLabel.displayName = "FormLabel";
 
-// What `FormControl` pushes into its child through the Radix `Slot`.
-//
-// `Slot` merges these onto whatever element the child *renders*, which works
-// automatically for the leaf inputs (`<Input>`, `<Textarea>`) but not for a custom
-// function component: unless it declares these props and forwards them, `Slot` hands
-// them to a component that ignores them and they land nowhere. `FormLabel`'s
-// `htmlFor={formItemId}` then points at an id that does not exist, and the field has
-// no programmatic label at all - it looks labelled on screen and is unlabelled to a
-// screen reader.
-//
-// Any component used as a `FormControl` child should extend this and spread it onto
-// its own focusable control. For a composite field (two inputs behind one label) that
-// means the *primary* control, with the secondary one carrying its own `aria-label`.
-export interface FormControlSlotProps {
+// FormControl passes these attributes through `render`. Custom fields must forward
+// them to their primary focusable control so labels and validation stay accessible.
+export interface FormControlA11yProps {
   id?: string;
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
 }
 
-const FormControl = React.forwardRef<
-  React.ElementRef<typeof Slot>,
-  React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => {
+function FormControl({
+  render,
+  ref,
+  ...props
+}: useRender.ComponentProps<"div">) {
   const { error, formItemId, formDescriptionId, formMessageId } =
     useFormField();
-
-  return (
-    <Slot
-      ref={ref}
-      id={formItemId}
-      aria-describedby={
-        !error
-          ? `${formDescriptionId}`
-          : `${formDescriptionId} ${formMessageId}`
-      }
-      aria-invalid={!!error}
-      {...props}
-    />
-  );
-});
-FormControl.displayName = "FormControl";
+  return useRender({
+    render,
+    ref,
+    props: {
+      id: formItemId,
+      "aria-describedby": !error
+        ? formDescriptionId
+        : `${formDescriptionId} ${formMessageId}`,
+      "aria-invalid": !!error,
+      ...props,
+    },
+  });
+}
 
 const FormDescription = React.forwardRef<
   HTMLParagraphElement,

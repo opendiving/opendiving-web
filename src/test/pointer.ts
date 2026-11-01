@@ -1,7 +1,7 @@
 // The pointer a test says the app is being driven with.
 //
 // `vitest.setup.ts`'s `matchMedia` answers `false` to everything, which is the
-// right default - it is there so Radix and the app's responsive hooks can mount
+// right default - it is there so Base UI and the app's responsive hooks can mount
 // at all, not to describe a device - but it leaves `useCoarsePointer` with no
 // way to say "a phone". This swaps in a `MediaQueryList` that answers
 // `(hover: none) and (pointer: coarse)` and goes on answering it live, so a

@@ -18,7 +18,7 @@ import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { Attribution } from "@/components/attribution";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -198,7 +198,7 @@ interface PendingSpecies {
   label: string;
 }
 
-export interface SpeciesMultiSelectProps extends FormControlSlotProps {
+export interface SpeciesMultiSelectProps extends FormControlA11yProps {
   // The sightings, in the order the diver listed them, each naming a catalog
   // species at most once. Order is presentation only here - unlike the dive site
   // picker, where the first entry is the dive's primary site - but it is preserved

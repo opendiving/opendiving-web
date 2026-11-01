@@ -44,7 +44,7 @@ vi.mock("@/hooks/useNotifications", () => ({
 
 const FINGER = { pointerType: "touch", pointerId: 7, button: 0 };
 
-// Radix listens for a press outside an open layer from the next tick on.
+// Base UI listens for a press outside an open layer from the next tick on.
 const nextTick = () => act(() => new Promise((done) => setTimeout(done, 0)));
 
 beforeEach(async () => {
@@ -159,23 +159,29 @@ describe("the mobile menu on a phone", () => {
     fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
     await nextTick();
     expect(
-      document.querySelector(
-        '[data-radix-popper-content-wrapper] [data-state="open"]',
-      ),
+      document.querySelector('[data-slot="popover-content"][data-open]'),
     ).not.toBeNull();
 
     const outside = backdrop() as Element;
+    const touch = new Touch({
+      identifier: 7,
+      target: outside,
+      clientX: 20,
+      clientY: 20,
+    });
     fireEvent.pointerDown(outside, FINGER);
+    fireEvent.touchStart(outside, { touches: [touch] });
     fireEvent.pointerUp(outside, FINGER);
+    fireEvent.touchEnd(outside, { touches: [], changedTouches: [touch] });
+    fireEvent.mouseDown(outside, { button: 0 });
+    fireEvent.mouseUp(outside, { button: 0 });
     fireEvent.click(outside);
     await nextTick();
 
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     // Closed, and easing out under the stylesheet's exit animation.
     expect(
-      document.querySelector(
-        '[data-radix-popper-content-wrapper] [data-state="open"]',
-      ),
+      document.querySelector('[data-slot="popover-content"][data-open]'),
     ).toBeNull();
   });
 });

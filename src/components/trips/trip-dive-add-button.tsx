@@ -61,18 +61,18 @@ export function TripDiveAddButton({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>{button}</DropdownMenuTrigger>
+      <DropdownMenuTrigger render={button} />
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => onAdd("dive")}>
+        <DropdownMenuItem onClick={() => onAdd("dive")}>
           Add this dive
         </DropdownMenuItem>
         {offersPart && (
-          <DropdownMenuItem onSelect={() => onAdd("part")}>
+          <DropdownMenuItem onClick={() => onAdd("part")}>
             Add all {partCount} dives from this part
           </DropdownMenuItem>
         )}
         {offersTrip && (
-          <DropdownMenuItem onSelect={() => onAdd("trip")}>
+          <DropdownMenuItem onClick={() => onAdd("trip")}>
             Add all {tripCount} unassigned dives
           </DropdownMenuItem>
         )}

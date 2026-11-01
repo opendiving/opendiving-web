@@ -25,7 +25,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 // The card's link and, as the real card has, either the control it is handed
-// or its menu in the corner - a Radix trigger, so `aria-expanded` too.
+// or its menu in the corner - a Base UI trigger, so `aria-expanded` too.
 vi.mock("@/components/dives/dive-card", () => ({
   DiveCard: ({ dive, addToTrip }: { dive: Dive; addToTrip?: ReactNode }) => (
     <li data-candidate={addToTrip ? "" : undefined}>
@@ -389,10 +389,12 @@ describe("TripDiveSections", () => {
         screen.getByRole("button", { name: "Add to trip: dive #400" }),
       );
       expect(
-        screen.getAllByRole("menuitem").map((item) => item.textContent),
+        (await screen.findAllByRole("menuitem")).map(
+          (item) => item.textContent,
+        ),
       ).toEqual(["Add this dive", "Add all 4 dives from this part"]);
       await userEvent.click(
-        screen.getByRole("menuitem", {
+        await screen.findByRole("menuitem", {
           name: "Add all 4 dives from this part",
         }),
       );
@@ -472,7 +474,7 @@ describe("TripDiveSections", () => {
         screen.getAllByRole("button", { name: "Add to trip: dive #400" })[1],
       );
       await userEvent.click(
-        screen.getByRole("menuitem", {
+        await screen.findByRole("menuitem", {
           name: "Add all 2 dives from this part",
         }),
       );
@@ -515,7 +517,9 @@ describe("TripDiveSections", () => {
 
     const menuItems = async (name: string) => {
       await userEvent.click(screen.getByRole("button", { name }));
-      return screen.getAllByRole("menuitem").map((item) => item.textContent);
+      return (await screen.findAllByRole("menuitem")).map(
+        (item) => item.textContent,
+      );
     };
 
     it("offers this dive, its part's and the trip's, each with its count", async () => {
@@ -560,7 +564,9 @@ describe("TripDiveSections", () => {
         await userEvent.click(
           screen.getByRole("button", { name: "Add to trip: dive #400" }),
         );
-        await userEvent.click(screen.getByRole("menuitem", { name: item }));
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: item }),
+        );
         await waitFor(() =>
           expect(
             screen.getByRole("button", { name: "Add to trip: dive #400" }),
@@ -640,7 +646,7 @@ describe("TripDiveSections", () => {
         screen.getAllByRole("button", { name: "Add to trip: dive #400" })[1],
       );
       await userEvent.click(
-        screen.getByRole("menuitem", {
+        await screen.findByRole("menuitem", {
           name: "Add all 4 dives from this part",
         }),
       );
@@ -678,7 +684,7 @@ describe("TripDiveSections", () => {
         screen.getByRole("button", { name: "Add to trip: dive #400" }),
       );
       await userEvent.click(
-        screen.getByRole("menuitem", {
+        await screen.findByRole("menuitem", {
           name: "Add all 4 dives from this part",
         }),
       );

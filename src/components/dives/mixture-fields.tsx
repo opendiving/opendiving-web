@@ -33,7 +33,7 @@ import {
 import { GAS_ROLES, TANK_USAGE } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 import { CylinderCombobox } from "@/components/dives/cylinder-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import type { GearItemInfo } from "@/lib/api/gear";
 import {
   isVolumeFromVessel,
@@ -205,7 +205,7 @@ function MixtureCylinderPicker({
   index: number;
   count: number;
   until?: string;
-} & FormControlSlotProps) {
+} & FormControlA11yProps) {
   const { getValues, setValue } = useFormContext<MixtureFieldsValues>();
   const gearItemUuid = useWatch({
     control,
@@ -270,7 +270,7 @@ function MixtureVolumeInput({
   value: number | "" | undefined;
   onChange: (value: number | "") => void;
   until?: string;
-} & FormControlSlotProps) {
+} & FormControlA11yProps) {
   const gearItemUuid = useWatch({
     control,
     name: `mixtures.${index}.gear_item_uuid`,
@@ -471,14 +471,16 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   // a pair it would push every box after it a column along.
                   <FormItem className="md:col-span-2">
                     <FormLabel>Cylinder</FormLabel>
-                    <FormControl>
-                      <MixtureCylinderPicker
-                        control={mixturesControl}
-                        index={index}
-                        count={fields.length}
-                        until={until}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <MixtureCylinderPicker
+                          control={mixturesControl}
+                          index={index}
+                          count={fields.length}
+                          until={until}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -500,15 +502,17 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 // how it was carried.
                 <FormItem>
                   <FormLabel>Volume (L)</FormLabel>
-                  <FormControl>
-                    <MixtureVolumeInput
-                      control={mixturesControl}
-                      index={index}
-                      value={field.value}
-                      onChange={field.onChange}
-                      until={until}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <MixtureVolumeInput
+                        control={mixturesControl}
+                        index={index}
+                        value={field.value}
+                        onChange={field.onChange}
+                        until={until}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -534,37 +538,39 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                         accepted any two decimals in a 0.4-2.0 band - so the
                         only things free entry bought were typos and a 422 on
                         save. */}
-                      <FormControl>
-                        <NativeSelect
-                          {...field}
-                          // From the offered list rather than from the raw value,
-                          // so the two can't disagree about formatting: `1.0` on
-                          // the form has to find the `"1.0"` option, and
-                          // `String(1.0)` is `"1"`.
-                          value={
-                            choices.find(
-                              (option) => Number(option) === field.value,
-                            ) ?? ""
-                          }
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            field.onChange(raw === "" ? "" : parseFloat(raw));
-                          }}
-                        >
-                          {/* The fallback is named rather than pre-selected, so a
+                      <FormControl
+                        render={
+                          <NativeSelect
+                            {...field}
+                            // From the offered list rather than from the raw value,
+                            // so the two can't disagree about formatting: `1.0` on
+                            // the form has to find the `"1.0"` option, and
+                            // `String(1.0)` is `"1"`.
+                            value={
+                              choices.find(
+                                (option) => Number(option) === field.value,
+                              ) ?? ""
+                            }
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              field.onChange(raw === "" ? "" : parseFloat(raw));
+                            }}
+                          />
+                        }
+                      >
+                        {/* The fallback is named rather than pre-selected, so a
                             cylinder with no recorded limit still says what the
                             MOD beneath it was worked out from. Selecting 1.4
                             here would make it claim a limit the diver never
                             chose - see `DEFAULT_MIXTURE`. */}
-                          <option value="">
-                            Not recorded ({PPO2_WORKING} default)
+                        <option value="">
+                          Not recorded ({PPO2_WORKING} default)
+                        </option>
+                        {choices.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
                           </option>
-                          {choices.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </NativeSelect>
+                        ))}
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -579,8 +585,9 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               render={({ field: { onChange, value, ...field } }) => (
                 <FormItem>
                   <FormLabel>O₂ (%)</FormLabel>
-                  <FormControl>
-                    {/* `step="any"` (on a mouse's number input), not the API's own
+                  <FormControl
+                    render={
+                      /* `step="any"` (on a mouse's number input), not the API's own
                         two decimals: `oxygen` is a `Float` column, and while the
                         form's prefill rounds to two places, a logbook import keeps
                         whatever precision the file recorded. A `step` finer than
@@ -595,15 +602,15 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                         recorded" rather than draw a "required" message.
                         `undefined` is the one spelling that cannot work,
                         because react-hook-form re-displays a field's default the
-                        moment its value resolves to it. */}
-                    <DecimalInput
-                      min={0}
-                      max={100}
-                      {...field}
-                      value={value}
-                      onValueChange={onChange}
-                    />
-                  </FormControl>
+                        moment its value resolves to it. */ <DecimalInput
+                        min={0}
+                        max={100}
+                        {...field}
+                        value={value}
+                        onValueChange={onChange}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -616,8 +623,9 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
                     <FormLabel>He (%)</FormLabel>
-                    <FormControl>
-                      {/* `step="any"` and `""` on an emptied box, for the reasons
+                    <FormControl
+                      render={
+                        /* `step="any"` and `""` on an emptied box, for the reasons
                           O₂ above gives. Blank is not 0 % helium here any more
                           than it is on the wire: a file that recorded no analysis
                           said nothing about helium, and writing a 0 for it would
@@ -629,15 +637,15 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                           answer, while hiding it is them saying they dive air and
                           nitrox - which is the claim that made the column
                           hideable. See "A hidden helium is `0`, not blank" in
-                          DECISIONS.md. */}
-                      <DecimalInput
-                        min={0}
-                        max={100}
-                        {...field}
-                        value={value}
-                        onValueChange={onChange}
-                      />
-                    </FormControl>
+                          DECISIONS.md. */ <DecimalInput
+                          min={0}
+                          max={100}
+                          {...field}
+                          value={value}
+                          onValueChange={onChange}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -684,21 +692,23 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       plus a staged bottle - stays expressible, which is the
                       shape the API refuses by design and can only refuse if
                       the form can say it. */}
-                    <FormControl>
-                      <NativeSelect
-                        {...field}
-                        value={field.value ?? ""}
-                        // `""` straight through, same sentinel and same
-                        // react-hook-form trap as Role below.
-                        onChange={(e) => field.onChange(e.target.value)}
-                      >
-                        <option value="">Not recorded</option>
-                        {TANK_USAGE.map((usage) => (
-                          <option key={usage} value={usage}>
-                            {TANK_USAGE_OPTION_LABELS[usage]}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                    <FormControl
+                      render={
+                        <NativeSelect
+                          {...field}
+                          value={field.value ?? ""}
+                          // `""` straight through, same sentinel and same
+                          // react-hook-form trap as Role below.
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      }
+                    >
+                      <option value="">Not recorded</option>
+                      {TANK_USAGE.map((usage) => (
+                        <option key={usage} value={usage}>
+                          {TANK_USAGE_OPTION_LABELS[usage]}
+                        </option>
+                      ))}
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -713,25 +723,27 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <FormControl>
-                      <NativeSelect
-                        {...field}
-                        value={field.value ?? ""}
-                        // `""` straight through, not `|| undefined`: react-hook-form
-                        // re-displays a field's default whenever its value resolves to
-                        // `undefined`, so mapping the "Not recorded" option to it made
-                        // choosing that option snap back to the imported role. Same
-                        // sentinel and same reason as `po2_limit` above; converted at
-                        // the edge by `normalizeMixtures`.
-                        onChange={(e) => field.onChange(e.target.value)}
-                      >
-                        <option value="">Not recorded</option>
-                        {GAS_ROLES.map((role) => (
-                          <option key={role} value={role}>
-                            {GAS_ROLE_LABELS[role]}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                    <FormControl
+                      render={
+                        <NativeSelect
+                          {...field}
+                          value={field.value ?? ""}
+                          // `""` straight through, not `|| undefined`: react-hook-form
+                          // re-displays a field's default whenever its value resolves to
+                          // `undefined`, so mapping the "Not recorded" option to it made
+                          // choosing that option snap back to the imported role. Same
+                          // sentinel and same reason as `po2_limit` above; converted at
+                          // the edge by `normalizeMixtures`.
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      }
+                    >
+                      <option value="">Not recorded</option>
+                      {GAS_ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {GAS_ROLE_LABELS[role]}
+                        </option>
+                      ))}
                     </FormControl>
                     <FormMessage />
                   </FormItem>

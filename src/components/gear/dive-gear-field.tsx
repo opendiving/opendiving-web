@@ -5,14 +5,14 @@ import { BookmarkPlus } from "lucide-react";
 import { GearSet, GearItemSummary, fetchAllGearSets } from "@/lib/api/gear";
 import { isAbortError } from "@/lib/api/client";
 import { NativeSelect } from "@/components/ui/native-select";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
 import { countNoun } from "@/lib/format";
 
-export interface DiveGearFieldProps extends FormControlSlotProps {
+export interface DiveGearFieldProps extends FormControlA11yProps {
   // Selected gear item uuids for this dive.
   value: string[];
   // Details for those items, when the caller has them - passed straight through

@@ -5,7 +5,7 @@ import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import {
   contactsAPI,
   type Contact,
@@ -23,7 +23,7 @@ const CONTACTS_PER_SEARCH = 25;
 // One read per contact: the contact lookup cannot be narrowed to uuids.
 const readContacts = readEach((uuid: string) => contactsAPI.getContact(uuid));
 
-export interface ContactComboboxProps extends FormControlSlotProps {
+export interface ContactComboboxProps extends FormControlA11yProps {
   value?: string | null;
   // `null`, not `undefined`, for "no contact", for the reason `TripCombobox`
   // gives: an edit form skips `undefined` fields when it builds its PATCH, so a

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Trash2 } from "lucide-react";
 
@@ -24,7 +30,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 // render's.
 const arriveByKeyboard = (element: HTMLElement) => {
   fireEvent.keyDown(document, { key: "Tab" });
-  fireEvent.focus(element);
+  act(() => element.focus());
 };
 
 // The whole point of the component is that one string is both halves of the
@@ -53,8 +59,7 @@ describe("IconTooltip", () => {
     renderOne();
     const button = screen.getByRole("button", { name: "Delete dive #12" });
 
-    // Radix opens on focus with no delay, and on `pointermove` only after one -
-    // focus is the same open, reached without leaning on timers.
+    // Keyboard focus opens the same hint without waiting for the hover delay.
     arriveByKeyboard(button);
 
     const tooltip = await screen.findByRole("tooltip");
@@ -68,10 +73,10 @@ describe("IconTooltip", () => {
     arriveByKeyboard(button);
     await screen.findByRole("tooltip");
 
-    // Radix's default wiring points `aria-describedby` at the open tooltip,
+    // Base UI's default wiring points `aria-describedby` at the open tooltip,
     // which for a hint that repeats the name verbatim makes a screen reader say
     // it twice. `IconTooltip` suppresses it; this is the assertion that notices
-    // if a Radix upgrade stops honouring the override.
+    // if a Base UI upgrade stops honouring the override.
     expect(button).not.toHaveAttribute("aria-describedby");
   });
 
@@ -94,12 +99,8 @@ describe("IconTooltip", () => {
   });
 });
 
-// An open hint is a Radix dismissable layer, and it stacks on top of the dialog's.
-// Escape therefore reaches the hint and not the dialog underneath - which is the
-// tooltip pattern's own behaviour (the APG gives Escape to the tooltip) and the
-// price of a hint on the cross. It is pinned here because it is a real change in
-// how a keyboard reaches the dialog's exit, and it should fail loudly if a future
-// Radix release moves it rather than being rediscovered by a diver.
+// The dialog wrapper gives the first Escape to an open tooltip. The second
+// Escape closes the dialog, including when the hint belongs to its close button.
 describe("a hint inside a dialog", () => {
   it("takes the first Escape, and the dialog closes on the second", async () => {
     render(
@@ -129,11 +130,8 @@ describe("a hint inside a dialog", () => {
   });
 });
 
-// The multiselect drag handles focus themselves from their own `onPointerDown`,
-// and focus opens a hint with no delay - so without a guard, grabbing a handle
-// raised the chip and left it there for the whole drag, over the rows being
-// reordered. `Slot` runs the child's handler before Radix's own, which is why
-// Radix's identical guard cannot catch this one.
+// Drag handles focus themselves on pointer-down. IconTooltip suppresses that
+// focus-opened hint so it does not cover the rows throughout a drag.
 describe("a hint on a control that focuses itself on pointer-down", () => {
   const DragHandle = () => (
     <IconTooltip label="Reorder Blue Hole, position 1 of 3">
@@ -185,10 +183,8 @@ describe("a hint on a menu trigger", () => {
   const Menu = () => (
     <DropdownMenu>
       <IconTooltip label="Account menu">
-        <DropdownMenuTrigger asChild>
-          <button type="button">
-            <Trash2 className="h-4 w-4" />
-          </button>
+        <DropdownMenuTrigger render={<button type="button" />}>
+          <Trash2 className="h-4 w-4" />
         </DropdownMenuTrigger>
       </IconTooltip>
       <DropdownMenuContent>

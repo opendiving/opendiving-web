@@ -16,14 +16,14 @@ type ToastActionElement = React.ReactElement;
 
 const TOAST_LIMIT = 1;
 // How long a dismissed toast's row lingers in state before being dropped. It only
-// has to outlast Radix's exit animation - the toast is already on its way out, and
+// has to outlast the exit animation - the toast is already on its way out, and
 // the row exists purely so there is something to animate.
 //
 // Upstream ships `1000000` (~16.7 minutes), which with `TOAST_LIMIT = 1` pins every
 // toast the app has ever shown in `memoryState`. It is a well-known bug in the
 // shadcn/ui toast rather than a considered value.
 //
-// Note this is *not* how long a toast is on screen - Radix owns that (5s by default,
+// Note this is *not* how long a toast is on screen - Base UI owns that (5s by default,
 // after which it calls `onOpenChange(false)` and the row is marked closed). This only
 // governs how long the closed row sticks around for the exit animation.
 const TOAST_REMOVE_DELAY = 1000;

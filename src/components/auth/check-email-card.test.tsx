@@ -36,7 +36,7 @@ function renderCard(redirectTo: string | null = null) {
 }
 
 // The code is six single-character inputs in a `role="group"`, so there is no one
-// element to address. Radix labels each box "Character N of 6"; the group carries
+// element to address. The wrapper labels each box "Character N of 6"; the group carries
 // the visible "Enter the code from the email" text as its own name.
 const codeBoxes = () =>
   screen.getAllByRole("textbox", { name: /^Character \d of 6$/ });

@@ -84,9 +84,11 @@ export function CheckInDetailsCard() {
             variant="outline"
             size="sm"
             className={CARD_TITLE_ACTION}
-            asChild
+            render={<Link href="/checkin" />}
+            nativeButton={false}
+            role="link"
           >
-            <Link href="/checkin">Check-in</Link>
+            Check-in
           </Button>
         </div>
         <CardDescription>

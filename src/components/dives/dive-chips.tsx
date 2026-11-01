@@ -39,7 +39,6 @@ function Chip({ text, label }: { text: string; label: string }) {
       {/* The name is already in the chip's words, so the hint describes
           nothing a screen reader has not heard: `IconTooltip`'s override. */}
       <TooltipTrigger
-        asChild
         aria-describedby={undefined}
         onPointerDown={(event) => {
           finger.current = event.pointerType !== "mouse";
@@ -47,11 +46,12 @@ function Chip({ text, label }: { text: string; label: string }) {
         onClick={() => {
           if (finger.current) setTapped(true);
         }}
+        render={
+          <span className="relative rounded-sm border border-current bg-background/80 px-1 text-[10px] font-semibold leading-4 tracking-wide [text-shadow:none] touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-[13px] md:text-xs md:leading-5 md:touch:after:-inset-y-[11px]" />
+        }
       >
-        <span className="relative rounded-sm border border-current bg-background/80 px-1 text-[10px] font-semibold leading-4 tracking-wide [text-shadow:none] touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-[13px] md:text-xs md:leading-5 md:touch:after:-inset-y-[11px]">
-          <span aria-hidden>{text}</span>
-          <span className="sr-only">{label}</span>
-        </span>
+        <span aria-hidden>{text}</span>
+        <span className="sr-only">{label}</span>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -83,7 +83,7 @@ export function diveChips(dive: Dive): ReactNode {
   const tags = dive.tags ?? [];
   if (!water && !type && tags.length === 0) return null;
   return (
-    <TooltipProvider delayDuration={HINT_DELAY_MS} disableHoverableContent>
+    <TooltipProvider delay={HINT_DELAY_MS}>
       <div className="relative z-10 flex w-fit max-w-full flex-wrap gap-1">
         {water && (
           <Chip

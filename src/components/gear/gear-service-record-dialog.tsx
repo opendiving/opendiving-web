@@ -178,14 +178,12 @@ export function GearServiceRecordDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Service type *</FormLabel>
-                  <FormControl>
-                    <NativeSelect {...field}>
-                      {SERVICE_KINDS.map((kind: ServiceKind) => (
-                        <option key={kind} value={kind}>
-                          {serviceKindLabel(kind)}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                  <FormControl render={<NativeSelect {...field} />}>
+                    {SERVICE_KINDS.map((kind: ServiceKind) => (
+                      <option key={kind} value={kind}>
+                        {serviceKindLabel(kind)}
+                      </option>
+                    ))}
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -198,12 +196,14 @@ export function GearServiceRecordDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Serviced on *</FormLabel>
-                  <FormControl>
-                    <DatePicker
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <DatePicker
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -218,16 +218,18 @@ export function GearServiceRecordDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Serviced at</FormLabel>
-                  <FormControl>
-                    <ContactCombobox
-                      value={field.value}
-                      onChange={field.onChange}
-                      until={until}
-                      initialRoles={SHOP}
-                      placeholder="Select a shop..."
-                      addNewLabel="Add shop..."
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <ContactCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        until={until}
+                        initialRoles={SHOP}
+                        placeholder="Select a shop..."
+                        addNewLabel="Add shop..."
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -239,13 +241,15 @@ export function GearServiceRecordDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Serviced by</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="A technician's name, or self"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        placeholder="A technician's name, or self"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -257,14 +261,16 @@ export function GearServiceRecordDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Parts replaced, cost, test pressure..."
-                      className="min-h-[80px]"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Textarea
+                        placeholder="Parts replaced, cost, test pressure..."
+                        className="min-h-[80px]"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

@@ -63,24 +63,9 @@ export function ConfirmDialog({
       onOpenChange={(next) => !isLoading && onOpenChange(next)}
     >
       <DialogContent
-        // Focus goes to Cancel, not to whatever the `children` slot happens to
-        // render first. Radix focuses the first tabbable descendant on open,
-        // which for a dialog carrying a field means the field - and a
-        // `CreatableCombobox` opens its menu on focus, so every trip and dive
-        // site delete confirmation opened with a list of options painted over
-        // this footer (the menu is absolutely positioned, so it does not push
-        // the buttons down; it covers them). A click aimed at Delete landed on
-        // an option instead, quietly filling in a destination the diver never
-        // chose. It also fired a search on every confirmation, including the
-        // plain deletes that never needed one.
-        //
-        // Cancel is where focus went before this dialog grew a field, and it is
-        // the right default for a destructive confirmation anyway: Enter should
-        // not be the destructive key.
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          cancelRef.current?.focus();
-        }}
+        // Cancel is the safe initial focus for a destructive confirmation.
+        // Focusing a combobox would open its list over the action buttons.
+        initialFocus={cancelRef}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

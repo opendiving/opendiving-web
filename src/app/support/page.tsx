@@ -62,10 +62,21 @@ export default function SupportPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {ISSUE_TRACKERS.map(({ label, href }) => (
-                    <Button key={href} asChild variant="outline" size="sm">
-                      <a href={href} target="_blank" rel="noopener noreferrer">
-                        {label}
-                      </a>
+                    <Button
+                      key={href}
+                      variant="outline"
+                      size="sm"
+                      render={
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        />
+                      }
+                      nativeButton={false}
+                      role="link"
+                    >
+                      {label}
                     </Button>
                   ))}
                 </div>
@@ -106,14 +117,20 @@ export default function SupportPage() {
                   converter, which reads every file the app takes. The
                   contributing guide covers setup.
                 </p>
-                <Button asChild variant="outline" className="w-full">
-                  <a
-                    href="https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Contributing guide
-                  </a>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  render={
+                    <a
+                      href="https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  }
+                  nativeButton={false}
+                  role="link"
+                >
+                  Contributing guide
                 </Button>
               </CardContent>
             </Card>
@@ -134,14 +151,20 @@ export default function SupportPage() {
                 </p>
                 {/* The product repository, not the API repo's README: the
                     install is a product-level thing and is written there. */}
-                <Button asChild variant="outline" className="w-full">
-                  <a
-                    href="https://github.com/opendiving/opendiving"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Self-hosting quickstart
-                  </a>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  render={
+                    <a
+                      href="https://github.com/opendiving/opendiving"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  }
+                  nativeButton={false}
+                  role="link"
+                >
+                  Self-hosting quickstart
                 </Button>
               </CardContent>
             </Card>

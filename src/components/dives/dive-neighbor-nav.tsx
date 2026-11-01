@@ -187,51 +187,51 @@ function NavLink({ direction, neighbor, isPending, className }: NavLinkProps) {
         // what stands in for `disabled` here.
         !href && "pointer-events-none opacity-50",
       )}
-      asChild
-    >
-      <a
-        href={href}
-        // Focusable even with nothing to point at - the point of the exercise.
-        tabIndex={0}
-        // An `<a>` with no `href` is `generic` to the accessibility tree, not a
-        // link, and a generic node carries no accessible name - so without this
-        // the unavailable button would stop announcing itself entirely rather
-        // than announcing itself as unavailable.
-        role="link"
-        aria-disabled={!href}
-        aria-busy={isPending}
-        // The word on screen is the first word of this, which is what keeps the
-        // visible label part of the accessible one.
-        aria-label={label}
-        title={label}
-        onClick={(event) => {
-          if (!href) {
+      render={
+        <a
+          href={href}
+          // Focusable even with nothing to point at - the point of the exercise.
+          tabIndex={0}
+          // An `<a>` with no `href` is `generic` to the accessibility tree, not a
+          // link, and a generic node carries no accessible name - so without this
+          // the unavailable button would stop announcing itself entirely rather
+          // than announcing itself as unavailable.
+          role="link"
+          aria-disabled={!href}
+          aria-busy={isPending}
+          // The word on screen is the first word of this, which is what keeps the
+          // visible label part of the accessible one.
+          aria-label={label}
+          title={label}
+          onClick={(event) => {
+            if (!href) {
+              event.preventDefault();
+              return;
+            }
+            // Leave cmd/ctrl/shift/alt-clicks to the browser, so "open in a new
+            // tab" still works on what is, after all, a link to a page.
+            if (
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey
+            ) {
+              return;
+            }
             event.preventDefault();
-            return;
-          }
-          // Leave cmd/ctrl/shift/alt-clicks to the browser, so "open in a new
-          // tab" still works on what is, after all, a link to a page.
-          if (
-            event.metaKey ||
-            event.ctrlKey ||
-            event.shiftKey ||
-            event.altKey
-          ) {
-            return;
-          }
-          event.preventDefault();
-          router.push(href);
-        }}
-      >
-        {/* The chevron alone on a phone, where the words would push the
+            router.push(href);
+          }}
+        />
+      }
+      nativeButton={false}
+      role="link"
+    >
+      {/* The chevron alone on a phone, where the words would push the
             top row past the screen's edge; the name is `aria-label`'s at
             every width. */}
-        {isPrevious && <Chevron className="h-4 w-4 sm:mr-1" />}
-        <span className="max-sm:hidden">
-          {isPrevious ? "Previous" : "Next"}
-        </span>
-        {!isPrevious && <Chevron className="h-4 w-4 sm:ml-1" />}
-      </a>
+      {isPrevious && <Chevron className="h-4 w-4 sm:mr-1" />}
+      <span className="max-sm:hidden">{isPrevious ? "Previous" : "Next"}</span>
+      {!isPrevious && <Chevron className="h-4 w-4 sm:ml-1" />}
     </Button>
   );
 }

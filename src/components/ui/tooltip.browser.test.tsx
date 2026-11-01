@@ -128,7 +128,7 @@ describe("an icon button's name under a finger", () => {
         <PopoverContent>Open elsewhere</PopoverContent>
       </Popover>,
     );
-    // Radix listens for a press outside an open panel from the next tick on.
+    // Base UI listens for a press outside an open panel from the next tick on.
     wait(0);
 
     fireEvent.pointerDown(button, { ...FINGER, button: 0 });
@@ -150,8 +150,20 @@ describe("a label's hint under a finger", () => {
   const wait = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 
   function tap(target: Element, pointerType = "touch") {
-    fireEvent.pointerDown(target, { ...FINGER, pointerType });
-    fireEvent.pointerUp(target, { ...FINGER, pointerType });
+    const touch = new Touch({
+      identifier: 7,
+      target,
+      clientX: 20,
+      clientY: 20,
+    });
+    fireEvent.pointerDown(target, { ...FINGER, pointerType, button: 0 });
+    if (pointerType === "touch")
+      fireEvent.touchStart(target, { touches: [touch] });
+    fireEvent.pointerUp(target, { ...FINGER, pointerType, button: 0 });
+    if (pointerType === "touch")
+      fireEvent.touchEnd(target, { touches: [], changedTouches: [touch] });
+    fireEvent.mouseDown(target, { button: 0 });
+    fireEvent.mouseUp(target, { button: 0 });
     fireEvent.click(target);
   }
 
@@ -174,10 +186,10 @@ describe("a label's hint under a finger", () => {
       </TextHint>,
     );
     tap(screen.getByText("Pescador Island +1"));
-    // Radix listens for a press outside an open hint from the next tick on.
+    // Base UI listens for a press outside an open hint from the next tick on.
     wait(0);
 
-    fireEvent.pointerDown(document.body, FINGER);
+    tap(document.body);
     wait(0);
 
     expect(hint()).toBeNull();

@@ -8,7 +8,7 @@ import {
   type PointerEvent,
 } from "react";
 import { Star } from "lucide-react";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { RATING_MAX, RATING_MIN } from "@/lib/validations/dive";
 import { cn } from "@/lib/utils";
 import { countNoun } from "@/lib/format";
@@ -28,7 +28,7 @@ function ratingSummary(rating: number): string {
   return `${rating} of ${RATING_MAX} stars`;
 }
 
-export interface RatingInputProps extends FormControlSlotProps {
+export interface RatingInputProps extends FormControlA11yProps {
   /** The step chosen, or `null` for unrated. */
   value: number | null;
   onChange: (value: number | null) => void;

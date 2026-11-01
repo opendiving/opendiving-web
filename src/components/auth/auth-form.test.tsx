@@ -112,7 +112,7 @@ async function requestLink(redirectTo: string | null, via?: string) {
   return user;
 }
 
-// The code field is six single-character inputs in a `role="group"` (Radix's
+// The code field is six single-character inputs in a `role="group"` (Base UI's
 // one-time-password field), so there is no one element to type into or read back
 // - focus walks itself from box to box as digits land. `check-email-card.test.tsx`
 // holds the behaviour; these two only need the digits in and the value back out.

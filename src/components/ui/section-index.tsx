@@ -478,28 +478,30 @@ export function SectionIndexTrigger({ className }: { className?: string }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <IconTooltip label="Sections">
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "relative h-7 w-7 text-muted-foreground touch:min-h-0 touch:min-w-0 touch:tap-target",
-              className,
-            )}
-          >
-            <TableOfContents className="h-5 w-5" aria-hidden="true" />
-          </Button>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "relative h-7 w-7 text-muted-foreground touch:min-h-0 touch:min-w-0 touch:tap-target",
+                className,
+              )}
+            />
+          }
+        >
+          <TableOfContents className="h-5 w-5" aria-hidden="true" />
         </PopoverTrigger>
       </IconTooltip>
       {/* As wide as its longest name up to a cap, past which names wrap. */}
       <PopoverContent
         align="end"
         className="w-max min-w-56 max-w-72 p-1"
-        onCloseAutoFocus={(event) => {
-          if (!picked.current) return;
+        finalFocus={() => {
+          const restore = !picked.current;
           picked.current = false;
-          event.preventDefault();
+          return restore;
         }}
       >
         <SectionIndexNav

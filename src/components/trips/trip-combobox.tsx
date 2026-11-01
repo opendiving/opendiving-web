@@ -5,7 +5,7 @@ import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import type { FormControlSlotProps } from "@/components/ui/form";
+import type { FormControlA11yProps } from "@/components/ui/form";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { useLookupLabels } from "@/hooks/useLookupLabels";
 import { TripDialog } from "@/components/trips/trip-dialog";
@@ -16,7 +16,7 @@ const TRIPS_PER_SEARCH = 25;
 
 const lookupTrips = (uuids: string[]) => tripsAPI.lookupTripsByUuid(uuids);
 
-export interface TripComboboxProps extends FormControlSlotProps {
+export interface TripComboboxProps extends FormControlA11yProps {
   value?: string | null;
   // `null`, not `undefined`, for "no trip" - and the distinction is load-bearing
   // on the edit form, which builds its PATCH body by skipping fields that are

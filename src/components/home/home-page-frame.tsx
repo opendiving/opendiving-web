@@ -66,11 +66,16 @@ export function HomePageFrame({
         stats={stats}
         places={places}
         actions={
-          <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
-            <Link href="/dives/new?from=/home">
-              <Plus className="h-4 w-4 mr-2" />
-              Log a dive
-            </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={HERO_CONTROL}
+            render={<Link href="/dives/new?from=/home" />}
+            nativeButton={false}
+            role="link"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Log a dive
           </Button>
         }
       />

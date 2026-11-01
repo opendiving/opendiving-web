@@ -139,7 +139,7 @@ export function proxy(request: NextRequest) {
     // `style-src-attr` is deliberately its own, non-nonce'd directive: per
     // spec, listing a nonce/hash in a directive disables the `'unsafe-inline'`
     // fallback for *that* directive, and inline `style="..."` attributes from
-    // Radix/Floating UI/etc. (positioning, `pointer-events`, animation state)
+    // Base UI/Floating UI/etc. (positioning, `pointer-events`, animation state)
     // can't practically carry a matching nonce - there's no way to tag every
     // element a third-party library renders. CSS-attribute injection can't
     // execute script in any modern browser, so this is a deliberate, narrow

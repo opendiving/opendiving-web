@@ -279,7 +279,7 @@ function hoverAt(fractionOfDive: number) {
 // What the crosshair is currently saying, or "" when it is saying nothing at all -
 // the tooltip is absent, not empty, when no channel and no marker is in reach.
 function readoutText(): string {
-  return screen.queryByRole("presentation")?.textContent ?? "";
+  return document.querySelector("[data-chart-readout]")?.textContent ?? "";
 }
 
 describe("DiveProfileChart on the millisecond axis", () => {
@@ -1717,7 +1717,9 @@ describe("DiveProfileChart deco readouts", () => {
 
     // The card is one grid: the elapsed time, then the readings with a rule -
     // an `aria-hidden` cell - between one graph's and the next.
-    const grid = screen.getByRole("presentation").firstElementChild;
+    const grid = document.querySelector(
+      "[data-chart-readout]",
+    )?.firstElementChild;
     const groups = [""];
     for (const cell of [...(grid?.children ?? [])].slice(1)) {
       if (cell.getAttribute("aria-hidden") === "true") groups.push("");
@@ -2208,7 +2210,7 @@ describe("DiveProfileChart in full screen", () => {
     );
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    // Radix moves focus on the tick after the dialog unmounts.
+    // Base UI moves focus on the tick after the dialog unmounts.
     await waitFor(() =>
       expect(document.activeElement).toBe(
         screen.getByRole("button", { name: "Full screen" }),

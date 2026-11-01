@@ -36,10 +36,14 @@ export function RowActions({
       <div className="flex justify-end gap-2">
         {viewHref && (
           <IconTooltip label={`View ${label}`}>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={viewHref}>
-                <Eye className="h-4 w-4" />
-              </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              render={<Link href={viewHref} />}
+              nativeButton={false}
+              role="link"
+            >
+              <Eye className="h-4 w-4" />
             </Button>
           </IconTooltip>
         )}
