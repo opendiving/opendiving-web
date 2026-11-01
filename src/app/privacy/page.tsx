@@ -55,7 +55,7 @@ export default async function PrivacyPage() {
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Privacy Policy
         </h1>
-        <p className="text-muted-foreground">Last updated: October 2026</p>
+        <p className="text-muted-foreground">Last updated: November 2026</p>
       </div>
 
       <Card>
@@ -728,6 +728,15 @@ export default async function PrivacyPage() {
                 which loads one only when you ask it to show the map. Apart from
                 those three, no page has your browser contact the provider.
               </p>
+              <p className="text-foreground mb-4">
+                Those maps name places in English and, where the map has a name
+                for a place in the language your browser is set to, in that
+                language as well. Your browser picks that language itself, and
+                the app adds it to nothing it sends. The provider learns it all
+                the same: like every browser, yours names the languages it is
+                set to in each request it makes, to this provider as to any
+                site.
+              </p>
               {mapTiles ? (
                 <>
                   <p className="text-foreground mb-4">
@@ -758,14 +767,30 @@ export default async function PrivacyPage() {
                     than only which site you picked.
                   </p>
                   <p className="text-foreground mb-4">
+                    Each of those tile requests carries the language your
+                    browser is set to. The server reduces it to a language
+                    &mdash; German, say, for a browser set to Austrian German
+                    &mdash; and draws the tile&rsquo;s place names in English
+                    and, where the map has a name in that language, in it as
+                    well; a language the map names nothing in, or English, gets
+                    the tile in English alone. The language itself goes no
+                    further than this server, but the lettering a tile is drawn
+                    in comes from the provider as it does for the forms&rsquo;
+                    maps &mdash; so for a language not written in the Latin
+                    alphabet the provider can tell that this server drew that
+                    alphabet, though not for whom.
+                  </p>
+                  <p className="text-foreground mb-4">
                     The tiles are shared: everyone this copy shows a part of the
-                    world is shown the same tiles, and a tile this server
-                    already keeps reaches a browser sooner than one it still has
-                    to draw. So another member of this copy who timed their own
-                    requests could tell that someone here was shown a region
-                    some tens of kilometres across in the last 30 days &mdash;
-                    though not who, and nothing of what they logged there.
-                    Section 7 says how long the tiles are kept.
+                    world in the same language is shown the same tiles, and a
+                    tile this server already keeps reaches a browser sooner than
+                    one it still has to draw. So another member of this copy who
+                    timed their own requests could tell that someone here was
+                    shown a region some tens of kilometres across in the last 30
+                    days, and that it was someone whose browser is set to a
+                    given language &mdash; though not who, and nothing of what
+                    they logged there. Section 7 says how long the tiles are
+                    kept.
                   </p>
                 </>
               ) : (
@@ -1646,9 +1671,10 @@ export default async function PrivacyPage() {
                   The <strong>map tiles</strong> this copy draws, which section
                   4.4 describes, are kept with its files. They are drawn from
                   the map alone and shared by everyone this copy shows that part
-                  of the world, so they belong to no account and are not deleted
-                  with one: a tile this server has not been asked for in 30 days
-                  is deleted, and drawn again if a map asks for it after that.
+                  of the world in the same language, so they belong to no
+                  account and are not deleted with one: a tile this server has
+                  not been asked for in 30 days is deleted, and drawn again if a
+                  map asks for it after that.
                 </p>
               )}
               <p className="text-foreground mb-4">
