@@ -3,7 +3,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { getWorkerUrl, type Map as MapLibreMap } from "maplibre-gl";
 
 import { MapCanvas } from "./map-canvas";
-import { resolveBasemap, type BasemapConfig } from "@/lib/basemap";
+import {
+  ENGLISH_NAME,
+  resolveBasemap,
+  type BasemapConfig,
+} from "@/lib/basemap";
 
 // **Load-bearing, and it looks like a stray import.** The browser project loads
 // no stylesheet of this app's - `map-canvas.tsx` brings `maplibre-gl.css` with
@@ -328,6 +332,53 @@ describe("MapCanvas", () => {
       // camera and every marker on it, which is the thing this arrangement
       // exists to avoid.
       expect(map).toBe(instance);
+    },
+    LOAD_TIMEOUT + 5_000,
+  );
+
+  // The vendored pair labels in English alone; a live map adds the viewer's
+  // language to it, as the tiles of a backdrop do.
+  it(
+    "labels the vendored style in the viewer's language as well as English",
+    async () => {
+      vi.spyOn(navigator, "language", "get").mockReturnValue("de-AT");
+      vi.spyOn(window, "fetch").mockResolvedValue(
+        Response.json({
+          version: 8,
+          glyphs: "https://glyphs.example.invalid/{fontstack}/{range}.pbf",
+          sources: PROBE_STYLE.sources,
+          layers: [
+            {
+              id: "label_city",
+              type: "symbol",
+              source: "probe",
+              layout: { "text-field": ENGLISH_NAME },
+            },
+          ],
+        }),
+      );
+
+      let map: MapLibreMap | null = null;
+      render(
+        <div style={{ position: "relative", ...FRAME }}>
+          <MapCanvas
+            basemap={resolveBasemap({})}
+            theme="light"
+            onMap={(instance) => {
+              map = instance;
+            }}
+            unsupported={<p>This browser cannot display the map.</p>}
+          />
+        </div>,
+      );
+
+      await waitFor(() => expect(map?.getStyle()).toBeDefined());
+      const field = JSON.stringify(
+        (map!.getStyle().layers[0] as { layout?: Record<string, unknown> })
+          .layout?.["text-field"],
+      );
+      expect(field).toContain('"name:de"');
+      expect(field).toContain(JSON.stringify(ENGLISH_NAME));
     },
     LOAD_TIMEOUT + 5_000,
   );

@@ -104,6 +104,24 @@ describe("the renderer's server", () => {
     expect(renderer.drawn).toEqual([TILE, DARK_TILE]);
   });
 
+  it("draws a tile in a language, and logs it with its square", async () => {
+    const lines: string[] = [];
+    const renderer = stubRenderer();
+    server = createRendererServer({
+      renderer,
+      signature: SIGNATURE,
+      log: (line) => lines.push(line),
+    });
+    await new Promise<void>((done) => server!.listen(0, "127.0.0.1", done));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+    expect((await render(base, { ...TILE, language: "de" })).status).toBe(200);
+    expect(renderer.drawn).toEqual([{ ...TILE, language: "de" }]);
+    expect(lines).toEqual([
+      expect.stringMatching(/^drew a tile, light 9\/300\/215 in de, in \d+ ms/),
+    ]);
+  });
+
   it("logs each tile it draws by its square", async () => {
     const lines: string[] = [];
     server = createRendererServer({
@@ -141,6 +159,10 @@ describe("the renderer's server", () => {
       // Past the deepest zoom a map is fitted at, and outside the grid.
       [{ ...TILE, z: 10, x: 0, y: 0 }, "application/json"],
       [{ ...TILE, x: 512 }, "application/json"],
+      // A language the basemap does not carry, or one the API left unreduced.
+      [{ ...TILE, language: "en" }, "application/json"],
+      [{ ...TILE, language: "de-DE" }, "application/json"],
+      [{ ...TILE, language: null }, "application/json"],
       [
         {
           kind: "dive",

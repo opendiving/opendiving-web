@@ -101,7 +101,9 @@ describe("DiveSiteCard", () => {
     expect(map.querySelector("img")).toHaveAttribute("src", "blob:tile");
     expect(map.querySelectorAll("[data-marker]")).toHaveLength(1);
     expect(getMapTile).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/map-tiles\/light\/9\/\d+\/\d+$/),
+      expect.stringMatching(
+        /^\/map-tiles\/light\/9\/\d+\/\d+\?language=en-US$/,
+      ),
       expect.any(AbortSignal),
     );
   });

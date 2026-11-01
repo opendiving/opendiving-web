@@ -12,8 +12,10 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import {
   basemapStyle,
+  labelLanguage,
   MAX_ZOOM,
   MIN_ZOOM,
+  withLabelLanguage,
   type Basemap,
   type BasemapStyle,
 } from "@/lib/basemap";
@@ -134,6 +136,13 @@ export function MapCanvas({
   useEffect(() => {
     let cancelled = false;
     basemapStyle(basemap, theme)
+      // In the viewer's language as well as English, as the tiles a backdrop
+      // shows are. A style URL is MapLibre's to fetch, and drawn as written.
+      .then((resolved) =>
+        typeof resolved === "string"
+          ? resolved
+          : withLabelLanguage(resolved, labelLanguage(navigator.language)),
+      )
       .then((resolved) => {
         if (cancelled) return;
         setStyle(resolved);
