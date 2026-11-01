@@ -9,6 +9,8 @@ import { createRendererServer, QUEUE_LIMIT, type Renderer } from "./server";
 // stand-in for the drawing so the queue can be held full on purpose.
 
 const SIGNATURE = "a".repeat(64);
+const ATTRIBUTION =
+  "[OpenFreeMap](https://openfreemap.org/) © [OpenStreetMap](https://www.openstreetmap.org/copyright)";
 const IMAGE = Buffer.from("RIFF....WEBPVP8 ");
 
 const TILE = { kind: "tile", theme: "light", z: 9, x: 300, y: 215 };
@@ -61,7 +63,12 @@ afterEach(async () => {
 });
 
 async function serve(renderer: Renderer, queueLimit?: number) {
-  server = createRendererServer({ renderer, signature: SIGNATURE, queueLimit });
+  server = createRendererServer({
+    renderer,
+    signature: SIGNATURE,
+    attribution: ATTRIBUTION,
+    queueLimit,
+  });
   await new Promise<void>((done) => server!.listen(0, "127.0.0.1", done));
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
@@ -82,12 +89,15 @@ describe("the renderer's server", () => {
     expect((await fetch(`${base}/healthz`)).status).toBe(503);
   });
 
-  it("answers /signature with the signature it draws with", async () => {
+  it("answers /signature with the signature it draws with and the basemap's credit", async () => {
     const base = await serve(stubRenderer());
     const response = await fetch(`${base}/signature`);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/json");
-    expect(await response.json()).toEqual({ signature: SIGNATURE });
+    expect(await response.json()).toEqual({
+      signature: SIGNATURE,
+      attribution: ATTRIBUTION,
+    });
   });
 
   it("draws a tile in either theme, naming the signature it drew with", async () => {
@@ -110,6 +120,7 @@ describe("the renderer's server", () => {
     server = createRendererServer({
       renderer,
       signature: SIGNATURE,
+      attribution: ATTRIBUTION,
       log: (line) => lines.push(line),
     });
     await new Promise<void>((done) => server!.listen(0, "127.0.0.1", done));
@@ -127,6 +138,7 @@ describe("the renderer's server", () => {
     server = createRendererServer({
       renderer: stubRenderer(),
       signature: SIGNATURE,
+      attribution: ATTRIBUTION,
       log: (line) => lines.push(line),
     });
     await new Promise<void>((done) => server!.listen(0, "127.0.0.1", done));
