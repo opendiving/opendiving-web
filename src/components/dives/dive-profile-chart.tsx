@@ -250,9 +250,14 @@ export interface DiveProfileChartProps {
   // everything derived from it. Null until that slot has mounted, and both
   // controls wait for it.
   menuContainer: HTMLElement | null;
+  // The dive's other recordings, whose readings widen every vertical axis this
+  // chart draws, so switching computers keeps one grid and the difference
+  // between them is in the curves rather than in the numbers along the edge.
+  scaleWith?: readonly DiveProfile[];
 }
 
 const NO_CYLINDERS: CylinderLabels = [];
+const NO_PEERS: readonly DiveProfile[] = [];
 
 interface PlottedChannel {
   key: string;
@@ -334,10 +339,73 @@ function drawnValues(
   return [...drawn].map((index) => series.values[index]);
 }
 
+// The two things every channel derives from its own cadence, from *one*
+// threshold - which is the whole point of `PlottedChannel` carrying
+// `gapMs`, and which an earlier version of this quietly gave up by
+// passing `gapThreshold` to the segmenter and `readoutTolerance` to the
+// readout.
+//
+// The readout is always cut at `readoutTolerance`, whose floor is what stops
+// the crosshair quoting a reading from the far side of the dive. The *line*
+// is cut at that same number only where a gap means something - see
+// `gapsAreMeaningful` on `ProfileChannel`.
+//
+// On the ceiling, `gapThreshold`'s `Infinity` below three samples reads as
+// "join these however far apart they are", which draws a twenty-minute
+// shaded forbidden zone between two isolated moments in deco. Two samples ten
+// seconds apart still join, which is the case worth drawing; two twenty
+// minutes apart become single-point runs, dropped here because a one-sample
+// `<polyline>` has no line and `buildAreaPath` turns one point into a
+// degenerate zero-width shape - markup that renders nothing. Dropping them
+// makes "no ceiling is drawn here" true of the DOM as well as the pixels.
+//
+// On a measured channel that same strictness buys nothing and costs a lot: a
+// gap there means "not recorded", two samples are still two readings, and
+// filtering them out would leave a depth-only dive rendering "this
+// recording's file recorded no samples to plot" over a profile that has two.
+function channelRuns(t: number[], channel: ProfileChannel) {
+  const tolerance = readoutTolerance(t);
+  const cut = channel.gapsAreMeaningful ? tolerance : gapThreshold(t);
+  const segments = segmentByTimeGap(t, cut).filter(
+    (segment) => !channel.gapsAreMeaningful || segment.length > 1,
+  );
+
+  return {
+    gapMs: tolerance,
+    segments,
+    drawn: new Set(segments.flat()),
+  };
+}
+
+// One channel's readings across the dive's other recordings, in the diver's
+// units: those each would draw where `drawn`, every one otherwise - the same
+// choice the shown recording's own domain makes for that channel.
+function peerValues(
+  peers: readonly DiveProfile[],
+  key: ProfileChannelKey,
+  units: UnitSystem,
+  drawn: boolean,
+): number[] {
+  return peers.flatMap((peer) => {
+    const series =
+      key === "pressure"
+        ? toPressureSeries(peer, units)
+        : [toChannelSeries(peer, key, units)].filter(
+            (entry): entry is ChannelSeries => entry !== null,
+          );
+    return series.flatMap((entry) =>
+      drawn
+        ? drawnValues(entry, channelRuns(entry.t, PROFILE_CHANNELS[key]).drawn)
+        : entry.values,
+    );
+  });
+}
+
 export function DiveProfileChart({
   profile: recorded,
   mixtures = NO_CYLINDERS,
   menuContainer,
+  scaleWith = NO_PEERS,
 }: DiveProfileChartProps) {
   const units = useUnits();
   // Everything below reads this rather than the prop: the recording cut at the
@@ -346,6 +414,9 @@ export function DiveProfileChart({
   // what keeps the surface stretch out of the vertical scales, the crosshair
   // and the summary as well as off the plot.
   const profile = useMemo(() => cutAtDiveEnd(recorded), [recorded]);
+  // Cut the same way, so another computer's surface stretch cannot widen an axis
+  // this one's curves never reach either.
+  const peers = useMemo(() => scaleWith.map(cutAtDiveEnd), [scaleWith]);
   // Names the clip paths below, so two charts on one page cannot clip each other
   // - the trap `components/icons/google-icon.tsx` already records for the mask and
   // filter ids it namespaces the same way.
@@ -509,47 +580,11 @@ export function DiveProfileChart({
   const channels: PlottedChannel[] = (() => {
     const plotted: PlottedChannel[] = [];
 
-    // The two things every channel derives from its own cadence, from *one*
-    // threshold - which is the whole point of `PlottedChannel` carrying
-    // `gapMs`, and which an earlier version of this quietly gave up by
-    // passing `gapThreshold` to the segmenter and `readoutTolerance` to the
-    // readout.
-    //
-    // The readout is always cut at `readoutTolerance`, whose floor is what stops
-    // the crosshair quoting a reading from the far side of the dive. The *line*
-    // is cut at that same number only where a gap means something - see
-    // `gapsAreMeaningful` on `ProfileChannel`.
-    //
-    // On the ceiling, `gapThreshold`'s `Infinity` below three samples reads as
-    // "join these however far apart they are", which draws a twenty-minute
-    // shaded forbidden zone between two isolated moments in deco. Two samples ten
-    // seconds apart still join, which is the case worth drawing; two twenty
-    // minutes apart become single-point runs, dropped here because a one-sample
-    // `<polyline>` has no line and `buildAreaPath` turns one point into a
-    // degenerate zero-width shape - markup that renders nothing. Dropping them
-    // makes "no ceiling is drawn here" true of the DOM as well as the pixels.
-    //
-    // On a measured channel that same strictness buys nothing and costs a lot: a
-    // gap there means "not recorded", two samples are still two readings, and
-    // filtering them out would leave a depth-only dive rendering "this
-    // recording's file recorded no samples to plot" over a profile that has two.
-    const runs = (t: number[], channel: ProfileChannel) => {
-      const tolerance = readoutTolerance(t);
-      const cut = channel.gapsAreMeaningful ? tolerance : gapThreshold(t);
-      const segments = segmentByTimeGap(t, cut).filter(
-        (segment) => !channel.gapsAreMeaningful || segment.length > 1,
-      );
-
-      return {
-        gapMs: tolerance,
-        segments,
-        drawn: new Set(segments.flat()),
-      };
-    };
-
-    const depthRuns = depth ? runs(depth.t, PROFILE_CHANNELS.depth) : null;
+    const depthRuns = depth
+      ? channelRuns(depth.t, PROFILE_CHANNELS.depth)
+      : null;
     const ceilingRuns = ceiling
-      ? runs(ceiling.t, PROFILE_CHANNELS.ceiling)
+      ? channelRuns(ceiling.t, PROFILE_CHANNELS.ceiling)
       : null;
 
     // Anchored at the surface and inverted: `0` at the top, deeper further
@@ -561,8 +596,14 @@ export function DiveProfileChart({
     // dropped for sitting in an undrawable run would otherwise stretch this axis
     // to accommodate a reading no curve ever reaches.
     const vertical = depthDomain(
-      drawnValues(depth, depthRuns?.drawn),
-      drawnValues(ceiling, ceilingRuns?.drawn),
+      [
+        ...drawnValues(depth, depthRuns?.drawn),
+        ...peerValues(peers, "depth", units, true),
+      ],
+      [
+        ...drawnValues(ceiling, ceilingRuns?.drawn),
+        ...peerValues(peers, "ceiling", units, true),
+      ],
     );
 
     if (depth && depthRuns) {
@@ -606,8 +647,14 @@ export function DiveProfileChart({
         axis: "temperature",
         label: PROFILE_CHANNELS.temperature.label,
         series: temperature,
-        domain: temperatureDomain(temperature.values, units),
-        ...runs(temperature.t, PROFILE_CHANNELS.temperature),
+        domain: temperatureDomain(
+          [
+            ...temperature.values,
+            ...peerValues(peers, "temperature", units, false),
+          ],
+          units,
+        ),
+        ...channelRuns(temperature.t, PROFILE_CHANNELS.temperature),
       });
     }
 
@@ -615,9 +662,10 @@ export function DiveProfileChart({
       // One domain across every cylinder, unlike the channels above: two tanks
       // on one dive are directly comparable, and giving each its own axis would
       // make a 50-bar stage look like the 200-bar back gas.
-      const domain = niceDomain(
-        pressure.flatMap((cylinder) => cylinder.values),
-      );
+      const domain = niceDomain([
+        ...pressure.flatMap((cylinder) => cylinder.values),
+        ...peerValues(peers, "pressure", units, false),
+      ]);
       for (const cylinder of pressure) {
         plotted.push({
           key: `pressure-${cylinder.gasNumber}`,
@@ -629,7 +677,7 @@ export function DiveProfileChart({
               : PROFILE_CHANNELS.pressure.label,
           series: cylinder,
           domain,
-          ...runs(cylinder.t, PROFILE_CHANNELS.pressure),
+          ...channelRuns(cylinder.t, PROFILE_CHANNELS.pressure),
         });
       }
     }
@@ -647,7 +695,7 @@ export function DiveProfileChart({
         .map((key) => {
           const series = toChannelSeries(profile, key, units);
           return series
-            ? { key, series, ...runs(series.t, PROFILE_CHANNELS[key]) }
+            ? { key, series, ...channelRuns(series.t, PROFILE_CHANNELS[key]) }
             : null;
         })
         .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
@@ -819,15 +867,18 @@ export function DiveProfileChart({
   const panelDomains = new Map<ProfileAxisKey, Domain>(
     placement.panels.map((axis) => [
       axis,
-      axisDomain(
-        axis,
-        channels
+      axisDomain(axis, [
+        ...channels
           .filter(
             (channel) =>
               channel.axis === axis && visible.includes(channel.channelKey),
           )
           .flatMap((channel) => drawnValues(channel.series, channel.drawn)),
-      ),
+        ...channelsOnAxis(
+          availableChannels.filter((key) => visible.includes(key)),
+          axis,
+        ).flatMap((key) => peerValues(peers, key, units, true)),
+      ]),
     ]),
   );
 
@@ -843,9 +894,12 @@ export function DiveProfileChart({
   const underRightDomain =
     placement.underRight && rightDomain
       ? alignedDomain(
-          channels
-            .filter((channel) => channel.channelKey === placement.underRight)
-            .flatMap((channel) => channel.series.values),
+          [
+            ...channels
+              .filter((channel) => channel.channelKey === placement.underRight)
+              .flatMap((channel) => channel.series.values),
+            ...peerValues(peers, placement.underRight, units, false),
+          ],
           stepCount(rightDomain),
         )
       : null;

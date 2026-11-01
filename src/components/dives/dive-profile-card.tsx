@@ -120,11 +120,18 @@ function describeProfileContents(
 // computers recorded. Subsurface's arrow keys switch too: two depth traces on
 // one axis with two pressure families is a legend problem this app does not have
 // to solve, and the question a diver actually asks is "what did *this* computer
-// see", not "where do they disagree by a pixel".
+// see", not "where do they disagree by a pixel". The scales are the one thing
+// they share, so that answer reads the same way off either computer's grid.
 
 export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   const units = useUnits();
-  const [result, setResult] = useState<ProfileResult | null>(null);
+  // Every charted recording's samples by recording uuid, all fetched together:
+  // the shown one is drawn, and the others set its scales alongside it - see
+  // `scaleWith`. Null while in flight, for the reasons `ProfileResult` gives.
+  const [results, setResults] = useState<ReadonlyMap<
+    string,
+    ProfileResult
+  > | null>(null);
   // Bumped by the retry button to re-run the effect below.
   const [attempt, setAttempt] = useState(0);
   // Which recording's samples are on screen, by uuid rather than by index: a
@@ -146,31 +153,38 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
     charted.find((recording) => recording.uuid === shownUuid) ?? charted[0];
 
   const info = shown?.profile ?? null;
-  const recordingUuid = shown?.uuid ?? null;
   const diveUuid = dive.uuid;
-  // The profile's identity as far as the browser cache is concerned - the same
+  // Each profile's identity as far as the browser cache is concerned - the same
   // `uuid:updated_at` pair `DiveRecordingsCard` uses, and for the same reason.
   // `uuid` alone would not be enough if a row were ever updated in place, and
   // `updated_at` alone would not be enough here at all: re-extraction is a
   // delete-then-insert, so a re-extracted profile is a *new row* with a fresh
   // `uuid` and a null `updated_at`.
-  const version = `${info?.uuid ?? ""}:${info?.updated_at ?? ""}`;
+  const versions = charted.map((recording) => ({
+    recordingUuid: recording.uuid,
+    version: `${recording.profile?.uuid ?? ""}:${recording.profile?.updated_at ?? ""}`,
+  }));
+  const fetchKey = versions
+    .map(({ recordingUuid, version }) => `${recordingUuid}=${version}`)
+    .join(",");
 
   useEffect(() => {
-    if (!info || !recordingUuid) return;
+    if (versions.length === 0) return;
 
     let isCurrent = true;
-    const fetchProfile = async () => {
+    const fetchProfile = async (
+      recordingUuid: string,
+      version: string,
+    ): Promise<ProfileResult> => {
       try {
         const data = await divesAPI.getRecordingProfile(
           diveUuid,
           recordingUuid,
           version,
         );
-        if (isCurrent) setResult({ status: "ready", profile: data });
+        return { status: "ready", profile: data };
       } catch (error) {
         console.error("Failed to fetch dive profile:", error);
-        if (!isCurrent) return;
         // A muted line in the card rather than a toast: nothing the diver did
         // caused this and there is nothing for them to do about it, so it
         // belongs where the chart would have been, not over the whole page.
@@ -178,27 +192,43 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
         // The API's own wording where it has one - "This dive has no profile" -
         // now that the response interceptor unwraps blob-wrapped error bodies.
         const status = getApiErrorStatus(error) === 404 ? "missing" : "failed";
-        setResult({
+        return {
           status,
           message: getApiErrorMessage(
             error,
             "This recording's profile couldn't be loaded.",
           ),
-        });
+        };
       }
     };
 
-    fetchProfile();
+    Promise.all(
+      versions.map(
+        async ({ recordingUuid, version }) =>
+          [recordingUuid, await fetchProfile(recordingUuid, version)] as const,
+      ),
+    ).then((entries) => {
+      if (isCurrent) setResults(new Map(entries));
+    });
     return () => {
       isCurrent = false;
       // Back to "in flight" for whatever comes next. This is what stops a stale
       // chart or a stale failure surviving a dive change or a re-import.
-      setResult(null);
+      setResults(null);
     };
-    // `info` itself is a fresh object on every dive refetch; its `updated_at` is
-    // what actually identifies the payload.
+    // `versions` is a fresh array on every render; `fetchKey` is what actually
+    // identifies the payloads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diveUuid, recordingUuid, version, Boolean(info), attempt]);
+  }, [diveUuid, fetchKey, attempt]);
+
+  const result = (shown && results?.get(shown.uuid)) ?? null;
+  // A computer whose samples failed to load only stops widening the scales;
+  // the one on screen still draws.
+  const peers = [...(results ?? [])].flatMap(([recordingUuid, peer]) =>
+    recordingUuid !== shown?.uuid && peer.status === "ready"
+      ? [peer.profile]
+      : [],
+  );
 
   if (!info || !shown) return null;
 
@@ -259,6 +289,7 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
             profile={result.profile}
             mixtures={dive.mixtures}
             menuContainer={menuSlot}
+            scaleWith={peers}
           />
         ) : (
           <div className="space-y-2">
