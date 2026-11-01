@@ -7,6 +7,7 @@ const connectionSchema = z.object({
   client_id: z.string(),
   scopes: z.array(z.string()),
   created_at: z.string(),
+  last_used_at: z.string().nullable().default(null),
 });
 const consentSchema = z.object({
   client_id: z.string(),
