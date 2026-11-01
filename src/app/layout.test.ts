@@ -13,9 +13,6 @@ vi.mock("@/contexts/CheckinDetailsContext", () => ({
 vi.mock("@/contexts/ConfigContext", () => ({ ConfigProvider: () => null }));
 vi.mock("@/components/theme-provider", () => ({ ThemeProvider: () => null }));
 vi.mock("@/components/layout/app-shell", () => ({ AppShell: () => null }));
-vi.mock("@/components/layout/launch-splash", () => ({
-  LaunchSplash: () => null,
-}));
 vi.mock("@/components/ui/toaster", () => ({ Toaster: () => null }));
 vi.mock("@/components/nonce-provider", () => ({ NonceProvider: () => null }));
 vi.mock("@/components/device-memory-installer", () => ({
