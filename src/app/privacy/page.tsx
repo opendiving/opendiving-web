@@ -773,9 +773,12 @@ export default async function PrivacyPage() {
                     &mdash; and draws the tile&rsquo;s place names in English
                     and, where the map has a name in that language, in it as
                     well; a language the map names nothing in, or English, gets
-                    the tile in English alone. The language goes no further than
-                    this server: what it fetches from the provider is the same
-                    whatever the language.
+                    the tile in English alone. The language itself goes no
+                    further than this server, but the lettering a tile is drawn
+                    in comes from the provider as it does for the forms&rsquo;
+                    maps &mdash; so for a language not written in the Latin
+                    alphabet the provider can tell that this server drew that
+                    alphabet, though not for whom.
                   </p>
                   <p className="text-foreground mb-4">
                     The tiles are shared: everyone this copy shows a part of the

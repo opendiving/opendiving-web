@@ -873,7 +873,9 @@ describe("the map tiles", () => {
     expect(text).toMatch(
       /Each of those tile requests carries the language your browser is set to/,
     );
-    expect(text).toMatch(/The language goes no further than this server/);
+    expect(text).toMatch(
+      /The language itself goes no further than this server, but the lettering a tile is drawn in comes from the provider/,
+    );
     // What sharing them gives away, and what it does not.
     expect(text).toMatch(
       /another member of this copy who timed their own requests could tell that someone here was shown a region/,
