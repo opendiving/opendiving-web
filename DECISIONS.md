@@ -2524,11 +2524,9 @@ the dive source file and c-card images take: the endpoints require an `Authoriza
 plain `<a href>` cannot send one, the token living in memory rather than a cookie. Those two are
 bounded by upload limits; an archive is bounded by the account, held in RAM before writing and for
 `REVOKE_DELAY_MS` after. Accepted. The escape hatch is the ticketed navigation `saveApiDownload`
-takes in Firefox for iOS, which streams to disk without entering the JS heap. Its cost is why it is
-not the default: the page never sees the response, so a failed download — a 429 on the export limit,
-a file deleted in another tab — replaces the app with the API's JSON error rather than a toast, and
-nothing tells the page when the save has started. Widen that branch when someone hits the ceiling —
-not a streaming-download library on this side.
+takes in Firefox for iOS, streaming to disk outside the JS heap. It is not the default because the
+page never sees the response: a failure replaces the app instead of toasting. Widen that branch when
+someone hits the ceiling — not a streaming-download library on this side.
 
 ## Buttons all named "Download" need an accessible name each
 
@@ -3954,19 +3952,16 @@ instance's configuration is false for the second reader.
 
 ## "Download my data first" is the archive, and it leaves the dialog open
 
-`ConfirmDialog`'s `secondaryAction` slot carries the GDPR Art. 20 nudge and calls
-`exportAPI.download("archive", …)`: the archive is the only export carrying the dive-computer files
-and certification scans. The dialog stays open behind it — asking for your data mid-decision is not
-changing your mind.
+`ConfirmDialog`'s `secondaryAction` slot carries the GDPR Art. 20 nudge and saves the archive, the
+only export carrying the dive-computer files and certification scans. The dialog stays open behind
+it — asking for your data mid-decision is not changing your mind.
 
 The confirm is blocked while that export is being saved. A successful delete ends in a document
 navigation, which kills every open request and object URL, so confirming mid-export destroys the
-export on an account that is dark by then. The window is longer than the fetch: `downloadBlob`
-returns once it has dispatched a synthetic click, but Firefox and Safari read the blob afterwards
-and cancel the save if the URL disappears (`lib/download.ts` holds one for a minute), so the card
-stays busy for a two-second settle after handing the file over. In Firefox for iOS the save is a
-navigation the server answers only once the archive is built, so the hold lasts the ticket's
-lifetime instead.
+export on an account that is dark by then. The window outlasts the fetch: Firefox and Safari read
+the blob after the synthetic click, so the card stays busy for a two-second settle — and in Firefox
+for iOS, where the save is a navigation answered once the archive is built, for the ticket's
+lifetime.
 
 The type-your-username gate is `confirmDisabled`, compared case- and whitespace-insensitively:
 friction, not a password.
