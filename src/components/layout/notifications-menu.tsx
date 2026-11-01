@@ -207,7 +207,7 @@ export function NotificationsMenu() {
           onCloseAutoFocus={(event) => {
             if (editing) event.preventDefault();
           }}
-          className="max-h-[var(--radix-popover-content-available-height)] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-0"
+          className="max-h-[var(--available-height)] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-0"
         >
           {!isLoaded ? (
             <div

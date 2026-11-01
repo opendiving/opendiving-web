@@ -15,7 +15,7 @@ function renderChips() {
 
 const hint = () => screen.queryByRole("tooltip");
 
-// Radix listens for a press outside an open hint from the next tick on.
+// Let the popup install its outside-press listener.
 const nextTick = () => act(() => new Promise((done) => setTimeout(done, 0)));
 
 describe("a dive chip under a finger", () => {
@@ -37,6 +37,9 @@ describe("a dive chip under a finger", () => {
     await nextTick();
 
     fireEvent.pointerDown(document.body, FINGER);
+    fireEvent.touchStart(document.body, { touches: [] });
+    fireEvent.touchEnd(document.body, { touches: [] });
+    fireEvent.mouseDown(document.body);
     await nextTick();
 
     expect(hint()).toBeNull();

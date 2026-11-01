@@ -199,7 +199,7 @@ export function Header() {
     };
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Element;
-      if (target.closest?.("[data-radix-popper-content-wrapper]")) {
+      if (target.closest?.("[data-popup-positioner]")) {
         setIsMobileMenuOpen(false);
       }
     };
@@ -287,7 +287,7 @@ export function Header() {
                       }`}
                     >
                       More
-                      <ChevronDown className="ml-1 h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+                      <ChevronDown className="ml-1 h-4 w-4 transition-transform group-data-[popup-open]:rotate-180" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-48">
                       {moreItems.map((item) => {

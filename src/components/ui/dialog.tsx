@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
+import { childRender, type PrimitiveProps } from "./slot";
+import {
+  allowDismiss,
+  focusAllowed,
+  setRef,
+  usePopupEvents,
+  type PopupEvents,
+} from "./popup-events";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -13,7 +21,27 @@ import {
   useVisualViewport,
 } from "@/hooks/useVisualViewport";
 
-const Dialog = DialogPrimitive.Root;
+const DialogEventsContext =
+  React.createContext<React.RefObject<PopupEvents> | null>(null);
+function Dialog({
+  onOpenChange,
+  ...props
+}: Omit<DialogPrimitive.Root.Props, "onOpenChange"> & {
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const events = usePopupEvents();
+  return (
+    <DialogEventsContext.Provider value={events}>
+      <DialogPrimitive.Root
+        {...props}
+        onOpenChange={(open, details) => {
+          allowDismiss(details, events.current, true);
+          if (!details.isCanceled) onOpenChange?.(open);
+        }}
+      />
+    </DialogEventsContext.Provider>
+  );
+}
 
 const InsideDialogContext = React.createContext(false);
 
@@ -25,15 +53,43 @@ const InsideDialogContext = React.createContext(false);
 function useInsideDialog() {
   return React.useContext(InsideDialogContext);
 }
-const DialogTrigger = DialogPrimitive.Trigger;
+const DialogTrigger = React.forwardRef<
+  HTMLButtonElement,
+  PrimitiveProps<typeof DialogPrimitive.Trigger> & { asChild?: boolean }
+>(({ asChild, children, ...props }, ref) => (
+  <DialogPrimitive.Trigger
+    type="button"
+    ref={ref}
+    {...props}
+    render={asChild ? childRender(children) : undefined}
+  >
+    {asChild ? undefined : children}
+  </DialogPrimitive.Trigger>
+));
+DialogTrigger.displayName = "DialogTrigger";
 const DialogPortal = DialogPrimitive.Portal;
-const DialogClose = DialogPrimitive.Close;
+const DialogClose = React.forwardRef<
+  HTMLButtonElement,
+  PrimitiveProps<typeof DialogPrimitive.Close> & { asChild?: boolean }
+>(({ asChild, children, ...props }, ref) => (
+  <DialogPrimitive.Close
+    type="button"
+    ref={ref}
+    {...props}
+    render={asChild ? childRender(children) : undefined}
+  >
+    {asChild ? undefined : children}
+  </DialogPrimitive.Close>
+));
+
+DialogClose.displayName = "DialogClose";
 
 const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+  React.ElementRef<typeof DialogPrimitive.Backdrop>,
+  PrimitiveProps<typeof DialogPrimitive.Backdrop>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
+  <DialogPrimitive.Backdrop
+    data-dialog-overlay=""
     ref={ref}
     className={cn(
       // **Absolutely positioned, not fixed, and that is the whole of this.**
@@ -70,13 +126,13 @@ const DialogOverlay = React.forwardRef<
       // make the gap 0, and plain on Windows, Linux, or a Mac set to show
       // scrollbars always. `100vw` is the window regardless of what `body` is
       // doing, and cannot overflow into a scrollbar that is hidden anyway.
-      "absolute left-0 top-[var(--visual-viewport-doc-top)] z-50 h-[calc(var(--visual-viewport-height)_+_100vh)] w-screen bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "absolute left-0 top-[var(--visual-viewport-doc-top)] z-50 h-[calc(var(--visual-viewport-height)_+_100vh)] w-screen bg-black/80 data-[open]:animate-in data-[ending-style]:animate-out data-[ending-style]:fade-out-0 data-[open]:fade-in-0",
       className,
     )}
     {...props}
   />
 ));
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+DialogOverlay.displayName = DialogPrimitive.Backdrop.displayName;
 
 /**
  * What a dialog owes the visible viewport, for as long as it is open: the CSS
@@ -125,19 +181,7 @@ function returnFocusTarget(element: Element | null): HTMLElement | null {
     : null;
 }
 
-/**
- * Records where focus was as the dialog opened, for `DialogContent` to return
- * it there on close. Renders nothing.
- *
- * Radix's modal content always cancels its own focus restore and focuses the
- * `DialogTrigger` instead, and no dialog here has one - each is opened by a
- * plain button setting state - so without this focus fell to `<body>`.
- *
- * Read in a state initializer, during the first render, because every later
- * point is after an `autoFocus` field in the children has taken focus in the
- * commit - and `StrictMode` re-runs effects after that commit, so even a
- * layout effect ahead of the field reads the field on its second run.
- */
+// Records the opener before a child can take autofocus.
 function RememberOpener({
   openerRef,
 }: {
@@ -152,8 +196,7 @@ function RememberOpener({
   return null;
 }
 
-// What Radix's open-focus walks, in its order, less the cross: the cross heads
-// every dialog from inside its header, and is not where a diver starts.
+// Skip the close control when choosing the first field to focus.
 function openFocusCandidates(panel: HTMLElement) {
   return Array.from(panel.querySelectorAll<HTMLElement>("*")).filter(
     (el) =>
@@ -167,93 +210,92 @@ function openFocusCandidates(panel: HTMLElement) {
 }
 
 const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, onCloseAutoFocus, ...props }, ref) => {
-  const openerRef = React.useRef<HTMLElement | null>(null);
-  return (
-    <DialogPortal>
-      <DialogOverlay />
-      {/* **Nothing may come between `DialogPortal` and this.** The portal wraps
-        each of its own children in a `Presence`, which reads the exit animation
-        off the node its ref lands on - and a wrapper component that is not a
-        `forwardRef` swallows that ref silently, leaving `getAnimationName(null)`
-        to answer `"none"` and unmount the whole subtree in the same commit. A
-        positioning `<div>` here cost every dialog in the app its exit
-        animation, with nothing on screen to say so but a box that vanished
-        while the overlay behind it went on fading. See DECISIONS.md.
-
-        Which is why the visible viewport reaches this as *variables* rather
-        than as a parent box. `useVisualViewport` keeps them on what the browser
-        is really showing, and the three `calc`s below are the whole geometry:
-        centred on the visible area and never taller than it, less a 1rem
-        gutter. `100vh` is what this replaces, and it is wrong on exactly the
-        device that reported the bug - iOS measures it against the viewport
-        Safari would have with its toolbars retracted, and displaces the layout
-        viewport without resizing it when the keyboard opens. */}
-      <DialogPrimitive.Content
-        ref={ref}
-        className={cn(
-          // `max-h`/`overflow-y` live here rather than on individual dialogs:
-          // content taller than the viewport would otherwise be clipped with no
-          // way to reach it, since the dialog is fixed-positioned and Radix locks
-          // scrolling on the page behind it.
-          //
-          // `w-[calc(100%-2rem)]` rather than `w-full`, and `rounded-lg` rather
-          // than `sm:rounded-lg`, so the dialog does not run edge to edge on a
-          // phone with its close button in the corner of the screen.
-          //
-          // `px-(--card-pad)` is `Card`'s own side padding, so a form reads the
-          // same width in a dialog as in the card it also appears in.
-          "fixed left-[50%] top-[calc(var(--visual-viewport-top)_+_var(--visual-viewport-height)/2)] z-50 grid max-h-[calc(var(--visual-viewport-height)_-_2rem)] w-[calc(100%_-_2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border bg-background p-6 px-(--card-pad) shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
-          className,
-        )}
-        // Radix dismisses on pointer-down outside by default, which spends a
-        // half-filled dive, gear item or certification on one missed click. The
-        // cross, Cancel and Escape all still close, and each of those is
-        // deliberate. Before the spread, so a dialog can opt back in.
-        onPointerDownOutside={(event) => event.preventDefault()}
-        // Radix's own open-focus, as it would run without the cross ahead of
-        // the first field - except that on iOS a focused `<select>` opens its
-        // picker wheel, so a dialog that starts with one takes focus on the
-        // panel instead. Before the spread, so a dialog's own handler replaces
-        // this.
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          const panel = event.currentTarget as HTMLElement;
-          const candidates = openFocusCandidates(panel);
-          if (!(candidates[0] instanceof HTMLSelectElement)) {
-            for (const candidate of candidates) {
-              candidate.focus({ preventScroll: true });
-              if (document.activeElement !== candidate) continue;
-              if (candidate instanceof HTMLInputElement) candidate.select();
-              return;
+  React.ElementRef<typeof DialogPrimitive.Popup>,
+  PrimitiveProps<typeof DialogPrimitive.Popup> &
+    PopupEvents & {
+      onOpenAutoFocus?: (event: Event) => void;
+      onCloseAutoFocus?: (event: Event) => void;
+    }
+>(
+  (
+    {
+      className,
+      children,
+      onOpenAutoFocus,
+      onCloseAutoFocus,
+      onPointerDownOutside,
+      onInteractOutside,
+      onEscapeKeyDown,
+      ...props
+    },
+    ref,
+  ) => {
+    const panelRef = React.useRef<HTMLDivElement | null>(null);
+    const eventsRef = React.useContext(DialogEventsContext);
+    React.useLayoutEffect(() => {
+      if (eventsRef)
+        eventsRef.current = {
+          onPointerDownOutside,
+          onInteractOutside,
+          onEscapeKeyDown,
+        };
+    });
+    const openerRef = React.useRef<HTMLElement | null>(null);
+    return (
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Popup
+          ref={(node) => {
+            panelRef.current = node;
+            setRef(ref, node);
+          }}
+          className={cn(
+            // `max-h`/`overflow-y` live here rather than on individual dialogs:
+            // content taller than the viewport would otherwise be clipped with no
+            // way to reach it, since the dialog is fixed-positioned and the modal locks
+            // scrolling on the page behind it.
+            //
+            // `w-[calc(100%-2rem)]` rather than `w-full`, and `rounded-lg` rather
+            // than `sm:rounded-lg`, so the dialog does not run edge to edge on a
+            // phone with its close button in the corner of the screen.
+            //
+            // `px-(--card-pad)` is `Card`'s own side padding, so a form reads the
+            // same width in a dialog as in the card it also appears in.
+            "fixed left-[50%] top-[calc(var(--visual-viewport-top)_+_var(--visual-viewport-height)/2)] z-50 grid max-h-[calc(var(--visual-viewport-height)_-_2rem)] w-[calc(100%_-_2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border bg-background p-6 px-(--card-pad) shadow-lg duration-200 data-[open]:animate-in data-[ending-style]:animate-out data-[ending-style]:fade-out-0 data-[open]:fade-in-0 data-[ending-style]:zoom-out-95 data-[open]:zoom-in-95 data-[ending-style]:slide-out-to-left-1/2 data-[ending-style]:slide-out-to-top-[48%] data-[open]:slide-in-from-left-1/2 data-[open]:slide-in-from-top-[48%]",
+            className,
+          )}
+          initialFocus={() => {
+            const panel = panelRef.current;
+            if (!panel || !focusAllowed(panel, onOpenAutoFocus)) return false;
+            if (panel.contains(document.activeElement)) return false;
+            const candidates = openFocusCandidates(panel);
+            if (!(candidates[0] instanceof HTMLSelectElement)) {
+              for (const candidate of candidates) {
+                candidate.focus({ preventScroll: true });
+                if (document.activeElement !== candidate) continue;
+                if (candidate instanceof HTMLInputElement) candidate.select();
+                return false;
+              }
             }
-          }
-          panel.focus();
-        }}
-        // A caller's own handler runs first and can still take over by
-        // preventing the default. An opener that has left the page meanwhile
-        // falls through to Radix, which finds no trigger and leaves focus be.
-        onCloseAutoFocus={(event) => {
-          onCloseAutoFocus?.(event);
-          const target = openerRef.current;
-          if (event.defaultPrevented || !target?.isConnected) return;
-          event.preventDefault();
-          target.focus({ preventScroll: true });
-        }}
-        {...props}
-      >
-        <RememberOpener openerRef={openerRef} />
-        <VisualViewportEffects />
-        <InsideDialogContext.Provider value={true}>
-          {children}
-        </InsideDialogContext.Provider>
-      </DialogPrimitive.Content>
-    </DialogPortal>
-  );
-});
-DialogContent.displayName = DialogPrimitive.Content.displayName;
+            return panel;
+          }}
+          finalFocus={() => {
+            if (!focusAllowed(panelRef.current, onCloseAutoFocus)) return false;
+            return openerRef.current?.isConnected ? openerRef.current : true;
+          }}
+          {...props}
+        >
+          <RememberOpener openerRef={openerRef} />
+          <VisualViewportEffects />
+          <InsideDialogContext.Provider value={true}>
+            {children}
+          </InsideDialogContext.Provider>
+        </DialogPrimitive.Popup>
+      </DialogPortal>
+    );
+  },
+);
+DialogContent.displayName = DialogPrimitive.Popup.displayName;
 
 /**
  * Mirrors a row's height onto the dialog it scrolls in as `name`, for
@@ -323,7 +365,7 @@ const DialogHeader = ({
       <IconTooltip label="Close">
         <DialogPrimitive.Close
           data-dialog-close=""
-          className="absolute right-4 top-4 rounded-sm opacity-70 touch:tap-target ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+          className="absolute right-4 top-4 rounded-sm opacity-70 touch:tap-target ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[open]:bg-accent data-[open]:text-muted-foreground"
         >
           <X className="h-4 w-4" />
         </DialogPrimitive.Close>
@@ -378,7 +420,7 @@ DialogFooter.displayName = "DialogFooter";
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+  PrimitiveProps<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
@@ -393,7 +435,7 @@ DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+  PrimitiveProps<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}

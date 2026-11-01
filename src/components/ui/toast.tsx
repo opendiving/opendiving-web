@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import * as ToastPrimitives from "@radix-ui/react-toast";
+import { Toast as ToastPrimitives } from "@base-ui/react/toast";
+import type { PrimitiveProps } from "./slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
@@ -11,7 +12,7 @@ const ToastProvider = ToastPrimitives.Provider;
 
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
+  PrimitiveProps<typeof ToastPrimitives.Viewport>
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Viewport
     ref={ref}
@@ -24,28 +25,8 @@ const ToastViewport = React.forwardRef<
 ));
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 
-// The swipe classes carry *both* axes at once, which is what lets one string
-// serve two dismiss directions - the toast follows whichever direction
-// `Toaster` has the provider on at this width, with no `sm:` variant per
-// property. Radix writes both `--radix-toast-swipe-move-x` and `-y` on every
-// swipe and zeroes the axis its `swipeDirection` does not name, in JS, before
-// either reaches the DOM, so the off-axis utility resolves to `0px` and
-// contributes nothing.
-//
-// The `,0px` fallbacks are belt-and-braces, not the mechanism: the
-// `data-[swipe=*]` selectors only match once Radix has set the attribute, and
-// it writes the variables in the same handler, so the fallback is never the
-// value in use. Kept because an unresolved `var()` would take the whole
-// `translate` declaration with it - including the axis that *is* moving - which
-// is a poor way to find out that a Radix upgrade stopped writing both.
-//
-// Sliding out follows the corner the toast is in, which is the one thing that
-// does need the breakpoint: top on a phone, bottom-right from `sm` up. The
-// `sm:` rule has to put `--tw-exit-translate-y` back to `0` by hand, because it
-// is a different property from the `x` it sets and would otherwise keep the
-// vertical exit the base rule wrote.
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 touch:pr-12 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:translate-y-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x,0px)] data-[swipe=end]:translate-y-[var(--radix-toast-swipe-end-y,0px)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x,0px)] data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y,0px)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-top-full data-[state=closed]:sm:[--tw-exit-translate-y:0] data-[state=closed]:sm:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 touch:pr-12 shadow-lg transition-all translate-x-[var(--toast-swipe-movement-x,0px)] translate-y-[var(--toast-swipe-movement-y,0px)] data-[swiping]:transition-none data-[starting-style]:animate-in data-[starting-style]:fade-in-0 data-[ending-style]:animate-out data-[ending-style]:fade-out-80 data-[ending-style]:slide-out-to-top-full sm:data-[ending-style]:slide-out-to-right-full data-[limited]:hidden",
   {
     variants: {
       variant: {
@@ -62,7 +43,7 @@ const toastVariants = cva(
 
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
+  PrimitiveProps<typeof ToastPrimitives.Root> &
     VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
   return (
@@ -83,7 +64,7 @@ Toast.displayName = ToastPrimitives.Root.displayName;
 // white wash lifts it in both themes and does not depend on that gap.
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
+  PrimitiveProps<typeof ToastPrimitives.Action>
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Action
     ref={ref}
@@ -100,7 +81,7 @@ ToastAction.displayName = ToastPrimitives.Action.displayName;
 // toast's `touch:pr-12` keeps the action clear of its hit area.
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
+  PrimitiveProps<typeof ToastPrimitives.Close>
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Close
     ref={ref}
@@ -108,7 +89,8 @@ const ToastClose = React.forwardRef<
       "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 touch:opacity-100 touch:tap-target transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-destructive-foreground/80 group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive-foreground group-[.destructive]:focus:ring-offset-destructive-solid",
       className,
     )}
-    toast-close=""
+    aria-label="Dismiss notification"
+    aria-hidden={false}
     {...props}
   >
     <X className="h-4 w-4" />
@@ -118,7 +100,7 @@ ToastClose.displayName = ToastPrimitives.Close.displayName;
 
 const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
+  PrimitiveProps<typeof ToastPrimitives.Title>
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
@@ -130,7 +112,7 @@ ToastTitle.displayName = ToastPrimitives.Title.displayName;
 
 const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
+  PrimitiveProps<typeof ToastPrimitives.Description>
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
@@ -140,7 +122,7 @@ const ToastDescription = React.forwardRef<
 ));
 ToastDescription.displayName = ToastPrimitives.Description.displayName;
 
-type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>;
+type ToastProps = PrimitiveProps<typeof Toast>;
 
 type ToastActionElement = React.ReactElement<typeof ToastAction>;
 

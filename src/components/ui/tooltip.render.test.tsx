@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Trash2 } from "lucide-react";
 
@@ -24,7 +30,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 // render's.
 const arriveByKeyboard = (element: HTMLElement) => {
   fireEvent.keyDown(document, { key: "Tab" });
-  fireEvent.focus(element);
+  act(() => element.focus());
 };
 
 // The whole point of the component is that one string is both halves of the

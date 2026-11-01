@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+import { Toast as ToastPrimitive } from "@base-ui/react/toast";
 import {
   Toast,
   ToastClose,
@@ -7,48 +9,74 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "@/components/ui/toast";
-import { useToast } from "@/components/ui/use-toast";
+} from "./toast";
+import { useToast } from "./use-toast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
-/**
- * Tailwind's `sm`, spelled out. `ToastViewport` puts the stack at the top of a
- * phone and in the bottom-right corner from here up, and the direction a toast
- * is thrown away in has to be the one that carries it off screen - so this
- * breakpoint and the `sm:` variants over in `toast.tsx` are one decision and
- * have to stay the same number.
- */
-const WIDE_VIEWPORT = "(min-width: 40rem)";
+type Notification = ReturnType<typeof useToast>["toasts"][number];
 
-export function Toaster() {
-  const { toasts } = useToast();
-  // Whether the stack is in its bottom-right corner rather than across the top.
-  // `false` on the server, as the mobile-first classes it pairs with are.
-  const isWide = useMediaQuery(WIDE_VIEWPORT);
+// The application store also receives notifications before this viewport mounts.
+// Base UI owns timers, announcements, keyboard dismissal, and swipe gestures.
+function ToastList() {
+  const { toasts: notifications } = useToast();
+  const { toasts, add, update, close } = ToastPrimitive.useToastManager<{
+    action?: React.ReactElement;
+  }>();
+  const previous = React.useRef(new Map<string, Notification>());
+  const wide = useMediaQuery("(min-width: 40rem)");
+
+  React.useEffect(() => {
+    for (const [id] of previous.current) {
+      if (!notifications.some((item) => item.id === id && item.open)) close(id);
+    }
+    for (const notification of notifications) {
+      const old = previous.current.get(notification.id);
+      if (!notification.open) {
+        close(notification.id);
+      } else if (old !== notification) {
+        const options = {
+          title: notification.title,
+          description: notification.description,
+          type: notification.variant,
+          data: { action: notification.action },
+          onClose: () => notification.onOpenChange?.(false),
+        };
+        if (old?.open) update(notification.id, options);
+        else add({ ...options, id: notification.id });
+      }
+    }
+    previous.current = new Map(notifications.map((item) => [item.id, item]));
+  }, [notifications, add, update, close]);
 
   return (
-    // Swiped away in the direction the toast is already sitting in. Radix's
-    // default is `right` at every width, which on a phone is a banner across
-    // the top of the screen that only leaves sideways - not what iOS teaches,
-    // where a notification at the top is flicked *up* and away. The corner it
-    // occupies from `sm` up makes `right` the natural one again there, so the
-    // direction follows the placement rather than being picked once.
-    <ToastProvider swipeDirection={isWide ? "right" : "up"}>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
+    <ToastPrimitive.Portal>
+      <ToastViewport>
+        {toasts.map((item) => (
+          <Toast
+            key={item.id}
+            toast={item}
+            variant={item.type === "destructive" ? "destructive" : "default"}
+            swipeDirection={wide ? "right" : "up"}
+          >
+            <ToastPrimitive.Content className="grid gap-1">
+              {item.title && <ToastTitle>{item.title}</ToastTitle>}
+              {item.description && (
+                <ToastDescription>{item.description}</ToastDescription>
               )}
-            </div>
-            {action}
+            </ToastPrimitive.Content>
+            {item.data?.action}
             <ToastClose />
           </Toast>
-        );
-      })}
-      <ToastViewport />
+        ))}
+      </ToastViewport>
+    </ToastPrimitive.Portal>
+  );
+}
+
+export function Toaster() {
+  return (
+    <ToastProvider limit={1}>
+      <ToastList />
     </ToastProvider>
   );
 }

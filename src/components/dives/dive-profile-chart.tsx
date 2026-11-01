@@ -1906,6 +1906,7 @@ function ProfileTooltip({
         top: `${(y / chartHeight) * 100}%`,
         transform: `translateY(${translateY})`,
       }}
+      data-chart-readout=""
       role="presentation"
     >
       <ReadoutGrid

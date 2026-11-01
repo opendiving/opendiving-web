@@ -18,7 +18,7 @@ function Field() {
 
 const boxes = () => screen.getAllByRole("textbox");
 
-// jsdom has no `PointerEvent`; the wrapper and Radix both read only `pointerType`.
+// The touch workaround needs only `pointerType`.
 const pointerDown = (target: Element, pointerType: string) => {
   const event = new Event("pointerdown", { bubbles: true, cancelable: true });
   Object.defineProperty(event, "pointerType", { value: pointerType });
@@ -36,17 +36,15 @@ const mouseDown = (target: Element) => {
 };
 
 describe("OneTimePasswordField", () => {
-  // iOS raises the keyboard only for a box the tap itself focuses, and Radix cancels
-  // `pointerdown` to focus it in code instead.
-  it("leaves a tap uncancelled, and keeps Radix's handling for a mouse", () => {
+  // iOS raises the keyboard only when the tap can focus the box natively.
+  it("leaves native pointer focus available for touch and mouse", () => {
     render(<Field />);
 
     expect(pointerDown(boxes()[0], "touch")).toBe(false);
-    expect(pointerDown(boxes()[0], "mouse")).toBe(true);
+    expect(pointerDown(boxes()[0], "mouse")).toBe(false);
   });
 
-  // The box past the code is one Radix's roving focus will not let a `mousedown`
-  // focus, and on iOS the tap's `mousedown` is what focuses it.
+  // A touch must keep its native mousedown focus, including past the current code.
   it("lets a tap's mousedown through to a box past the code", () => {
     render(<Field />);
 

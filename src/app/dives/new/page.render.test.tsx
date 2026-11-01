@@ -1217,8 +1217,10 @@ const inFieldsPanel = () => within(screen.getByRole("dialog"));
 const openPresetsTab = () =>
   userEvent.click(screen.getByRole("tab", { name: /presets/i }));
 
-const openFieldsMenu = () =>
-  userEvent.click(screen.getByRole("button", { name: /fields/i }));
+const openFieldsMenu = async () => {
+  await userEvent.click(screen.getByRole("button", { name: /fields/i }));
+  await screen.findByRole("menu");
+};
 
 const lastDiveWith = (overrides: Partial<Dive>) => {
   vi.mocked(divesAPI.getDives).mockResolvedValue({
@@ -2453,7 +2455,9 @@ describe("the Fields control", () => {
     expect(control).toHaveAttribute("aria-expanded", "false");
 
     await userEvent.click(control);
-    expect(control).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() =>
+      expect(control).toHaveAttribute("aria-expanded", "true"),
+    );
     expect(await screen.findByRole("menu")).toBeInTheDocument();
     expect(divesAPI.createDive).not.toHaveBeenCalled();
   });

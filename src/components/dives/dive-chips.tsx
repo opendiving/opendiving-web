@@ -83,7 +83,7 @@ export function diveChips(dive: Dive): ReactNode {
   const tags = dive.tags ?? [];
   if (!water && !type && tags.length === 0) return null;
   return (
-    <TooltipProvider delayDuration={HINT_DELAY_MS} disableHoverableContent>
+    <TooltipProvider delay={HINT_DELAY_MS}>
       <div className="relative z-10 flex w-fit max-w-full flex-wrap gap-1">
         {water && (
           <Chip

@@ -7030,3 +7030,18 @@ height `useShortViewport` marks the root and they rest in place. The mark comes 
 visual viewport has held still for 250ms: the box animates back to full height over 200ms, and a
 footer pinned at once rides up above the closing keyboard. Hiding on focus is rejected for the dive
 form's reasons.
+
+## UI controls use Base UI
+
+`src/components/ui/` wraps `@base-ui/react` for dialogs, menus, popovers, tooltips, avatars,
+switches, tabs, OTP fields and toasts. Labels are native elements. The root nonce provider uses Base
+UI's `CSPProvider` for injected styles. `Slot` delegates composition to Base UI's `useRender`,
+retaining the app's `asChild` API so feature components keep their existing markup and refs.
+
+The wrappers retain cancellable focus and dismissal callbacks because date fields keep focus in
+their text input and forms refuse accidental backdrop dismissal. Positioners supply
+`--available-height`; styling follows Base UI's state attributes. The notification store retains
+delivery before the viewport mounts, while Base UI handles toast lifetime, announcements and
+gestures.
+
+Earlier entries that describe Radix document the previous implementation.

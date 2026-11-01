@@ -159,23 +159,29 @@ describe("the mobile menu on a phone", () => {
     fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
     await nextTick();
     expect(
-      document.querySelector(
-        '[data-radix-popper-content-wrapper] [data-state="open"]',
-      ),
+      document.querySelector("[data-popup-positioner] [data-open]"),
     ).not.toBeNull();
 
     const outside = backdrop() as Element;
+    const touch = new Touch({
+      identifier: 7,
+      target: outside,
+      clientX: 20,
+      clientY: 20,
+    });
     fireEvent.pointerDown(outside, FINGER);
+    fireEvent.touchStart(outside, { touches: [touch] });
     fireEvent.pointerUp(outside, FINGER);
+    fireEvent.touchEnd(outside, { touches: [], changedTouches: [touch] });
+    fireEvent.mouseDown(outside, { button: 0 });
+    fireEvent.mouseUp(outside, { button: 0 });
     fireEvent.click(outside);
     await nextTick();
 
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     // Closed, and easing out under the stylesheet's exit animation.
     expect(
-      document.querySelector(
-        '[data-radix-popper-content-wrapper] [data-state="open"]',
-      ),
+      document.querySelector("[data-popup-positioner] [data-open]"),
     ).toBeNull();
   });
 });

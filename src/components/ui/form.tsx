@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as LabelPrimitive from "@radix-ui/react-label";
-import { Slot } from "@radix-ui/react-slot";
+import { Slot } from "./slot";
 import {
   Controller,
   ControllerProps,
@@ -94,8 +93,8 @@ const FormLabelMarkContext = React.createContext<
 >(null);
 
 const FormLabel = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+  React.ElementRef<typeof Label>,
+  React.ComponentPropsWithoutRef<typeof Label>
 >(({ className, children, ...props }, ref) => {
   const { error, formItemId, name } = useFormField();
   const mark = React.useContext(FormLabelMarkContext);
@@ -114,7 +113,7 @@ const FormLabel = React.forwardRef<
 });
 FormLabel.displayName = "FormLabel";
 
-// What `FormControl` pushes into its child through the Radix `Slot`.
+// What `FormControl` pushes into its child through the shared `Slot`.
 //
 // `Slot` merges these onto whatever element the child *renders*, which works
 // automatically for the leaf inputs (`<Input>`, `<Textarea>`) but not for a custom

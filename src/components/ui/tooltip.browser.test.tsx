@@ -150,8 +150,20 @@ describe("a label's hint under a finger", () => {
   const wait = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 
   function tap(target: Element, pointerType = "touch") {
-    fireEvent.pointerDown(target, { ...FINGER, pointerType });
-    fireEvent.pointerUp(target, { ...FINGER, pointerType });
+    const touch = new Touch({
+      identifier: 7,
+      target,
+      clientX: 20,
+      clientY: 20,
+    });
+    fireEvent.pointerDown(target, { ...FINGER, pointerType, button: 0 });
+    if (pointerType === "touch")
+      fireEvent.touchStart(target, { touches: [touch] });
+    fireEvent.pointerUp(target, { ...FINGER, pointerType, button: 0 });
+    if (pointerType === "touch")
+      fireEvent.touchEnd(target, { touches: [], changedTouches: [touch] });
+    fireEvent.mouseDown(target, { button: 0 });
+    fireEvent.mouseUp(target, { button: 0 });
     fireEvent.click(target);
   }
 
@@ -177,7 +189,7 @@ describe("a label's hint under a finger", () => {
     // Radix listens for a press outside an open hint from the next tick on.
     wait(0);
 
-    fireEvent.pointerDown(document.body, FINGER);
+    tap(document.body);
     wait(0);
 
     expect(hint()).toBeNull();

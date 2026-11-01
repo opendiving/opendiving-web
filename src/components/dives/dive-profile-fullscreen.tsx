@@ -1,14 +1,19 @@
 "use client";
 
-import type { ReactNode, RefCallback, RefObject } from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import {
+  useRef,
+  type ReactNode,
+  type RefCallback,
+  type RefObject,
+} from "react";
+import { Dialog } from "@/components/ui/dialog";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { LineChart } from "lucide-react";
 
 interface DiveProfileFullscreenProps {
   open: boolean;
   onClose: () => void;
-  // The button that opened it, which takes focus back on the way out: Radix
-  // hands it to a `DialogTrigger`, and this has none.
+  // The button that opened it takes focus back when it closes.
   returnFocusRef: RefObject<HTMLElement | null>;
   // The channel menu and the button out, on the title row.
   controls: ReactNode;
@@ -22,7 +27,7 @@ interface DiveProfileFullscreenProps {
 // over it: above on a screen held upright, to the left on one turned sideways,
 // so a finger scrubbing the plot never covers the numbers it is reading.
 //
-// A Radix dialog for what a modal owes - Escape, a focus trap, the page behind
+// A Base UI dialog for what a modal owes - Escape, a focus trap, the page behind
 // locked and hidden from a screen reader - but not `ui/dialog`'s
 // `DialogContent`, whose centred, padded card for a form is everything this is
 // not.
@@ -35,29 +40,24 @@ export function DiveProfileFullscreen({
   plotRef,
   children,
 }: DiveProfileFullscreenProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   return (
-    <DialogPrimitive.Root
+    <Dialog
       open={open}
       onOpenChange={(next) => {
         if (!next) onClose();
       }}
     >
       <DialogPrimitive.Portal>
-        {/* Covered by the content, and there for what Radix hangs off it: the
-            lock on the page's scroll. */}
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-background" />
-        <DialogPrimitive.Content
+        {/* The backdrop covers the page while the modal locks its scroll. */}
+        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-background" />
+        <DialogPrimitive.Popup
           aria-describedby={undefined}
           // The panel rather than its first button, whose hint would open over
           // the title on arrival.
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            (event.currentTarget as HTMLElement).focus();
-          }}
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            returnFocusRef.current?.focus({ preventScroll: true });
-          }}
+          ref={panelRef}
+          initialFocus={panelRef}
+          finalFocus={returnFocusRef}
           className="fixed inset-0 z-50 flex gap-4 bg-background p-4 text-foreground outline-none portrait:flex-col landscape:flex-row"
         >
           <div className="flex shrink-0 flex-col gap-3">
@@ -73,8 +73,8 @@ export function DiveProfileFullscreen({
           <div ref={plotRef} className="relative min-h-0 min-w-0 flex-1">
             {children}
           </div>
-        </DialogPrimitive.Content>
+        </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+    </Dialog>
   );
 }

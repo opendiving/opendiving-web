@@ -279,7 +279,7 @@ function hoverAt(fractionOfDive: number) {
 // What the crosshair is currently saying, or "" when it is saying nothing at all -
 // the tooltip is absent, not empty, when no channel and no marker is in reach.
 function readoutText(): string {
-  return screen.queryByRole("presentation")?.textContent ?? "";
+  return document.querySelector("[data-chart-readout]")?.textContent ?? "";
 }
 
 describe("DiveProfileChart on the millisecond axis", () => {

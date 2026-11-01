@@ -49,11 +49,10 @@ const settle = () =>
 // `pointer-events: none` on `body` and user-event refuses to click through it.
 // Radix listens on the document, so the dispatch lands either way.
 async function clickBackground() {
-  const overlay = screen.getByRole("dialog").previousElementSibling;
+  const overlay = document.querySelector("[data-dialog-overlay]");
   expect(overlay).not.toBeNull();
 
-  fireEvent.pointerDown(overlay!, { button: 0 });
-  fireEvent.click(overlay!, { button: 0 });
+  await userEvent.click(overlay!);
   await settle();
   await settle();
 }
@@ -120,7 +119,7 @@ describe("DialogContent open focus", () => {
     );
     await settle();
 
-    expect(screen.getByRole("dialog")).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
   });
 
   it("gives any other first field Radix's default, stepping over the cross", async () => {
@@ -157,7 +156,7 @@ describe("DialogContent open focus", () => {
     );
     await settle();
 
-    expect(screen.getByRole("dialog")).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
   });
 });
 
