@@ -91,22 +91,26 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
 
     setIsSaving(true);
     try {
-      await saveApiDownload(exportPath("archive"), () =>
-        exportAPI.download("archive", username),
+      const awaitingResponseMs = await saveApiDownload(
+        exportPath("archive"),
+        () => exportAPI.download("archive", username),
       );
       // Busy for a moment longer than the fetch, because `saveApiDownload` returns
       // before the browser has the bytes: it dispatches a synthetic click on an
       // object URL and comes straight back, and Firefox and Safari then read that
       // blob asynchronously and cancel the save if the URL goes away underneath
-      // them (`lib/download.ts` holds one for a minute for exactly this reason). In
-      // Firefox for iOS it starts a navigation instead, which has to reach its
-      // response before the session it was minted under ends. A delete resolving in
-      // that window takes the whole document, and its object URLs with it. The hold is short because only the *start* of the read has to
+      // them (`lib/download.ts` holds one for a minute for exactly this reason). A
+      // delete resolving in that window takes the whole document, and its object
+      // URLs with it. The hold is short because only the *start* of the read has to
       // survive it - the minute in `download.ts` is a margin on a timer nobody is
       // waiting behind, where this one is in front of a diver.
+      //
+      // In Firefox for iOS it is a navigation still waiting on the server to build
+      // the archive, which a delete would both supersede and strip of its session,
+      // so the hold lasts as long as that wait can.
       saveSettling.current = setTimeout(
         () => setIsSaving(false),
-        SAVE_SETTLE_MS,
+        Math.max(SAVE_SETTLE_MS, awaitingResponseMs),
       );
     } catch (error) {
       setIsSaving(false);

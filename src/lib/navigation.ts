@@ -15,8 +15,9 @@ export function hardNavigate(path: string): void {
 }
 
 // A navigation to a response the browser saves rather than shows - an attachment
-// download. The document stays where it is, so unlike `hardNavigate` this does not
-// mark the page as leaving.
+// download. When it succeeds the document stays where it is, so unlike `hardNavigate`
+// this does not mark the page as leaving; a response that is not an attachment, such
+// as an error, replaces the page like any other navigation.
 export function navigateToDownload(url: string): void {
   window.location.assign(url);
 }

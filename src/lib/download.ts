@@ -45,22 +45,32 @@ export function isFirefoxIOS(userAgent: string): boolean {
 // `Content-Disposition`, so a blob save comes out named after the object URL's uuid.
 // There it mints a ticket for `path` instead and navigates to the route itself, whose
 // `Content-Disposition` names the file. The ticket rides in the URL because Firefox
-// fetches that URL a second time with none of the page's headers.
+// fetches that URL a second time with none of the page's headers. A failed download
+// therefore shows the API's error in place of the app (see DECISIONS.md on the export
+// buffer); a hidden iframe would keep it off screen, at the price of widening
+// `frame-src` and of turning a visible failure into silence.
 //
 // `path` is the route under the API base with no query string; it must be the route
 // `fetchFile` reads.
+//
+// Resolves to how long, in milliseconds, the download may still be waiting on its
+// response - a window in which leaving the page or ending the session loses it. The
+// blob path has its bytes in hand, so 0. The navigation's response is not observable
+// from the page and can take as long as the server needs to build an archive, so it is
+// bounded only by the ticket's lifetime, after which the download fails regardless.
 export async function saveApiDownload(
   path: string,
   fetchFile: () => Promise<{ blob: Blob; filename: string }>,
-): Promise<void> {
+): Promise<number> {
   if (isFirefoxIOS(navigator.userAgent)) {
-    const { ticket } = await downloadTicketsAPI.create(path);
+    const { ticket, expires_in } = await downloadTicketsAPI.create(path);
     navigateToDownload(ticketedDownloadUrl(path, ticket));
-    return;
+    return expires_in * 1000;
   }
 
   const { blob, filename } = await fetchFile();
   downloadBlob(blob, filename);
+  return 0;
 }
 
 // Saves an in-memory blob to the user's downloads, via an object URL and a synthetic

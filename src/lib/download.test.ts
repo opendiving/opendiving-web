@@ -194,7 +194,10 @@ describe("saveApiDownload", () => {
     async (ua) => {
       useUserAgent(ua);
 
-      await saveApiDownload("/export/archive", fetchFile);
+      // Nothing left to wait on: the bytes are already in hand.
+      await expect(saveApiDownload("/export/archive", fetchFile)).resolves.toBe(
+        0,
+      );
 
       expect(fetchFile).toHaveBeenCalledOnce();
       expect(click).toHaveBeenCalledOnce();
@@ -212,7 +215,11 @@ describe("saveApiDownload", () => {
       expires_in: 300,
     });
 
-    await saveApiDownload("/dive/d1/file/f1", fetchFile);
+    // The response is out of the page's sight, so the ticket's lifetime is the only
+    // bound on how long the download may still need the session.
+    await expect(saveApiDownload("/dive/d1/file/f1", fetchFile)).resolves.toBe(
+      300_000,
+    );
 
     expect(downloadTicketsAPI.create).toHaveBeenCalledWith("/dive/d1/file/f1");
     // The URL itself is `ticketedDownloadUrl`'s, tested beside it.

@@ -2524,9 +2524,11 @@ the dive source file and c-card images take: the endpoints require an `Authoriza
 plain `<a href>` cannot send one, the token living in memory rather than a cookie. Those two are
 bounded by upload limits; an archive is bounded by the account, held in RAM before writing and for
 `REVOKE_DELAY_MS` after. Accepted. The escape hatch is the ticketed navigation `saveApiDownload`
-already takes in Firefox for iOS, which streams to disk without entering the JS heap; it costs the
-busy state and the error toast for a failed download, since a navigation reports neither. Widen that
-branch when someone hits the ceiling — not a streaming-download library on this side.
+takes in Firefox for iOS, which streams to disk without entering the JS heap. Its cost is why it is
+not the default: the page never sees the response, so a failed download — a 429 on the export limit,
+a file deleted in another tab — replaces the app with the API's JSON error rather than a toast, and
+nothing tells the page when the save has started. Widen that branch when someone hits the ceiling —
+not a streaming-download library on this side.
 
 ## Buttons all named "Download" need an accessible name each
 
@@ -3962,7 +3964,9 @@ navigation, which kills every open request and object URL, so confirming mid-exp
 export on an account that is dark by then. The window is longer than the fetch: `downloadBlob`
 returns once it has dispatched a synthetic click, but Firefox and Safari read the blob afterwards
 and cancel the save if the URL disappears (`lib/download.ts` holds one for a minute), so the card
-stays busy for a two-second settle after handing the file over.
+stays busy for a two-second settle after handing the file over. In Firefox for iOS the save is a
+navigation the server answers only once the archive is built, so the hold lasts the ticket's
+lifetime instead.
 
 The type-your-username gate is `confirmDisabled`, compared case- and whitespace-insensitively:
 friction, not a password.

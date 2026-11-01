@@ -41,6 +41,7 @@ beforeEach(() => {
   saveApi.mockImplementation(async (_path, fetchFile) => {
     const { blob, filename } = await fetchFile();
     save(blob, filename);
+    return 0;
   });
 });
 

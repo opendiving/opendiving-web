@@ -57,6 +57,7 @@ beforeEach(() => {
   saveApi.mockImplementation(async (_path, fetchFile) => {
     const { blob, filename } = await fetchFile();
     save(blob, filename);
+    return 0;
   });
   leave.mockReset();
   announce.mockReset();
@@ -186,6 +187,28 @@ describe("DeleteAccountCard", () => {
       timeout: 4_000,
     });
     expect(deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it("holds the confirm while a ticketed download may still be waiting on the archive", async () => {
+    // Firefox for iOS: the save is a navigation the server answers only once the
+    // archive is built, and a delete would supersede it and end its ticket's
+    // session. `saveApiDownload` says how long that can take.
+    saveApi.mockResolvedValue(300_000);
+    render(<DeleteAccountCard username="alex" />);
+    await openDialog();
+    await userEvent.type(screen.getByRole("textbox"), "alex");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Download my data first" }),
+    );
+    await waitFor(() => expect(saveApi).toHaveBeenCalled());
+
+    // Past the blob path's two-second settle, and still blocked.
+    await new Promise((resolve) => setTimeout(resolve, 2_500));
+    expect(confirmButton()).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Preparing..." }),
+    ).toBeInTheDocument();
   });
 
   it("saves the full archive without deleting anything", async () => {
