@@ -831,6 +831,9 @@ describe("the map tiles", () => {
       expect(text).toMatch(
         /Apart from those three, no page has your browser contact the provider/,
       );
+      expect(text).toMatch(
+        /Your browser does that itself and sends the language nowhere/,
+      );
     },
   );
 
@@ -867,9 +870,16 @@ describe("the map tiles", () => {
     expect(text).toMatch(
       /the head of a dive’s, a trip’s and a dive site’s own page/,
     );
+    expect(text).toMatch(
+      /Each of those tile requests carries the language your browser is set to/,
+    );
+    expect(text).toMatch(/The language goes no further than this server/);
     // What sharing them gives away, and what it does not.
     expect(text).toMatch(
       /another member of this copy who timed their own requests could tell that someone here was shown a region/,
+    );
+    expect(text).toMatch(
+      /and that it was someone whose browser is set to a given language/,
     );
     expect(text).toMatch(/though not who, and nothing of what they logged/);
     expect(text).not.toMatch(/show no map on this copy/);
@@ -1296,7 +1306,7 @@ describe("the date on this page", () => {
       await renderPage({ google: false, projectOperated });
 
       expect(
-        screen.getByText(/Last updated: October 2026/),
+        screen.getByText(/Last updated: November 2026/),
       ).toBeInTheDocument();
     },
   );
