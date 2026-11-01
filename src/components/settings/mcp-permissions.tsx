@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const RESOURCE_LABELS = new Map([
   ["certifications", "Certifications"],
@@ -108,48 +109,50 @@ export function McpPermissions({
           </Button>
         </div>
       </div>
-      <div
+      <ScrollArea
         role="region"
         aria-label="Permissions by content"
-        tabIndex={0}
-        className="max-h-[42vh] overflow-y-auto overscroll-contain rounded-lg border divide-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="rounded-lg border"
+        viewportClassName="max-h-[42vh] overscroll-contain"
       >
-        {groups.map((group) => (
-          <div
-            key={group.resource}
-            role="group"
-            aria-label={group.label}
-            className="grid gap-2 px-4 py-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-center"
-          >
-            <p className="text-sm font-medium">{group.label}</p>
-            <div className="flex flex-wrap gap-2">
-              {group.permissions.map((permission) => (
-                <label
-                  key={permission.scope}
-                  className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-2.5 text-sm text-muted-foreground has-checked:border-teal/40 has-checked:bg-teal/5 has-checked:text-foreground touch:min-h-11"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(permission.scope)}
-                    aria-label={`${permission.label} ${group.label.toLowerCase()}`}
-                    className="h-4 w-4 shrink-0 accent-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    onChange={(event) =>
-                      onChange(
-                        event.target.checked
-                          ? [...selected, permission.scope]
-                          : selected.filter(
-                              (scope) => scope !== permission.scope,
-                            ),
-                      )
-                    }
-                  />
-                  {permission.label}
-                </label>
-              ))}
+        <div className="divide-y">
+          {groups.map((group) => (
+            <div
+              key={group.resource}
+              role="group"
+              aria-label={group.label}
+              className="grid gap-2 px-4 py-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-center"
+            >
+              <p className="text-sm font-medium">{group.label}</p>
+              <div className="flex flex-wrap gap-2">
+                {group.permissions.map((permission) => (
+                  <label
+                    key={permission.scope}
+                    className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-2.5 text-sm text-muted-foreground has-checked:border-teal/40 has-checked:bg-teal/5 has-checked:text-foreground touch:min-h-11"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(permission.scope)}
+                      aria-label={`${permission.label} ${group.label.toLowerCase()}`}
+                      className="h-4 w-4 shrink-0 accent-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      onChange={(event) =>
+                        onChange(
+                          event.target.checked
+                            ? [...selected, permission.scope]
+                            : selected.filter(
+                                (scope) => scope !== permission.scope,
+                              ),
+                        )
+                      }
+                    />
+                    {permission.label}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </ScrollArea>
       <p className="text-xs leading-relaxed text-muted-foreground">
         Create &amp; edit allows changes to your content. Delete allows
         permanent removal. Share allows creating links others can use to view
