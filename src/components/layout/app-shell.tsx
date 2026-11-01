@@ -15,6 +15,7 @@ import { QuickCreateProvider } from "@/components/layout/quick-create";
 // from here rather than listing it.
 export const NO_CHROME_ROUTES = [
   "/signin",
+  "/mcp/authorize",
   "/onboarding",
   // The offer to undo a deletion, and `/onboarding`'s counterpart in every way that
   // matters here: a verified identity with no session yet, so there is no user menu
