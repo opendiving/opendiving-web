@@ -64,12 +64,20 @@ describe("the species picker's rows stay level", () => {
     it(`gives a row with a one-line note the height of a bare row at ${width}px`, async () => {
       await page.viewport(width, 800);
 
-      const [noted, bare] = rowHeights([
-        { species_uuid: MANTA.uuid, count: 3, notes: "Cleaning station" },
+      const sightings = [
+        { species_uuid: MANTA.uuid, count: 3 },
         { species_uuid: CLOWNFISH.uuid },
-      ]);
+      ];
+      const bare = rowHeights(sightings);
+      const noted = rowHeights(
+        sightings.map((sighting) => ({
+          ...sighting,
+          notes: "Cleaning station",
+        })),
+      );
 
-      expectLevel(noted, bare);
+      // Compare each row with itself: different species titles can wrap.
+      noted.forEach((height, index) => expectLevel(height, bare[index]));
     });
   }
 
@@ -106,12 +114,18 @@ describe("the species picker's rows stay level", () => {
       // marking its band changes the border's style, never its width.
       await page.viewport(width, 800);
 
-      const [banded, counted] = rowHeights([
-        { species_uuid: MANTA.uuid, abundance: "abundant" },
-        { species_uuid: CLOWNFISH.uuid, count: 37 },
-      ]);
+      const sightings = [
+        { species_uuid: MANTA.uuid },
+        { species_uuid: CLOWNFISH.uuid },
+      ];
+      const banded = rowHeights(
+        sightings.map((sighting) => ({ ...sighting, abundance: "abundant" })),
+      );
+      const counted = rowHeights(
+        sightings.map((sighting) => ({ ...sighting, count: 37 })),
+      );
 
-      expectLevel(banded, counted);
+      banded.forEach((height, index) => expectLevel(height, counted[index]));
     });
   }
 });
