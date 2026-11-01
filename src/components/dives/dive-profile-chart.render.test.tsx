@@ -1717,7 +1717,9 @@ describe("DiveProfileChart deco readouts", () => {
 
     // The card is one grid: the elapsed time, then the readings with a rule -
     // an `aria-hidden` cell - between one graph's and the next.
-    const grid = screen.getByRole("presentation").firstElementChild;
+    const grid = document.querySelector(
+      "[data-chart-readout]",
+    )?.firstElementChild;
     const groups = [""];
     for (const cell of [...(grid?.children ?? [])].slice(1)) {
       if (cell.getAttribute("aria-hidden") === "true") groups.push("");
