@@ -6931,8 +6931,9 @@ their English line, so a map with no language says one thing everywhere. A tile 
 second language: the web sends `navigator.language` raw, the API reduces it to one of
 `LABEL_LANGUAGES` or to none, and `withLabelLanguage` adds that `name:xx` under a point label and
 beside a line label, where it differs from the English line. The list is the basemap's own `name:xx`
-fields, mirrored in the API, which bounds the tiles stored to two themes times 72 variants.
-Rejected: reducing the language in the browser, which would put the list in two clients.
+fields, mirrored in the API, which bounds the tiles stored to one set per listed language besides
+English alone. Rejected: reducing the language in the browser, which would put the list in two
+clients.
 
 ## The renderer's signature covers what changes a tile's pixels
 
