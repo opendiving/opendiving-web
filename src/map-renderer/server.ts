@@ -1,10 +1,15 @@
 // The renderer's HTTP face: what the API, its only client, may ask of it.
 //
 //   GET  /healthz    200 while it can render, 503 otherwise
-//   GET  /signature  200 {"signature": "<64 lowercase hex>"}
+//   GET  /signature  200 {"signature": "<64 lowercase hex>",
+//                         "attribution": "<the basemap's credit, markdown links>"}
 //   POST /render     200 image/webp, a 1024x1024 tile, with X-Map-Signature;
 //                    400 for a body of the wrong shape; 503 when the queue is
 //                    full, the render passes its deadline, or it cannot render
+//
+// The credit is the one the web draws beside its own maps, shared by both
+// themes; the API hands it to clients that draw these tiles, and it stays out of
+// the signature because it is drawn beside a tile, never into one.
 //
 // Reachable only inside the stack and taking no credential: it is a private
 // service on the flagship and an unexposed one in the bundle.
@@ -33,6 +38,8 @@ export interface Renderer {
 export interface RendererServerOptions {
   renderer: Renderer;
   signature: string;
+  /** The basemap's credit, which whoever shows a tile owes beside it. */
+  attribution: string;
   queueLimit?: number;
   log?: (message: string) => void;
 }
@@ -60,6 +67,7 @@ function readBody(request: IncomingMessage): Promise<string> {
 export function createRendererServer({
   renderer,
   signature,
+  attribution,
   queueLimit = QUEUE_LIMIT,
   log = () => {},
 }: RendererServerOptions): Server {
@@ -68,7 +76,7 @@ export function createRendererServer({
   let admitted = 0;
   let turn: Promise<unknown> = Promise.resolve();
 
-  const signatureBody = JSON.stringify({ signature });
+  const signatureBody = JSON.stringify({ signature, attribution });
 
   return createServer(async (request, response) => {
     const send = (

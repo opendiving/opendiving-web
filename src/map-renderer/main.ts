@@ -94,6 +94,7 @@ async function main() {
       draw: (payload) => engine.draw(payload),
     },
     signature,
+    attribution: config.basemap.attribution,
     log,
   });
   server.listen(port, () => {
