@@ -170,8 +170,8 @@ describe("the account menu's Settings entry", () => {
   });
 });
 
-describe("Import and Export", () => {
-  it("puts Import last in the create menu, and Import then Export above Settings", async () => {
+describe("Import", () => {
+  it("puts Import last in the create menu and above Settings in the account menu", async () => {
     render(<Header />);
     await userEvent.click(screen.getByRole("button", { name: "Create new" }));
     const createMenu = await screen.findByRole("menu");
@@ -190,8 +190,8 @@ describe("Import and Export", () => {
       within(accountMenu).getByRole("menuitem", { name: "Import" }),
     ).toHaveAttribute("href", expect.stringMatching(/^\/import/));
     expect(
-      within(accountMenu).getByRole("menuitem", { name: "Export" }),
-    ).toHaveAttribute("href", "/export");
+      within(accountMenu).queryByRole("menuitem", { name: "Export" }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -205,7 +205,6 @@ describe("the account menu's grouping", () => {
       "Check-in",
       "---",
       "Import",
-      "Export",
       "Settings",
     ]);
     for (const page of [

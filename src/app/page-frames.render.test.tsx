@@ -199,10 +199,10 @@ const destinations = files
   );
 
 // These destinations draw no frame, each for a reason of its own rather than by oversight:
-// the `/settings` sections, `/export` and `/import` render a spinner on their auth bootstrap
+// the `/settings` sections and `/import` render a spinner on their auth bootstrap
 // and wait on no data of their own, so a frame there would draw grey where none is drawn,
 // and `/dives/new` renders its real form as soon as that same bootstrap settles.
-const NO_FRAME = ["/settings", "/export", "/import", "/dives/new"];
+const NO_FRAME = ["/settings", "/import", "/dives/new"];
 
 // Each admin screen draws one, checked inside `app/admin` because nothing out here may
 // import that section (`lib/admin-isolation.test.ts`).

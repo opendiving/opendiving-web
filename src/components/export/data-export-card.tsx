@@ -92,7 +92,7 @@ interface DataExportCardProps {
   username: string;
 }
 
-// "Your data" on `/export`: four buttons, each handing back the whole logbook.
+// Four downloads in Settings → Storage, each handing back the whole logbook.
 // The product's promise is that nothing in an account is reachable only through this
 // app, and this card is the half that can be checked by pressing a button. The Import
 // page is the other half - a copy nothing can read back is a copy in name only - and
@@ -157,7 +157,7 @@ export function DataExportCard({ username }: DataExportCardProps) {
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
           <CloudDownload className="h-5 w-5" />
-          Your Data
+          Data export
         </CardTitle>
         <CardDescription>
           Take a complete copy of your logbook, in formats other programs can
