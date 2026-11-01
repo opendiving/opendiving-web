@@ -115,7 +115,7 @@ describe("MapBackdrop", () => {
     expect(map()).toBeNull();
     expect(requests.length).toBeGreaterThan(1);
     for (const { url } of requests) {
-      expect(url).toMatch(/^\/map-tiles\/light\/9\/\d+\/\d+$/);
+      expect(url).toMatch(/^\/map-tiles\/light\/9\/\d+\/\d+\?language=en-US$/);
     }
 
     // All but one arrived: still water, never a map with a hole in it.
@@ -250,7 +250,9 @@ describe("MapBackdrop", () => {
     // Wider than the world is at zoom 0, so the one tile shows more than once.
     size.width = 1200;
     render(backdrop([], { showWhenEmpty: true }));
-    expect(requests.map(({ url }) => url)).toEqual(["/map-tiles/light/0/0/0"]);
+    expect(requests.map(({ url }) => url)).toEqual([
+      "/map-tiles/light/0/0/0?language=en-US",
+    ]);
     await answerAll();
     expect(
       screen.getByRole("img", {

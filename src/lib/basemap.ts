@@ -393,6 +393,84 @@ export async function basemapStyle(
 }
 
 /**
+ * The English line each name label of the vendored pair draws: the English
+ * name, else the latin-script one, else the local one. Mirrored by
+ * `scripts/generate-basemaps.mjs`, which writes it into both files.
+ */
+export const ENGLISH_NAME = [
+  "coalesce",
+  ["get", "name_en"],
+  ["get", "name:latin"],
+  ["get", "name"],
+];
+
+/**
+ * `style` with each name label given `language`'s name as a second line, where
+ * a place has one that differs from its English line - beside it along a line,
+ * as a road name runs, and under it at a point. Without a language, `style`
+ * itself; with one the tiles carry no name in, a style that draws English.
+ *
+ * Only labels drawing exactly `ENGLISH_NAME` are touched, so an operator's own
+ * style is drawn as written, whatever is asked.
+ */
+export function withLabelLanguage(
+  style: StyleDocument,
+  language: string | undefined,
+): StyleDocument {
+  // A bare subtag, so a value nobody checked against a list cannot reach an
+  // expression as anything but a field name the tiles may or may not have.
+  if (!language || !/^[a-z]{2,3}$/.test(language)) return style;
+  const english = JSON.stringify(ENGLISH_NAME);
+  const local = ["get", `name:${language}`];
+  return {
+    ...style,
+    layers: style.layers.map((layer) => {
+      if (
+        layer.type !== "symbol" ||
+        JSON.stringify(layer.layout?.["text-field"]) !== english
+      ) {
+        return layer;
+      }
+      const separator =
+        layer.layout?.["symbol-placement"] === "line" ? " " : "\n";
+      const field = [
+        "let",
+        "english",
+        ENGLISH_NAME,
+        [
+          "case",
+          [
+            "all",
+            ["has", `name:${language}`],
+            ["!=", local, ["var", "english"]],
+          ],
+          ["concat", ["var", "english"], separator, local],
+          ["var", "english"],
+        ],
+      ];
+      return {
+        ...layer,
+        layout: { ...layer.layout, "text-field": field },
+      } as typeof layer;
+    }),
+  };
+}
+
+/**
+ * The language a map labels in beside English, from a BCP 47 tag such as
+ * `navigator.language`: its primary subtag, lowercased, with Norwegian's two
+ * written forms read as the `no` the tiles carry. English, or no tag, is none.
+ *
+ * Not checked against the renderer's list: a live map stores nothing, and a
+ * language the tiles hold no name in draws English by itself.
+ */
+export function labelLanguage(tag: string | undefined): string | undefined {
+  const primary = tag?.split(/[-_]/)[0].toLowerCase();
+  if (!primary || primary === "en") return undefined;
+  return primary === "nb" || primary === "nn" ? "no" : primary;
+}
+
+/**
  * The origins the browser will contact to draw this basemap, for the CSP
  * `connect-src` in `proxy.ts`.
  *

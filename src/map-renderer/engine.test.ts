@@ -2,7 +2,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { basemapOrigins } from "@/lib/basemap";
+import { basemapOrigins, withLabelLanguage } from "@/lib/basemap";
 import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
 import { createEngine, PIXEL_RATIO, type NativeModule } from "./engine";
 import { parsePayload } from "./payload";
@@ -162,6 +162,20 @@ describe("the engine", () => {
     const [, darkWarm] = maps;
     const [style] = drawn()[0].loaded;
     expect(style).toEqual(darkWarm.loaded[0]);
+  });
+
+  it("labels a tile in its language, and the next one without it in English", async () => {
+    const { engine, maps, drawn } = await engineWith();
+    await engine.draw({ ...TILE, language: "ar" });
+    await engine.draw(TILE);
+
+    const [lightWarm] = maps;
+    const [inArabic, inEnglish] = drawn().map((map) => map.loaded[0]);
+    expect(inArabic).toEqual(
+      withLabelLanguage(lightWarm.loaded[0] as never, "ar"),
+    );
+    expect(inArabic).not.toEqual(lightWarm.loaded[0]);
+    expect(inEnglish).toEqual(lightWarm.loaded[0]);
   });
 
   // MapLibre Native keeps every source tile a map has drawn, so a map is never

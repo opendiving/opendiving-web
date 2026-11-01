@@ -142,7 +142,7 @@ describe("RecentTripsCard", () => {
     // In the page's theme: the place at the zoom a lone place opens at, and
     // the world's one tile.
     const urls = getMapTile.mock.calls.map(([url]) => url as string);
-    expect(urls).toContain("/map-tiles/dark/0/0/0");
+    expect(urls).toContain("/map-tiles/dark/0/0/0?language=en-US");
     expect(
       urls.filter((url) => url.startsWith("/map-tiles/dark/9/")),
     ).not.toEqual([]);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { MAX_FIT_ZOOM } from "@/lib/basemap";
-import { parsePayload, PayloadError } from "./payload";
+import { LABEL_LANGUAGES, parsePayload, PayloadError } from "./payload";
 
 const TILE = { kind: "tile", theme: "light", z: 9, x: 300, y: 215 };
 
@@ -76,5 +76,38 @@ describe("parsePayload", () => {
     rejects({ ...TILE, theme: "sepia" }, /theme/);
     rejects([TILE], /object/);
     rejects(null, /object/);
+  });
+
+  it("takes a language from the list, and leaves a tile without one in English", () => {
+    expect(parsePayload({ ...TILE, language: "de" })).toEqual({
+      ...TILE,
+      language: "de",
+    });
+    expect(parsePayload({ ...TILE, language: "pnb" })).toMatchObject({
+      language: "pnb",
+    });
+    expect("language" in parsePayload(TILE)).toBe(false);
+  });
+
+  // The API reduces what a browser says to a code of the list or to no key at
+  // all, so anything else here is a client that skipped that.
+  it.each([["en"], ["de-DE"], ["DE"], [""], [null], [7], [["de"]]])(
+    "refuses the language %j",
+    (language) => {
+      rejects({ ...TILE, language }, /language must be one of/);
+    },
+  );
+});
+
+// Mirrored in the API, which bounds the tiles it stores by it.
+describe("LABEL_LANGUAGES", () => {
+  it("is the basemap's own languages, bare codes, English left out", () => {
+    expect(LABEL_LANGUAGES).toHaveLength(71);
+    expect(new Set(LABEL_LANGUAGES).size).toBe(LABEL_LANGUAGES.length);
+    expect([...LABEL_LANGUAGES].sort()).toEqual([...LABEL_LANGUAGES]);
+    expect(LABEL_LANGUAGES.every((code) => /^[a-z]{2,3}$/.test(code))).toBe(
+      true,
+    );
+    expect(LABEL_LANGUAGES).not.toContain("en");
   });
 });

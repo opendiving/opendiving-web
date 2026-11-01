@@ -3,6 +3,7 @@
 
 import sharp from "sharp";
 
+import { withLabelLanguage } from "@/lib/basemap";
 import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
 import type { Theme, TilePayload } from "./payload";
 import type { Resources } from "./resources";
@@ -196,9 +197,16 @@ export function createEngine({
   void warm();
 
   // The square at its own zoom, centred on its middle: exactly one tile of the
-  // vector source, whose tiles are 512 px too.
-  async function render({ theme, z, x, y }: TilePayload): Promise<Uint8Array> {
-    const map = newMap(await styleFor(theme));
+  // vector source, whose tiles are 512 px too. The language is applied to the
+  // theme's style per draw, since every draw makes its own map anyway.
+  async function render({
+    theme,
+    z,
+    x,
+    y,
+    language,
+  }: TilePayload): Promise<Uint8Array> {
+    const map = newMap(withLabelLanguage(await styleFor(theme), language));
     const center = tileCenter(z, x, y);
     drawing.add(map);
 
