@@ -116,7 +116,9 @@ describe("DiveCard", () => {
     expect(map.querySelectorAll("[data-marker]")).toHaveLength(2);
     // In the page's theme, at the zoom a dive this small opens at.
     expect(getMapTile).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/map-tiles\/light\/9\/\d+\/\d+$/),
+      expect.stringMatching(
+        /^\/map-tiles\/light\/9\/\d+\/\d+\?language=en-US$/,
+      ),
       expect.any(AbortSignal),
     );
   });
