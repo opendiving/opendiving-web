@@ -4,15 +4,86 @@
 // `UnitNumberInput` is the other edge, and it is built out of what's here.
 //
 // Nothing in this file reaches for React or for context. Components read the
-// preference once through `useUnits` and pass it down, which is what keeps the gas
+// preference through `useUnits`, which binds these helpers for components. The gas
 // maths in `lib/dive-mixtures.ts`, the Zod schemas, `prefillFromLastDive` and the
-// import-apply path unit-blind - they all run on metric values and never learn the
+// import-apply path stay unit-blind - they all run on metric values and never learn the
 // diver's preference at all.
 
 /** The two systems the app renders in. Mirrors the API's `UnitSystem` StrEnum. */
 export const UNIT_SYSTEMS = ["metric", "imperial"] as const;
 
 export type UnitSystem = (typeof UNIT_SYSTEMS)[number];
+
+/** Independently selectable measurement families. Length also controls distance and speed. */
+export const UNIT_PREFERENCE_DIMENSIONS = [
+  "depth",
+  "pressure",
+  "volume",
+  "weight",
+  "temperature",
+] as const;
+export type UnitPreferenceDimension =
+  (typeof UNIT_PREFERENCE_DIMENSIONS)[number];
+export type UnitPreferences = Record<UnitPreferenceDimension, UnitSystem>;
+export type UnitSelection = UnitSystem | UnitPreferences;
+export type UnitPreferenceOverrides = Partial<UnitPreferences>;
+
+/** Complete settings for either quick preset. */
+export function unitPreset(system: UnitSystem): UnitPreferences {
+  return {
+    depth: system,
+    pressure: system,
+    volume: system,
+    weight: system,
+    temperature: system,
+  };
+}
+
+/** Resolve persisted preferences, ignoring future or unrecognized stored values. */
+export function resolveUnitPreferences(
+  system: UnitSystem,
+  overrides: UnitPreferenceOverrides = {},
+): UnitPreferences {
+  const preferences = unitPreset(system);
+  for (const key of UNIT_PREFERENCE_DIMENSIONS) {
+    const value = overrides[key];
+    if (value === "metric" || value === "imperial") preferences[key] = value;
+  }
+  return preferences;
+}
+
+/** The active preset, or custom when measurement families differ. */
+export function getUnitPreset(
+  preferences: UnitPreferences,
+): UnitSystem | "custom" {
+  return UNIT_PREFERENCE_DIMENSIONS.every(
+    (key) => preferences[key] === preferences.depth,
+  )
+    ? preferences.depth
+    : "custom";
+}
+
+/** Resolve the family used by a scalar, derived rate, distance or chart channel. */
+export function unitSystemFor(
+  dimension: Dimension | "volume",
+  units: UnitSelection,
+): UnitSystem {
+  if (typeof units === "string") return units;
+  switch (dimension) {
+    case "visibility":
+    case "altitude":
+    case "speed":
+      return units.depth;
+    case "sac":
+      return units.pressure;
+    case "rmv":
+    case "gasVolume":
+    case "volume":
+      return units.volume;
+    default:
+      return units[dimension];
+  }
+}
 
 /**
  * How each system is named in the settings picker.
@@ -128,8 +199,8 @@ export function cylinderCubicFeet(
  * Every measurement this module knows how to convert or label.
  *
  * Keyed by dimension rather than by field, so a second depth column or a third
- * pressure needs no entry here - and so per-dimension preferences, if they are ever
- * wanted, are an additive change to `UnitSystem`'s use rather than a rewrite.
+ * pressure needs no entry here. Each dimension resolves its measurement family
+ * through `unitSystemFor`.
  *
  * Deliberately absent: ppO₂ and surface pressure (bar in both systems, as every dive
  * computer shows them), tank volume (litres is water capacity and cubic feet is gas
@@ -367,9 +438,9 @@ export function withoutFloatNoise(value: number): string {
 export function toDisplayUnits(
   metric: number,
   dimension: Dimension,
-  units: UnitSystem,
+  units: UnitSelection,
 ): number {
-  return units === "imperial"
+  return unitSystemFor(dimension, units) === "imperial"
     ? DIMENSIONS[dimension].toImperial(metric)
     : metric;
 }
@@ -378,9 +449,9 @@ export function toDisplayUnits(
 export function toMetricUnits(
   display: number,
   dimension: Dimension,
-  units: UnitSystem,
+  units: UnitSelection,
 ): number {
-  return units === "imperial"
+  return unitSystemFor(dimension, units) === "imperial"
     ? DIMENSIONS[dimension].toMetric(display)
     : display;
 }
@@ -402,7 +473,7 @@ export function isIntegerDimension(dimension: Dimension): boolean {
 export function toCommittedMetric(
   display: number,
   dimension: EntryDimension,
-  units: UnitSystem,
+  units: UnitSelection,
 ): number {
   const metric = toMetricUnits(display, dimension, units);
   return isIntegerDimension(dimension)
@@ -432,13 +503,13 @@ export interface FormatOptions {
 export function displayNumber(
   metric: number,
   dimension: Dimension,
-  units: UnitSystem,
+  units: UnitSelection,
   { decimals }: FormatOptions = {},
 ): string {
   const shown = toDisplayUnits(metric, dimension, units);
   const spec = DIMENSIONS[dimension];
   const places =
-    units === "imperial"
+    unitSystemFor(dimension, units) === "imperial"
       ? spec.imperialDecimals
       : (decimals ?? spec.metricDecimals);
 
@@ -448,8 +519,8 @@ export function displayNumber(
 }
 
 /** The short unit label for a dimension - "m"/"ft", "°C"/"°F", "bar/min"/"psi/min". */
-export function unitLabel(dimension: Dimension, units: UnitSystem): string {
-  return DIMENSIONS[dimension].label[units];
+export function unitLabel(dimension: Dimension, units: UnitSelection): string {
+  return DIMENSIONS[dimension].label[unitSystemFor(dimension, units)];
 }
 
 /**
@@ -472,25 +543,25 @@ export function unitSeparator(dimension: Dimension): string {
  * For accessible chart descriptions, where the visible label's "ft" is read as a
  * word and "°C" is skipped entirely.
  */
-export function unitWord(dimension: Dimension, units: UnitSystem): string {
-  return DIMENSIONS[dimension].word[units];
+export function unitWord(dimension: Dimension, units: UnitSelection): string {
+  return DIMENSIONS[dimension].word[unitSystemFor(dimension, units)];
 }
 
 /** A metric value with its unit: `"30.52 m"`, `"100 ft"`, `"24°C"`. */
 function formatValue(
   metric: number,
   dimension: Dimension,
-  units: UnitSystem,
+  units: UnitSelection,
   options?: FormatOptions,
 ): string {
   const spec = DIMENSIONS[dimension];
-  return `${displayNumber(metric, dimension, units, options)}${spec.separator}${spec.label[units]}`;
+  return `${displayNumber(metric, dimension, units, options)}${spec.separator}${spec.label[unitSystemFor(dimension, units)]}`;
 }
 
 /** A depth in metres, as `"30.52 m"` or `"100 ft"`. */
 export function formatDepth(
   meters: number,
-  units: UnitSystem,
+  units: UnitSelection,
   options?: FormatOptions,
 ): string {
   return formatValue(meters, "depth", units, options);
@@ -543,12 +614,14 @@ function floorTo(value: number, decimals: number): number {
  */
 export function formatComparableDepth(
   meters: number,
-  units: UnitSystem,
+  units: UnitSelection,
   { floor = false }: { floor?: boolean } = {},
 ): string {
   const shown = toDisplayUnits(meters, "depth", units);
   const places =
-    units === "imperial" ? COMPARABLE_IMPERIAL_DECIMALS : METRIC_DECIMALS;
+    unitSystemFor("depth", units) === "imperial"
+      ? COMPARABLE_IMPERIAL_DECIMALS
+      : METRIC_DECIMALS;
   const value = floor ? floorTo(shown, places) : roundTo(shown, places);
 
   return `${value}${unitSeparator("depth")}${unitLabel("depth", units)}`;
@@ -557,7 +630,7 @@ export function formatComparableDepth(
 /** A temperature in Celsius, as `"23.89°C"` or `"75°F"`. */
 export function formatTemperature(
   celsius: number,
-  units: UnitSystem,
+  units: UnitSelection,
   options?: FormatOptions,
 ): string {
   return formatValue(celsius, "temperature", units, options);
@@ -566,7 +639,7 @@ export function formatTemperature(
 /** A weight in kilograms, as `"6 kg"` or `"13 lb"`. */
 export function formatWeight(
   kg: number,
-  units: UnitSystem,
+  units: UnitSelection,
   options?: FormatOptions,
 ): string {
   return formatValue(kg, "weight", units, options);
@@ -575,26 +648,26 @@ export function formatWeight(
 /** A cylinder pressure in bar, as `"206.84 bar"` or `"3000 psi"`. */
 export function formatPressure(
   bar: number,
-  units: UnitSystem,
+  units: UnitSelection,
   options?: FormatOptions,
 ): string {
   return formatValue(bar, "pressure", units, options);
 }
 
 /** A visibility in metres, whole in both systems: `"15 m"` or `"49 ft"`. */
-export function formatVisibility(meters: number, units: UnitSystem): string {
+export function formatVisibility(meters: number, units: UnitSelection): string {
   return formatValue(meters, "visibility", units);
 }
 
 /** An altitude in metres, whole in both systems: `"372 m"` or `"1220 ft"`. */
-export function formatAltitude(meters: number, units: UnitSystem): string {
+export function formatAltitude(meters: number, units: UnitSelection): string {
   return formatValue(meters, "altitude", units);
 }
 
 /** A surface air consumption in bar/min, as `"0.82 bar/min"` or `"11.9 psi/min"`. */
 export function formatSac(
   barPerMinute: number,
-  units: UnitSystem,
+  units: UnitSelection,
   options?: FormatOptions,
 ): string {
   return formatValue(barPerMinute, "sac", units, options);
@@ -603,7 +676,7 @@ export function formatSac(
 /** A respiratory minute volume in L/min, as `"18.24 L/min"` or `"0.64 cuft/min"`. */
 export function formatRmv(
   litersPerMinute: number,
-  units: UnitSystem,
+  units: UnitSelection,
   options?: FormatOptions,
 ): string {
   return formatValue(litersPerMinute, "rmv", units, options);
@@ -612,7 +685,7 @@ export function formatRmv(
 /** A volume of gas in litres, as `"3618 L"` or `"127.8 cuft"`. */
 export function formatGasVolume(
   liters: number,
-  units: UnitSystem,
+  units: UnitSelection,
   options?: FormatOptions,
 ): string {
   return formatValue(liters, "gasVolume", units, options);
@@ -621,7 +694,7 @@ export function formatGasVolume(
 /** A wind speed in metres per second, whole in both systems: `"21 km/h"` or `"13 mph"`. */
 export function formatWindSpeed(
   metersPerSecond: number,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string {
   return formatValue(metersPerSecond * 3.6, "speed", units);
 }
@@ -639,12 +712,12 @@ export function formatWindSpeed(
 export function displayBound(
   metric: number,
   dimension: EntryDimension,
-  units: UnitSystem,
+  units: UnitSelection,
   side: "min" | "max",
 ): number {
   // Metric passes through untouched, like every other value in metric mode - the
   // bound is already in the units the schema wrote it in.
-  if (units === "metric") return metric;
+  if (unitSystemFor(dimension, units) === "metric") return metric;
 
   const shown = toDisplayUnits(metric, dimension, units);
   return side === "min" ? Math.ceil(shown) : Math.floor(shown);

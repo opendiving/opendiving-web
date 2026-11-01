@@ -1,5 +1,6 @@
 "use client";
 
+import { unitSystemFor, type UnitSystem } from "@/lib/units";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { nextActiveIndex } from "@/components/ui/creatable-combobox";
@@ -12,7 +13,7 @@ import { parseDecimal } from "@/lib/decimal-entry";
 import { cn } from "@/lib/utils";
 import type { FormControlSlotProps } from "@/components/ui/form";
 import { useUnits } from "@/hooks/useUnits";
-import type { UnitSystem } from "@/lib/units";
+import type { UnitSelection } from "@/lib/units";
 import { divesAPI } from "@/lib/api/dives";
 
 export interface VolumeOption {
@@ -170,11 +171,15 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
  * Grouping is what keeps the full list browsable, which is the job the split was
  * wrongly doing.
  */
-function volumeGroupsFor(units: UnitSystem): VolumeOptionGroup[] {
+function volumeGroupsFor(units: UnitSelection): VolumeOptionGroup[] {
   const families = VOLUME_GROUPS.filter((group) => group.system !== undefined);
   return [
-    ...families.filter((group) => group.system === units),
-    ...families.filter((group) => group.system !== units),
+    ...families.filter(
+      (group) => group.system === unitSystemFor("volume", units),
+    ),
+    ...families.filter(
+      (group) => group.system !== unitSystemFor("volume", units),
+    ),
     ...VOLUME_GROUPS.filter((group) => group.system === undefined),
   ];
 }
@@ -194,8 +199,9 @@ function volumeGroupsFor(units: UnitSystem): VolumeOptionGroup[] {
  * material is what pins a cu-ft name to a litre figure.
  * A preset with no cu-ft identity is the same string in both systems.
  */
-function volumeOptionLabel(option: VolumeOption, units: UnitSystem): string {
-  if (units === "metric" || !option.imperialName) return option.label;
+function volumeOptionLabel(option: VolumeOption, units: UnitSelection): string {
+  if (unitSystemFor("volume", units) === "metric" || !option.imperialName)
+    return option.label;
   return `${option.imperialName} (${option.value} L)`;
 }
 
@@ -250,7 +256,7 @@ export function VolumeCombobox({
   ...slotProps
 }: VolumeComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   // The diver's own recent volumes, fetched on each open so a dive saved in
   // another tab shows up. The last answer stays on screen while the next loads,
   // and a failed fetch keeps whatever it had - the presets work regardless.

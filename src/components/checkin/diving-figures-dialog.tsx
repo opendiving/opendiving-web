@@ -6,7 +6,7 @@ import { Printer, RotateCcw } from "lucide-react";
 
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { type DivingFigures } from "@/lib/checkin";
-import { unitLabel, type UnitSystem } from "@/lib/units";
+import { unitLabel, unitSystemFor, type UnitSelection } from "@/lib/units";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   divingFiguresFromForm,
@@ -39,7 +39,7 @@ export interface DivingFiguresDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** The system the depth box shows and takes, the diver's own. */
-  units: UnitSystem;
+  units: UnitSelection;
   /** What the log itself says - where a fresh dialog opens, and what "Use logged figures" returns to. */
   logged: DivingFigures;
   /** The diver's correction, or null while the summary is printing the log's own figures. */
@@ -147,7 +147,7 @@ export function DivingFiguresDialog({
                         behind it stays metric, like every other depth box. */}
                     <UnitNumberInput
                       dimension="depth"
-                      units={units}
+                      units={unitSystemFor("depth", units)}
                       min={0}
                       value={field.value}
                       onChange={field.onChange}

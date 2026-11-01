@@ -23,9 +23,8 @@ import {
   MIN_SITE_QUERY_LENGTH,
 } from "@/lib/api/dive-site-catalog";
 import { geocodeResultLabel } from "@/lib/locations";
-import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
+import { GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { useUnits } from "@/hooks/useUnits";
-import type { UnitSystem } from "@/lib/units";
 import {
   MAX_LOCATION_NAME_LENGTH,
   type LocationFormValue,
@@ -88,7 +87,7 @@ function sameRecord(result: GeocodeResult) {
 function catalogHint(
   site: DiveSiteSuggestion,
   position: GeoPoint | null,
-  units: UnitSystem,
+  formatDistance: ReturnType<typeof useUnits>["formatDistance"],
 ): string | undefined {
   const parts: string[] = [];
   // First, because it is what decides the pick: a site the diver already has is
@@ -102,7 +101,7 @@ function catalogHint(
   const place = diveSitePlaceContext(site);
   if (place) parts.push(place);
   if (position) {
-    parts.push(formatDistance(haversineMeters(position, site), units));
+    parts.push(formatDistance(haversineMeters(position, site)));
   }
   return parts.length > 0 ? parts.join(" · ") : undefined;
 }
@@ -156,7 +155,7 @@ export function PlaceSearch({
   disabled,
 }: PlaceSearchProps) {
   const searchId = useId();
-  const units = useUnits();
+  const { formatDistance } = useUnits();
   // What each menu row would place. Held in a ref rather than state because
   // nothing renders from it - the combobox hands back an id, and this is what
   // turns that id back into the pick it came from, already tagged.
@@ -226,7 +225,11 @@ export function PlaceSearch({
         remember(
           id,
           { kind: "catalog", site },
-          { id, name: site.name, hint: catalogHint(site, point, units) },
+          {
+            id,
+            name: site.name,
+            hint: catalogHint(site, point, formatDistance),
+          },
         );
         credit(site.attribution);
       }
@@ -258,7 +261,7 @@ export function PlaceSearch({
       // alone never claims there is more.
       return { items, hasMore: suggestions?.has_more ?? false };
     },
-    [latitude, longitude, units],
+    [latitude, longitude, formatDistance],
   );
 
   return (

@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useEntryUnits } from "@/hooks/useEntryUnits";
-import { unitLabel, type EntryDimension } from "@/lib/units";
+import { type EntryDimension } from "@/lib/units";
 
 interface UnitNumberItemProps {
   /** The label without its unit, which follows the dimension's entry units. */
@@ -66,7 +66,7 @@ export function DiveUnitNumberItem<TFieldValues extends FieldValues>({
 }: UnitNumberItemProps & {
   field: ControllerRenderProps<TFieldValues, Path<TFieldValues>>;
 }) {
-  const { entryUnits, toggleEntryUnits } = useEntryUnits();
+  const { entryUnits, entryUnitLabel, toggleEntryUnits } = useEntryUnits();
   const units = entryUnits(dimension);
   const box = (
     <FormControl>
@@ -88,7 +88,7 @@ export function DiveUnitNumberItem<TFieldValues extends FieldValues>({
         onToggle={() => toggleEntryUnits(dimension)}
       >
         <FormLabel>
-          {label} ({unitLabel(dimension, units)})
+          {label} ({entryUnitLabel(dimension)})
         </FormLabel>
       </EntryUnitLabelRow>
       {Icon ? (

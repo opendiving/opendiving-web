@@ -4,10 +4,10 @@ import type { DiveSite } from "@/lib/api/dive-sites";
 import { ENTRY_TYPE_LABELS, WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { labelOrFallback } from "@/lib/api/labels";
 import { IconFact } from "@/components/ui/icon-fact";
-import { formatAltitude, formatDepth, type UnitSystem } from "@/lib/units";
+import { formatAltitude, formatDepth, type UnitSelection } from "@/lib/units";
 
 // "5 m – 30 m", or the one end the site records.
-function depthRange(site: DiveSite, units: UnitSystem): string | null {
+function depthRange(site: DiveSite, units: UnitSelection): string | null {
   const from = site.depth_from;
   const to = site.depth_to;
   if (from != null && to != null) {
@@ -26,7 +26,10 @@ function depthRange(site: DiveSite, units: UnitSystem): string | null {
  * the forms' for the same fields, a depth's the one the app marks every depth
  * with.
  */
-export function diveSiteFacts(site: DiveSite, units: UnitSystem): ReactNode[] {
+export function diveSiteFacts(
+  site: DiveSite,
+  units: UnitSelection,
+): ReactNode[] {
   const entryTypes = site.entry_types ?? [];
   const depths = depthRange(site, units);
   return [
