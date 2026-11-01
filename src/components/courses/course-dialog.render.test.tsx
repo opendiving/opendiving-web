@@ -355,6 +355,25 @@ describe("CourseDialog", () => {
     expect(updateCourse).not.toHaveBeenCalled();
   });
 
+  it("empties the end date when the start moves past it, and saves it cleared", async () => {
+    open(EXISTING);
+
+    const start = screen.getByLabelText("Start date");
+    await waitFor(() => expect(start).toHaveValue("2026-03-02"));
+    await userEvent.clear(start);
+    await userEvent.type(start, "2026-03-10");
+    await userEvent.tab();
+
+    expect(screen.getByLabelText("End date")).toHaveValue("");
+    await save();
+
+    await waitFor(() => expect(updateCourse).toHaveBeenCalled());
+    expect(updateCourse.mock.calls[0][1]).toMatchObject({
+      start_date: "2026-03-10",
+      end_date: null,
+    });
+  });
+
   it("ranks its people pickers at the course's start date", async () => {
     open(EXISTING);
 

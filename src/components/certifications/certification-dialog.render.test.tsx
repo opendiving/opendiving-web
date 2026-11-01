@@ -321,6 +321,27 @@ const save = () =>
     screen.getByRole("button", { name: /Create certification|Save changes/ }),
   );
 
+describe("the card's two dates are a range", () => {
+  it("empties the expiry when the certified date moves past it", async () => {
+    open({ certification: { ...EXISTING, expires_on: "2022-05-01" } });
+
+    const certifiedOn = screen.getByLabelText("Certified on");
+    await waitFor(() => expect(certifiedOn).toHaveValue("2020-05-01"));
+    await userEvent.clear(certifiedOn);
+    await userEvent.type(certifiedOn, "2023-01-15");
+    await userEvent.tab();
+
+    expect(screen.getByLabelText("Expires on")).toHaveValue("");
+    await save();
+
+    await waitFor(() => expect(updateCertification).toHaveBeenCalled());
+    expect(updateCertification.mock.calls[0][1]).toMatchObject({
+      certified_on: "2023-01-15",
+      expires_on: null,
+    });
+  });
+});
+
 describe("picking a course fills the card's own fields in", () => {
   it("copies the level, dive center, instructor and agency across", async () => {
     open();

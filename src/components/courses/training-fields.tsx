@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DatePicker, rangeEndAfter } from "@/components/ui/date-picker";
 import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import { PersonCombobox } from "@/components/people/person-combobox";
 
@@ -35,6 +35,7 @@ interface TrainingFieldsProps {
   agencyRequired: boolean;
   // The field sharing the agency's row.
   besideAgency: ReactNode;
+  // Start, then end: the pickers treat the pair as a range.
   dates: readonly [TrainingDateField, TrainingDateField];
   // The date the pickers rank by last use at or before.
   until?: string;
@@ -54,9 +55,24 @@ export function TrainingFields({
   until,
   onInstructorChange,
 }: TrainingFieldsProps) {
-  const { control } = useFormContext();
+  const { control, setValue } = useFormContext();
   // `agency_other` is only shown - and only accepted by the API - for "other".
   const agency = useWatch({ control, name: "agency" });
+  const [startField, endField] = dates;
+  const [start = "", end = ""] = useWatch({
+    control,
+    name: [startField.name, endField.name],
+  }) as [string | undefined, string | undefined];
+
+  const onStartChange = (value: string) => {
+    const kept = rangeEndAfter(value, end);
+    if (kept !== end) {
+      setValue(endField.name, kept, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  };
 
   return (
     <>
@@ -117,7 +133,7 @@ export function TrainingFields({
       {/* Neither date is required: a course that is only booked has none yet,
           and most recreational cards never expire. */}
       <div className="grid gap-4 sm:grid-cols-2">
-        {dates.map(({ name, label }) => (
+        {dates.map(({ name, label }, position) => (
           <FormField
             key={name}
             control={control}
@@ -128,7 +144,12 @@ export function TrainingFields({
                 <FormControl>
                   <DatePicker
                     value={field.value ?? ""}
-                    onChange={field.onChange}
+                    onChange={(value) => {
+                      field.onChange(value);
+                      if (position === 0) onStartChange(value);
+                    }}
+                    rangeEnd={position === 0 ? end : undefined}
+                    rangeStart={position === 1 ? start : undefined}
                   />
                 </FormControl>
                 <FormMessage />
