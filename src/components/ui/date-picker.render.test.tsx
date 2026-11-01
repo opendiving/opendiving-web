@@ -268,7 +268,7 @@ describe("DatePicker as half of a range", () => {
     await userEvent.click(screen.getByLabelText("End"));
 
     expect(dayButton(/March 12th, 2019/)).toBeInTheDocument();
-    expect(dayCell("2019-03-12")).toHaveClass("[&>button]:border-teal");
+    expect(dayCell("2019-03-12")).toHaveClass("[&>button]:bg-teal!");
   });
 
   it("refuses an end before the start, but not the start itself", async () => {
@@ -285,7 +285,7 @@ describe("DatePicker as half of a range", () => {
 
     await userEvent.click(screen.getByLabelText("Start"));
 
-    expect(dayCell("2019-03-12")).toHaveClass("[&>button]:border-teal");
+    expect(dayCell("2019-03-12")).toHaveClass("[&>button]:bg-teal!");
     expect(dayButton(/March 20th, 2019/)).toBeEnabled();
   });
 
@@ -313,9 +313,11 @@ describe("DatePicker as half of a range", () => {
 
     expect(dayCell("2019-03-15")).toHaveClass(SHADED);
     expect(dayCell("2019-03-17")).not.toHaveClass(SHADED);
+    expect(dayCell("2019-03-16")).toHaveClass("[&>button]:border-teal");
 
     await userEvent.unhover(dayButton(/March 16th, 2019/));
     expect(dayCell("2019-03-15")).not.toHaveClass(SHADED);
+    expect(dayCell("2019-03-16")).not.toHaveClass("[&>button]:border-teal");
   });
 
   it("previews nothing in the start picker", async () => {

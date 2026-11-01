@@ -353,6 +353,7 @@ function CalendarDatePicker({
           disabled={beforeStart}
           modifiers={{
             range_other_end: otherEnd,
+            range_hovered: hoveredDay,
             range_between: between,
             range_from: spans ? from : undefined,
             range_to: spans ? to : undefined,
@@ -361,7 +362,11 @@ function CalendarDatePicker({
           // buttons, so an end's cell carries the band's inner half and the
           // corners facing the range are filled rather than cut out of it.
           modifiersClassNames={{
+            // Filled like the picked day, and forced: the calendar's own today
+            // and hover fills outrank a plain one when the other end is today.
             range_other_end:
+              "[&>button]:bg-teal! [&>button]:text-primary-foreground!",
+            range_hovered:
               "[&>button]:border [&>button]:border-teal [&>button]:text-teal",
             range_between: "bg-teal/15",
             range_from:
