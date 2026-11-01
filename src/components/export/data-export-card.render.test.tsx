@@ -2,6 +2,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DataExportCard } from "./data-export-card";
+import StorageSettingsPage from "@/app/settings/(sections)/storage/page";
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { username: "alex" } }),
+}));
+
+vi.mock("@/lib/api/storage", () => ({
+  storageAPI: { getUsage: () => new Promise(() => {}) },
+}));
 
 // The card holds no logic worth unit-testing - naming lives in `lib/api/export.ts` and
 // is tested there. What only a render reaches is the wiring between four visually
@@ -83,6 +92,55 @@ function deferred() {
 }
 
 describe("DataExportCard", () => {
+  it("downloads the ZIP with uploaded media from storage while usage is still loading", async () => {
+    const archive = deferred();
+    download.mockReturnValue(archive.promise);
+    render(<StorageSettingsPage />);
+
+    expect(
+      screen.getByRole("heading", { name: "Storage" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Data export" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(
+      screen.getByText(/every uploaded dive-computer file/),
+    ).toHaveTextContent(/certification card, profile picture, and portrait/);
+    expect(downloadButton("ZIP")).toHaveTextContent("Download ZIP");
+
+    await userEvent.click(downloadButton("ZIP"));
+    expectInert(busyButton("ZIP"));
+    await userEvent.click(busyButton("ZIP"));
+    expect(download).toHaveBeenCalledExactlyOnceWith("archive", "alex");
+    expect(saveApi).toHaveBeenCalledWith(
+      "/export/archive",
+      expect.any(Function),
+    );
+
+    const blob = new Blob(["zip"], { type: "application/zip" });
+    archive.release({ blob, filename: "opendiving-alex.zip" });
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith(blob, "opendiving-alex.zip"),
+    );
+    expectLive(downloadButton("ZIP"));
+  });
+
+  it("lets a failed ZIP download from storage be retried", async () => {
+    download.mockRejectedValueOnce(new Error("offline"));
+    render(<StorageSettingsPage />);
+
+    await userEvent.click(downloadButton("ZIP"));
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    expectLive(downloadButton("ZIP"));
+    expect(save).not.toHaveBeenCalled();
+
+    const blob = new Blob(["zip"]);
+    download.mockResolvedValue({ blob, filename: "backup.zip" });
+    await userEvent.click(downloadButton("ZIP"));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(blob, "backup.zip"));
+  });
+
   it("offers all four exports", () => {
     render(<DataExportCard username="alex" />);
 

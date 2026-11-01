@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { StorageCard } from "@/components/settings/storage-card";
+import { StorageExportCard } from "@/components/settings/storage-export-card";
 import { pageTitle } from "@/lib/page-title";
 
 export const metadata: Metadata = {
@@ -11,5 +12,10 @@ export const metadata: Metadata = {
 export const instant = false;
 
 export default function StorageSettingsPage() {
-  return <StorageCard />;
+  return (
+    <>
+      <StorageCard />
+      <StorageExportCard />
+    </>
+  );
 }
