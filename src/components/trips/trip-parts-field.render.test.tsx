@@ -152,6 +152,60 @@ describe("TripPartsField", () => {
     await waitFor(() => expect(from).toHaveValue("2026-04-18"));
   });
 
+  it("empties a part's end date when its start moves past it", async () => {
+    const onChange = vi.fn();
+    render(
+      <Field
+        initial={[
+          {
+            ...placed("Dahab"),
+            start_date: "2026-04-18",
+            end_date: "2026-04-22",
+          },
+        ]}
+        onChange={onChange}
+      />,
+    );
+
+    const from = screen.getByLabelText("Start date part 1 of 1");
+    await userEvent.clear(from);
+    await userEvent.type(from, "2026-04-23");
+    await userEvent.tab();
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ start_date: "2026-04-23", end_date: "" }),
+    ]);
+    expect(screen.getByLabelText("End date part 1 of 1")).toHaveValue("");
+  });
+
+  it("keeps a part's end date the moved start has not passed", async () => {
+    const onChange = vi.fn();
+    render(
+      <Field
+        initial={[
+          {
+            ...placed("Dahab"),
+            start_date: "2026-04-18",
+            end_date: "2026-04-22",
+          },
+        ]}
+        onChange={onChange}
+      />,
+    );
+
+    const from = screen.getByLabelText("Start date part 1 of 1");
+    await userEvent.clear(from);
+    await userEvent.type(from, "2026-04-22");
+    await userEvent.tab();
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        start_date: "2026-04-22",
+        end_date: "2026-04-22",
+      }),
+    ]);
+  });
+
   it("says a typed-in place will not be on the map", async () => {
     // The map below the field draws only what has a position. Its absence has
     // to be explained on the row, or it reads as the map having missed one.
