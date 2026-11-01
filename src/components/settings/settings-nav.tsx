@@ -9,6 +9,7 @@ import {
   HardDrive,
   KeyRound,
   MailPlus,
+  Plug,
   SlidersHorizontal,
   User,
   type LucideIcon,
@@ -31,6 +32,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     label: "Authentication",
     icon: KeyRound,
   },
+  { href: "/settings/mcp", label: "MCP", icon: Plug },
   { href: "/settings/storage", label: "Storage", icon: HardDrive },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
   {
