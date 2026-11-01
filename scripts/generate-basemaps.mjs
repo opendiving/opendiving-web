@@ -159,7 +159,7 @@ const libertyName = (separator) => [
   ["coalesce", ["get", "name_en"], ["get", "name"]],
 ];
 // The English line alone. Mirrored by `ENGLISH_NAME` in
-// `src/map-renderer/style.ts`, which adds a second language to it per tile.
+// `src/lib/basemap.ts`, which adds a second language to it per tile.
 const ENGLISH_NAME = [
   "coalesce",
   ["get", "name_en"],

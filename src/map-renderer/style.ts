@@ -4,7 +4,7 @@
 
 import { rasterStyle, type Basemap, type BasemapStyle } from "@/lib/basemap";
 import { readRuntimeConfig } from "@/lib/runtime-config";
-import type { LabelLanguage, Theme } from "./payload";
+import type { Theme } from "./payload";
 import { describe, type Resources } from "./resources";
 
 type StyleDocument = Exclude<BasemapStyle, string>;
@@ -65,66 +65,4 @@ export async function loadStyle(
     style.sprite = new URL(style.sprite, config.siteUrl).toString();
   }
   return style;
-}
-
-/**
- * The English line each name label of the vendored pair draws: the English
- * name, else the latin-script one, else the local one. Mirrored by
- * `scripts/generate-basemaps.mjs`, which writes it into both files.
- */
-export const ENGLISH_NAME = [
-  "coalesce",
-  ["get", "name_en"],
-  ["get", "name:latin"],
-  ["get", "name"],
-];
-
-/**
- * `style` with each name label given `language`'s name as a second line, where
- * a place has one that differs from its English line - beside it along a line,
- * as a road name runs, and under it at a point. Without a language, `style`
- * itself.
- *
- * Only labels drawing exactly `ENGLISH_NAME` are touched, so an operator's own
- * style is drawn as written, whatever is asked.
- */
-export function withLabelLanguage(
-  style: StyleDocument,
-  language: LabelLanguage | undefined,
-): StyleDocument {
-  if (!language) return style;
-  const english = JSON.stringify(ENGLISH_NAME);
-  const local = ["get", `name:${language}`];
-  return {
-    ...style,
-    layers: style.layers.map((layer) => {
-      if (
-        layer.type !== "symbol" ||
-        JSON.stringify(layer.layout?.["text-field"]) !== english
-      ) {
-        return layer;
-      }
-      const separator =
-        layer.layout?.["symbol-placement"] === "line" ? " " : "\n";
-      const field = [
-        "let",
-        "english",
-        ENGLISH_NAME,
-        [
-          "case",
-          [
-            "all",
-            ["has", `name:${language}`],
-            ["!=", local, ["var", "english"]],
-          ],
-          ["concat", ["var", "english"], separator, local],
-          ["var", "english"],
-        ],
-      ];
-      return {
-        ...layer,
-        layout: { ...layer.layout, "text-field": field },
-      } as typeof layer;
-    }),
-  };
 }

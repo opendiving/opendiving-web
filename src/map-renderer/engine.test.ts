@@ -2,12 +2,12 @@ import path from "node:path";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { basemapOrigins } from "@/lib/basemap";
+import { basemapOrigins, withLabelLanguage } from "@/lib/basemap";
 import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
 import { createEngine, PIXEL_RATIO, type NativeModule } from "./engine";
 import { parsePayload } from "./payload";
 import { createResources } from "./resources";
-import { readRendererConfig, withLabelLanguage } from "./style";
+import { readRendererConfig } from "./style";
 
 // The engine against a stand-in for MapLibre Native, which records what it is
 // asked and answers each render as a test says - so a failed render and one

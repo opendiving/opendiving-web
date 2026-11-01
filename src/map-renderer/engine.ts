@@ -3,10 +3,11 @@
 
 import sharp from "sharp";
 
+import { withLabelLanguage } from "@/lib/basemap";
 import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
 import type { Theme, TilePayload } from "./payload";
 import type { Resources } from "./resources";
-import { loadStyle, withLabelLanguage, type RendererConfig } from "./style";
+import { loadStyle, type RendererConfig } from "./style";
 
 // Ratio 2, so a tile is sharp on the screens that show most of them: a 512 CSS
 // px square, 1024 pixels across.

@@ -1,17 +1,11 @@
 import { readFileSync } from "node:fs";
-import { isDeepStrictEqual as equal } from "node:util";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { basemapStyle } from "@/lib/basemap";
 import { readRuntimeConfig } from "@/lib/runtime-config";
 import type { Resources } from "./resources";
-import {
-  ENGLISH_NAME,
-  loadStyle,
-  readRendererConfig,
-  withLabelLanguage,
-} from "./style";
+import { loadStyle, readRendererConfig } from "./style";
 
 // One basemap, two drawers: the renderer resolves the same variables with the
 // web's own functions, and arrives at the style the browser would hand MapLibre.
@@ -134,97 +128,4 @@ describe("the renderer's basemap", () => {
       expect(asked).toEqual([]);
     },
   );
-});
-
-describe("withLabelLanguage", () => {
-  const vendored = (file: string) =>
-    JSON.parse(readFileSync(path.join(PUBLIC, "basemap", file), "utf8"));
-  const field = (layer: { layout?: Record<string, unknown> }) =>
-    layer.layout?.["text-field"];
-
-  it.each(["liberty.json", "dark.json"])(
-    "%s labels each name in English alone",
-    (file) => {
-      const fields = vendored(file).layers.map(field).filter(Boolean);
-      expect(
-        fields.filter((f: unknown) => equal(f, ENGLISH_NAME)),
-      ).toHaveLength(20);
-      expect(JSON.stringify(fields)).not.toContain("name:nonlatin");
-    },
-  );
-
-  it("leaves a style without a language as it is", () => {
-    const style = vendored("liberty.json");
-    expect(withLabelLanguage(style, undefined)).toBe(style);
-  });
-
-  it("adds the language's name under a point label and beside a line label", () => {
-    const style = vendored("liberty.json");
-    const labelled = withLabelLanguage(style, "de");
-    const byId = (id: string) =>
-      labelled.layers.find((layer) => layer.id === id) as {
-        layout: Record<string, unknown>;
-      };
-    const second = (separator: string) => [
-      "let",
-      "english",
-      ENGLISH_NAME,
-      [
-        "case",
-        [
-          "all",
-          ["has", "name:de"],
-          ["!=", ["get", "name:de"], ["var", "english"]],
-        ],
-        ["concat", ["var", "english"], separator, ["get", "name:de"]],
-        ["var", "english"],
-      ],
-    ];
-    expect(field(byId("label_city"))).toEqual(second("\n"));
-    expect(field(byId("highway-name-major"))).toEqual(second(" "));
-  });
-
-  // The language changes what a label says and nothing else - and never the
-  // style a later draw in another language starts from.
-  it("changes the name labels' text and nothing else, in a copy", () => {
-    const style = vendored("liberty.json");
-    const before = structuredClone(style);
-    const labelled = withLabelLanguage(style, "ar");
-    expect(style).toEqual(before);
-
-    const withoutText = (s: typeof style) =>
-      s.layers.map(
-        ({ layout, ...layer }: { layout?: Record<string, unknown> }) => ({
-          ...layer,
-          layout: { ...layout, "text-field": undefined },
-        }),
-      );
-    expect(withoutText(labelled)).toEqual(withoutText(style));
-    expect({ ...labelled, layers: [] }).toEqual({ ...style, layers: [] });
-
-    const changed = labelled.layers.filter(
-      (layer, i) => !equal(field(layer as never), field(style.layers[i])),
-    );
-    expect(changed).toHaveLength(20);
-    // Route shields keep their number.
-    expect(
-      field(labelled.layers.find((l) => l.id === "road_shield_us") as never),
-    ).toEqual(["to-string", ["get", "ref"]]);
-  });
-
-  it("leaves a style whose labels it does not know alone", () => {
-    const style = {
-      version: 8 as const,
-      sources: {},
-      layers: [
-        {
-          id: "place",
-          type: "symbol" as const,
-          source: "openmaptiles",
-          layout: { "text-field": ["get", "name"] },
-        },
-      ],
-    };
-    expect(withLabelLanguage(style as never, "de")).toEqual(style);
-  });
 });

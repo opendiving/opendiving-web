@@ -6927,13 +6927,12 @@ which a window-wide hero makes window-sized; and 256 px tiles, twice the request
 ## A map labels in English, and in one more language when asked
 
 `scripts/generate-basemaps.mjs` reduces Liberty's name labels — latin name over local name — to
-their English line, so a map with no language says one thing everywhere. A tile request may name a
-second language: the web sends `navigator.language` raw, the API reduces it to one of
-`LABEL_LANGUAGES` or to none, and `withLabelLanguage` adds that `name:xx` under a point label and
-beside a line label, where it differs from the English line. The list is the basemap's own `name:xx`
-fields, mirrored in the API, which bounds the tiles stored to one set per listed language besides
-English alone. Rejected: reducing the language in the browser, which would put the list in two
-clients.
+their English line. `withLabelLanguage` adds the viewer's `name:xx` under a point label and beside a
+line label, where it differs from the English line; a language the tiles carry no name in draws
+English. A live map applies `labelLanguage(navigator.language)` directly, unchecked: it stores
+nothing. A tile request sends the tag raw, and the API reduces it to one of `LABEL_LANGUAGES` — the
+basemap's own `name:xx` fields, mirrored there — or to none, because every variant is a set of tiles
+it stores; `parsePayload` refuses anything else.
 
 ## The renderer's signature covers what changes a tile's pixels
 
