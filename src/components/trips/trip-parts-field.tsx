@@ -13,7 +13,7 @@ import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DatePicker, rangeEndAfter } from "@/components/ui/date-picker";
 import {
   AddRowButton,
   RepeatableRow,
@@ -634,7 +634,13 @@ function TripPartRow({
           <DatePicker
             id={`${fieldId}-start`}
             value={part.start_date ?? ""}
-            onChange={(start_date) => onChange(index, { start_date })}
+            onChange={(start_date) =>
+              onChange(index, {
+                start_date,
+                end_date: rangeEndAfter(start_date, part.end_date ?? ""),
+              })
+            }
+            rangeEnd={part.end_date ?? ""}
             aria-describedby={error ? errorId : undefined}
             aria-invalid={!!error}
             disabled={disabled}
@@ -649,6 +655,7 @@ function TripPartRow({
             id={`${fieldId}-end`}
             value={part.end_date ?? ""}
             onChange={(end_date) => onChange(index, { end_date })}
+            rangeStart={part.start_date ?? ""}
             aria-describedby={error ? errorId : undefined}
             aria-invalid={!!error}
             disabled={disabled}

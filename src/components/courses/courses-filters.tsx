@@ -7,7 +7,7 @@ import {
 } from "@/lib/api/certifications";
 import { COURSE_STATUSES, type CourseStatus } from "@/lib/api/courses";
 import { courseStatusLabel } from "@/lib/course";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DatePicker, rangeEndAfter } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 
@@ -87,7 +87,14 @@ export function CoursesFilters({
         <DatePicker
           id="course-date-from"
           value={filters.dateFrom}
-          onChange={(value) => set("dateFrom", value)}
+          onChange={(dateFrom) =>
+            onFiltersChange({
+              ...filters,
+              dateFrom,
+              dateTo: rangeEndAfter(dateFrom, filters.dateTo),
+            })
+          }
+          rangeEnd={filters.dateTo}
         />
       </div>
 
@@ -97,6 +104,7 @@ export function CoursesFilters({
           id="course-date-to"
           value={filters.dateTo}
           onChange={(value) => set("dateTo", value)}
+          rangeStart={filters.dateFrom}
         />
       </div>
 

@@ -39,9 +39,33 @@ export interface DatePickerProps extends FormControlSlotProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * For the end half of a date range: the start it closes. The calendar marks
+   * it, refuses days before it, shades the days between, and opens on its month
+   * while this picker is empty.
+   */
+  rangeStart?: string;
+  /**
+   * For the start half of a date range: the end it opens. The calendar marks it,
+   * shades the days between, and opens on its month while this picker is empty.
+   */
+  rangeEnd?: string;
 }
 
-export function DatePicker({ placeholder, ...props }: DatePickerProps) {
+/**
+ * The end of a range once its start has moved: kept unless the start is now
+ * after it, when a range that runs backwards is emptied rather than left for
+ * the form to object to.
+ */
+export function rangeEndAfter(start: string, end: string): string {
+  return start && end && end < start ? "" : end;
+}
+
+export function DatePicker({
+  placeholder,
+  rangeEnd,
+  ...props
+}: DatePickerProps) {
   // A finger gets the OS wheel, which is the control a phone diver already knows
   // and the one that does not raise a keyboard over the form to type a date
   // with. Anything with a hover-capable pointer keeps the text box and the
@@ -53,7 +77,11 @@ export function DatePicker({ placeholder, ...props }: DatePickerProps) {
     // is typed into, and a native date input shows the OS's own format instead.
     <NativeDatePicker {...props} />
   ) : (
-    <CalendarDatePicker placeholder={placeholder} {...props} />
+    <CalendarDatePicker
+      placeholder={placeholder}
+      rangeEnd={rangeEnd}
+      {...props}
+    />
   );
 }
 
@@ -64,8 +92,9 @@ function NativeDatePicker({
   value,
   onChange,
   disabled,
+  rangeStart,
   ...slotProps
-}: Omit<DatePickerProps, "placeholder">) {
+}: Omit<DatePickerProps, "placeholder" | "rangeEnd">) {
   // iOS has no clear control of its own inside the wheel, so an optional date -
   // a course that has not ended, a certification with no expiry - would be
   // impossible to empty once filled. Same button as the desktop branch's.
@@ -77,6 +106,9 @@ function NativeDatePicker({
         {...slotProps}
         type="date"
         value={value ?? ""}
+        // The wheel has no way to shade a range, but it can refuse an end
+        // before the start.
+        min={rangeStart || undefined}
         // A native date input fires `change` only on a complete date, so there
         // is nothing to settle on blur and nothing to discard.
         onChange={(e) => onChange(e.target.value)}
@@ -103,9 +135,19 @@ function CalendarDatePicker({
   onChange,
   placeholder = "YYYY-MM-DD",
   disabled,
+  rangeStart,
+  rangeEnd,
   ...slotProps
 }: DatePickerProps) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpenState] = React.useState(false);
+  // The day under the pointer, while it previews where an end would close the
+  // range. Dropped on close: the pick that closes the calendar unmounts the day
+  // before it can report the pointer leaving.
+  const [hoveredDay, setHoveredDay] = React.useState<Date>();
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    if (!next) setHoveredDay(undefined);
+  };
   const inputRef = React.useRef<HTMLInputElement>(null);
   const anchorRef = React.useRef<HTMLDivElement>(null);
 
@@ -183,9 +225,24 @@ function CalendarDatePicker({
   // mid-keystroke in the grid, which is a place the typed month cannot change
   // from. The controlled `month` prop would need state and an effect to say the
   // same thing.
-  const shownMonth = shownDate
-    ? `${shownDate.getFullYear()}-${pad(shownDate.getMonth() + 1)}`
+  //
+  // An empty half of a range opens where the other half is rather than on
+  // today, which for a back-filled logbook is usually years away.
+  const isRangeEnd = rangeStart !== undefined;
+  const otherEnd = parseDate(isRangeEnd ? rangeStart : rangeEnd);
+  const openingDate = shownDate ?? otherEnd;
+  const shownMonth = openingDate
+    ? `${openingDate.getFullYear()}-${pad(openingDate.getMonth() + 1)}`
     : "";
+
+  const [from, to] = isRangeEnd
+    ? [otherEnd, hoveredDay ?? shownDate]
+    : [shownDate, otherEnd];
+  // Guarded rather than handed over as is: react-day-picker reads an interval
+  // whose `before` comes first as everything *outside* it.
+  const between =
+    from && to && to > from ? { after: from, before: to } : undefined;
+  const beforeStart = isRangeEnd && otherEnd ? { before: otherEnd } : undefined;
 
   const showClear = Boolean(draft) && !disabled;
 
@@ -291,8 +348,20 @@ function CalendarDatePicker({
           startMonth={new Date(1900, 0)}
           endMonth={new Date(new Date().getFullYear() + 5, 11)}
           classNames={{ caption_label: "hidden" }}
-          defaultMonth={shownDate}
+          defaultMonth={openingDate}
           autoFocus={focusCalendar}
+          disabled={beforeStart}
+          modifiers={{ range_other_end: otherEnd, range_between: between }}
+          modifiersClassNames={{
+            range_other_end: "rounded-md border border-teal text-teal",
+            range_between: "bg-teal/15",
+          }}
+          onDayMouseEnter={(day) =>
+            setHoveredDay(
+              beforeStart && day >= beforeStart.before ? day : undefined,
+            )
+          }
+          onDayMouseLeave={() => setHoveredDay(undefined)}
         />
       </PopoverContent>
     </Popover>

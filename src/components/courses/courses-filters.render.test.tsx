@@ -111,6 +111,45 @@ describe("CoursesFilters", () => {
     });
   });
 
+  it("empties the end of the window when the start moves past it", async () => {
+    render(
+      <Row
+        initial={{
+          ...NO_COURSE_FILTERS,
+          dateFrom: "2025-01-01",
+          dateTo: "2025-03-31",
+        }}
+      />,
+    );
+
+    await userEvent.clear(screen.getByLabelText("From"));
+    await userEvent.type(screen.getByLabelText("From"), "2025-04-01");
+    await userEvent.tab();
+
+    expect(asked()).toMatchObject({ dateFrom: "2025-04-01", dateTo: "" });
+  });
+
+  it("keeps an end the moved start has not passed", async () => {
+    render(
+      <Row
+        initial={{
+          ...NO_COURSE_FILTERS,
+          dateFrom: "2025-01-01",
+          dateTo: "2025-03-31",
+        }}
+      />,
+    );
+
+    await userEvent.clear(screen.getByLabelText("From"));
+    await userEvent.type(screen.getByLabelText("From"), "2025-03-31");
+    await userEvent.tab();
+
+    expect(asked()).toMatchObject({
+      dateFrom: "2025-03-31",
+      dateTo: "2025-03-31",
+    });
+  });
+
   // Clearing the lot in one go belongs to the button that shuts the panel
   // (`CoursesPageFrame`), so the row itself offers only per-control clears.
   it("carries no control that clears the row", () => {

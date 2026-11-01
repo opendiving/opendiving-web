@@ -3,7 +3,7 @@ import { useLayoutEffect, useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePointer } from "@/test/pointer";
-import { DatePicker } from "./date-picker";
+import { DatePicker, rangeEndAfter } from "./date-picker";
 
 // The field is typed into as often as it is picked from - a diver back-filling a
 // paper logbook has the date in front of them and no reason to drive a calendar
@@ -226,6 +226,121 @@ describe("DatePicker text entry", () => {
   });
 });
 
+// Two pickers as one range. Each is handed the other's value, so what these pin
+// is what that value changes about the calendar - nothing here commits it.
+
+function RangeField({
+  start = "",
+  end = "",
+}: {
+  start?: string;
+  end?: string;
+}) {
+  return (
+    <>
+      <label htmlFor="range-start">Start</label>
+      <DatePicker
+        id="range-start"
+        value={start}
+        onChange={() => {}}
+        rangeEnd={end}
+      />
+      <label htmlFor="range-end">End</label>
+      <DatePicker
+        id="range-end"
+        value={end}
+        onChange={() => {}}
+        rangeStart={start}
+      />
+    </>
+  );
+}
+
+const dayCell = (isoDate: string) =>
+  document.querySelector(`[data-day="${isoDate}"]`) as HTMLElement;
+const dayButton = (name: RegExp) => screen.getByRole("button", { name });
+const SHADED = "bg-teal/15";
+
+describe("DatePicker as half of a range", () => {
+  it("opens an empty end on the start's month, with the start marked", async () => {
+    render(<RangeField start="2019-03-12" />);
+
+    await userEvent.click(screen.getByLabelText("End"));
+
+    expect(dayButton(/March 12th, 2019/)).toBeInTheDocument();
+    expect(dayCell("2019-03-12")).toHaveClass("border-teal");
+  });
+
+  it("refuses an end before the start, but not the start itself", async () => {
+    render(<RangeField start="2019-03-12" />);
+
+    await userEvent.click(screen.getByLabelText("End"));
+
+    expect(dayButton(/March 11th, 2019/)).toBeDisabled();
+    expect(dayButton(/March 12th, 2019/)).toBeEnabled();
+  });
+
+  it("opens an empty start on the end's month, refusing nothing", async () => {
+    render(<RangeField end="2019-03-12" />);
+
+    await userEvent.click(screen.getByLabelText("Start"));
+
+    expect(dayCell("2019-03-12")).toHaveClass("border-teal");
+    expect(dayButton(/March 20th, 2019/)).toBeEnabled();
+  });
+
+  it("shades the days between the two in either picker", async () => {
+    render(<RangeField start="2019-03-12" end="2019-03-15" />);
+
+    for (const label of ["Start", "End"]) {
+      await userEvent.click(screen.getByLabelText(label));
+      expect(dayCell("2019-03-13")).toHaveClass(SHADED);
+      expect(dayCell("2019-03-14")).toHaveClass(SHADED);
+      expect(dayCell("2019-03-12")).not.toHaveClass(SHADED);
+      expect(dayCell("2019-03-15")).not.toHaveClass(SHADED);
+      await userEvent.keyboard("{Escape}");
+    }
+  });
+
+  it("previews the range up to the day under the pointer in the end picker", async () => {
+    render(<RangeField start="2019-03-12" />);
+
+    await userEvent.click(screen.getByLabelText("End"));
+    await userEvent.hover(dayButton(/March 16th, 2019/));
+
+    expect(dayCell("2019-03-15")).toHaveClass(SHADED);
+    expect(dayCell("2019-03-17")).not.toHaveClass(SHADED);
+
+    await userEvent.unhover(dayButton(/March 16th, 2019/));
+    expect(dayCell("2019-03-15")).not.toHaveClass(SHADED);
+  });
+
+  it("previews nothing in the start picker", async () => {
+    render(<RangeField end="2019-03-20" />);
+
+    await userEvent.click(screen.getByLabelText("Start"));
+    await userEvent.hover(dayButton(/March 10th, 2019/));
+
+    expect(dayCell("2019-03-15")).not.toHaveClass(SHADED);
+  });
+});
+
+describe("rangeEndAfter", () => {
+  it("keeps an end on or after the start", () => {
+    expect(rangeEndAfter("2019-03-12", "2019-03-15")).toBe("2019-03-15");
+    expect(rangeEndAfter("2019-03-12", "2019-03-12")).toBe("2019-03-12");
+  });
+
+  it("empties an end the start has moved past", () => {
+    expect(rangeEndAfter("2019-03-16", "2019-03-15")).toBe("");
+  });
+
+  it("leaves the end alone while either half is empty", () => {
+    expect(rangeEndAfter("", "2019-03-15")).toBe("2019-03-15");
+    expect(rangeEndAfter("2019-03-12", "")).toBe("");
+  });
+});
+
 // The same field on a phone, where it is the OS wheel instead. Nothing here
 // tests the wheel - no test runner can open one - only what the field does with
 // the value one hands back.
@@ -289,5 +404,21 @@ describe("DatePicker on a touch device", () => {
     hand("");
 
     expect(committed()).toBe("");
+  });
+
+  it("refuses an end before the start, the one part of a range a wheel can show", () => {
+    render(
+      <>
+        <label htmlFor="range-end">End</label>
+        <DatePicker
+          id="range-end"
+          value=""
+          onChange={() => {}}
+          rangeStart="2019-03-12"
+        />
+      </>,
+    );
+
+    expect(screen.getByLabelText("End")).toHaveAttribute("min", "2019-03-12");
   });
 });
