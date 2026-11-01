@@ -4806,7 +4806,7 @@ restored: `app/privacy/page.tsx` (several enumerations), `app/terms/page.tsx`,
 `components/settings/delete-account-card.tsx` (card and `ConfirmDialog` `description`),
 `components/auth/restore-account-card.tsx`, `components/auth/goodbye-page-content.tsx` (both arms),
 `components/auth/verify-page-content.tsx` (`purgeOn` and dateless branches),
-`components/data/data-export-card.tsx`, `README.md`'s feature list, and
+`components/export/data-export-card.tsx`, `README.md`'s feature list, and
 `components/layout/landing-page.tsx`'s closing sentence. Docstrings and comments carry no counts —
 "a detail page", "the list pages", never "all four of which" — because a census goes stale on
 removal as readily as on addition. Regenerate the copy list rather than trusting this one;
