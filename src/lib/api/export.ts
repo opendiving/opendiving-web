@@ -56,6 +56,11 @@ export function exportFilename(
   return `opendiving-${safe}-${stamp}.${EXPORT_EXTENSIONS[format]}`;
 }
 
+/** The route serving `format`, under the API base. */
+export function exportPath(format: ExportFormat): string {
+  return `/export/${format}`;
+}
+
 /** Exports of the signed-in diver's own logbook. */
 export const exportAPI = {
   /**
@@ -75,7 +80,7 @@ export const exportAPI = {
     format: ExportFormat,
     username: string,
   ): Promise<ExportDownload> {
-    const response = await apiClient.get<Blob>(`/export/${format}`, {
+    const response = await apiClient.get<Blob>(exportPath(format), {
       responseType: "blob",
     });
 

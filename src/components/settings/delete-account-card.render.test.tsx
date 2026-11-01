@@ -14,12 +14,13 @@ vi.mock("@/lib/api/users", () => ({
   usersAPI: { deleteAccount: vi.fn() },
 }));
 
-vi.mock("@/lib/api/export", () => ({
+vi.mock("@/lib/api/export", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/export")>()),
   exportAPI: { download: vi.fn() },
 }));
 
 vi.mock("@/lib/download", () => ({
-  downloadBlob: vi.fn(),
+  saveApiDownload: vi.fn(),
 }));
 
 vi.mock("@/lib/navigation", () => ({
@@ -37,13 +38,14 @@ vi.mock("@/components/ui/use-toast", () => ({
 
 const { usersAPI } = await import("@/lib/api/users");
 const { exportAPI } = await import("@/lib/api/export");
-const { downloadBlob } = await import("@/lib/download");
+const { saveApiDownload } = await import("@/lib/download");
 const { hardNavigate } = await import("@/lib/navigation");
 const { announceSignedOut } = await import("@/lib/auth-broadcast");
 
 const deleteAccount = vi.mocked(usersAPI.deleteAccount);
 const download = vi.mocked(exportAPI.download);
-const save = vi.mocked(downloadBlob);
+const saveApi = vi.mocked(saveApiDownload);
+const save = vi.fn();
 const leave = vi.mocked(hardNavigate);
 const announce = vi.mocked(announceSignedOut);
 
@@ -51,6 +53,12 @@ beforeEach(() => {
   deleteAccount.mockReset();
   download.mockReset();
   save.mockReset();
+  saveApi.mockReset();
+  saveApi.mockImplementation(async (_path, fetchFile) => {
+    const { blob, filename } = await fetchFile();
+    save(blob, filename);
+    return 0;
+  });
   leave.mockReset();
   announce.mockReset();
   toast.mockReset();
@@ -181,6 +189,28 @@ describe("DeleteAccountCard", () => {
     expect(deleteAccount).not.toHaveBeenCalled();
   });
 
+  it("holds the confirm while a ticketed download may still be waiting on the archive", async () => {
+    // Firefox for iOS: the save is a navigation the server answers only once the
+    // archive is built, and a delete would supersede it and end its ticket's
+    // session. `saveApiDownload` says how long that can take.
+    saveApi.mockResolvedValue(300_000);
+    render(<DeleteAccountCard username="alex" />);
+    await openDialog();
+    await userEvent.type(screen.getByRole("textbox"), "alex");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Download my data first" }),
+    );
+    await waitFor(() => expect(saveApi).toHaveBeenCalled());
+
+    // Past the blob path's two-second settle, and still blocked.
+    await new Promise((resolve) => setTimeout(resolve, 2_500));
+    expect(confirmButton()).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Preparing..." }),
+    ).toBeInTheDocument();
+  });
+
   it("saves the full archive without deleting anything", async () => {
     const blob = new Blob(["bytes"]);
     download.mockResolvedValue({ blob, filename: "alex-logbook.zip" });
@@ -196,6 +226,10 @@ describe("DeleteAccountCard", () => {
     // on the way out.
     await waitFor(() =>
       expect(download).toHaveBeenCalledWith("archive", "alex"),
+    );
+    expect(saveApi).toHaveBeenCalledWith(
+      "/export/archive",
+      expect.any(Function),
     );
     expect(save).toHaveBeenCalledWith(blob, "alex-logbook.zip");
     expect(deleteAccount).not.toHaveBeenCalled();

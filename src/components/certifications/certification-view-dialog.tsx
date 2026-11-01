@@ -8,6 +8,7 @@ import { peopleAPI } from "@/lib/api/people";
 import { useRecordByUuid } from "@/hooks/useRecordByUuid";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import {
+  certificationFilePath,
   certificationsAPI,
   certificationAgencyLabel,
   certificationFile,
@@ -23,7 +24,7 @@ import {
 } from "@/lib/certification";
 import { formatDateOnly } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { downloadBlob } from "@/lib/download";
+import { saveApiDownload } from "@/lib/download";
 import {
   Dialog,
   DialogContent,
@@ -151,22 +152,25 @@ export function CertificationViewDialog({
 
   const expiry = certificationExpiryStatus(certification.expires_on);
 
-  // Downloading goes through the API client for the same reason rendering does:
-  // the endpoint needs an `Authorization` header, so a plain `<a href>` to it
-  // would 401. See `lib/download.ts` for why the object URL outlives the click -
-  // revoking it synchronously looks fine in Chrome and silently cancels the
-  // download in Firefox and Safari.
+  // Downloading goes through `saveApiDownload` for the same reason rendering goes
+  // through the API client: the endpoint needs an `Authorization` header, so a
+  // plain `<a href>` to it would 401. See `lib/download.ts`.
   const handleDownload = async (side: CertificationSide) => {
     const file = certificationFile(certification, side);
     if (!file) return;
 
     try {
       setDownloadingSide(side);
-      const blob = await certificationsAPI.getCertificationFileBlob(
-        certification.uuid,
-        side,
+      await saveApiDownload(
+        certificationFilePath(certification.uuid, side),
+        async () => ({
+          blob: await certificationsAPI.getCertificationFileBlob(
+            certification.uuid,
+            side,
+          ),
+          filename: file.original_filename,
+        }),
       );
-      downloadBlob(blob, file.original_filename);
     } catch (error) {
       toast({
         title: "Error",

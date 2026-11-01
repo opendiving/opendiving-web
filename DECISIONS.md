@@ -918,9 +918,8 @@ delete-then-reupload, none of which a type checker sees.
 `proxy.ts` sets `object-src 'none'` with a narrow `frame-src`, and inline PDF rendering needs an
 `<object>` or `<iframe>`. Loosening either to display user-uploaded documents is a bad trade for a
 preview, so a stored PDF shows as a labelled file with a Download button; most c-cards are
-photographed, so the image path is the common one. Downloading goes through the API client — a plain
-`<a href>` to the endpoint would 401 — fetching the blob, clicking a synthetic anchor and revoking
-the URL immediately.
+photographed, so the image path is the common one. Downloading goes through `saveApiDownload` in
+`lib/download.ts` — a plain `<a href>` to the endpoint would 401.
 
 ## `useWatch`, not `form.watch()`
 
@@ -993,13 +992,12 @@ across the upload so the button does not re-enable mid-flight.
 ## The dive's source file downloads through the API client, like card images
 
 `DiveRecordingsCard` fetches a Blob through the API client (`getDiveFileBlob`, keyed by dive and
-file uuid) and clicks a synthetic `<a download>`, the same pattern as
-`certification-view-dialog.tsx` and for the same reason: the endpoint needs an `Authorization`
-header and the access token lives in memory, so a plain `<a href>` would 401. The object URL is
-revoked immediately; the browser holds its own copy by the time the click returns. No CSP change is
-needed, since nothing renders the file — `useAuthedBlobUrl` and the `blob:` `img-src` entry are not
-involved. The `v` param is `${uuid}:${updated_at}`: `uuid` covers delete-then-reattach, `updated_at`
-a replace; without it `max-age=300` keeps serving the previous file's bytes.
+file uuid) and saves it through `saveApiDownload`, the same path as `certification-view-dialog.tsx`
+and for the same reason: the endpoint needs an `Authorization` header and the access token lives in
+memory, so a plain `<a href>` would 401. No CSP change is needed, since nothing renders the file —
+`useAuthedBlobUrl` and the `blob:` `img-src` entry are not involved. The `v` param is
+`${uuid}:${updated_at}`: `uuid` covers delete-then-reattach, `updated_at` a replace; without it
+`max-age=300` keeps serving the previous file's bytes.
 
 ## Deleting the imported file refreshes without the page-level spinner
 
@@ -2519,16 +2517,16 @@ The date is stamped in UTC from `getUTC*`, matching the server's `datetime.now(U
 UTC+13 gets the name `curl` does. `export.test.ts` is the coupling and spells out the scrub cases so
 it fails when the API's rule moves.
 
-## The whole export is buffered in browser memory, and the escape hatch is a signed URL
+## The whole export is buffered in browser memory, and the escape hatch is the download ticket
 
 Every export is fetched with axios `responseType: "blob"` and saved through `downloadBlob`, the path
 the dive source file and c-card images take: the endpoints require an `Authorization` header and a
 plain `<a href>` cannot send one, the token living in memory rather than a cookie. Those two are
 bounded by upload limits; an archive is bounded by the account, held in RAM before writing and for
-`REVOKE_DELAY_MS` after. Accepted, because the fix is not a frontend one. The escape hatch,
-deliberately not built: a short-lived signed download URL served as a plain `<a href>`, streaming to
-disk without entering the JS heap. It needs an API endpoint and a token scheme, and is what to build
-when someone hits the ceiling — not a streaming-download library on this side.
+`REVOKE_DELAY_MS` after. Accepted. The escape hatch is the ticketed navigation `saveApiDownload`
+takes in Firefox for iOS, streaming to disk outside the JS heap. It is not the default because the
+page never sees the response: a failure replaces the app instead of toasting. Widen that branch when
+someone hits the ceiling — not a streaming-download library on this side.
 
 ## Buttons all named "Download" need an accessible name each
 
@@ -3954,17 +3952,16 @@ instance's configuration is false for the second reader.
 
 ## "Download my data first" is the archive, and it leaves the dialog open
 
-`ConfirmDialog`'s `secondaryAction` slot carries the GDPR Art. 20 nudge and calls
-`exportAPI.download("archive", …)`: the archive is the only export carrying the dive-computer files
-and certification scans. The dialog stays open behind it — asking for your data mid-decision is not
-changing your mind.
+`ConfirmDialog`'s `secondaryAction` slot carries the GDPR Art. 20 nudge and saves the archive, the
+only export carrying the dive-computer files and certification scans. The dialog stays open behind
+it — asking for your data mid-decision is not changing your mind.
 
 The confirm is blocked while that export is being saved. A successful delete ends in a document
 navigation, which kills every open request and object URL, so confirming mid-export destroys the
-export on an account that is dark by then. The window is longer than the fetch: `downloadBlob`
-returns once it has dispatched a synthetic click, but Firefox and Safari read the blob afterwards
-and cancel the save if the URL disappears (`lib/download.ts` holds one for a minute), so the card
-stays busy for a two-second settle after handing the file over.
+export on an account that is dark by then. The window outlasts the fetch: Firefox and Safari read
+the blob after the synthetic click, so the card stays busy for a two-second settle — and in Firefox
+for iOS, where the save is a navigation answered once the archive is built, for the ticket's
+lifetime.
 
 The type-your-username gate is `confirmDisabled`, compared case- and whitespace-insensitively:
 friction, not a password.

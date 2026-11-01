@@ -1,3 +1,9 @@
+import {
+  downloadTicketsAPI,
+  ticketedDownloadUrl,
+} from "@/lib/api/download-tickets";
+import { navigateToDownload } from "@/lib/navigation";
+
 // How long an object URL is kept alive after the download has been triggered.
 //
 // Revoking synchronously after `link.click()` - which both download call sites used
@@ -16,13 +22,59 @@
 // minute after saving. See DECISIONS.md on the export card for the memory trade.
 const REVOKE_DELAY_MS = 60_000;
 
-// Saves an in-memory blob to the user's downloads.
+// Whether `userAgent` is Firefox for iOS, the one browser that cannot name a blob
+// download. Its injected download script runs in an isolated content world, so the
+// page cannot detect the behaviour itself - only the browser's own token in the UA.
+// In desktop mode, an iPad's default, Firefox sends desktop Safari's UA verbatim, so
+// there it cannot be told apart and stays on the blob path.
+export function isFirefoxIOS(userAgent: string): boolean {
+  return userAgent.includes("FxiOS/");
+}
+
+// Saves the file an API download route serves - an export, a dive's source file, a
+// certification card's file.
 //
-// This exists because both downloadable resources - certification card files and dive
-// source files - are owner-only: the API requires an `Authorization` header, and a
+// Every one of those routes is owner-only: it wants an `Authorization` header, and a
 // plain `<a href>` cannot send one (the access token lives in memory, not in a
-// cookie). So the bytes are fetched through the API client and handed to the browser
-// via an object URL and a synthetic click.
+// cookie). So `fetchFile` fetches the bytes through the API client and `downloadBlob`
+// hands them to the browser.
+//
+// Except in Firefox for iOS, which swallows every click on an `a[download]`, re-reads
+// the URL itself and names the file from that response's `Content-Disposition` or the
+// URL's last segment - never from the `download` attribute. A blob response carries no
+// `Content-Disposition`, so a blob save comes out named after the object URL's uuid.
+// There it mints a ticket for `path` instead and navigates to the route itself, whose
+// `Content-Disposition` names the file. The ticket rides in the URL because Firefox
+// fetches that URL a second time with none of the page's headers. A failed download
+// therefore shows the API's error in place of the app (see DECISIONS.md on the export
+// buffer); a hidden iframe would keep it off screen, at the price of widening
+// `frame-src` and of turning a visible failure into silence.
+//
+// `path` is the route under the API base with no query string; it must be the route
+// `fetchFile` reads.
+//
+// Resolves to how long, in milliseconds, the download may still be waiting on its
+// response - a window in which leaving the page or ending the session loses it. The
+// blob path has its bytes in hand, so 0. The navigation's response is not observable
+// from the page and can take as long as the server needs to build an archive, so it is
+// bounded only by the ticket's lifetime, after which the download fails regardless.
+export async function saveApiDownload(
+  path: string,
+  fetchFile: () => Promise<{ blob: Blob; filename: string }>,
+): Promise<number> {
+  if (isFirefoxIOS(navigator.userAgent)) {
+    const { ticket, expires_in } = await downloadTicketsAPI.create(path);
+    navigateToDownload(ticketedDownloadUrl(path, ticket));
+    return expires_in * 1000;
+  }
+
+  const { blob, filename } = await fetchFile();
+  downloadBlob(blob, filename);
+  return 0;
+}
+
+// Saves an in-memory blob to the user's downloads, via an object URL and a synthetic
+// click. Reached through `saveApiDownload`, which says why the bytes are in memory.
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
