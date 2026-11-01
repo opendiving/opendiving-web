@@ -88,33 +88,38 @@ export function UnplacedBackdrop({
   icon: ComponentType<{ className?: string }>;
 }) {
   return (
-    // On a hero, across the map's canvas, its sides and its foot dissolving
-    // into the page as the map's do.
+    // Clipped to the frame, which a hero's canvas is wider than on a phone.
     <div
       aria-hidden
-      className="absolute inset-y-0 rounded-[inherit] bg-map-water"
-      style={
-        hero
-          ? {
-              left: `calc(50% - ${HERO_CANVAS_WIDTH / 2}px)`,
-              width: HERO_CANVAS_WIDTH,
-            }
-          : { left: 0, right: 0 }
-      }
+      className="absolute inset-0 overflow-hidden rounded-[inherit]"
     >
-      {hero && (
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `linear-gradient(to right, var(--backdrop-fade), transparent ${SIDE_FADE_WIDTH}px, transparent ${HERO_CANVAS_WIDTH - SIDE_FADE_WIDTH}px, var(--backdrop-fade)), linear-gradient(to bottom, transparent, var(--backdrop-fade))`,
-          }}
-        />
-      )}
+      {/* On a hero, across the map's canvas, its sides and its foot
+          dissolving into the page as the map's do. */}
       <div
-        className="absolute inset-x-0 flex items-center justify-center"
-        style={{ top: coveredTop, bottom: coveredBottom }}
+        className="absolute inset-y-0 rounded-[inherit] bg-map-water"
+        style={
+          hero
+            ? {
+                left: `calc(50% - ${HERO_CANVAS_WIDTH / 2}px)`,
+                width: HERO_CANVAS_WIDTH,
+              }
+            : { left: 0, right: 0 }
+        }
       >
-        <Icon className="h-10 w-10 text-map-water-foreground opacity-60 saturate-50" />
+        {hero && (
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(to right, var(--backdrop-fade), transparent ${SIDE_FADE_WIDTH}px, transparent ${HERO_CANVAS_WIDTH - SIDE_FADE_WIDTH}px, var(--backdrop-fade)), linear-gradient(to bottom, transparent, var(--backdrop-fade))`,
+            }}
+          />
+        )}
+        <div
+          className="absolute inset-x-0 flex items-center justify-center"
+          style={{ top: coveredTop, bottom: coveredBottom }}
+        >
+          <Icon className="h-10 w-10 text-map-water-foreground opacity-60 saturate-50" />
+        </div>
       </div>
     </div>
   );
