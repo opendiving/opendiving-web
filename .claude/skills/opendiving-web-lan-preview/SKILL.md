@@ -95,8 +95,8 @@ allowedDevOrigins: ["192.168.8.92"],
 
 **This is a tracked file, and the edit is temporary.** It must not reach a commit — a machine's LAN
 address is meaningless to anyone else — and an uncommitted modification left behind will block the
-next `code-review-loop` or `sync-with-main` run at its clean-tree gate. Reverting it is the first
-line of teardown, and worth noting somewhere you will see again in ten minutes.
+next `ontherun:review-loop` or `ontherun:sync-main` run at its clean-tree gate. Reverting it is the
+first line of teardown, and worth noting somewhere you will see again in ten minutes.
 
 ## Step 4 — start it
 
