@@ -140,8 +140,8 @@ function CalendarDatePicker({
   ...slotProps
 }: DatePickerProps) {
   const [open, setOpenState] = React.useState(false);
-  // The day under the pointer in either half of a range, outlined - and in the
-  // end half, where the range would close if it were picked. Dropped on close: the pick that closes the calendar unmounts the day
+  // The day under the pointer, while it previews where an end would close the
+  // range. Dropped on close: the pick that closes the calendar unmounts the day
   // before it can report the pointer leaving.
   const [hoveredDay, setHoveredDay] = React.useState<Date>();
   const setOpen = (next: boolean) => {
@@ -229,7 +229,6 @@ function CalendarDatePicker({
   // An empty half of a range opens where the other half is rather than on
   // today, which for a back-filled logbook is usually years away.
   const isRangeEnd = rangeStart !== undefined;
-  const isRange = isRangeEnd || rangeEnd !== undefined;
   const otherEnd = parseDate(isRangeEnd ? rangeStart : rangeEnd);
   const openingDate = shownDate ?? otherEnd;
   const shownMonth = openingDate
@@ -354,7 +353,6 @@ function CalendarDatePicker({
           disabled={beforeStart}
           modifiers={{
             range_other_end: otherEnd,
-            range_hovered: hoveredDay,
             range_between: between,
             range_from: spans ? from : undefined,
             range_to: spans ? to : undefined,
@@ -367,8 +365,6 @@ function CalendarDatePicker({
             // and hover fills outrank a plain one when the other end is today.
             range_other_end:
               "[&>button]:bg-teal! [&>button]:text-primary-foreground!",
-            range_hovered:
-              "[&>button]:border [&>button]:border-teal [&>button]:text-teal",
             range_between: "bg-teal/15",
             range_from:
               "bg-linear-to-r from-transparent from-50% to-teal/15 to-50%",
@@ -376,7 +372,7 @@ function CalendarDatePicker({
               "bg-linear-to-l from-transparent from-50% to-teal/15 to-50%",
           }}
           onDayMouseEnter={(day, modifiers) =>
-            setHoveredDay(isRange && !modifiers.disabled ? day : undefined)
+            setHoveredDay(isRangeEnd && !modifiers.disabled ? day : undefined)
           }
           onDayMouseLeave={() => setHoveredDay(undefined)}
         />

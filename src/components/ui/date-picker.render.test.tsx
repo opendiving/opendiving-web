@@ -313,39 +313,18 @@ describe("DatePicker as half of a range", () => {
 
     expect(dayCell("2019-03-15")).toHaveClass(SHADED);
     expect(dayCell("2019-03-17")).not.toHaveClass(SHADED);
-    expect(dayCell("2019-03-16")).toHaveClass("[&>button]:border-teal");
 
     await userEvent.unhover(dayButton(/March 16th, 2019/));
     expect(dayCell("2019-03-15")).not.toHaveClass(SHADED);
-    expect(dayCell("2019-03-16")).not.toHaveClass("[&>button]:border-teal");
   });
 
-  it("outlines the day under the pointer in the start picker, previewing no range", async () => {
+  it("previews nothing in the start picker", async () => {
     render(<RangeField end="2019-03-20" />);
 
     await userEvent.click(screen.getByLabelText("Start"));
     await userEvent.hover(dayButton(/March 10th, 2019/));
 
-    expect(dayCell("2019-03-10")).toHaveClass("[&>button]:border-teal");
     expect(dayCell("2019-03-15")).not.toHaveClass(SHADED);
-  });
-
-  it("outlines no day before the start, which cannot be picked", async () => {
-    render(<RangeField start="2019-03-12" />);
-
-    await userEvent.click(screen.getByLabelText("End"));
-    await userEvent.hover(dayButton(/March 10th, 2019/));
-
-    expect(dayCell("2019-03-10")).not.toHaveClass("[&>button]:border-teal");
-  });
-
-  it("outlines nothing in a picker that is no half of a range", async () => {
-    render(<Field initial="2019-03-12" />);
-
-    await userEvent.click(box());
-    await userEvent.hover(dayButton(/March 10th, 2019/));
-
-    expect(dayCell("2019-03-10")).not.toHaveClass("[&>button]:border-teal");
   });
 });
 
