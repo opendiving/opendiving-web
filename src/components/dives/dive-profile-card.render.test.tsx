@@ -21,16 +21,26 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 // The chart draws SVG against measured geometry, which jsdom has none of. This
 // suite is about the switcher above it, and where the card gives the chart's
-// menu a place - which the stand-in fills the way the chart does, by portal.
+// menu a place - which the stand-in fills the way the chart does, by portal - and
+// which samples it hands the chart to draw and to scale with, which the stand-in
+// names by the `duration` each fixture profile is told apart by.
 vi.mock("./dive-profile-chart", async () => {
   const { createPortal } = await import("react-dom");
   return {
     DiveProfileChart: ({
+      profile,
+      scaleWith = [],
       menuContainer,
     }: {
+      profile: DiveProfile;
+      scaleWith?: readonly DiveProfile[];
       menuContainer: HTMLElement | null;
     }) => (
-      <div data-testid="profile-chart">
+      <div
+        data-testid="profile-chart"
+        data-shown={profile.duration}
+        data-scale-with={scaleWith.map((peer) => peer.duration).join(",")}
+      >
         {menuContainer &&
           createPortal(<button type="button">Channels</button>, menuContainer)}
       </div>
@@ -304,5 +314,49 @@ describe("DiveProfileCard", () => {
         expect.anything(),
       ),
     );
+  });
+
+  it("fetches every computer once, and scales each with the other", async () => {
+    // A duration per recording, so the stand-in can say whose samples it got.
+    const durations: Record<string, number> = { perdix: 1, ocean: 2 };
+    vi.mocked(divesAPI.getRecordingProfile).mockImplementation(
+      async (_dive, recordingUuid) =>
+        ({
+          duration: durations[recordingUuid],
+          pressures: [],
+          events: [],
+        }) as unknown as DiveProfile,
+    );
+    render(<DiveProfileCard dive={twoComputers} />);
+
+    const chart = await screen.findByTestId("profile-chart");
+    expect(chart).toHaveAttribute("data-shown", "1");
+    expect(chart).toHaveAttribute("data-scale-with", "2");
+
+    await userEvent.click(screen.getByRole("button", { name: /Porvoo/ }));
+
+    const switched = screen.getByTestId("profile-chart");
+    expect(switched).toHaveAttribute("data-shown", "2");
+    expect(switched).toHaveAttribute("data-scale-with", "1");
+    expect(divesAPI.getRecordingProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it("still draws the shown computer when the other's samples fail", async () => {
+    vi.mocked(divesAPI.getRecordingProfile).mockImplementation(
+      async (_dive, recordingUuid) => {
+        if (recordingUuid === "ocean") throw new Error("network");
+        return {
+          duration: 1,
+          pressures: [],
+          events: [],
+        } as unknown as DiveProfile;
+      },
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<DiveProfileCard dive={twoComputers} />);
+
+    const chart = await screen.findByTestId("profile-chart");
+    expect(chart).toHaveAttribute("data-shown", "1");
+    expect(chart).toHaveAttribute("data-scale-with", "");
   });
 });

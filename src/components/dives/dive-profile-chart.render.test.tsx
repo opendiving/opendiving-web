@@ -2216,3 +2216,66 @@ describe("DiveProfileChart in full screen", () => {
     );
   });
 });
+
+describe("DiveProfileChart scaled with the dive's other recordings", () => {
+  // Two computers on one dive, a couple of degrees and a few meters apart, as a
+  // wrist unit and a hose-mounted one often are.
+  const perdix = everyChannel({
+    temperature: {
+      times: [0, 1_500_000, 3_000_000],
+      values: [2600, 2550, 2580],
+    },
+  });
+  const ocean = everyChannel({
+    depth: {
+      times: [0, 1_500_000, 3_000_000],
+      values: [0, 4200, 0],
+    },
+    temperature: {
+      times: [0, 1_500_000, 3_000_000],
+      values: [2800, 2750, 2780],
+    },
+    heart_rate: {
+      times: [0, 1_500_000, 3_000_000],
+      values: [70, 160, 80],
+    },
+  });
+
+  const axes = (shown: DiveProfile, other: DiveProfile) => {
+    const { container, unmount } = render(
+      <DiveProfileChart profile={shown} scaleWith={[other]} />,
+    );
+    const read = {
+      left: leftAxisTicks(container),
+      right: rightAxisTicks(container),
+      heartRate:
+        container.querySelector('[data-panel="heart_rate"] text')
+          ?.textContent ?? "",
+    };
+    unmount();
+    return read;
+  };
+
+  beforeEach(() => {
+    window.localStorage.setItem(
+      DIVE_PROFILE_SERIES_KEY,
+      JSON.stringify(["depth", "temperature", "heart_rate"]),
+    );
+  });
+
+  it("numbers every axis the same whichever computer is shown", () => {
+    const fromPerdix = axes(perdix, ocean);
+    const fromOcean = axes(ocean, perdix);
+
+    expect(fromPerdix).toEqual(fromOcean);
+    expect(fromPerdix.heartRate).not.toBe("");
+  });
+
+  it("spans both computers' readings rather than the shown one's", () => {
+    const { right } = axes(perdix, ocean);
+    const degrees = right.map((tick) => Number.parseFloat(tick ?? ""));
+
+    expect(Math.min(...degrees)).toBeLessThanOrEqual(25.5);
+    expect(Math.max(...degrees)).toBeGreaterThanOrEqual(28);
+  });
+});
