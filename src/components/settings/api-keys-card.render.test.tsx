@@ -14,6 +14,7 @@ import { localDay } from "@/test/local-day";
 // file, so plain `const`s here would not exist yet when the factories run.
 const mocks = vi.hoisted(() => ({
   getApiKeys: vi.fn(),
+  getPermissions: vi.fn(),
   createApiKey: vi.fn(),
   revokeApiKey: vi.fn(),
   toast: vi.fn(),
@@ -22,6 +23,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/api/api-keys", () => ({
   apiKeysAPI: {
     getApiKeys: mocks.getApiKeys,
+    getPermissions: mocks.getPermissions,
     createApiKey: mocks.createApiKey,
     revokeApiKey: mocks.revokeApiKey,
   },
@@ -71,7 +73,8 @@ const CREATED = {
   uuid: "key-4",
   name: "ci runner",
   prefix: SECRET.slice(0, 12),
-  scope: "read",
+  scope: "scoped",
+  scopes: ["dives:read", "dives:write"],
   created_at: new Date().toISOString(),
   last_used_at: null,
   expires_at: inDays(365),
@@ -86,6 +89,13 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   useStorage(memoryStorage());
   mocks.getApiKeys.mockResolvedValue([LAPTOP, NIGHTLY]);
+  mocks.getPermissions.mockResolvedValue([
+    "dives:read",
+    "dives:write",
+    "dives:delete",
+    "gear:read",
+    "gear:write",
+  ]);
   mocks.createApiKey.mockResolvedValue(CREATED);
   mocks.revokeApiKey.mockResolvedValue({ message: "API key revoked" });
 });
@@ -153,14 +163,25 @@ describe("ApiKeysCard", () => {
   });
 
   // A year, so "never" is a choice; read-only, so writing is too.
-  it("opens the form defaulting to read only and a year", async () => {
+  it("opens the form granting only dive reads and expiring in a year", async () => {
     const user = userEvent.setup();
     render(<ApiKeysCard />);
     await screen.findByText("laptop");
 
     await user.click(screen.getByRole("button", { name: /create api key/i }));
 
-    expect(screen.getByLabelText("Access")).toHaveValue("read");
+    expect(
+      await screen.findByRole("checkbox", { name: "Read dives" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Create & edit dives" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Delete dives" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Read gear" }),
+    ).not.toBeChecked();
     expect(screen.getByLabelText("Expires after")).toHaveValue("1y");
     expect(
       within(screen.getByLabelText("Expires after"))
@@ -194,13 +215,16 @@ describe("ApiKeysCard", () => {
 
     await user.click(screen.getByRole("button", { name: /create api key/i }));
     await user.type(screen.getByLabelText("Name"), "ci runner");
-    await user.selectOptions(screen.getByLabelText("Access"), "write");
+    await user.click(
+      await screen.findByRole("checkbox", { name: "Create & edit dives" }),
+    );
     await user.click(screen.getByRole("button", { name: "Create key" }));
 
     await waitFor(() =>
       expect(mocks.createApiKey).toHaveBeenCalledWith({
         name: "ci runner",
-        scope: "write",
+        scope: "scoped",
+        scopes: ["dives:read", "dives:write"],
         lifetime: "1y",
       }),
     );
@@ -298,5 +322,74 @@ describe("ApiKeysCard", () => {
     await screen.findByText("laptop");
 
     expect(mocks.getApiKeys).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("detailed API-key permissions", () => {
+  it("supports all and read-only shortcuts and shows the granted permission table", async () => {
+    const user = userEvent.setup();
+    render(<ApiKeysCard />);
+    await screen.findByText("laptop");
+    await user.click(screen.getByRole("button", { name: /create api key/i }));
+    await user.click(await screen.findByRole("button", { name: "Select all" }));
+    expect(
+      screen
+        .getAllByRole("checkbox")
+        .every((input) => input instanceof HTMLInputElement && input.checked),
+    ).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Read only" }));
+    expect(screen.getByRole("checkbox", { name: "Read gear" })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Create & edit gear" }),
+    ).not.toBeChecked();
+    await user.type(screen.getByLabelText("Name"), "ci runner");
+    await user.click(screen.getByRole("button", { name: "Create key" }));
+    await waitFor(() =>
+      expect(mocks.createApiKey).toHaveBeenCalledWith({
+        name: "ci runner",
+        scope: "scoped",
+        scopes: ["dives:read", "gear:read"],
+        lifetime: "1y",
+      }),
+    );
+    const created = row("ci runner");
+    expect(created).toHaveTextContent("Custom permissions");
+    await user.click(within(created).getByText("Permissions"));
+    expect(
+      within(created).getByRole("table", {
+        name: "Permissions granted to ci runner",
+      }),
+    ).toHaveTextContent("Create & edit");
+  });
+
+  it("requires at least one permission", async () => {
+    const user = userEvent.setup();
+    render(<ApiKeysCard />);
+    await screen.findByText("laptop");
+    await user.click(screen.getByRole("button", { name: /create api key/i }));
+    await user.click(
+      await screen.findByRole("checkbox", { name: "Read dives" }),
+    );
+    await user.type(screen.getByLabelText("Name"), "empty");
+    await user.click(screen.getByRole("button", { name: "Create key" }));
+    expect(
+      await screen.findByText("Select at least one permission."),
+    ).toHaveTextContent("Select at least one permission.");
+    expect(mocks.createApiKey).not.toHaveBeenCalled();
+  });
+
+  it("blocks creation if the instance cannot supply detailed permissions", async () => {
+    mocks.getPermissions.mockRejectedValue({ response: { status: 404 } });
+    const user = userEvent.setup();
+    render(<ApiKeysCard />);
+    await screen.findByText("laptop");
+    await user.click(screen.getByRole("button", { name: /create api key/i }));
+    expect(
+      await screen.findByText(
+        "This API needs an update to support detailed permissions.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create key" })).toBeDisabled();
+    expect(mocks.createApiKey).not.toHaveBeenCalled();
   });
 });

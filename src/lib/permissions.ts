@@ -38,7 +38,7 @@ interface PermissionGroup {
   permissions: Permission[];
 }
 
-export function groupMcpPermissions(scopes: string[]): PermissionGroup[] {
+export function groupPermissions(scopes: string[]): PermissionGroup[] {
   const groups = new Map<string, PermissionGroup>();
   for (const scope of scopes) {
     const separator = scope.indexOf(":");
