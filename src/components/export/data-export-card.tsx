@@ -90,10 +90,9 @@ interface DataExportCardProps {
   // Only ever used to name the saved file, and only when the server's own name cannot
   // be read - see `exportFilename`. The endpoints take no user parameter at all.
   username: string;
-  archiveOnly?: boolean;
 }
 
-// "Your data" on `/export`: four buttons, each handing back the whole logbook.
+// Four downloads in Settings → Storage, each handing back the whole logbook.
 // The product's promise is that nothing in an account is reachable only through this
 // app, and this card is the half that can be checked by pressing a button. The Import
 // page is the other half - a copy nothing can read back is a copy in name only - and
@@ -103,10 +102,7 @@ interface DataExportCardProps {
 // Downloads go through `saveApiDownload` rather than a plain `<a href>` - the
 // endpoints need an `Authorization` header, which a link cannot send (the access token
 // lives in memory, not in a cookie). See `lib/download.ts`.
-export function DataExportCard({
-  username,
-  archiveOnly = false,
-}: DataExportCardProps) {
+export function DataExportCard({ username }: DataExportCardProps) {
   const { toast } = useToast();
   // A *set* of formats, rather than a boolean or the single `ExportFormat | null` this
   // started as: the four rows run independently, so two concurrent downloads must not
@@ -161,22 +157,18 @@ export function DataExportCard({
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2">
           <CloudDownload className="h-5 w-5" />
-          {archiveOnly ? "Data export" : "Your Data"}
+          Data export
         </CardTitle>
         <CardDescription>
-          {archiveOnly
-            ? "Download your logbook and uploaded files together in one ZIP file."
-            : "Take a complete copy of your logbook, in formats other programs can read. Nothing here is locked to OpenDiving."}
+          Take a complete copy of your logbook, in formats other programs can
+          read. Nothing here is locked to OpenDiving.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <ul className="divide-y divide-border">
-          {EXPORT_ROWS.filter(
-            (row) => !archiveOnly || row.format === "archive",
-          ).map((row) => {
+          {EXPORT_ROWS.map((row) => {
             const Icon = row.icon;
             const isBusy = busy.has(row.format);
-            const downloadLabel = archiveOnly ? "ZIP" : row.title;
 
             return (
               <li
@@ -191,9 +183,7 @@ export function DataExportCard({
                   <div className="min-w-0">
                     <div className="text-sm font-medium">{row.title}</div>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {archiveOnly
-                        ? "Includes your dives and recordings, sites, trips, courses, marine life, gear, certifications, contacts, people, tags, check-in details, and dive drafts, plus every uploaded dive-computer file, certification card, profile picture, and portrait. The ZIP contains personal documents. Keep it somewhere safe."
-                        : row.description}
+                      {row.description}
                     </p>
                   </div>
                 </div>
@@ -234,8 +224,8 @@ export function DataExportCard({
                   // state and `aria-busy` backs it up.
                   aria-label={
                     isBusy
-                      ? `Preparing ${downloadLabel} export`
-                      : `Download ${downloadLabel}`
+                      ? `Preparing ${row.title} export`
+                      : `Download ${row.title}`
                   }
                   aria-busy={isBusy}
                 >
@@ -247,7 +237,7 @@ export function DataExportCard({
                   ) : (
                     <div className="flex items-center space-x-2">
                       <Download className="h-4 w-4" />
-                      <span>{archiveOnly ? "Download ZIP" : "Download"}</span>
+                      <span>Download</span>
                     </div>
                   )}
                 </Button>

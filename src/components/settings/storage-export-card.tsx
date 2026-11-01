@@ -8,5 +8,5 @@ export function StorageExportCard() {
 
   if (!user) return null;
 
-  return <DataExportCard username={user.username} archiveOnly />;
+  return <DataExportCard username={user.username} />;
 }

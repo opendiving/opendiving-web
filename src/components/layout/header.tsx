@@ -34,7 +34,6 @@ import {
   Users,
   Fish,
   CloudUpload,
-  CloudDownload,
   Shield,
   ChevronDown,
   House,
@@ -452,12 +451,6 @@ export function Header() {
                       >
                         <CloudUpload className="mr-2 h-4 w-4" />
                         Import
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/export" className="flex items-center">
-                        <CloudDownload className="mr-2 h-4 w-4" />
-                        Export
                       </Link>
                     </DropdownMenuItem>
                     {/* Straight to the first section: `/settings` only redirects

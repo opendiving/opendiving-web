@@ -6896,10 +6896,11 @@ The sheet keeps every section's heading and edit control on screen however littl
 drops an empty section from the print — a heading with nothing beneath it is the labelled blank this
 page refuses, in another form.
 
-## Import and export are a page each
+## Import has its own page, and export lives in Storage
 
-`/import` is the one door for every file the app reads; `/export` is the one that hands it all back,
-and `/data` redirects to it for links already held. The picker filters nothing: the API decides by
+`/import` is the one door for every file the app reads. Settings → Storage offers all four export
+formats alongside the uploaded files' usage. `/export` redirects there, and `/data` keeps its
+redirect through `/export` for existing links. The import picker filters nothing: the API decides by
 the bytes, and a file it cannot read is a row, not a refusal.
 
 ## The map renderer ships in the web image, as a command of its own

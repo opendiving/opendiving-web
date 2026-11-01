@@ -1,9 +1,5 @@
-import type { Metadata } from "next";
-
-import { ExportPageContent } from "@/components/export/export-page-content";
-
-export const metadata: Metadata = { title: "Export" };
+import { redirect } from "next/navigation";
 
 export default function ExportPage() {
-  return <ExportPageContent />;
+  redirect("/settings/storage");
 }

@@ -103,15 +103,15 @@ describe("DataExportCard", () => {
     expect(
       screen.getByRole("heading", { name: "Data export" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    expect(
-      screen.getByText(/every uploaded dive-computer file/),
-    ).toHaveTextContent(/certification card, profile picture, and portrait/);
-    expect(downloadButton("ZIP")).toHaveTextContent("Download ZIP");
+    expect(screen.getAllByRole("button")).toHaveLength(4);
+    expect(downloadButton("DiveJSON")).toBeInTheDocument();
+    expect(downloadButton("UDDF")).toBeInTheDocument();
+    expect(downloadButton("Spreadsheet")).toBeInTheDocument();
+    expect(downloadButton("Full archive")).toBeInTheDocument();
 
-    await userEvent.click(downloadButton("ZIP"));
-    expectInert(busyButton("ZIP"));
-    await userEvent.click(busyButton("ZIP"));
+    await userEvent.click(downloadButton("Full archive"));
+    expectInert(busyButton("Full archive"));
+    await userEvent.click(busyButton("Full archive"));
     expect(download).toHaveBeenCalledExactlyOnceWith("archive", "alex");
     expect(saveApi).toHaveBeenCalledWith(
       "/export/archive",
@@ -123,21 +123,21 @@ describe("DataExportCard", () => {
     await waitFor(() =>
       expect(save).toHaveBeenCalledWith(blob, "opendiving-alex.zip"),
     );
-    expectLive(downloadButton("ZIP"));
+    expectLive(downloadButton("Full archive"));
   });
 
   it("lets a failed ZIP download from storage be retried", async () => {
     download.mockRejectedValueOnce(new Error("offline"));
     render(<StorageSettingsPage />);
 
-    await userEvent.click(downloadButton("ZIP"));
+    await userEvent.click(downloadButton("Full archive"));
     await waitFor(() => expect(toast).toHaveBeenCalled());
-    expectLive(downloadButton("ZIP"));
+    expectLive(downloadButton("Full archive"));
     expect(save).not.toHaveBeenCalled();
 
     const blob = new Blob(["zip"]);
     download.mockResolvedValue({ blob, filename: "backup.zip" });
-    await userEvent.click(downloadButton("ZIP"));
+    await userEvent.click(downloadButton("Full archive"));
     await waitFor(() => expect(save).toHaveBeenCalledWith(blob, "backup.zip"));
   });
 
