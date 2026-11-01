@@ -21,9 +21,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { exportAPI, type ExportFormat } from "@/lib/api/export";
+import { exportAPI, exportPath, type ExportFormat } from "@/lib/api/export";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { downloadBlob } from "@/lib/download";
+import { saveApiDownload } from "@/lib/download";
 
 interface ExportRow {
   format: ExportFormat;
@@ -99,9 +99,9 @@ interface DataExportCardProps {
 // the two together are what make the round trip a claim rather than an intention - for
 // everything but the dive drafts, which the archive carries and an import leaves out.
 //
-// Downloads go through the API client and a synthetic click rather than a plain
-// `<a href>` - the endpoints need an `Authorization` header, which a link cannot send
-// (the access token lives in memory, not in a cookie). See `lib/download.ts`.
+// Downloads go through `saveApiDownload` rather than a plain `<a href>` - the
+// endpoints need an `Authorization` header, which a link cannot send (the access token
+// lives in memory, not in a cookie). See `lib/download.ts`.
 export function DataExportCard({ username }: DataExportCardProps) {
   const { toast } = useToast();
   // A *set* of formats, rather than a boolean or the single `ExportFormat | null` this
@@ -129,8 +129,9 @@ export function DataExportCard({ username }: DataExportCardProps) {
       // two handlers reading the same stale `busy` would each write a set missing the
       // other's format.
       setBusy((current) => new Set(current).add(row.format));
-      const { blob, filename } = await exportAPI.download(row.format, username);
-      downloadBlob(blob, filename);
+      await saveApiDownload(exportPath(row.format), () =>
+        exportAPI.download(row.format, username),
+      );
     } catch (error) {
       toast({
         title: "Error",

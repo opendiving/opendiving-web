@@ -918,9 +918,8 @@ delete-then-reupload, none of which a type checker sees.
 `proxy.ts` sets `object-src 'none'` with a narrow `frame-src`, and inline PDF rendering needs an
 `<object>` or `<iframe>`. Loosening either to display user-uploaded documents is a bad trade for a
 preview, so a stored PDF shows as a labelled file with a Download button; most c-cards are
-photographed, so the image path is the common one. Downloading goes through the API client — a plain
-`<a href>` to the endpoint would 401 — fetching the blob, clicking a synthetic anchor and revoking
-the URL immediately.
+photographed, so the image path is the common one. Downloading goes through `saveApiDownload` in
+`lib/download.ts` — a plain `<a href>` to the endpoint would 401.
 
 ## `useWatch`, not `form.watch()`
 
@@ -993,13 +992,12 @@ across the upload so the button does not re-enable mid-flight.
 ## The dive's source file downloads through the API client, like card images
 
 `DiveRecordingsCard` fetches a Blob through the API client (`getDiveFileBlob`, keyed by dive and
-file uuid) and clicks a synthetic `<a download>`, the same pattern as
-`certification-view-dialog.tsx` and for the same reason: the endpoint needs an `Authorization`
-header and the access token lives in memory, so a plain `<a href>` would 401. The object URL is
-revoked immediately; the browser holds its own copy by the time the click returns. No CSP change is
-needed, since nothing renders the file — `useAuthedBlobUrl` and the `blob:` `img-src` entry are not
-involved. The `v` param is `${uuid}:${updated_at}`: `uuid` covers delete-then-reattach, `updated_at`
-a replace; without it `max-age=300` keeps serving the previous file's bytes.
+file uuid) and saves it through `saveApiDownload`, the same path as `certification-view-dialog.tsx`
+and for the same reason: the endpoint needs an `Authorization` header and the access token lives in
+memory, so a plain `<a href>` would 401. No CSP change is needed, since nothing renders the file —
+`useAuthedBlobUrl` and the `blob:` `img-src` entry are not involved. The `v` param is
+`${uuid}:${updated_at}`: `uuid` covers delete-then-reattach, `updated_at` a replace; without it
+`max-age=300` keeps serving the previous file's bytes.
 
 ## Deleting the imported file refreshes without the page-level spinner
 
@@ -2519,16 +2517,16 @@ The date is stamped in UTC from `getUTC*`, matching the server's `datetime.now(U
 UTC+13 gets the name `curl` does. `export.test.ts` is the coupling and spells out the scrub cases so
 it fails when the API's rule moves.
 
-## The whole export is buffered in browser memory, and the escape hatch is a signed URL
+## The whole export is buffered in browser memory, and the escape hatch is the download ticket
 
 Every export is fetched with axios `responseType: "blob"` and saved through `downloadBlob`, the path
 the dive source file and c-card images take: the endpoints require an `Authorization` header and a
 plain `<a href>` cannot send one, the token living in memory rather than a cookie. Those two are
 bounded by upload limits; an archive is bounded by the account, held in RAM before writing and for
-`REVOKE_DELAY_MS` after. Accepted, because the fix is not a frontend one. The escape hatch,
-deliberately not built: a short-lived signed download URL served as a plain `<a href>`, streaming to
-disk without entering the JS heap. It needs an API endpoint and a token scheme, and is what to build
-when someone hits the ceiling — not a streaming-download library on this side.
+`REVOKE_DELAY_MS` after. Accepted. The escape hatch is the ticketed navigation `saveApiDownload`
+already takes in Firefox for iOS, which streams to disk without entering the JS heap; it costs the
+busy state and the error toast for a failed download, since a navigation reports neither. Widen that
+branch when someone hits the ceiling — not a streaming-download library on this side.
 
 ## Buttons all named "Download" need an accessible name each
 

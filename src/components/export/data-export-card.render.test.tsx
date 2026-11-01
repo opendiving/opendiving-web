@@ -9,12 +9,16 @@ import { DataExportCard } from "./data-export-card";
 // when it goes wrong: a spinner on the wrong row, or a failure that saves nothing and
 // says nothing.
 
-vi.mock("@/lib/api/export", () => ({
+vi.mock("@/lib/api/export", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/export")>()),
   exportAPI: { download: vi.fn() },
 }));
 
+// Which browser takes the ticket path is `lib/download.ts`'s business and tested
+// there; here the blob path stands in for every browser, so `save` is what a diver
+// gets handed.
 vi.mock("@/lib/download", () => ({
-  downloadBlob: vi.fn(),
+  saveApiDownload: vi.fn(),
 }));
 
 const toast = vi.fn();
@@ -23,15 +27,21 @@ vi.mock("@/components/ui/use-toast", () => ({
 }));
 
 const { exportAPI } = await import("@/lib/api/export");
-const { downloadBlob } = await import("@/lib/download");
+const { saveApiDownload } = await import("@/lib/download");
 
 const download = vi.mocked(exportAPI.download);
-const save = vi.mocked(downloadBlob);
+const saveApi = vi.mocked(saveApiDownload);
+const save = vi.fn();
 
 beforeEach(() => {
   download.mockReset();
   save.mockReset();
   toast.mockReset();
+  saveApi.mockReset();
+  saveApi.mockImplementation(async (_path, fetchFile) => {
+    const { blob, filename } = await fetchFile();
+    save(blob, filename);
+  });
 });
 
 // A row's button is queried by its accessible name, which is also what changes when the
@@ -126,6 +136,10 @@ describe("DataExportCard", () => {
     await userEvent.click(downloadButton(label));
 
     await waitFor(() => expect(download).toHaveBeenCalledWith(format, "alex"));
+    expect(saveApi).toHaveBeenCalledWith(
+      `/export/${format}`,
+      expect.any(Function),
+    );
     // The server's name, not one the card made up - the card never derives one.
     expect(save).toHaveBeenCalledWith(blob, `export.${format}`);
   });

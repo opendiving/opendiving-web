@@ -167,6 +167,14 @@ export function certificationLabel(certification: {
 export const CERTIFICATION_SIDES = ["front", "back"] as const;
 export type CertificationSide = (typeof CERTIFICATION_SIDES)[number];
 
+/** The route serving one side's card file, under the API base. */
+export function certificationFilePath(
+  certificationUuid: string,
+  side: CertificationSide,
+): string {
+  return `/certification/${certificationUuid}/file/${side}`;
+}
+
 /**
  * Display names for each card side, so the UI never renders the raw enum value.
  * Bare nouns: these head a slot and are read into the upload and removal toasts,
@@ -433,7 +441,7 @@ export const certificationsAPI = {
     version?: string,
   ): Promise<Blob> {
     const response = await apiClient.get<Blob>(
-      `/certification/${certificationUuid}/file/${side}`,
+      certificationFilePath(certificationUuid, side),
       versionedRequest(version, { responseType: "blob" }),
     );
     return response.data;

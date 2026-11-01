@@ -10,7 +10,13 @@ import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
-import { Dive, DiveFileInfo, divesAPI, Recording } from "@/lib/api/dives";
+import {
+  Dive,
+  DiveFileInfo,
+  diveFilePath,
+  divesAPI,
+  Recording,
+} from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
   importSourceLabel,
@@ -27,7 +33,7 @@ import {
   recordingSettingsLabel,
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
-import { downloadBlob } from "@/lib/download";
+import { saveApiDownload } from "@/lib/download";
 import { formatDiveTimeOnly } from "@/lib/date-time";
 import { formatFileSize } from "@/lib/format";
 
@@ -70,10 +76,9 @@ export function DiveRecordingsCard({
   const recordings = diveRecordings(dive);
   if (recordings.length === 0) return null;
 
-  // Downloading goes through the API client rather than a plain `<a href>`: the
+  // Downloading goes through `saveApiDownload` rather than a plain `<a href>`: the
   // endpoint needs an `Authorization` header, which a link cannot send (the
-  // access token lives in memory, not in a cookie). See `lib/download.ts` for why
-  // the object URL outlives the click.
+  // access token lives in memory, not in a cookie). See `lib/download.ts`.
   //
   // The `v` param is the file's identity: `uuid` covers delete-then-reattach,
   // `updated_at` covers a replace. Without it the 5-minute `max-age` would keep
@@ -81,12 +86,14 @@ export function DiveRecordingsCard({
   const handleDownload = async (file: DiveFileInfo) => {
     try {
       setDownloadingUuid(file.uuid);
-      const blob = await divesAPI.getDiveFileBlob(
-        dive.uuid,
-        file.uuid,
-        `${file.uuid}:${file.updated_at ?? ""}`,
-      );
-      downloadBlob(blob, file.original_filename);
+      await saveApiDownload(diveFilePath(dive.uuid, file.uuid), async () => ({
+        blob: await divesAPI.getDiveFileBlob(
+          dive.uuid,
+          file.uuid,
+          `${file.uuid}:${file.updated_at ?? ""}`,
+        ),
+        filename: file.original_filename,
+      }));
     } catch (error) {
       toast({
         title: "Error",

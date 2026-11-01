@@ -15,13 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { exportAPI } from "@/lib/api/export";
+import { exportAPI, exportPath } from "@/lib/api/export";
 import { usersAPI } from "@/lib/api/users";
 import { announceSignedOut } from "@/lib/auth-broadcast";
-import { downloadBlob } from "@/lib/download";
+import { saveApiDownload } from "@/lib/download";
 import { hardNavigate } from "@/lib/navigation";
 
-// How long the archive counts as still being saved after `downloadBlob` has handed it
+// How long the archive counts as still being saved after `saveApiDownload` has handed it
 // to the browser. Two seconds is a margin on the start of a read that begins in the
 // same task as the click, not a guess at how long a file takes to write - see
 // `handleExportFirst`.
@@ -91,15 +91,17 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
 
     setIsSaving(true);
     try {
-      const { blob, filename } = await exportAPI.download("archive", username);
-      downloadBlob(blob, filename);
-      // Busy for a moment longer than the fetch, because `downloadBlob` returns
+      await saveApiDownload(exportPath("archive"), () =>
+        exportAPI.download("archive", username),
+      );
+      // Busy for a moment longer than the fetch, because `saveApiDownload` returns
       // before the browser has the bytes: it dispatches a synthetic click on an
       // object URL and comes straight back, and Firefox and Safari then read that
       // blob asynchronously and cancel the save if the URL goes away underneath
-      // them (`lib/download.ts` holds one for a minute for exactly this reason). A
-      // delete resolving in that window takes the whole document, and its object
-      // URLs with it. The hold is short because only the *start* of the read has to
+      // them (`lib/download.ts` holds one for a minute for exactly this reason). In
+      // Firefox for iOS it starts a navigation instead, which has to reach its
+      // response before the session it was minted under ends. A delete resolving in
+      // that window takes the whole document, and its object URLs with it. The hold is short because only the *start* of the read has to
       // survive it - the minute in `download.ts` is a margin on a timer nobody is
       // waiting behind, where this one is in front of a diver.
       saveSettling.current = setTimeout(

@@ -14,6 +14,13 @@ export function hardNavigate(path: string): void {
   window.location.assign(path);
 }
 
+// A navigation to a response the browser saves rather than shows - an attachment
+// download. The document stays where it is, so unlike `hardNavigate` this does not
+// mark the page as leaving.
+export function navigateToDownload(url: string): void {
+  window.location.assign(url);
+}
+
 // Whether this document is on its way out. Effects that would otherwise start a
 // client-side navigation should stand down once it is - the page load is going
 // to win, so all they can do is spend a request on a route nobody will see.

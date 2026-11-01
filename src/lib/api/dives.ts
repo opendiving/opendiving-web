@@ -1086,6 +1086,11 @@ export interface DiveProfile {
  */
 export const MAX_DIVE_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
+/** The route serving one of a dive's stored files, under the API base. */
+export function diveFilePath(diveUuid: string, fileUuid: string): string {
+  return `/dive/${diveUuid}/file/${fileUuid}`;
+}
+
 /**
  * Metadata about one dive-computer export a recording was read from - never its
  * bytes. The file itself is fetched separately (and authenticated) via
@@ -1799,7 +1804,7 @@ export const divesAPI = {
     version?: string,
   ): Promise<Blob> {
     const response = await apiClient.get<Blob>(
-      `/dive/${diveUuid}/file/${fileUuid}`,
+      diveFilePath(diveUuid, fileUuid),
       versionedRequest(version, { responseType: "blob" }),
     );
     return response.data;
