@@ -832,7 +832,7 @@ describe("the map tiles", () => {
         /Apart from those three, no page has your browser contact the provider/,
       );
       expect(text).toMatch(
-        /Your browser does that itself and sends the language nowhere/,
+        /The provider learns it all the same: like every browser, yours names the languages it is set to in each request it makes/,
       );
     },
   );

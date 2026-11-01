@@ -731,11 +731,11 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 Those maps name places in English and, where the map has a name
                 for a place in the language your browser is set to, in that
-                language as well. Your browser does that itself and sends the
-                language nowhere. The lettering it draws comes from the provider
-                like the rest of the map, though, so for a language not written
-                in the Latin alphabet the provider can tell which alphabet your
-                browser asked it to draw.
+                language as well. Your browser picks that language itself, and
+                the app adds it to nothing it sends. The provider learns it all
+                the same: like every browser, yours names the languages it is
+                set to in each request it makes, to this provider as to any
+                site.
               </p>
               {mapTiles ? (
                 <>
