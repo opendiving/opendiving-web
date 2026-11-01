@@ -137,9 +137,12 @@ function Calendar({
           "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
         ),
         range_end: "day-range-end",
+        // Filled on the button, which is rounded, rather than on the square cell
+        // behind it - the cell is where a range's band is painted.
         selected:
-          "bg-teal text-primary-foreground hover:bg-teal hover:text-primary-foreground focus:bg-teal focus:text-primary-foreground",
-        today: "bg-accent text-accent-foreground",
+          "[&>button]:bg-teal [&>button]:text-primary-foreground [&>button]:hover:bg-teal [&>button]:hover:text-primary-foreground [&>button]:focus:bg-teal [&>button]:focus:text-primary-foreground",
+        today:
+          "[&:not([aria-selected])>button]:bg-accent [&:not([aria-selected])>button]:text-accent-foreground",
         outside:
           "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
         disabled: "text-muted-foreground opacity-50",

@@ -268,7 +268,7 @@ describe("DatePicker as half of a range", () => {
     await userEvent.click(screen.getByLabelText("End"));
 
     expect(dayButton(/March 12th, 2019/)).toBeInTheDocument();
-    expect(dayCell("2019-03-12")).toHaveClass("border-teal");
+    expect(dayCell("2019-03-12")).toHaveClass("[&>button]:border-teal");
   });
 
   it("refuses an end before the start, but not the start itself", async () => {
@@ -285,7 +285,7 @@ describe("DatePicker as half of a range", () => {
 
     await userEvent.click(screen.getByLabelText("Start"));
 
-    expect(dayCell("2019-03-12")).toHaveClass("border-teal");
+    expect(dayCell("2019-03-12")).toHaveClass("[&>button]:border-teal");
     expect(dayButton(/March 20th, 2019/)).toBeEnabled();
   });
 
@@ -296,8 +296,11 @@ describe("DatePicker as half of a range", () => {
       await userEvent.click(screen.getByLabelText(label));
       expect(dayCell("2019-03-13")).toHaveClass(SHADED);
       expect(dayCell("2019-03-14")).toHaveClass(SHADED);
+      // The ends carry the band's inner half only, under their rounded corners.
       expect(dayCell("2019-03-12")).not.toHaveClass(SHADED);
+      expect(dayCell("2019-03-12")).toHaveClass("bg-linear-to-r");
       expect(dayCell("2019-03-15")).not.toHaveClass(SHADED);
+      expect(dayCell("2019-03-15")).toHaveClass("bg-linear-to-l");
       await userEvent.keyboard("{Escape}");
     }
   });

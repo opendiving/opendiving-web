@@ -240,8 +240,8 @@ function CalendarDatePicker({
     : [shownDate, otherEnd];
   // Guarded rather than handed over as is: react-day-picker reads an interval
   // whose `before` comes first as everything *outside* it.
-  const between =
-    from && to && to > from ? { after: from, before: to } : undefined;
+  const spans = from && to && to > from;
+  const between = spans ? { after: from, before: to } : undefined;
   const beforeStart = isRangeEnd && otherEnd ? { before: otherEnd } : undefined;
 
   const showClear = Boolean(draft) && !disabled;
@@ -351,10 +351,23 @@ function CalendarDatePicker({
           defaultMonth={openingDate}
           autoFocus={focusCalendar}
           disabled={beforeStart}
-          modifiers={{ range_other_end: otherEnd, range_between: between }}
+          modifiers={{
+            range_other_end: otherEnd,
+            range_between: between,
+            range_from: spans ? from : undefined,
+            range_to: spans ? to : undefined,
+          }}
+          // The band runs on the cells and the ends sit on it as rounded
+          // buttons, so an end's cell carries the band's inner half and the
+          // corners facing the range are filled rather than cut out of it.
           modifiersClassNames={{
-            range_other_end: "rounded-md border border-teal text-teal",
+            range_other_end:
+              "[&>button]:border [&>button]:border-teal [&>button]:text-teal",
             range_between: "bg-teal/15",
+            range_from:
+              "bg-linear-to-r from-transparent from-50% to-teal/15 to-50%",
+            range_to:
+              "bg-linear-to-l from-transparent from-50% to-teal/15 to-50%",
           }}
           onDayMouseEnter={(day) =>
             setHoveredDay(
