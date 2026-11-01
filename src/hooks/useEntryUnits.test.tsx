@@ -44,6 +44,7 @@ describe("useEntryUnits", () => {
     const { result } = renderHook(() => useEntryUnits());
 
     expect(result.current.entryUnits("pressure")).toBe("metric");
+    expect(result.current.entryUnitLabel("pressure")).toBe("bar");
     expect(result.current.entryUnits("depth")).toBe("metric");
   });
 
@@ -69,6 +70,7 @@ describe("useEntryUnits", () => {
     act(() => result.current.toggleEntryUnits("pressure"));
 
     expect(stored()).toEqual({ pressure: "imperial" });
+    expect(result.current.entryUnitLabel("pressure")).toBe("psi");
   });
 
   it("reads a stored override back on a fresh mount", () => {

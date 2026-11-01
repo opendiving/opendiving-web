@@ -23,11 +23,6 @@ import { DiveCardHeader } from "@/components/dives/dive-card-header";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
-import {
-  formatComparableDepth,
-  formatPressure,
-  type UnitSelection,
-} from "@/lib/units";
 
 interface DiveMixturesCardProps {
   dive: Dive;
@@ -39,7 +34,6 @@ interface TankCardProps {
   mixture: DiveMixture;
   // Its 1-based position, which the consumption card below numbers its rows by.
   number: number;
-  units: UnitSelection;
   showHelium: boolean;
   // The dive's MOD warning is about this cylinder's gas, so its MOD is marked.
   warned: boolean;
@@ -55,12 +49,12 @@ interface TankCardProps {
 function TankCard({
   mixture,
   number,
-  units,
   showHelium,
   warned,
   left,
   withReturnTo,
 }: TankCardProps) {
+  const { formatPressure, formatComparableDepth } = useUnits();
   const name = gasName(mixture.oxygen, mixture.helium);
   // A MOD only means something for a mix that could exist - the rule `gasHintParts`
   // applies to the form hint, shared through `isNameableMix`.
@@ -128,7 +122,7 @@ function TankCard({
           label="Start"
           value={
             mixture.start_pressure != null
-              ? formatPressure(mixture.start_pressure, units)
+              ? formatPressure(mixture.start_pressure)
               : null
           }
         />
@@ -136,7 +130,7 @@ function TankCard({
           label="End"
           value={
             mixture.end_pressure != null
-              ? formatPressure(mixture.end_pressure, units)
+              ? formatPressure(mixture.end_pressure)
               : null
           }
         />
@@ -162,7 +156,7 @@ function TankCard({
                 {/* Rounded down and at the scale the warning under the cards
                     uses, so where the two differ for one gas it is the ppO₂
                     each was computed at - see `formatComparableDepth`. */}
-                {formatComparableDepth(workingMod, units, { floor: true })}
+                {formatComparableDepth(workingMod, { floor: true })}
               </span>
             ) : null
           }
@@ -233,7 +227,6 @@ export function DiveMixturesCard({ dive, onEdit }: DiveMixturesCardProps) {
               key={mixture.id ?? index}
               mixture={mixture}
               number={index + 1}
-              units={units}
               showHelium={showHelium}
               warned={attributable}
               left={index === firstParallel}

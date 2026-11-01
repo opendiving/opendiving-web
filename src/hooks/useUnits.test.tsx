@@ -24,6 +24,7 @@ describe("useUnits", () => {
 
     expect(result.current.formatDepth(30)).toBe("30 m");
     expect(result.current.unitLabel("pressure")).toBe("bar");
+    expect(result.current.formatDistance(1500)).toBe("1.5 km");
     expect(result.current.toDisplayUnits(6, "weight")).toBe(6);
   });
 
@@ -51,6 +52,7 @@ describe("useUnits", () => {
     expect(result.current.unitLabel("sac")).toBe("psi/min");
     expect(result.current.unitLabel("rmv")).toBe("L/min");
     expect(result.current.formatVisibility(30.48)).toBe("100 ft");
+    expect(result.current.formatDistance(30.48)).toBe("100 ft");
     expect(result.current.unitSystemFor("speed")).toBe("imperial");
     expect(result.current.formatRmv(18, { decimals: 0 })).toBe("18 L/min");
   });

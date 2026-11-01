@@ -54,7 +54,6 @@ import {
   displayNumber,
   formatDepth,
   formatGasVolume,
-  unitLabel,
   unitWord,
   type UnitSelection,
 } from "@/lib/units";
@@ -322,12 +321,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
         <p className="text-sm text-muted-foreground">
           Everything is hidden. Pick a series below to plot it.
         </p>
-        <GasUseLegend
-          marks={marks}
-          unit={unit}
-          onToggle={toggle}
-          units={units}
-        />
+        <GasUseLegend marks={marks} unit={unit} onToggle={toggle} />
       </div>
     );
   }
@@ -540,7 +534,6 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             cx={x(times[hoveredIndex])}
             cy={y(clamp(displayRmv(hoveredPoint.gas_use.rmv)))}
             chartWidth={width}
-            units={units}
             openHref={
               readout.pinned
                 ? withReturnTo(`/dives/${hoveredPoint.dive_uuid}`)
@@ -550,7 +543,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
         )}
       </div>
 
-      <GasUseLegend marks={marks} unit={unit} onToggle={toggle} units={units} />
+      <GasUseLegend marks={marks} unit={unit} onToggle={toggle} />
     </div>
   );
 }
@@ -568,15 +561,14 @@ function GasUseLegend({
   marks,
   unit,
   onToggle,
-  units,
 }: {
   marks: readonly GasUseMark[];
   // The bin the trend mark summarizes by *at this scope* - named whether or not
   // the mark is drawn, since the legend describes what the toggle turns on.
   unit: BinUnit;
   onToggle: (mark: GasUseMark) => void;
-  units: UnitSelection;
 }) {
+  const { unitLabel } = useUnits();
   return (
     <div
       className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs touch:gap-y-0"
@@ -591,7 +583,7 @@ function GasUseLegend({
             marks.includes("dives") && "text-teal",
           )}
         />
-        Dive ({unitLabel("rmv", units)})
+        Dive ({unitLabel("rmv")})
       </MarkToggle>
       <MarkToggle mark="trend" marks={marks} onToggle={onToggle}>
         {/* The box and its median tick are one mark, so they get one swatch -
@@ -687,23 +679,22 @@ function GasUseTooltip({
   cx,
   cy,
   chartWidth,
-  units,
   openHref,
 }: {
   point: DiveGasUsePoint;
   cx: number;
   cy: number;
   chartWidth: number;
-  units: UnitSelection;
   // Where the dive opens, for a card a finger pinned: there is no cursor on the
   // dot to click it with, so the card carries the link.
   openHref?: string;
 }) {
+  const { preferences: units, displayNumber, unitLabel } = useUnits();
   return (
     <ChartHoverCard cx={cx} cy={cy} chartWidth={chartWidth}>
       <div className="text-sm font-semibold">
-        {displayNumber(point.gas_use.rmv, "rmv", units)}{" "}
-        <span className="font-normal">{unitLabel("rmv", units)}</span>
+        {displayNumber(point.gas_use.rmv, "rmv")}{" "}
+        <span className="font-normal">{unitLabel("rmv")}</span>
       </div>
       <div className="mt-0.5 text-xs text-tooltip-foreground/70">
         Dive #{point.dive_number} &middot;{" "}

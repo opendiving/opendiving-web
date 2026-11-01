@@ -36,7 +36,6 @@ import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
 import { useEntryUnits } from "@/hooks/useEntryUnits";
-import { unitLabel } from "@/lib/units";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 interface GearSetDialogProps {
@@ -80,7 +79,7 @@ export function GearSetDialog({
   // Entry units, shared with the dive form this dialog can open from: the two
   // weight boxes are the same dimension and the store keeps them in step. What
   // the gear list underneath renders stays on the account preference.
-  const { entryUnits, toggleEntryUnits } = useEntryUnits();
+  const { entryUnits, entryUnitLabel, toggleEntryUnits } = useEntryUnits();
   const weightUnits = entryUnits("weight");
   const [existingSets, setExistingSets] = useState<GearSet[]>([]);
   // uuid of the set being overwritten, or `undefined` while creating a new one.
@@ -289,9 +288,7 @@ export function GearSetDialog({
                     entryUnits={weightUnits}
                     onToggle={() => toggleEntryUnits("weight")}
                   >
-                    <FormLabel>
-                      Weight ({unitLabel("weight", weightUnits)})
-                    </FormLabel>
+                    <FormLabel>Weight ({entryUnitLabel("weight")})</FormLabel>
                   </EntryUnitLabelRow>
                   <div className="relative">
                     <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />

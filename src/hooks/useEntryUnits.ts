@@ -9,12 +9,14 @@ import {
   toggleDimension,
   writeEntryUnits,
 } from "@/lib/entry-units";
-import { type EntryDimension, type UnitSystem } from "@/lib/units";
+import { unitLabel, type EntryDimension, type UnitSystem } from "@/lib/units";
 
 /** What `useEntryUnits` returns. */
 export interface EntryUnits {
   /** The system this dimension's boxes display and parse in, right now. */
   entryUnits: (dimension: EntryDimension) => UnitSystem;
+  /** The label for this dimension after applying device overrides. */
+  entryUnitLabel: (dimension: EntryDimension) => string;
   /** Flips one dimension to the other system, remembered on this device. */
   toggleEntryUnits: (dimension: EntryDimension) => void;
 }
@@ -67,5 +69,10 @@ export function useEntryUnits(): EntryUnits {
     [unitSystemFor],
   );
 
-  return { entryUnits, toggleEntryUnits };
+  const entryUnitLabel = useCallback(
+    (dimension: EntryDimension) => unitLabel(dimension, entryUnits(dimension)),
+    [entryUnits],
+  );
+
+  return { entryUnits, entryUnitLabel, toggleEntryUnits };
 }

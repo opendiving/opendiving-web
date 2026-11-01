@@ -29,12 +29,7 @@ import {
 import { Activity } from "lucide-react";
 import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 import { useUnits } from "@/hooks/useUnits";
-import {
-  formatGasVolume,
-  formatRmv,
-  formatSac,
-  type UnitSelection,
-} from "@/lib/units";
+
 import { labelOrFallback } from "@/lib/api/labels";
 
 interface DiveGasConsumptionCardProps {
@@ -62,13 +57,7 @@ interface DiveGasConsumptionCardProps {
  * tank was breathed when), where silence would read as a bug.
  */
 export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
-  const {
-    preferences: units,
-    formatDepth,
-    formatGasVolume,
-    formatRmv,
-    formatSac,
-  } = useUnits();
+  const { formatDepth, formatGasVolume, formatRmv, formatSac } = useUnits();
 
   // Null both when the figures are present and when the dive was never a candidate for
   // any, so `dive.gas_use || reason` is the whole "is there anything to show" test.
@@ -224,7 +213,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                   separator and weight that were otherwise hand-applied. */}
               {attributedCount > 1 && (
                 <TableFooter>
-                  <TotalRow gasUse={gasUse} units={units} />
+                  <TotalRow gasUse={gasUse} />
                 </TableFooter>
               )}
             </Table>
@@ -332,13 +321,8 @@ function formatTimeOnGas(seconds: number): string {
  * API sends `sac_bar_per_min: null` on precisely these dives for that reason, which is
  * what the dash is rendering.
  */
-function TotalRow({
-  gasUse,
-  units,
-}: {
-  gasUse: NonNullable<Dive["gas_use"]>;
-  units: UnitSelection;
-}) {
+function TotalRow({ gasUse }: { gasUse: NonNullable<Dive["gas_use"]> }) {
+  const { formatGasVolume, formatRmv, formatSac } = useUnits();
   const attributed = gasUse.attributed_seconds;
 
   return (
@@ -357,15 +341,15 @@ function TotalRow({
         {attributed != null ? formatTimeOnGas(attributed) : "-"}
       </TableCell>
       <TableCell className="text-muted-foreground">-</TableCell>
-      <TableCell>{formatGasVolume(gasUse.gas_used, units)}</TableCell>
-      <TableCell>{formatRmv(gasUse.rmv, units)}</TableCell>
+      <TableCell>{formatGasVolume(gasUse.gas_used)}</TableCell>
+      <TableCell>{formatRmv(gasUse.rmv)}</TableCell>
       <TableCell
         className={
           gasUse.sac_bar_per_min == null ? "text-muted-foreground" : undefined
         }
       >
         {gasUse.sac_bar_per_min != null
-          ? formatSac(gasUse.sac_bar_per_min, units)
+          ? formatSac(gasUse.sac_bar_per_min)
           : "-"}
       </TableCell>
     </TableRow>
