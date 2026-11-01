@@ -92,7 +92,7 @@ interface DataExportCardProps {
   username: string;
 }
 
-// "Your data" on `/data`: four buttons, each handing back the whole logbook.
+// "Your data" on `/export`: four buttons, each handing back the whole logbook.
 // The product's promise is that nothing in an account is reachable only through this
 // app, and this card is the half that can be checked by pressing a button. The Import
 // page is the other half - a copy nothing can read back is a copy in name only - and

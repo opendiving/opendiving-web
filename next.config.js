@@ -31,6 +31,10 @@ const nextConfig = {
     exposeTestingApiInProductionBuild:
       process.env.NEXT_EXPOSE_TESTING_API === "1",
   },
+  async redirects() {
+    // The export page's earlier address, kept for bookmarks already holding it.
+    return [{ source: "/data", destination: "/export", permanent: true }];
+  },
   async headers() {
     // Content-Security-Policy and Strict-Transport-Security are set per-request
     // by src/proxy.ts instead of here - the first needs a fresh, unpredictable

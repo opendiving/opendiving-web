@@ -1,11 +1,11 @@
 "use client";
 
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { DataExportCard } from "@/components/data/data-export-card";
+import { DataExportCard } from "@/components/export/data-export-card";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
-export function DataPageContent() {
+export function ExportPageContent() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
 
   if (isLoading) {

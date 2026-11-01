@@ -191,7 +191,7 @@ describe("Import and Export", () => {
     ).toHaveAttribute("href", expect.stringMatching(/^\/import/));
     expect(
       within(accountMenu).getByRole("menuitem", { name: "Export" }),
-    ).toHaveAttribute("href", "/data");
+    ).toHaveAttribute("href", "/export");
   });
 });
 
