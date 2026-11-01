@@ -25,7 +25,7 @@ import {
 import { geocodeResultLabel } from "@/lib/locations";
 import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { useUnits } from "@/hooks/useUnits";
-import type { UnitSystem } from "@/lib/units";
+import type { UnitSelection } from "@/lib/units";
 import {
   MAX_LOCATION_NAME_LENGTH,
   type LocationFormValue,
@@ -88,7 +88,7 @@ function sameRecord(result: GeocodeResult) {
 function catalogHint(
   site: DiveSiteSuggestion,
   position: GeoPoint | null,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string | undefined {
   const parts: string[] = [];
   // First, because it is what decides the pick: a site the diver already has is

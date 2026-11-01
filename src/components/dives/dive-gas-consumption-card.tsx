@@ -34,7 +34,7 @@ import {
   formatGasVolume,
   formatRmv,
   formatSac,
-  type UnitSystem,
+  type UnitSelection,
 } from "@/lib/units";
 import { labelOrFallback } from "@/lib/api/labels";
 
@@ -335,7 +335,7 @@ function TotalRow({
   units,
 }: {
   gasUse: NonNullable<Dive["gas_use"]>;
-  units: UnitSystem;
+  units: UnitSelection;
 }) {
   const attributed = gasUse.attributed_seconds;
 

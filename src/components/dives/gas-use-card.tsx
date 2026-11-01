@@ -23,7 +23,7 @@ import {
   useChartPeriodView,
 } from "@/hooks/useChartPeriodView";
 import { useUnits } from "@/hooks/useUnits";
-import { displayNumber, unitLabel, type UnitSystem } from "@/lib/units";
+import { displayNumber, unitLabel, type UnitSelection } from "@/lib/units";
 
 const GAS_USE_SOURCE: ChartPeriodSource<DiveGasUsePoint> = {
   load: () => diveStatsAPI.getGasUseHistory(),
@@ -117,7 +117,7 @@ function GasUseSummaryRow({
   units,
 }: {
   summary: GasUseSummary;
-  units: UnitSystem;
+  units: UnitSelection;
 }) {
   return (
     <ChartStatRow className="mb-5">
@@ -149,7 +149,7 @@ function GasUseSummaryRow({
 // Value and unit are drawn at different sizes, so this builds the string from the
 // two halves `lib/units.ts` exports rather than calling `formatRmv` - the numbers
 // and the label are the same either way.
-function Figure({ value, units }: { value: number; units: UnitSystem }) {
+function Figure({ value, units }: { value: number; units: UnitSelection }) {
   return (
     <>
       <span className="text-base font-semibold tabular-nums">

@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 import {
   formatComparableDepth,
   formatPressure,
-  type UnitSystem,
+  type UnitSelection,
 } from "@/lib/units";
 
 interface DiveMixturesCardProps {
@@ -39,7 +39,7 @@ interface TankCardProps {
   mixture: DiveMixture;
   // Its 1-based position, which the consumption card below numbers its rows by.
   number: number;
-  units: UnitSystem;
+  units: UnitSelection;
   showHelium: boolean;
   // The dive's MOD warning is about this cylinder's gas, so its MOD is marked.
   warned: boolean;

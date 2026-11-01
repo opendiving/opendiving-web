@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { useUnits } from "@/hooks/useUnits";
-import { formatDepth, type UnitSystem } from "@/lib/units";
+import { formatDepth, type UnitSelection } from "@/lib/units";
 import { countNoun } from "@/lib/format";
 
 // What the card knows about the profile right now. `null` is "in flight", derived
@@ -70,7 +70,7 @@ interface DiveProfileCardProps {
 // the chart drawing past its plot.
 function describeProfileContents(
   info: DiveProfileInfo,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string {
   const parts = [
     `${info.depth_sample_count.toLocaleString()} depth samples recorded by the dive computer`,

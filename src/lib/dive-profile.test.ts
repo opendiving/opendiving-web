@@ -1,3 +1,4 @@
+import { resolveUnitPreferences } from "@/lib/units";
 import { describe, expect, it } from "vitest";
 import type { DiveProfile, DiveProfileEvent } from "@/lib/api/dives";
 import {
@@ -1479,4 +1480,20 @@ describe("profileScalePlacement", () => {
   it("grows no row for an axis nothing is on", () => {
     expect(profileScalePlacement(["depth", "ceiling"]).panels).toEqual([]);
   });
+});
+
+it("uses independent depth, pressure and temperature preferences for profile channels", () => {
+  const mixed = resolveUnitPreferences("metric", {
+    depth: "imperial",
+    pressure: "imperial",
+  });
+  expect(displayChannel(PROFILE_CHANNELS.depth, mixed).unit).toBe("ft");
+  expect(displayChannel(PROFILE_CHANNELS.pressure, mixed).unit).toBe("psi");
+  expect(displayChannel(PROFILE_CHANNELS.temperature, mixed)).toBe(
+    PROFILE_CHANNELS.temperature,
+  );
+  expect(channelWord("temperature", mixed)).toBe("degrees Celsius");
+  expect(toChannelSeries(profile(), "temperature", mixed)?.values[0]).toBe(
+    21.9,
+  );
 });

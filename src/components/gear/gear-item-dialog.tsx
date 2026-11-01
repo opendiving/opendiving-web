@@ -1,5 +1,7 @@
 "use client";
 
+import { unitSystemFor } from "@/lib/units";
+
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
@@ -369,7 +371,7 @@ function CylinderFactFields({ control }: { control: Control<GearItemInput> }) {
               <FormControl>
                 <UnitNumberInput
                   dimension="pressure"
-                  units={units}
+                  units={unitSystemFor("pressure", units)}
                   min={0}
                   placeholderValue={232}
                   {...field}

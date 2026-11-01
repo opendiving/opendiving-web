@@ -1,20 +1,16 @@
 "use client";
 
+import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import type { UnitSystem } from "@/lib/units";
+import { resolveUnitPreferences, type UnitPreferences } from "@/lib/units";
 
-/**
- * Which system this diver reads measurements in.
- *
- * The one place the preference is read. Components call this once and pass the
- * result down into the pure formatters in `lib/units.ts` - lib code never reaches
- * for context, which is what lets the same functions be tested without React and
- * called from `lib/dive-mixtures.ts` and `lib/dive-profile.ts`.
- *
- * Falls back to metric, which is the column's default and so the answer for every
- * existing row - and is also what renders in the moment before `user` has loaded,
- * where the alternative is a flash of nothing where a number goes.
- */
-export function useUnits(): UnitSystem {
-  return useAuth().user?.units ?? "metric";
+/** Account preferences for every display; legacy accounts retain their existing preset. */
+export function useUnits(): UnitPreferences {
+  const { user } = useAuth();
+  const system = user?.units ?? "metric";
+  const overrides = user?.unit_preferences;
+  return useMemo(
+    () => resolveUnitPreferences(system, overrides),
+    [system, overrides],
+  );
 }
