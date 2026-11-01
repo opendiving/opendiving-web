@@ -82,8 +82,14 @@ export function DiveFormActions({
     >
       <FormApiError error={error} />
       <div className="flex flex-wrap justify-end gap-4 max-sm:gap-2">
-        <Button type="button" variant="outline" asChild>
-          <Link href={cancelHref}>Cancel</Link>
+        <Button
+          type="button"
+          variant="outline"
+          render={<Link href={cancelHref} />}
+          nativeButton={false}
+          role="link"
+        >
+          Cancel
         </Button>
         {draft?.onDiscard && (
           <Button

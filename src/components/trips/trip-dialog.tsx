@@ -211,13 +211,15 @@ export function TripDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Name *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Red Sea Liveaboard 2024"
-                      autoFocus
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        placeholder="e.g. Red Sea Liveaboard 2024"
+                        autoFocus
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -231,19 +233,20 @@ export function TripDialog({
               render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Parts</FormLabel>
-                  <FormControl>
-                    {/* No `FormMessage` here, and the field renders the
+                  <FormControl
+                    render={
+                      /* No `FormMessage` here, and the field renders the
                         messages instead. A schema error on a part makes
                         `errors.parts` an array with no `message` of its own,
                         which `FormMessage` would print as the word
                         "undefined" - and one line above twenty rows could not
-                        say which of them was wrong anyway. */}
-                    <TripPartsField
-                      value={field.value ?? []}
-                      onChange={field.onChange}
-                      errors={tripPartErrors(fieldState.error)}
-                    />
-                  </FormControl>
+                        say which of them was wrong anyway. */ <TripPartsField
+                        value={field.value ?? []}
+                        onChange={field.onChange}
+                        errors={tripPartErrors(fieldState.error)}
+                      />
+                    }
+                  />
                 </FormItem>
               )}
             />
@@ -269,17 +272,18 @@ export function TripDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>People</FormLabel>
-                  <FormControl>
-                    {/* No role to start from: who comes on a trip is a buddy, a
+                  <FormControl
+                    render={
+                      /* No role to start from: who comes on a trip is a buddy, a
                         partner who stays on the boat, a friend who never gets
-                        wet - the diver says which, if anything. */}
-                    <PeopleMultiSelect
-                      value={field.value ?? []}
-                      onChange={field.onChange}
-                      defaultRole={null}
-                      until={until}
-                    />
-                  </FormControl>
+                        wet - the diver says which, if anything. */ <PeopleMultiSelect
+                        value={field.value ?? []}
+                        onChange={field.onChange}
+                        defaultRole={null}
+                        until={until}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -291,13 +295,15 @@ export function TripDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Any notes about this trip..."
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Textarea
+                        placeholder="Any notes about this trip..."
+                        className="min-h-[80px]"
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

@@ -1,18 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
-import type { PrimitiveProps } from "./slot";
+import * as TabsPrimitive from "./primitives/tabs";
+import type { AppComponentProps } from "./component-props";
 
 import { cn } from "@/lib/utils";
 
-const Tabs = TabsPrimitive.Root;
+const Tabs = TabsPrimitive.Tabs;
 
 const TabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
-  PrimitiveProps<typeof TabsPrimitive.List>
+  React.ElementRef<typeof TabsPrimitive.TabsList>,
+  AppComponentProps<typeof TabsPrimitive.TabsList>
 >(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
+  <TabsPrimitive.TabsList
     activateOnFocus
     ref={ref}
     className={cn(
@@ -22,13 +22,13 @@ const TabsList = React.forwardRef<
     {...props}
   />
 ));
-TabsList.displayName = TabsPrimitive.List.displayName;
+TabsList.displayName = "TabsList";
 
 const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Tab>,
-  PrimitiveProps<typeof TabsPrimitive.Tab>
+  React.ElementRef<typeof TabsPrimitive.TabsTrigger>,
+  AppComponentProps<typeof TabsPrimitive.TabsTrigger>
 >(({ className, ...props }, ref) => (
-  <TabsPrimitive.Tab
+  <TabsPrimitive.TabsTrigger
     ref={ref}
     className={cn(
       "relative inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 touch:tap-target text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-background data-[active]:text-foreground data-[active]:shadow",
@@ -37,13 +37,13 @@ const TabsTrigger = React.forwardRef<
     {...props}
   />
 ));
-TabsTrigger.displayName = TabsPrimitive.Tab.displayName;
+TabsTrigger.displayName = "TabsTrigger";
 
 const TabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Panel>,
-  PrimitiveProps<typeof TabsPrimitive.Panel>
+  React.ElementRef<typeof TabsPrimitive.TabsContent>,
+  AppComponentProps<typeof TabsPrimitive.TabsContent>
 >(({ className, ...props }, ref) => (
-  <TabsPrimitive.Panel
+  <TabsPrimitive.TabsContent
     ref={ref}
     className={cn(
       "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -52,6 +52,6 @@ const TabsContent = React.forwardRef<
     {...props}
   />
 ));
-TabsContent.displayName = TabsPrimitive.Panel.displayName;
+TabsContent.displayName = "TabsContent";
 
 export { Tabs, TabsList, TabsTrigger, TabsContent };

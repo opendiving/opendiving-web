@@ -268,8 +268,12 @@ function ImportFlow() {
             the result does not repeat; `true` suppresses advice to import the
             archive about a decision already taken. */}
         <ImportReportView report={result} archive />
-        <Button asChild>
-          <Link href="/dives">Done</Link>
+        <Button
+          render={<Link href="/dives" />}
+          nativeButton={false}
+          role="link"
+        >
+          Done
         </Button>
       </section>
     );

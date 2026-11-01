@@ -119,11 +119,7 @@ export function ImportNumberingSuggestion({
         onRenumbered={() => setRenumbered(true)}
         // The Renumber button has gone by the time the dialog closes on a
         // renumber, so the status that replaced it takes focus instead.
-        onCloseAutoFocus={(event) => {
-          if (!statusRef.current) return;
-          event.preventDefault();
-          statusRef.current.focus();
-        }}
+        finalFocus={() => statusRef.current ?? true}
       />
     </>
   );

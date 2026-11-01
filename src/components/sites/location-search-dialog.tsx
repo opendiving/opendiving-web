@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import {
   diveSitePlaceContext,
@@ -64,17 +64,19 @@ export function LocationSearchDialog({
   onOpenChange,
   ...props
 }: LocationSearchDialogProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        ref={panelRef}
         // With a position, the dialog opens on the name looked up for it, and
         // focusing Location would open its menu over the coordinates; focus
         // stays on the dialog itself, one Tab from the field.
-        onOpenAutoFocus={(event) => {
-          if (!parseFormPosition(props.latitude, props.longitude)) return;
-          event.preventDefault();
-          (event.currentTarget as HTMLElement).focus();
-        }}
+        initialFocus={
+          parseFormPosition(props.latitude, props.longitude)
+            ? panelRef
+            : undefined
+        }
       >
         <DialogHeader>
           <DialogTitle>Search location</DialogTitle>

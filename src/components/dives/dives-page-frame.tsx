@@ -109,17 +109,24 @@ export function DivesPageFrame({
         headingRef={headingRef}
         actions={
           <>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/import">
-                <CloudUpload className="h-4 w-4 mr-2" />
-                Import
-              </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              render={<Link href="/import" />}
+              nativeButton={false}
+              role="link"
+            >
+              <CloudUpload className="h-4 w-4 mr-2" />
+              Import
             </Button>
-            <Button asChild size="sm">
-              <Link href="/dives/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Log new dive
-              </Link>
+            <Button
+              size="sm"
+              render={<Link href="/dives/new" />}
+              nativeButton={false}
+              role="link"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Log new dive
             </Button>
           </>
         }
@@ -181,11 +188,13 @@ export function DivesPageFrame({
                   title="No dives logged yet"
                   description="Start by adding your first dive!"
                   action={
-                    <Button asChild>
-                      <Link href="/dives/new">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Log your first dive
-                      </Link>
+                    <Button
+                      render={<Link href="/dives/new" />}
+                      nativeButton={false}
+                      role="link"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Log your first dive
                     </Button>
                   }
                 />

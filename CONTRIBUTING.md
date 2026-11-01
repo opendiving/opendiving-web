@@ -74,9 +74,12 @@ src/contexts/       AuthContext
 src/map-renderer/   the map renderer, a Node program shipped in the same image
 ```
 
-Components in `src/components/ui/` wrap Base UI. Add shared controls there rather than hand-rolling
-one in a feature directory. Charts (the dive profile, the consumption trend) are hand-written SVG on
-purpose; there is no charting dependency and we'd like to keep it that way.
+Components in `src/components/ui/` wrap the official shadcn Base UI components in
+`src/components/ui/primitives/`. Keep generated files unmodified and put app styles and behavior in
+the wrappers. `components.json` directs shadcn CLI additions to the generated directory. Add shared
+controls to `ui/` rather than hand-rolling one in a feature directory. Charts (the dive profile, the
+consumption trend) are hand-written SVG on purpose; there is no charting dependency and we'd like to
+keep it that way.
 
 Tests are colocated: `foo.ts` gets `foo.test.ts` next to it, run by Vitest. Most of them use jsdom;
 a file named `foo.browser.test.tsx` belongs to the second project instead and runs in real Chromium

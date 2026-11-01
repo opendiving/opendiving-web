@@ -253,9 +253,10 @@ export function DiveSiteMultiSelect({
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onSaved={handleCreated}
-        onCloseAutoFocus={(event) => {
-          if (savedFromDialogRef.current) event.preventDefault();
+        finalFocus={() => {
+          const restore = !savedFromDialogRef.current;
           savedFromDialogRef.current = false;
+          return restore;
         }}
       />
     </div>

@@ -93,11 +93,11 @@ export function DiveCard({
       muted={!!addToTrip}
       actions={
         <>
-          <DropdownMenuItem asChild>
-            <Link href={withReturnTo(`/dives/${dive.uuid}/edit`)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
+          <DropdownMenuItem
+            render={<Link href={withReturnTo(`/dives/${dive.uuid}/edit`)} />}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
           </DropdownMenuItem>
           {onDelete && (
             <DeleteMenuItem onSelect={onDelete} disabled={isDeleting} />

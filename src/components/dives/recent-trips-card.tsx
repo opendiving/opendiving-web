@@ -76,9 +76,11 @@ export function RecentTripsCard() {
             variant="outline"
             size="sm"
             className={CARD_TITLE_ACTION}
-            asChild
+            render={<Link href="/trips" />}
+            nativeButton={false}
+            role="link"
           >
-            <Link href="/trips">View all trips</Link>
+            View all trips
           </Button>
         </div>
       </CardHeader>

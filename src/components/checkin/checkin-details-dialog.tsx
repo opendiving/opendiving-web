@@ -54,10 +54,7 @@ export function CheckinDetailsDialog({
         // whose first field is a date would open with a calendar over the form.
         // Focusing the panel is Radix's own fallback for a dialog with nothing
         // tabbable in it: still announced, still trapping focus.
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          panel.current?.focus();
-        }}
+        initialFocus={panel}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

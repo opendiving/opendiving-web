@@ -191,10 +191,8 @@ describe("a hint on a menu trigger", () => {
   const Menu = () => (
     <DropdownMenu>
       <IconTooltip label="Account menu">
-        <DropdownMenuTrigger asChild>
-          <button type="button">
-            <Trash2 className="h-4 w-4" />
-          </button>
+        <DropdownMenuTrigger render={<button type="button" />}>
+          <Trash2 className="h-4 w-4" />
         </DropdownMenuTrigger>
       </IconTooltip>
       <DropdownMenuContent>

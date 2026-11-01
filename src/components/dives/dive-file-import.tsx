@@ -725,15 +725,17 @@ function DiveFileImportInfo() {
   return (
     <Popover>
       <IconTooltip label="About importing a file">
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-muted-foreground"
-          >
-            <Info className="h-4 w-4" />
-          </Button>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground"
+            />
+          }
+        >
+          <Info className="h-4 w-4" />
         </PopoverTrigger>
       </IconTooltip>
       <PopoverContent align="start" className="text-sm">

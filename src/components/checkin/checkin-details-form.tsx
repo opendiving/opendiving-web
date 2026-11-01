@@ -129,21 +129,27 @@ export function CheckinMemberField({
             {/* No `FormMessage`: a failing row leaves the list's own error an array,
                 which it would print as the word "undefined". The field shows each
                 row's message on the row. */}
-            <FormControl>
-              {member === "emergency_contacts" ? (
-                <EmergencyContactsField
-                  value={field.value as CheckinDetailsFormValues[typeof member]}
-                  onChange={field.onChange}
-                  errors={listFieldErrors(fieldState.error)}
-                />
-              ) : (
-                <InsurancePoliciesField
-                  value={field.value as CheckinDetailsFormValues[typeof member]}
-                  onChange={field.onChange}
-                  errors={listFieldErrors(fieldState.error)}
-                />
-              )}
-            </FormControl>
+            <FormControl
+              render={
+                member === "emergency_contacts" ? (
+                  <EmergencyContactsField
+                    value={
+                      field.value as CheckinDetailsFormValues[typeof member]
+                    }
+                    onChange={field.onChange}
+                    errors={listFieldErrors(fieldState.error)}
+                  />
+                ) : (
+                  <InsurancePoliciesField
+                    value={
+                      field.value as CheckinDetailsFormValues[typeof member]
+                    }
+                    onChange={field.onChange}
+                    errors={listFieldErrors(fieldState.error)}
+                  />
+                )
+              }
+            />
           </FormItem>
         )}
       />
@@ -165,17 +171,19 @@ export function CheckinMemberField({
           <FormLabel className={hideLabel ? "sr-only" : undefined}>
             {spec.label}
           </FormLabel>
-          <FormControl>
-            {spec.kind === "date" ? (
-              <DatePicker value={field.value} onChange={field.onChange} />
-            ) : (
-              <Input
-                type={spec.kind}
-                autoComplete={spec.autoComplete}
-                {...field}
-              />
-            )}
-          </FormControl>
+          <FormControl
+            render={
+              spec.kind === "date" ? (
+                <DatePicker value={field.value} onChange={field.onChange} />
+              ) : (
+                <Input
+                  type={spec.kind}
+                  autoComplete={spec.autoComplete}
+                  {...field}
+                />
+              )
+            }
+          />
           {spec.description && (
             <FormDescription>{spec.description}</FormDescription>
           )}
@@ -362,9 +370,11 @@ function LoadedForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Full name</FormLabel>
-                  <FormControl>
-                    <Input type="text" autoComplete="name" {...field} />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input type="text" autoComplete="name" {...field} />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

@@ -10,12 +10,8 @@ import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { Input } from "@/components/ui/input";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
+import { DateFieldPopup } from "./date-field-popup";
 import type { FormControlSlotProps } from "@/components/ui/form";
 
 const DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -199,7 +195,7 @@ function CalendarDatePicker({
     const next = formatDate(date);
     setDraft(next);
     onChange(next);
-    // Focus lands in the box rather than on the icon Radix would return it to:
+    // Focus lands in the box rather than on the icon trigger:
     // this is a field a diver types in. Closing *after* that focus is the whole
     // trick - focusing the box runs the handler that opens the calendar, so a
     // close written first would be undone by it and a pick would never shut the
@@ -247,97 +243,90 @@ function CalendarDatePicker({
   const showClear = Boolean(draft) && !disabled;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next, details) => {
+        if (
+          details.reason === "outside-press" &&
+          details.event.target instanceof Node &&
+          anchorRef.current?.contains(details.event.target)
+        )
+          details.cancel();
+        if (!details.isCanceled) setOpen(next);
+      }}
+    >
       {/* Anchored on the whole field rather than on the icon that opens it, so
           the calendar still hangs off the field's left edge instead of off a
           16px button near the right one - a dialog is not wide enough for the
           difference to be cosmetic. */}
-      <PopoverAnchor asChild>
-        {/* The calendar and clear buttons are layered over the input's right
-            edge - the same treatment `creatable-combobox` gives its own clear
-            control - with the padding kept clear of whichever is showing. */}
-        <div ref={anchorRef} className="relative">
-          <Input
-            {...slotProps}
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onFocus={openFromField}
-            // Focus alone isn't enough: a `focus` event doesn't fire on an input
-            // that already has focus, so Escape - or picking a date, which
-            // returns focus here - would leave the calendar unopenable without
-            // clicking away first. `creatable-combobox` carries the same pair
-            // for the same reason.
-            onClick={openFromField}
-            onBlur={handleSettle}
-            // Enter submits the surrounding form, and does it without blurring
-            // first, so the last thing typed has to be committed here or the
-            // form reads the value from before it.
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSettle();
-            }}
-            placeholder={placeholder}
-            disabled={disabled}
-            // Deliberately no `inputMode`: the keypad iOS shows for one carries
-            // no "-", "/" or ":" and no way to switch, which is the reason
-            // `dive-site-dialog` refuses it for coordinates.
-            autoComplete="off"
-            spellCheck={false}
-            className={cn(showClear ? "pr-16" : "pr-9")}
-          />
-          <IconTooltip label="Choose date">
-            <PopoverTrigger asChild>
+      <div ref={anchorRef} className="relative">
+        <Input
+          {...slotProps}
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onFocus={openFromField}
+          // Focus alone isn't enough: a `focus` event doesn't fire on an input
+          // that already has focus, so Escape - or picking a date, which
+          // returns focus here - would leave the calendar unopenable without
+          // clicking away first. `creatable-combobox` carries the same pair
+          // for the same reason.
+          onClick={openFromField}
+          onBlur={handleSettle}
+          // Enter submits the surrounding form, and does it without blurring
+          // first, so the last thing typed has to be committed here or the
+          // form reads the value from before it.
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSettle();
+          }}
+          placeholder={placeholder}
+          disabled={disabled}
+          // Deliberately no `inputMode`: the keypad iOS shows for one carries
+          // no "-", "/" or ":" and no way to switch, which is the reason
+          // `dive-site-dialog` refuses it for coordinates.
+          autoComplete="off"
+          spellCheck={false}
+          className={cn(showClear ? "pr-16" : "pr-9")}
+        />
+        <IconTooltip label="Choose date">
+          <PopoverTrigger
+            render={
               <button
                 type="button"
                 disabled={disabled}
                 onClick={() => setFocusCalendar(true)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-              >
-                <CalendarIcon className="h-4 w-4" />
-              </button>
-            </PopoverTrigger>
+              />
+            }
+          >
+            <CalendarIcon className="h-4 w-4" />
+          </PopoverTrigger>
+        </IconTooltip>
+        {showClear && (
+          <IconTooltip label="Clear">
+            <button
+              type="button"
+              className="absolute right-9 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setDraft("");
+                onChange("");
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </IconTooltip>
-          {showClear && (
-            <IconTooltip label="Clear">
-              <button
-                type="button"
-                className="absolute right-9 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setDraft("");
-                  onChange("");
-                }}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </IconTooltip>
-          )}
-        </div>
-      </PopoverAnchor>
-      <PopoverContent
+        )}
+      </div>
+      <DateFieldPopup
+        anchor={anchorRef}
         className="w-auto p-0"
-        align="start"
         // Focus stays in the box unless the icon button asked for the grid, so
         // a calendar that opened because the diver tabbed into the field does
         // not swallow what they type next.
-        onOpenAutoFocus={(event) => {
-          if (!focusCalendar) event.preventDefault();
-        }}
-        // Radix puts focus on the icon button here, and that is right for the
-        // one path that hands focus to the grid: Escape there unmounts the day
-        // cell holding it, and with no restore focus falls to `document.body`.
-        // Prevented on the focus-opened path instead, where focus never left
-        // the box and Radix would be taking it away rather than restoring it.
-        onCloseAutoFocus={(event) => {
-          if (!focusCalendar) event.preventDefault();
-        }}
-        // Clicking the box or its own buttons is not "outside" - without this,
-        // Radix closes the calendar on the pointer-down and the field's own
-        // handler reopens it on the click, which reads as a flicker.
-        onInteractOutside={(event) => {
-          if (anchorRef.current?.contains(event.target as Node)) {
-            event.preventDefault();
-          }
-        }}
+        initialFocus={focusCalendar}
+        // Restore the icon after keyboard navigation in the grid. A calendar
+        // opened from the text field keeps focus there throughout.
+        finalFocus={focusCalendar}
       >
         <Calendar
           key={shownMonth}
@@ -376,7 +365,7 @@ function CalendarDatePicker({
           }
           onDayMouseLeave={() => setHoveredDay(undefined)}
         />
-      </PopoverContent>
+      </DateFieldPopup>
     </Popover>
   );
 }

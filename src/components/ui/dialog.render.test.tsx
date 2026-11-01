@@ -49,7 +49,7 @@ const settle = () =>
 // `pointer-events: none` on `body` and user-event refuses to click through it.
 // Radix listens on the document, so the dispatch lands either way.
 async function clickBackground() {
-  const overlay = document.querySelector("[data-dialog-overlay]");
+  const overlay = document.querySelector('[data-slot="dialog-overlay"]');
   expect(overlay).not.toBeNull();
 
   await userEvent.click(overlay!);
@@ -57,11 +57,15 @@ async function clickBackground() {
   await settle();
 }
 
-function open(props: Partial<React.ComponentProps<typeof DialogContent>> = {}) {
+function open(dismissOnOutsidePress = false) {
   const onOpenChange = vi.fn();
   render(
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent {...props}>
+    <Dialog
+      open
+      dismissOnOutsidePress={dismissOnOutsidePress}
+      onOpenChange={onOpenChange}
+    >
+      <DialogContent>
         <DialogTitle>Edit dive</DialogTitle>
         <Input aria-label="Notes" />
       </DialogContent>
@@ -83,12 +87,12 @@ describe("DialogContent dismissal", () => {
   });
 
   it("still closes for a dialog that opts back in", async () => {
-    const { onOpenChange } = open({ onPointerDownOutside: () => {} });
+    const { onOpenChange } = open(true);
     await settle();
 
     await clickBackground();
 
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());
   });
 
   it("still closes on Escape", async () => {
@@ -97,7 +101,7 @@ describe("DialogContent dismissal", () => {
 
     fireEvent.keyDown(screen.getByLabelText("Notes"), { key: "Escape" });
 
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());
   });
 });
 
@@ -208,11 +212,11 @@ describe("DialogContent focus return", () => {
       return (
         <>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button>More actions</Button>
+            <DropdownMenuTrigger render={<Button />}>
+              More actions
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onSelect={() => setOpen(true)}>
+              <DropdownMenuItem onClick={() => setOpen(true)}>
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -338,7 +342,7 @@ describe("DialogHeader", () => {
     expect(close.closest("[data-dialog-header]")).not.toBeNull();
 
     await userEvent.click(close);
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());
   });
 });
 

@@ -77,10 +77,7 @@ export function ConfirmDialog({
         // Cancel is where focus went before this dialog grew a field, and it is
         // the right default for a destructive confirmation anyway: Enter should
         // not be the destructive key.
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          cancelRef.current?.focus();
-        }}
+        initialFocus={cancelRef}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

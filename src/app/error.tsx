@@ -30,8 +30,13 @@ export default function RouteError({ error, retry }: RouteErrorProps) {
             <RotateCw className="h-4 w-4 mr-2" />
             Try again
           </Button>
-          <Button variant="outline" asChild>
-            <Link href="/">Back to home</Link>
+          <Button
+            variant="outline"
+            render={<Link href="/" />}
+            nativeButton={false}
+            role="link"
+          >
+            Back to home
           </Button>
         </div>
       </div>

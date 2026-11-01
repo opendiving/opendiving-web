@@ -150,7 +150,7 @@ export function GearItemDetailPageContent() {
             <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
               <DropdownMenuItem
                 disabled={isArchiving}
-                onSelect={() =>
+                onClick={() =>
                   gearItem.is_archived
                     ? handleToggleArchived()
                     : setIsArchiveConfirmOpen(true)

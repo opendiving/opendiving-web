@@ -70,7 +70,7 @@ interface DiveSiteDialogProps {
   onSaved: (diveSite: DiveSite) => void;
   // Forwarded to `DialogContent`; preventing it keeps focus from returning to
   // whatever opened the dialog.
-  onCloseAutoFocus?: (event: Event) => void;
+  finalFocus?: React.ComponentProps<typeof DialogContent>["finalFocus"];
 }
 
 // The API answers a PATCH with a status message alone, and canonicalizes what it
@@ -99,7 +99,7 @@ export function DiveSiteDialog({
   onOpenChange,
   diveSite,
   onSaved,
-  onCloseAutoFocus,
+  finalFocus,
 }: DiveSiteDialogProps) {
   const [isTakingHeldSite, setIsTakingHeldSite] = useState(false);
   const [apiError, setApiError, handleOpenChange] = useDialogApiError(
@@ -330,7 +330,7 @@ export function DiveSiteDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
+      <DialogContent finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "Edit Dive Site" : "New Dive Site"}
@@ -350,9 +350,15 @@ export function DiveSiteDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Blue Hole" autoFocus {...field} />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        placeholder="e.g. Blue Hole"
+                        autoFocus
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -381,30 +387,32 @@ export function DiveSiteDialog({
                 <FormItem>
                   <FormLabel>Location</FormLabel>
                   <div className="flex gap-2">
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. Dahab, South Sinai, Egypt"
-                        // The cap is enforced by the control, not left to the
-                        // resolver: an over-long name fails at `location.name`,
-                        // and `FormMessage` reads `errors.location`, which for a
-                        // nested failure is a container with no `message` of its
-                        // own - so the diver would get the word "undefined" in
-                        // red and a save that stopped. The trip row's place field
-                        // closes the same hole by truncating what it commits.
-                        // Nothing else can overrun it: every place written here
-                        // programmatically comes from the API, which bounds the
-                        // name to this width and truncates rather than raising.
-                        maxLength={MAX_LOCATION_NAME_LENGTH}
-                        name={field.name}
-                        ref={field.ref}
-                        onBlur={field.onBlur}
-                        disabled={field.disabled}
-                        value={field.value?.name ?? ""}
-                        onChange={(event) =>
-                          typeLocationName(event.target.value)
-                        }
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input
+                          placeholder="e.g. Dahab, South Sinai, Egypt"
+                          // The cap is enforced by the control, not left to the
+                          // resolver: an over-long name fails at `location.name`,
+                          // and `FormMessage` reads `errors.location`, which for a
+                          // nested failure is a container with no `message` of its
+                          // own - so the diver would get the word "undefined" in
+                          // red and a save that stopped. The trip row's place field
+                          // closes the same hole by truncating what it commits.
+                          // Nothing else can overrun it: every place written here
+                          // programmatically comes from the API, which bounds the
+                          // name to this width and truncates rather than raising.
+                          maxLength={MAX_LOCATION_NAME_LENGTH}
+                          name={field.name}
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                          disabled={field.disabled}
+                          value={field.value?.name ?? ""}
+                          onChange={(event) =>
+                            typeLocationName(event.target.value)
+                          }
+                        />
+                      }
+                    />
                     <IconTooltip label="Search location">
                       <Button
                         type="button"
@@ -432,13 +440,15 @@ export function DiveSiteDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Latitude</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. 27.8506"
-                        onPaste={handleCoordinatePaste}
-                        {...field}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input
+                          placeholder="e.g. 27.8506"
+                          onPaste={handleCoordinatePaste}
+                          {...field}
+                        />
+                      }
+                    />
                     <FormDescription className="sr-only">
                       {COORDINATE_HINT}
                     </FormDescription>
@@ -453,13 +463,15 @@ export function DiveSiteDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Longitude</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. 34.3136"
-                        onPaste={handleCoordinatePaste}
-                        {...field}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input
+                          placeholder="e.g. 34.3136"
+                          onPaste={handleCoordinatePaste}
+                          {...field}
+                        />
+                      }
+                    />
                     <FormDescription className="sr-only">
                       {COORDINATE_HINT}
                     </FormDescription>
@@ -509,13 +521,15 @@ export function DiveSiteDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Any notes about this dive site..."
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Textarea
+                        placeholder="Any notes about this dive site..."
+                        className="min-h-[80px]"
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

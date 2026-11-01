@@ -2,13 +2,16 @@
 
 import * as React from "react";
 import { OTPField as OneTimePasswordFieldPrimitive } from "@base-ui/react/otp-field";
-import type { PrimitiveProps } from "./slot";
-import { setRef } from "./popup-events";
+import type { AppComponentProps } from "./component-props";
+import { setRef } from "./refs";
 import { cn } from "@/lib/utils";
 
 const OneTimePasswordField = React.forwardRef<
   HTMLDivElement,
-  Omit<PrimitiveProps<typeof OneTimePasswordFieldPrimitive.Root>, "length"> & {
+  Omit<
+    AppComponentProps<typeof OneTimePasswordFieldPrimitive.Root>,
+    "length"
+  > & {
     length?: number;
   }
 >(({ className, length = 6, ...props }, ref) => {
@@ -67,7 +70,7 @@ OneTimePasswordField.displayName = "OneTimePasswordField";
 
 const OneTimePasswordFieldInput = React.forwardRef<
   React.ElementRef<typeof OneTimePasswordFieldPrimitive.Input>,
-  PrimitiveProps<typeof OneTimePasswordFieldPrimitive.Input> & {
+  AppComponentProps<typeof OneTimePasswordFieldPrimitive.Input> & {
     index?: number;
   }
 >(({ className, index, ...props }, ref) => (

@@ -306,7 +306,7 @@ export interface RenumberDivesDialogProps {
   defaults?: RenumberDefaults;
   // For a caller whose Renumber button leaves the page once the log is
   // renumbered, so focus has somewhere to go when the dialog closes.
-  onCloseAutoFocus?: (event: Event) => void;
+  finalFocus?: React.ComponentProps<typeof DialogContent>["finalFocus"];
 }
 
 // Renumbers a log consecutively, in date order. The only thing in the app that
@@ -320,14 +320,11 @@ export function RenumberDivesDialog({
   onOpenChange,
   onRenumbered,
   defaults,
-  onCloseAutoFocus,
+  finalFocus,
 }: RenumberDivesDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-lg"
-        onCloseAutoFocus={onCloseAutoFocus}
-      >
+      <DialogContent className="sm:max-w-lg" finalFocus={finalFocus}>
         {open ? (
           <RenumberForm
             defaults={defaults}

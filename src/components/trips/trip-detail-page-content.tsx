@@ -209,14 +209,23 @@ export function TripDetailPageContent() {
         back={back}
         actions={
           <>
-            <Button variant="ghost" size="sm" className={HERO_CONTROL} asChild>
-              <Link href={withReturnTo(`/dives/new?trip_uuid=${trip.uuid}`)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Log a dive
-              </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={HERO_CONTROL}
+              render={
+                <Link
+                  href={withReturnTo(`/dives/new?trip_uuid=${trip.uuid}`)}
+                />
+              }
+              nativeButton={false}
+              role="link"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Log a dive
             </Button>
             <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
-              <DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
+              <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>

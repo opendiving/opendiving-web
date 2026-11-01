@@ -1,18 +1,11 @@
 "use client";
-
 import * as React from "react";
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { childRender, type PrimitiveProps } from "./slot";
-import {
-  allowDismiss,
-  focusAllowed,
-  setRef,
-  usePopupEvents,
-  type PopupEvents,
-} from "./popup-events";
+import * as Primitive from "./primitives/dialog";
+import type { AppComponentProps } from "./component-props";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { IconTooltip, tooltipEscapeEvents } from "./tooltip";
+import { setRef } from "./refs";
 import { useStuckAtEdge } from "@/hooks/useStuckAtEdge";
 import {
   scrollContainerOf,
@@ -20,29 +13,36 @@ import {
   useKeepFocusedFieldVisible,
   useVisualViewport,
 } from "@/hooks/useVisualViewport";
-
-const DialogEventsContext =
-  React.createContext<React.RefObject<PopupEvents> | null>(null);
+export {
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+} from "./primitives/dialog";
 function Dialog({
   onOpenChange,
+  dismissOnOutsidePress = false,
   ...props
-}: Omit<DialogPrimitive.Root.Props, "onOpenChange"> & {
-  onOpenChange?: (open: boolean) => void;
+}: React.ComponentProps<typeof Primitive.Dialog> & {
+  dismissOnOutsidePress?: boolean;
 }) {
-  const events = usePopupEvents();
   return (
-    <DialogEventsContext.Provider value={events}>
-      <DialogPrimitive.Root
-        {...props}
-        onOpenChange={(open, details) => {
-          allowDismiss(details, events.current, true);
-          if (!details.isCanceled) onOpenChange?.(open);
-        }}
-      />
-    </DialogEventsContext.Provider>
+    <Primitive.Dialog
+      {...props}
+      onOpenChange={(open, details) => {
+        if (details.reason === "outside-press" && !dismissOnOutsidePress)
+          details.cancel();
+        if (
+          details.reason === "escape-key" &&
+          (tooltipEscapeEvents.has(details.event) ||
+            document.querySelector('[role="tooltip"][data-open]'))
+        )
+          details.cancel();
+        if (!details.isCanceled) onOpenChange?.(open, details);
+      }}
+    />
   );
 }
-
 const InsideDialogContext = React.createContext(false);
 
 /**
@@ -53,87 +53,6 @@ const InsideDialogContext = React.createContext(false);
 function useInsideDialog() {
   return React.useContext(InsideDialogContext);
 }
-const DialogTrigger = React.forwardRef<
-  HTMLButtonElement,
-  PrimitiveProps<typeof DialogPrimitive.Trigger> & { asChild?: boolean }
->(({ asChild, children, ...props }, ref) => (
-  <DialogPrimitive.Trigger
-    type="button"
-    ref={ref}
-    {...props}
-    render={asChild ? childRender(children) : undefined}
-  >
-    {asChild ? undefined : children}
-  </DialogPrimitive.Trigger>
-));
-DialogTrigger.displayName = "DialogTrigger";
-const DialogPortal = DialogPrimitive.Portal;
-const DialogClose = React.forwardRef<
-  HTMLButtonElement,
-  PrimitiveProps<typeof DialogPrimitive.Close> & { asChild?: boolean }
->(({ asChild, children, ...props }, ref) => (
-  <DialogPrimitive.Close
-    type="button"
-    ref={ref}
-    {...props}
-    render={asChild ? childRender(children) : undefined}
-  >
-    {asChild ? undefined : children}
-  </DialogPrimitive.Close>
-));
-
-DialogClose.displayName = "DialogClose";
-
-const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Backdrop>,
-  PrimitiveProps<typeof DialogPrimitive.Backdrop>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Backdrop
-    data-dialog-overlay=""
-    ref={ref}
-    className={cn(
-      // **Absolutely positioned, not fixed, and that is the whole of this.**
-      //
-      // iOS clips a `position: fixed` box to the layout viewport. With the
-      // keyboard up it also keeps a band between that viewport's bottom edge and
-      // the top of the keyboard, and goes on painting page content into it - so
-      // the page shows through under an open modal in a strip no fixed element
-      // can reach.
-      //
-      // Neither `fixed` alternative works, so neither is worth retrying.
-      // `inset-0` is sized to a window the diver is no longer looking at. Sizing
-      // to `--visual-viewport-height` tracks what they *can* see and still fails,
-      // and not from bad arithmetic: a hit test at the very bottom of the
-      // viewport returns the scrim, so it covers everything it is allowed to,
-      // and the strip is simply outside. No `fixed` geometry fixes this, however
-      // generous its slack.
-      //
-      // `body` is `position: relative` while a dialog is open, so this resolves
-      // against the document. `--visual-viewport-doc-top` is the visible top in
-      // those coordinates; the height is what the browser reports plus a screen
-      // of slack, the band's size being something the page is never told.
-      // Overflowing costs nothing - the page behind is scroll-locked while this
-      // is open, so none of it can be scrolled to, and the element unmounts with
-      // the dialog.
-      //
-      // **`w-screen` rather than `inset-x-0`, and that is not cosmetic.** The
-      // same scroll lock that positions `body` also puts a `margin-right` on it
-      // equal to the scrollbar it just removed, so that the page does not jump
-      // sideways. An absolute box takes `body`'s padding box as its containing
-      // block, so `right: 0` would stop short by exactly that margin and leave an
-      // undimmed strip down the right edge - the bug this whole section is about,
-      // rotated 90 degrees. It is invisible on macOS, where overlay scrollbars
-      // make the gap 0, and plain on Windows, Linux, or a Mac set to show
-      // scrollbars always. `100vw` is the window regardless of what `body` is
-      // doing, and cannot overflow into a scrollbar that is hidden anyway.
-      "absolute left-0 top-[var(--visual-viewport-doc-top)] z-50 h-[calc(var(--visual-viewport-height)_+_100vh)] w-screen bg-black/80 data-[open]:animate-in data-[ending-style]:animate-out data-[ending-style]:fade-out-0 data-[open]:fade-in-0",
-      className,
-    )}
-    {...props}
-  />
-));
-DialogOverlay.displayName = DialogPrimitive.Backdrop.displayName;
-
 /**
  * What a dialog owes the visible viewport, for as long as it is open: the CSS
  * variables `DialogOverlay` and `DialogContent` are positioned with, a tapped
@@ -209,93 +128,58 @@ function openFocusCandidates(panel: HTMLElement) {
   );
 }
 
-const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Popup>,
-  PrimitiveProps<typeof DialogPrimitive.Popup> &
-    PopupEvents & {
-      onOpenAutoFocus?: (event: Event) => void;
-      onCloseAutoFocus?: (event: Event) => void;
-    }
->(
-  (
-    {
-      className,
-      children,
-      onOpenAutoFocus,
-      onCloseAutoFocus,
-      onPointerDownOutside,
-      onInteractOutside,
-      onEscapeKeyDown,
-      ...props
-    },
-    ref,
-  ) => {
-    const panelRef = React.useRef<HTMLDivElement | null>(null);
-    const eventsRef = React.useContext(DialogEventsContext);
-    React.useLayoutEffect(() => {
-      if (eventsRef)
-        eventsRef.current = {
-          onPointerDownOutside,
-          onInteractOutside,
-          onEscapeKeyDown,
-        };
-    });
-    const openerRef = React.useRef<HTMLElement | null>(null);
-    return (
-      <DialogPortal>
-        <DialogOverlay />
-        <DialogPrimitive.Popup
-          ref={(node) => {
-            panelRef.current = node;
-            setRef(ref, node);
-          }}
-          className={cn(
-            // `max-h`/`overflow-y` live here rather than on individual dialogs:
-            // content taller than the viewport would otherwise be clipped with no
-            // way to reach it, since the dialog is fixed-positioned and the modal locks
-            // scrolling on the page behind it.
-            //
-            // `w-[calc(100%-2rem)]` rather than `w-full`, and `rounded-lg` rather
-            // than `sm:rounded-lg`, so the dialog does not run edge to edge on a
-            // phone with its close button in the corner of the screen.
-            //
-            // `px-(--card-pad)` is `Card`'s own side padding, so a form reads the
-            // same width in a dialog as in the card it also appears in.
-            "fixed left-[50%] top-[calc(var(--visual-viewport-top)_+_var(--visual-viewport-height)/2)] z-50 grid max-h-[calc(var(--visual-viewport-height)_-_2rem)] w-[calc(100%_-_2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border bg-background p-6 px-(--card-pad) shadow-lg duration-200 data-[open]:animate-in data-[ending-style]:animate-out data-[ending-style]:fade-out-0 data-[open]:fade-in-0 data-[ending-style]:zoom-out-95 data-[open]:zoom-in-95 data-[ending-style]:slide-out-to-left-1/2 data-[ending-style]:slide-out-to-top-[48%] data-[open]:slide-in-from-left-1/2 data-[open]:slide-in-from-top-[48%]",
-            className,
-          )}
-          initialFocus={() => {
-            const panel = panelRef.current;
-            if (!panel || !focusAllowed(panel, onOpenAutoFocus)) return false;
-            if (panel.contains(document.activeElement)) return false;
-            const candidates = openFocusCandidates(panel);
-            if (!(candidates[0] instanceof HTMLSelectElement)) {
-              for (const candidate of candidates) {
-                candidate.focus({ preventScroll: true });
-                if (document.activeElement !== candidate) continue;
-                if (candidate instanceof HTMLInputElement) candidate.select();
-                return false;
-              }
+function DialogContent({
+  className,
+  children,
+  ref,
+  initialFocus,
+  finalFocus,
+  ...props
+}: AppComponentProps<typeof Primitive.DialogContent>) {
+  const panelRef = React.useRef<HTMLDivElement | null>(null);
+  const openerRef = React.useRef<HTMLElement | null>(null);
+  return (
+    <Primitive.DialogContent
+      showCloseButton={false}
+      ref={(node) => {
+        panelRef.current = node;
+        setRef(ref, node);
+      }}
+      className={cn(
+        "top-[calc(var(--visual-viewport-top)_+_var(--visual-viewport-height)/2)] max-h-[calc(var(--visual-viewport-height)_-_2rem)] w-[calc(100%_-_2rem)] max-w-lg sm:max-w-lg overflow-y-auto rounded-lg border bg-background p-6 px-(--card-pad) text-base text-foreground shadow-lg ring-0 duration-200",
+        className,
+      )}
+      initialFocus={
+        initialFocus ??
+        (() => {
+          const panel = panelRef.current;
+          if (!panel || panel.contains(document.activeElement)) return false;
+          const candidates = openFocusCandidates(panel);
+          if (!(candidates[0] instanceof HTMLSelectElement)) {
+            for (const candidate of candidates) {
+              candidate.focus({ preventScroll: true });
+              if (document.activeElement !== candidate) continue;
+              if (candidate instanceof HTMLInputElement) candidate.select();
+              return false;
             }
-            return panel;
-          }}
-          finalFocus={() => {
-            if (!focusAllowed(panelRef.current, onCloseAutoFocus)) return false;
-            return openerRef.current?.isConnected ? openerRef.current : true;
-          }}
-          {...props}
-        >
-          <RememberOpener openerRef={openerRef} />
-          <VisualViewportEffects />
-          <InsideDialogContext.Provider value={true}>
-            {children}
-          </InsideDialogContext.Provider>
-        </DialogPrimitive.Popup>
-      </DialogPortal>
-    );
-  },
-);
-DialogContent.displayName = DialogPrimitive.Popup.displayName;
+          }
+          return panel;
+        })
+      }
+      finalFocus={
+        finalFocus ??
+        (() => (openerRef.current?.isConnected ? openerRef.current : true))
+      }
+      {...props}
+    >
+      <RememberOpener openerRef={openerRef} />
+      <VisualViewportEffects />
+      <InsideDialogContext.Provider value={true}>
+        {children}
+      </InsideDialogContext.Provider>
+    </Primitive.DialogContent>
+  );
+}
 
 /**
  * Mirrors a row's height onto the dialog it scrolls in as `name`, for
@@ -363,12 +247,12 @@ const DialogHeader = ({
         `IconTooltip` supplies its `aria-label` and the hover hint every other
         icon button in the app has. */}
       <IconTooltip label="Close">
-        <DialogPrimitive.Close
+        <Primitive.DialogClose
           data-dialog-close=""
           className="absolute right-4 top-4 rounded-sm opacity-70 touch:tap-target ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[open]:bg-accent data-[open]:text-muted-foreground"
         >
           <X className="h-4 w-4" />
-        </DialogPrimitive.Close>
+        </Primitive.DialogClose>
       </IconTooltip>
     </div>
   );
@@ -419,10 +303,10 @@ const DialogFooter = ({
 DialogFooter.displayName = "DialogFooter";
 
 const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  PrimitiveProps<typeof DialogPrimitive.Title>
+  React.ElementRef<typeof Primitive.DialogTitle>,
+  AppComponentProps<typeof Primitive.DialogTitle>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
+  <Primitive.DialogTitle
     ref={ref}
     className={cn(
       "text-lg font-semibold leading-none tracking-tight",
@@ -431,26 +315,22 @@ const DialogTitle = React.forwardRef<
     {...props}
   />
 ));
-DialogTitle.displayName = DialogPrimitive.Title.displayName;
+DialogTitle.displayName = "DialogTitle";
 
 const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  PrimitiveProps<typeof DialogPrimitive.Description>
+  React.ElementRef<typeof Primitive.DialogDescription>,
+  AppComponentProps<typeof Primitive.DialogDescription>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description
+  <Primitive.DialogDescription
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ));
-DialogDescription.displayName = DialogPrimitive.Description.displayName;
+DialogDescription.displayName = "DialogDescription";
 
 export {
   Dialog,
-  DialogPortal,
-  DialogOverlay,
-  DialogClose,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogFooter,

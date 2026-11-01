@@ -186,14 +186,12 @@ export function GearServiceScheduleDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Service type *</FormLabel>
-                  <FormControl>
-                    <NativeSelect {...field}>
-                      {SERVICE_KINDS.map((kind: ServiceKind) => (
-                        <option key={kind} value={kind}>
-                          {serviceKindLabel(kind)}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                  <FormControl render={<NativeSelect {...field} />}>
+                    {SERVICE_KINDS.map((kind: ServiceKind) => (
+                      <option key={kind} value={kind}>
+                        {serviceKindLabel(kind)}
+                      </option>
+                    ))}
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -206,13 +204,15 @@ export function GearServiceScheduleDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Label</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. First stage"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        placeholder="e.g. First stage"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    }
+                  />
                   <p className="text-xs text-muted-foreground">
                     Optional. Lets one item carry two rules of the same type.
                   </p>
@@ -227,12 +227,14 @@ export function GearServiceScheduleDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>In service since *</FormLabel>
-                  <FormControl>
-                    <DatePicker
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <DatePicker
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                      />
+                    }
+                  />
                   <p className="text-xs text-muted-foreground">
                     Counted from until you log a service. For a used cylinder,
                     use the date stamped on it.
@@ -251,21 +253,23 @@ export function GearServiceScheduleDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Every (months)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="1"
-                        step="1"
-                        placeholder="e.g. 12"
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          field.onChange(Number.isNaN(val) ? "" : val);
-                        }}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          step="1"
+                          placeholder="e.g. 12"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            field.onChange(Number.isNaN(val) ? "" : val);
+                          }}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -277,21 +281,23 @@ export function GearServiceScheduleDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Every (dives)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="1"
-                        step="1"
-                        placeholder="e.g. 100"
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          field.onChange(Number.isNaN(val) ? "" : val);
-                        }}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          step="1"
+                          placeholder="e.g. 100"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            field.onChange(Number.isNaN(val) ? "" : val);
+                          }}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -303,21 +309,23 @@ export function GearServiceScheduleDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Every (hours)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="1"
-                        step="1"
-                        placeholder="e.g. 50"
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          field.onChange(Number.isNaN(val) ? "" : val);
-                        }}
-                      />
-                    </FormControl>
+                    <FormControl
+                      render={
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          step="1"
+                          placeholder="e.g. 50"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            field.onChange(Number.isNaN(val) ? "" : val);
+                          }}
+                        />
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}

@@ -71,18 +71,20 @@ export function DiveSiteDetailsFields({ control }: DiveSiteDetailsFieldsProps) {
           {unitLabelRow("depth", label)}
           <div className="relative">
             {icon}
-            <FormControl>
-              <UnitNumberInput
-                dimension="depth"
-                units={entryUnits("depth")}
-                min={0}
-                placeholderValue={placeholderValue}
-                className="pl-9"
-                {...field}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            </FormControl>
+            <FormControl
+              render={
+                <UnitNumberInput
+                  dimension="depth"
+                  units={entryUnits("depth")}
+                  min={0}
+                  placeholderValue={placeholderValue}
+                  className="pl-9"
+                  {...field}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              }
+            />
           </div>
           <FormMessage />
         </FormItem>
@@ -125,21 +127,22 @@ export function DiveSiteDetailsFields({ control }: DiveSiteDetailsFieldsProps) {
               {unitLabelRow("altitude", "Altitude")}
               <div className="relative">
                 <Mountain className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                <FormControl>
-                  {/* The dive's band, which the API's `CHECK` on a site
-                      repeats: the Dead Sea is below sea level. */}
-                  <UnitNumberInput
-                    dimension="altitude"
-                    units={entryUnits("altitude")}
-                    min={-450}
-                    max={6500}
-                    placeholderValue={372}
-                    className="pl-9"
-                    {...field}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                </FormControl>
+                <FormControl
+                  render={
+                    /* The dive's band, which the API's `CHECK` on a site
+                      repeats: the Dead Sea is below sea level. */ <UnitNumberInput
+                      dimension="altitude"
+                      units={entryUnits("altitude")}
+                      min={-450}
+                      max={6500}
+                      placeholderValue={372}
+                      className="pl-9"
+                      {...field}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  }
+                />
               </div>
               <FormMessage />
             </FormItem>
@@ -194,12 +197,14 @@ export function DiveSiteDetailsFields({ control }: DiveSiteDetailsFieldsProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Tags</FormLabel>
-            <FormControl>
-              <TagsMultiSelect
-                value={field.value ?? []}
-                onChange={field.onChange}
-              />
-            </FormControl>
+            <FormControl
+              render={
+                <TagsMultiSelect
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                />
+              }
+            />
             <FormMessage />
           </FormItem>
         )}

@@ -35,10 +35,12 @@ export function ItemActionsMenu({
   return (
     <DropdownMenu>
       <IconTooltip label={label}>
-        <DropdownMenuTrigger asChild>
-          <Button variant={variant} size={size} className={className}>
-            <EllipsisVertical className="h-4 w-4" />
-          </Button>
+        <DropdownMenuTrigger
+          render={
+            <Button variant={variant} size={size} className={className} />
+          }
+        >
+          <EllipsisVertical className="h-4 w-4" />
         </DropdownMenuTrigger>
       </IconTooltip>
       <DropdownMenuContent align="end">{children}</DropdownMenuContent>
@@ -55,7 +57,7 @@ export function DeleteMenuItem({
 }) {
   return (
     <DropdownMenuItem
-      onSelect={onSelect}
+      onClick={onSelect}
       disabled={disabled}
       className="text-destructive focus:text-destructive"
     >

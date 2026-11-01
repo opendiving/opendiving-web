@@ -144,11 +144,15 @@ export function DiveDraftsCard({ enabled, onVanished }: DiveDraftsCardProps) {
                       <Trash2 className="h-4 w-4 mr-2" />
                       Discard
                     </Button>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={continueDraftHref(draft.uuid)}>
-                        <FilePen className="h-4 w-4 mr-2" />
-                        Continue
-                      </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      render={<Link href={continueDraftHref(draft.uuid)} />}
+                      nativeButton={false}
+                      role="link"
+                    >
+                      <FilePen className="h-4 w-4 mr-2" />
+                      Continue
                     </Button>
                   </div>
                 </li>

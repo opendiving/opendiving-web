@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
+  DropdownMenuGroup,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
@@ -30,7 +31,7 @@ export function ThemeMenuItems() {
   const mounted = useMounted();
 
   return (
-    <>
+    <DropdownMenuGroup>
       <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
         Appearance
       </DropdownMenuLabel>
@@ -53,7 +54,7 @@ export function ThemeMenuItems() {
           System
         </DropdownMenuRadioItem>
       </DropdownMenuRadioGroup>
-    </>
+    </DropdownMenuGroup>
   );
 }
 
@@ -71,16 +72,13 @@ export function ThemeToggle({ className }: { className?: string }) {
   return (
     <DropdownMenu>
       <IconTooltip label="Toggle theme">
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className={className}>
-            <ActiveIcon className="h-4 w-4" />
-          </Button>
+        <DropdownMenuTrigger
+          render={<Button variant="ghost" size="sm" className={className} />}
+        >
+          <ActiveIcon className="h-4 w-4" />
         </DropdownMenuTrigger>
       </IconTooltip>
-      <DropdownMenuContent
-        align="end"
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      >
+      <DropdownMenuContent align="end" finalFocus={false}>
         <ThemeMenuItems />
       </DropdownMenuContent>
     </DropdownMenu>

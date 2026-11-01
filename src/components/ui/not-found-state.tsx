@@ -18,11 +18,13 @@ export function NotFoundState({
   return (
     <div className="text-center py-12">
       <div className="text-muted-foreground mb-4">{message}</div>
-      <Button asChild>
-        <Link href={backHref}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {backLabel}
-        </Link>
+      <Button
+        render={<Link href={backHref} />}
+        nativeButton={false}
+        role="link"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        {backLabel}
       </Button>
     </div>
   );

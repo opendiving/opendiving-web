@@ -259,14 +259,16 @@ function UserField({
           <FormLabel className={hideLabel ? "sr-only" : undefined}>
             {spec.label}
           </FormLabel>
-          <FormControl>
-            <Input
-              type="text"
-              placeholder={spec.placeholder}
-              {...spec.input}
-              {...field}
-            />
-          </FormControl>
+          <FormControl
+            render={
+              <Input
+                type="text"
+                placeholder={spec.placeholder}
+                {...spec.input}
+                {...field}
+              />
+            }
+          />
           {spec.description && (
             <FormDescription>{spec.description}</FormDescription>
           )}

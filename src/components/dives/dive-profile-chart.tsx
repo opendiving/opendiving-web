@@ -2101,10 +2101,17 @@ function LegendMenu({
   return (
     <Popover>
       <IconTooltip label={label}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9">
-            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-          </Button>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+            />
+          }
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
         </PopoverTrigger>
       </IconTooltip>
       <PopoverContent align="end" className="w-auto p-1">

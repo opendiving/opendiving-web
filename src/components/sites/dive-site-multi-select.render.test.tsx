@@ -24,15 +24,15 @@ vi.mock("@/components/sites/dive-site-dialog", async () => {
       open,
       onOpenChange,
       onSaved,
-      onCloseAutoFocus,
+      finalFocus,
     }: {
       open: boolean;
       onOpenChange: (open: boolean) => void;
       onSaved: (site: unknown) => void;
-      onCloseAutoFocus?: (event: Event) => void;
+      finalFocus?: React.ComponentProps<typeof DialogContent>["finalFocus"];
     }) => (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
+        <DialogContent finalFocus={finalFocus}>
           <DialogTitle>New Dive Site</DialogTitle>
           <button
             type="button"

@@ -1,18 +1,17 @@
 "use client";
-
 import * as React from "react";
-import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
-import { childRender, type PrimitiveProps } from "./slot";
-
-import { tooltipEscapeEvents } from "./popup-events";
-
+import * as Primitive from "./primitives/tooltip";
 import { cn } from "@/lib/utils";
-
-const TooltipProvider = TooltipPrimitive.Provider;
-
-function Tooltip({ onOpenChange, ...props }: TooltipPrimitive.Root.Props) {
+import type { AppComponentProps } from "./component-props";
+export const tooltipEscapeEvents = new WeakSet<Event>();
+const TooltipProvider = Primitive.TooltipProvider;
+const TooltipTrigger = Primitive.TooltipTrigger;
+function Tooltip({
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof Primitive.Tooltip>) {
   return (
-    <TooltipPrimitive.Root
+    <Primitive.Tooltip
       disableHoverablePopup
       {...props}
       onOpenChange={(open, details) => {
@@ -23,58 +22,26 @@ function Tooltip({ onOpenChange, ...props }: TooltipPrimitive.Root.Props) {
     />
   );
 }
-
-const TooltipTrigger = React.forwardRef<
-  HTMLButtonElement,
-  PrimitiveProps<typeof TooltipPrimitive.Trigger> & { asChild?: boolean }
->(({ asChild, children, ...props }, ref) => (
-  <TooltipPrimitive.Trigger
-    type="button"
-    ref={ref}
-    {...props}
-    render={asChild ? childRender(children) : undefined}
-  >
-    {asChild ? undefined : children}
-  </TooltipPrimitive.Trigger>
-));
-TooltipTrigger.displayName = "TooltipTrigger";
-
-const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Popup>,
-  PrimitiveProps<typeof TooltipPrimitive.Popup> &
-    Pick<TooltipPrimitive.Positioner.Props, "side" | "align" | "sideOffset">
->(({ className, sideOffset = 6, side, align, ...props }, ref) => (
-  <TooltipPrimitive.Portal>
-    <TooltipPrimitive.Positioner
-      side={side}
-      align={align}
+function TooltipContent({
+  className,
+  sideOffset = 6,
+  ...props
+}: AppComponentProps<typeof Primitive.TooltipContent>) {
+  return (
+    <Primitive.TooltipContent
+      role="tooltip"
       sideOffset={sideOffset}
-      className="z-50"
-    >
-      <TooltipPrimitive.Popup
-        render={(props, state) => (
-          <div {...props} aria-hidden={!state.open || undefined} />
-        )}
-        role="tooltip"
-        ref={ref}
-        className={cn(
-          // Same surface as the charts' hover cards - `bg-tooltip` rather than
-          // `bg-popover`, which is declared the same colour as `--card` and would
-          // read as cut out of whatever panel the button sits in. See "`--tooltip`
-          // is its own surface token" in DECISIONS.md.
-          //
-          // `max-w-64` with normal wrapping, because these carry a whole
-          // accessible name: "Sign out Chrome on macOS" is a realistic one and a
-          // `whitespace-nowrap` chip would run off the viewport on a phone.
-          "z-50 max-w-64 rounded-md border border-white/10 bg-tooltip px-2 py-1 text-xs text-tooltip-foreground shadow-lg data-[ending-style]:animate-out data-[ending-style]:fade-out-0 data-[ending-style]:zoom-out-95 data-[open]:animate-in data-[open]:fade-in-0 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-          className,
-        )}
-        {...props}
-      />
-    </TooltipPrimitive.Positioner>
-  </TooltipPrimitive.Portal>
-));
-TooltipContent.displayName = TooltipPrimitive.Popup.displayName;
+      className={cn(
+        "max-w-64 rounded-md border border-white/10 bg-tooltip px-2 py-1 text-xs text-tooltip-foreground shadow-lg [&>svg]:hidden",
+        className,
+      )}
+      render={(props, state) => (
+        <div {...props} aria-hidden={!state.open || undefined} />
+      )}
+      {...props}
+    />
+  );
+}
 
 // Avoid opening hints while the pointer is only crossing a row of icons.
 export const HINT_DELAY_MS = 300;
@@ -123,7 +90,7 @@ function IconTooltip({
   align = "center",
 }: {
   label: string;
-  children: React.ReactNode;
+  children: React.ReactElement;
   side?: React.ComponentPropsWithoutRef<typeof TooltipContent>["side"];
   align?: React.ComponentPropsWithoutRef<typeof TooltipContent>["align"];
 }) {
@@ -197,7 +164,6 @@ function IconTooltip({
         disableHoverablePopup
       >
         <TooltipTrigger
-          asChild
           aria-label={label}
           // A hold shows the hint, and the click its release would send is
           // swallowed: the finger asked what the control is, not to use it. A
@@ -231,9 +197,8 @@ function IconTooltip({
           }}
           // The accessible name already contains the hint.
           aria-describedby={undefined}
-        >
-          {children}
-        </TooltipTrigger>
+          render={children}
+        />
         <TooltipContent side={side} align={align}>
           {label}
         </TooltipContent>
@@ -265,7 +230,7 @@ function TextHint({
   return (
     <TooltipProvider>
       {/* Opened by a tap and nothing else: a mouse already has the `title`, and
-          The tooltip's own opens - a hover, a focus - would show it twice. */}
+          the tooltip's own opens - a hover, a focus - would show it twice. */}
       <Tooltip
         open={tapped}
         onOpenChange={(open) => {
@@ -273,7 +238,6 @@ function TextHint({
         }}
       >
         <TooltipTrigger
-          asChild
           title={hint}
           onPointerDown={(event) => {
             finger.current = event.pointerType !== "mouse";
@@ -283,9 +247,8 @@ function TextHint({
             if ((event.target as Element).closest("a")) return;
             setTapped(true);
           }}
-        >
-          {children}
-        </TooltipTrigger>
+          render={children}
+        />
         <TooltipContent>{hint}</TooltipContent>
       </Tooltip>
     </TooltipProvider>

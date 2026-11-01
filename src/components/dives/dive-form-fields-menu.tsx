@@ -77,7 +77,7 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
     isCurrent: boolean,
     onSelect: () => void,
   ) => (
-    <DropdownMenuItem key={key} onSelect={onSelect}>
+    <DropdownMenuItem key={key} onClick={onSelect}>
       {/* The check is a mark *and* a word, for the reason the dialog's own list
           carries: colour and an icon alone would leave the current preset unnamed
           to a screen reader. */}
@@ -93,29 +93,27 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            // The visible text is the *state*, so the name has to carry what the
-            // control is as well - and it must contain the visible text, which is
-            // WCAG's Label in Name. While the list is still loading the two are the
-            // same word, and repeating it would read as a stutter.
-            aria-label={
-              label === LOADING_LABEL ? undefined : `Fields: ${label}`
-            }
-            className={cn("gap-2", HERO_CONTROL)}
-          >
-            {/* Sliders, then the state, then the chevron: what the control is about,
+        <DropdownMenuTrigger
+          // The visible text names the current preset; include the control's
+          // purpose while preserving that text in its accessible name.
+          aria-label={label === LOADING_LABEL ? undefined : `Fields: ${label}`}
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn("gap-2", HERO_CONTROL)}
+            />
+          }
+        >
+          {/* Sliders, then the state, then the chevron: what the control is about,
                 what it currently says, and last the mark that it opens - which is
                 where a menu button conventionally carries it. `aria-hidden` on both
-                icons, since the trigger is named by `aria-label` and Radix has
+                icons, since the trigger is named by `aria-label` and Base UI has
                 already said `haspopup`. */}
-            <SlidersHorizontal className="h-4 w-4" aria-hidden />
-            {label}
-            <ChevronDown className="h-4 w-4" aria-hidden />
-          </Button>
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
+          {label}
+          <ChevronDown className="h-4 w-4" aria-hidden />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[12rem]">
           {presetItem(
@@ -140,7 +138,7 @@ export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
           {/* The dialog mounts while this item still has focus - Radix flushes
               `onSelect` before it closes the menu - and `DialogContent` hands
               focus back to the Fields button, not to the item, when it closes. */}
-          <DropdownMenuItem onSelect={() => setIsConfigureOpen(true)}>
+          <DropdownMenuItem onClick={() => setIsConfigureOpen(true)}>
             <Settings className="mr-2 h-3.5 w-3.5" aria-hidden />
             Configure...
           </DropdownMenuItem>

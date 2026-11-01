@@ -134,11 +134,16 @@ function HeroBackLink({
   backLabel,
 }: Pick<Known, "backHref" | "backLabel">) {
   return (
-    <Button variant="ghost" size="sm" asChild className={HERO_CONTROL}>
-      <Link href={backHref}>
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        {backLabel}
-      </Link>
+    <Button
+      variant="ghost"
+      size="sm"
+      className={HERO_CONTROL}
+      render={<Link href={backHref} />}
+      nativeButton={false}
+      role="link"
+    >
+      <ArrowLeft className="h-4 w-4 mr-2" />
+      {backLabel}
     </Button>
   );
 }
@@ -433,15 +438,17 @@ function PageInfo({ children }: { children: ReactNode }) {
   return (
     <Popover>
       <IconTooltip label="About this page">
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0 text-muted-foreground print:hidden"
-          >
-            <Info className="h-4 w-4" />
-          </Button>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-muted-foreground print:hidden"
+            />
+          }
+        >
+          <Info className="h-4 w-4" />
         </PopoverTrigger>
       </IconTooltip>
       <PopoverContent align="start" className="text-sm">

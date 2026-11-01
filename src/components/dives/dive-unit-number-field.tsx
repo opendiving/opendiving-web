@@ -69,15 +69,17 @@ export function DiveUnitNumberItem<TFieldValues extends FieldValues>({
   const { entryUnits, toggleEntryUnits } = useEntryUnits();
   const units = entryUnits(dimension);
   const box = (
-    <FormControl>
-      <UnitNumberInput
-        dimension={dimension}
-        units={units}
-        className={Icon && "pl-9"}
-        {...input}
-        {...field}
-      />
-    </FormControl>
+    <FormControl
+      render={
+        <UnitNumberInput
+          dimension={dimension}
+          units={units}
+          className={Icon && "pl-9"}
+          {...input}
+          {...field}
+        />
+      }
+    />
   );
 
   return (

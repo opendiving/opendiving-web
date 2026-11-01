@@ -54,28 +54,30 @@ export function DiveVocabularyField<
           <FormLabel>{label}</FormLabel>
           <div className="relative">
             <Icon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-            <FormControl>
-              <NativeSelect
-                className="pl-9"
-                {...field}
-                value={field.value ?? ""}
-                // `""` straight through, not `|| undefined`: react-hook-form
-                // re-displays a field's default whenever its value resolves to
-                // `undefined`, so mapping "Not recorded" to it would snap the
-                // dive's stored value back the moment it was cleared. The submit
-                // paths convert the sentinel away.
-                onChange={(e) => field.onChange(e.target.value)}
-              >
-                <option value="">Not recorded</option>
-                {(!field.value || values.includes(field.value)
-                  ? values
-                  : [...values, field.value as TValue]
-                ).map((value) => (
-                  <option key={value} value={value}>
-                    {labelOrFallback(labels, value)}
-                  </option>
-                ))}
-              </NativeSelect>
+            <FormControl
+              render={
+                <NativeSelect
+                  className="pl-9"
+                  {...field}
+                  value={field.value ?? ""}
+                  // `""` straight through, not `|| undefined`: react-hook-form
+                  // re-displays a field's default whenever its value resolves to
+                  // `undefined`, so mapping "Not recorded" to it would snap the
+                  // dive's stored value back the moment it was cleared. The submit
+                  // paths convert the sentinel away.
+                  onChange={(e) => field.onChange(e.target.value)}
+                />
+              }
+            >
+              <option value="">Not recorded</option>
+              {(!field.value || values.includes(field.value)
+                ? values
+                : [...values, field.value as TValue]
+              ).map((value) => (
+                <option key={value} value={value}>
+                  {labelOrFallback(labels, value)}
+                </option>
+              ))}
             </FormControl>
           </div>
           <FormMessage />

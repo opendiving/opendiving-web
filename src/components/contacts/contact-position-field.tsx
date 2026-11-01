@@ -81,14 +81,16 @@ export function ContactPositionField({ form }: ContactPositionFieldProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{coordinate.label}</FormLabel>
-                <FormControl>
-                  <Input
-                    autoComplete="off"
-                    placeholder={coordinate.placeholder}
-                    onPaste={handleCoordinatePaste}
-                    {...field}
-                  />
-                </FormControl>
+                <FormControl
+                  render={
+                    <Input
+                      autoComplete="off"
+                      placeholder={coordinate.placeholder}
+                      onPaste={handleCoordinatePaste}
+                      {...field}
+                    />
+                  }
+                />
                 {/* Announced with each input and shown once below the pair -
                     the dive site form's arrangement, for its reason. */}
                 <FormDescription className="sr-only">

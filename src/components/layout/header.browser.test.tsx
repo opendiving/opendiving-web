@@ -159,7 +159,7 @@ describe("the mobile menu on a phone", () => {
     fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
     await nextTick();
     expect(
-      document.querySelector("[data-popup-positioner] [data-open]"),
+      document.querySelector('[data-slot="popover-content"][data-open]'),
     ).not.toBeNull();
 
     const outside = backdrop() as Element;
@@ -181,7 +181,7 @@ describe("the mobile menu on a phone", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     // Closed, and easing out under the stylesheet's exit animation.
     expect(
-      document.querySelector("[data-popup-positioner] [data-open]"),
+      document.querySelector('[data-slot="popover-content"][data-open]'),
     ).toBeNull();
   });
 });

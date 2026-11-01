@@ -45,11 +45,11 @@ export function GearSetCard({
       actionsLabel={`Actions for ${set.name}`}
       actions={
         <>
-          <DropdownMenuItem onSelect={onEdit}>
+          <DropdownMenuItem onClick={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onDuplicate}>
+          <DropdownMenuItem onClick={onDuplicate}>
             <Copy className="h-4 w-4 mr-2" />
             Duplicate
           </DropdownMenuItem>

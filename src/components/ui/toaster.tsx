@@ -9,6 +9,8 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
+  ToastContent,
+  ToastPortal,
 } from "./toast";
 import { useToast } from "./use-toast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -49,27 +51,37 @@ function ToastList() {
   }, [notifications, add, update, close]);
 
   return (
-    <ToastPrimitive.Portal>
+    <ToastPortal>
       <ToastViewport>
         {toasts.map((item) => (
           <Toast
             key={item.id}
             toast={item}
-            variant={item.type === "destructive" ? "destructive" : "default"}
+            className={
+              item.type === "destructive"
+                ? "border-destructive-solid bg-destructive-solid text-destructive-foreground"
+                : "bg-background text-foreground"
+            }
             swipeDirection={wide ? "right" : "up"}
           >
-            <ToastPrimitive.Content className="grid gap-1">
-              {item.title && <ToastTitle>{item.title}</ToastTitle>}
-              {item.description && (
-                <ToastDescription>{item.description}</ToastDescription>
-              )}
-            </ToastPrimitive.Content>
-            {item.data?.action}
-            <ToastClose />
+            <ToastContent>
+              <div className="grid min-w-0 flex-1 gap-1">
+                {item.title && <ToastTitle>{item.title}</ToastTitle>}
+                {item.description && (
+                  <ToastDescription>{item.description}</ToastDescription>
+                )}
+              </div>
+              {item.data?.action}
+              <ToastClose
+                aria-label="Dismiss notification"
+                aria-hidden={false}
+                className="touch:min-h-11 touch:min-w-11"
+              />
+            </ToastContent>
           </Toast>
         ))}
       </ToastViewport>
-    </ToastPrimitive.Portal>
+    </ToastPortal>
   );
 }
 

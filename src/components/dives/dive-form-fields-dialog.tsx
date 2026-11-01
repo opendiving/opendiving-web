@@ -141,7 +141,19 @@ export function DiveFormFieldsDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => (next ? onOpenChange(true) : close(false))}
+      onOpenChange={(next, details) => {
+        const target = details.event.target;
+        if (
+          details.reason === "escape-key" &&
+          target instanceof HTMLElement &&
+          target.getAttribute("aria-expanded") === "true"
+        ) {
+          details.cancel();
+          return;
+        }
+        if (next) onOpenChange(true);
+        else close(false);
+      }}
     >
       <DialogContent
         // Radix focuses the first tabbable descendant on open. Focus goes to the
@@ -150,21 +162,9 @@ export function DiveFormFieldsDialog({
         // and `focus:outline-none` because this is a focus *holder*, not a control,
         // and a ring around the whole dialog reads as an error state.
         className="sm:max-w-2xl focus:outline-none"
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          contentRef.current?.focus();
-        }}
+        initialFocus={contentRef}
         // Escape on an open dropdown - the Save as list - closes the list only,
         // rather than the dialog and the draft with it.
-        onEscapeKeyDown={(event) => {
-          const target = event.target;
-          if (
-            target instanceof HTMLElement &&
-            target.getAttribute("aria-expanded") === "true"
-          ) {
-            event.preventDefault();
-          }
-        }}
         ref={contentRef}
       >
         <DiveFormFieldsDialogBody

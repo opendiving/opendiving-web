@@ -218,13 +218,15 @@ export function CourseDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Course *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Advanced Nitrox + Decompression Procedures"
-                      autoFocus
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Input
+                        placeholder="e.g. Advanced Nitrox + Decompression Procedures"
+                        autoFocus
+                        {...field}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -239,15 +241,17 @@ export function CourseDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status *</FormLabel>
-                      <FormControl>
-                        <NativeSelect {...field}>
-                          {COURSE_STATUSES.map((value) => (
-                            <option key={value} value={value}>
-                              {courseStatusLabel(value)}
-                            </option>
-                          ))}
-                        </NativeSelect>
-                      </FormControl>
+                      <FormControl
+                        render={
+                          <NativeSelect {...field}>
+                            {COURSE_STATUSES.map((value) => (
+                              <option key={value} value={value}>
+                                {courseStatusLabel(value)}
+                              </option>
+                            ))}
+                          </NativeSelect>
+                        }
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -267,18 +271,21 @@ export function CourseDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>People</FormLabel>
-                  <FormControl>
-                    {/* A student until the diver says otherwise: on a course,
+                  <FormControl
+                    render={
+                      /* A student until the diver says otherwise: on a course,
                         the people beside the diver are mostly the rest of the
-                        class. The instructor has the field above. */}
-                    <PeopleMultiSelect
-                      value={field.value ?? []}
-                      onChange={field.onChange}
-                      defaultRole="student"
-                      until={until}
-                      excludeIds={instructorUuid ? [instructorUuid] : undefined}
-                    />
-                  </FormControl>
+                        class. The instructor has the field above. */ <PeopleMultiSelect
+                        value={field.value ?? []}
+                        onChange={field.onChange}
+                        defaultRole="student"
+                        until={until}
+                        excludeIds={
+                          instructorUuid ? [instructorUuid] : undefined
+                        }
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -290,14 +297,16 @@ export function CourseDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Skills covered, conditions, anything worth remembering..."
-                      className="min-h-[80px]"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
+                  <FormControl
+                    render={
+                      <Textarea
+                        placeholder="Skills covered, conditions, anything worth remembering..."
+                        className="min-h-[80px]"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

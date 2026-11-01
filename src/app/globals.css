@@ -600,7 +600,7 @@
   /* Tailwind v4's Preflight dropped v3's `button { cursor: pointer }` to match
      the browser default. Restored here, because without it the app is visibly
      inconsistent along a line that has nothing to do with what a control does:
-     `<Button asChild>` around a `<Link>` gets a hand (it renders an anchor, and
+     A `Button` rendered as a `Link` gets a hand (it renders an anchor, and
      the UA styles those) while every other button - the same component, the
      same appearance - gets an arrow. The alternative is patching `cursor-pointer`
      onto components one at a time, which is what was happening.
@@ -705,4 +705,15 @@
   mask-position: center;
   background-color: hsl(var(--teal));
   aspect-ratio: 3516 / 5556;
+}
+
+/* Form dialog scrims cover the document area Safari leaves behind its keyboard. */
+[data-slot="dialog-overlay"] {
+  position: absolute;
+  left: 0;
+  top: var(--visual-viewport-doc-top);
+  height: calc(var(--visual-viewport-height) + 100vh);
+  width: 100vw;
+  background: rgb(0 0 0 / 0.8);
+  backdrop-filter: none;
 }

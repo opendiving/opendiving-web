@@ -56,10 +56,7 @@ export function DiveImportDialog({
         ref={panel}
         className="sm:max-w-2xl"
         // The panel rather than the upload button - see `DiveSectionDialog`.
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          panel.current?.focus();
-        }}
+        initialFocus={panel}
       >
         <DialogHeader>
           <DialogTitle>Edit recordings</DialogTitle>
