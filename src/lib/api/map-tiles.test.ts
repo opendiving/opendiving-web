@@ -26,15 +26,33 @@ afterEach(() => {
 });
 
 describe("mapTileUrl", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it.each([
-    ["light", 9, 300, 215, "/map-tiles/light/9/300/215"],
-    ["dark", 0, 0, 0, "/map-tiles/dark/0/0/0"],
+    ["light", 9, 300, 215, "/map-tiles/light/9/300/215?language=de-DE"],
+    ["dark", 0, 0, 0, "/map-tiles/dark/0/0/0?language=de-DE"],
   ] as const)(
-    "names a %s tile by its square of the grid",
+    "names a %s tile by its square of the grid and the viewer's language",
     (theme, z, x, y, url) => {
+      vi.stubGlobal("navigator", { language: "de-DE" });
       expect(mapTileUrl(theme, z, x, y)).toBe(url);
     },
   );
+
+  // Reduced by the API, never here: what it does with `en` or `nb` is its call.
+  it("sends the language as the browser states it", () => {
+    vi.stubGlobal("navigator", { language: "zh-Hant-TW" });
+    expect(mapTileUrl("light", 9, 300, 215)).toBe(
+      "/map-tiles/light/9/300/215?language=zh-Hant-TW",
+    );
+  });
+
+  it("names the square alone where there is no language to send", () => {
+    vi.stubGlobal("navigator", { language: "" });
+    expect(mapTileUrl("light", 9, 300, 215)).toBe("/map-tiles/light/9/300/215");
+    vi.stubGlobal("navigator", undefined);
+    expect(mapTileUrl("dark", 0, 0, 0)).toBe("/map-tiles/dark/0/0/0");
+  });
 });
 
 describe("mapTilesAPI.getMapTile", () => {

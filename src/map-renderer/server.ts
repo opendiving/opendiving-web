@@ -20,7 +20,7 @@ import { parsePayload, PayloadError, type TilePayload } from "./payload";
 // view asking for more is answered 503 past it, which shows water.
 export const QUEUE_LIMIT = 55;
 
-// Many times a tile's body, which is five short keys.
+// Many times a tile's body, which is six short keys at most.
 const MAX_BODY_BYTES = 4 * 1024;
 
 export interface Renderer {
@@ -138,7 +138,9 @@ export function createRendererServer({
 
     admitted += 1;
     const queued = performance.now();
-    const tile = `${payload.theme} ${payload.z}/${payload.x}/${payload.y}`;
+    const tile =
+      `${payload.theme} ${payload.z}/${payload.x}/${payload.y}` +
+      (payload.language ? ` in ${payload.language}` : "");
     const drawn = turn.then(async () => {
       if (gone) return null;
       const started = performance.now();

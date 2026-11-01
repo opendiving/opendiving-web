@@ -5015,10 +5015,10 @@ interceptor turns the refused refresh into `AUTH_SESSION_EXPIRED_EVENT`.
 
 ## The basemap is a MapLibre style, and raster is the escape hatch
 
-The default basemap is a MapLibre vector style, OpenFreeMap's Liberty: its labels render bilingually
-(Safaga over سفاجا), which no keyless raster basemap does. Liberty over Positron, whose sea is grey.
-Style and sprites are vendored; glyphs are hotlinked, since `glyphs` is one URL template per style
-and CJK is 89.9 MB.
+The default basemap is a MapLibre vector style, OpenFreeMap's Liberty: its labels carry each place's
+name in dozens of languages, which no keyless raster basemap does. Liberty over Positron, whose sea
+is grey. Style and sprites are vendored; glyphs are hotlinked, since `glyphs` is one URL template
+per style and CJK is 89.9 MB.
 
 Raster is configuration: `rasterStyle` wraps `MAP_TILE_URL` into a one-source style with `tileSize`
 256 (spec default 512) and renames `.env.example`'s `{r}` to MapLibre's `{ratio}`, since a literal
@@ -6918,11 +6918,21 @@ the release machinery, built for two images named after their repositories, woul
 
 `POST /render` draws one square of the Web Mercator grid, `z/x/y`, 512 CSS px at ratio 2 in MapLibre
 Native's `tile` mode, which places labels crossing a tile's edge so its neighbours agree. Nothing of
-any record is in a tile, so the API stores each once per theme for the whole instance and every card
-and page head showing that square shares it; at 512 px one tile is one vector tile of the basemap.
-The zoom stops at `MAX_FIT_ZOOM`, the deepest any map is fitted at, on both sides of the contract.
-Rejected: a larger picture per rounded cell, offset in the browser, which a window-wide hero makes
-window-sized; and 256 px tiles, twice the requests per frame.
+any record is in a tile, so the API stores each once per theme and label language for the whole
+instance and every card and page head showing that square shares it; at 512 px one tile is one
+vector tile of the basemap. The zoom stops at `MAX_FIT_ZOOM`, the deepest any map is fitted at, on
+both sides of the contract. Rejected: a larger picture per rounded cell, offset in the browser,
+which a window-wide hero makes window-sized; and 256 px tiles, twice the requests per frame.
+
+## A map labels in English, and in one more language when asked
+
+`scripts/generate-basemaps.mjs` reduces Liberty's name labels — latin name over local name — to
+their English line. `withLabelLanguage` adds the viewer's `name:xx` under a point label and beside a
+line label, where it differs from the English line; a language the tiles carry no name in draws
+English. A live map applies `labelLanguage(navigator.language)` directly, unchecked: it stores
+nothing. A tile request sends the tag raw, and the API reduces it to one of `LABEL_LANGUAGES` — the
+basemap's own `name:xx` fields, mirrored there — or to none, because every variant is a set of tiles
+it stores; `parsePayload` refuses anything else.
 
 ## The renderer's signature covers what changes a tile's pixels
 

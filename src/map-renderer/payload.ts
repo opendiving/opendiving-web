@@ -1,4 +1,5 @@
-// What `POST /render` accepts: one tile of the Web Mercator grid, in a theme.
+// What `POST /render` accepts: one tile of the Web Mercator grid, in a theme,
+// labelled in English and optionally one more language.
 //
 // Nothing of any record: the API stores a tile once for every account whose
 // map shows it, so the renderer is never told whose map that is. Anything
@@ -10,18 +11,104 @@ import { MAX_FIT_ZOOM } from "@/lib/basemap";
 
 export type Theme = "light" | "dark";
 
+/**
+ * The languages a tile's labels can carry beside English: every `name:xx` the
+ * basemap's vector tiles hold except English itself and the script variants.
+ * Mirrored in the API (`opendiving-api` `services/map_tiles.py`), which falls
+ * back to English alone for anything else - so the tiles it stores stay
+ * bounded whatever language a client asks in.
+ */
+export const LABEL_LANGUAGES = [
+  "af",
+  "am",
+  "ar",
+  "az",
+  "be",
+  "bg",
+  "bn",
+  "br",
+  "bs",
+  "ca",
+  "co",
+  "cs",
+  "cy",
+  "da",
+  "de",
+  "el",
+  "eo",
+  "es",
+  "et",
+  "eu",
+  "fa",
+  "fi",
+  "fr",
+  "fy",
+  "ga",
+  "gd",
+  "he",
+  "hi",
+  "hr",
+  "hu",
+  "hy",
+  "id",
+  "is",
+  "it",
+  "ja",
+  "ka",
+  "kk",
+  "kn",
+  "ko",
+  "ku",
+  "la",
+  "lb",
+  "lt",
+  "lv",
+  "mk",
+  "ml",
+  "mt",
+  "nl",
+  "no",
+  "oc",
+  "pa",
+  "pl",
+  "pnb",
+  "pt",
+  "rm",
+  "ro",
+  "ru",
+  "sk",
+  "sl",
+  "sq",
+  "sr",
+  "sv",
+  "ta",
+  "te",
+  "th",
+  "tok",
+  "tr",
+  "uk",
+  "ur",
+  "vi",
+  "zh",
+] as const;
+
+export type LabelLanguage = (typeof LABEL_LANGUAGES)[number];
+
 export interface TilePayload {
   kind: "tile";
   theme: Theme;
   z: number;
   x: number;
   y: number;
+  /** The second line of each label; absent, a label is its English line. */
+  language?: LabelLanguage;
 }
 
 /** A body that breaks the shape `POST /render` takes: the 400. */
 export class PayloadError extends Error {}
 
 const KEYS = ["kind", "theme", "z", "x", "y"] as const;
+const OPTIONAL_KEYS = ["language"] as const;
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -49,7 +136,7 @@ export function parsePayload(body: unknown): TilePayload {
   if (!isObject(body)) throw new PayloadError("the body must be an object");
   const missing = KEYS.filter((key) => !(key in body));
   const extra = Object.keys(body).filter(
-    (key) => !(KEYS as readonly string[]).includes(key),
+    (key) => !([...KEYS, ...OPTIONAL_KEYS] as readonly string[]).includes(key),
   );
   if (missing.length > 0) {
     throw new PayloadError(`the body is missing ${missing.join(", ")}`);
@@ -64,11 +151,21 @@ export function parsePayload(body: unknown): TilePayload {
   }
   const z = within(body.z, MAX_FIT_ZOOM, "z");
   const last = 2 ** z - 1;
-  return {
+  const payload: TilePayload = {
     kind: "tile",
     theme,
     z,
     x: within(body.x, last, "x"),
     y: within(body.y, last, "y"),
   };
+  // Present means one of the list: the API sends no key for English alone, so
+  // a `null` or an unknown code is a client this side does not understand.
+  if ("language" in body) {
+    const { language } = body;
+    if (!(LABEL_LANGUAGES as readonly unknown[]).includes(language)) {
+      throw new PayloadError("language must be one of the label languages");
+    }
+    payload.language = language as LabelLanguage;
+  }
+  return payload;
 }

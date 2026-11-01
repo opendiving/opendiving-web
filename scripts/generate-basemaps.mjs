@@ -1,13 +1,14 @@
 // Regenerates both shipped styles from the vendored Liberty: recolours the
-// water in `public/basemap/liberty.json` in place, then derives
+// water and reduces each name label to its English line in
+// `public/basemap/liberty.json` in place, then derives
 // `public/basemap/dark.json` from the result by rewriting paint colours and
 // nothing else. Run it after re-vendoring Liberty. With `--check` it writes
 // nothing and exits non-zero if either file differs from what it would write,
 // which is how `src/lib/basemap.test.ts` runs it.
 //
 // The reasons are in DECISIONS.md: "The dark basemap is Liberty recoloured, not
-// a second style" and "Liberty's water is recoloured teal, and nothing else of
-// it".
+// a second style", "Liberty's water is recoloured teal, and nothing else of
+// it" and "A map labels in English, and in one more language when asked".
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -149,7 +150,41 @@ const isWater = (layer) =>
   layer.type !== "symbol" &&
   ["water", "waterway"].includes(layer["source-layer"]);
 
+// Liberty's name label: the latin name and the local one, where they differ,
+// side by side along a line and stacked at a point.
+const libertyName = (separator) => [
+  "case",
+  ["has", "name:nonlatin"],
+  ["concat", ["get", "name:latin"], separator, ["get", "name:nonlatin"]],
+  ["coalesce", ["get", "name_en"], ["get", "name"]],
+];
+// The English line alone. Mirrored by `ENGLISH_NAME` in
+// `src/lib/basemap.ts`, which adds a second language to it per tile.
+const ENGLISH_NAME = [
+  "coalesce",
+  ["get", "name_en"],
+  ["get", "name:latin"],
+  ["get", "name"],
+];
+const isLibertyName = (field) =>
+  [" ", "\n"].some(
+    (separator) =>
+      JSON.stringify(field) === JSON.stringify(libertyName(separator)),
+  );
+
 const light = JSON.parse(readFileSync(lightPath, "utf8"));
+
+for (const layer of light.layers) {
+  const layout = layer.layout ?? {};
+  if (isLibertyName(layout["text-field"])) {
+    layout["text-field"] = ENGLISH_NAME;
+  }
+}
+// A re-vendored Liberty whose label expression moved would otherwise keep its
+// local line without a word.
+if (JSON.stringify(light.layers).includes('"name:nonlatin"')) {
+  throw new Error("A label still reads name:nonlatin; update libertyName");
+}
 
 for (const layer of light.layers) {
   const paint = layer.paint ?? {};
