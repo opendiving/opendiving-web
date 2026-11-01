@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { mcpAPI, type McpConsent } from "@/lib/api/mcp";
@@ -24,13 +24,32 @@ type ConsentState =
 export function McpConsentPage() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
   const request = useSearchParams().get("request") ?? "";
+
+  if (isLoading || !isAuthenticated || !user) return <SectionSpinner />;
+
+  return (
+    <ConsentForm
+      key={JSON.stringify([user.uuid, request])}
+      request={request}
+      email={user.email}
+    />
+  );
+}
+
+interface ConsentFormProps {
+  request: string;
+  email: string;
+}
+
+function ConsentForm({ request, email }: ConsentFormProps) {
   const [state, setState] = useState<ConsentState>({ status: "loading" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const mounted = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
     let active = true;
+    mounted.current = true;
     mcpAPI
       .getConsent(request)
       .then((consent) => {
@@ -53,23 +72,24 @@ export function McpConsentPage() {
       });
     return () => {
       active = false;
+      mounted.current = false;
     };
-  }, [isAuthenticated, request]);
+  }, [request]);
 
   async function decide(scopes: string[]) {
     setBusy(true);
     setError("");
     try {
       const callback = await mcpAPI.decideConsent(request, scopes);
-      window.location.assign(callback);
+      if (mounted.current) window.location.assign(callback);
     } catch (cause: unknown) {
+      if (!mounted.current) return;
       setError(getApiErrorMessage(cause, "Couldn't complete this connection."));
       setBusy(false);
     }
   }
 
-  if (isLoading || !isAuthenticated || state.status === "loading")
-    return <SectionSpinner />;
+  if (state.status === "loading") return <SectionSpinner />;
   if (state.status === "failed")
     return <StatusMessage variant="error">{state.message}</StatusMessage>;
 
@@ -78,9 +98,7 @@ export function McpConsentPage() {
       <Card>
         <CardHeader>
           <CardTitle>Connect {state.consent.name}</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Signed in as {user?.email}
-          </p>
+          <p className="text-sm text-muted-foreground">Signed in as {email}</p>
           <CardDescription>
             Select what this application may do with your OpenDiving account.
             You can revoke access in Authentication settings.
