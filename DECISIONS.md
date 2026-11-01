@@ -4806,7 +4806,7 @@ restored: `app/privacy/page.tsx` (several enumerations), `app/terms/page.tsx`,
 `components/settings/delete-account-card.tsx` (card and `ConfirmDialog` `description`),
 `components/auth/restore-account-card.tsx`, `components/auth/goodbye-page-content.tsx` (both arms),
 `components/auth/verify-page-content.tsx` (`purgeOn` and dateless branches),
-`components/data/data-export-card.tsx`, `README.md`'s feature list, and
+`components/export/data-export-card.tsx`, `README.md`'s feature list, and
 `components/layout/landing-page.tsx`'s closing sentence. Docstrings and comments carry no counts —
 "a detail page", "the list pages", never "all four of which" — because a census goes stale on
 removal as readily as on addition. Regenerate the copy list rather than trusting this one;
@@ -6899,11 +6899,11 @@ The sheet keeps every section's heading and edit control on screen however littl
 drops an empty section from the print — a heading with nothing beneath it is the labelled blank this
 page refuses, in another form.
 
-## Import is a page of its own, and `/data` is the export page
+## Import and export are a page each
 
-`/import` is the one door for every file the app reads; `/data` keeps its URL and is the export
-page. The picker filters nothing: the API decides by the bytes, and a file it cannot read is a row,
-not a refusal.
+`/import` is the one door for every file the app reads; `/export` is the one that hands it all back,
+and `/data` redirects to it for links already held. The picker filters nothing: the API decides by
+the bytes, and a file it cannot read is a row, not a refusal.
 
 ## The map renderer ships in the web image, as a command of its own
 

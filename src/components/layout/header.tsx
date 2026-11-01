@@ -455,7 +455,7 @@ export function Header() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/data" className="flex items-center">
+                      <Link href="/export" className="flex items-center">
                         <CloudDownload className="mr-2 h-4 w-4" />
                         Export
                       </Link>
