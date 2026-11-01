@@ -9,6 +9,7 @@ import {
 import { useNearViewport } from "@/hooks/useNearViewport";
 import { ItemActionsMenu } from "@/components/ui/item-actions-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HERO_CANVAS_WIDTH, SIDE_FADE_WIDTH } from "@/lib/map-frame";
 import { cn } from "@/lib/utils";
 
 // A list's card's own colour, set a step off the page's so the card reads as
@@ -87,17 +88,25 @@ export function UnplacedBackdrop({
   icon: ComponentType<{ className?: string }>;
 }) {
   return (
+    // On a hero, across the map's canvas, its sides and its foot dissolving
+    // into the page as the map's do.
     <div
       aria-hidden
-      className="absolute inset-0 rounded-[inherit] bg-map-water"
+      className="absolute inset-y-0 rounded-[inherit] bg-map-water"
+      style={
+        hero
+          ? {
+              left: `calc(50% - ${HERO_CANVAS_WIDTH / 2}px)`,
+              width: HERO_CANVAS_WIDTH,
+            }
+          : { left: 0, right: 0 }
+      }
     >
-      {/* The map's own fade, in the same colour space as its. */}
       {hero && (
         <div
-          className="absolute inset-0 rounded-[inherit]"
+          className="absolute inset-0"
           style={{
-            background:
-              "linear-gradient(to bottom, transparent, var(--backdrop-fade))",
+            background: `linear-gradient(to right, var(--backdrop-fade), transparent ${SIDE_FADE_WIDTH}px, transparent ${HERO_CANVAS_WIDTH - SIDE_FADE_WIDTH}px, var(--backdrop-fade)), linear-gradient(to bottom, transparent, var(--backdrop-fade))`,
           }}
         />
       )}
