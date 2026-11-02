@@ -266,11 +266,11 @@ export function diveRecordings(dive: Dive): Recording[] {
 }
 
 /**
- * Whether anything recorded the dive: the list row's count, or the detail
- * response's recordings.
+ * How many computers recorded the dive, one recording each: the list row's
+ * count, or the detail response's recordings.
  */
-export function hasRecording(dive: Dive): boolean {
-  return (dive.recording_count ?? dive.recordings?.length ?? 0) > 0;
+export function recordingCount(dive: Dive): number {
+  return dive.recording_count ?? dive.recordings?.length ?? 0;
 }
 
 /**

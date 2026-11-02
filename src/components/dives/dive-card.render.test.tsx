@@ -305,15 +305,21 @@ describe("DiveCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("ends its line with a paperclip where the dive holds a recording", () => {
+  it("ends its line with a dive computer where one recorded the dive", () => {
     expect(card({ dive: dive({ recording_count: 1 }) })).toHaveTextContent(
-      "Apr 4, 2026, 10:04 · Recording attached",
+      "Apr 4, 2026, 10:04 · 1 dive computer",
     );
   });
 
-  it("draws no paperclip for a dive with no recording", () => {
+  it("draws as many dive computers as recorded the dive", () => {
+    const item = card({ dive: dive({ recording_count: 3 }) });
+    expect(item).toHaveTextContent("Apr 4, 2026, 10:04 · 3 dive computers");
+    expect(item.querySelectorAll("svg.lucide-watch")).toHaveLength(3);
+  });
+
+  it("draws no dive computer for a dive with no recording", () => {
     expect(card({ dive: dive({ recording_count: 0 }) })).not.toHaveTextContent(
-      "Recording attached",
+      "dive computer",
     );
   });
 

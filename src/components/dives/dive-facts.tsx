@@ -1,17 +1,18 @@
 import type { ReactNode } from "react";
-import { Paperclip, Ship } from "lucide-react";
+import { Ship, Watch } from "lucide-react";
 import type { Dive } from "@/lib/api/dives";
-import { IconFact } from "@/components/ui/icon-fact";
+import { IconFact, LINE_ICON } from "@/components/ui/icon-fact";
 import { formatDiveDateTime } from "@/lib/date-time";
-import { hasRecording } from "@/lib/dive-recordings";
+import { recordingCount } from "@/lib/dive-recordings";
 
 /**
  * The line under a dive's title, on its card and its page's hero alike: when,
  * in the dive's own timezone, and where - the title names the site, this says
- * where it is - then the boat, and a paperclip where a recording is
- * attached. The water and the kind of dive are its title's chips.
+ * where it is - then the boat, and a dive computer for each one that recorded
+ * the dive. The water and the kind of dive are its title's chips.
  */
 export function diveFacts(dive: Dive): ReactNode[] {
+  const computers = recordingCount(dive);
   return [
     formatDiveDateTime(dive.start_time),
     dive.dive_sites[0]?.location?.name,
@@ -20,8 +21,19 @@ export function diveFacts(dive: Dive): ReactNode[] {
         {dive.boat_name}
       </IconFact>
     ),
-    hasRecording(dive) && (
-      <IconFact icon={Paperclip} label="Recording attached" />
-    ),
+    computers > 0 && <DiveComputers count={computers} />,
   ].filter(Boolean);
+}
+
+function DiveComputers({ count }: { count: number }) {
+  return (
+    <span className="whitespace-nowrap">
+      {Array.from({ length: count }, (_, index) => (
+        <Watch key={index} aria-hidden className={LINE_ICON} />
+      ))}
+      <span className="sr-only">
+        {count === 1 ? "1 dive computer" : `${count} dive computers`}
+      </span>
+    </span>
+  );
 }

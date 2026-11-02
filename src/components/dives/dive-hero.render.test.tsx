@@ -107,22 +107,27 @@ describe("DiveHero", () => {
     ).toHaveTextContent("FreshFresh waterCCRClosed circuit");
   });
 
-  it("ends its line with a paperclip where the dive holds a recording", () => {
+  it("ends its line with a dive computer for each recording", () => {
     const { unmount } = render(
       <DiveHero
         back={BACK}
-        dive={dive({ recordings: [{ uuid: "rec-1", ordinal: 0, files: [] }] })}
+        dive={dive({
+          recordings: [
+            { uuid: "rec-1", ordinal: 0, files: [] },
+            { uuid: "rec-2", ordinal: 1, files: [] },
+          ],
+        })}
       />,
     );
     expect(
       screen.getByRole("heading", { level: 1 }).nextElementSibling,
-    ).toHaveTextContent("Apr 4, 2021, 10:04 · Recording attached");
+    ).toHaveTextContent("Apr 4, 2021, 10:04 · 2 dive computers");
     unmount();
 
     render(<DiveHero back={BACK} dive={dive({ recordings: [] })} />);
     expect(
       screen.getByRole("heading", { level: 1 }).nextElementSibling,
-    ).not.toHaveTextContent("Recording attached");
+    ).not.toHaveTextContent("dive computer");
   });
 
   it("tags its title with the diver's tags in teal, and rates the dive after it", () => {
