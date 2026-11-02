@@ -22,6 +22,7 @@ import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { DiveSiteInfoCard } from "@/components/sites/dive-site-info-card";
 import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
 import { DiveSiteHero } from "@/components/sites/dive-site-hero";
+import { DiveSiteInfoDialog } from "@/components/sites/dive-site-info-dialog";
 import {
   HERO_BODY,
   HERO_CONTROL,
@@ -111,6 +112,7 @@ export function DiveSiteDetailPageContent() {
                 Log a dive
               </Link>
             </Button>
+            <DiveSiteInfoDialog site={diveSite} />
             <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
               <DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
                 <Edit className="h-4 w-4 mr-2" />

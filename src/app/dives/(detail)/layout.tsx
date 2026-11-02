@@ -18,6 +18,7 @@ import { DiveMergeAction } from "@/components/dives/dive-merge-action";
 import { diveTitleText } from "@/components/dives/dive-title";
 import { DiveDetailProvider } from "@/components/dives/dive-detail-context";
 import { DiveHero } from "@/components/dives/dive-hero";
+import { DiveInfoDialog } from "@/components/dives/dive-info-dialog";
 import { DiveIcon } from "@/components/logo";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -252,6 +253,7 @@ export default function DiveDetailLayout({
               reloadToken={neighborsToken}
               className={HERO_CONTROL}
             />
+            <DiveInfoDialog dive={dive} />
             <DiveMergeAction
               dive={dive}
               reloadToken={neighborsToken}
