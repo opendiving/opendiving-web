@@ -314,7 +314,7 @@ describe("DiveCard", () => {
   it("draws as many dive computers as recorded the dive", () => {
     const item = card({ dive: dive({ recording_count: 3 }) });
     expect(item).toHaveTextContent("Apr 4, 2026, 10:04 · 3 dive computers");
-    expect(item.querySelectorAll("svg.lucide-watch")).toHaveLength(3);
+    expect(item.querySelectorAll("svg.lucide-dive-computer")).toHaveLength(3);
   });
 
   it("draws no dive computer for a dive with no recording", () => {

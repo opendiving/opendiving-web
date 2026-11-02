@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Ship, Watch } from "lucide-react";
+import { Ship } from "lucide-react";
 import type { Dive } from "@/lib/api/dives";
+import { DiveComputerIcon } from "@/components/icons/dive-computer-icon";
 import { IconFact, LINE_ICON } from "@/components/ui/icon-fact";
 import { formatDiveDateTime } from "@/lib/date-time";
 import { recordingCount } from "@/lib/dive-recordings";
@@ -29,7 +30,7 @@ function DiveComputers({ count }: { count: number }) {
   return (
     <span className="whitespace-nowrap">
       {Array.from({ length: count }, (_, index) => (
-        <Watch key={index} aria-hidden className={LINE_ICON} />
+        <DiveComputerIcon key={index} aria-hidden className={LINE_ICON} />
       ))}
       <span className="sr-only">
         {count === 1 ? "1 dive computer" : `${count} dive computers`}
