@@ -23,8 +23,10 @@ import { describe, expect, it } from "vitest";
 // `dive-form-fields-menu` all do, each for a reason `DECISIONS.md` records) is
 // left alone; a button with nothing but an icon in it is not.
 //
-// A button directly inside `TooltipTrigger` or `PopoverTrigger` already shows
-// a passage of its own rather than its name, so it names itself. See "A button that only shows a passage names itself" in
+// One shape is exempt: a button directly inside a `PopoverTrigger` that opens it
+// from its own `onPointerEnter`. Its hover shows a passage rather than its name,
+// so it names itself. A popover trigger without one shows nothing until clicked,
+// so it is not exempt. See "A button that only shows a passage names itself" in
 // `DECISIONS.md`.
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -165,19 +167,18 @@ const childrenRenderText = (inner: string): boolean => {
   return outsideExpressions.trim().length > 0;
 };
 
-// Whether the element opening at `index` is the first thing inside a
-// `<TooltipTrigger asChild>` or `<PopoverTrigger asChild>`. `[^<]*` lets the
-// trigger's own attributes hold an arrow's `>`; a wrapper between the tags fails it.
-const triggersOwnPassage = (src: string, index: number) => {
-  const trigger = Math.max(
-    src.lastIndexOf("<TooltipTrigger", index),
-    src.lastIndexOf("<PopoverTrigger", index),
-  );
+// Whether the element opening at `index`, with these `attributes`, is the first
+// thing inside a `<PopoverTrigger asChild>` and opens it on hover. `[^<]*` lets
+// the trigger's own attributes hold an arrow's `>`; a wrapper between the tags
+// fails it.
+const triggersOwnPassage = (src: string, index: number, attributes: string) => {
+  const trigger = src.lastIndexOf("<PopoverTrigger", index);
   return (
     trigger >= 0 &&
-    /^<(?:Tooltip|Popover)Trigger\b[^<]*\basChild\b[^<]*>\s*$/.test(
+    /^<PopoverTrigger\b[^<]*\basChild\b[^<]*>\s*$/.test(
       src.slice(trigger, index),
-    )
+    ) &&
+    /\sonPointerEnter[=\s]/.test(attributes)
   );
 };
 
@@ -232,7 +233,7 @@ const buttonElements = (original: string) => {
       line: src.slice(0, open.index).split("\n").length,
       attributes,
       children,
-      triggersOwnPassage: triggersOwnPassage(src, open.index),
+      triggersOwnPassage: triggersOwnPassage(src, open.index, attributes),
     });
   }
 
@@ -291,25 +292,41 @@ describe("the visible-text rule", () => {
   });
 });
 
-describe.each(["TooltipTrigger", "PopoverTrigger"])("%s", (trigger) => {
-  const exempt = (src: string) =>
-    buttonElements(src).map(({ triggersOwnPassage }) => triggersOwnPassage);
+const exempt = (src: string) =>
+  buttonElements(src).map(({ triggersOwnPassage }) => triggersOwnPassage);
 
+describe("a popover trigger that opens on hover", () => {
   it("exempts the button directly inside it", () => {
     expect(
-      exempt(`<${trigger} asChild onFocus={(e) => e.preventDefault()}>
-        <Button aria-label="About this page"><Info /></Button>
-      </${trigger}>`),
+      exempt(`<PopoverTrigger asChild onFocus={(e) => e.preventDefault()}>
+        <Button aria-label="About this page" onPointerEnter={openSoon}><Info /></Button>
+      </PopoverTrigger>`),
     ).toEqual([true]);
   });
 
   it("exempts nothing behind a wrapper, and no button without the trigger", () => {
     expect(
-      exempt(`<${trigger} asChild>
-        <span><Button aria-label="Delete"><Trash2 /></Button></span>
-      </${trigger}>
-      <Button aria-label="Edit"><Edit /></Button>`),
+      exempt(`<PopoverTrigger asChild>
+        <span><Button aria-label="Delete" onPointerEnter={openSoon}><Trash2 /></Button></span>
+      </PopoverTrigger>
+      <Button aria-label="Edit" onPointerEnter={openSoon}><Edit /></Button>`),
     ).toEqual([false, false]);
+  });
+
+  it("is required: a popover trigger without one shows nothing until clicked", () => {
+    expect(
+      exempt(`<PopoverTrigger asChild>
+        <Button aria-label="Notifications"><Bell /></Button>
+      </PopoverTrigger>`),
+    ).toEqual([false]);
+  });
+
+  it("does not extend to a tooltip trigger", () => {
+    expect(
+      exempt(`<TooltipTrigger asChild>
+        <Button aria-label="Delete" onPointerEnter={openSoon}><Trash2 /></Button>
+      </TooltipTrigger>`),
+    ).toEqual([false]);
   });
 });
 

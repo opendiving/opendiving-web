@@ -5999,17 +5999,17 @@ tap lands on a backdrop under the menu instead of being stopped.
 
 Rejected: a hint on tap, which would take every icon button's tap.
 
-## A button that only shows a passage names itself, and its tooltip is the passage
+## A button that only shows a passage names itself, and its hover is the passage
 
-An icon button whose one job is to show some text - a page's description behind an ⓘ - is that
-text's own `Tooltip` trigger, not an `IconTooltip`. Its hover shows the passage rather than its
-name, so the name goes on the button as `aria-label`, and the passage reaches a screen reader as the
-description Radix points `aria-describedby` at; that default stays. A tap opens it as well: the
-rejection above protects a tap that belongs to the control, and this control's tap has nothing else
-to do.
+`PageInfo` (`components/ui/map-hero.tsx`), a page's description behind an ⓘ, is a `Popover` that
+also opens on hover. Its hover shows the passage rather than its name, so the name goes on the
+button as `aria-label` instead of an `IconTooltip`. Hover waits `HINT_DELAY_MS`, keeps focus where
+it was and closes on leave; a tap, click or Enter opens it as a dialog and moves focus in, so a
+screen reader reads it. The tap is fine here: the rejection above protects a tap that belongs to the
+control, and this control's tap has nothing else to do.
 
-`icon-button-hints.test.ts` exempts a button directly inside a `TooltipTrigger asChild`. Its hover
-shows something, which is what the guard asks; whether it says the right thing is review's call.
+`icon-button-hints.test.ts` exempts a button directly inside a `PopoverTrigger asChild` with its own
+`onPointerEnter`. A popover trigger without one shows nothing until clicked, and stays caught.
 
 ## Icon button hints: The guard is structural, reading the source rather than the DOM
 
