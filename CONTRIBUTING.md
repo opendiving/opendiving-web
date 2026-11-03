@@ -249,6 +249,9 @@ A failing run leaves a trace under `test-results/`; open one with `npx playwrigh
   whatever your branch carried. Sign if you already sign — nobody will ask you to set GPG up for a
   pull request.
 - Branch off `main`, keep the PR focused on one thing.
+- **Your branch never needs to be current with `main`.** Once a PR is green and reviewed, a
+  maintainer adds it to the merge queue, which squashes it onto `main` as it then stands, runs the
+  required checks on that result and lands it. Rebase only to resolve a conflict.
 - Title the PR as a conventional commit — `<type>[(scope)][!]: <description>`, e.g.
   `feat: chart the dive profile on the dive detail page`. Types: `feat`, `fix`, `refactor`, `docs`,
   `test`, `chore`, `perf`, `ci`, `build`, `revert`. A CI check enforces this, and re-runs when you
