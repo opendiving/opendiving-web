@@ -232,6 +232,37 @@ describe("DiveCard", () => {
     ]);
   });
 
+  it("counts the species seen in the slot a missing temperature leaves", () => {
+    const item = card({
+      dive: dive({ bottom_temperature: undefined, species_count: 4 }),
+    });
+
+    expect(figuresOf(item)).toEqual([
+      ["Dive time", "45min"],
+      ["Max depth", "31 m"],
+      ["Species seen", "4"],
+    ]);
+  });
+
+  it("leaves the species off a card whose three slots are full", () => {
+    expect(figuresOf(card({ dive: dive({ species_count: 4 }) }))).toEqual([
+      ["Dive time", "45min"],
+      ["Max depth", "31 m"],
+      ["Water temp", "24°C"],
+    ]);
+  });
+
+  it("leaves the species off a dive that saw none", () => {
+    const item = card({
+      dive: dive({ bottom_temperature: undefined, species_count: 0 }),
+    });
+
+    expect(figuresOf(item)).toEqual([
+      ["Dive time", "45min"],
+      ["Max depth", "31 m"],
+    ]);
+  });
+
   it("shows a water temperature of zero rather than leaving it out", () => {
     const item = card({ dive: dive({ bottom_temperature: 0 }) });
 

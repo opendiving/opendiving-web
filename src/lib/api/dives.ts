@@ -687,6 +687,10 @@ export interface Dive {
   // the list doesn't send recordings; absent on the detail response. Read it
   // through `owedDeco()` (`lib/dive-recordings.ts`), which answers for both.
   deco?: boolean;
+  // How many species the dive's sightings name. A list-response field, standing
+  // in for `sightings` where the list doesn't send them; absent on the detail
+  // response.
+  species_count?: number;
 }
 
 /** A recording's depth curve at a dive card's resolution. */
