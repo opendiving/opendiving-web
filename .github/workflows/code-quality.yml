@@ -5,6 +5,9 @@ on:
     branches:
       - main
   pull_request:
+  # The merge queue tests each entry squashed onto `main` under this event, and a required
+  # check that never reports there holds the entry until the queue times it out.
+  merge_group:
 
 # All three jobs only read: they check out, install, run npm scripts and upload reports as
 # artifacts, and `dependency-review` reads the dependency review API, which `contents: read`
@@ -111,6 +114,8 @@ jobs:
   # both styles and would flatten them if that setting moved.
   dependency-review:
     runs-on: ubuntu-latest
+    # Compares a pull request's dependencies against its base, which a merge-queue entry
+    # does not have; the skip reports success, so the queue is not held on it.
     if: github.event_name == 'pull_request'
 
     steps:
