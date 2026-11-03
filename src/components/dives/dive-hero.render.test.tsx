@@ -107,6 +107,34 @@ describe("DiveHero", () => {
     ).toHaveTextContent("FreshFresh waterCCRClosed circuit");
   });
 
+  it("tags a dive whose charted profile has a ceiling as a deco dive", () => {
+    render(
+      <DiveHero
+        back={BACK}
+        dive={dive({
+          recordings: [
+            {
+              uuid: "rec-1",
+              ordinal: 0,
+              files: [],
+              profile: {
+                uuid: "p1",
+                duration: 3_163_000,
+                depth_sample_count: 314,
+                provenance: "file",
+                channels: ["depth", "ceiling"],
+                max_ceiling: 6,
+              },
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Deco")).toHaveAttribute("aria-hidden");
+    expect(screen.getByText("Decompression dive")).toHaveClass("sr-only");
+  });
+
   it("ends its line with a dive computer for each recording", () => {
     const { unmount } = render(
       <DiveHero

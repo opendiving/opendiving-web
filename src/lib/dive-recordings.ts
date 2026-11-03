@@ -283,6 +283,19 @@ export function primaryRecording(dive: Dive): Recording | null {
 }
 
 /**
+ * Whether the dive owed decompression: the list row's flag, or a ceiling on
+ * the profile the dive page charts first - the first recording with one, which
+ * is the API's own choice for that flag.
+ */
+export function owedDeco(dive: Dive): boolean {
+  if (dive.deco != null) return dive.deco;
+  const charted = diveRecordings(dive).find(
+    (recording) => recording.profile != null,
+  );
+  return charted?.profile?.max_ceiling != null;
+}
+
+/**
  * A positional handle for a recording, for the one place the device is not
  * enough: two recordings of one dive that both name no computer.
  */

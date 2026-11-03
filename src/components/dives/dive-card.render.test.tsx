@@ -305,6 +305,16 @@ describe("DiveCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("tags a dive that owed decompression after its kind", () => {
+    const item = card({
+      dive: dive({ type: "closed_circuit", deco: true, tags: ["Wreck"] }),
+    });
+
+    expect(item).toHaveTextContent(
+      "CCRClosed circuitDecoDecompression diveWreckDive #212",
+    );
+  });
+
   it("ends its line with a dive computer where one recorded the dive", () => {
     expect(card({ dive: dive({ recording_count: 1 }) })).toHaveTextContent(
       "Apr 4, 2026, 10:04 · 1 dive computer",

@@ -8,6 +8,7 @@ import {
   diveRecordings,
   entryFixAfterSave,
   noFileKeptSentence,
+  owedDeco,
   primaryRecording,
   recordingDeviceLabel,
   recordingLabel,
@@ -133,6 +134,42 @@ describe("diveRecordings", () => {
         }),
       )?.uuid,
     ).toBe("first");
+  });
+});
+
+describe("owedDeco", () => {
+  it("takes a list row's flag as given", () => {
+    expect(owedDeco(dive({ deco: true }))).toBe(true);
+    expect(owedDeco(dive({ deco: false }))).toBe(false);
+  });
+
+  it("reads the ceiling off the first recording with a profile, as the API does", () => {
+    const deco = profileInfo({ max_ceiling: 3 });
+    expect(
+      owedDeco(
+        dive({
+          recordings: [
+            recording({ uuid: "later", ordinal: 2, profile: profileInfo() }),
+            recording({ uuid: "charted", ordinal: 1, profile: deco }),
+            recording({ uuid: "no-samples", ordinal: 0 }),
+          ],
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      owedDeco(
+        dive({
+          recordings: [
+            recording({ uuid: "charted", ordinal: 0, profile: profileInfo() }),
+            recording({ uuid: "backup", ordinal: 1, profile: deco }),
+          ],
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("says no for a dive logged by hand", () => {
+    expect(owedDeco(dive())).toBe(false);
   });
 });
 
