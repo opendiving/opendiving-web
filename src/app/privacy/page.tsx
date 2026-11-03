@@ -1385,8 +1385,8 @@ export default async function PrivacyPage() {
                 6.1 Account Control
               </h3>
               <p className="text-foreground mb-4">
-                From Settings and the Import and Export pages, without asking
-                anyone, you can:
+                From Settings and the Import page, without asking anyone, you
+                can:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>Update your profile and account information</li>
@@ -1460,15 +1460,15 @@ export default async function PrivacyPage() {
               </ul>
               <p className="text-foreground mb-4">
                 The first four need no request: access, correction, deletion and
-                portability are all buttons in Settings or on the Export page,
-                and they act immediately rather than being forwarded to
-                somebody. {mapTiles ? "Seven" : "Six"} things sit outside those
-                buttons, and naming them is better than letting that sentence
-                read wider than it is. The email address you sign in with, your
-                username, the list of signed-in devices and your API keys are in
-                Settings but are not part of the export: they are your account
-                on this copy rather than your logbook, and the username only
-                names the file you download.
+                portability are all buttons in Settings, and they act
+                immediately rather than being forwarded to somebody.{" "}
+                {mapTiles ? "Seven" : "Six"} things sit outside those buttons,
+                and naming them is better than letting that sentence read wider
+                than it is. The email address you sign in with, your username,
+                the list of signed-in devices and your API keys are in Settings
+                but are not part of the export: they are your account on this
+                copy rather than your logbook, and the username only names the
+                file you download.
                 {mapTiles && (
                   <>
                     {" "}

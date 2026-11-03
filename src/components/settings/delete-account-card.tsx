@@ -80,8 +80,8 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
   // The gentler thing the description points at, and the one export worth pointing a
   // departing diver at: the archive is the only one carrying the dive-computer files,
   // the certification scans and the portrait. It goes through `exportAPI` rather than
-  // reinventing a download here - same call, same server-named file as the Your Data
-  // card on `/export`.
+  // reinventing a download here - same call, same server-named file as the Data export
+  // card in Settings → Storage.
   //
   // The dialog stays open behind it. Someone who asked for their data before deleting
   // is mid-decision, and closing the thing they were reading to hand them a file is a

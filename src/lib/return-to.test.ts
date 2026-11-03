@@ -15,7 +15,6 @@ describe("labelForPath", () => {
     expect(labelForPath("/home")).toBe("Back to home");
     expect(labelForPath("/courses")).toBe("Back to courses");
     expect(labelForPath("/people")).toBe("Back to people");
-    expect(labelForPath("/export")).toBe("Back to export");
   });
 
   it("switches to the singular for a single record", () => {

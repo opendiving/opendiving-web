@@ -49,7 +49,7 @@ export default async function TermsPage() {
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Terms of Service
         </h1>
-        <p className="text-muted-foreground">Last updated: October 2026</p>
+        <p className="text-muted-foreground">Last updated: November 2026</p>
       </div>
 
       <Card>
@@ -86,12 +86,12 @@ export default async function TermsPage() {
               </OperatorAnswer>
               <OperatorAnswer question="What happens to your data if the beta ends — §8, §11">
                 You are told before anything is deleted. The operator will email
-                the address on each account, and the export on the Export page
-                &mdash; the one §6 says needs nobody&rsquo;s permission &mdash;
-                keeps working for at least 90 days from that message. Accounts
-                and everything in them are deleted once that window closes, the
-                same way §11 and the Privacy Policy&rsquo;s §7 describe a
-                deletion you ask for yourself.
+                the address on each account, and the export in Settings &mdash;
+                the one §6 says needs nobody&rsquo;s permission &mdash; keeps
+                working for at least 90 days from that message. Accounts and
+                everything in them are deleted once that window closes, the same
+                way §11 and the Privacy Policy&rsquo;s §7 describe a deletion
+                you ask for yourself.
               </OperatorAnswer>
               <OperatorAnswer question="The source of what is running here — §7, AGPLv3 section 13">
                 §7 says that offer is the operator&rsquo;s to make. Here it is.
@@ -508,9 +508,9 @@ export default async function TermsPage() {
               </p>
               <p className="text-foreground mb-4">
                 Two things worth knowing without reading it: exporting
-                everything you have entered is a button on the Export page,
-                deleting your account is one in Settings, and neither needs
-                anyone&rsquo;s permission.
+                everything you have entered and deleting your account are both
+                buttons in Settings, and neither needs anyone&rsquo;s
+                permission.
               </p>
             </section>
 
@@ -747,7 +747,7 @@ export default async function TermsPage() {
           <div className="mt-8 pt-8 border-t border-border">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
-                These Terms are effective as of October 2026 and apply to this
+                These Terms are effective as of November 2026 and apply to this
                 copy of OpenDiving.
               </p>
               <Link

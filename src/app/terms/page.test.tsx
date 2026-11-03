@@ -300,10 +300,10 @@ describe("the date on this page", () => {
       await renderPage(projectOperated);
 
       expect(
-        screen.getByText(/Last updated: October 2026/),
+        screen.getByText(/Last updated: November 2026/),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/effective as of October 2026/),
+        screen.getByText(/effective as of November 2026/),
       ).toBeInTheDocument();
     },
   );

@@ -6911,9 +6911,9 @@ page refuses, in another form.
 ## Import has its own page, and export lives in Storage
 
 `/import` is the one door for every file the app reads. Settings → Storage offers all four export
-formats alongside the uploaded files' usage. `/export` redirects there, and `/data` keeps its
-redirect through `/export` for existing links. The import picker filters nothing: the API decides by
-the bytes, and a file it cannot read is a row, not a refusal.
+formats alongside the uploaded files' usage; the old `/export` and `/data` addresses are gone rather
+than redirected. The import picker filters nothing: the API decides by the bytes, and a file it
+cannot read is a row, not a refusal.
 
 ## The map renderer ships in the web image, as a command of its own
 
