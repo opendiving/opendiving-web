@@ -7047,10 +7047,11 @@ form's reasons.
 
 The `main` ruleset requires a merge queue and its required-checks rule is not strict; the queue goes
 on once every required check reports under `merge_group`. The queue squashes each entry onto `main`
-as it stands, runs the required checks on that result and lands it only if they pass: a strict
-rule's guarantee without its rebasing after every merge. Strict is rejected because that work falls
-on contributors, and a fork owned by an organisation cannot be updated by a maintainer at all. Loose
-checks alone are rejected because every merge deploys to the hosted instance within minutes,
-untested as merged. `semantic-title` and `dependency-review` have no pull request to read on a merge
-group and skip; a skipped job reports success. The release coordinator in opendiving/opendiving
-merges bump pull requests by API, so the queue waits for that flow to pass it.
+as it stands, runs the required checks on that result and lands it only if they pass. Strict is
+rejected because that work falls on contributors, and a fork owned by an organisation cannot be
+updated by a maintainer at all. Loose checks alone are rejected because every merge deploys to the
+hosted instance within minutes, untested as merged. `semantic-title` and `dependency-review` have no
+pull request to read on a merge group and skip; a skipped job reports success. The release
+coordinator in opendiving/opendiving merges bump pull requests with `gh pr merge`, which a required
+queue enqueues instead of merging, so the queue goes on only once that flow lands a bump through or
+past it.
