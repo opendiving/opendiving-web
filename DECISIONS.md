@@ -2417,8 +2417,7 @@ then the place. `formatDiveStartTime` - weekday, month in full, and the offset a
 can be checked - is rejected there so a dive reads the same on its page as in every list; it stays
 on the import's match rows, where telling two dives apart is the point. A bare date prints no clock
 in either. The hero's figures are the dive time, maximum depth, water temperature and visibility,
-each but the dive time where the dive records it, in whole units as the card rounds them, and the
-average depth after the maximum only while the rest leave fewer than four.
+each but the dive time where the dive records it, in whole units as the card rounds them.
 
 ## The ppO₂ limit is picked from a list, and an unlisted one is added to it
 

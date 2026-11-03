@@ -22,8 +22,7 @@ import type { ReturnTarget } from "@/lib/return-to";
  * The dive page's heading: the dive's card drawn the width of the window, with
  * its figures in whole units as the card rounds them - its dive time, its
  * maximum depth, the water's temperature and the visibility, each but the
- * dive time only where the dive records it, and the average depth after the
- * maximum only while those leave fewer than four.
+ * dive time only where the dive records it.
  */
 export function DiveHero({
   dive,
@@ -50,10 +49,9 @@ export function DiveHero({
   if (dive.max_depth != null) {
     figures.push({ label: "Max depth", value: wholeDepth(dive.max_depth) });
   }
-  // `!= null` throughout, since 0 °C - or a 0 m average - is a reading.
-  const readings: MapHeroFigure[] = [];
+  // `!= null` throughout, since 0 °C is a reading.
   if (dive.bottom_temperature != null) {
-    readings.push({
+    figures.push({
       label: "Water temp",
       value: formatTemperature(dive.bottom_temperature, units, {
         decimals: 0,
@@ -61,15 +59,11 @@ export function DiveHero({
     });
   }
   if (dive.visibility != null) {
-    readings.push({
+    figures.push({
       label: "Visibility",
       value: formatVisibility(dive.visibility, units),
     });
   }
-  if (dive.avg_depth != null && figures.length + readings.length < 4) {
-    figures.push({ label: "Avg depth", value: wholeDepth(dive.avg_depth) });
-  }
-  figures.push(...readings);
 
   return (
     <MapHero

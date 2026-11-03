@@ -79,7 +79,7 @@ describe("DiveHero", () => {
     expect(figure("Dive time")).toHaveTextContent("45min");
     // Whole units, as the dive's card rounds them.
     expect(figure("Max depth")).toHaveTextContent("31 m");
-    expect(figure("Avg depth")).toHaveTextContent("18 m");
+    expect(figure("Avg depth")).toBeUndefined();
     expect(screen.getByRole("link", { name: "Back to dives" })).toHaveAttribute(
       "href",
       "/dives",
@@ -171,18 +171,12 @@ describe("DiveHero", () => {
     );
   });
 
-  it("shows the depths in feet for an imperial diver", () => {
+  it("shows the depth in feet for an imperial diver", () => {
     // Whole feet, and the value behind them is still the 30.48 m the API sent.
     auth.units = "imperial";
-    render(
-      <DiveHero
-        back={BACK}
-        dive={dive({ max_depth: 30.48, avg_depth: 18.2 })}
-      />,
-    );
+    render(<DiveHero back={BACK} dive={dive({ max_depth: 30.48 })} />);
 
     expect(figure("Max depth")).toHaveTextContent("100 ft");
-    expect(figure("Avg depth")).toHaveTextContent("60 ft");
   });
 
   it("leaves the dive time on its own for a dive with no depths", () => {
@@ -192,14 +186,6 @@ describe("DiveHero", () => {
 
     expect(figure("Dive time")).toHaveTextContent("45min");
     expect(figure("Max depth")).toBeUndefined();
-    expect(figure("Avg depth")).toBeUndefined();
-  });
-
-  it("shows a recorded maximum without inventing an average", () => {
-    render(<DiveHero back={BACK} dive={dive({ max_depth: 30.52 })} />);
-
-    expect(figure("Max depth")).toHaveTextContent("31 m");
-    expect(figure("Avg depth")).toBeUndefined();
   });
 
   const labels = () =>
@@ -227,47 +213,10 @@ describe("DiveHero", () => {
     ]);
   });
 
-  // The average only while the rest leave fewer than four figures, and then
-  // after the maximum.
-  it.each([
-    [
-      "the dive time and maximum",
-      { max_depth: 30.52 },
-      ["Dive time", "Max depth", "Avg depth"],
-    ],
-    ["the dive time alone", {}, ["Dive time", "Avg depth"]],
-    [
-      "the dive time, maximum and a temperature",
-      { max_depth: 30.52, bottom_temperature: 0 },
-      ["Dive time", "Max depth", "Avg depth", "Water temp"],
-    ],
-  ] as const)("shows the average beside %s", (_, fields, shown) => {
-    render(
-      <DiveHero back={BACK} dive={dive({ avg_depth: 18.2, ...fields })} />,
-    );
+  it("leaves the average depth off, however few figures it has", () => {
+    render(<DiveHero back={BACK} dive={dive({ avg_depth: 18.2 })} />);
 
-    expect(labels()).toEqual(shown);
-  });
-
-  it("leaves the average off beside four other figures", () => {
-    render(
-      <DiveHero
-        back={BACK}
-        dive={dive({
-          max_depth: 30.52,
-          avg_depth: 18.2,
-          bottom_temperature: 0,
-          visibility: 15,
-        })}
-      />,
-    );
-
-    expect(labels()).toEqual([
-      "Dive time",
-      "Max depth",
-      "Water temp",
-      "Visibility",
-    ]);
+    expect(labels()).toEqual(["Dive time"]);
   });
 
   it("keeps a zero-degree temperature, which is a reading rather than an absence", () => {
@@ -294,16 +243,6 @@ describe("DiveHero", () => {
 
     expect(figure("Water temp")).toBeUndefined();
     expect(figure("Visibility")).toBeUndefined();
-  });
-
-  it("keeps a zero-metre average, which is a reading rather than an absence", () => {
-    // `!= null`, not truthiness - the guard that has bitten `gas_number` and
-    // the mixture pressures in this repo.
-    render(
-      <DiveHero back={BACK} dive={dive({ max_depth: 30.52, avg_depth: 0 })} />,
-    );
-
-    expect(figure("Avg depth")).toHaveTextContent("0 m");
   });
 
   it("hands its map the dive's places, laid out as a hero's, and credits it itself", () => {

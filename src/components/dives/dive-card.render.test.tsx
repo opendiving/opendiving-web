@@ -210,23 +210,9 @@ describe("DiveCard", () => {
     ]);
   });
 
-  it("shows the average depth in place of a temperature it has not got", () => {
-    const item = card({ dive: dive({ bottom_temperature: undefined }) });
-
-    expect(figuresOf(item)).toEqual([
-      ["Dive time", "45min"],
-      ["Max depth", "31 m"],
-      ["Avg depth", "18 m"],
-    ]);
-  });
-
-  it("leaves out a temperature it has not got when it has no average depth either", () => {
+  it("leaves out a temperature it has not got, and no average depth takes its place", () => {
     const item = card({
-      dive: dive({
-        max_depth: undefined,
-        avg_depth: undefined,
-        bottom_temperature: undefined,
-      }),
+      dive: dive({ max_depth: undefined, bottom_temperature: undefined }),
     });
 
     expect(figuresOf(item)).toEqual([
@@ -235,15 +221,14 @@ describe("DiveCard", () => {
     ]);
   });
 
-  it("shows depths of zero rather than leaving them out", () => {
+  it("shows a depth of zero rather than leaving it out", () => {
     const item = card({
-      dive: dive({ max_depth: 0, avg_depth: 0, bottom_temperature: undefined }),
+      dive: dive({ max_depth: 0, bottom_temperature: undefined }),
     });
 
     expect(figuresOf(item)).toEqual([
       ["Dive time", "45min"],
       ["Max depth", "0 m"],
-      ["Avg depth", "0 m"],
     ]);
   });
 
