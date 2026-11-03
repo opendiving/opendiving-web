@@ -2138,8 +2138,8 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 Most of what people write to a privacy address to ask for, you
                 can simply do. Exporting everything you have entered and
-                bringing a logbook back in are buttons on the Export and Import
-                pages, and deleting your account is one in Settings; they work
+                deleting your account are buttons in Settings, and bringing a
+                logbook back in is one on the Import page; they work
                 immediately, they need nobody&rsquo;s approval, and no request
                 has to be sent to anyone.
               </p>
