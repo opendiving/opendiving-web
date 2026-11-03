@@ -342,6 +342,32 @@ describe("DiveRecordingsCard", () => {
     ).toBeEnabled();
   });
 
+  it("names a dive-computer original the API reads, without the unread note", () => {
+    render(
+      <DiveRecordingsCard
+        dive={dive({
+          recordings: [
+            recording({
+              files: [
+                file({
+                  original_filename:
+                    "shearwater-perdix-3_D9772626_2026-11-03T0914.bin",
+                  parser_key: "libdivecomputer",
+                }),
+              ],
+            }),
+          ],
+        })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(/^Dive computer original \(\.bin\) ·/),
+    ).toBeVisible();
+    expect(screen.queryByText(/does not read this file/)).toBeNull();
+  });
+
   it("leaves removing a file to the edit dialog its pencil opens", async () => {
     // Striking a file off sits beside importing one, in the Import section's
     // dialog, where Cancel can still take it back.

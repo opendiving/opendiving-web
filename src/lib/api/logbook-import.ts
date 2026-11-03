@@ -90,17 +90,29 @@ const IMPORT_CONTAINER_LABELS: Record<"divejson" | "archive" | "zip", string> =
 /**
  * The `parser_key` of a file the API keeps but no reader of this build reads:
  * restored from an archive whose document named no format the API reads. The
- * iOS app's dive-computer downloads are the files that arrive this way, which is
- * why the label names them; any other file under the key wears the same one.
+ * iOS app's dive-computer downloads from before it tagged them with
+ * `DIVE_COMPUTER_ORIGINAL_PARSER_KEY` are the files that arrive this way, which
+ * is why the label names them; any other file under the key wears the same one.
  */
 export const UNREAD_FILE_PARSER_KEY = "divejson_import";
+
+/**
+ * The `parser_key` of a dive-computer download the API reads back through
+ * libdivecomputer. The same bytes as an unread original, so the same label,
+ * but without `UNREAD_FILE_NOTE`.
+ */
+export const DIVE_COMPUTER_ORIGINAL_PARSER_KEY = "libdivecomputer";
 
 /** Said beside an unread file wherever there is room for a sentence. */
 export const UNREAD_FILE_NOTE =
   "Kept as downloaded. OpenDiving does not read this file.";
 
-const STORED_FILE_LABELS: Record<typeof UNREAD_FILE_PARSER_KEY, string> = {
+const STORED_FILE_LABELS: Record<
+  typeof UNREAD_FILE_PARSER_KEY | typeof DIVE_COMPUTER_ORIGINAL_PARSER_KEY,
+  string
+> = {
   [UNREAD_FILE_PARSER_KEY]: "Dive computer original (.bin)",
+  [DIVE_COMPUTER_ORIGINAL_PARSER_KEY]: "Dive computer original (.bin)",
 };
 
 /**

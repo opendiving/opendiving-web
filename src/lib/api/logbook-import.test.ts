@@ -79,6 +79,12 @@ describe("importSourceLabel", () => {
     );
   });
 
+  it("names a dive-computer original the API reads the same way", () => {
+    expect(importSourceLabel("libdivecomputer")).toBe(
+      "Dive computer original (.bin)",
+    );
+  });
+
   it("de-snakes a format this build has never heard of", () => {
     // Not defensiveness: the API derives its format list from its pinned
     // converter on every call, and that pin moves by dependency bump with no
