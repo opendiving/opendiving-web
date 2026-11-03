@@ -21,8 +21,8 @@ import type { ReturnTarget } from "@/lib/return-to";
 /**
  * The dive page's heading: the dive's card drawn the width of the window, with
  * its figures in whole units as the card rounds them - its dive time, its
- * maximum depth, the water's temperature and the visibility, each but the
- * dive time only where the dive records it.
+ * maximum depth, the water's temperature, the visibility and how many species
+ * were seen, each but the dive time only where the dive records it.
  */
 export function DiveHero({
   dive,
@@ -63,6 +63,11 @@ export function DiveHero({
       label: "Visibility",
       value: formatVisibility(dive.visibility, units),
     });
+  }
+  // A dive lists each species once, so its sightings are its species.
+  const speciesCount = dive.sightings?.length ?? 0;
+  if (speciesCount > 0) {
+    figures.push({ label: "Species seen", value: speciesCount });
   }
 
   return (

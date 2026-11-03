@@ -241,6 +241,29 @@ describe("DiveHero", () => {
     ]);
   });
 
+  it("counts the species seen, after the other figures", () => {
+    const sighting = (uuid: string) =>
+      ({ uuid }) as NonNullable<Dive["sightings"]>[number];
+    render(
+      <DiveHero
+        back={BACK}
+        dive={dive({
+          sightings: [sighting("a"), sighting("b")],
+          visibility: 15,
+        })}
+      />,
+    );
+
+    expect(figure("Species seen")).toHaveTextContent("2");
+    expect(labels()).toEqual(["Dive time", "Visibility", "Species seen"]);
+  });
+
+  it("leaves the species off a dive whose sightings are empty", () => {
+    render(<DiveHero back={BACK} dive={dive({ sightings: [] })} />);
+
+    expect(figure("Species seen")).toBeUndefined();
+  });
+
   it("leaves the average depth off, however few figures it has", () => {
     render(<DiveHero back={BACK} dive={dive({ avg_depth: 18.2 })} />);
 
