@@ -5999,6 +5999,18 @@ tap lands on a backdrop under the menu instead of being stopped.
 
 Rejected: a hint on tap, which would take every icon button's tap.
 
+## A button that only shows a passage names itself, and its tooltip is the passage
+
+An icon button whose one job is to show some text - a page's description behind an ⓘ - is that
+text's own `Tooltip` trigger, not an `IconTooltip`. Its hover shows the passage rather than its
+name, so the name goes on the button as `aria-label`, and the passage reaches a screen reader as the
+description Radix points `aria-describedby` at; that default stays. A tap opens it as well: the
+rejection above protects a tap that belongs to the control, and this control's tap has nothing else
+to do.
+
+`icon-button-hints.test.ts` exempts a button directly inside a `TooltipTrigger asChild`. Its hover
+shows something, which is what the guard asks; whether it says the right thing is review's call.
+
 ## Icon button hints: The guard is structural, reading the source rather than the DOM
 
 `components/icon-button-hints.test.ts` reads the source, not the DOM: a `<Button>` or `<button>`

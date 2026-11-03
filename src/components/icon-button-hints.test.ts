@@ -22,6 +22,11 @@ import { describe, expect, it } from "vitest";
 // visible text with `aria-label` (`entry-unit-toggle`, `data-export-card`,
 // `dive-form-fields-menu` all do, each for a reason `DECISIONS.md` records) is
 // left alone; a button with nothing but an icon in it is not.
+//
+// One shape is exempt: a button that is a `TooltipTrigger`'s own child already
+// shows something on hover - a passage of its own rather than its name - so it
+// names itself. See "A button that only shows a passage names itself" in
+// `DECISIONS.md`.
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
 
@@ -161,11 +166,29 @@ const childrenRenderText = (inner: string): boolean => {
   return outsideExpressions.trim().length > 0;
 };
 
+// Whether the element opening at `index` is the first thing inside a
+// `<TooltipTrigger asChild>`. `[^<]*` lets the trigger's own attributes hold an
+// arrow's `>`; anything between the two tags - a wrapper - fails it.
+const triggersOwnTooltip = (src: string, index: number) => {
+  const trigger = src.lastIndexOf("<TooltipTrigger", index);
+  return (
+    trigger >= 0 &&
+    /^<TooltipTrigger\b[^<]*\basChild\b[^<]*>\s*$/.test(
+      src.slice(trigger, index),
+    )
+  );
+};
+
 // Every `<Button …>` / `<button …>` open tag in the file, with the element's
-// children, as `{ line, attributes, children }`.
+// children, as `{ line, attributes, children, triggersOwnTooltip }`.
 const buttonElements = (original: string) => {
   const src = blankComments(original);
-  const found: { line: number; attributes: string; children: string }[] = [];
+  const found: {
+    line: number;
+    attributes: string;
+    children: string;
+    triggersOwnTooltip: boolean;
+  }[] = [];
   const opens = /<(Button|button)\b/g;
   let open: RegExpExecArray | null;
 
@@ -207,6 +230,7 @@ const buttonElements = (original: string) => {
       line: src.slice(0, open.index).split("\n").length,
       attributes,
       children,
+      triggersOwnTooltip: triggersOwnTooltip(src, open.index),
     });
   }
 
@@ -265,14 +289,37 @@ describe("the visible-text rule", () => {
   });
 });
 
+describe("a tooltip's own trigger", () => {
+  const exempt = (src: string) =>
+    buttonElements(src).map(({ triggersOwnTooltip }) => triggersOwnTooltip);
+
+  it("exempts the button directly inside it", () => {
+    expect(
+      exempt(`<TooltipTrigger asChild onFocus={(e) => e.preventDefault()}>
+        <Button aria-label="About this page"><Info /></Button>
+      </TooltipTrigger>`),
+    ).toEqual([true]);
+  });
+
+  it("exempts nothing behind a wrapper, and no button without the trigger", () => {
+    expect(
+      exempt(`<TooltipTrigger asChild>
+        <span><Button aria-label="Delete"><Trash2 /></Button></span>
+      </TooltipTrigger>
+      <Button aria-label="Edit"><Edit /></Button>`),
+    ).toEqual([false, false]);
+  });
+});
+
 describe("icon buttons", () => {
   it("carry no accessible name that the hover hint does not also show", () => {
     const offenders = sourceFiles(SRC).flatMap((file) =>
       buttonElements(readFileSync(file, "utf8"))
         .filter(
-          ({ attributes, children }) =>
+          ({ attributes, children, triggersOwnTooltip }) =>
             /\saria-label[=\s]/.test(attributes) &&
-            !childrenRenderText(children),
+            !childrenRenderText(children) &&
+            !triggersOwnTooltip,
         )
         .map(({ line }) => `${path.relative(SRC, file)}:${line}`),
     );
