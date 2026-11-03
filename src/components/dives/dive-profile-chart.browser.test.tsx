@@ -312,3 +312,83 @@ describe("the dive profile chart zoomed by a pinch", () => {
     expect(card()).toHaveTextContent("30:00 elapsed");
   });
 });
+
+describe("the dive profile chart on the dive's shared time axis", () => {
+  // Two computers on the 50-minute dive, the second switched on ten minutes
+  // after the first, so the shared axis runs an hour.
+  const FIRST = { start: 0, end: 3_600_000 };
+  const LATER = { start: 600_000, end: 3_600_000 };
+  // Depth every 30 s, so the crosshair reaches a minute and a half past either
+  // end of the recording rather than the quarter hour `PROFILE`'s cadence gives.
+  const denseTimes = Array.from({ length: 101 }, (_, index) => index * 30_000);
+  const DENSE: DiveProfile = {
+    duration: 3_000_000,
+    depth: {
+      times: denseTimes,
+      values: denseTimes.map((time) =>
+        time === 0 || time === 3_000_000 ? 0 : 1500,
+      ),
+    },
+    pressures: [],
+    events: [],
+  };
+
+  function Switcher({ shown }: { shown: "first" | "later" }) {
+    const [slot, setSlot] = useState<HTMLElement | null>(null);
+    return (
+      <div style={{ width: WIDTHS.phone }}>
+        <div ref={setSlot} />
+        <DiveProfileChart
+          profile={DENSE}
+          axis={shown === "first" ? FIRST : LATER}
+          menuContainer={slot}
+        />
+      </div>
+    );
+  }
+
+  function renderSwitcher() {
+    const view = render(<Switcher shown="first" />);
+    const svg = () => view.container.querySelector("svg[role=img]") as Element;
+    const at = (fraction: number) => {
+      const box = (
+        svg().querySelector("[data-hit]") as Element
+      ).getBoundingClientRect();
+      return {
+        x: box.left + box.width * fraction,
+        y: box.top + box.height / 3,
+      };
+    };
+    const card = () => view.container.querySelector('[role="presentation"]');
+    const show = (shown: "first" | "later") =>
+      view.rerender(<Switcher shown={shown} />);
+    return { svg, at, card, show };
+  }
+
+  it("quotes nothing in the stretch before the later recording began", () => {
+    const { svg, at, card, show } = renderSwitcher();
+    show("later");
+
+    // Under five minutes in: over five before the later computer's first
+    // sample, and further than its cadence lets the crosshair reach.
+    tap(svg(), at(300_000 / 3_600_000 - 0.02));
+
+    expect(card()?.textContent).toMatch(/^3:\d\d elapsed— Depth/);
+  });
+
+  it("keeps a zoomed view on the same stretch across a switch", () => {
+    const { svg, at, card, show } = renderSwitcher();
+    // Twice as close, about the middle: 15:00 to 45:00 of the hour.
+    pinch(svg(), [at(0.4), at(0.6)], [at(0.3), at(0.7)]);
+    tap(svg(), at(0));
+    expect(card()).toHaveTextContent("15:00 elapsed");
+
+    show("later");
+    tap(svg(), at(0));
+
+    expect(card()).toHaveTextContent("15:00 elapsed");
+    expect(
+      screen.getByRole("button", { name: "Zoom out" }),
+    ).toBeInTheDocument();
+  });
+});

@@ -29,6 +29,7 @@ import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth, type UnitSystem } from "@/lib/units";
 import { countNoun } from "@/lib/format";
+import { type DiveAxis, diveAxisEnd } from "@/lib/dive-profile";
 
 // What the card knows about the profile right now. `null` is "in flight", derived
 // rather than stored - the same shape `useAuthedBlobUrl` uses, so nothing has to be
@@ -120,8 +121,10 @@ function describeProfileContents(
 // computers recorded. Subsurface's arrow keys switch too: two depth traces on
 // one axis with two pressure families is a legend problem this app does not have
 // to solve, and the question a diver actually asks is "what did *this* computer
-// see", not "where do they disagree by a pixel". The scales are the one thing
-// they share, so that answer reads the same way off either computer's grid.
+// see", not "where do they disagree by a pixel". What they share is the grid:
+// the scales, and the time axis wherever the API could place both on it by
+// their clocks, so that answer reads the same way off either computer's - and
+// switching moves the curve and nothing else.
 
 export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   const units = useUnits();
@@ -230,6 +233,21 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
       : [],
   );
 
+  // The shown recording's place on the dive's shared time axis, which runs to
+  // the latest end over every placed recording whose samples loaded - the same
+  // extent whichever of them is shown. Null where the API placed it nowhere, or
+  // sent no placement at all: it is then charted on its own axis.
+  const placed = charted.flatMap((recording) => {
+    const loaded = results?.get(recording.uuid);
+    return recording.start_on_dive_axis != null && loaded?.status === "ready"
+      ? [{ start: recording.start_on_dive_axis, profile: loaded.profile }]
+      : [];
+  });
+  const axis: DiveAxis | null =
+    shown?.start_on_dive_axis != null
+      ? { start: shown.start_on_dive_axis, end: diveAxisEnd(placed) }
+      : null;
+
   if (!info || !shown) return null;
 
   return (
@@ -290,6 +308,7 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
             mixtures={dive.mixtures}
             menuContainer={menuSlot}
             scaleWith={peers}
+            axis={axis}
           />
         ) : (
           <div className="space-y-2">

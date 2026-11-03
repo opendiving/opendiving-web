@@ -819,6 +819,12 @@ export interface Recording extends RecordingReadouts {
   // `formatDive*` helpers and never with `new Date(...)` and local getters. The
   // profile's axis counts from this instant.
   started_at?: string | null;
+  // Where this recording's own 0 lies on one time axis the dive's recordings
+  // share, in milliseconds from the earliest of them - the API places them by
+  // their clocks. Null where it cannot be placed (no samples, no start, or a
+  // start too far from the others'), and absent from an older API: either way
+  // the recording is charted on its own axis.
+  start_on_dive_axis?: number | null;
   // In attach order.
   files: DiveFileInfo[];
   // Summary of this recording's samples, or absent when it has none. The series

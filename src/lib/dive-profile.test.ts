@@ -11,6 +11,7 @@ import {
   channelsOnAxis,
   cutAtDiveEnd,
   depthDomain,
+  diveAxisEnd,
   displayChannel,
   cylinderName,
   describeEvent,
@@ -23,6 +24,7 @@ import {
   gapThreshold,
   nearestEvent,
   nearestSampleIndex,
+  placeOnDiveAxis,
   readoutTolerance,
   sampleIndexAt,
   temperatureDomain,
@@ -60,6 +62,56 @@ function profile(overrides: Partial<DiveProfile> = {}): DiveProfile {
 function event(overrides: Partial<DiveProfileEvent> = {}): DiveProfileEvent {
   return { time: 0, type: "gas_switch", ...overrides };
 }
+
+describe("placeOnDiveAxis", () => {
+  const recorded = profile({
+    dive_end_time: 20_000,
+    ndl: { times: [10_000], values: [5940] },
+    events: [event({ time: 1_000 })],
+  });
+
+  it("moves every time on the profile along by the recording's place", () => {
+    const placed = placeOnDiveAxis(recorded, 93_520);
+
+    expect(placed.duration).toBe(123_520);
+    expect(placed.dive_end_time).toBe(113_520);
+    expect(placed.depth?.times).toEqual([93_520, 103_520, 113_520, 123_520]);
+    expect(placed.temperature?.times).toEqual([
+      93_520, 103_520, 113_520, 123_520,
+    ]);
+    expect(placed.ndl?.times).toEqual([103_520]);
+    expect(placed.pressures[0].times).toEqual([93_520, 103_520]);
+    expect(placed.events?.[0].time).toBe(94_520);
+  });
+
+  it("leaves the readings alone", () => {
+    const placed = placeOnDiveAxis(recorded, 93_520);
+
+    expect(placed.depth?.values).toEqual(recorded.depth?.values);
+    expect(placed.pressures[0].values).toEqual(recorded.pressures[0].values);
+  });
+
+  it("returns a recording at the axis's origin as it is", () => {
+    expect(placeOnDiveAxis(recorded, 0)).toBe(recorded);
+  });
+});
+
+describe("diveAxisEnd", () => {
+  it("runs to the latest visible end over the placed recordings", () => {
+    // The first ends on its last sample, the second on its dive end - short of
+    // the surface stretch it went on recording.
+    const first = profile();
+    const second = profile({ duration: 40_000, dive_end_time: 25_000 });
+
+    expect(
+      diveAxisEnd([
+        { start: 0, profile: first },
+        { start: 10_000, profile: second },
+      ]),
+    ).toBe(35_000);
+    expect(diveAxisEnd([{ start: 0, profile: first }])).toBe(30_000);
+  });
+});
 
 describe("cutAtDiveEnd", () => {
   // A dive that ends at 20 s on the axis and a recorder that went on to 40 s at
@@ -747,6 +799,19 @@ describe("describeEvent", () => {
         [{ gas_number: 0 }],
       ),
     ).toBe("Gas switch to tank 1");
+  });
+
+  it("judges the opening gas on the recording's own clock", () => {
+    // A second computer placed 1:34 into the dive, its first gas logged 1 s
+    // after it started.
+    const opening = event({ time: 95_000, type: "gas_switch", gas_number: 0 });
+
+    expect(describeEvent(opening, [{ gas_number: 0 }], 94_000)).toBe(
+      "Dive started",
+    );
+    expect(describeEvent(opening, [{ gas_number: 0 }])).toBe(
+      "Gas switch to tank 1",
+    );
   });
 
   it("names the tank a switch went to", () => {

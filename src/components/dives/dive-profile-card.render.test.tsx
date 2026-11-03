@@ -23,23 +23,27 @@ vi.mock("@/contexts/AuthContext", () => ({
 // suite is about the switcher above it, and where the card gives the chart's
 // menu a place - which the stand-in fills the way the chart does, by portal - and
 // which samples it hands the chart to draw and to scale with, which the stand-in
-// names by the `duration` each fixture profile is told apart by.
+// names by the `duration` each fixture profile is told apart by, and where on the
+// dive's shared time axis it is told to draw them.
 vi.mock("./dive-profile-chart", async () => {
   const { createPortal } = await import("react-dom");
   return {
     DiveProfileChart: ({
       profile,
       scaleWith = [],
+      axis,
       menuContainer,
     }: {
       profile: DiveProfile;
       scaleWith?: readonly DiveProfile[];
+      axis?: { start: number; end: number } | null;
       menuContainer: HTMLElement | null;
     }) => (
       <div
         data-testid="profile-chart"
         data-shown={profile.duration}
         data-scale-with={scaleWith.map((peer) => peer.duration).join(",")}
+        data-axis={axis ? `${axis.start}-${axis.end}` : "own"}
       >
         {menuContainer &&
           createPortal(<button type="button">Channels</button>, menuContainer)}
@@ -358,5 +362,91 @@ describe("DiveProfileCard", () => {
     const chart = await screen.findByTestId("profile-chart");
     expect(chart).toHaveAttribute("data-shown", "1");
     expect(chart).toHaveAttribute("data-scale-with", "");
+  });
+
+  describe("on the dive's shared time axis", () => {
+    // The example the placement was built for: the Suunto switched on a minute
+    // and a half before the Perdix, each recording about 49 minutes.
+    const placedAt = (perdix: number | null, ocean?: number | null) =>
+      dive({
+        recordings: twoComputers.recordings?.map((entry) => ({
+          ...entry,
+          start_on_dive_axis: entry.uuid === "perdix" ? perdix : ocean,
+        })),
+      });
+    const durations: Record<string, number> = {
+      perdix: 2_940_000,
+      ocean: 3_000_000,
+    };
+
+    beforeEach(() => {
+      vi.mocked(divesAPI.getRecordingProfile).mockImplementation(
+        async (_dive, recordingUuid) =>
+          ({
+            duration: durations[recordingUuid],
+            pressures: [],
+            events: [],
+          }) as unknown as DiveProfile,
+      );
+    });
+
+    it("hands the chart each recording's place and one extent for both", async () => {
+      render(<DiveProfileCard dive={placedAt(93_520, 0)} />);
+
+      const chart = await screen.findByTestId("profile-chart");
+      expect(chart).toHaveAttribute("data-axis", "93520-3033520");
+
+      await userEvent.click(screen.getByRole("button", { name: /Porvoo/ }));
+
+      expect(screen.getByTestId("profile-chart")).toHaveAttribute(
+        "data-axis",
+        "0-3033520",
+      );
+    });
+
+    it("leaves a recording the API could not place on its own axis", async () => {
+      render(<DiveProfileCard dive={placedAt(0, null)} />);
+
+      const chart = await screen.findByTestId("profile-chart");
+      // The placed one's extent stops at its own end: the other draws nowhere
+      // on this axis.
+      expect(chart).toHaveAttribute("data-axis", "0-2940000");
+
+      await userEvent.click(screen.getByRole("button", { name: /Porvoo/ }));
+
+      expect(screen.getByTestId("profile-chart")).toHaveAttribute(
+        "data-axis",
+        "own",
+      );
+    });
+
+    it("charts every recording on its own axis where the API sent no placement", async () => {
+      render(<DiveProfileCard dive={twoComputers} />);
+
+      expect(await screen.findByTestId("profile-chart")).toHaveAttribute(
+        "data-axis",
+        "own",
+      );
+    });
+
+    it("stops widening the axis for a placed peer whose samples failed", async () => {
+      vi.mocked(divesAPI.getRecordingProfile).mockImplementation(
+        async (_dive, recordingUuid) => {
+          if (recordingUuid === "ocean") throw new Error("network");
+          return {
+            duration: durations[recordingUuid],
+            pressures: [],
+            events: [],
+          } as unknown as DiveProfile;
+        },
+      );
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      render(<DiveProfileCard dive={placedAt(0, 600_000)} />);
+
+      expect(await screen.findByTestId("profile-chart")).toHaveAttribute(
+        "data-axis",
+        "0-2940000",
+      );
+    });
   });
 });

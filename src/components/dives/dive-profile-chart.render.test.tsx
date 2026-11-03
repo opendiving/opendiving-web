@@ -2279,3 +2279,123 @@ describe("DiveProfileChart scaled with the dive's other recordings", () => {
     expect(Math.max(...degrees)).toBeGreaterThanOrEqual(28);
   });
 });
+
+describe("DiveProfileChart on the dive's shared time axis", () => {
+  // Two computers on one 50-minute dive, the second switched on ten minutes
+  // after the first: the API places the first at 0 and the second at 600 000,
+  // and the axis runs to the later of their ends.
+  // Sampled every 30 s, so the crosshair's tolerance is a minute and a half
+  // rather than the quarter hour `longProfile`'s cadence would give it.
+  const AXIS_END = 3_600_000;
+  const times = Array.from({ length: 101 }, (_, index) => index * 30_000);
+  const dense = {
+    times,
+    values: times.map((time) => (time === 0 || time === 3_000_000 ? 0 : 2000)),
+  };
+  const first = longProfile({ depth: dense });
+  const later = longProfile({
+    depth: dense,
+    events: [
+      { time: 1_000, type: "gas_switch", gas_number: 0 },
+      { time: 10_000, type: "bookmark" },
+    ],
+  });
+  const firstAxis = { start: 0, end: AXIS_END };
+  const laterAxis = { start: 600_000, end: AXIS_END };
+
+  const elapsedLabels = (root: HTMLElement) =>
+    [...root.querySelectorAll("text[text-anchor='middle']")].map(
+      (label) => label.textContent,
+    );
+
+  beforeEach(() => {
+    window.localStorage.setItem(
+      DIVE_PROFILE_SERIES_KEY,
+      JSON.stringify(["depth", "events"]),
+    );
+  });
+
+  it("draws the later recording from its place, not from the left edge", () => {
+    const { container } = render(
+      <DiveProfileChart profile={later} axis={laterAxis} />,
+    );
+
+    const plot = plotEdges(container);
+    expect(firstFillX(container, DEPTH_FILL)).toBeCloseTo(
+      plot.left + (600_000 / AXIS_END) * plot.width,
+      6,
+    );
+  });
+
+  it("labels the elapsed axis the same whichever recording is shown", () => {
+    const fromFirst = render(
+      <DiveProfileChart profile={first} axis={firstAxis} />,
+    );
+    const firstLabels = elapsedLabels(fromFirst.container);
+    fromFirst.unmount();
+    const fromLater = render(
+      <DiveProfileChart profile={later} axis={laterAxis} />,
+    );
+
+    expect(elapsedLabels(fromLater.container)).toEqual(firstLabels);
+    expect(firstLabels[firstLabels.length - 1]).toBe("60:00");
+  });
+
+  it("draws and speaks a marker at its own time plus the recording's place", () => {
+    const { container } = render(
+      <DiveProfileChart profile={later} axis={laterAxis} />,
+    );
+
+    const plot = plotEdges(container);
+    const ticks = [
+      ...container.querySelectorAll("g[aria-hidden][opacity] line"),
+    ].map((tick) => Number(tick.getAttribute("x1")));
+    expect(ticks[1]).toBeCloseTo(
+      plot.left + (610_000 / AXIS_END) * plot.width,
+      6,
+    );
+    expect(screen.getByRole("img").getAttribute("aria-label")).toContain(
+      "Bookmark at 10min",
+    );
+  });
+
+  it("still calls the recording's opening gas the dive's start", () => {
+    render(<DiveProfileChart profile={later} axis={laterAxis} />);
+
+    expect(screen.getByRole("img").getAttribute("aria-label")).toContain(
+      "Dive started at 10min",
+    );
+  });
+
+  it("speaks the span the recording itself covers", () => {
+    render(<DiveProfileChart profile={later} axis={laterAxis} />);
+
+    expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(
+      /^Dive profile over 50min,/,
+    );
+  });
+
+  it("quotes nothing from before the recording began", () => {
+    render(<DiveProfileChart profile={later} axis={laterAxis} />);
+    // Five minutes in, five before the later computer's first sample - and
+    // within its tolerance of that sample, the reading is quoted as ever.
+    hoverAt(300_000 / AXIS_END);
+    expect(readoutText()).toMatch(/^5:00 elapsed— Depth/);
+
+    hoverAt(570_000 / AXIS_END);
+    expect(readoutText()).toMatch(/^9:30 elapsed0\.0 m Depth/);
+  });
+
+  it("draws a recording with no place on its own axis", () => {
+    const { container } = render(
+      <DiveProfileChart profile={later} axis={null} />,
+    );
+
+    const labels = elapsedLabels(container);
+    expect(labels[labels.length - 1]).toBe("50:00");
+    expect(firstFillX(container, DEPTH_FILL)).toBeCloseTo(
+      plotEdges(container).left,
+      6,
+    );
+  });
+});

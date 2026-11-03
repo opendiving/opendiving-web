@@ -26,7 +26,9 @@ import {
 
 // The profile's axis is milliseconds (DiveJSON §5.1): a series' `times`, a
 // profile's `duration` and an event's `time`, counted from the recording's own
-// start. Every helper here takes and returns that unit, and a second exists only
+// start - until `placeOnDiveAxis` moves them onto the axis a dive's recordings
+// share, which is the axis the chart draws on. Every helper here takes and
+// returns that unit, and a second exists only
 // where a person reads one - `formatElapsed` and `formatElapsedSpoken` convert,
 // once. The `ndl` and `tts` *values* are seconds still: readings, not positions
 // on the axis, and `PROFILE_CHANNELS` scales them on their own terms.
@@ -736,6 +738,65 @@ export function cutAtDiveEnd(profile: DiveProfile): DiveProfile {
   return visible;
 }
 
+// Where one recording sits on the time axis a dive's recordings share: its own 0
+// at `start`, the axis running from 0 to `end` (`diveAxisEnd`). `start` is the
+// API's `start_on_dive_axis`, which places every recording it can by the
+// computers' clocks; the web never compares clocks itself.
+export interface DiveAxis {
+  start: number;
+  end: number;
+}
+
+// The profile moved `start` milliseconds along the axis: every series' `times`,
+// every event's `time`, `duration` and `dive_end_time`. Run after
+// `cutAtDiveEnd`, so the cut is made on the recording's own clock, and the
+// readings themselves are left alone - nothing derived from the spacing of the
+// samples changes.
+export function placeOnDiveAxis(
+  profile: DiveProfile,
+  start: number,
+): DiveProfile {
+  if (start === 0) return profile;
+
+  const shift = <S extends DiveProfileSeries>(series: S): S => ({
+    ...series,
+    times: series.times.map((time) => time + start),
+  });
+
+  const placed: DiveProfile = {
+    ...profile,
+    duration: profile.duration + start,
+    dive_end_time:
+      profile.dive_end_time == null
+        ? profile.dive_end_time
+        : profile.dive_end_time + start,
+    pressures: (profile.pressures ?? []).map(shift),
+    events: profile.events?.map((event) => ({
+      ...event,
+      time: event.time + start,
+    })),
+  };
+  for (const key of PROFILE_SERIES_KEYS) {
+    const series = profile[key];
+    if (series) placed[key] = shift(series);
+  }
+  return placed;
+}
+
+// Where the shared axis ends: the latest visible end - what `cutAtDiveEnd`
+// leaves - over every placed recording whose samples are in hand. One extent
+// for all of them, so switching between two placed recordings keeps the axis.
+export function diveAxisEnd(
+  placed: readonly { start: number; profile: DiveProfile }[],
+): number {
+  return Math.max(
+    0,
+    ...placed.map(
+      ({ start, profile }) => start + cutAtDiveEnd(profile).duration,
+    ),
+  );
+}
+
 // A channel's stored integers as display units, or `null` when the profile
 // doesn't carry that channel.
 //
@@ -985,13 +1046,18 @@ const STARTING_GAS_MS = 30 * MILLISECONDS_PER_SECOND;
 // `aria-label`. It is also where a null type lands, and where an older build's
 // `"other"` lands - three arrivals, one honest answer, and deliberately one
 // `return` rather than three copies of it.
+//
+// `recordingStart` is where the recording's own 0 lies on the axis `event.time`
+// is on (see `placeOnDiveAxis`): "the dive's start" is the recording's, so a
+// second computer placed 1:34 into the dive still opens on "Dive started".
 export function describeEvent(
   event: DiveProfileEvent,
   cylinders: CylinderLabels = [],
+  recordingStart = 0,
 ): string {
   switch (event.type) {
     case "gas_switch":
-      if (event.time <= STARTING_GAS_MS) return "Dive started";
+      if (event.time - recordingStart <= STARTING_GAS_MS) return "Dive started";
       // Named as the pressure curves name the cylinder - and `0` is a real
       // label, the first the reader gives, so this tests for null rather than
       // for falsiness.

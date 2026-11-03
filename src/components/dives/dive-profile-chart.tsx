@@ -56,9 +56,11 @@ import {
   formatElapsed,
   formatElapsedSpoken,
   cutAtDiveEnd,
+  type DiveAxis,
   drawnSampleIndexAt,
   gapThreshold,
   nearestEvent,
+  placeOnDiveAxis,
   profileScalePlacement,
   readoutTolerance,
   temperatureDomain,
@@ -253,7 +255,12 @@ export interface DiveProfileChartProps {
   // The dive's other recordings, whose readings widen every vertical axis this
   // chart draws, so switching computers keeps one grid and the difference
   // between them is in the curves rather than in the numbers along the edge.
+  // Every one of them, placed on the time axis or not.
   scaleWith?: readonly DiveProfile[];
+  // Where this recording sits on the time axis the dive's recordings share - see
+  // `DiveAxis`. Absent, it is drawn on its own axis, from its own 0 to its own
+  // end.
+  axis?: DiveAxis | null;
 }
 
 const NO_CYLINDERS: CylinderLabels = [];
@@ -406,14 +413,26 @@ export function DiveProfileChart({
   mixtures = NO_CYLINDERS,
   menuContainer,
   scaleWith = NO_PEERS,
+  axis,
 }: DiveProfileChartProps) {
   const units = useUnits();
-  // Everything below reads this rather than the prop: the recording cut at the
-  // dive's end, with `duration` moved to that instant. Cutting the samples
-  // before anything derives from them, rather than ending only the x scale, is
-  // what keeps the surface stretch out of the vertical scales, the crosshair
-  // and the summary as well as off the plot.
-  const profile = useMemo(() => cutAtDiveEnd(recorded), [recorded]);
+  // The recording cut at the dive's end, with `duration` moved to that instant,
+  // on its own clock. Cutting the samples before anything derives from them,
+  // rather than ending only the x scale, is what keeps the surface stretch out
+  // of the vertical scales, the crosshair and the summary as well as off the
+  // plot.
+  const own = useMemo(() => cutAtDiveEnd(recorded), [recorded]);
+  // Where its own 0 lies on the axis the chart draws, 0 on its own axis.
+  const start = axis?.start ?? 0;
+  // Everything below reads this rather than the prop: the cut recording moved
+  // to its place on the axis, so every time read off it - a sample's, a
+  // marker's, `duration` - is already a position on the plot. Only the rules
+  // about the recording's own clock read `start` back out: `describeEvent`'s
+  // starting gas and the summary's span.
+  const profile = useMemo(() => placeOnDiveAxis(own, start), [own, start]);
+  // The axis: the shared one where the recording is placed - never short of
+  // this recording's own end - and its own visible span otherwise.
+  const extent = Math.max(axis?.end ?? 0, profile.duration);
   // Cut the same way, so another computer's surface stretch cannot widen an axis
   // this one's curves never reach either.
   const peers = useMemo(() => scaleWith.map(cutAtDiveEnd), [scaleWith]);
@@ -455,7 +474,7 @@ export function DiveProfileChart({
   //
   // A finger's x goes through the same hit target as a mouse's, so the two land
   // on the same instant - of the stretch on screen, once zoomed.
-  const zoom = useChartZoom(profile.duration, MIN_VIEW_MS, plotBox);
+  const zoom = useChartZoom(extent, MIN_VIEW_MS, plotBox);
   const { view } = zoom;
   const span = view.end - view.start;
   const timeAt = (box: DOMRect, clientX: number) =>
@@ -548,20 +567,23 @@ export function DiveProfileChart({
   const temperature = toChannelSeries(profile, "temperature", units);
   const pressure = toPressureSeries(profile, units);
 
-  // The axis's span: the dive's end, or the recording's where there is none.
-  const duration = profile.duration;
+  // Where this recording's curves end on the axis: the dive's end, or the
+  // recording's where there is none. The axis itself can run on past it, to
+  // where another placed recording ends.
+  const end = profile.duration;
 
   // Markers that land inside the plot, which is this chart's job rather than the
   // API's: its `shape_events` clamps the low side at zero and leaves the high side
   // alone - a device goes on recording after the dive, and after its last sample,
   // so a FIT `user_marker` pressed after surfacing happened when the file says it
   // did. The DiveJSON spec blesses the same arrangement (§6.4). This is the clip,
-  // at `duration`, which is the dive's end where the response carries one (see
-  // `cutAtDiveEnd`) and the recording's last sample otherwise.
+  // at `end`, which is the dive's end where the response carries one (see
+  // `cutAtDiveEnd`) and the recording's last sample otherwise, and at `start`,
+  // before which this recording had not begun.
   //
   // Dropped rather than clamped to the plot's last instant, which would invent a
   // time to keep a marker on screen, and rather than left to the SVG's edge, which
-  // clips nothing: `x(time)` past `duration` lands in the right-hand axis-label
+  // clips nothing: `x(time)` past the axis's end lands in the right-hand axis-label
   // gutter (aligned with no time on the axis), or in the card's padding, which the
   // `overflow-visible` SVG draws into.
   //
@@ -570,7 +592,7 @@ export function DiveProfileChart({
   // about what the chart contains. That disagreement is the actual bug here: a
   // marker invisible to the eye but named to a screen reader.
   const events = (profile.events ?? []).filter(
-    (event) => event.time >= 0 && event.time <= duration,
+    (event) => event.time >= start && event.time <= end,
   );
 
   // Rebuilt every render rather than memoized: the series are already capped at
@@ -1150,7 +1172,10 @@ export function DiveProfileChart({
           // rule the channels go through `shownValues` for.
           events: eventsShown ? events : [],
           cylinders: mixtures,
-          duration,
+          // What this computer recorded, on its own clock, rather than the
+          // shared axis it is drawn on.
+          duration: own.duration,
+          recordingStart: start,
           units,
           temperatureDecimals: temperature?.channel.decimals ?? 0,
         })}
@@ -1499,6 +1524,7 @@ export function DiveProfileChart({
             cylinders={mixtures}
             readouts={readouts}
             event={hoveredEvent}
+            recordingStart={start}
             cx={x(hoveredMs)}
             chartWidth={width}
             // The box the card's percentage offsets are resolved against,
@@ -1605,6 +1631,7 @@ export function DiveProfileChart({
               at={hoveredMs}
               readouts={readouts}
               event={hoveredEvent}
+              recordingStart={start}
               markers={eventsShown}
               cylinders={mixtures}
               tone="panel"
@@ -1838,6 +1865,7 @@ function ProfileTooltip({
   cylinders,
   readouts,
   event,
+  recordingStart,
   cx,
   chartWidth,
   chartHeight,
@@ -1848,6 +1876,7 @@ function ProfileTooltip({
   cylinders: CylinderLabels;
   readouts: Readout[];
   event: DiveProfileEvent | null;
+  recordingStart: number;
   cx: number;
   chartWidth: number;
   chartHeight: number;
@@ -1912,6 +1941,7 @@ function ProfileTooltip({
         at={at}
         readouts={readouts}
         event={event}
+        recordingStart={recordingStart}
         markers={false}
         cylinders={cylinders}
         tone="tooltip"
@@ -1930,6 +1960,7 @@ function ReadoutGrid({
   at,
   readouts,
   event,
+  recordingStart,
   markers,
   cylinders,
   tone,
@@ -1937,6 +1968,8 @@ function ReadoutGrid({
   at: number | null;
   readouts: Readout[];
   event: DiveProfileEvent | null;
+  // Where the recording's own 0 lies on the axis - see `describeEvent`.
+  recordingStart: number;
   // Whether the marker line holds its place with no marker under the
   // crosshair, as the panel's does: the panel sits above the plot on an upright
   // screen, and a line coming and going would move the plot under the finger.
@@ -2028,7 +2061,7 @@ function ReadoutGrid({
               glyphFor(event.type).colorClass,
             )}
           >
-            {describeEvent(event, cylinders)}
+            {describeEvent(event, cylinders, recordingStart)}
           </span>
         </>
       ) : (
@@ -2242,6 +2275,7 @@ function describeProfile({
   events,
   cylinders,
   duration,
+  recordingStart,
   units,
   temperatureDecimals,
 }: {
@@ -2254,7 +2288,12 @@ function describeProfile({
   readings: (key: ProfileChannelKey) => number[];
   events: readonly DiveProfileEvent[];
   cylinders: CylinderLabels;
+  // The recording's own visible span, which is what the sentence opens on.
   duration: number;
+  // Where the recording's own 0 lies on the axis its markers' times are on: the
+  // times are spoken as the crosshair prints them, and the starting gas is
+  // judged on the recording's own clock - see `describeEvent`.
+  recordingStart: number;
   // The system those readings are already in, so this can name it. Spelled out
   // rather than abbreviated throughout - "ft" is read aloud as a word and "°C"
   // not at all, which is the whole reason `unitWord` exists.
@@ -2348,7 +2387,7 @@ function describeProfile({
       .slice(0, MAX_DESCRIBED_EVENTS)
       .map(
         (event) =>
-          `${describeEvent(event, cylinders)} at ${formatElapsedSpoken(event.time)}`,
+          `${describeEvent(event, cylinders, recordingStart)} at ${formatElapsedSpoken(event.time)}`,
       );
     if (events.length > named.length) {
       named.push(`and ${events.length - named.length} more`);
