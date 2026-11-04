@@ -3,6 +3,12 @@
 //   GET  /healthz    200 while it can render, 503 otherwise
 //   GET  /signature  200 {"signature": "<64 lowercase hex>",
 //                         "attribution": "<the basemap's credit, markdown links>"}
+//   GET  /style/{theme}?language=
+//                    200 application/json, the style a tile in that theme and
+//                    language is drawn on; no language is English alone;
+//                    400 for another theme, or a language outside the label
+//                    languages; 503 when it cannot render or has no style.
+//                    It takes no place in the queue, and waits for no draw
 //   POST /render     200 image/webp, a 1024x1024 tile, with X-Map-Signature;
 //                    400 for a body of the wrong shape; 503 when the queue is
 //                    full, the render passes its deadline, or it cannot render
@@ -16,7 +22,14 @@
 
 import { createServer, type IncomingMessage, type Server } from "node:http";
 
-import { parsePayload, PayloadError, type TilePayload } from "./payload";
+import {
+  parsePayload,
+  parseStyleRequest,
+  PayloadError,
+  type LabelLanguage,
+  type Theme,
+  type TilePayload,
+} from "./payload";
 
 // The most draws the API's default deadline, `MAP_RENDERER_TIMEOUT`'s 90 s,
 // covers at the slowest cold tile `scripts/measure-map-renderer.mjs` measured
@@ -33,6 +46,8 @@ export interface Renderer {
   isHealthy(): boolean;
   /** One tile, or a thrown error. */
   draw(payload: TilePayload): Promise<Buffer>;
+  /** The style such a tile is drawn on, or a thrown error. */
+  style(theme: Theme, language?: LabelLanguage): Promise<object>;
 }
 
 export interface RendererServerOptions {
@@ -97,7 +112,10 @@ export function createRendererServer({
     const fail = (status: number, detail: string, headers = {}) =>
       send(status, JSON.stringify({ detail }), "application/json", headers);
 
-    const { pathname } = new URL(request.url ?? "/", "http://renderer");
+    const { pathname, searchParams } = new URL(
+      request.url ?? "/",
+      "http://renderer",
+    );
     const route = `${request.method} ${pathname}`;
 
     if (route === "GET /healthz") {
@@ -109,6 +127,30 @@ export function createRendererServer({
     if (pathname === "/healthz" || pathname === "/signature") {
       return fail(405, "Method not allowed", { Allow: "GET" });
     }
+
+    const styleTheme = /^\/style\/([^/]+)$/.exec(pathname)?.[1];
+    if (styleTheme !== undefined) {
+      if (request.method !== "GET") {
+        return fail(405, "Method not allowed", { Allow: "GET" });
+      }
+      let asked: ReturnType<typeof parseStyleRequest>;
+      try {
+        asked = parseStyleRequest(styleTheme, searchParams.get("language"));
+      } catch (error) {
+        return fail(400, (error as PayloadError).message);
+      }
+      if (!renderer.isHealthy()) {
+        return fail(503, "The renderer cannot draw yet");
+      }
+      try {
+        const style = await renderer.style(asked.theme, asked.language);
+        return send(200, JSON.stringify(style));
+      } catch (error) {
+        log(`Could not load a style: ${(error as Error).message}`);
+        return fail(503, "The style could not be loaded");
+      }
+    }
+
     if (pathname !== "/render") return fail(404, "Not found");
     if (request.method !== "POST") {
       return fail(405, "Method not allowed", { Allow: "POST" });

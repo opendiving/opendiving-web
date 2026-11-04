@@ -178,6 +178,23 @@ describe("the engine", () => {
     expect(inEnglish).toEqual(lightWarm.loaded[0]);
   });
 
+  it("answers the style a draw in that theme and language hands its map", async () => {
+    const { engine, drawn } = await engineWith();
+    await engine.draw({ ...TILE, theme: "dark", language: "ar" });
+    await engine.draw(TILE);
+
+    const [inArabic, inEnglish] = drawn().map((map) => map.loaded[0]);
+    expect(await engine.style("dark", "ar")).toEqual(inArabic);
+    expect(await engine.style("light")).toEqual(inEnglish);
+  });
+
+  it("names the vendored sprite against this instance's origin", async () => {
+    const { engine } = await engineWith();
+    expect(await engine.style("light")).toMatchObject({
+      sprite: expect.stringMatching(/^https:\/\/dives\.example\.com\//),
+    });
+  });
+
   // MapLibre Native keeps every source tile a map has drawn, so a map is never
   // kept past its tile.
   it("draws every tile on a map of its own, and lets it go", async () => {
@@ -227,5 +244,6 @@ describe("the engine", () => {
     await new Promise((done) => setTimeout(done, 20));
     expect(engine.isReady()).toBe(false);
     await expect(engine.draw(TILE)).rejects.toThrow(/502/);
+    await expect(engine.style("light")).rejects.toThrow(/502/);
   });
 });

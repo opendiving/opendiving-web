@@ -2,7 +2,7 @@ import type { AddressInfo } from "node:net";
 import { request as httpRequest, type Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { TilePayload } from "./payload";
+import type { LabelLanguage, Theme, TilePayload } from "./payload";
 import { createRendererServer, QUEUE_LIMIT, type Renderer } from "./server";
 
 // The server driven over real HTTP with the contract's own bodies, and a
@@ -12,6 +12,7 @@ const SIGNATURE = "a".repeat(64);
 const ATTRIBUTION =
   "[OpenFreeMap](https://openfreemap.org/) © [OpenStreetMap](https://www.openstreetmap.org/copyright)";
 const IMAGE = Buffer.from("RIFF....WEBPVP8 ");
+const STYLE = { version: 8, sources: {}, layers: [] };
 
 const TILE = { kind: "tile", theme: "light", z: 9, x: 300, y: 215 };
 const DARK_TILE = { kind: "tile", theme: "dark", z: 0, x: 0, y: 0 };
@@ -25,6 +26,11 @@ interface Stub extends Renderer {
   hold: boolean;
   release(): void;
   fail: boolean;
+  /** What each style answer was asked for. */
+  styled: [Theme, LabelLanguage | undefined][];
+  /** Holds every style answer until the promise it is set to settles. */
+  styleGate: Promise<void>;
+  styleFails: boolean;
 }
 
 function stubRenderer(): Stub {
@@ -35,6 +41,9 @@ function stubRenderer(): Stub {
     drawn: [],
     hold: false,
     fail: false,
+    styled: [],
+    styleGate: Promise.resolve(),
+    styleFails: false,
     isHealthy: () => {
       stub.checks += 1;
       return stub.healthy;
@@ -44,6 +53,12 @@ function stubRenderer(): Stub {
       stub.drawn.push(payload);
       if (stub.fail) throw new Error("the provider answered 500");
       return IMAGE;
+    },
+    async style(theme, language) {
+      stub.styled.push([theme, language]);
+      await stub.styleGate;
+      if (stub.styleFails) throw new Error("the provider answered 500");
+      return STYLE;
     },
     release() {
       const pending = waiting;
@@ -281,6 +296,95 @@ describe("the renderer's server", () => {
     expect(renderer.drawn).toEqual([TILE]);
   });
 
+  it("answers /style/{theme} with the theme's style, in a language if asked", async () => {
+    const renderer = stubRenderer();
+    const base = await serve(renderer);
+
+    for (const path of ["/style/light", "/style/dark?language=de"]) {
+      const response = await fetch(`${base}${path}`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("application/json");
+      expect(await response.json()).toEqual(STYLE);
+    }
+    expect(renderer.styled).toEqual([
+      ["light", undefined],
+      ["dark", "de"],
+    ]);
+  });
+
+  it("answers 400 for a theme or a language a tile would be refused", async () => {
+    const renderer = stubRenderer();
+    const base = await serve(renderer);
+
+    for (const path of [
+      "/style/sepia",
+      "/style/light?language=en",
+      "/style/light?language=de-DE",
+      "/style/light?language=",
+    ]) {
+      const response = await fetch(`${base}${path}`);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toHaveProperty("detail");
+    }
+    expect(renderer.styled).toEqual([]);
+  });
+
+  it("answers 503 for a style while it cannot render", async () => {
+    const renderer = stubRenderer();
+    renderer.healthy = false;
+    const base = await serve(renderer);
+    expect((await fetch(`${base}/style/light`)).status).toBe(503);
+    expect(renderer.styled).toEqual([]);
+  });
+
+  it("answers 503, and nothing partial, when the style cannot be had", async () => {
+    const lines: string[] = [];
+    const renderer = stubRenderer();
+    renderer.styleFails = true;
+    server = createRendererServer({
+      renderer,
+      signature: SIGNATURE,
+      attribution: ATTRIBUTION,
+      log: (line) => lines.push(line),
+    });
+    await new Promise<void>((done) => server!.listen(0, "127.0.0.1", done));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+    const response = await fetch(`${base}/style/light`);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toHaveProperty("detail");
+    expect(lines).toEqual([expect.stringContaining("the provider answered")]);
+  });
+
+  it("answers a style past a full queue, while a draw holds it", async () => {
+    const renderer = stubRenderer();
+    renderer.hold = true;
+    const base = await serve(renderer, 1);
+
+    const held = render(base, TILE);
+    await expect.poll(() => renderer.checks).toBe(1);
+    expect((await render(base, TILE)).status).toBe(503);
+
+    expect((await fetch(`${base}/style/light`)).status).toBe(200);
+
+    renderer.release();
+    expect((await held).status).toBe(200);
+  });
+
+  it("gives a style no place in the queue", async () => {
+    const renderer = stubRenderer();
+    let finish = () => {};
+    renderer.styleGate = new Promise((done) => (finish = done));
+    const base = await serve(renderer, 1);
+
+    const styled = fetch(`${base}/style/light`);
+    await expect.poll(() => renderer.styled.length).toBe(1);
+    expect((await render(base, TILE)).status).toBe(200);
+
+    finish();
+    expect((await styled).status).toBe(200);
+  });
+
   it("answers 404 and 405 for what it does not serve", async () => {
     const base = await serve(stubRenderer());
     expect((await fetch(`${base}/`)).status).toBe(404);
@@ -290,5 +394,10 @@ describe("the renderer's server", () => {
     const post = await fetch(`${base}/signature`, { method: "POST" });
     expect(post.status).toBe(405);
     expect(post.headers.get("allow")).toBe("GET");
+    const style = await fetch(`${base}/style/light`, { method: "POST" });
+    expect(style.status).toBe(405);
+    expect(style.headers.get("allow")).toBe("GET");
+    expect((await fetch(`${base}/style`)).status).toBe(404);
+    expect((await fetch(`${base}/style/light/extra`)).status).toBe(404);
   });
 });

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { MAX_FIT_ZOOM } from "@/lib/basemap";
-import { LABEL_LANGUAGES, parsePayload, PayloadError } from "./payload";
+import {
+  LABEL_LANGUAGES,
+  parsePayload,
+  parseStyleRequest,
+  PayloadError,
+} from "./payload";
 
 const TILE = { kind: "tile", theme: "light", z: 9, x: 300, y: 215 };
 
@@ -97,6 +102,25 @@ describe("parsePayload", () => {
       rejects({ ...TILE, language }, /language must be one of/);
     },
   );
+});
+
+describe("parseStyleRequest", () => {
+  it("takes either theme, with no language or one of the list", () => {
+    expect(parseStyleRequest("light", null)).toEqual({ theme: "light" });
+    expect(parseStyleRequest("dark", "de")).toEqual({
+      theme: "dark",
+      language: "de",
+    });
+  });
+
+  it("refuses what a tile's body is refused", () => {
+    for (const theme of ["sepia", "Light", ""]) {
+      expect(() => parseStyleRequest(theme, null)).toThrow(PayloadError);
+    }
+    for (const language of ["en", "de-DE", "DE", ""]) {
+      expect(() => parseStyleRequest("light", language)).toThrow(PayloadError);
+    }
+  });
 });
 
 // Mirrored in the API, which bounds the tiles it stores by it.

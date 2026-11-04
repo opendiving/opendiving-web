@@ -92,6 +92,7 @@ async function main() {
     renderer: {
       isHealthy: () => engine.isReady() && (display?.isUp() ?? true),
       draw: (payload) => engine.draw(payload),
+      style: (theme, language) => engine.style(theme, language),
     },
     signature,
     attribution: config.basemap.attribution,

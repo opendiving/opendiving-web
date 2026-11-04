@@ -5,7 +5,7 @@ import sharp from "sharp";
 
 import { withLabelLanguage } from "@/lib/basemap";
 import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
-import type { Theme, TilePayload } from "./payload";
+import type { LabelLanguage, Theme, TilePayload } from "./payload";
 import type { Resources } from "./resources";
 import { loadStyle, type RendererConfig } from "./style";
 
@@ -73,6 +73,8 @@ export interface Engine {
   isReady(): boolean;
   /** One tile, as WebP - or a thrown error, and never a partial image. */
   draw(payload: TilePayload): Promise<Buffer>;
+  /** The style a draw in this theme and language hands its map. */
+  style(theme: Theme, language?: LabelLanguage): Promise<object>;
   close(): void;
 }
 
@@ -150,6 +152,10 @@ export function createEngine({
     }
   }
 
+  async function labelledStyle(theme: Theme, language?: LabelLanguage) {
+    return withLabelLanguage(await styleFor(theme), language);
+  }
+
   // **A map per tile, released as soon as it is drawn.** MapLibre Native keeps
   // the source tiles of every place a map has drawn, up to a cache sized for a
   // map that pans, and offers no way to bound it: a map kept across distinct
@@ -206,7 +212,7 @@ export function createEngine({
     y,
     language,
   }: TilePayload): Promise<Uint8Array> {
-    const map = newMap(withLabelLanguage(await styleFor(theme), language));
+    const map = newMap(await labelledStyle(theme, language));
     const center = tileCenter(z, x, y);
     drawing.add(map);
 
@@ -265,6 +271,8 @@ export function createEngine({
         .webp({ quality: 90 })
         .toBuffer();
     },
+
+    style: labelledStyle,
 
     close() {
       closed = true;

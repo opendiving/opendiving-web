@@ -104,7 +104,7 @@ export interface TilePayload {
   language?: LabelLanguage;
 }
 
-/** A body that breaks the shape `POST /render` takes: the 400. */
+/** What `POST /render` or `GET /style/{theme}` refuses: the 400. */
 export class PayloadError extends Error {}
 
 const KEYS = ["kind", "theme", "z", "x", "y"] as const;
@@ -112,6 +112,23 @@ const OPTIONAL_KEYS = ["language"] as const;
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+function parseTheme(theme: unknown): Theme {
+  if (theme !== "light" && theme !== "dark") {
+    throw new PayloadError('theme must be "light" or "dark"');
+  }
+  return theme;
+}
+
+// Present means one of the list: the API sends nothing for English alone, so a
+// `null`, an empty value or an unknown code is a client this side does not
+// understand.
+function parseLanguage(language: unknown): LabelLanguage {
+  if (!(LABEL_LANGUAGES as readonly unknown[]).includes(language)) {
+    throw new PayloadError("language must be one of the label languages");
+  }
+  return language as LabelLanguage;
+}
 
 // An integer from 0 to `max`, both included.
 function within(value: unknown, max: number, what: string): number {
@@ -145,10 +162,7 @@ export function parsePayload(body: unknown): TilePayload {
     throw new PayloadError(`the body has unexpected ${extra.join(", ")}`);
   }
   if (body.kind !== "tile") throw new PayloadError('kind must be "tile"');
-  const { theme } = body;
-  if (theme !== "light" && theme !== "dark") {
-    throw new PayloadError('theme must be "light" or "dark"');
-  }
+  const theme = parseTheme(body.theme);
   const z = within(body.z, MAX_FIT_ZOOM, "z");
   const last = 2 ** z - 1;
   const payload: TilePayload = {
@@ -158,14 +172,21 @@ export function parsePayload(body: unknown): TilePayload {
     x: within(body.x, last, "x"),
     y: within(body.y, last, "y"),
   };
-  // Present means one of the list: the API sends no key for English alone, so
-  // a `null` or an unknown code is a client this side does not understand.
-  if ("language" in body) {
-    const { language } = body;
-    if (!(LABEL_LANGUAGES as readonly unknown[]).includes(language)) {
-      throw new PayloadError("language must be one of the label languages");
-    }
-    payload.language = language as LabelLanguage;
-  }
+  if ("language" in body) payload.language = parseLanguage(body.language);
   return payload;
+}
+
+/**
+ * The theme and language `GET /style/{theme}` was asked for, by the checks a
+ * tile answers to, or a thrown `PayloadError`. `language` is the query's value,
+ * `null` when it has none.
+ */
+export function parseStyleRequest(
+  theme: string,
+  language: string | null,
+): { theme: Theme; language?: LabelLanguage } {
+  return {
+    theme: parseTheme(theme),
+    ...(language !== null && { language: parseLanguage(language) }),
+  };
 }
