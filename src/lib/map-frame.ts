@@ -6,8 +6,9 @@ import type { LatLonBounds } from "@/lib/basemap";
 
 // How wide a detail page's hero draws its map, in CSS pixels: a canvas this wide
 // centred in the frame, which a window wider than it shows dissolving into the
-// page at its sides, and a narrower one shows the middle of.
-export const HERO_CANVAS_WIDTH = 1024;
+// page at its sides, and a narrower one shows the middle of. The header's
+// `max-w-6xl` column, so the map spans the menu bar above it.
+export const HERO_CANVAS_WIDTH = 1152;
 
 // How far in from each side a hero's canvas dissolves into the page. A quarter
 // of it: wide enough that the eye finds no edge, and leaves the middle half for
