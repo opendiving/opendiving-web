@@ -837,6 +837,31 @@ describe("the map tiles", () => {
     },
   );
 
+  // Its own paragraph, on both copies: the browser's sentences say "the app"
+  // of the web app, and the header's value here is what one capture showed.
+  it.each([[false], [true]])(
+    "say what the OpenDiving app's forms show the provider, map tiles: %s",
+    async (mapTiles) => {
+      await renderPage({ google: false, mapTiles });
+
+      const paragraph = screen.getByText(
+        /The paragraphs above describe a browser/,
+      );
+      expect(paragraph.tagName).toBe("P");
+      const text = (paragraph.textContent ?? "").replace(/\s+/g, " ");
+      expect(text).toMatch(
+        /the form to add a dive site and the search for a site’s location, the form to add a trip, and the form to add a contact, which loads one only when you ask it to show the map/,
+      );
+      expect(text).toMatch(
+        /only where this server draws tiles, so on a copy that draws none those forms show no map/,
+      );
+      expect(text).toMatch(
+        /the OpenDiving app names the phone’s language to this server when it asks for the map’s style, and fetches the map directly from the same basemap provider, which sees the phone’s IP address, the part of the world on screen, the OpenDiving app’s name and version and the iOS version that its requests’ User-Agent header names, and the language settings that their Accept-Language header names, and nothing of your account/,
+      );
+      expect(text).not.toMatch(/first language|\bonly the\b|languages it is/);
+    },
+  );
+
   it("say the cards and the page heads show no map where this copy draws none", async () => {
     await renderPage({ google: false, mapTiles: false });
 

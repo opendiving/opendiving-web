@@ -804,6 +804,22 @@ export default async function PrivacyPage() {
                 </p>
               )}
               <p className="text-foreground mb-4">
+                The paragraphs above describe a browser. The OpenDiving app on a
+                phone draws a map of its own in four places: the form to add a
+                dive site and the search for a site&rsquo;s location, the form
+                to add a trip, and the form to add a contact, which loads one
+                only when you ask it to show the map. It draws these maps only
+                where this server draws tiles, so on a copy that draws none
+                those forms show no map. To draw one, the OpenDiving app names
+                the phone&rsquo;s language to this server when it asks for the
+                map&rsquo;s style, and fetches the map directly from the same
+                basemap provider, which sees the phone&rsquo;s IP address, the
+                part of the world on screen, the OpenDiving app&rsquo;s name and
+                version and the iOS version that its requests&rsquo; User-Agent
+                header names, and the language settings that their
+                Accept-Language header names, and nothing of your account.
+              </p>
+              <p className="text-foreground mb-4">
                 If you run your own copy of OpenDiving you can point it at a
                 basemap you serve yourself, and none of this leaves your
                 machine.
