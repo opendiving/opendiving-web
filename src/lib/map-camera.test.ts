@@ -58,6 +58,22 @@ describe("frameCamera", () => {
       frameCamera(places, card(252)).zoom,
     );
   });
+
+  it("fits a box that circles the world around its own point", () => {
+    const fiji = placedLocations([
+      {
+        latitude: -17.7,
+        longitude: 179,
+        bbox_south: -21,
+        bbox_north: -11,
+        bbox_west: -180,
+        bbox_east: 180,
+      },
+    ]);
+    const { center, zoom } = frameCamera(fiji, card(252));
+    expect(center.longitude).toBeCloseTo(179);
+    expect(zoom).toBeGreaterThan(MIN_ZOOM);
+  });
 });
 
 describe("worldCamera", () => {

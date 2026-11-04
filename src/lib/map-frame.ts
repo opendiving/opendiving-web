@@ -95,6 +95,35 @@ export interface PlacedLocation {
   bounds: LatLonBounds;
 }
 
+// A geocoder sends a place across the antimeridian as a box nearly or wholly
+// round the world: Fiji at -180 to 180, New Zealand 358 degrees wide. From this
+// wide up, the box says nothing about longitude. The iOS app holds the same
+// threshold, so a place frames alike on both.
+const WORLD_BOX_SPAN = 350;
+
+/**
+ * What a place's box asks a map to fit. A box that circles the world keeps its
+ * south and north and takes a width equal to that height, centred on the place's
+ * own longitude, so a place really that wide shows around its point and not
+ * whole. The extent may pass 180, which `unionBounds` takes. Its span is
+ * `unionBounds`' own, repeated here because the renderer's bundle hashes
+ * `basemap.ts` whole and any edit there has every stored tile drawn again.
+ */
+function boxExtent(box: LatLonBounds, longitude: number): LatLonBounds {
+  const signed = box.east - box.west;
+  const span = signed >= 0 ? Math.min(signed, 360) : signed + 360;
+  if (span < WORLD_BOX_SPAN) return box;
+
+  // Absolute because form state reaches here unvalidated, as in `unionBounds`.
+  const half = Math.abs(box.north - box.south) / 2;
+  return {
+    south: box.south,
+    north: box.north,
+    west: longitude - half,
+    east: longitude + half,
+  };
+}
+
 /**
  * The places that can actually be drawn, with the extent each one asks for.
  *
@@ -103,7 +132,8 @@ export interface PlacedLocation {
  * unexplained.
  * A place the geocoder gave a footprint for is fitted by that footprint, which
  * is what keeps a country from opening at the zoom of its centroid; anything
- * else is fitted as the degenerate box of its own point.
+ * else is fitted as the degenerate box of its own point. The exception is a box
+ * that circles the world, which `boxExtent` reads around the place's point.
  */
 export function placedLocations(
   locations: readonly MappableLocation[],
@@ -128,12 +158,15 @@ export function placedLocations(
       longitude,
       variant: location.variant ?? "pin",
       bounds: hasBox
-        ? {
-            south: bbox_south,
-            north: bbox_north,
-            west: bbox_west,
-            east: bbox_east,
-          }
+        ? boxExtent(
+            {
+              south: bbox_south,
+              north: bbox_north,
+              west: bbox_west,
+              east: bbox_east,
+            },
+            longitude,
+          )
         : {
             south: latitude,
             north: latitude,
