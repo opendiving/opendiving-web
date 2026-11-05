@@ -50,6 +50,9 @@ export function ReplaceWithCommonsDialog({
     }
   };
 
+  // The target goes in the commit that closes the dialog, which is still fading.
+  const recordName = target?.name ?? "the Commons site";
+
   return (
     <ConfirmDialog
       open={target !== null}
@@ -59,7 +62,7 @@ export function ReplaceWithCommonsDialog({
         onCancel();
       }}
       title="Replace with Commons site"
-      description={`Your dives at ${site.name} will name ${target?.name} instead, and your notes and tags move to it. ${site.name} is then deleted, with any proposal on it, and a dive draft naming it loses its site.`}
+      description={`Your dives at ${site.name} will name ${recordName} instead, and your notes and tags move to it. ${site.name} is then deleted, with any proposal on it, and a dive draft naming it loses its site.`}
       confirmText="Replace with Commons site"
       isLoading={isReplacing}
       onConfirm={replace}
