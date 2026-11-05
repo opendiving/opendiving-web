@@ -106,6 +106,7 @@ const CONFIG: InstanceConfig = {
   join_links: false,
   map_tiles: false,
   dive_conditions: false,
+  commons_primary: false,
 };
 
 const CHECKIN_DETAILS: CheckinDetails = {

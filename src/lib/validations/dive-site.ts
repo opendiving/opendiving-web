@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
-import { coordinateField, formatCoordinateForForm, isSet } from "./coordinates";
+import {
+  coordinateField,
+  formatCoordinateForForm,
+  isSet,
+  parseFormCoordinate,
+} from "./coordinates";
 import { locationSchema } from "./location";
 import { altitudeField, tagsField, vocabularyField } from "./dive";
 import {
@@ -10,7 +15,11 @@ import {
   type EntryType,
   type WaterType,
 } from "@/lib/api/dives";
-import type { DiveSite, DiveSiteCreate } from "@/lib/api/dive-sites";
+import type {
+  DiveSite,
+  DiveSiteCreate,
+  DiveSiteSharedMembers,
+} from "@/lib/api/dive-sites";
 
 // DiveJSON's bound on another name, which is also the input's `maxLength`.
 export const OTHER_NAME_MAX = 255;
@@ -74,6 +83,14 @@ export const diveSiteFormSchema = z
 
 export type DiveSiteFormInput = z.input<typeof diveSiteFormSchema>;
 
+// The same fields, for a Commons record's shared members: the API lets a body clear
+// a site's pin, and a record keeps its. On latitude, which the half-a-pin rules above
+// leave alone when both are blank.
+export const sharedMembersFormSchema = diveSiteFormSchema.refine(
+  (data) => isSet(data.latitude) || isSet(data.longitude),
+  { message: "A Commons site keeps its pin", path: ["latitude"] },
+);
+
 const isWaterType = (value: unknown): value is WaterType =>
   WATER_TYPES.includes(value as WaterType);
 const isEntryType = (value: unknown): value is EntryType =>
@@ -93,8 +110,29 @@ export function siteEntryTypes(
   return ENTRY_TYPES.filter((entry) => site.entry_types?.includes(entry));
 }
 
+type DiveSiteFormSource = Pick<DiveSite, "name"> &
+  Partial<
+    Pick<
+      DiveSite,
+      | "location"
+      | "latitude"
+      | "longitude"
+      | "notes"
+      | "other_names"
+      | "external_ids"
+      | "depth_from"
+      | "depth_to"
+      | "water_type"
+      | "altitude"
+      | "entry_types"
+      | "tags"
+    >
+  >;
+
 /** What the dialog opens on: the site being edited, or a clean slate. */
-export function diveSiteFormValues(site?: DiveSite | null): DiveSiteFormInput {
+export function diveSiteFormValues(
+  site?: DiveSiteFormSource | null,
+): DiveSiteFormInput {
   return {
     name: site?.name ?? "",
     // The whole place, so that saving an edit that never touched this field
@@ -133,5 +171,36 @@ export function diveSiteMembersFromForm(
     altitude: data.altitude ?? null,
     entry_types: data.entry_types ?? [],
     tags: data.tags ?? [],
+  };
+}
+
+/** What the shared-members form opens on: the locality's name as the form's place. */
+export function sharedMembersFormValues(
+  members: DiveSiteSharedMembers,
+): DiveSiteFormInput {
+  return diveSiteFormValues({
+    ...members,
+    location: members.location_name ? { name: members.location_name } : null,
+  });
+}
+
+/** The whole record a validated shared-members form holds, every member named. */
+export function sharedMembersFromForm(
+  data: DiveSiteFormInput,
+): DiveSiteSharedMembers {
+  return {
+    name: data.name.trim(),
+    other_names: (data.other_names ?? [])
+      .map((name) => name.trim())
+      .filter(Boolean),
+    latitude: parseFormCoordinate(data.latitude),
+    longitude: parseFormCoordinate(data.longitude),
+    location_name: data.location?.name.trim() || null,
+    external_ids: data.external_ids ?? [],
+    depth_from: data.depth_from ?? null,
+    depth_to: data.depth_to ?? null,
+    water_type: data.water_type || null,
+    altitude: data.altitude ?? null,
+    entry_types: data.entry_types ?? [],
   };
 }

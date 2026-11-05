@@ -199,6 +199,75 @@ export interface DiveSiteLookupItem extends DiveSiteRelation {
   entry_types?: string[];
 }
 
+/**
+ * A site's shared members, the eleven a Commons record publishes: what a review
+ * reads and what an acceptance writes, every one named, a null or an empty list
+ * included, since a member left out of an acceptance is refused rather than cleared.
+ * The locality is its name alone, flat: a Commons record keeps no centre or box for
+ * it.
+ */
+export interface DiveSiteSharedMembers {
+  name: string;
+  other_names: string[];
+  latitude: number | null;
+  longitude: number | null;
+  location_name: string | null;
+  external_ids: ExternalId[];
+  depth_from: number | null;
+  depth_to: number | null;
+  water_type: string | null;
+  altitude: number | null;
+  entry_types: string[];
+}
+
+/** A read's shared members, for a form that starts from the record as it stands. */
+export function sharedMembersOf(site: DiveSite): DiveSiteSharedMembers {
+  return {
+    name: site.name,
+    other_names: site.other_names ?? [],
+    latitude: site.latitude ?? null,
+    longitude: site.longitude ?? null,
+    location_name: site.location?.name ?? null,
+    external_ids: site.external_ids ?? [],
+    depth_from: site.depth_from ?? null,
+    depth_to: site.depth_to ?? null,
+    water_type: site.water_type ?? null,
+    altitude: site.altitude ?? null,
+    entry_types: site.entry_types ?? [],
+  };
+}
+
+/**
+ * Why a Commons record may be the same place as a site, strongest first: they share
+ * a registry entry; they are within 20 m whatever the names; a similar name within
+ * 200 m; the same name, not a generic one, within 5 km.
+ */
+export type CommonsMatchRule =
+  | "identity"
+  | "within_20_m"
+  | "similar_name_within_200_m"
+  | "same_name_within_5_km";
+
+/**
+ * A Commons record a site may be. It lacks the depths, the water, the altitude and
+ * the entries: a form that writes the record starts from its own read.
+ */
+export interface DiveSiteCommonsMatch {
+  uuid: string;
+  name: string;
+  other_names: string[];
+  latitude: number | null;
+  longitude: number | null;
+  location_name: string | null;
+  external_ids: ExternalId[];
+  attribution: string | null;
+  rule: CommonsMatchRule;
+  /** Between the two pins; null when the site has none. */
+  distance_metres: number | null;
+  /** The names differ only by a word like West or East, which usually means two sites. */
+  qualifier_siblings: boolean;
+}
+
 const lookupDiveSites = lookupFetcher<DiveSiteLookupItem, UuidLookupQuery>(
   `/dive-sites/lookup`,
 );

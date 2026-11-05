@@ -177,3 +177,37 @@ describe("the species catalog routes", () => {
     expect(post).toHaveBeenCalledWith(`/admin/species/${UUID}/photo/refetch`);
   });
 });
+
+describe("the proposal queue", () => {
+  it("asks for a page in the API's own parameter names", async () => {
+    get.mockResolvedValue({ data: { data: [], total_count: 0 } });
+
+    await adminAPI.getDiveSiteProposals(2, 25);
+
+    expect(get).toHaveBeenCalledWith("/admin/dive-site-proposals", {
+      params: { page: 2, items_per_page: 25 },
+    });
+  });
+
+  it("posts an acceptance's body as given", async () => {
+    post.mockResolvedValue({ data: {} });
+
+    await adminAPI.acceptDiveSiteProposal("proposal-1", { into: "record-1" });
+
+    expect(post).toHaveBeenCalledWith(
+      "/admin/dive-site-proposal/proposal-1/accept",
+      { into: "record-1" },
+    );
+  });
+
+  it("posts a decline's reason", async () => {
+    post.mockResolvedValue({ data: {} });
+
+    await adminAPI.declineDiveSiteProposal("proposal-1", "Already there");
+
+    expect(post).toHaveBeenCalledWith(
+      "/admin/dive-site-proposal/proposal-1/decline",
+      { reason: "Already there" },
+    );
+  });
+});

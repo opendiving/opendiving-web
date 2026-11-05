@@ -46,8 +46,13 @@ export default async function PrivacyPage() {
   // that has set up no join link carries no word about them, and so do the map
   // tiles: a copy whose server draws none says its cards and page heads show no
   // map.
-  const { projectOperated, joinLinks, mapTiles, diveConditions } =
-    await readLegalPageConfig();
+  const {
+    projectOperated,
+    joinLinks,
+    mapTiles,
+    diveConditions,
+    commonsPrimary,
+  } = await readLegalPageConfig();
 
   return (
     <div className={PAGE_COLUMN}>
@@ -727,13 +732,13 @@ export default async function PrivacyPage() {
                 4.4 Map Tiles
               </h3>
               <p className="text-foreground mb-4">
-                Three places in the app show a map your browser draws itself,
-                and for those your browser fetches the map&rsquo;s tiles
-                directly from a third-party basemap provider. That provider
-                therefore sees your IP address and which part of the world the
-                map is showing — which is, roughly, where you dive. It does not
-                receive your account, your dive log, or the name of anything on
-                the map.
+                {commonsPrimary ? "Four" : "Three"} places in the app show a map
+                your browser draws itself, and for those your browser fetches
+                the map&rsquo;s tiles directly from a third-party basemap
+                provider. That provider therefore sees your IP address and which
+                part of the world the map is showing — which is, roughly, where
+                you dive. It does not receive your account, your dive log, or
+                the name of anything on the map.
               </p>
               <p className="text-foreground mb-4">
                 Your browser does this whenever one of those maps is on screen,
@@ -741,8 +746,16 @@ export default async function PrivacyPage() {
                 dive site and the form to add or edit a trip, which load a map
                 as soon as they open — one to place a pin on, one to show you
                 the places you pick — and the form to add or edit a contact,
-                which loads one only when you ask it to show the map. Apart from
-                those three, no page has your browser contact the provider.
+                which loads one only when you ask it to show the map
+                {commonsPrimary && (
+                  <>
+                    , and the screen where this copy&rsquo;s operator reviews
+                    what divers propose for OpenDiving Commons, which loads one
+                    when a proposal is opened
+                  </>
+                )}
+                . Apart from those {commonsPrimary ? "four" : "three"}, no page
+                has your browser contact the provider.
               </p>
               <p className="text-foreground mb-4">
                 Those maps name places in English and, where the map has a name

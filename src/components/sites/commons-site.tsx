@@ -44,8 +44,10 @@ export function commonsMark(
   return isCommonsSite(site) ? { badge: COMMONS_LABEL } : {};
 }
 
-/** The credits of a page of lookup rows, each once, in the order they came. */
-export function commonsCredits(sites: DiveSiteLookupItem[]): string[] {
+/** The credits of a list of records, each once, in the order they came. */
+export function commonsCredits(
+  sites: Pick<DiveSiteLookupItem, "attribution">[],
+): string[] {
   const credits = sites.flatMap((site) => site.attribution ?? []);
   return [...new Set(credits)];
 }

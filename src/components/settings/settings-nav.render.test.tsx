@@ -163,6 +163,7 @@ describe("SettingsNav", () => {
       join_links: false,
       map_tiles: false,
       dive_conditions: false,
+      commons_primary: false,
     };
     render(<SettingsNav />);
 
@@ -184,6 +185,7 @@ describe("SettingsNav", () => {
       join_links: false,
       map_tiles: false,
       dive_conditions: false,
+      commons_primary: false,
     };
     render(<SettingsNav />);
 

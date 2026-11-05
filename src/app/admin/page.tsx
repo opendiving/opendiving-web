@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { BarChart3, Fish, Inbox } from "lucide-react";
+import { AdminScreenCard } from "@/components/admin/admin-screen-card";
+import { ProposalScreenCard } from "@/components/admin/proposal-screen-card";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export const metadata: Metadata = { title: "Admin" };
@@ -45,22 +46,12 @@ export default function AdminPage() {
 
       <div className={HERO_BODY}>
         <ul className="grid gap-4 max-sm:gap-2.5 sm:grid-cols-2">
-          {SCREENS.map(({ href, icon: Icon, title, description }) => (
-            <li key={href}>
-              <Link
-                href={href}
-                className="flex h-full gap-3 rounded-lg border bg-card p-4 max-sm:p-3 transition-colors hover:bg-muted/50"
-              >
-                <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                <span>
-                  <span className="block font-semibold">{title}</span>
-                  <span className="mt-1 block text-sm text-muted-foreground">
-                    {description}
-                  </span>
-                </span>
-              </Link>
+          {SCREENS.map((screen) => (
+            <li key={screen.href}>
+              <AdminScreenCard {...screen} />
             </li>
           ))}
+          <ProposalScreenCard />
         </ul>
       </div>
     </div>

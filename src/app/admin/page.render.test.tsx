@@ -1,6 +1,35 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import AdminPage from "./page";
+import { adminAPI } from "@/lib/api/admin";
+import { useInstanceConfig } from "@/hooks/useInstanceConfig";
+
+vi.mock("@/hooks/useInstanceConfig", () => ({ useInstanceConfig: vi.fn() }));
+
+vi.mock("@/lib/api/admin", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/admin")>()),
+  adminAPI: { getDiveSiteProposals: vi.fn() },
+}));
+
+const getProposals = vi.mocked(adminAPI.getDiveSiteProposals);
+
+const primary = (commons_primary: boolean) =>
+  vi.mocked(useInstanceConfig).mockReturnValue({
+    config: {
+      registration_mode: "invite",
+      project_operated: false,
+      join_links: false,
+      map_tiles: false,
+      dive_conditions: false,
+      commons_primary,
+    },
+    isLoading: false,
+  });
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  primary(false);
+});
 
 describe("the admin section's landing", () => {
   it("offers every screen in the section", () => {
@@ -18,5 +47,29 @@ describe("the admin section's landing", () => {
       "href",
       "/admin/species",
     );
+  });
+
+  it("offers the proposals, with how many wait, where the Commons is edited", async () => {
+    primary(true);
+    getProposals.mockResolvedValue({
+      data: [],
+      total_count: 3,
+      has_more: true,
+      page: 1,
+      items_per_page: 1,
+    });
+    render(<AdminPage />);
+
+    expect(
+      await screen.findByRole("link", { name: /3 proposals waiting/ }),
+    ).toHaveAttribute("href", "/admin/proposals");
+    expect(getProposals).toHaveBeenCalledWith(1, 1);
+  });
+
+  it("does not, and asks nothing, on any other copy", () => {
+    render(<AdminPage />);
+
+    expect(screen.queryByRole("link", { name: /Proposals/ })).toBeNull();
+    expect(getProposals).not.toHaveBeenCalled();
   });
 });

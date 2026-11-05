@@ -27,6 +27,8 @@ import type { DiveSiteFormInput } from "@/lib/validations/dive-site";
 
 export interface DiveSiteDetailsFieldsProps {
   control: Control<DiveSiteFormInput>;
+  // Tags are the diver's, so a form over a record's shared members leaves them off.
+  withTags?: boolean;
 }
 
 // The place's own facts - the depths dived there, its water, its altitude, how
@@ -37,7 +39,10 @@ export interface DiveSiteDetailsFieldsProps {
 // Depths and the altitude are typed in the diver's units and held in metres, as
 // the dive form's are, with the same per-dimension toggle - so feet typed here
 // read back as feet on the dive form.
-export function DiveSiteDetailsFields({ control }: DiveSiteDetailsFieldsProps) {
+export function DiveSiteDetailsFields({
+  control,
+  withTags = true,
+}: DiveSiteDetailsFieldsProps) {
   const { entryUnits, toggleEntryUnits } = useEntryUnits();
 
   // `EntryUnitLabelRow` keeps the toggle out of flow, so a label with one shares
@@ -192,24 +197,26 @@ export function DiveSiteDetailsFields({ control }: DiveSiteDetailsFieldsProps) {
         }}
       />
 
-      <FormField
-        control={control}
-        name="tags"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Tags</FormLabel>
-            <FormControl
-              render={
-                <TagsMultiSelect
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                />
-              }
-            />
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {withTags && (
+        <FormField
+          control={control}
+          name="tags"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tags</FormLabel>
+              <FormControl
+                render={
+                  <TagsMultiSelect
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                  />
+                }
+              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
     </>
   );
 }

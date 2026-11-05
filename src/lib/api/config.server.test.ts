@@ -31,6 +31,7 @@ const NONE = {
   joinLinks: false,
   mapTiles: false,
   diveConditions: false,
+  commonsPrimary: false,
 };
 
 describe("readLegalPageConfig", () => {
@@ -41,12 +42,14 @@ describe("readLegalPageConfig", () => {
       join_links: true,
       map_tiles: true,
       dive_conditions: true,
+      commons_primary: true,
     });
     await expect(readLegalPageConfig()).resolves.toEqual({
       projectOperated: true,
       joinLinks: true,
       mapTiles: true,
       diveConditions: true,
+      commonsPrimary: true,
     });
 
     answers({ project_operated: false, join_links: true, map_tiles: false });
@@ -55,6 +58,7 @@ describe("readLegalPageConfig", () => {
       joinLinks: true,
       mapTiles: false,
       diveConditions: false,
+      commonsPrimary: false,
     });
 
     answers({ project_operated: false, join_links: false, map_tiles: true });
@@ -63,6 +67,7 @@ describe("readLegalPageConfig", () => {
       joinLinks: false,
       mapTiles: true,
       diveConditions: false,
+      commonsPrimary: false,
     });
 
     answers({ project_operated: false, dive_conditions: true });
@@ -71,6 +76,13 @@ describe("readLegalPageConfig", () => {
       joinLinks: false,
       mapTiles: false,
       diveConditions: true,
+      commonsPrimary: false,
+    });
+
+    answers({ project_operated: false, commons_primary: true });
+    await expect(readLegalPageConfig()).resolves.toEqual({
+      ...NONE,
+      commonsPrimary: true,
     });
   });
 

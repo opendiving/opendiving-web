@@ -41,12 +41,14 @@ async function renderPage({
   joinLinks = false,
   mapTiles = false,
   diveConditions = false,
+  commonsPrimary = false,
 }: {
   google: boolean;
   projectOperated?: boolean;
   joinLinks?: boolean;
   mapTiles?: boolean;
   diveConditions?: boolean;
+  commonsPrimary?: boolean;
 }) {
   runtimeConfig.mockReturnValue({
     googleClientId: google ? "abc.apps.googleusercontent.com" : undefined,
@@ -56,6 +58,7 @@ async function renderPage({
     joinLinks,
     mapTiles,
     diveConditions,
+    commonsPrimary,
   });
   render(await PrivacyPage());
 }
@@ -852,6 +855,29 @@ describe("the map tiles", () => {
       );
     },
   );
+
+  it("counts three browser maps on a copy that does not edit the Commons", async () => {
+    await renderPage({ google: false, commonsPrimary: false });
+
+    const text = mapSection();
+    expect(text).toMatch(/Three places in the app show a map your browser/);
+    expect(text).toMatch(
+      /which loads one only when you ask it to show the map\. Apart from those three, no page has your browser contact the provider\./,
+    );
+    expect(text).not.toMatch(/proposal|OpenDiving Commons/);
+  });
+
+  // The review queue's map, which only the copy that edits the Commons has.
+  it("counts the review map where the Commons is edited", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    const text = mapSection();
+    expect(text).toMatch(/Four places in the app show a map your browser/);
+    expect(text).toMatch(
+      /which loads one only when you ask it to show the map, and the screen where this copy’s operator reviews what divers propose for OpenDiving Commons, which loads one when a proposal is opened\. Apart from those four, no page has your browser contact the provider\./,
+    );
+    expect(text).not.toMatch(/Three places|those three/);
+  });
 
   // Its own paragraph, on both copies: the browser's sentences say "the app"
   // of the web app, and the header's value here is what one capture showed.

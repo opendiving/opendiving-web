@@ -31,6 +31,8 @@ export interface LegalPageConfig {
   mapTiles: boolean;
   /** Whether this instance fetches dives' surface conditions from a weather service. */
   diveConditions: boolean;
+  /** Whether OpenDiving Commons is edited on this instance, and so reviewed on it. */
+  commonsPrimary: boolean;
 }
 
 const NONE: LegalPageConfig = {
@@ -38,6 +40,7 @@ const NONE: LegalPageConfig = {
   joinLinks: false,
   mapTiles: false,
   diveConditions: false,
+  commonsPrimary: false,
 };
 
 /**
@@ -49,8 +52,8 @@ const NONE: LegalPageConfig = {
  * gets the wrong answer in that direction is a project-run one that reads like any other
  * instance, which costs nothing. Wrong in the other direction is a self-hoster's privacy
  * policy naming a person who has never touched their machine, describing join links
- * nobody set up, or saying their server draws maps or asks a weather service when it
- * does not.
+ * nobody set up, or saying their server draws maps, asks a weather service or reviews
+ * proposals when it does not.
  *
  * That is also what keeps a self-hosted copy whose API is down rendering its legal pages
  * unchanged rather than failing: there is no error path out of here, only `false`.
@@ -79,7 +82,7 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
     if (!response.ok) {
       console.warn(
         `[instance-config] GET /config answered ${response.status}; ` +
-          `reading this instance as not project-operated, without join links, map tiles or surface conditions.`,
+          `reading this instance as not project-operated, without join links, map tiles, surface conditions or the Commons to edit.`,
       );
       return NONE;
     }
@@ -90,11 +93,12 @@ export async function readLegalPageConfig(): Promise<LegalPageConfig> {
       joinLinks: config.join_links === true,
       mapTiles: config.map_tiles === true,
       diveConditions: config.dive_conditions === true,
+      commonsPrimary: config.commons_primary === true,
     };
   } catch (error: unknown) {
     console.warn(
       "[instance-config] Couldn't read this instance's configuration; " +
-        "reading it as not project-operated, without join links, map tiles or surface conditions.",
+        "reading it as not project-operated, without join links, map tiles, surface conditions or the Commons to edit.",
       error,
     );
     return NONE;

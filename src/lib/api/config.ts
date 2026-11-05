@@ -47,6 +47,14 @@ export interface InstanceConfig {
    * where it is asked.
    */
   dive_conditions: boolean;
+  /**
+   * Whether OpenDiving Commons is edited on this instance, which is the one place
+   * proposals are made and reviewed; every other copy holds a read-only copy of the
+   * records and answers those routes with a 404. The admin section offers the
+   * review queue on it, and `/privacy` reads it from the server, to count that
+   * queue's map.
+   */
+  commons_primary: boolean;
 }
 
 /** One live join link: the slug its address carries, and the name it is shown by. */
@@ -86,8 +94,9 @@ export const JOIN_CHANNEL_SLUG = /^[a-z0-9-]{1,32}$/;
  * Anonymous by design, and not a leak: the landing page discloses the first two
  * anyway, the mode by which form it then shows and the operator by how that form
  * reads, and `/privacy` discloses `join_links` by whether its join-link paragraph
- * is there, `map_tiles` by whether a card shows a map at all and `dive_conditions`
- * by whether a dive page credits a weather service.
+ * is there, `map_tiles` by whether a card shows a map at all, `dive_conditions`
+ * by whether a dive page credits a weather service and `commons_primary` by what
+ * `/privacy` says of its maps.
  */
 export const configAPI = {
   /**

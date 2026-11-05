@@ -32,7 +32,11 @@ const FRAMES = {
 
 // The admin frames are checked in their own directories, since nothing out here may
 // import that section (`lib/admin-isolation.test.ts`).
-const CHECKED_INSIDE_ADMIN = ["invite-queue-frame", "species-catalog-frame"];
+const CHECKED_INSIDE_ADMIN = [
+  "invite-queue-frame",
+  "proposal-queue-frame",
+  "species-catalog-frame",
+];
 
 const COMPONENTS = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
