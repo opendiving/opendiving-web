@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useInstanceConfig } from "@/hooks/useInstanceConfig";
 import { useTags } from "@/hooks/useTags";
 import { diveSitesAPI, DiveSite, isCommonsSite } from "@/lib/api/dive-sites";
 import {
@@ -17,12 +18,59 @@ import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassig
 import { CommonsSiteDialog } from "@/components/sites/commons-site-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { useQuickCreate } from "@/components/layout/quick-create";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
 // Blue Hole" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Dive site deleted successfully.";
 const REMOVED_MESSAGE = "Removed from your sites.";
+
+// How many of the diver's own sites are also Commons records, on every instance: the
+// old catalogue left such copies wherever it was used. The one row asked for is what
+// the count comes with.
+function useCommonsMatchCount(enabled: boolean, refreshOn: number): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let active = true;
+    diveSitesAPI
+      .getDiveSites(1, 1, { commonsMatch: true })
+      .then(({ total_count }) => {
+        if (active) setCount(total_count);
+      })
+      .catch((error: unknown) => {
+        console.error("Couldn't count the sites in the Commons.", error);
+      });
+    return () => {
+      active = false;
+    };
+  }, [enabled, refreshOn]);
+  return count;
+}
+
+function CommonsMatchNotice({
+  count,
+  isListing,
+  onToggle,
+}: {
+  count: number;
+  isListing: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border bg-muted/40 p-3 text-sm max-sm:mb-2.5">
+      <p className="min-w-0 flex-1">
+        {count === 1
+          ? "1 of your sites is in OpenDiving Commons, and can be replaced with the Commons site."
+          : `${count} of your sites are in OpenDiving Commons, and can be replaced with the Commons sites.`}
+      </p>
+      <Button type="button" variant="outline" size="sm" onClick={onToggle}>
+        {isListing ? "Show all sites" : count === 1 ? "Show it" : "Show them"}
+      </Button>
+    </div>
+  );
+}
 
 export function SitesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -39,6 +87,12 @@ export function SitesPageContent() {
   const [wantsTags, setWantsTags] = useState(false);
   const { tags } = useTags(!!user && wantsTags);
 
+  const { config } = useInstanceConfig();
+  const [deletions, setDeletions] = useState(0);
+  const matchCount = useCommonsMatchCount(!!user, deletions);
+  const [wantsMatches, setWantsMatches] = useState(false);
+  const listingMatches = wantsMatches && matchCount > 0;
+
   // One term against the name, the other names and the location, which is the
   // same query the dive form's site picker runs, narrowed by the tag and put in
   // the panel's order.
@@ -48,8 +102,9 @@ export function SitesPageContent() {
         search: search || undefined,
         tagUuid: filters.tagUuid || undefined,
         sort: filters.sort,
+        commonsMatch: listingMatches,
       }),
-    [search, filters],
+    [search, filters, listingMatches],
   );
 
   // Changing the search term, the tag or the order changes this callback's
@@ -72,7 +127,8 @@ export function SitesPageContent() {
   } = useInfiniteResource<DiveSite>(fetchDiveSites, {
     keyOf: (site) => site.uuid,
     enabled: !!user,
-    isNarrowed: search.length > 0 || Boolean(filters.tagUuid),
+    isNarrowed:
+      search.length > 0 || Boolean(filters.tagUuid) || listingMatches,
     errorMessage: "Failed to load dive sites. Please try again.",
   });
 
@@ -90,7 +146,11 @@ export function SitesPageContent() {
     // collapse back to the first one under them. Unless its dives moved to
     // another site, whose card then counts them - that is a delete that
     // changes another card, and only a re-read shows it.
-    onDeleted: (id, movedDivesTo) => (movedDivesTo ? reload() : removeItem(id)),
+    onDeleted: (id, movedDivesTo) => {
+      setDeletions((count) => count + 1);
+      if (movedDivesTo) reload();
+      else removeItem(id);
+    },
   });
 
   if (isAuthLoading) {
@@ -126,6 +186,22 @@ export function SitesPageContent() {
         onFiltersChange={setFilters}
         onFiltersOpened={() => setWantsTags(true)}
         tags={tags ?? undefined}
+        actions={
+          config?.commons_primary === true && (
+            <ButtonLink variant="ghost" size="sm" href="/sites/proposals">
+              Your proposals
+            </ButtonLink>
+          )
+        }
+        notice={
+          matchCount > 0 && (
+            <CommonsMatchNotice
+              count={matchCount}
+              isListing={listingMatches}
+              onToggle={() => setWantsMatches(!listingMatches)}
+            />
+          )
+        }
         cards={diveSites.map((diveSite) => (
           <DiveSiteCard
             key={diveSite.uuid}

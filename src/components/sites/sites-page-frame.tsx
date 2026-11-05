@@ -54,6 +54,10 @@ export interface SitesPageFrameProps {
   onFiltersOpened?: () => void;
   /** What the tag select offers. */
   tags?: readonly Tag[];
+  /** Beside the new-site button: where the instance has more for this page. */
+  actions?: ReactNode;
+  /** Above the list, for what the diver should know about it. */
+  notice?: ReactNode;
 }
 
 const noop = () => {};
@@ -79,6 +83,8 @@ export function SitesPageFrame({
   onFiltersChange = noop,
   onFiltersOpened = noop,
   tags,
+  actions,
+  notice,
 }: SitesPageFrameProps) {
   const [isPanelOpen, setPanelOpen] = useState(false);
   const isFiltered = Boolean(filters.tagUuid);
@@ -97,14 +103,18 @@ export function SitesPageFrame({
         title="Dive Sites"
         description="Keep track of the dive sites you've visited"
         actions={
-          <Button size="sm" onClick={onNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            New dive site
-          </Button>
+          <>
+            {actions}
+            <Button size="sm" onClick={onNew}>
+              <Plus className="h-4 w-4 mr-2" />
+              New dive site
+            </Button>
+          </>
         }
       />
 
       <div className={HERO_BODY}>
+        {notice}
         <Card>
           <ListCardHeader title="Dive Site List" isEmpty={isEmptyList}>
             <CountBadge

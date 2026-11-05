@@ -6,8 +6,14 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useInstanceConfig } from "@/hooks/useInstanceConfig";
 import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
-import { diveSitesAPI, DiveSite, isCommonsSite } from "@/lib/api/dive-sites";
+import {
+  diveSitesAPI,
+  DiveSite,
+  isCommonsSite,
+  type DiveSiteCommonsMatchName,
+} from "@/lib/api/dive-sites";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { ButtonLink } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -24,6 +30,13 @@ import { DiveSiteInfoCard } from "@/components/sites/dive-site-info-card";
 import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
 import { DiveSiteHero } from "@/components/sites/dive-site-hero";
 import { DiveSiteInfoDialog } from "@/components/sites/dive-site-info-dialog";
+import { ProposeChangeDialog } from "@/components/sites/propose-change-dialog";
+import { ProposeSiteDialog } from "@/components/sites/propose-site-dialog";
+import { ReplaceWithCommonsDialog } from "@/components/sites/replace-with-commons-dialog";
+import {
+  SiteCommonsMatchNotice,
+  SiteProposalNotice,
+} from "@/components/sites/site-commons-notices";
 import {
   HERO_BODY,
   HERO_CONTROL,
@@ -31,7 +44,7 @@ import {
   PAGE_COLUMN,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Bookmark, Edit, FileText, Plus } from "lucide-react";
+import { Bookmark, Edit, FileText, Landmark, Plus } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -44,6 +57,10 @@ export function DiveSiteDetailPageContent() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isProposeOpen, setIsProposeOpen] = useState(false);
+  const [replaceTarget, setReplaceTarget] =
+    useState<DiveSiteCommonsMatchName | null>(null);
+  const { config } = useInstanceConfig();
   // Counted rather than the site itself, which a return to the page re-reads
   // into a new object: only an edit made here moves what the dive cards show.
   const [saves, setSaves] = useState(0);
@@ -98,6 +115,9 @@ export function DiveSiteDetailPageContent() {
   }
 
   const inCommons = isCommonsSite(diveSite);
+  const canPropose =
+    config?.commons_primary === true &&
+    diveSite.proposal?.status !== "waiting";
   const removedMessage = inCommons ? REMOVED_MESSAGE : DELETED_MESSAGE;
   const applySaved = (saved: DiveSite) => {
     setDiveSite(saved);
@@ -122,6 +142,14 @@ export function DiveSiteDetailPageContent() {
             </ButtonLink>
             <DiveSiteInfoDialog site={diveSite} />
             <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
+              {canPropose && (
+                <DropdownMenuItem onClick={() => setIsProposeOpen(true)}>
+                  <Landmark className="h-4 w-4 mr-2" />
+                  {inCommons
+                    ? "Propose a change"
+                    : "Propose for OpenDiving Commons"}
+                </DropdownMenuItem>
+              )}
               {inCommons && !diveSite.saved ? (
                 <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
                   <Bookmark className="h-4 w-4 mr-2" />
@@ -161,6 +189,30 @@ export function DiveSiteDetailPageContent() {
         />
       )}
 
+      {inCommons ? (
+        <ProposeChangeDialog
+          open={isProposeOpen}
+          onOpenChange={setIsProposeOpen}
+          site={diveSite}
+          onProposed={(proposal) => setDiveSite({ ...diveSite, proposal })}
+        />
+      ) : (
+        <ProposeSiteDialog
+          open={isProposeOpen}
+          onOpenChange={setIsProposeOpen}
+          site={diveSite}
+          onProposed={(proposal) => setDiveSite({ ...diveSite, proposal })}
+          onReplace={setReplaceTarget}
+        />
+      )}
+
+      <ReplaceWithCommonsDialog
+        site={diveSite}
+        target={replaceTarget}
+        onCancel={() => setReplaceTarget(null)}
+        onReplaced={(record) => router.replace(`/sites/${record.uuid}`)}
+      />
+
       <DeleteWithReassignDialog
         kind={inCommons ? "saved-commons-site" : "dive-site"}
         targetId={del.pendingId}
@@ -177,6 +229,14 @@ export function DiveSiteDetailPageContent() {
       />
 
       <div className={HERO_BODY}>
+        <SiteProposalNotice
+          site={diveSite}
+          onWithdrawn={() => setDiveSite({ ...diveSite, proposal: null })}
+        />
+        <SiteCommonsMatchNotice
+          site={diveSite}
+          onReplace={() => setReplaceTarget(diveSite.commons_match ?? null)}
+        />
         <CommonsCredit
           attribution={diveSite.attribution}
           className="mb-2 text-right"

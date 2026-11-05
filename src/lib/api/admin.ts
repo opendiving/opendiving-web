@@ -1,5 +1,9 @@
 import { apiClient, PaginatedResponse } from "./client";
-import type { DiveSiteCommonsMatch, DiveSiteSharedMembers } from "./dive-sites";
+import type {
+  DiveSiteCommonsMatch,
+  DiveSiteProposalKind,
+  DiveSiteSharedMembers,
+} from "./dive-sites";
 import type { Species } from "./species";
 
 /**
@@ -161,9 +165,6 @@ export interface AdminSpeciesPhotoCandidates {
   category: string | null;
   candidates: AdminSpeciesPhotoCandidate[];
 }
-
-/** A diver's own site for the Commons, or a change to a record. */
-export type DiveSiteProposalKind = "new_site" | "change";
 
 /**
  * One row of the review queue, as `GET /admin/dive-site-proposals` lists it: every

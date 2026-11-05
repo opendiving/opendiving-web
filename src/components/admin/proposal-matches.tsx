@@ -4,6 +4,7 @@ import { useCallback, useId, useRef } from "react";
 
 import type { AcceptIntoTarget } from "@/components/admin/proposal-decisions";
 import {
+  COMMONS_MATCH_RULE_LABELS,
   commonsCredits,
   CommonsCredit,
   diveSiteSearchResult,
@@ -21,16 +22,8 @@ import {
   isCommonsSite,
   MAX_SITE_QUERY_LENGTH,
   MIN_SITE_QUERY_LENGTH,
-  type CommonsMatchRule,
 } from "@/lib/api/dive-sites";
 import { formatDistance } from "@/lib/geo-distance";
-
-const RULE_LABELS: Record<CommonsMatchRule, string> = {
-  identity: "Shares a registry entry",
-  within_20_m: "Within 20 m, whatever the name",
-  similar_name_within_200_m: "A similar name within 200 m",
-  same_name_within_5_km: "The same name within 5 km",
-};
 
 const SITES_PER_SEARCH = 25;
 
@@ -69,7 +62,7 @@ export function ProposalMatches({
                   <p className="text-muted-foreground">{match.location_name}</p>
                 )}
                 <p className="text-muted-foreground">
-                  {RULE_LABELS[match.rule]}
+                  {COMMONS_MATCH_RULE_LABELS[match.rule]}
                   {match.distance_metres !== null &&
                     ` · ${formatDistance(match.distance_metres, units)} away`}
                 </p>

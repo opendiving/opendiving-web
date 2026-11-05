@@ -100,6 +100,11 @@ const DESTINATIONS = [
   },
   { route: "/sites", path: "/sites", page: () => import("./sites/page") },
   {
+    route: "/sites/proposals",
+    path: "/sites/proposals",
+    page: () => import("./sites/proposals/page"),
+  },
+  {
     route: "/sites/[id]",
     path: "/sites/site-1",
     page: () => import("./sites/[id]/page"),

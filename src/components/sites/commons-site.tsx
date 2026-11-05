@@ -6,11 +6,23 @@ import type {
   ComboboxItem,
   ComboboxSearchResult,
 } from "@/components/ui/creatable-combobox";
-import { isCommonsSite, type DiveSiteLookupItem } from "@/lib/api/dive-sites";
+import {
+  isCommonsSite,
+  type CommonsMatchRule,
+  type DiveSiteLookupItem,
+} from "@/lib/api/dive-sites";
 import { cn } from "@/lib/utils";
 
 /** What marks a site every account shares, on a menu row as on a badge. */
 export const COMMONS_LABEL = "Commons";
+
+/** Why a Commons record may be the same place as a site. */
+export const COMMONS_MATCH_RULE_LABELS: Record<CommonsMatchRule, string> = {
+  identity: "Shares a registry entry",
+  within_20_m: "Within 20 m, whatever the name",
+  similar_name_within_200_m: "A similar name within 200 m",
+  same_name_within_5_km: "The same name within 5 km",
+};
 
 export function CommonsBadge() {
   return (

@@ -15,7 +15,9 @@ import {
 } from "@/components/ui/backdrop-card";
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { CommonsBadge, CommonsCredit } from "@/components/sites/commons-site";
+import { WAITING_FOR_REVIEW } from "@/components/sites/site-commons-notices";
 import { diveSiteFacts } from "@/components/sites/dive-site-facts";
+import { Badge } from "@/components/ui/badge";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
@@ -101,6 +103,11 @@ export function DiveSiteCard({
         </div>
       )}
       <BackdropCardFigures figures={figures} />
+      {site.proposal?.status === "waiting" && (
+        <Badge variant="outline" className="font-medium">
+          {WAITING_FOR_REVIEW}
+        </Badge>
+      )}
       {/* Lifted over the stretched link, which would swallow the credit's own. */}
       {inCommons && (
         <div className="relative z-10 flex flex-wrap items-center gap-2">

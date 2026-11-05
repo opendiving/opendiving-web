@@ -108,6 +108,10 @@ export interface DiveSite
   tags?: string[];
   notes?: string;
   created_at: string;
+  /** The reader's latest proposal on the site, while it waits or once declined. */
+  proposal?: DiveSiteProposalState | null;
+  /** On the reader's own site, the Commons record sharing a registry entry with it. */
+  commons_match?: DiveSiteCommonsMatchName | null;
 }
 
 // The members a site write sets beside its name and place. Lists replace the
@@ -177,6 +181,8 @@ export interface DiveSiteFilters {
   tagUuid?: string;
   /** `name` when not given. */
   sort?: DiveSiteListSort;
+  /** Only the diver's own sites that have a `commons_match`. */
+  commonsMatch?: boolean;
 }
 
 /**
@@ -268,6 +274,81 @@ export interface DiveSiteCommonsMatch {
   qualifier_siblings: boolean;
 }
 
+/** The record a read's `commons_match` names. */
+export interface DiveSiteCommonsMatchName {
+  uuid: string;
+  name: string;
+}
+
+/** A diver's own site proposed for the Commons, or a change to a Commons record. */
+export type DiveSiteProposalKind = "new_site" | "change";
+
+export type DiveSiteProposalStatus =
+  | "waiting"
+  | "accepted"
+  | "declined"
+  | "withdrawn";
+
+/** One of the diver's proposals: the site is the record it became once accepted. */
+export interface DiveSiteProposal {
+  uuid: string;
+  kind: DiveSiteProposalKind;
+  status: DiveSiteProposalStatus;
+  /** Why it was declined. */
+  reason: string | null;
+  site: { uuid: string; name: string };
+  created_at: string;
+  decided_at: string | null;
+}
+
+/** A proposal as a site's read carries it. */
+export type DiveSiteProposalState = Pick<
+  DiveSiteProposal,
+  "uuid" | "kind" | "status" | "reason" | "created_at"
+>;
+
+/**
+ * The `POST /dive-site/{uuid}/proposals` body. `members` is for a Commons record
+ * alone, and only those to change: a diver's own site is proposed as it stands.
+ */
+export interface DiveSiteProposalCreate {
+  attestation: string;
+  message?: string;
+  members?: Partial<DiveSiteSharedMembers>;
+}
+
+/**
+ * What the proposer affirms, the API's `ATTESTATIONS` word for word: any other text
+ * is a 422, and what is stored is what was ticked.
+ */
+export const COMMONS_ATTESTATIONS: Record<DiveSiteProposalKind, string> = {
+  new_site:
+    "I am adding this dive site from my own diving. It is not copied from another database, app or publication. I dedicate it to the public domain under CC0 1.0.",
+  change:
+    "I am proposing this change from my own diving. It is not copied from another database, app or publication. I dedicate it to the public domain under CC0 1.0.",
+};
+
+/**
+ * The members a change names: those that differ, the pin whole, since the API
+ * refuses half of one.
+ */
+export function changedMembers(
+  before: DiveSiteSharedMembers,
+  after: DiveSiteSharedMembers,
+): Partial<DiveSiteSharedMembers> {
+  const differs = (member: keyof DiveSiteSharedMembers) =>
+    JSON.stringify(before[member]) !== JSON.stringify(after[member]);
+  const members = (
+    Object.keys(after) as (keyof DiveSiteSharedMembers)[]
+  ).filter(differs);
+  const changed = Object.fromEntries(
+    members.map((member) => [member, after[member]]),
+  );
+  return differs("latitude") || differs("longitude")
+    ? { ...changed, latitude: after.latitude, longitude: after.longitude }
+    : changed;
+}
+
 const lookupDiveSites = lookupFetcher<DiveSiteLookupItem, UuidLookupQuery>(
   `/dive-sites/lookup`,
 );
@@ -305,7 +386,7 @@ export const diveSitesAPI = {
   async getDiveSites(
     page: number = 1,
     items_per_page: number = 10,
-    { search, tagUuid, sort }: DiveSiteFilters = {},
+    { search, tagUuid, sort, commonsMatch }: DiveSiteFilters = {},
   ): Promise<PaginatedResponse<DiveSite>> {
     const response = await apiClient.get<PaginatedResponse<DiveSite>>(
       `/dive-sites`,
@@ -316,6 +397,7 @@ export const diveSitesAPI = {
           ...(search ? { search } : {}),
           ...(tagUuid ? { tag_uuid: tagUuid } : {}),
           ...(sort && sort !== "name" ? { sort } : {}),
+          ...(commonsMatch ? { commons_match: true } : {}),
         },
       },
     );
@@ -430,5 +512,64 @@ export const diveSitesAPI = {
       },
     );
     return response.data;
+  },
+
+  /** The Commons records the diver's own site may be, strongest first. */
+  async getCommonsMatches(
+    diveSiteUuid: string,
+  ): Promise<DiveSiteCommonsMatch[]> {
+    const response = await apiClient.get<DiveSiteCommonsMatch[]>(
+      `/dive-site/${diveSiteUuid}/commons-matches`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Replace the diver's own site with a Commons record, answering the record's
+   * read: their dives name it, their notes and tags join it, and the site is gone,
+   * so a second call is a 404.
+   */
+  async replaceDiveSite(
+    diveSiteUuid: string,
+    commonsSiteUuid: string,
+  ): Promise<DiveSite> {
+    const response = await apiClient.post<DiveSite>(
+      `/dive-site/${diveSiteUuid}/replace`,
+      { commons_site_uuid: commonsSiteUuid },
+    );
+    return response.data;
+  },
+
+  /**
+   * Propose the diver's own site for the Commons, or a change to a record. Proposing
+   * again on a site replaces what waits. A 404 where this instance does not edit the
+   * Commons, and a 429 past the daily limit; the 409 and the 422s say why.
+   */
+  async proposeDiveSite(
+    diveSiteUuid: string,
+    body: DiveSiteProposalCreate,
+  ): Promise<DiveSiteProposal> {
+    const response = await apiClient.post<DiveSiteProposal>(
+      `/dive-site/${diveSiteUuid}/proposals`,
+      body,
+    );
+    return response.data;
+  },
+
+  /** A page of the diver's proposals, newest first. */
+  async getDiveSiteProposals(
+    page: number = 1,
+    items_per_page: number = 10,
+  ): Promise<PaginatedResponse<DiveSiteProposal>> {
+    const response = await apiClient.get<PaginatedResponse<DiveSiteProposal>>(
+      `/dive-site-proposals`,
+      { params: { page, items_per_page } },
+    );
+    return response.data;
+  },
+
+  /** Withdraw a proposal that waits. Once decided or withdrawn this is a 409. */
+  async withdrawDiveSiteProposal(proposalUuid: string): Promise<void> {
+    await apiClient.delete(`/dive-site-proposal/${proposalUuid}`);
   },
 };

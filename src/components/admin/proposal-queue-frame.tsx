@@ -22,10 +22,8 @@ import {
 } from "@/components/ui/table";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { DEFAULT_ITEMS_PER_PAGE } from "@/hooks/useInfiniteResource";
-import type {
-  AdminDiveSiteProposal,
-  DiveSiteProposalKind,
-} from "@/lib/api/admin";
+import type { AdminDiveSiteProposal } from "@/lib/api/admin";
+import type { DiveSiteProposalKind } from "@/lib/api/dive-sites";
 import {
   daysBetweenIsoDates,
   formatDateTime,
