@@ -84,10 +84,10 @@ export interface MapCanvasProps {
  * has to be resolved before it can draw.
  *
  * Deliberately owns no camera and no content. Callers position the map and add
- * their own markers through `onMap`, because the two surfaces this serves want
- * very different things from it - one fits a set of places once and never moves
- * again, the other is a write-back control with an interaction contract of its
- * own.
+ * their own markers through `onMap`, because the surfaces this serves want very
+ * different things from it - one fits a set of places once and never moves again,
+ * one is a write-back control with an interaction contract of its own, and one is
+ * moved around freely and places nothing.
  */
 export function MapCanvas({
   basemap,
