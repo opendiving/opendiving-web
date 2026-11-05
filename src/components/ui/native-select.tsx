@@ -19,9 +19,9 @@ export interface NativeSelectProps extends React.SelectHTMLAttributes<HTMLSelect
 const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
   ({ className, children, ...props }, ref) => (
     <div className="grid w-full">
-      {/* Props land here, not on the wrapper: `FormControl`'s `Slot` passes its
-      `id` and `aria-*` down through this component, and only a labelable element
-      can carry them. */}
+      {/* Props land here, not on the wrapper: `FormControl` passes its `id` and
+      `aria-*` down through this component, and only a labelable element can carry
+      them. */}
       <select
         ref={ref}
         className={cn(
