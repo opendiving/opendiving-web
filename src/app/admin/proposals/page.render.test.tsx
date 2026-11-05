@@ -364,6 +364,35 @@ describe("a new site", () => {
   });
 });
 
+describe("the search for a record", () => {
+  it("opens nothing on a name typed out on the way to a longer one", async () => {
+    lookupDiveSites.mockResolvedValue({
+      data: [
+        {
+          uuid: "record-7",
+          name: "Canyon",
+          owner: "opendivingcommons",
+          saved: false,
+          attribution: OSM_CREDIT,
+        },
+      ],
+      total_count: 1,
+      has_more: false,
+      page: 1,
+      items_per_page: 25,
+    });
+    await openProposal("Coral Garden");
+
+    const search = screen.getByRole("combobox");
+    await userEvent.type(search, "Canyo");
+    await screen.findByRole("option", { name: /^Canyon/ });
+    await userEvent.type(search, "n");
+    await userEvent.tab();
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
 describe("a change", () => {
   it("shows the record against the change, and how far the pin moves", async () => {
     await openProposal("Coral North");

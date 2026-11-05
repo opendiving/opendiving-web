@@ -142,6 +142,9 @@ function RecordSearch({
         onSearch={search}
         minSearchLength={MIN_SITE_QUERY_LENGTH}
         maxSearchLength={MAX_SITE_QUERY_LENGTH}
+        // A pick opens a dialog, so a name that spells a row on the way to a longer
+        // one must not be a pick.
+        commitOnEnterOnly
         onChange={(uuid) => {
           const target = uuid ? seen.current.get(uuid) : undefined;
           if (target) onPick(target);
