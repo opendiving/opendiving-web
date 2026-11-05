@@ -19,7 +19,6 @@ import { diveSiteFacts } from "@/components/sites/dive-site-facts";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
-import { cn } from "@/lib/utils";
 
 interface DiveSiteCardProps {
   site: DiveSite;
@@ -93,23 +92,22 @@ export function DiveSiteCard({
         />
       )}
     >
-      <div className="flex items-center gap-2">
-        <Link
-          href={`/sites/${site.uuid}`}
-          className={cn(BACKDROP_CARD_LINK, "min-w-0")}
-        >
-          {site.name}
-        </Link>
-        {inCommons && <CommonsBadge />}
-      </div>
+      <Link href={`/sites/${site.uuid}`} className={BACKDROP_CARD_LINK}>
+        {site.name}
+      </Link>
       {facts.length > 0 && (
         <div className="text-xs">
           <FactsLine facts={facts} />
         </div>
       )}
       <BackdropCardFigures figures={figures} />
-      {/* Lifted over the stretched link, whose card would swallow its own. */}
-      <CommonsCredit attribution={site.attribution} className="relative z-10" />
+      {/* Lifted over the stretched link, which would swallow the credit's own. */}
+      {inCommons && (
+        <div className="relative z-10 flex flex-wrap items-center gap-2">
+          <CommonsBadge />
+          <CommonsCredit attribution={site.attribution} />
+        </div>
+      )}
     </BackdropCard>
   );
 }

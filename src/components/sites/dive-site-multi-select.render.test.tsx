@@ -112,7 +112,7 @@ const rows = () =>
 const openMenu = async () => {
   await userEvent.click(screen.getByRole("combobox"));
   await waitFor(() =>
-    expect(screen.getByRole("option", { name: /Blue Hole/ })).toBeVisible(),
+    expect(screen.getByRole("option", { name: /^Blue Hole,/ })).toBeVisible(),
   );
 };
 
@@ -132,11 +132,12 @@ describe("DiveSiteMultiSelect", () => {
       render(<Field />);
       await openMenu();
 
-      const options = screen.getAllByRole("option");
-      expect(options[0]).toHaveTextContent("Blue Hole");
-      expect(options[0]).not.toHaveTextContent("Commons");
-      expect(options[1]).toHaveTextContent("Blue Hole Arch");
-      expect(options[1]).toHaveTextContent("Commons");
+      // Past the menu's own "Add dive site..." row.
+      const [own, commons] = screen.getAllByRole("option").slice(1);
+      expect(own).toHaveTextContent("Blue Hole");
+      expect(own).not.toHaveTextContent("Commons");
+      expect(commons).toHaveTextContent("Blue Hole Arch");
+      expect(commons).toHaveTextContent("Commons");
       expect(
         screen.getByRole("link", {
           name: "Data © OpenStreetMap contributors, ODbL 1.0.",

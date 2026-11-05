@@ -18,6 +18,9 @@ vi.mock("@/hooks/useAuthGuard", () => ({
     isLoading: false,
   }),
 }));
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
 vi.mock("@/hooks/useResource", () => ({
   useResource: () => ({
     resource: loaded.site,
@@ -147,6 +150,8 @@ describe("DiveSiteDetailPageContent", () => {
     expect(await items()).toEqual(["Edit", "Delete"]);
     await userEvent.click(screen.getByRole("menuitem", { name: "Edit" }));
     expect(await screen.findByText("The whole form")).toBeInTheDocument();
-    expect(screen.queryByRole("link")).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /OpenStreetMap/ }),
+    ).not.toBeInTheDocument();
   });
 });
