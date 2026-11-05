@@ -95,6 +95,8 @@ export function SharedMembersForm({
           )}
         />
 
+        {/* No `inputMode`, for the reason `DiveSiteDialog` gives: a coordinate needs
+            its minus. */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
@@ -102,9 +104,7 @@ export function SharedMembersForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Latitude</FormLabel>
-                <FormControl
-                  render={<Input inputMode="decimal" {...field} />}
-                />
+                <FormControl render={<Input {...field} />} />
                 <FormMessage />
               </FormItem>
             )}
@@ -115,9 +115,7 @@ export function SharedMembersForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Longitude</FormLabel>
-                <FormControl
-                  render={<Input inputMode="decimal" {...field} />}
-                />
+                <FormControl render={<Input {...field} />} />
                 <FormMessage />
               </FormItem>
             )}

@@ -162,21 +162,6 @@ export interface AdminSpeciesPhotoCandidates {
   candidates: AdminSpeciesPhotoCandidate[];
 }
 
-/**
- * The superuser-only operator routes: the invite queue, the two things that can
- * be done to a selection from it, the daily totals, and the species catalog's
- * photos.
- *
- * Every one of these answers `401` signed out and `403` for a signed-in account
- * that is not a superuser - the API's gate is the one that counts, and the
- * `/admin` section's own gate is a convenience over it rather than a substitute.
- *
- * The two batch routes take addresses rather than row ids, so an address that
- * never asked can be invited through the same call; the API caps how many go in
- * one request at a hundred, and rejects an oversized batch with a 422 rather
- * than sending part of it. The queue page holds its selection to that cap - see
- * `MAX_SELECTED` there, and the note on why the number has to be written down.
- */
 /** A diver's own site for the Commons, or a change to a record. */
 export type DiveSiteProposalKind = "new_site" | "change";
 
@@ -212,6 +197,22 @@ export type DiveSiteProposalAccept =
   | { members: DiveSiteSharedMembers; into?: undefined }
   | { into: string; members?: DiveSiteSharedMembers };
 
+/**
+ * The superuser-only operator routes: the invite queue, the two things that can
+ * be done to a selection from it, the daily totals, the species catalog's photos,
+ * and the queue of Commons proposals, which is a 404 on a copy that does not edit
+ * the Commons.
+ *
+ * Every one of these answers `401` signed out and `403` for a signed-in account
+ * that is not a superuser - the API's gate is the one that counts, and the
+ * `/admin` section's own gate is a convenience over it rather than a substitute.
+ *
+ * The two batch routes take addresses rather than row ids, so an address that
+ * never asked can be invited through the same call; the API caps how many go in
+ * one request at a hundred, and rejects an oversized batch with a 422 rather
+ * than sending part of it. The queue page holds its selection to that cap - see
+ * `MAX_SELECTED` there, and the note on why the number has to be written down.
+ */
 export const adminAPI = {
   /**
    * One page of pending invite requests, newest first.

@@ -82,6 +82,14 @@ describe("SharedMembersForm", () => {
     expect(screen.getByRole("link", { name: /Wikidata/ })).toBeInTheDocument();
   });
 
+  // iOS's decimal keypad has no minus, so a southern or western pin could not be typed.
+  it("leaves the pin's keyboard able to type a minus", () => {
+    open();
+
+    expect(screen.getByLabelText("Latitude")).not.toHaveAttribute("inputmode");
+    expect(screen.getByLabelText("Longitude")).not.toHaveAttribute("inputmode");
+  });
+
   it("refuses to clear the pin", async () => {
     const onSubmit = open();
     await userEvent.clear(screen.getByLabelText("Latitude"));
