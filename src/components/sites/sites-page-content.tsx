@@ -6,7 +6,7 @@ import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useTags } from "@/hooks/useTags";
-import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { diveSitesAPI, DiveSite, isCommonsSite } from "@/lib/api/dive-sites";
 import {
   NO_SITE_FILTERS,
   type DiveSiteListFilters,
@@ -14,6 +14,7 @@ import {
 import { SitesPageFrame } from "@/components/sites/sites-page-frame";
 import { DiveSiteCard } from "@/components/sites/dive-site-card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
+import { CommonsSiteDialog } from "@/components/sites/commons-site-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -21,6 +22,7 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // The plain-delete toast, and the first half of the one a move gets - "moved to
 // Blue Hole" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Dive site deleted successfully.";
+const REMOVED_MESSAGE = "Removed from your sites.";
 
 export function SitesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -99,6 +101,12 @@ export function SitesPageContent() {
     return null; // Will redirect to signin
   }
 
+  const editingCommons = !!editingSite && isCommonsSite(editingSite);
+  const pendingSite = diveSites.find((site) => site.uuid === pendingId);
+  const removingCommons = !!pendingSite && isCommonsSite(pendingSite);
+  const removedMessage = removingCommons ? REMOVED_MESSAGE : DELETED_MESSAGE;
+  const closeEditing = (open: boolean) => !open && setEditingSite(null);
+
   return (
     <>
       <SitesPageFrame
@@ -130,21 +138,30 @@ export function SitesPageContent() {
       />
 
       <DiveSiteDialog
-        open={editingSite !== null}
-        onOpenChange={(open) => !open && setEditingSite(null)}
+        open={editingSite !== null && !editingCommons}
+        onOpenChange={closeEditing}
         diveSite={editingSite}
         onSaved={applySaved}
       />
 
+      <CommonsSiteDialog
+        open={editingCommons}
+        onOpenChange={closeEditing}
+        site={editingSite}
+        onSaved={applySaved}
+      />
+
       <DeleteWithReassignDialog
-        kind="dive-site"
+        kind={removingCommons ? "saved-commons-site" : "dive-site"}
         targetId={pendingId}
         isDeleting={deletingId === pendingId}
         onCancel={cancelDeleteDiveSite}
         onConfirm={(moveDivesTo, name) =>
           confirmDeleteDiveSite(
             moveDivesTo,
-            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+            name
+              ? `${removedMessage} Its dives moved to ${name}.`
+              : removedMessage,
           )
         }
       />

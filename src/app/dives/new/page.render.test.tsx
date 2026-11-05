@@ -2149,7 +2149,9 @@ describe("the pickers", () => {
       {
         uuid: "site-shark",
         name: "Shark Reef",
-        user_uuid: "user-1",
+        owner: "account",
+        saved: true,
+        attribution: null,
         created_at: "2026-01-01T00:00:00Z",
       } as DiveSite,
     ]);
@@ -3256,7 +3258,9 @@ describe("the primary site's water, altitude and entry", () => {
   ): DiveSite => ({
     uuid,
     name,
-    user_uuid: "user-1",
+    owner: "account",
+    saved: true,
+    attribution: null,
     created_at: "2026-01-01T00:00:00Z",
     ...overrides,
   });
@@ -3513,7 +3517,13 @@ describe("the day's conditions", () => {
   beforeEach(() => {
     stable.searchParams = new URLSearchParams("dive_site_uuid=site-reef");
     vi.mocked(diveSitesAPI.lookupDiveSitesByUuid).mockResolvedValue([
-      { uuid: "site-reef", name: "Tiger Reef" },
+      {
+        uuid: "site-reef",
+        name: "Tiger Reef",
+        owner: "account",
+        saved: true,
+        attribution: null,
+      },
     ]);
   });
 
@@ -3749,7 +3759,13 @@ describe("drafts", () => {
   it("stores no weather value the form only previewed", async () => {
     stable.searchParams = new URLSearchParams("dive_site_uuid=site-reef");
     vi.mocked(diveSitesAPI.lookupDiveSitesByUuid).mockResolvedValue([
-      { uuid: "site-reef", name: "Tiger Reef" },
+      {
+        uuid: "site-reef",
+        name: "Tiger Reef",
+        owner: "account",
+        saved: true,
+        attribution: null,
+      },
     ]);
     vi.mocked(divesAPI.lookupConditions).mockResolvedValue(
       conditionsLookup({ air_temperature: 27.5, weather: "clear" }),

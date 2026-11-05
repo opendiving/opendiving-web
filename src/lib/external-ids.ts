@@ -59,26 +59,3 @@ export function externalIdHref(entry: ExternalId): string | null {
   if (!registry || !registry.form.test(entry.identifier)) return null;
   return registry.href(entry.identifier);
 }
-
-/**
- * The site's entries after a catalogue pick, and the entry that pick added.
- *
- * A pick replaces the entry an earlier pick in the same dialog added - a diver who
- * picks the wrong row and then the right one keeps the right one's alone - and keeps
- * every entry the site carried when the dialog opened, which leaves only when the
- * diver removes it. A row whose entry is already there adds nothing, so `added` is
- * `null` and there is nothing for the next pick to replace.
- */
-export function pickExternalId(
-  current: readonly ExternalId[],
-  earlierPick: ExternalId | null,
-  picked: ExternalId,
-): { externalIds: ExternalId[]; added: ExternalId | null } {
-  const kept = earlierPick
-    ? current.filter((entry) => !sameExternalId(entry, earlierPick))
-    : [...current];
-  if (kept.some((entry) => sameExternalId(entry, picked))) {
-    return { externalIds: kept, added: null };
-  }
-  return { externalIds: [...kept, picked], added: picked };
-}

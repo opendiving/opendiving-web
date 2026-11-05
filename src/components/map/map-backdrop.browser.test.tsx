@@ -46,7 +46,9 @@ const SITE = {
   name: "The Canyon",
   latitude: 28.5721,
   longitude: 34.5372,
-  user_uuid: "user-1",
+  owner: "account",
+  saved: true,
+  attribution: null,
   created_at: "2026-04-01T00:00:00Z",
   dive_count: 12,
 } as DiveSite;

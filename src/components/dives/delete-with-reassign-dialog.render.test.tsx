@@ -7,7 +7,8 @@ vi.mock("@/lib/api/trips", () => ({
   tripsAPI: { lookupTrips: vi.fn() },
 }));
 
-vi.mock("@/lib/api/dive-sites", () => ({
+vi.mock("@/lib/api/dive-sites", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/dive-sites")>()),
   diveSitesAPI: { lookupDiveSites: vi.fn() },
 }));
 
@@ -21,6 +22,18 @@ const OTHER_SITE = {
   uuid: "site-2",
   name: "Blue Hole",
   location: { name: "Dahab, Egypt" },
+  owner: "account",
+  saved: true,
+  attribution: null,
+};
+const COMMONS_SITE = {
+  uuid: "commons-1",
+  name: "Canyon",
+  location: { name: "Dahab, Egypt" },
+  owner: "opendivingcommons",
+  saved: false,
+  attribution:
+    "[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)",
 };
 
 const onePageOf = (data: unknown[]) =>
@@ -246,5 +259,62 @@ describe("DeleteWithReassignDialog, deleting a dive site", () => {
     );
     expect(lookupDiveSites).toHaveBeenCalledWith(1, 25, { search: "" });
     expect(lookupTrips).not.toHaveBeenCalled();
+  });
+});
+
+describe("DeleteWithReassignDialog for a dive site", () => {
+  const openPicker = async () => {
+    await userEvent.click(screen.getByRole("combobox"));
+    await screen.findByRole("option", { name: /Blue Hole/ });
+  };
+
+  it("marks and credits a Commons record among the destinations", async () => {
+    lookupDiveSites.mockResolvedValue(onePageOf([OTHER_SITE, COMMONS_SITE]));
+    render(
+      <DeleteWithReassignDialog
+        kind="dive-site"
+        targetId="site-1"
+        isDeleting={false}
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    await openPicker();
+
+    expect(screen.getByRole("option", { name: /Canyon/ })).toHaveTextContent(
+      "Commons",
+    );
+    expect(
+      screen.getByRole("option", { name: /Blue Hole/ }),
+    ).not.toHaveTextContent("Commons");
+    expect(
+      screen.getByRole("link", {
+        name: "Data © OpenStreetMap contributors, ODbL 1.0.",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("says a saved Commons record stays when it leaves the list", async () => {
+    const onConfirm = vi.fn();
+    render(
+      <DeleteWithReassignDialog
+        kind="saved-commons-site"
+        targetId="commons-1"
+        isDeleting={false}
+        onCancel={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Remove from your sites" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "the site stays in OpenDiving Commons",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(onConfirm).toHaveBeenCalledWith();
   });
 });

@@ -54,7 +54,9 @@ function site(overrides: Partial<DiveSite> = {}): DiveSite {
   return {
     uuid: "site-1",
     name: "The Canyon",
-    user_uuid: "user-1",
+    owner: "account",
+    saved: true,
+    attribution: null,
     created_at: "2026-01-01T00:00:00Z",
     dive_count: 7,
     max_dive_depth: 31.4,
@@ -199,6 +201,48 @@ describe("DiveSiteCard", () => {
       ["Dives", "0"],
       ["Deepest", "-"],
     ]);
+  });
+
+  it("marks no site of the diver's own as Commons", () => {
+    expect(within(card()).queryByText("Commons")).not.toBeInTheDocument();
+  });
+
+  describe("for a saved Commons record", () => {
+    const commons = () =>
+      site({
+        owner: "opendivingcommons",
+        attribution:
+          "[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)",
+      });
+
+    it("carries the label and the credit", () => {
+      const item = card({ site: commons() });
+
+      expect(within(item).getByText("Commons")).toBeInTheDocument();
+      expect(
+        within(item).getByRole("link", {
+          name: "Data © OpenStreetMap contributors, ODbL 1.0.",
+        }),
+      ).toHaveAttribute("href", "https://osm.org/copyright");
+    });
+
+    it("offers its notes and tags, and leaving the list, rather than Edit and Delete", async () => {
+      const item = card({ site: commons() });
+
+      await userEvent.click(
+        within(item).getByRole("button", { name: "Actions for The Canyon" }),
+      );
+
+      expect(
+        await screen.findByRole("menuitem", { name: "Edit notes and tags" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: "Remove from your sites" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: "Delete" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("edits and deletes from its menu", async () => {

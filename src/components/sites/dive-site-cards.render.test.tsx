@@ -39,7 +39,9 @@ const { MapBackdrop } = await import("@/components/map/map-backdrop");
 const SITE: DiveSite = {
   uuid: "site-1",
   name: "Sunabe Seawall",
-  user_uuid: "user-1",
+  owner: "account",
+  saved: true,
+  attribution: null,
   created_at: "2026-01-01T00:00:00Z",
 };
 

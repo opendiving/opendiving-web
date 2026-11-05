@@ -42,7 +42,13 @@ const page = (data: DiveDraft[]) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(diveSitesAPI.lookupDiveSitesByUuid).mockResolvedValue([
-    { uuid: "site-1", name: "Blue Hole" },
+    {
+      uuid: "site-1",
+      name: "Blue Hole",
+      owner: "account",
+      saved: true,
+      attribution: null,
+    },
   ]);
   vi.mocked(diveDraftsAPI.deleteDraft).mockResolvedValue({
     message: "Dive draft deleted",

@@ -16,12 +16,12 @@ import {
   PLACE_SEARCH_DEBOUNCE_MS,
 } from "@/lib/api/geocoding";
 import {
-  diveSiteCatalogAPI,
-  diveSitePlaceContext,
-  DiveSiteSuggestion,
+  diveSitesAPI,
   MAX_SITE_QUERY_LENGTH,
   MIN_SITE_QUERY_LENGTH,
-} from "@/lib/api/dive-site-catalog";
+  type DiveSiteLookupItem,
+} from "@/lib/api/dive-sites";
+import { commonsMark } from "@/components/sites/commons-site";
 import { geocodeResultLabel } from "@/lib/locations";
 import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { useUnits } from "@/hooks/useUnits";
@@ -31,24 +31,14 @@ import {
   type LocationFormValue,
 } from "@/lib/validations/location";
 
-// What a menu row would place, tagged by where it came from. The two sources
-// fill different numbers of fields - only a catalog row names the site itself -
-// so the caller has to be able to tell them apart, and this is how: a tagged
-// union rather than a prefix on the id, so nothing downstream parses a string to
-// find out what it is holding.
+// What a menu row stands for, tagged by where it came from. A geocoded row places
+// the site being made and a Commons row is a site already made, so the caller has
+// to be able to tell them apart, and this is how: a tagged union rather than a
+// prefix on the id, so nothing downstream parses a string to find out what it is
+// holding.
 export type PlacePick =
   | { kind: "geocode"; result: GeocodeResult }
-  | { kind: "catalog"; site: DiveSiteSuggestion };
-
-// Keeps the two kinds of row in disjoint id namespaces inside one results map,
-// following the species picker's prefixed synthetic ids. A geocoded row's id
-// opens with its latitude, so nothing it mints can collide with this - and the
-// source is in there because two databases number their records independently.
-const CATALOG_ID_PREFIX = "catalog:";
-
-function catalogKey(site: DiveSiteSuggestion): string {
-  return `${CATALOG_ID_PREFIX}${site.source}:${site.source_id}`;
-}
+  | { kind: "commons"; site: DiveSiteLookupItem };
 
 // A stable id for a result, since a geocoded place has none of its own. The
 // position plus the composed name is specific enough that two genuinely
@@ -60,56 +50,63 @@ function placeKey(result: GeocodeResult): string {
   return `${result.latitude}:${result.longitude}:${result.location}`;
 }
 
-// A geocoded row that is the same OSM object as a catalog row in this answer.
-// The catalog's names the dive site, which is the better of the two, and a
-// Wikidata row never matches - its `source` is not `osm`.
+// A geocoded row for an OpenStreetMap object a listed site names. The site's row
+// says what the place is called to divers, which is the better of the two; only
+// an OpenStreetMap entry can match, the geocoder's `source` being `osm`.
 function sameRecord(result: GeocodeResult) {
-  return (site: DiveSiteSuggestion) =>
-    !!result.source &&
+  return (site: DiveSiteLookupItem) =>
+    result.source === "osm" &&
     !!result.source_id &&
-    result.source === site.source &&
-    result.source_id === site.source_id;
+    !!site.external_ids?.some(
+      (entry) =>
+        entry.registry === "openstreetmap" &&
+        entry.identifier === result.source_id,
+    );
+}
+
+// The other name that explains the row: the one the diver typed where they typed
+// one, since a search for "Sunabe" otherwise returns a row reading 砂辺 with nothing
+// on screen saying why it matched. Otherwise the first the record has.
+function otherNameFor(
+  site: DiveSiteLookupItem,
+  query: string,
+): string | undefined {
+  const typed = query.trim().toLowerCase();
+  const names = site.other_names ?? [];
+  return names.find((name) => name.toLowerCase().includes(typed)) ?? names[0];
 }
 
 /**
- * What a catalog row says about itself besides its name: which of the diver's own
- * sites already carries its registry entry, the English name where that is what
- * the diver typed, the finest place context the record has, and how far away it
- * is when the form already has a position.
+ * What a Commons row says about itself besides its name: another name, its
+ * locality, and how far away it is when the form already has a position.
  *
- * The place context is what pulls a duplicate name apart - five `Shark Point`s
- * resolve to four countries, and the two Malaysian ones only come apart on their
- * region. It cannot always succeed: the seven `Diving Spot` records sit within
- * about four kilometres of each other in one bay, and no hint built from this
- * record shape can separate them. They are then shown as what they are - seven
- * identical rows - rather than given a fabricated difference, and picking any of
- * them still brings its own coordinates for the pin to be dragged from.
+ * The locality is what pulls a duplicate name apart - there are five `Shark
+ * Point`s in four countries. It cannot always succeed: seven `Diving Spot` records
+ * sit in one bay, and they are then shown as what they are, identical rows, rather
+ * than given a fabricated difference.
  */
-function catalogHint(
-  site: DiveSiteSuggestion,
+function commonsHint(
+  site: DiveSiteLookupItem,
+  query: string,
   position: GeoPoint | null,
   units: UnitSystem,
 ): string | undefined {
   const parts: string[] = [];
-  // First, because it is what decides the pick: a site the diver already has is
-  // offered rather than made twice.
-  if (site.held_site) parts.push(`In your sites as ${site.held_site.name}`);
-  // Only when it says something the row's own name does not. A search for
-  // "Sunabe" otherwise returns a row reading 砂辺 with nothing on screen
-  // explaining why it matched.
-  const english = site.name_en?.trim();
-  if (english && english !== site.name.trim()) parts.push(english);
-  const place = diveSitePlaceContext(site);
-  if (place) parts.push(place);
-  if (position) {
-    parts.push(formatDistance(haversineMeters(position, site), units));
+  const otherName = otherNameFor(site, query);
+  if (otherName) parts.push(otherName);
+  if (site.location?.name) parts.push(site.location.name);
+  if (position && site.latitude != null && site.longitude != null) {
+    const { latitude, longitude } = site;
+    parts.push(
+      formatDistance(haversineMeters(position, { latitude, longitude }), units),
+    );
   }
   return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
 // The id the field's own value goes by, so the combobox shows the place the
 // dialog holds rather than a row it found. A geocoded row's id opens with its
-// latitude and a catalog row's with its own prefix, so nothing collides.
+// latitude and a Commons row's is a uuid, so nothing collides.
 const LOCATION_ID_PREFIX = "location:";
 
 export interface PlaceSearchProps {
@@ -123,9 +120,12 @@ export interface PlaceSearchProps {
   // by its name alone - or with null when the field was cleared.
   onTypeName: (name: string | null) => void;
   // Where the dialog already thinks the site is, when it has a position at all.
-  // Sent to the catalog so a same-name cluster comes back nearest first, and
-  // used to put a distance on each row.
+  // Sent with a Commons search so a same-name cluster comes back nearest first,
+  // and used to put a distance on each row.
   position?: GeoPoint | null;
+  // Whether Commons records are listed beside places: only where a pick can be
+  // used, which is a site being made. Editing one, the search is places alone.
+  listCommonsSites: boolean;
   // A name to search for as soon as the field mounts.
   initialQuery?: string;
   disabled?: boolean;
@@ -133,25 +133,23 @@ export interface PlaceSearchProps {
 
 /**
  * The location search dialog's Location field: it shows the place the dialog
- * holds, and typing in it finds a dive site or, failing that, a place.
+ * holds, and typing in it finds a place and, for a new site, a Commons record.
  *
- * Two sources in one flat list, catalog hits first. The catalog is a read-only
- * extract of real dive sites shipped inside the API image, and it is the half
- * that answers the question the dialog actually asks - the geocoder knows where
- * Dahab is, not where the Blue Hole's north entry is. The geocoder stays below
- * it because a town is a perfectly good answer when the site itself is not in
- * any database, and the map underneath does the last hundred metres either way.
+ * Two sources in one flat list, Commons records first. They answer the question
+ * the dialog actually asks - the geocoder knows where Dahab is, not where the Blue
+ * Hole's north entry is - and the geocoder stays below because a town is a
+ * perfectly good answer when the site itself is in no database, and the map
+ * underneath does the last hundred metres either way.
  *
- * No sections and no change to `CreatableCombobox`: the primitive has no
- * grouping concept, seven other wrappers ride it, and the species picker already
- * merged two heterogeneous sources into one flat list without touching it. The
- * `hint` slot carries the distinction between a dive site and a town.
+ * No sections in `CreatableCombobox`: the primitive has no grouping concept, and
+ * a row's `badge` carries the distinction between a dive site and a town.
  */
 export function PlaceSearch({
   value,
   onPick,
   onTypeName,
   position,
+  listCommonsSites,
   initialQuery,
   disabled,
 }: PlaceSearchProps) {
@@ -188,17 +186,19 @@ export function PlaceSearch({
       // The combobox treats any throw from `onSearch` as total failure - it
       // empties the menu and shows `searchErrorLabel` - so awaiting both
       // together would let the geocoder's per-user rate limit, or any network
-      // blip, delete catalog results that arrived perfectly well, and let a
-      // catalog failure regress the geocoder box that works today.
-      const [catalog, geocoded] = await Promise.allSettled([
-        diveSiteCatalogAPI.suggestDiveSites(query, point),
+      // blip, delete Commons rows that arrived perfectly well, and let a lookup
+      // failure regress the geocoder box.
+      const [commons, geocoded] = await Promise.allSettled([
+        listCommonsSites
+          ? diveSitesAPI.searchCommonsSites(query, point)
+          : { data: [], has_more: false },
         geocodingAPI.searchPlaces(query),
       ]);
 
       // Only when neither source could answer is there nothing to say but "we
       // couldn't ask". One source down is a shorter menu, not an error.
-      if (catalog.status === "rejected" && geocoded.status === "rejected") {
-        throw catalog.reason;
+      if (commons.status === "rejected" && geocoded.status === "rejected") {
+        throw commons.reason;
       }
 
       const items: ComboboxItem[] = [];
@@ -217,24 +217,28 @@ export function PlaceSearch({
         }
       };
 
-      // Catalog rows first, and the order is the whole of the decision: the
+      // Commons rows first, and the order is the whole of the decision: the
       // primitive preserves what the caller returns, so a named dive site beats
       // a town by being listed above it.
-      const suggestions = catalog.status === "fulfilled" ? catalog.value : null;
-      for (const site of suggestions?.results ?? []) {
-        const id = catalogKey(site);
+      const sites = commons.status === "fulfilled" ? commons.value : null;
+      for (const site of sites?.data ?? []) {
         remember(
-          id,
-          { kind: "catalog", site },
-          { id, name: site.name, hint: catalogHint(site, point, units) },
+          site.uuid,
+          { kind: "commons", site },
+          {
+            id: site.uuid,
+            name: site.name,
+            hint: commonsHint(site, query, point, units),
+            ...commonsMark(site),
+          },
         );
-        credit(site.attribution);
+        credit(site.attribution ?? undefined);
       }
 
       for (const result of geocoded.status === "fulfilled"
         ? geocoded.value
         : []) {
-        if (suggestions?.results.some(sameRecord(result))) continue;
+        if (sites?.data.some(sameRecord(result))) continue;
         const id = placeKey(result);
         const { name, context } = geocodeResultLabel(result);
         // Keyed by content, so two results that key alike would share a React
@@ -253,12 +257,12 @@ export function PlaceSearch({
           return missing.length > 0 ? [...previous, ...missing] : previous;
         });
       }
-      // Only the catalog has a cap to report. The geocoder returns a bare list
+      // Only the lookup has a page to report. The geocoder returns a bare list
       // and says nothing about what it held back, so a menu of geocoder rows
       // alone never claims there is more.
-      return { items, hasMore: suggestions?.has_more ?? false };
+      return { items, hasMore: sites?.has_more ?? false };
     },
-    [latitude, longitude, units],
+    [latitude, longitude, listCommonsSites, units],
   );
 
   return (
@@ -269,7 +273,7 @@ export function PlaceSearch({
       <CreatableCombobox
         id={searchId}
         onSearch={search}
-        // The geocoder's debounce for the catalog half too, which alone would
+        // The geocoder's debounce for the Commons half too, which alone would
         // take the 250 ms default: one box means one debounce.
         searchDebounceMs={PLACE_SEARCH_DEBOUNCE_MS}
         value={selectedItem?.id}
@@ -292,22 +296,32 @@ export function PlaceSearch({
           return { id: `${LOCATION_ID_PREFIX}${text}`, name: text };
         }}
         disabled={disabled}
-        placeholder="e.g. Thistlegorm"
-        noItemsLabel="Type to search dive sites and places."
+        placeholder={listCommonsSites ? "e.g. Thistlegorm" : "e.g. Dahab"}
+        noItemsLabel={
+          listCommonsSites
+            ? "Type to search dive sites and places."
+            : "Type to search places."
+        }
         // The narrowest bounds outside which *neither* source is asked anything,
         // so an empty menu here is never reported as "nothing found" for a
-        // search that no one ran. Both declare 2..200 today; taken as a min and
-        // a max rather than either one's, so a source that later widens its own
-        // does not silently make this label a lie.
-        minSearchLength={Math.min(
-          MIN_PLACE_QUERY_LENGTH,
-          MIN_SITE_QUERY_LENGTH,
-        )}
-        maxSearchLength={Math.max(
-          MAX_PLACE_QUERY_LENGTH,
-          MAX_SITE_QUERY_LENGTH,
-        )}
-        queryTooLongLabel="Too long to search for a dive site."
+        // search that no one ran. Taken as a min and a max rather than either
+        // one's, so a source that later widens its own does not silently make
+        // this label a lie.
+        minSearchLength={
+          listCommonsSites
+            ? Math.min(MIN_PLACE_QUERY_LENGTH, MIN_SITE_QUERY_LENGTH)
+            : MIN_PLACE_QUERY_LENGTH
+        }
+        maxSearchLength={
+          listCommonsSites
+            ? Math.max(MAX_PLACE_QUERY_LENGTH, MAX_SITE_QUERY_LENGTH)
+            : MAX_PLACE_QUERY_LENGTH
+        }
+        queryTooLongLabel={
+          listCommonsSites
+            ? "Too long to search for a dive site."
+            : "Too long to search for a place."
+        }
         // Every empty menu here ends the same way, because the map below and
         // the typed name are the answer to all three: no such site or place,
         // the geocoder's proxy over its rate limit (which the API also answers
@@ -326,10 +340,10 @@ export function PlaceSearch({
           a markdown link and printing that raw would show a diver
           `[Data © OpenStreetMap contributors, ODbL 1.0.](https://...)`.
 
-          One line for both sources, accumulated and collapsed by string. The
-          catalog's OSM credit is byte-identical to the geocoder's, so a menu
-          showing both still shows one OpenStreetMap credit; a Wikidata row adds
-          its own. The map's own credit below is left alone - it names whoever
+          One line for both sources, accumulated and collapsed by string. An
+          OpenStreetMap record's credit is byte-identical to the geocoder's, so a
+          menu showing both still shows one OpenStreetMap credit; a Wikidata row
+          adds its own. The map's own credit below is left alone - it names whoever
           serves the tiles, which a self-hoster configures separately, so merging
           the two would make one line a false statement about the other.
 

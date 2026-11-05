@@ -51,9 +51,11 @@ export function ItemActionsMenu({
 export function DeleteMenuItem({
   onSelect,
   disabled,
+  label = "Delete",
 }: {
   onSelect: () => void;
   disabled?: boolean;
+  label?: string;
 }) {
   return (
     <DropdownMenuItem
@@ -62,7 +64,7 @@ export function DeleteMenuItem({
       variant="destructive"
     >
       <Trash2 className="h-4 w-4 mr-2" />
-      Delete
+      {label}
     </DropdownMenuItem>
   );
 }

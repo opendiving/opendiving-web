@@ -37,7 +37,7 @@ export const diveSiteFormSchema = z
     // A box per name, so a blank one is a row the diver added and left; the
     // submit drops it rather than the schema refusing it.
     other_names: z.array(z.string().max(OTHER_NAME_MAX)).optional(),
-    // Never typed: a catalogue pick adds one, and the diver can remove one.
+    // Never typed: an import brings one, and the diver can remove one.
     external_ids: z
       .array(z.object({ registry: z.string(), identifier: z.string() }))
       .optional(),

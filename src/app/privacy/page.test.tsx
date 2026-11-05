@@ -263,6 +263,22 @@ describe.each([
     expect(expiring).toHaveTextContent(/about three\s+months/);
   });
 
+  // A Commons site is the one dive site that is not one account's: §4.2 says what is
+  // shared and what stays the diver's, on every copy, and nothing may say otherwise.
+  it("says a Commons site is shared and what a diver adds to it is not", async () => {
+    await renderPage({ google });
+
+    const text = document.body.textContent?.replace(/\s+/g, " ") ?? "";
+    expect(text).toMatch(/A Commons site is one record every account can use/);
+    expect(text).toMatch(
+      /The notes, tags and dives you add to it are yours alone/,
+    );
+    expect(text).not.toMatch(/no way to make it so/);
+    expect(text).not.toMatch(/The one thing every account/);
+    expect(text).not.toMatch(/catalogue of named sites/);
+    expect(text).not.toMatch(/Every dive, dive site, trip/);
+  });
+
   // Terms §5 promises any feature that shows entries to someone else a section of
   // its own here, and the sentences in §4.1, §4.2 and §6.1 that rule sharing out have
   // to name it rather than stand as they were.
@@ -274,7 +290,7 @@ describe.each([
     for (const pointer of [
       /no setting that makes any of it public/,
       /There are three exceptions\./,
-      /nothing is public or shared, so there is\s+nothing to switch off/,
+      /nothing of yours is public or shared, so\s+there is nothing to switch off/,
     ]) {
       expect(screen.getByText(pointer)).toHaveTextContent(/section 4\.9/i);
     }

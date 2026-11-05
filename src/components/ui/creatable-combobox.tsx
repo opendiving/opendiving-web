@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { Attribution } from "@/components/attribution";
+import { badgeVariants } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -54,6 +63,9 @@ export interface ComboboxItem {
   // site's location, a gear item's type) - purely cosmetic, doesn't affect
   // matching/filtering.
   hint?: string;
+  // A short label after the hint, for a row that is a different kind of thing
+  // from its neighbours. Cosmetic in the same way.
+  badge?: string;
 }
 
 export interface ComboboxSearchResult {
@@ -61,6 +73,10 @@ export interface ComboboxSearchResult {
   // True when the server had more matches than it returned, so the menu can say
   // so instead of letting a truncated list read as "that's everything".
   hasMore?: boolean;
+  // Licence credits of the rows, as `Attribution` takes them. In the menu's foot
+  // rather than on a row: a row is a button, which cannot hold a link, and a line
+  // under the field would sit behind the open menu.
+  credits?: string[];
 }
 
 // How long to wait after the last keystroke before asking the server, in remote
@@ -1031,6 +1047,16 @@ export function CreatableCombobox({
                           , {item.hint}
                         </span>
                       )}
+                      {item.badge && (
+                        <span
+                          className={cn(
+                            badgeVariants({ variant: "outline" }),
+                            "ml-2 font-medium",
+                          )}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
                     </button>
                   );
                 })
@@ -1056,6 +1082,21 @@ export function CreatableCombobox({
                 // have", and the missing site looks like it was never logged.
                 <div className="border-t px-3 py-2 text-xs text-muted-foreground">
                   More matches than shown - keep typing to narrow.
+                </div>
+              )}
+              {!!remoteResult.credits?.length && (
+                // Held down like a row, so reaching for a link does not blur the
+                // field and take the menu away first.
+                <div
+                  className="border-t px-3 py-1.5 text-[10px] leading-4 text-muted-foreground"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  {remoteResult.credits.map((credit, index) => (
+                    <Fragment key={credit}>
+                      {index > 0 && " · "}
+                      <Attribution value={credit} />
+                    </Fragment>
+                  ))}
                 </div>
               )}
             </div>

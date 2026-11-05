@@ -8,11 +8,16 @@ import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
+import { diveSiteSearchResult } from "@/components/sites/commons-site";
 import { diveSitesAPI } from "@/lib/api/dive-sites";
 import { tripsAPI } from "@/lib/api/trips";
 
-/** Which kind of resource is being deleted, and therefore what its dives hang off. */
-export type DeleteTargetKind = "trip" | "dive-site";
+/**
+ * Which kind of resource is being deleted, and therefore what its dives hang off.
+ * `saved-commons-site` is a Commons record leaving the diver's list: the record
+ * stays, so that one is a removal and says so.
+ */
+export type DeleteTargetKind = "trip" | "dive-site" | "saved-commons-site";
 
 // How many options the replacement picker asks for at a time. Matches the dive
 // form's own pickers - enough to scroll before typing, far short of the API's cap.
@@ -20,6 +25,7 @@ const OPTIONS_PER_SEARCH = 25;
 
 interface KindCopy {
   title: string;
+  confirmText: string;
   // What deleting actually does, stated rather than asked about. True at any
   // number of dives, including none, which is what lets the dialog say it
   // without first going and counting them.
@@ -36,13 +42,21 @@ interface KindCopy {
   search: (query: string) => Promise<ComboboxSearchResult>;
 }
 
-// Everything the two kinds of delete disagree about. The flow around it - state
+const searchDiveSites: KindCopy["search"] = async (query) =>
+  diveSiteSearchResult(
+    await diveSitesAPI.lookupDiveSites(1, OPTIONS_PER_SEARCH, {
+      search: query,
+    }),
+  );
+
+// Everything the kinds of delete disagree about. The flow around it - state
 // the consequence, offer a destination, hand back what was picked - is identical,
 // and everything the move itself involves (the ordered site list, the dedupe, the
 // transaction) happens on the API side of `move_dives_to`.
 const COPY: Record<DeleteTargetKind, KindCopy> = {
   trip: {
     title: "Delete trip",
+    confirmText: "Delete",
     description:
       "Deleting removes this trip from every dive logged on it. The dives themselves are not touched.",
     pickerLabel: "Move its dives to",
@@ -67,6 +81,7 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
   },
   "dive-site": {
     title: "Delete dive site",
+    confirmText: "Delete",
     description:
       "Deleting removes this site from every dive logged here. The dives themselves are not touched.",
     pickerLabel: "Move those dives to",
@@ -75,21 +90,20 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
     noMatchesLabel: "No dive sites match.",
     unresolvedHint:
       "Pick a dive site from the list, or clear the field to delete without moving.",
-    search: async (query) => {
-      const response = await diveSitesAPI.lookupDiveSites(
-        1,
-        OPTIONS_PER_SEARCH,
-        { search: query },
-      );
-      return {
-        items: response.data.map((site) => ({
-          id: site.uuid,
-          name: site.name,
-          hint: site.location?.name,
-        })),
-        hasMore: response.has_more,
-      };
-    },
+    search: searchDiveSites,
+  },
+  "saved-commons-site": {
+    title: "Remove from your sites",
+    confirmText: "Remove",
+    description:
+      "Removing takes this site off your list, with your notes and tags on it, and off every dive logged here. The dives themselves are not touched, and the site stays in OpenDiving Commons.",
+    pickerLabel: "Move those dives to",
+    placeholder: "No site — just remove it",
+    noItemsLabel: "No other dive sites yet.",
+    noMatchesLabel: "No dive sites match.",
+    unresolvedHint:
+      "Pick a dive site from the list, or clear the field to remove without moving.",
+    search: searchDiveSites,
   },
 };
 
@@ -202,7 +216,7 @@ export function DeleteWithReassignDialog({
       onOpenChange={(open) => !open && onCancel()}
       title={copy.title}
       description={copy.description}
-      confirmText="Delete"
+      confirmText={copy.confirmText}
       isLoading={isDeleting}
       confirmDisabled={unresolved}
       // `undefined` when nothing is picked, which is what makes this the same

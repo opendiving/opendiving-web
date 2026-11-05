@@ -2,10 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
-import {
-  diveSitePlaceContext,
-  DiveSiteSuggestion,
-} from "@/lib/api/dive-site-catalog";
+import type { DiveSiteLookupItem } from "@/lib/api/dive-sites";
 import { GeocodeResult } from "@/lib/api/geocoding";
 import { geocodeResultToLocation } from "@/lib/locations";
 import {
@@ -16,7 +13,7 @@ import {
 import type { LocationFormValue } from "@/lib/validations/location";
 import { useGeocodedLocation } from "@/hooks/useGeocodedLocation";
 import { MapField } from "@/components/map/map-field";
-import { HeldSiteOffer } from "@/components/sites/held-site-offer";
+import { CommonsSiteOffer } from "@/components/sites/commons-site-offer";
 import { PlaceSearch, PlacePick } from "@/components/sites/place-search";
 import {
   Dialog,
@@ -36,10 +33,6 @@ export interface SearchedLocation extends Position {
   location: LocationFormValue | null;
   // Who to credit for the location's name, while it still names the position.
   credit?: string;
-  // The catalog dive site last picked, which also names the site and carries
-  // its registry entry. Dragging the pin off it afterwards keeps it, as it
-  // always has in the form; picking a place instead drops it.
-  site: DiveSiteSuggestion | null;
 }
 
 interface LocationSearchDialogProps extends Partial<Position> {
@@ -47,10 +40,10 @@ interface LocationSearchDialogProps extends Partial<Position> {
   onOpenChange: (open: boolean) => void;
   // The site form's Location when the dialog was opened.
   location?: LocationFormValue | null;
-  // Only a new site is offered the one the diver already holds for a picked
-  // catalog row; an edit fills the site being edited, which may be that site.
-  offerHeldSites: boolean;
-  onTakeHeldSite: (uuid: string) => void;
+  // Only a new site is offered a Commons record in its place: a site being
+  // edited stays what it is, so its search lists places alone.
+  offerCommonsSites: boolean;
+  onTakeCommonsSite: (uuid: string) => void;
   busy?: boolean;
   onUse: (picked: SearchedLocation) => void;
 }
@@ -93,8 +86,8 @@ function LocationSearch({
   latitude: initialLatitude = "",
   longitude: initialLongitude = "",
   location: initialLocation = null,
-  offerHeldSites,
-  onTakeHeldSite,
+  offerCommonsSites,
+  onTakeCommonsSite,
   busy,
   onUse,
   onClose,
@@ -105,8 +98,7 @@ function LocationSearch({
   const [latitude, setLatitude] = useState(initialLatitude);
   const [longitude, setLongitude] = useState(initialLongitude);
   const [location, setLocation] = useState(initialLocation);
-  const [site, setSite] = useState<DiveSiteSuggestion | null>(null);
-  const [offer, setOffer] = useState<DiveSiteSuggestion | null>(null);
+  const [offer, setOffer] = useState<DiveSiteLookupItem | null>(null);
 
   const geocoded = useGeocodedLocation({
     open: true,
@@ -161,7 +153,6 @@ function LocationSearch({
       latitude: formatCoordinateForForm(result.latitude),
       longitude: formatCoordinateForForm(result.longitude),
     };
-    setSite(null);
     setPosition(next);
     geocoded.adopt(next, {
       location: geocodeResultToLocation(result),
@@ -169,37 +160,14 @@ function LocationSearch({
     });
   };
 
-  // Location comes off the record rather than out of a lookup: the catalog
-  // already resolved `region, country` when it was built. Where it resolved to
-  // neither, Location is left as it is - a site with no place context is not an
-  // answer about where the site is.
-  const fillFromCatalogSite = (picked: DiveSiteSuggestion) => {
-    setOffer(null);
-    const next = {
-      latitude: formatCoordinateForForm(picked.latitude),
-      longitude: formatCoordinateForForm(picked.longitude),
-    };
-    setSite(picked);
-    setPosition(next);
-    const place = diveSitePlaceContext(picked);
-    geocoded.adopt(
-      next,
-      place
-        ? { location: { name: place }, attribution: picked.attribution }
-        : null,
-    );
-  };
-
-  // A row the diver already has a site for, picked while creating one, offers
-  // that site first and fills nothing until they answer.
+  // A Commons row fills nothing: the site it offers is that record, used as it
+  // stands, never a copy of it in the form.
   const placePick = (pick: PlacePick) => {
-    if (pick.kind === "geocode") {
-      setOffer(null);
-      placeResult(pick.result);
-    } else if (offerHeldSites && pick.site.held_site) {
+    if (pick.kind === "commons") {
       setOffer(pick.site);
     } else {
-      fillFromCatalogSite(pick.site);
+      setOffer(null);
+      placeResult(pick.result);
     }
   };
 
@@ -220,7 +188,6 @@ function LocationSearch({
       longitude: longitude.trim(),
       location,
       credit: geocoded.credit,
-      site,
     });
     onClose();
   };
@@ -234,13 +201,13 @@ function LocationSearch({
             onPick={placePick}
             onTypeName={(name) => setLocation(name ? { name } : null)}
             position={position}
+            listCommonsSites={offerCommonsSites}
             initialQuery={initialPosition ? undefined : initialLocation?.name}
           />
-          <HeldSiteOffer
-            suggestion={offer}
+          <CommonsSiteOffer
+            site={offer}
             disabled={busy}
-            onTake={onTakeHeldSite}
-            onDecline={fillFromCatalogSite}
+            onTake={onTakeCommonsSite}
           />
         </div>
 

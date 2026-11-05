@@ -27,9 +27,8 @@ export interface UseGeocodedLocationOptions {
  * The parts of a picked row this hook uses: the place to write into the
  * Location field, and who to credit for it.
  *
- * Structural rather than `GeocodeResult`, because two things are picked from the
- * search now - a geocoded place and a dive site out of the catalog - and neither
- * one's whole shape is any of this hook's business.
+ * Structural rather than `GeocodeResult`, whose whole shape is none of this
+ * hook's business.
  */
 export interface AdoptedPlace {
   location: LocationFormValue;
@@ -49,11 +48,9 @@ export interface GeocodedLocation {
    * Take the place a picked row already came with, which needs no lookup - and
    * cancel any that is still in the air, since it is about the old pin.
    *
-   * Pass `null` for a row that carries no place context at all. That is not the
-   * same as one that carries an empty place: the Location field is then left
-   * exactly as the diver left it, and nothing is credited for a value the pick
-   * did not supply. A catalog dive site far enough offshore resolves to neither
-   * a region nor a country and ships anyway, which is the case this is for.
+   * Pass `null` for a position that comes with no place. That is not the same as
+   * one that carries an empty place: the Location field is then left exactly as
+   * the diver left it, and nothing is credited for a value nothing supplied.
    */
   adopt: (position: GeocodedPosition, place: AdoptedPlace | null) => void;
   /** The licence credit for the name in the field, while it still describes the

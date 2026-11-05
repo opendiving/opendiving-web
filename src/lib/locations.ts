@@ -37,8 +37,7 @@ export function geocodeResultToLocation(
  * Where a place sits, as one string: `region, country` where both are known,
  * whichever one is where only one is, and `null` where neither is.
  *
- * The one composition behind both halves of the dive site search, so a catalog
- * row and a geocoder row with the same region and country read the same words.
+ * What the dive site search shows for a geocoder row.
  */
 export function formatPlaceContext(
   region?: string | null,
@@ -53,16 +52,13 @@ export function formatPlaceContext(
 /**
  * A geocoder result as the dive site search shows it: the place's own name, and
  * where it is as `region, country` - "Moalboal" and "Cebu, Philippines", read
- * together as "Moalboal, Cebu, Philippines". Composed as a catalog row's place
- * context is, so the two halves of the dive site menu read alike.
+ * together as "Moalboal, Cebu, Philippines".
  *
  * Read as one line, the row says what picking it saves: the API's `location` is
  * the same three parts. A result that matched an address has no name of its
  * own, so it reads as its `location` alone, which already holds every part a
  * hint would add. A context part the name already says is dropped - the country
- * row "Philippines" gets no context at all - which `diveSitePlaceContext` does
- * not do, because it also writes a catalog pick's Location and that must stay
- * what it is.
+ * row "Philippines" gets no context at all.
  */
 export function geocodeResultLabel(result: GeocodeResult): {
   name: string;

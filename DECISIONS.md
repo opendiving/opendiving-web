@@ -3326,9 +3326,7 @@ is what separates two Moalboals. A row reads as one line — the combobox joins 
 " — so `unrepeated` (`lib/locations.ts`) drops a hint part equal to a whole part of the row's name.
 
 The dive site search shows the bare name with `region, country` as the hint, through
-`geocodeResultLabel` and `formatPlaceContext`, the composition `diveSitePlaceContext` uses for a
-catalog row. The drop stays out of `diveSitePlaceContext`, which also writes a catalog pick's
-Location.
+`geocodeResultLabel` and `formatPlaceContext`.
 
 A row with no name of its own reads as its `location` alone, which already holds every part a hint
 would add. Read as one line, a row says what picking it saves.
@@ -3411,10 +3409,9 @@ prop is the rule's escape hatch), bumping the request counter so a reply in flig
 ## A dive site's place is searched for in its own dialog
 
 The button beside Location opens `LocationSearchDialog`: Location as a `PlaceSearch`, the coordinate
-pair and a map, all held apart from the site form until "Use location" writes the pair, the place
-and, for a catalog site, Name and its registry entry (see "The site search has two sources, and only
-one of them names the dive site"). It opens on what the form holds: a position is looked up as a
-dropped pin, and a name without one is searched for through `initialQuery`.
+pair and a map, all held apart from the site form until "Use location" writes the pair and the
+place. It opens on what the form holds: a position is looked up as a dropped pin, and a name without
+one is searched for through `initialQuery`.
 
 `PlaceSearch` shows the dialog's place as its value and files Enter-committed text as a name-only
 place. It sets `commitOnEnterOnly`, because a single-select's `handleInputChange` and blur pick an
@@ -5267,25 +5264,19 @@ unlayered rule in `globals.css` (it must out-specify `.maplibregl-map`, then bea
 class the same way). `map-picker.browser.test.tsx` keeps only its 512x256 rule, plus a case that
 measures the container against the surface.
 
-## The site search has two sources, and only one of them names the dive site
+## A Commons site is used in place, and no form is filled from one
 
-`PlaceSearch` queries the geocoder and `GET /api/v1/dive-sites/suggest`, a read-only catalog, under
-`Promise.allSettled`, because the combobox reads any `onSearch` throw as total failure. Catalog hits
-come first; the `hint` slot, not a new `CreatableCombobox` prop, marks which is a site.
+A dive names a Commons record by uuid; no pick creates a site or copies a member into one. Searching
+a new site's location lists unsaved records from the lookup (`commons_only`), first, under
+`Promise.allSettled` because the combobox reads any `onSearch` throw as total failure. A pick is
+`{ kind: "commons", site }` or `{ kind: "geocode", result }`; a Commons pick fills nothing and
+offers that site, saved on acceptance. An edit's search lists places alone: filling a diver's site
+from a record gives one row two meanings. A geocoder row for an OpenStreetMap object a listed row
+names is dropped.
 
-A pick is `{ kind: "catalog", site }` or `{ kind: "geocode", result }`, and `LocationSearchDialog`
-forks on the tag, not on the namespaced row id. A catalog pick fills Name and adds the row's
-registry entry (`pickExternalId`), once any site the diver already holds for it has been offered; a
-geocoded one does neither. Location is a place named `region, country`, never an ISO code, and
-nothing else — the record's coordinates are the site's, and the catalog resolved no centre or extent
-for the region it names. Where neither resolved, the field stays as it was, so `adopt` takes
-`AdoptedPlace | null`. `suggestDiveSites` guards its own query length because the combobox calls
-`onSearch` with `""` on open. Distance is computed here (`haversineMeters`, `formatDistance`) so the
-unit preference holds. Catalog `attribution` joins the search credit, never the map's.
-`LocationSearchDialog` passes its position whole or not at all; the endpoint answers 422 to half. A
-geocoder row whose `source` and `source_id` both equal a catalog row's in the same answer is
-dropped: the same OSM object, and the catalog's row names the dive site. A Wikidata row never
-matches.
+A saved record takes notes and tags alone, an unsaved one neither, so both go through
+`CommonsSiteDialog`. Credits sit in the menu's foot (`ComboboxSearchResult.credits`): a row is a
+button, which cannot hold a link, and a line under the field hides behind the menu.
 
 ## A refused save has to be announced, and `role="alert"` alone does not do it
 

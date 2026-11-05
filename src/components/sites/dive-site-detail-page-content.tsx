@@ -7,7 +7,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
-import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { diveSitesAPI, DiveSite, isCommonsSite } from "@/lib/api/dive-sites";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { ButtonLink } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/item-actions-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
+import { CommonsCredit } from "@/components/sites/commons-site";
+import { CommonsSiteDialog } from "@/components/sites/commons-site-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { DiveSiteInfoCard } from "@/components/sites/dive-site-info-card";
 import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
@@ -29,13 +31,14 @@ import {
   PAGE_COLUMN,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, FileText, Plus } from "lucide-react";
+import { Bookmark, Edit, FileText, Plus } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
 // Blue Hole" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Dive site deleted successfully.";
+const REMOVED_MESSAGE = "Removed from your sites.";
 
 export function DiveSiteDetailPageContent() {
   const router = useRouter();
@@ -94,6 +97,13 @@ export function DiveSiteDetailPageContent() {
     );
   }
 
+  const inCommons = isCommonsSite(diveSite);
+  const removedMessage = inCommons ? REMOVED_MESSAGE : DELETED_MESSAGE;
+  const applySaved = (saved: DiveSite) => {
+    setDiveSite(saved);
+    setSaves((count) => count + 1);
+  };
+
   return (
     <div>
       <DiveSiteHero
@@ -112,43 +122,65 @@ export function DiveSiteDetailPageContent() {
             </ButtonLink>
             <DiveSiteInfoDialog site={diveSite} />
             <ItemActionsMenu variant="ghost" size="sm" className={HERO_CONTROL}>
-              <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </DropdownMenuItem>
-              <DeleteMenuItem
-                onSelect={() => del.requestDelete(diveSite.uuid)}
-                disabled={isDeleting}
-              />
+              {inCommons && !diveSite.saved ? (
+                <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
+                  <Bookmark className="h-4 w-4 mr-2" />
+                  Save to your sites
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    {inCommons ? "Edit notes and tags" : "Edit"}
+                  </DropdownMenuItem>
+                  <DeleteMenuItem
+                    onSelect={() => del.requestDelete(diveSite.uuid)}
+                    disabled={isDeleting}
+                    label={inCommons ? "Remove from your sites" : undefined}
+                  />
+                </>
+              )}
             </ItemActionsMenu>
           </>
         }
       />
 
-      <DiveSiteDialog
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        diveSite={diveSite}
-        onSaved={(saved) => {
-          setDiveSite(saved);
-          setSaves((count) => count + 1);
-        }}
-      />
+      {inCommons ? (
+        <CommonsSiteDialog
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          site={diveSite}
+          onSaved={applySaved}
+        />
+      ) : (
+        <DiveSiteDialog
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          diveSite={diveSite}
+          onSaved={applySaved}
+        />
+      )}
 
       <DeleteWithReassignDialog
-        kind="dive-site"
+        kind={inCommons ? "saved-commons-site" : "dive-site"}
         targetId={del.pendingId}
         isDeleting={isDeleting}
         onCancel={del.cancelDelete}
         onConfirm={(moveDivesTo, name) =>
           del.confirmDelete(
             moveDivesTo,
-            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+            name
+              ? `${removedMessage} Its dives moved to ${name}.`
+              : removedMessage,
           )
         }
       />
 
       <div className={HERO_BODY}>
+        <CommonsCredit
+          attribution={diveSite.attribution}
+          className="mb-2 text-right"
+        />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-2.5">
           <div className="lg:col-span-2">
             <RecentDivesCard

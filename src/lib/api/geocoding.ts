@@ -42,15 +42,14 @@ export interface GeocodeResult {
   // The place's own name, where it has one. Absent for an address-only result.
   name?: string | null;
   // Where a result sits, which is what pulls two same-named places apart in a
-  // menu: the same role as `DiveSiteSuggestion`'s fields of these names, though
-  // not the same vocabulary. `region` is the finer of the two. A pin's answer
+  // menu. `region` is the finer of the two. A pin's answer
   // carries them as a search result does; each is absent where the map records
   // none, and on the offshore answer, which names only the water.
   country?: string | null;
   region?: string | null;
-  // The OSM object a search result is, spelled as the dive site catalog spells
-  // it (`node/6215139685`), so a geocoder row repeating a catalog row can be
-  // recognised by comparing both. Absent on a reverse geocode.
+  // The OSM object a search result is, spelled as a site's `openstreetmap` entry
+  // spells it (`node/6215139685`), so a geocoder row repeating a listed site can
+  // be recognised. Absent on a reverse geocode.
   source?: "osm" | null;
   source_id?: string | null;
   attribution: string;

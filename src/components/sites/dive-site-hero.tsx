@@ -2,9 +2,10 @@
 
 import type { ReactNode } from "react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
-import type { DiveSite } from "@/lib/api/dive-sites";
+import { isCommonsSite, type DiveSite } from "@/lib/api/dive-sites";
 import { MapBackdrop } from "@/components/map/map-backdrop";
 import { UnplacedBackdrop } from "@/components/ui/backdrop-card";
+import { CommonsBadge } from "@/components/sites/commons-site";
 import { diveSiteFacts } from "@/components/sites/dive-site-facts";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
 import { useUnits } from "@/hooks/useUnits";
@@ -61,6 +62,7 @@ export function DiveSiteHero({
       icon={DiveSiteIcon}
       actions={actions}
       title={site.name}
+      overline={isCommonsSite(site) ? <CommonsBadge /> : undefined}
       // The line under the name, as the site's card has it.
       subtitle={facts}
       figures={figures}

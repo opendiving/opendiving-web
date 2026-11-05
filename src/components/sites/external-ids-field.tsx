@@ -13,8 +13,8 @@ export interface ExternalIdsFieldProps {
 }
 
 // The registry entries the site carries, each removable. There is no box to type
-// one: an entry arrives with a catalogue pick or an import, and an identifier
-// typed by hand is one nobody checked against the registry.
+// one: an entry arrives with an import, and an identifier typed by hand is one
+// nobody checked against the registry.
 export function ExternalIdsField({ value, onChange }: ExternalIdsFieldProps) {
   if (value.length === 0) return null;
   return (

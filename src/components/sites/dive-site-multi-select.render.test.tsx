@@ -10,7 +10,8 @@ import { DiveSiteMultiSelect } from "./dive-site-multi-select";
 // name doesn't append the site on the keystroke, and blurring doesn't commit an
 // exact match. Only a click or Enter chooses, which is what these assert.
 
-vi.mock("@/lib/api/dive-sites", () => ({
+vi.mock("@/lib/api/dive-sites", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/dive-sites")>()),
   diveSitesAPI: { lookupDiveSites: vi.fn(), lookupDiveSitesByUuid: vi.fn() },
 }));
 
@@ -57,16 +58,28 @@ const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const lookupDiveSites = vi.mocked(diveSitesAPI.lookupDiveSites);
 const lookupDiveSitesByUuid = vi.mocked(diveSitesAPI.lookupDiveSitesByUuid);
 
+const OWN = { owner: "account", saved: true, attribution: null } as const;
 const SITE = {
   uuid: "site-1",
   name: "Blue Hole",
   location: { name: "Dahab, Egypt" },
+  ...OWN,
 };
 const SECOND_SITE = {
   uuid: "site-2",
   name: "Thistlegorm",
   location: { name: "Red Sea, Egypt" },
+  ...OWN,
 };
+const COMMONS_SITE = {
+  uuid: "commons-1",
+  name: "Blue Hole Arch",
+  location: { name: "Dahab, Egypt" },
+  owner: "opendivingcommons",
+  saved: false,
+  attribution:
+    "[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)",
+} as const;
 
 beforeEach(() => {
   lookupDiveSitesByUuid.mockReset();
@@ -104,6 +117,46 @@ const openMenu = async () => {
 };
 
 describe("DiveSiteMultiSelect", () => {
+  describe("with Commons rows in the answer", () => {
+    beforeEach(() => {
+      lookupDiveSites.mockResolvedValue({
+        data: [SITE, COMMONS_SITE],
+        total_count: 2,
+        has_more: false,
+        page: 1,
+        items_per_page: 25,
+      } as never);
+    });
+
+    it("lists them in the API's order, marked, with their credit", async () => {
+      render(<Field />);
+      await openMenu();
+
+      const options = screen.getAllByRole("option");
+      expect(options[0]).toHaveTextContent("Blue Hole");
+      expect(options[0]).not.toHaveTextContent("Commons");
+      expect(options[1]).toHaveTextContent("Blue Hole Arch");
+      expect(options[1]).toHaveTextContent("Commons");
+      expect(
+        screen.getByRole("link", {
+          name: "Data © OpenStreetMap contributors, ODbL 1.0.",
+        }),
+      ).toHaveAttribute("href", "https://osm.org/copyright");
+    });
+
+    it("adds a picked one to the dive and creates nothing", async () => {
+      const onChange = vi.fn();
+      render(<DiveSiteMultiSelect value={[]} onChange={onChange} />);
+      await openMenu();
+
+      await userEvent.click(
+        screen.getByRole("option", { name: /Blue Hole Arch/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith(["commons-1"]);
+    });
+  });
+
   it("asks the lookup for sites ranked at the dive's own date", async () => {
     render(<Field until="2019-06-01" />);
     await openMenu();

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Edit } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
-import type { DiveSite } from "@/lib/api/dive-sites";
+import { isCommonsSite, type DiveSite } from "@/lib/api/dive-sites";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteMenuItem } from "@/components/ui/item-actions-menu";
 import {
@@ -14,10 +14,12 @@ import {
   type BackdropCardFigure,
 } from "@/components/ui/backdrop-card";
 import { MapBackdrop } from "@/components/map/map-backdrop";
+import { CommonsBadge, CommonsCredit } from "@/components/sites/commons-site";
 import { diveSiteFacts } from "@/components/sites/dive-site-facts";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
+import { cn } from "@/lib/utils";
 
 interface DiveSiteCardProps {
   site: DiveSite;
@@ -37,6 +39,7 @@ export function DiveSiteCard({
 }: DiveSiteCardProps) {
   const units = useUnits();
   const facts = diveSiteFacts(site, units);
+  const inCommons = isCommonsSite(site);
   const figures: BackdropCardFigure[] = [
     { label: "Dives", value: site.dive_count ?? 0 },
     {
@@ -59,9 +62,13 @@ export function DiveSiteCard({
         <>
           <DropdownMenuItem onClick={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
-            Edit
+            {inCommons ? "Edit notes and tags" : "Edit"}
           </DropdownMenuItem>
-          <DeleteMenuItem onSelect={onDelete} disabled={isDeleting} />
+          <DeleteMenuItem
+            onSelect={onDelete}
+            disabled={isDeleting}
+            label={inCommons ? "Remove from your sites" : undefined}
+          />
         </>
       }
       backdrop={(coveredBottom) => (
@@ -86,15 +93,23 @@ export function DiveSiteCard({
         />
       )}
     >
-      <Link href={`/sites/${site.uuid}`} className={BACKDROP_CARD_LINK}>
-        {site.name}
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/sites/${site.uuid}`}
+          className={cn(BACKDROP_CARD_LINK, "min-w-0")}
+        >
+          {site.name}
+        </Link>
+        {inCommons && <CommonsBadge />}
+      </div>
       {facts.length > 0 && (
         <div className="text-xs">
           <FactsLine facts={facts} />
         </div>
       )}
       <BackdropCardFigures figures={figures} />
+      {/* Lifted over the stretched link, whose card would swallow its own. */}
+      <CommonsCredit attribution={site.attribution} className="relative z-10" />
     </BackdropCard>
   );
 }

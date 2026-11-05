@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
@@ -16,8 +16,7 @@ import {
   parseFormCoordinate,
   parseFormPosition,
 } from "@/lib/validations/coordinates";
-import { diveSitesAPI, DiveSite, ExternalId } from "@/lib/api/dive-sites";
-import { pickExternalId } from "@/lib/external-ids";
+import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import {
   MAX_LOCATION_NAME_LENGTH,
   type LocationFormValue,
@@ -77,7 +76,7 @@ interface DiveSiteDialogProps {
 // stores - another name the name already says is dropped, a tag takes the spelling
 // the diver already has - so the saved site is read back rather than assembled.
 // A failed read is not a failed save: the assembled site stands in for it.
-async function readBack(
+export async function readBack(
   site: DiveSite,
   update: Partial<DiveSite>,
 ): Promise<DiveSite> {
@@ -101,7 +100,7 @@ export function DiveSiteDialog({
   onSaved,
   finalFocus,
 }: DiveSiteDialogProps) {
-  const [isTakingHeldSite, setIsTakingHeldSite] = useState(false);
+  const [isTakingCommonsSite, setIsTakingCommonsSite] = useState(false);
   const [apiError, setApiError, handleOpenChange] = useDialogApiError(
     open,
     onOpenChange,
@@ -113,19 +112,15 @@ export function DiveSiteDialog({
     defaultValues: diveSiteFormValues(null),
   });
 
-  // The registry entry the last catalogue pick in this dialog added, which the
-  // next pick replaces. A ref, since nothing renders from it.
-  const pickedEntry = useRef<ExternalId | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Reload the form whenever the dialog is opened, so it shows the dive site
   // being edited (or a clean slate) rather than whatever the previous
   // invocation left behind.
-  const { reset, setValue, getValues, setError, setFocus } = form;
+  const { reset, setValue, setError, setFocus } = form;
   useEffectOnChange(() => {
     if (!open) return;
     reset(diveSiteFormValues(diveSite));
-    pickedEntry.current = null;
     setSearchOpen(false);
   }, [open, diveSite, reset]);
 
@@ -193,18 +188,9 @@ export function DiveSiteDialog({
   // Location beside it, wholesale - including the name it looked up for the
   // form's position on opening, which replaces whatever Location held, as
   // placing that pin by hand would have.
-  //
-  // A catalog dive site fills Name as well, and always - a diver who wanted
-  // something else types over it, exactly as they do with the Location. Filling
-  // it only when empty would never clobber typed text, at the price of a rule
-  // nobody can predict from looking at the form. Its registry entry goes with
-  // it, on an edit as on a create - which is how a site made before picks kept
-  // one gets its identity: re-pick its row. See `pickExternalId` for which
-  // entries the pick replaces and which it keeps.
   const applySearchedLocation = ({
     location,
     credit,
-    site,
     ...position
   }: SearchedLocation) => {
     setPosition(position);
@@ -218,26 +204,17 @@ export function DiveSiteDialog({
       shouldValidate: true,
       shouldDirty: true,
     });
-    if (!site) return;
-    setValue("name", site.name, { shouldValidate: true, shouldDirty: true });
-    const { externalIds, added } = pickExternalId(
-      getValues("external_ids") ?? [],
-      pickedEntry.current,
-      site.external_id,
-    );
-    setValue("external_ids", externalIds, { shouldDirty: true });
-    pickedEntry.current = added;
   };
 
-  // Taking the held site the search offered hands it back as though it had
-  // just been saved here, so whatever opened the dialog - the dive form's
-  // picker selecting it, the header's menu opening its page - does what it does
-  // with a new one, and nothing is created.
-  const takeHeldSite = async (uuid: string) => {
+  // Using a Commons record saves it to the diver's sites and hands it back as
+  // though it had just been made here, so whatever opened the dialog - the dive
+  // form's picker selecting it, the header's menu opening its page - does what it
+  // does with a new one, and no site is created.
+  const takeCommonsSite = async (uuid: string) => {
     setApiError(null);
     try {
-      setIsTakingHeldSite(true);
-      onSaved(await diveSitesAPI.getDiveSite(uuid));
+      setIsTakingCommonsSite(true);
+      onSaved(await diveSitesAPI.saveDiveSite(uuid));
       setSearchOpen(false);
       onOpenChange(false);
     } catch (error) {
@@ -245,11 +222,11 @@ export function DiveSiteDialog({
       setApiError(
         getApiErrorMessage(
           error,
-          "Failed to open that dive site. Please try again.",
+          "Failed to save that dive site. Please try again.",
         ),
       );
     } finally {
-      setIsTakingHeldSite(false);
+      setIsTakingCommonsSite(false);
     }
   };
 
@@ -561,9 +538,9 @@ export function DiveSiteDialog({
           latitude={watchedLatitude}
           longitude={watchedLongitude}
           location={watchedLocation}
-          offerHeldSites={!isEdit}
-          onTakeHeldSite={takeHeldSite}
-          busy={isTakingHeldSite}
+          offerCommonsSites={!isEdit}
+          onTakeCommonsSite={takeCommonsSite}
+          busy={isTakingCommonsSite}
           onUse={applySearchedLocation}
         />
       </DialogContent>

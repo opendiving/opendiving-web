@@ -10,6 +10,7 @@ import {
 import type { FormControlA11yProps } from "@/components/ui/form";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { DiveSiteSummary } from "@/lib/api/dives";
+import { diveSiteSearchResult } from "@/components/sites/commons-site";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import { useLookupLabels } from "@/hooks/useLookupLabels";
@@ -46,8 +47,10 @@ export interface DiveSiteMultiSelectProps extends FormControlA11yProps {
 // drag-sortable list of the sites already added.
 //
 // The dropdown searches server-side (`CreatableCombobox`'s `onSearch`) rather
-// than fetching the user's whole catalogue up front - see DECISIONS.md. The
-// names of *selected* sites are therefore tracked separately, in `labels`,
+// than fetching the user's whole catalogue up front - see DECISIONS.md - and a
+// search lists Commons records after the diver's own, which a dive names as they
+// stand: the API saves one for the diver when the dive is saved. The names of
+// *selected* sites are therefore tracked separately, in `labels`,
 // since a picked site drops out of the results as soon as the query changes.
 export function DiveSiteMultiSelect({
   value,
@@ -99,14 +102,7 @@ export function DiveSiteMultiSelect({
       // Every site the dropdown shows is remembered, so picking one never needs
       // the record fetched straight back just to label its row.
       rememberRecord(...response.data);
-      return {
-        items: response.data.map((site) => ({
-          id: site.uuid,
-          name: site.name,
-          hint: site.location?.name,
-        })),
-        hasMore: response.has_more,
-      };
+      return diveSiteSearchResult(response);
     },
     [rememberRecord, until],
   );

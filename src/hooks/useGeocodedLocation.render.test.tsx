@@ -101,9 +101,8 @@ function Harness({
       >
         pick a place
       </button>
-      {/* A catalog dive site far enough offshore to have resolved to neither a
-          region nor a country: a position and a name, and nothing to say about
-          the Location field. */}
+      {/* A position with no place to go with it, and so nothing to say about the
+          Location field. */}
       <button
         type="button"
         onClick={() => {
@@ -464,10 +463,8 @@ describe("useGeocodedLocation, adopting a searched place", () => {
   });
 });
 
-// A catalog dive site can resolve to no place at all - a few dozen sit further
-// than 50 km from any administrative boundary and ship anyway. That is a fact
-// about the catalog, not about the position, so it is no more grounds to empty
-// the Location field than an `unknown` lookup is.
+// A position handed over with no place is no more grounds to empty the Location
+// field than an `unknown` lookup is.
 describe("useGeocodedLocation, adopting a row that named nowhere", () => {
   const pickNowhere = () =>
     screen

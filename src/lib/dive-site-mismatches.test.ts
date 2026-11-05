@@ -5,7 +5,9 @@ import { diveSiteMismatches } from "./dive-site-mismatches";
 const site = (name: string, overrides: Partial<DiveSite> = {}): DiveSite => ({
   uuid: `site-${name}`,
   name,
-  user_uuid: "user-1",
+  owner: "account",
+  saved: true,
+  attribution: null,
   created_at: "2026-01-01T00:00:00Z",
   ...overrides,
 });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./client")>()),
-  apiClient: { get: vi.fn() },
+  apiClient: { get: vi.fn(), put: vi.fn() },
 }));
 
 const { apiClient } = await import("./client");
@@ -15,6 +15,62 @@ const page = { data: [], total_count: 0, has_more: false };
 beforeEach(() => {
   get.mockReset();
   get.mockResolvedValue({ data: page });
+});
+
+describe("diveSitesAPI.searchCommonsSites", () => {
+  it("asks for Commons records alone, on a page of ten", async () => {
+    await diveSitesAPI.searchCommonsSites("  kapal  ");
+
+    expect(get).toHaveBeenCalledWith("/dive-sites/lookup", {
+      params: {
+        page: 1,
+        items_per_page: 10,
+        search: "kapal",
+        commons_only: true,
+      },
+    });
+  });
+
+  it("sends a position whole", async () => {
+    await diveSitesAPI.searchCommonsSites("kapal", {
+      latitude: 1.5,
+      longitude: 2.5,
+    });
+
+    expect(get.mock.calls[0][1]?.params).toMatchObject({
+      latitude: 1.5,
+      longitude: 2.5,
+    });
+  });
+
+  // `commons_only` with a blank search is a 422, and the combobox searches "" the
+  // moment its menu opens.
+  it.each(["", " ", "k", "x".repeat(256)])(
+    "answers %j without asking",
+    async (query) => {
+      await expect(diveSitesAPI.searchCommonsSites(query)).resolves.toEqual({
+        data: [],
+        has_more: false,
+      });
+      expect(get).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("diveSitesAPI.saveDiveSite", () => {
+  it("puts what the diver wrote and answers with the read", async () => {
+    const read = { uuid: "site-1" };
+    vi.mocked(apiClient.put).mockResolvedValue({ data: read });
+
+    await expect(
+      diveSitesAPI.saveDiveSite("site-1", { notes: "Gate", tags: ["Wreck"] }),
+    ).resolves.toBe(read);
+
+    expect(apiClient.put).toHaveBeenCalledWith("/dive-site/site-1/saved", {
+      notes: "Gate",
+      tags: ["Wreck"],
+    });
+  });
 });
 
 describe("diveSitesAPI.getDiveSites", () => {

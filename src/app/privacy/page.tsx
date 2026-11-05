@@ -502,11 +502,11 @@ export default async function PrivacyPage() {
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
-                  Coordinates you place yourself &mdash; a pin on the map, a
+                  Coordinates you place yourself &mdash; a pin on the map, or a
                   pair of coordinates typed into a dive site, trip or contact
-                  form, or a dive site you pick from the catalogue of named
-                  sites this copy carries, which also keeps that site&rsquo;s
-                  entry in OpenStreetMap or Wikidata
+                  form. Choosing a Commons site, which section 4.2 describes,
+                  sends no position of yours: the position is the site&rsquo;s
+                  own, and what is recorded is that you used it
                 </li>
                 <li>
                   GPS positions recorded inside a dive-computer file you import,
@@ -634,36 +634,38 @@ export default async function PrivacyPage() {
                 Nothing you enter is published. There are no public profiles, no
                 public dive logs, no feeds, no forums, and no public ratings or
                 reviews: the rating you give a dive is part of your own log.
-                Every dive, dive site, trip, gear item, course, certification,
-                contact, person and tag belongs to one account and is visible to
-                that account alone. There is no setting that makes any of it
-                public, because there is nothing for such a setting to do. The
-                exceptions are ones you make yourself: a check-in link shows
-                your check-in page to whoever holds it, for a day, and section
-                4.9 says exactly what that shows; where this copy is
-                invite-only, an invite link shows your name &mdash; and nothing
-                you entered &mdash; to whoever opens it, until you reset or
-                remove it, as section 4.8 says; and an API key you make lets
-                whatever holds it read your account as you &mdash; and change
-                it, if you let it &mdash; until it expires or you revoke it, as
-                section 4.11 says.
+                Every dive, trip, gear item, course, certification, contact,
+                person and tag belongs to one account and is visible to that
+                account alone, and so is every dive site you add yourself. A
+                Commons site belongs to no account, as section 4.2 says, and
+                your notes, tags and dives on one are as private as the rest.
+                There is no setting that makes any of it public, because there
+                is nothing for such a setting to do. The exceptions are ones you
+                make yourself: a check-in link shows your check-in page to
+                whoever holds it, for a day, and section 4.9 says exactly what
+                that shows; where this copy is invite-only, an invite link shows
+                your name &mdash; and nothing you entered &mdash; to whoever
+                opens it, until you reset or remove it, as section 4.8 says; and
+                an API key you make lets whatever holds it read your account as
+                you &mdash; and change it, if you let it &mdash; until it
+                expires or you revoke it, as section 4.11 says.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
                 4.2 What Other Divers Can See
               </h3>
               <p className="text-foreground mb-4">
-                Nothing you have entered is shared between accounts, and there
-                is no way to make it so. There are no groups, no comments and no
-                shared logs, and the people you record are your own notes about
-                them rather than a connection between two accounts. Another
-                diver with an account on this same copy cannot see any dive,
-                dive site, trip, gear item, course, certification, contact,
-                person or tag of yours. What does cross between accounts, when
-                you link a person to one, runs towards you and is small: that an
-                account with the username you typed, or with the identifier a
-                file you imported carried, exists here; what its username is
-                now; and, in your own export, its identifier.
+                Nothing you have entered is shared between accounts. There are
+                no groups, no comments and no shared logs, and the people you
+                record are your own notes about them rather than a connection
+                between two accounts. Another diver with an account on this same
+                copy cannot see any dive, dive site you added, trip, gear item,
+                course, certification, contact, person or tag of yours. What
+                does cross between accounts, when you link a person to one, runs
+                towards you and is small: that an account with the username you
+                typed, or with the identifier a file you imported carried,
+                exists here; what its username is now; and, in your own export,
+                its identifier.
               </p>
               <p className="text-foreground mb-4">
                 There are three exceptions. The first is not about anything you
@@ -682,10 +684,22 @@ export default async function PrivacyPage() {
                 account nothing. Section 4.10 sets out what that discloses.
               </p>
               <p className="text-foreground mb-4">
-                The one thing every account on this copy does draw on is the
-                catalogue of species &mdash; the fish themselves, saved here
-                once and belonging to no one diver. It records what a species
-                is, never who saw it; section 4.6 explains how it fills up.
+                Two things every account on this copy does draw on belong to no
+                one diver. The first is the catalogue of species &mdash; the
+                fish themselves, saved here once. It records what a species is,
+                never who saw it; section 4.6 explains how it fills up.
+              </p>
+              <p className="text-foreground mb-4">
+                The second is OpenDiving Commons, a pool of dive sites this copy
+                carries: its name, position and the other facts of the place,
+                drawn from open sources such as OpenStreetMap and Wikidata. A
+                Commons site is one record every account can use, marked{" "}
+                <em>Commons</em> wherever it appears, and it is not copied into
+                yours when you log a dive there or save it to your sites. The
+                notes, tags and dives you add to it are yours alone: they are
+                kept apart from the record, and no other account can see them,
+                or that you use the site at all. Removing a Commons site from
+                your sites removes those and leaves the record as it was.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1432,13 +1446,14 @@ export default async function PrivacyPage() {
               </ul>
               <p className="text-foreground mb-4">
                 There are no privacy settings for your dive logs, and their
-                absence is the point: nothing is public or shared, so there is
-                nothing to switch off. The exceptions are a check-in link you
-                made, which Revoke on your check-in page switches off at once
-                &mdash; section 4.9; where this copy is invite-only, your invite
-                link, which Remove on the Invitations card switches off at once
-                &mdash; section 4.8; and an API key you made, which Revoke on
-                the API keys card switches off at once &mdash; section 4.11.
+                absence is the point: nothing of yours is public or shared, so
+                there is nothing to switch off. The exceptions are a check-in
+                link you made, which Revoke on your check-in page switches off
+                at once &mdash; section 4.9; where this copy is invite-only,
+                your invite link, which Remove on the Invitations card switches
+                off at once &mdash; section 4.8; and an API key you made, which
+                Revoke on the API keys card switches off at once &mdash; section
+                4.11.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1717,7 +1732,8 @@ export default async function PrivacyPage() {
                   everything hanging off it &mdash; dives, dive drafts, sites,
                   trips, gear, courses, certifications, contacts, people, tags
                   &mdash; are destroyed, and the files you uploaded are unlinked
-                  from disk with them
+                  from disk with them. A Commons site you saved stays, being no
+                  account&rsquo;s, and your notes and tags on it go
                 </li>
                 <li>
                   Any invitations you sent go with it, used or not, and so does

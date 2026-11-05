@@ -352,7 +352,9 @@ describe("diveSiteFormValues", () => {
     entry_types: ["shore"],
     tags: ["shore dive"],
     notes: "Ladders every 100 m",
-    user_uuid: "user-1",
+    owner: "account" as const,
+    saved: true,
+    attribution: null,
     created_at: "2026-01-01T00:00:00Z",
   };
 
